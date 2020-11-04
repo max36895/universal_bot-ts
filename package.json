@@ -1,0 +1,44 @@
+{
+  "name": "u_bot",
+  "description": "Universal bot(vk, telegram, viber) or skills for Yandex.Alisa, Маруся",
+  "keywords": [
+    "vk",
+    "telegram",
+    "Alisa",
+    "Yandex",
+    "TS",
+    "Dialogs",
+    "api",
+    "viber",
+    "Маруся"
+  ],
+  "author": "Maxim-M",
+  "license": "MIT",
+  "version": "1.0.0",
+  "main": "dist/demo/skills/game/index.js",
+  "scripts": {
+    "watch": "tsc -watch",
+    "start": "rm -rf dist/ && tsc",
+    "start_game": "micro",
+    "build": "rm -rf dist/ && tsc",
+    "test": "node node_modules/mocha/bin/mocha dist/src/MM/tests/**/*.js",
+    "bt": "npm run build && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/max36895/universal_bot-ts/"
+  },
+  "devDependencies": {
+    "tslint": "^5.18.0"
+  },
+  "dependencies": {
+    "@types/mocha": "^8.0.3",
+    "@types/node": "^14.6.4",
+    "chai": "*",
+    "micro": "^9.3.4",
+    "mocha": "*",
+    "mongodb": "^3.6.2",
+    "ts-mocha": "^7.0.0",
+    "typescript": "^4.0.3"
+  }
+}
