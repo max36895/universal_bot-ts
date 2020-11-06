@@ -37,7 +37,7 @@ export class YandexRequest {
         if (oauth) {
             this.setOAuth(oauth);
         } else {
-            this.setOAuth(mmApp.params.yandex_token ?? null);
+            this.setOAuth(mmApp.params.yandex_token || null);
         }
         this._request = new Request();
         this._request.maxTimeQuery = 1500;
@@ -82,7 +82,7 @@ export class YandexRequest {
      * @api
      */
     protected _log(error: string): void {
-        error = `\n${Date}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`
+        error = `\n${Date}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('YandexApi.log', error);
     }
 }

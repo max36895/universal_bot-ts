@@ -118,7 +118,7 @@ export class YandexSpeechKit extends YandexRequest {
         this.format = YandexSpeechKit.F_OGGOPUS;
         this.folderId = null;
         if (oauth === null) {
-            this.setOAuth(mmApp.params.yandex_speech_kit_token ?? null);
+            this.setOAuth(mmApp.params.yandex_speech_kit_token || null);
         }
     }
 

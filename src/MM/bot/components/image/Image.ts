@@ -84,9 +84,9 @@ export class Image {
                 if (typeof button === 'string') {
                     this.button.addBtn(button);
                 } else {
-                    const title: string = (button.title ?? button.text ?? null);
-                    const url: string = (button.url ?? null);
-                    const payload: TButtonPayload = (button.payload ?? null);
+                    const title: string = (button.title || button.text || null);
+                    const url: string = (button.url || null);
+                    const payload: TButtonPayload = (button.payload || null);
                     this.button.addBtn(title, url, payload);
                 }
             }

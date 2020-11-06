@@ -110,9 +110,9 @@ export class Marusia extends TemplateTypeModel {
 
             this.controller.userId = this._session.user_id;
             mmApp.params.user_id = this.controller.userId;
-            this.controller.nlu.setNlu(content.request.nlu ?? null);
+            this.controller.nlu.setNlu(content.request.nlu || null);
 
-            this.controller.userMeta = content.meta ?? [];
+            this.controller.userMeta = content.meta || [];
             this.controller.messageId = this._session.message_id;
 
             mmApp.params.app_id = this._session.skill_id;

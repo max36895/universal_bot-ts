@@ -26,13 +26,13 @@ describe('Buttons test', () => {
         const button = new Button();
         mmApp.params.utm_text = null;
         button.initBtn('btn', 'https://google.com');
-        assert.equal(button.url, 'https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone')
+        assert.equal(button.url, 'https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
 
         button.initBtn('btn','https://google.com?utm_source=test');
-        assert.equal(button.url, 'https://google.com?utm_source=test')
+        assert.equal(button.url, 'https://google.com?utm_source=test');
 
         button.initBtn('btn','https://google.com?data=test');
-        assert.equal(button.url, 'https://google.com?data=test&utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone')
+        assert.equal(button.url, 'https://google.com?data=test&utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
 
         mmApp.params.utm_text = 'my_utm_text';
         button.initBtn('btn', 'https://google.com');
@@ -243,7 +243,7 @@ describe('Buttons test', () => {
                 }
             ]
         };
-        defaultButtons.clear()
+        defaultButtons.clear();
         defaultButtons.addBtn('1', null, {[VkButton.GROUP_NAME]: 0});
         defaultButtons.addLink('1', 'https://test.ru', {[VkButton.GROUP_NAME]: 0});
         defaultButtons.addBtn('2', null, {[VkButton.GROUP_NAME]: 0});
@@ -362,7 +362,7 @@ describe('Buttons test', () => {
             keyboard: [
                 '1', '2', '3'
             ]
-        }
+        };
 
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
 
@@ -391,11 +391,11 @@ describe('Buttons test', () => {
             text: 'link',
             url: 'https://test.ru',
             callback_data: 'test'
-        })
+        });
 
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
 
         defaultButtons.clear();
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), {remove_keyboard: true});
     });
-})
+});

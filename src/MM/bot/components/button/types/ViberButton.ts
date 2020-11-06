@@ -36,7 +36,7 @@ export class ViberButton extends TemplateButtonTypes {
             btn = {...btn, ...button.options};
 
             buttons.push(btn);
-        })
+        });
 
         if (buttons.length) {
             objects = {

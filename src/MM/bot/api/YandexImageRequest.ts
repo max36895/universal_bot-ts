@@ -20,7 +20,7 @@ export class YandexImageRequest extends YandexRequest {
      * @var skillId Идентификатор навыка, необходим для корректного сохранения изображения(Обязательный параметр)
      * @see YandexRequest Смотри тут
      */
-    public skillId: string
+    public skillId: string;
 
     /**
      * YandexImageRequest constructor.
@@ -32,7 +32,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     constructor(oauth: string = null, skillId: string = null) {
         super(oauth);
-        this.skillId = skillId || (mmApp.params.app_id ?? null);
+        this.skillId = skillId || (mmApp.params.app_id || null);
         this._request.url = this.STANDARD_URL;
     }
 
@@ -155,7 +155,7 @@ export class YandexImageRequest extends YandexRequest {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
             const query = this.call();
-            return query.images ?? null;
+            return query.images || null;
         } else {
             this._log('YandexImageRequest::getLoadedImages() Error: Не выбран навык!');
         }

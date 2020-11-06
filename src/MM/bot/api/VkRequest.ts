@@ -100,13 +100,13 @@ export class VkRequest {
             this._request.post.v = this._vkApiVersion;
             const data = this._request.send(this.VK_API_ENDPOINT + method);
             if (data.status) {
-                this._error = JSON.stringify(data.err ?? []);
+                this._error = JSON.stringify(data.err || []);
                 if (typeof data.data.error !== 'undefined') {
                     this._error = JSON.stringify(data.data.error);
                     this.log('');
                     return null;
                 }
-                return data['data']['response'] ?? data['data'];
+                return data['data']['response'] || data['data'];
             }
             this.log(data.err);
         } else {
@@ -410,7 +410,7 @@ export class VkRequest {
      * @param error Текст ошибки.
      */
     protected log(error: string): void {
-        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`
+        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('vkApi.log', error);
     }
 }

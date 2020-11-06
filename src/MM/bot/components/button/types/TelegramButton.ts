@@ -58,7 +58,7 @@ export class TelegramButton extends TemplateButtonTypes {
                     reply.push(button.title);
                 }
             }*/
-        })
+        });
         const rCount = reply.length;
         const rInline = inlines.length;
         if (rCount || rInline) {

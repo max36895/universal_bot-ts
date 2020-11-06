@@ -59,7 +59,7 @@ export class Vk extends TemplateTypeModel {
             }
             this.controller = controller;
             this.controller.requestObject = content;
-            switch (content.type ?? null) {
+            switch (content.type || null) {
                 case 'confirmation':
                     this.sendInInit = mmApp.params.vk_confirmation_token;
                     return true;
@@ -72,13 +72,13 @@ export class Vk extends TemplateTypeModel {
                         this.controller.userCommand = object.message.text.toLowerCase().trim();
                         this.controller.originalUserCommand = object.message.text.trim();
                         this.controller.messageId = object.message.id;
-                        this.controller.payload = object.message.payload ?? null;
+                        this.controller.payload = object.message.payload || null;
                         const user = (new VkRequest()).usersGet(this.controller.userId);
                         if (user) {
                             const thisUser = {
                                 username: null,
-                                first_name: user.first_name ?? null,
-                                last_name: user.last_name ?? null
+                                first_name: user.first_name || null,
+                                last_name: user.last_name || null
                             };
                             this.controller.nlu.setNlu({thisUser});
                         }

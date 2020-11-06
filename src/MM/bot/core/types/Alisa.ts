@@ -119,7 +119,7 @@ export class Alisa extends TemplateTypeModel {
             }
             this.controller.userId = userId;
             mmApp.params.user_id = this.controller.userId;
-            this.controller.nlu.setNlu(content.request.nlu ?? {});
+            this.controller.nlu.setNlu(content.request.nlu || {});
 
             this.controller.userMeta = content.meta || {};
             this.controller.messageId = this._session.message_id;

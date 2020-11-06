@@ -6,7 +6,7 @@
  */
 import {Model} from "./db/Model";
 import {IModelRules} from "./interface/IModel";
-import {IS_SAVE_DB} from "../core/mmApp";
+import {mmApp} from "../core/mmApp";
 
 export class UsersData extends Model {
     public static readonly TABLE_NAME = 'UsersData';
@@ -137,7 +137,7 @@ export class UsersData extends Model {
      */
     public getOne(): boolean {
         const one = this.selectOne();
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             if (one && one.num_rows) {
                 this.init(one.fetch_array());
                 one.free_result();
@@ -157,7 +157,7 @@ export class UsersData extends Model {
      * @api
      */
     public validate(): void {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             if (typeof this.meta !== "string") {
                 this.meta = JSON.stringify(this.meta);
             }
@@ -176,7 +176,7 @@ export class UsersData extends Model {
      */
     public init(data: any): void {
         super.init(data);
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             if (typeof this.meta === 'string') {
                 this.meta = JSON.parse(this.meta);
             }

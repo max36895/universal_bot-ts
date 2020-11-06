@@ -1,7 +1,5 @@
 import {fwrite, isDir, mkdir} from "../utils/functins";
 
-export const IS_SAVE_DB: boolean = false;
-
 export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application';
 
 export const T_ALISA: TAppType = 'alisa';
@@ -46,7 +44,7 @@ export interface IAppConfig {
      */
     json: string;
     /**
-     * @typeof {IAppDB} db Настройка подключения к базе данных. Актуально если IS_SAVE_DB = true.
+     * @typeof {IAppDB} db Настройка подключения к базе данных. Актуально если isSaveDb = true.
      */
     db?: IAppDB;
     /**
@@ -143,6 +141,13 @@ export interface IAppParam {
 }
 
 export class mmApp {
+
+    /**
+     * Куда сохраняются пользовательские даннеы. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
+     * @type {boolean}
+     */
+    public static isSaveDb: boolean = false;
+
     /**
      * Тип приложения. (Алиса, бот vk|telegram).
      * @var string $appType Тип приложения. (Алиса, бот vk|telegram).
@@ -235,6 +240,10 @@ export class mmApp {
         this.params = {...this.params, ...params};
     }
 
+    public static setIsSaveDb(isSaveDb: boolean = false) {
+        this.isSaveDb = isSaveDb;
+    }
+
     /**
      * Сохранение json файла.
      *
@@ -262,7 +271,7 @@ export class mmApp {
      * @api
      */
     public static saveLog(fileName: string, errorText: string): boolean {
-        const path: string = mmApp.config.error_log ?? __dirname + '/../../logs';
+        const path: string = mmApp.config.error_log || __dirname + '/../../logs';
         if (!isDir(path)) {
             mkdir(path);
         }

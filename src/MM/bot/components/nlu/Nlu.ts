@@ -10,7 +10,7 @@ export class Nlu {
     /**
      * Массив с обработанными данными.
      * @var nlu Массив с обработанными данными.
-     */z
+     */
     private _nlu: INlu;
     /**
      * @const T_FIO В запросе пользователя присутствует имя.
@@ -85,7 +85,7 @@ export class Nlu {
                 }
                 data.push(entity.value);
             }
-        })
+        });
         return data;
     }
 

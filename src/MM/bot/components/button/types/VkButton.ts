@@ -55,7 +55,7 @@ export class VkButton extends TemplateButtonTypes {
                 object.color = button.payload.color;
             }
             if (button.type === Button.VK_TYPE_PAY) {
-                object.hash = button.payload.hash ?? null;
+                object.hash = button.payload.hash || null;
             }
             object = {...object, ...button.options};
             if (typeof button.payload[VkButton.GROUP_NAME] !== 'undefined') {
@@ -74,7 +74,7 @@ export class VkButton extends TemplateButtonTypes {
             if (object.action.payload && typeof object.action.payload !== 'string') {
                 object.action.payload = JSON.stringify(object.action.payload);
             }
-        })
+        });
         let oneTime = false;
         if (buttons.length) {
             oneTime = true;

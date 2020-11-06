@@ -76,9 +76,9 @@ export class Telegram extends TemplateTypeModel {
                 this.controller.messageId = content.message.message_id;
 
                 const thisUser: INluThisUser = {
-                    username: content.message.chat.username ?? null,
-                    first_name: content.message.chat.first_name ?? null,
-                    last_name: content.message.chat.last_name ?? null,
+                    username: content.message.chat.username || null,
+                    first_name: content.message.chat.first_name || null,
+                    last_name: content.message.chat.last_name || null,
                 };
                 this.controller.nlu.setNlu({thisUser});
                 return true;

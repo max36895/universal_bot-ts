@@ -32,7 +32,7 @@ export class YandexSoundRequest extends YandexRequest {
      */
     constructor(oauth: string = null, skillId: string = null) {
         super(oauth);
-        this.skillId = skillId || (mmApp.params.app_id ?? null);
+        this.skillId = skillId || (mmApp.params.app_id || null);
         this._request.url = this.STANDARD_URL;
     }
 
@@ -128,7 +128,7 @@ export class YandexSoundRequest extends YandexRequest {
         if (this.skillId) {
             this._request.url = this._getSoundsUrl();
             const query = this.call();
-            return query.sounds ?? null;
+            return query.sounds || null;
         } else {
             this._log('YandexSoundRequest::getLoadedSounds() Error: Не выбран навык!');
         }

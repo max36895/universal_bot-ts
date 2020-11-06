@@ -38,7 +38,7 @@ describe('Db file connect', () => {
                     name: 'user 3'
                 }
             }
-        }
+        };
         mmApp.saveJson('UsersData.json', data);
     });
 
@@ -79,7 +79,7 @@ describe('Db file connect', () => {
     it('Delete data', () => {
         let query = '`userId`="userId1"';
         userData.userId = 'userId1';
-        assert.isTrue(userData.delete());
+        assert.isTrue(userData.remove());
 
         assert.isFalse(userData.whereOne(query));
     });
@@ -88,7 +88,7 @@ describe('Db file connect', () => {
         let query = '`meta`="meta"';
         assert.isFalse(userData.whereOne(query));
         userData.userId = 'userId1';
-        userData.meta = 'meta'
+        userData.meta = 'meta';
         assert.isTrue(userData.update());
 
         assert.isTrue(userData.whereOne(query));

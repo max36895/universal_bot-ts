@@ -71,19 +71,19 @@ export class Viber extends TemplateTypeModel {
                         this.controller.userCommand = '';
                         this.controller.messageId = 0;
 
-                        mmApp.params.viber_api_version = content.user.api_version ?? 2;
-                        this.setNlu(content.sender.name ?? '');
+                        mmApp.params.viber_api_version = content.user.api_version || 2;
+                        this.setNlu(content.sender.name || '');
                         return true;
                     case 'message':
                         this.controller.userId = content.sender.id;
                         mmApp.params.user_id = this.controller.userId;
                         this.controller.userCommand = content.message.text.toLowerCase().trim();
-                        this.controller.originalUserCommand = content.message.text ?? '';
+                        this.controller.originalUserCommand = content.message.text || '';
                         this.controller.messageId = content.message_token;
 
-                        mmApp.params.viber_api_version = content.sender.api_version ?? 2;
+                        mmApp.params.viber_api_version = content.sender.api_version || 2;
 
-                        this.setNlu(content.sender.name ?? '');
+                        this.setNlu(content.sender.name || '');
                         return true;
                 }
             }
@@ -101,9 +101,9 @@ export class Viber extends TemplateTypeModel {
     protected setNlu(userName: string): void {
         const name = userName.split(' ');
         const thisUser = {
-            username: name[0] ?? null,
-            first_name: name[1] ?? null,
-            last_name: name[2] ?? null,
+            username: name[0] || null,
+            first_name: name[1] || null,
+            last_name: name[2] || null,
         };
         this.controller.nlu.setNlu({thisUser});
     }

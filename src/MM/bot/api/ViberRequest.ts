@@ -76,7 +76,7 @@ export class ViberRequest {
                 this._request.header = {
                     'X-Viber-Auth-Token: ': this.token
                 };
-                this._request.post.min_api_version = mmApp.params.viber_api_version ?? 2;
+                this._request.post.min_api_version = mmApp.params.viber_api_version || 2;
                 const data = this._request.send(this.API_ENDPOINT + method).data;
                 if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
                     this._error = JSON.stringify(data.failed_list);
@@ -85,7 +85,7 @@ export class ViberRequest {
                 if (data.status == 0) {
                     return data;
                 }
-                if ((data.status_message ?? 'ok') !== 'ok') {
+                if ((data.status_message || 'ok') !== 'ok') {
                     this._error = '';
                     this.log(data.status_message);
                 }
@@ -285,7 +285,7 @@ export class ViberRequest {
      * @param error Текст ошибки.
      */
     protected log(error: string): void {
-        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`
+        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('viberApi.log', error);
     }
 }

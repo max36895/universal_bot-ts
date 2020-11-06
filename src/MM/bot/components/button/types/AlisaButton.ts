@@ -41,7 +41,7 @@ export class AlisaButton extends TemplateButtonTypes {
                 if (text) {
                     const object: IAlisaButtonCard = {
                         text
-                    }
+                    };
                     if (button.payload) {
                         object.payload = button.payload;
                     }

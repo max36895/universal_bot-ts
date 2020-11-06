@@ -79,8 +79,8 @@ export abstract class BotController {
      */
     public payload: object;
     /**
-     * Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра IS_SAVE_DB).
-     * @var userData Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра IS_SAVE_DB).
+     * Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
+     * @var userData Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
      */
     public userData: any;
     /**

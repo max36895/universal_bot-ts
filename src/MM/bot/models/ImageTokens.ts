@@ -5,7 +5,7 @@
  * Модель для взаимодействия со всеми картинками.
  */
 import {Model} from "./db/Model";
-import {IS_SAVE_DB, mmApp} from "../core/mmApp";
+import {mmApp} from "../core/mmApp";
 import {IModelRules} from "./interface/IModel";
 import {YandexImageRequest} from "../api/YandexImageRequest";
 import {Text} from "../components/standard/Text";
@@ -140,8 +140,8 @@ export class ImageTokens extends Model {
                 if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${ImageTokens.T_ALISA}`)) {
                     return this.imageToken;
                 } else {
-                    const yImage = new YandexImageRequest(mmApp.params.yandex_token ?? null, mmApp.params.app_id ?? null);
-                    let res: IYandexRequestDownloadImage = null
+                    const yImage = new YandexImageRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
+                    let res: IYandexRequestDownloadImage = null;
                     if (Text.isSayText(['http\:\/\/', 'https\:\/\/'], this.path)) {
                         res = yImage.downloadImageUrl(this.path);
                     } else {

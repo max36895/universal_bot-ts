@@ -4,7 +4,7 @@
  *
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
-import {IS_SAVE_DB, mmApp} from "../../core/mmApp";
+import {mmApp} from "../../core/mmApp";
 import {IModelRules, TModelRulesType} from "../interface/IModel";
 import {Text} from "../../components/standard/Text";
 import {Sql} from "./Sql";
@@ -59,7 +59,7 @@ export abstract class Model {
      * Model constructor.
      */
     protected constructor() {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             this._db = new Sql();
         } else {
             this._db = null;
@@ -74,7 +74,7 @@ export abstract class Model {
      * @api
      */
     public escapeString(text: string | number): string {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             return this._db.escapeString(text);
         }
         return text.toString();
@@ -85,7 +85,7 @@ export abstract class Model {
      * @api
      */
     public validate(): void {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             const rules = this.rules();
             if (rules) {
                 rules.forEach((rule) => {
@@ -170,7 +170,7 @@ export abstract class Model {
                 key = index;
                 return index;
             }
-        })
+        });
         return key;
     }
 
@@ -184,10 +184,10 @@ export abstract class Model {
         let i = this.startIndex;
         const labels = this.attributeLabels();
         Object.keys(labels).forEach((index) => {
-            if (IS_SAVE_DB) {
-                this[index] = data[i] ?? data[index];
+            if (mmApp.isSaveDb) {
+                this[index] = data[i] || data[index];
             } else {
-                this[index] = data[index] ?? '';
+                this[index] = data[index] || '';
             }
             i++;
         })
@@ -203,7 +203,7 @@ export abstract class Model {
         const idName = this.getId();
         if (idName) {
             if (this[idName]) {
-                if (IS_SAVE_DB) {
+                if (mmApp.isSaveDb) {
                     return this._db.query(async (client, db) => {
                         let res: IModelRes = {
                             status: false
@@ -211,7 +211,7 @@ export abstract class Model {
                         const collection = db.collection(this.tableName());
                         let data = {
                             [idName]: this[idName]
-                        }
+                        };
                         await collection.findOne(data, (err, result) => {
                             if (err) {
                                 res = {status: false, error: err};
@@ -228,7 +228,7 @@ export abstract class Model {
                     })
                 } else {
                     const data = this.getFileData();
-                    return data[this[idName]] ?? null;
+                    return data[this[idName]] || null;
                 }
             }
         }
@@ -262,7 +262,7 @@ export abstract class Model {
      * @api
      */
     public update() {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             this.validate();
             const idName = this.getId();
             if (idName) {
@@ -271,12 +271,12 @@ export abstract class Model {
                         status: false
                     };
                     const collection = db.collection(this.tableName());
-                    let data = {}
+                    let data = {};
                     Object.keys(this.attributeLabels()).forEach((index) => {
                         if (index != idName) {
                             data[index] = this[index];
                         }
-                    })
+                    });
                     await collection.updateOne({[idName]: this[idName]}, {$set: data}, (err, result) => {
                         if (err) {
                             res = {status: false, error: err};
@@ -299,7 +299,7 @@ export abstract class Model {
                 const tmp: any = {};
                 Object.keys(this.attributeLabels()).forEach((index) => {
                     tmp[index] = this[index];
-                })
+                });
                 data[this[idName]] = tmp;
                 mmApp.saveJson(`${this.tableName()}.json`, data);
             }
@@ -315,7 +315,7 @@ export abstract class Model {
      * @api
      */
     public add() {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             this.validate();
             const idName = this.getId();
             if (idName) {
@@ -328,7 +328,7 @@ export abstract class Model {
                         if (index !== idName && this[index]) {
                             data[index] = this[index];
                         }
-                    })
+                    });
                     const collection = db.collection(this.tableName());
 
                     await collection.insertOne(data, (err, result) => {
@@ -352,7 +352,7 @@ export abstract class Model {
             const tmp = {};
             Object.keys(this.attributeLabels()).forEach((index) => {
                 tmp[index] = this[index];
-            })
+            });
             data[this[idName]] = tmp;
             mmApp.saveJson(`${this.tableName()}.json`, data);
             return true;
@@ -366,8 +366,8 @@ export abstract class Model {
      * @return boolean|mysqli_result|null
      * @api
      */
-    public delete() {
-        if (IS_SAVE_DB) {
+    public remove() {
+        if (mmApp.isSaveDb) {
             const idName = this.getId();
             let data = null;
             if (idName) {
@@ -394,7 +394,7 @@ export abstract class Model {
                         res = {
                             status: true,
                             data: result.ops
-                        }
+                        };
                         return res;
                     });
                     return res;
@@ -421,11 +421,11 @@ export abstract class Model {
      * @api
      */
     public where(where: any = '1', isOne: boolean = false) {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             return this._db.query(async (client, db) => {
                 let res: IModelRes = {
                     status: false
-                }
+                };
                 const collection = db.collection(this.tableName());
                 if (typeof where === 'string') {
                     where = {};
@@ -438,7 +438,7 @@ export abstract class Model {
                     res = {
                         status: true,
                         data: results
-                    }
+                    };
                     return res
                 });
                 return res;
@@ -456,7 +456,7 @@ export abstract class Model {
                         {
                             key: data.value[2].replace(/\`/g, ''),
                             val: data.value[3].replace(/\"/g, '')
-                        })
+                        });
                     data = datas.next();
                 }
 
@@ -497,11 +497,11 @@ export abstract class Model {
      * @api
      */
     public whereOne(where: any = '1'): boolean {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             return !!this._db.query(async (client, db) => {
                 let res: IModelRes = {
                     status: false
-                }
+                };
                 const collection = db.collection(this.tableName());
                 if (typeof where === 'string') {
                     where = {};
@@ -531,7 +531,7 @@ export abstract class Model {
     }
 
     /**
-     * Получение всех значений из файла. Актуально если глобальная константа IS_SAVE_DB равна false.
+     * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
      *
      * @return array|mixed
      * @api
@@ -555,7 +555,7 @@ export abstract class Model {
      * @api
      */
     public query(callback: Function) {
-        if (IS_SAVE_DB) {
+        if (mmApp.isSaveDb) {
             return this._db.query(callback);
         }
         return null;

@@ -55,7 +55,7 @@ describe('Card test', () => {
                 text: '1',
                 url: 'https://test.ru'
             }
-        }
+        };
         assert.deepEqual(defaultCard.getCards(), alisaCard);
 
         defaultCard.isOne = true;
@@ -69,7 +69,7 @@ describe('Card test', () => {
                 text: '1',
                 url: 'https://test.ru'
             }
-        }
+        };
         assert.deepEqual(defaultCard.getCards(), alisaCardOne);
 
         defaultCard.button = new Buttons();
@@ -102,7 +102,7 @@ describe('Card test', () => {
         viberCard[0].Columns = 1;
         assert.deepEqual(defaultCard.getCards(), viberCard[0]);
 
-        viberCard[0].Text = '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>'
+        viberCard[0].Text = '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>';
         viberCard[0].ActionType = ViberButton.T_REPLY;
         viberCard[0].ActionBody = '1';
         const buttons = new Buttons();
@@ -113,7 +113,7 @@ describe('Card test', () => {
         defaultCard.isOne = false;
         viberCard[0].Columns = 3;
         assert.deepEqual(defaultCard.getCards(), viberCard);
-    })
+    });
 
     it('Get Vk card', () => {
         const vkCard: IVkCard = {
@@ -149,4 +149,4 @@ describe('Card test', () => {
         defaultCard.images[0].button = buttons;
         assert.deepEqual(defaultCard.getCards(), vkCard);
     })
-})
+});

@@ -305,7 +305,7 @@ export class Bot {
         do {
             let query = '';
             if (count == 0) {
-                console.log("Для выхода напишите exit\n")
+                console.log("Для выхода напишите exit\n");
                 query = 'Привет';
             } else {
                 query = await stdin();
@@ -341,7 +341,7 @@ export class Bot {
                     result = this._botController.text;
                     break;
             }
-            console.log(`Бот: > ${result}\n`)
+            console.log(`Бот: > ${result}\n`);
             if (isShowTime) {
                 const endTime: number = Date.now() - timeStart;
                 console.log(`Время выполнения: ${endTime}\n`)
@@ -349,7 +349,7 @@ export class Bot {
             if (this._botController.isEnd) {
                 break;
             }
-            console.log('Вы: > ')
+            console.log('Вы: > ');
             this._content = null;
             this._botController.text = this._botController.tts = '';
             state = this._botController.userData;

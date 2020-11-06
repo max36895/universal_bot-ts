@@ -5,7 +5,7 @@
  * Модель для взаимодействия со всеми звуками.
  */
 import {Model} from "./db/Model";
-import {IS_SAVE_DB, mmApp} from "../core/mmApp";
+import {mmApp} from "../core/mmApp";
 import {IModelRules} from "./interface/IModel";
 import {YandexSoundRequest} from "../api/YandexSoundRequest";
 import {Text} from "../components/standard/Text";
@@ -78,10 +78,10 @@ export class SoundTokens extends Model {
      * @api
      */
     public dropTable() {
-       /* if (IS_SAVE_DB) {
-            return this.query(`DROP TABLE IF EXISTS \`${this.tableName()}\`;`);
-        }
-        return null;*/
+        /* if (IS_SAVE_DB) {
+             return this.query(`DROP TABLE IF EXISTS \`${this.tableName()}\`;`);
+         }
+         return null;*/
     }
 
     /**
@@ -140,7 +140,7 @@ export class SoundTokens extends Model {
                 if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${SoundTokens.T_ALISA}`)) {
                     return this.soundToken;
                 } else {
-                    const yImage = new YandexSoundRequest(mmApp.params.yandex_token ?? null, mmApp.params.app_id ?? null);
+                    const yImage = new YandexSoundRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadSound = null;
                     if (Text.isSayText(['http\:\/\/', 'https\:\/\/'], this.path)) {
                         mmApp.saveLog('mSoundTokens.log', 'Нельзя отправить звук в навык для Алисы через url!');

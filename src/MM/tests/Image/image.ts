@@ -20,7 +20,7 @@ describe('image', () => {
         assert.isNull(image.imageToken);
 
         assert.isTrue(image.init('test', 'title', 'desc', 'btn'));
-        assert.equal(image.button.buttons[0].title, 'btn')
+        assert.equal(image.button.buttons[0].title, 'btn');
         assert.isNull(image.button.buttons[0].url);
 
         assert.isTrue(image.init('test', 'title', 'desc', {title: 'btn', url: 'https://google.com'}));

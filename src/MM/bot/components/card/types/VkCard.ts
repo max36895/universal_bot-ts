@@ -73,7 +73,7 @@ export class VkCard extends TemplateCardTypes {
                             elements.push(element);
                         }
                     }
-                })
+                });
                 if (elements.length) {
                     return {
                         type: 'carousel',

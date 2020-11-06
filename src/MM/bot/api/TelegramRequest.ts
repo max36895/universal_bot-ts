@@ -546,7 +546,7 @@ export class TelegramRequest {
      * @param error Текст ошибки.
      */
     protected _log(error: string): void {
-        error = `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`
+        error = `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('telegramApi._log', error);
     }
 }

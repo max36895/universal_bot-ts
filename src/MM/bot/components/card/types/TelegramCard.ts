@@ -37,7 +37,7 @@ export class TelegramCard extends TemplateCardTypes {
                 (new TelegramRequest()).sendPhoto(mmApp.params.user_id, image.imageToken, image.desc);
             }
             options.push(image.title);
-        })
+        });
         if (options.length > 1) {
             object = {
                 question: this.title,

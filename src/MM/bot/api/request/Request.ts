@@ -106,7 +106,7 @@ export class Request {
      * @private
      */
     protected _getOptions(): RequestInit {
-        const options: RequestInit = {}
+        const options: RequestInit = {};
 
         if (this.maxTimeQuery) {
             const controller = new AbortController();
@@ -128,7 +128,7 @@ export class Request {
             post = {...post, ...this.post};
         }
         if (post) {
-            options.method = 'POST'
+            options.method = 'POST';
             options.body = JSON.stringify(post);
         }
 

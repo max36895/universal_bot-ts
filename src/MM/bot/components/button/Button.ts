@@ -1,4 +1,3 @@
-import {Text} from "../standard/Text";
 import {TButtonPayload} from "./interfaces/button";
 import {mmApp} from "../../core/mmApp";
 
