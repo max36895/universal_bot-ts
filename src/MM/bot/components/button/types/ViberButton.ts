@@ -33,7 +33,7 @@ export class ViberButton extends TemplateButtonTypes {
                 btn.ActionType = ViberButton.T_REPLY;
                 btn.ActionBody = button.title;
             }
-            btn = {...btn, ...button.options};
+            btn = <IViberButton>{...btn, ...button.options};
 
             buttons.push(btn);
         });
