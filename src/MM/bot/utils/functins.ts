@@ -30,7 +30,6 @@ export function similar_text(first: string, second: string, percent: number = 0)
             for (l = 0;
                  (p + l < firstLength) && (q + l < secondLength) && (first.charAt(p + l) === second.charAt(q + l));
                  l++) {
-
             }
             if (l > max) {
                 max = l;
@@ -73,14 +72,14 @@ export function fread(fileName: string): string {
 
 export function fwrite(fileName: string, fileContent: string, mode: string = 'w'): void {
     if (mode === 'w') {
-        fs.writeFileSync(fileName, fileContent)
+        fs.writeFileSync(fileName, fileContent);
     } else {
         fs.appendFileSync(fileName, fileContent);
     }
 }
 
 export function unlink(fileName: string): void {
-    fs.unlinkSync(fileName)
+    fs.unlinkSync(fileName);
 }
 
 export function isDir(path: string): boolean {
@@ -88,7 +87,7 @@ export function isDir(path: string): boolean {
 }
 
 export function mkdir(path: string, mask: fs.Mode = '0774'): void {
-    fs.mkdirSync(path, mask)
+    fs.mkdirSync(path, mask);
 }
 
 export function http_build_query(formData: IGetParams, separator: string = '&') {

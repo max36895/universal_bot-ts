@@ -240,6 +240,11 @@ export class mmApp {
         this.params = {...this.params, ...params};
     }
 
+    /**
+     * Переопределения места, для хранения данных пользователя.
+     *
+     * @param {boolean} isSaveDb Если true, то данные сохраняются в БД, иначе в файл.
+     */
     public static setIsSaveDb(isSaveDb: boolean = false) {
         this.isSaveDb = isSaveDb;
     }
