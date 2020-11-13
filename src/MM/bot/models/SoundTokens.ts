@@ -143,7 +143,7 @@ export class SoundTokens extends Model {
                     const yImage = new YandexSoundRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadSound = null;
                     if (Text.isSayText(['http\:\/\/', 'https\:\/\/'], this.path)) {
-                        mmApp.saveLog('mSoundTokens.log', 'Нельзя отправить звук в навык для Алисы через url!');
+                        mmApp.saveLog('SoundTokens.log', 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!');
                         return null;
                     } else {
                         res = yImage.downloadSoundFile(this.path);

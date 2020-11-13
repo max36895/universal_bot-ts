@@ -14,9 +14,6 @@ export function similar_text(first: string, second: string, percent: number = 0)
         return 0;
     }
 
-    first += '';
-    second += '';
-
     let pos1: number = 0;
     let pos2: number = 0;
     let max: number = 0;

@@ -117,47 +117,6 @@ export abstract class Model {
     }
 
     /**
-     * Возвращает тип поля таблицы.
-     *
-     * @param index Название поля таблицы.
-     * @return TModelRulesType|null
-     */
-    /*protected isAttribute(index: string | number): TModelRulesType {
-        const rules = this.rules();
-        if (rules) {
-            rules.forEach((rule) => {
-                rule.name.forEach((data) => {
-                    if (data === index) {
-                        return rule.type;
-                    }
-                })
-            })
-        }
-        return null;
-    }*/
-
-    /**
-     * Получить обработанное значение для сохранения, где строка оборачивается в двойные кавычки.
-     *
-     * @param val Значение поля.
-     * @param type Тип поля.
-     * @return string|number
-     */
-
-    /* protected getVal(val: string | number, type: TModelRulesType): string | number {
-         switch (type) {
-             case 'string':
-             case 'text':
-                 return `"${val}"`;
-             case 'int':
-             case 'integer':
-             case 'bool':
-                 return val;
-         }
-         return null;
-     }*/
-
-    /**
      * Возвращает название уникального ключа таблицы.
      *
      * @return number|string|null

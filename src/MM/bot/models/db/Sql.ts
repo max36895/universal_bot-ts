@@ -100,7 +100,7 @@ export class Sql {
      */
     public connect(): boolean {
         if (_vDB.connect() === false) {
-            this._saveLog(`Ошибка при подключении к БД.\n${_vDB.errors[0]}`);
+            this._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${_vDB.errors[0]}`);
             return false;
         }
         return true;
@@ -139,20 +139,6 @@ export class Sql {
             this._saveLog(data.error.toString());
             return null;
         });
-        /*return null;
-        if (_vDB.sql) {
-            const status = _vDB.sql.query(sql);
-            if (status === false) {
-                try {
-                    this._saveLog(_vDB.sql.error);
-                } catch (exception) {
-                    return null;
-                }
-            } else {
-                return status;
-            }
-        }
-        return null;*/
     }
 
 

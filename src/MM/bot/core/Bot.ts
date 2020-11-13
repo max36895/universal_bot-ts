@@ -152,7 +152,6 @@ export class Bot {
         let type = null;
         switch (mmApp.appType) {
             case T_ALISA:
-                //@header('Content-Type: application/json');
                 botClass = new Alisa();
                 type = UsersData.T_ALISA;
                 break;
@@ -173,7 +172,6 @@ export class Bot {
                 break;
 
             case T_MARUSIA:
-                //@header('Content-Type: application/json');
                 botClass = new Marusia();
                 type = UsersData.T_MARUSIA;
                 break;
@@ -244,8 +242,6 @@ export class Bot {
             console.error('Не удалось определить тип бота!');
             mmApp.saveLog('bot.log', 'Не удалось определить тип бота!');
         }
-        //@header('HTTP/1.0 404 Not Found');
-        //@header('Status: 404 Not Found');
         return 'notFound';
     }
 

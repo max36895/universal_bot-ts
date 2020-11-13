@@ -100,7 +100,6 @@ export class Text {
                 } else {
                     f = Text.getEncodeText(f);
                     pattern += `((?:^|\\s)${f}(|[^\\s]+)\\b)`;
-                    //pattern += `(\b${find[i]}(|[^\s]+)\b)`;
                 }
             })
         } else {
@@ -109,7 +108,6 @@ export class Text {
             } else {
                 find = Text.getEncodeText(find);
                 pattern = `((?:^|\\s)${find}(|[^\\s]+)\\b)`;
-                //pattern = `(\b${find}(|[^\s]+)\b)`;
             }
         }
         text = Text.getEncodeText(text);
