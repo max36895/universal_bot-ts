@@ -31,9 +31,9 @@ export class Navigation {
     public elements: any[];
     /**
      * (default 5) Максимальное количество отображаемых элементов.
-     * @var maxElement (default 5) Максимальное количество отображаемых элементов.
+     * @var maxVisibleElements (default 5) Максимальное количество отображаемых элементов.
      */
-    public maxElement: number;
+    public maxVisibleElements: number;
     /**
      * (default 0) Текущая страница. Рекомендуется получать это значение после завершения всех операция.
      * @var int $thisPage (default 0) Текущая страница. Рекомендуется получать это значение после завершения всех операция.
@@ -42,14 +42,14 @@ export class Navigation {
 
     /**
      * Navigation constructor.
-     * @param maxElement Максимально количество отображаемых элементов.
+     * @param maxVisibleElements Максимально количество отображаемых элементов.
      */
-    public constructor(maxElement: number = 5) {
+    public constructor(maxVisibleElements: number = 5) {
         this.isUsedStandardText = true;
         this.nextText = [];
         this.oldText = [];
         this.elements = [];
-        this.maxElement = maxElement;
+        this.maxVisibleElements = maxVisibleElements;
         this.thisPage = 0;
     }
 
@@ -162,8 +162,8 @@ export class Navigation {
         }
         this._nextPage(text);
         this._oldPage(text);
-        const start = this.thisPage * this.maxElement;
-        for (let i = start; i < (start + this.maxElement); i++) {
+        const start = this.thisPage * this.maxVisibleElements;
+        for (let i = start; i < (start + this.maxVisibleElements); i++) {
             if (typeof this.elements[i] !== 'undefined') {
                 showElements.push(this.elements[i]);
             }
@@ -195,11 +195,11 @@ export class Navigation {
             number = +data[0][0];
         }
 
-        const start: number = this.thisPage * this.maxElement;
+        const start: number = this.thisPage * this.maxVisibleElements;
         let index: number = 1;
         let selectElement: object = null;
         let maxPercent: number = 0;
-        for (let i = start; i < (start + this.maxElement); i++) {
+        for (let i = start; i < (start + this.maxVisibleElements); i++) {
             if (typeof this.elements[i] !== 'undefined') {
                 if (index == number) {
                     return this.elements[i];
@@ -288,7 +288,7 @@ export class Navigation {
      * @api
      */
     public getPageInfo(): string {
-        if ((typeof this.elements[this.thisPage * this.maxElement] === 'undefined') || this.thisPage < 0) {
+        if ((typeof this.elements[this.thisPage * this.maxVisibleElements] === 'undefined') || this.thisPage < 0) {
             this.thisPage = 0;
         }
         let pageInfo: string = (this.thisPage + 1) + ' страница из ';
@@ -314,8 +314,8 @@ export class Navigation {
         }
         if (typeof this.elements === 'object') {
             const countEl: number = this.elements.length;
-            let maxPage: number = Math.floor(countEl / this.maxElement);
-            if (countEl % this.maxElement) {
+            let maxPage: number = Math.floor(countEl / this.maxVisibleElements);
+            if (countEl % this.maxVisibleElements) {
                 maxPage++;
             }
             return maxPage;

@@ -11,7 +11,7 @@ describe('Navigation tests', () => {
     });
 
     it('Get max page in navigation', () => {
-        assert.equal(navigation.maxElement, 5);
+        assert.equal(navigation.maxVisibleElements, 5);
         assert.equal(navigation.thisPage, 0);
         assert.equal(navigation.getMaxPage(elements), 2);
         elements.push(11);
@@ -85,7 +85,7 @@ describe('Navigation tests', () => {
         assert.deepEqual(navigation.getPageNav(), ['Дальше 👉']);
         navigation.thisPage = 1;
         assert.deepEqual(navigation.getPageNav(), ['👈 Назад']);
-        navigation.maxElement = 2;
+        navigation.maxVisibleElements = 2;
         assert.deepEqual(navigation.getPageNav(), ['👈 Назад', 'Дальше 👉']);
     });
 
@@ -95,7 +95,7 @@ describe('Navigation tests', () => {
         navigation.thisPage = 1;
         assert.deepEqual(navigation.getPageNav(true), ['1', '[2]']);
 
-        navigation.maxElement = 1;
+        navigation.maxVisibleElements = 1;
         assert.deepEqual(navigation.getPageNav(true), ['1', '[2]', '3', '4', '5']);
         navigation.thisPage = 9;
         assert.deepEqual(navigation.getPageNav(true), ['8', '9', '[10]']);
