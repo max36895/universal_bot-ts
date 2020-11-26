@@ -1,6 +1,6 @@
 export interface IVkButtonObject {
     one_time: boolean;
-    buttons: any[]
+    buttons: IVkButton[] | IVkButton[][] | any;
 }
 
 export interface IVkButtonAction {

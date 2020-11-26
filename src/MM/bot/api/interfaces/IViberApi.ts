@@ -66,5 +66,5 @@ export interface IViberParams {
         lon: string;
     }
     sticker_id?: number;
-    keyboard?:IViberButtonObject;
+    keyboard?: IViberButtonObject;
 }

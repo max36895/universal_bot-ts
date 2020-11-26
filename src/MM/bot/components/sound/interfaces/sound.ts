@@ -1,4 +1,4 @@
 export interface ISound {
-    key:string;
-    sounds:string[]
+    key: string;
+    sounds: string[]
 }

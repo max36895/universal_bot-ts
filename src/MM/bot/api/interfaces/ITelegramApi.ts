@@ -68,40 +68,34 @@ export interface ITelegramPoll {
     correct_option_id: number;
 }
 
-export interface ITelegramPhoto {
+interface IFileInfo {
     file_id: string;
     file_unique_id: string;
     file_size: number;
+}
+
+export interface ITelegramPhoto extends IFileInfo {
     width: number;
     height: number;
 }
 
-export interface ITelegramThumb {
-    file_id: string;
-    file_unique_id: string;
-    file_size: number;
+export interface ITelegramThumb extends IFileInfo {
     width?: number;
     height?: number;
 }
 
-export interface ITelegramDocument {
+export interface ITelegramDocument extends IFileInfo {
     file_name: string;
     mime_type: string;
     thumb: ITelegramThumb;
-    file_id: string;
-    file_unique_id: string;
-    file_size: number;
 }
 
-export interface ITelegramAudio {
+export interface ITelegramAudio extends IFileInfo {
     name: string;
     mime_type: string;
     duration: number;
     performer: string;
     thumb: ITelegramThumb;
-    file_id: string;
-    file_unique_id: string;
-    file_size: number;
 }
 
 export interface ITelegramVideo extends ITelegramAudio {
