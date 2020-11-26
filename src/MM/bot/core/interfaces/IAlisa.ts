@@ -16,7 +16,7 @@ export interface IAlisaNlu {
 }
 
 export interface IAlisaSession {
-    new: boolean;
+    'new': boolean;
     message_id: number;
     session_id: string;
     skill_id: string;

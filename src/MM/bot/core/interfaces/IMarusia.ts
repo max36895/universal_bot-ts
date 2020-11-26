@@ -16,7 +16,7 @@ export interface IMarusiaNlu {
 }
 
 export interface IMarusiaSession {
-    new: boolean;
+    'new': boolean;
     message_id: number;
     session_id: string;
     skill_id: string;
