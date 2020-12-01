@@ -89,7 +89,6 @@ export class Buttons {
         } else {
             if (!button.initBtn(title, url, payload)) {
                 button = null;
-
             }
         }
         if (button) {

@@ -175,11 +175,13 @@ export class Bot {
                 botClass = new Marusia();
                 type = UsersData.T_MARUSIA;
                 break;
+
             case T_USER_APP:
                 if (userBotClass) {
                     botClass = userBotClass;
                     type = UsersData.T_USER_APP;
                 }
+                break;
         }
 
         if (botClass) {
@@ -239,15 +241,15 @@ export class Bot {
                 mmApp.saveLog('bot.log', botClass.getError());
             }
         } else {
-            console.error('Не удалось определить тип бота!');
-            mmApp.saveLog('bot.log', 'Не удалось определить тип бота!');
+            console.error('Не удалось определить тип приложения!');
+            mmApp.saveLog('bot.log', 'Не удалось определить тип приложения!');
         }
         return 'notFound';
     }
 
 
     /**
-     * Webhook
+     * Запуск Webhook
      *
      * @param req
      * @param res
@@ -267,6 +269,9 @@ export class Bot {
 
         const query = await json(req);
         if (query) {
+            if (req.headers && req.headers.authorization) {
+                this._auth = req.headers.authorization.replace('Bearer', '');
+            }
             this._content = query;
             const result = this.run(userBotClass);
             statusCode = result === 'notFound' ? 404 : 200;
@@ -301,7 +306,7 @@ export class Bot {
         do {
             let query = '';
             if (count == 0) {
-                console.log("Для выхода напишите exit\n");
+                console.log("Для выхода введите exit\n");
                 query = 'Привет';
             } else {
                 query = await stdin();

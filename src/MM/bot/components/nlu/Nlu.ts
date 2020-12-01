@@ -384,7 +384,7 @@ export class Nlu {
      * ]
      * @api
      */
-    public getLink(query: string): INluResult {
+    public static getLink(query: string): INluResult {
         const link = query.match(/((http|s:\/\/)[^( |\n)]+)/umig);
         if (link) {
             return {
@@ -411,7 +411,7 @@ export class Nlu {
      * ]
      * @api
      */
-    public getPhone(query: string): INluResult {
+    public static getPhone(query: string): INluResult {
         const phone = query.match(/([\d\-\(\) ]{4,}\d)|((?:\+|\d)[\d\-\(\) ]{9,}\d)/umig);
         if (phone) {
             return {
@@ -438,7 +438,7 @@ export class Nlu {
      * ]
      * @api
      */
-    public getEMail(query: string): INluResult {
+    public static getEMail(query: string): INluResult {
         const mail = query.match(/([^@^\s]+@[^\.^\s]+\.\S+)/umig);
         if (mail) {
             return {

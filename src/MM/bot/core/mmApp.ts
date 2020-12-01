@@ -143,14 +143,14 @@ export interface IAppParam {
 export class mmApp {
 
     /**
-     * Куда сохраняются пользовательские даннеы. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
+     * Куда сохраняются пользовательские данные. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
      * @type {boolean}
      */
     public static isSaveDb: boolean = false;
 
     /**
      * Тип приложения. (Алиса, бот vk|telegram).
-     * @var string $appType Тип приложения. (Алиса, бот vk|telegram).
+     * @var TAppType $appType Тип приложения. (Алиса, бот vk|telegram).
      */
     public static appType: TAppType;
     /**
@@ -245,7 +245,7 @@ export class mmApp {
      *
      * @param {boolean} isSaveDb Если true, то данные сохраняются в БД, иначе в файл.
      */
-    public static setIsSaveDb(isSaveDb: boolean = false) {
+    public static setIsSaveDb(isSaveDb: boolean = false): void {
         this.isSaveDb = isSaveDb;
     }
 
