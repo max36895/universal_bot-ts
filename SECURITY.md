@@ -10,7 +10,7 @@
 
 ## Сообщение об уязвимости
 
-Для создания отчет лю уязвимости, необходимо перейти по ссылке [https://github.com/max36895/universal_bot-ts/issues/new/choose](https://github.com/max36895/universal_bot-ts/issues/new/choose).
+Для создания отчет о уязвимости, необходимо перейти по ссылке [https://github.com/max36895/universal_bot-ts/issues/new/choose](https://github.com/max36895/universal_bot-ts/issues/new/choose).
 Выбрать нужный пункт, после заполнить данные.
 Если во время использования продукты у Вас появились идеи по улучшению, то нужно выбрать "Запрос нового функционала", и описать желемый функционал.
 
