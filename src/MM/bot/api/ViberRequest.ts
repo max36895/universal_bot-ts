@@ -172,7 +172,7 @@ export class ViberRequest {
      * @api
      */
     public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams = null): any {
-        this._request.post['receiver'] = receiver;
+        this._request.post.receiver = receiver;
         if (typeof sender !== 'string') {
             this._request.post.sender = sender;
         } else {

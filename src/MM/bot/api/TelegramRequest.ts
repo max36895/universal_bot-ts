@@ -236,7 +236,7 @@ export class TelegramRequest {
             }
             return this.call('sendPoll');
         } else {
-            this._log('Недостаточной количество вариантов. должно быть от 2 - 10 вариантов!');
+            this._log('Недостаточной количество вариантов. Должно быть от 2 - 10 вариантов!');
             return null;
         }
     }

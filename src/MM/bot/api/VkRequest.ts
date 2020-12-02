@@ -106,7 +106,7 @@ export class VkRequest {
                     this.log('');
                     return null;
                 }
-                return data['data']['response'] || data['data'];
+                return data.data.response || data.data;
             }
             this.log(data.err);
         } else {
@@ -138,7 +138,7 @@ export class VkRequest {
         this._request.header = Request.HEADER_FORM_DATA;
         const data = this._request.send(url);
         if (data.status) {
-            if (typeof data['data']['error'] !== 'undefined') {
+            if (typeof data.data.error !== 'undefined') {
                 this._error = JSON.stringify(data.data.error);
                 this.log('');
                 return null;
@@ -213,7 +213,7 @@ export class VkRequest {
             delete params.template;
         }
         if (typeof params.keyboard !== 'undefined') {
-            if (typeof this._request.post['template'] !== 'undefined') {
+            if (typeof this._request.post.template !== 'undefined') {
                 this.call(method);
                 delete this._request.post.template;
             }

@@ -5,10 +5,23 @@ export interface IGetParams {
     [key: string]: string;
 }
 
+/**
+ * Получить случайное число из диапазона
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
 export function rand(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
+/**
+ * Проверить схожесть текста
+ * @param {string} first
+ * @param {string} second
+ * @param {number} percent
+ * @returns {number}
+ */
 export function similar_text(first: string, second: string, percent: number = 0): number {
     if (first === null || second === null) {
         return 0;
@@ -54,6 +67,11 @@ export function similar_text(first: string, second: string, percent: number = 0)
     return percent;
 }
 
+/**
+ * Проверка на существование файла
+ * @param {string} file
+ * @returns {boolean}
+ */
 export function is_file(file: string): boolean {
     try {
         const stat: fs.Stats = fs.lstatSync(file);
@@ -63,10 +81,21 @@ export function is_file(file: string): boolean {
     }
 }
 
+/**
+ * Прочитать содержимое файла
+ * @param {string} fileName
+ * @returns {string}
+ */
 export function fread(fileName: string): string {
     return fs.readFileSync(fileName, 'utf-8');
 }
 
+/**
+ * Записать в файл
+ * @param {string} fileName
+ * @param {string} fileContent
+ * @param {string} mode
+ */
 export function fwrite(fileName: string, fileContent: string, mode: string = 'w'): void {
     if (mode === 'w') {
         fs.writeFileSync(fileName, fileContent);
@@ -75,18 +104,38 @@ export function fwrite(fileName: string, fileContent: string, mode: string = 'w'
     }
 }
 
+/**
+ * Удалить файл
+ * @param {string} fileName
+ */
 export function unlink(fileName: string): void {
     fs.unlinkSync(fileName);
 }
 
+/**
+ * Проверка на существование директории
+ * @param {string} path
+ * @returns {boolean}
+ */
 export function isDir(path: string): boolean {
     return fs.existsSync(path);
 }
 
+/**
+ * Создать директорию
+ * @param {string} path
+ * @param {"fs".Mode} mask
+ */
 export function mkdir(path: string, mask: fs.Mode = '0774'): void {
     fs.mkdirSync(path, mask);
 }
 
+/**
+ * Получить Get объект
+ * @param {IGetParams} formData
+ * @param {string} separator
+ * @returns {string}
+ */
 export function http_build_query(formData: IGetParams, separator: string = '&') {
     let key: string;
     let query: string[] = [];
@@ -118,6 +167,10 @@ if (typeof window !== 'undefined') {
 }
 export {GET}
 
+/**
+ * Чтение введенных данных в консоли
+ * @returns {Promise<string>}
+ */
 export function stdin(): Promise<string> {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -129,8 +182,4 @@ export function stdin(): Promise<string> {
             rl.close();
         });
     });
-}
-
-export function stdout(): void {
-
 }

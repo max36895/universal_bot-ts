@@ -31,7 +31,6 @@ export class TelegramButton extends TemplateButtonTypes {
         const reply: string[] = [];
 
         this.buttons.forEach((button) => {
-            //if (button.hide === Button.B_BTN) {
             if (button.url) {
                 const inline: ITelegramInlineKeyboard = {
                     text: button.title,
@@ -44,20 +43,6 @@ export class TelegramButton extends TemplateButtonTypes {
             } else {
                 reply.push(button.title);
             }
-            /*} else {
-                const inline: ITelegramInlineKeyboard = {
-                    text: button.title
-                };
-                if (button.url) {
-                    inline.url = button.url;
-                }
-                if (button.payload) {
-                    inline.callback_data = button.payload;
-                    inlines.push(inline);
-                } else if (typeof inline.url === 'undefined') {
-                    reply.push(button.title);
-                }
-            }*/
         });
         const rCount = reply.length;
         const rInline = inlines.length;

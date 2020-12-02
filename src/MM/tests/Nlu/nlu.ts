@@ -82,27 +82,27 @@ describe('Nlu test', () => {
     });
 
     it('Find phone', () => {
-        assert.isTrue(nlu.getPhone('123456').status);
-        assert.isTrue(nlu.getPhone('12-34-56').status);
-        assert.isTrue(nlu.getPhone('89999999999').status);
-        assert.isTrue(nlu.getPhone('8(999)999-99-99').status);
-        assert.isFalse(nlu.getPhone('512').status);
-        assert.isFalse(nlu.getPhone('test').status);
+        assert.isTrue(Nlu.getPhone('123456').status);
+        assert.isTrue(Nlu.getPhone('12-34-56').status);
+        assert.isTrue(Nlu.getPhone('89999999999').status);
+        assert.isTrue(Nlu.getPhone('8(999)999-99-99').status);
+        assert.isFalse(Nlu.getPhone('512').status);
+        assert.isFalse(Nlu.getPhone('test').status);
     });
 
     it('Find e-mail', () => {
-        assert.isTrue(nlu.getEMail('test@test.ru').status);
-        assert.isTrue(nlu.getEMail('test@test.test').status);
-        assert.isTrue(nlu.getEMail('test@yandex.ru').status);
-        assert.isTrue(nlu.getEMail('test@google.com').status);
-        assert.isFalse(nlu.getEMail('test').status);
+        assert.isTrue(Nlu.getEMail('test@test.ru').status);
+        assert.isTrue(Nlu.getEMail('test@test.test').status);
+        assert.isTrue(Nlu.getEMail('test@yandex.ru').status);
+        assert.isTrue(Nlu.getEMail('test@google.com').status);
+        assert.isFalse(Nlu.getEMail('test').status);
     });
 
     it('Find link', () => {
-        assert.isTrue(nlu.getLink('https://test.ru').status);
-        assert.isTrue(nlu.getLink('https://test.test').status);
-        assert.isTrue(nlu.getLink('http://test.ru').status);
-        assert.isTrue(nlu.getLink('http://test.test').status);
+        assert.isTrue(Nlu.getLink('https://test.ru').status);
+        assert.isTrue(Nlu.getLink('https://test.test').status);
+        assert.isTrue(Nlu.getLink('http://test.ru').status);
+        assert.isTrue(Nlu.getLink('http://test.test').status);
     });
 
     it('find user name', () => {
