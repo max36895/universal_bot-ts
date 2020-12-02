@@ -82,7 +82,7 @@ export function is_file(file: string): boolean {
 }
 
 /**
- * Прочитать содержиме файла
+ * Прочитать содержимое файла
  * @param {string} fileName
  * @returns {string}
  */
