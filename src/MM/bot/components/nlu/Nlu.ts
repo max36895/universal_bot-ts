@@ -60,13 +60,23 @@ export class Nlu {
     }
 
     /**
+     * Приводим nlu в пригодный для работы вид.
+     * @param {any} nlu
+     * @return INlu
+     */
+    protected _serializeNlu(nlu: any): INlu {
+        // todo добавить обработку
+        return <INlu>nlu;
+    }
+
+    /**
      * Инициализация массива с nlu.
      *
      * @param nlu Значение для nlu. В случае с Алисой передается в запросе. Для других типов инициируется самостоятельно.
      * @api
      */
-    public setNlu(nlu: INlu): void {
-        this._nlu = nlu;
+    public setNlu(nlu: any): void {
+        this._nlu = this._serializeNlu(nlu);
     }
 
     /**

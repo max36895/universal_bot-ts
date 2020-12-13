@@ -4,7 +4,7 @@
  * @package bot\components\sound
  */
 import {TemplateSoundTypes} from "./types/TemplateSoundTypes";
-import {mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
+import {mmApp, T_ALISA, T_MARUSIA, T_SMARTAPP, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
 import {AlisaSound} from "./types/AlisaSound";
 import {TelegramSound} from "./types/TelegramSound";
 import {VkSound} from "./types/VkSound";
@@ -59,6 +59,10 @@ export class Sound {
                 break;
 
             case T_MARUSIA:
+                sound = null;
+                break;
+
+            case T_SMARTAPP:
                 sound = null;
                 break;
 

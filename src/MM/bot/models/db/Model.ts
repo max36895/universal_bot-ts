@@ -5,7 +5,7 @@
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
 import {mmApp} from "../../core/mmApp";
-import {IModelRules, TModelRulesType} from "../interface/IModel";
+import {IModelRules} from "../interface/IModel";
 import {Text} from "../../components/standard/Text";
 import {Sql} from "./Sql";
 import {fread, is_file} from "../../utils/functins";

@@ -8,7 +8,14 @@ import {
 } from "../interfaces/IAlisa";
 import {BotController} from "../../controller/BotController";
 import {mmApp} from "../mmApp";
+import {Text} from "../../components/standard/Text";
 
+/**
+ * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы
+ * Class Alisa
+ * @package bot\core\types
+ * @see TemplateTypeModel Смотри тут
+ */
 export class Alisa extends TemplateTypeModel {
     /**
      * @const string Версия Алисы.
@@ -41,8 +48,8 @@ export class Alisa extends TemplateTypeModel {
      */
     protected _getResponse(): IAlisaResponse {
         const response: IAlisaResponse = {
-            text: this.controller.text,
-            tts: this.controller.tts,
+            text: Text.resize(this.controller.text, 1024),
+            tts: Text.resize(this.controller.tts, 1024),
             end_session: this.controller.isEnd
         };
         if (this.controller.isScreen) {
@@ -142,7 +149,7 @@ export class Alisa extends TemplateTypeModel {
              */
             if (this.controller.originalUserCommand == 'ping') {
                 this.controller.text = 'pong';
-                this.getContext();
+                this.sendInInit = this.getContext();
             }
             return true;
         } else {

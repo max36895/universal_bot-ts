@@ -10,6 +10,7 @@ import {AlisaButton} from "./types/AlisaButton";
 import {TelegramButton} from "./types/TelegramButton";
 import {VkButton} from "./types/VkButton";
 import {ViberButton} from "./types/ViberButton";
+import {SmartAppButton} from "./types/SmartAppButton";
 
 export class Buttons {
     public static readonly T_ALISA_BUTTONS = 'alisa_btn';
@@ -17,6 +18,8 @@ export class Buttons {
     public static readonly T_VK_BUTTONS = 'vk_btn';
     public static readonly T_TELEGRAM_BUTTONS = 'telegram_btn';
     public static readonly T_VIBER_BUTTONS = 'viber_btn';
+    public static readonly T_SMARTAPP_BUTTONS = 'smart-app_btn';
+    public static readonly T_SMARTAPP_BUTTON_CARD = 'smart-app_card_btn';
     public static readonly T_USER_APP_BUTTONS = 'user_app_btn';
 
     /**
@@ -192,6 +195,16 @@ export class Buttons {
 
             case Buttons.T_VIBER_BUTTONS:
                 button = new ViberButton();
+                break;
+
+            case Buttons.T_SMARTAPP_BUTTONS:
+                button = new SmartAppButton();
+                (<SmartAppButton>button).isCard = false;
+                break;
+
+            case Buttons.T_SMARTAPP_BUTTON_CARD:
+                button = new SmartAppButton();
+                (<SmartAppButton>button).isCard = true;
                 break;
 
             case Buttons.T_USER_APP_BUTTONS:

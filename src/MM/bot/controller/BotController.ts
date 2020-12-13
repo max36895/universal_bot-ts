@@ -5,9 +5,13 @@ import {Nlu} from "../components/nlu/Nlu";
 import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from "../core/mmApp";
 import {Text} from "../components/standard/Text";
 
+/**
+ * Абстрактный класс, который должны унаследовать все классы, обрабатывающие логику приложения.
+ * @class BotController
+ */
 export abstract class BotController {
     /**
-     * Кнопки отображаемые в приложении
+     * Кнопки отображаемые в приложении.
      * @var buttons Кнопки отображаемые в приложении
      * @see Buttons Смотри тут
      */
@@ -19,7 +23,7 @@ export abstract class BotController {
      */
     public card: Card;
     /**
-     * Текст который увидит пользователь.
+     * Текст который отобразится пользователю.
      * @var text
      */
     public text: string;
@@ -38,7 +42,7 @@ export abstract class BotController {
      */
     public nlu: Nlu;
     /**
-     * Звуки в приложении.
+     * Звуки которые будут присутствовать в приложении.
      * @var sound Звуки в приложении.
      * @see Sound Смотри тут
      */
@@ -49,7 +53,7 @@ export abstract class BotController {
      */
     public userId: string | number;
     /**
-     * Пользовательский токен. Инициализируется тогда, когда пользователь авторизован (Актуально для Алисы).
+     * Пользовательский токен. Инициализируется когда пользователь авторизован (Актуально для Алисы).
      * @var userToken Пользовательский токен. Инициализируется тогда, когда пользователь авторизован (Актуально для Алисы).
      */
     public userToken: string;
@@ -64,7 +68,7 @@ export abstract class BotController {
      */
     public messageId: number | string;
     /**
-     * Запрос пользователь в нижнем регистре.
+     * Запрос пользователя в нижнем регистре.
      * @var userCommand Запрос пользователь в нижнем регистре.
      */
     public userCommand: string;
@@ -74,7 +78,7 @@ export abstract class BotController {
      */
     public originalUserCommand: string;
     /**
-     * Дополнительные параметры запроса.
+     * Дополнительные параметры к запросу.
      * @var payload Дополнительные параметры запроса.
      */
     public payload: object;
@@ -84,7 +88,7 @@ export abstract class BotController {
      */
     public userData: any;
     /**
-     * Запросить авторизацию пользователя или нет (Актуально для Алисы).
+     * Запросить авторизацию для пользователя или нет (Актуально для Алисы).
      * @var isAuth Запросить авторизацию пользователя или нет (Актуально для Алисы).
      */
     public isAuth: boolean;
@@ -94,23 +98,23 @@ export abstract class BotController {
      */
     public isAuthSuccess: true | false | null;
     /**
-     * Пользовательское хранилище (Актуально для Алисы).
+     * Пользовательское локальное хранилище (Актуально для Алисы).
      * @var state Пользовательское хранилище (Актуально для Алисы).
      */
     public state: object | string;
     /**
-     * Если ли экран (Актуально для Алисы).
-     * @var isScreen Если ли экран (Актуально для Алисы).
+     * Присутствие экрана.
+     * @var isScreen
      */
     public isScreen: boolean;
     /**
-     * Завершение сессии (Актуально для Алисы).
-     * @var isEnd Завершение сессии (Актуально для Алисы).
+     * Завершение сессии.
+     * @var isEnd
      */
     public isEnd: boolean;
     /**
      * Отправлять в конце запрос или нет. (Актуально для Vk и Telegram) False тогда, когда все запросы отправлены внутри логики приложения, и больше ничего отправлять не нужно.
-     * @var isSend Отправлять в конце запрос или нет. (Актуально для Vk и Telegram) False тогда, когда все запросы отправлены внутри логики приложения, и больше ничего отправлять не нужно.
+     * @var isSend
      */
     public isSend: boolean;
     /**
@@ -118,6 +122,34 @@ export abstract class BotController {
      * @var requestObject Полученный запрос.
      */
     public requestObject: object | string;
+
+    /**
+     * Идентификатор предыдущего действия пользователя.
+     * @var oldIntentName
+     */
+    public oldIntentName: string;
+
+    /**
+     * Идентификатор текущего действия пользователя.
+     * @var thisIntentName
+     */
+    public thisIntentName: string;
+
+    /**
+     * Эмоция, с котороей будет общаться приложение. Актуально для Сбер.
+     * @var emotion
+     */
+    public emotion: string;
+
+    /**
+     * Манера общения с пользователем. Общаемся на "Вы" или на "ты".
+     * Возможные значения:
+     * "official" - оффициальный тон общения(на Вы)
+     * "no_official" - Общаемся на ты
+     * null - можно использовать любой тон
+     * @var appeal
+     */
+    public appeal: "official" | "no_official";
 
     protected constructor() {
         this.buttons = new Buttons();
@@ -141,6 +173,10 @@ export abstract class BotController {
         this.isAuthSuccess = null;
         this.isSend = true;
         this.requestObject = null;
+        this.oldIntentName = null;
+        this.thisIntentName = null;
+        this.emotion = null;
+        this.appeal = null;
     }
 
     /**
@@ -173,7 +209,7 @@ export abstract class BotController {
      * Обработка пользовательских команд.
      *
      * Если intentName === null, значит не удалось найти обрабатываемых команд в тексте.
-     * В таком случе стоит смотреть либо на предыдущую команду пользователя(которая сохранена в бд).
+     * В таком случе стоит смотреть либо на предыдущую команду пользователя.
      * Либо вернуть текст помощи.
      *
      * @param intentName Название действия.
@@ -196,6 +232,7 @@ export abstract class BotController {
             case WELCOME_INTENT_NAME:
                 this.text = Text.getText(mmApp.params.welcome_text || '');
                 break;
+
             case HELP_INTENT_NAME:
                 this.text = Text.getText(mmApp.params.help_text || '');
                 break;

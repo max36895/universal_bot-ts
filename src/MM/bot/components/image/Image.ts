@@ -42,6 +42,12 @@ export class Image {
     public isToken: boolean;
 
     /**
+     * Дополнительные параметры для изобржения.
+     * @var params
+     */
+    public params: any;
+
+    /**
      * Image constructor.
      */
     public constructor() {
@@ -51,6 +57,7 @@ export class Image {
         this.imageToken = null;
         this.imageDir = null;
         this.isToken = false;
+        this.params = {};
     }
 
     /**

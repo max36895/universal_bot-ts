@@ -1,12 +1,13 @@
 import {fwrite, isDir, mkdir} from "../utils/functins";
 
-export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application';
+export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart-app';
 
 export const T_ALISA: TAppType = 'alisa';
 export const T_VK: TAppType = 'vk';
 export const T_TELEGRAM: TAppType = 'telegram';
 export const T_VIBER: TAppType = 'viber';
 export const T_MARUSIA: TAppType = 'marusia';
+export const T_SMARTAPP: TAppType = 'smart-app';
 export const T_USER_APP: TAppType = 'user_application';
 
 export const WELCOME_INTENT_NAME = 'welcome';

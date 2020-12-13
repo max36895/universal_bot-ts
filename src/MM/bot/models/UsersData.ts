@@ -15,6 +15,7 @@ export class UsersData extends Model {
     public static readonly T_TELEGRAM = 2;
     public static readonly T_VIBER = 3;
     public static readonly T_MARUSIA = 4;
+    public static readonly T_SMART_APP = 5;
 
     public static readonly T_USER_APP = 512;
 

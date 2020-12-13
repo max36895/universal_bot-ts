@@ -4,7 +4,7 @@ import {
     IAppParam,
     mmApp,
     T_ALISA,
-    T_MARUSIA,
+    T_MARUSIA, T_SMARTAPP,
     T_TELEGRAM,
     T_USER_APP,
     T_VIBER,
@@ -28,6 +28,7 @@ import viberConfig from "./skillsTemplateConfig/viberConfig";
 import {IAlisaWebhookResponse} from "./interfaces/IAlisa";
 import {IMarusiaWebhookResponse} from "./interfaces/IMarusia";
 import {IncomingMessage, ServerResponse} from "http";
+import {SmartApp} from "./types/SmartApp";
 
 const {json, send} = require('micro');
 
@@ -176,6 +177,11 @@ export class Bot {
                 type = UsersData.T_MARUSIA;
                 break;
 
+            case T_SMARTAPP:
+                botClass = new SmartApp();
+                type = UsersData.T_SMART_APP;
+                break;
+
             case T_USER_APP:
                 if (userBotClass) {
                     botClass = userBotClass;
@@ -219,8 +225,15 @@ export class Bot {
                         userData.meta = this._botController.userMeta;
                     }
                 }
+                if (!this._botController.oldIntentName
+                    && this._botController.userData && this._botController.userData.oldIntentName) {
+                    this._botController.oldIntentName = this._botController.userData.oldIntentName;
+                }
 
                 this._botController.run();
+                if (this._botController.thisIntentName) {
+                    this._botController.userData.oldIntentName = this._botController.thisIntentName;
+                }
                 let content: any = botClass.getContext();
                 if (!isLocalStorage) {
                     userData.data = this._botController.userData;

@@ -14,6 +14,7 @@ import {
 } from "../interfaces/IMarusia";
 import {BotController} from "../../controller/BotController";
 import {mmApp} from "../mmApp";
+import {Text} from "../../components/standard/Text";
 
 export class Marusia extends TemplateTypeModel {
     /**
@@ -37,8 +38,8 @@ export class Marusia extends TemplateTypeModel {
      */
     protected getResponse(): IMarusiaResponse {
         const response: IMarusiaResponse = {
-            text: '',
-            tts: '',
+            text: Text.resize(this.controller.text, 1024),
+            tts: Text.resize(this.controller.tts, 1024),
             end_session: this.controller.isEnd
         };
         if (this.controller.isScreen) {
