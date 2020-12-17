@@ -1,23 +1,22 @@
-/**
- * Загрузка звуков для навыка.
- * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-sounds-upload-docpage/) Смотри тут
- *
- * Class YandexSoundRequest
- * @package bot\api
- */
 import {YandexRequest} from "./YandexRequest";
 import {mmApp} from "../core/mmApp";
 import {Request} from "./request/Request";
 import {IYandexCheckOutPlace, IYandexRequestDownloadSound} from "./interfaces/IYandexApi";
 
+/**
+ * Загрузка звуков для навыка.
+ * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-sounds-upload-docpage/) Смотри тут
+ *
+ * Class YandexSoundRequest
+ * @class bot\api
+ */
 export class YandexSoundRequest extends YandexRequest {
     /**
      * @const string Адрес, на который будет отправляться запрос.
      */
     private readonly STANDARD_URL = 'https://dialogs.yandex.net/api/v1/';
     /**
-     * Идентификатор навыка, необходим для корректного сохранения изображения(Обязательный параметр).
-     * @var skillId Идентификатор навыка, необходим для корректного сохранения изображения(Обязательный параметр).
+     * Идентификатор навыка, необходим для корректного сохранения изображений(Обязательный параметр).
      * @see YandexRequest Смотри тут
      */
     public skillId: string;
@@ -25,8 +24,8 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * YandexSoundRequest constructor.
      *
-     * @param oauth Авторизационный токен для загрузки изображений.
-     * @param skillId Идентификатор навыка.
+     * @param {string} oauth Авторизационный токен для загрузки изображений.
+     * @param {string} skillId Идентификатор навыка.
      * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документацияю.
      * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
      */
@@ -76,7 +75,7 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * Загрузить аудиофайл.
      *
-     * @param soundDir Расположение картинки на сервере.
+     * @param {string} soundDir Расположение картинки на сервере.
      *
      * @return IYandexRequestDownloadSound|null
      * [
@@ -139,7 +138,7 @@ export class YandexSoundRequest extends YandexRequest {
      * Удаление выбранного звука.
      * В случае успеха вернет 'ok'.
      *
-     * @param soundId Идентификатор звука, который необходимо удалить.
+     * @param {string} soundId Идентификатор звука, который необходимо удалить.
      *
      * @return string
      * @api

@@ -26,8 +26,8 @@ export class StandardController extends BotController {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btn = ['Пример кнопки галереи'];
-                this.buttons.link = ['Пример ссылки для картинки'];
+                this.buttons.btns = ['Пример кнопки галереи'];
+                this.buttons.links = ['Пример ссылки для картинки'];
                 break;
 
             case HELP_INTENT_NAME:

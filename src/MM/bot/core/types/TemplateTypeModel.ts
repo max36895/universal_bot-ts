@@ -2,34 +2,29 @@ import {BotController} from "../../controller/BotController";
 
 /**
  * Class TemplateTypeModel
- * @package bot\core\types
+ * @class bot\core\types
  *
  * Абстрактный класс, который унаследуют все классы, отвечающие за инициализацию параметров, и обработку запросов пользователя.
  */
 export abstract class TemplateTypeModel {
     /**
      * Строка с ошибками, произошедшими при работе приложения.
-     * @var string error
      */
     protected error: string;
     /**
      * Время начала работы приложения.
-     * @var number timeStart
      */
     protected timeStart: number;
     /**
      * Класс с логикой приложения.
-     * @var BotController controller
      */
     protected controller: BotController;
     /**
      * Использование локального хранилища как БД.
-     * @var boolean isUsedLocalStorage
      */
     public isUsedLocalStorage: boolean;
     /**
      * Отправка запроса сразу после инициализации. Если не null, то никакие команды пользователя не обрабатываются.
-     * @var any sendInInit
      */
     public sendInInit: any;
 
@@ -70,18 +65,20 @@ export abstract class TemplateTypeModel {
     }
 
     /**
-     * Инициализация основных параметров и компонентов контроллера.
+     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
-     * @param {any} content Запрос пользователя. В основном json строка.
+     * @param {any} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return boolean
+     * @see TemplateTypeModel::init() Смотри тут
+     * @api
      */
-    public abstract init(content: any, controller: BotController): boolean;
+    public abstract init(query: any, controller: BotController): boolean;
 
     /**
-     * Отправка ответа пользователю.
+     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return any
      */
     public abstract getContext(): any;
 
@@ -98,7 +95,7 @@ export abstract class TemplateTypeModel {
     }
 
     /**
-     * Возвращает данные из хранилища.
+     * Возвращаем данные из хранилища.
      *
      * @return object | string
      * @api

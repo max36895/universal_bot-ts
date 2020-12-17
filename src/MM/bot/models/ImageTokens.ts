@@ -1,9 +1,3 @@
-/**
- * Class ImageTokens
- * @package bot\models
- *
- * Модель для взаимодействия со всеми картинками.
- */
 import {Model} from "./db/Model";
 import {mmApp} from "../core/mmApp";
 import {IModelRules} from "./interface/IModel";
@@ -13,6 +7,12 @@ import {IYandexRequestDownloadImage} from "../api/interfaces/IYandexApi";
 import {TelegramRequest} from "../api/TelegramRequest";
 import {VkRequest} from "../api/VkRequest";
 
+/**
+ * Class ImageTokens
+ * @class bot\models
+ *
+ * Модель для взаимодействия со всеми картинками.
+ */
 export class ImageTokens extends Model {
     private TABLE_NAME = 'ImageTokens';
     public static readonly T_ALISA = 0;
@@ -22,22 +22,18 @@ export class ImageTokens extends Model {
 
     /**
      * Идентификатор/токен картинки.
-     * @var string|null imageToken Идентификатор/токен картинки.
      */
     public imageToken: string;
     /**
      * Расположение картинки (url/директория).
-     * @var string|null path Расположение картинки (url/директория).
      */
     public path: string;
     /**
      * Тип приложения, для которого загружена картинка.
-     * @var string|int type Тип приложения, для которого загружена картинка.
      */
     public type: number;
     /**
      * Описание картинки (Не обязательное поле).
-     * @var string|null caption Описание картинки (Не обязательное поле).
      */
     public caption: string;
 
@@ -129,7 +125,7 @@ export class ImageTokens extends Model {
     }
 
     /**
-     * Получить идентификатор/токен изображения.
+     * Получение идентификатора/токена изображения.
      *
      * @return string|null
      * @api

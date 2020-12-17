@@ -4,7 +4,17 @@
 
 Документация
 ------------
-Документация: Временно отсутствует. Получить информации о работе приложения можно в телеграм канале [MM](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw) или группе [MM](https://t.me/mm_universal_bot)
+Документация: [U-bot-ts](https://www.maxim-m.ru/bot/u_bot-ts_doc/index.html). Получить информации о работе приложения можно в телеграм канале [MM](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw) или группе [MM](https://t.me/mm_universal_bot)
+
+###Создание документации
+Для создания документации, необходимо установить typedoc. 
+```bash
+ npm install typedoc -g
+```
+После чего выполнить:
+```bash
+npm run doc
+```
 
 Описание
 --------

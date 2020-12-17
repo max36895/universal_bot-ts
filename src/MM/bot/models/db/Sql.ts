@@ -1,37 +1,32 @@
-/**
- * Переменная с коннектом к базе данных. Нужна для того, чтобы не было дополнительных подключений к базе
- * @var DB|null vDB Переменная с коннектом к базе данных. Нужна для того, чтобы не было дополнительных подключений к базе
- */
 import {mmApp} from "../../core/mmApp";
 import {DB} from "./DB";
 import {IModelRes} from "./Model";
 
+/**
+ * Переменная с коннектом к базе данных. Нужна для того, чтобы не было дополнительных подключений к базе.
+ */
 export let _vDB = new DB();
 
 /**
  * Класс, позволяющий работать в Базой Данных
  * Class Sql
- * @package bot\models\db
+ * @class bot\models\db
  */
 export class Sql {
     /**
      * Местоположение базы данных.
-     * @var host Местоположение базы данных.
      */
     public host: string;
     /**
      * Имя пользователя.
-     * @var user Имя пользователя.
      */
     public user: string;
     /**
      * Пароль пользователя.
-     * @var pass Пароль пользователя.
      */
     public pass: string;
     /**
      * Название базы данных.
-     * @var database Название базы данных.
      */
     public database: string;
 
@@ -73,10 +68,10 @@ export class Sql {
     /**
      * Инициализация параметров подключения в Базе данных.
      *
-     * @param host Расположение базы данных.
-     * @param user Имя пользователя.
-     * @param pass Пароль.
-     * @param database Название базы данных.
+     * @param {string} host Расположение базы данных.
+     * @param {string} user Имя пользователя.
+     * @param {string} pass Пароль.
+     * @param {string} database Название базы данных.
      * @api
      */
     public initParam(host: string, user: string, pass: string, database: string): void {
@@ -109,7 +104,7 @@ export class Sql {
     /**
      * Декодирование текста(Текст становится приемлемым для sql запроса).
      *
-     * @param text декодируемый текст.
+     * @param {string|number} text декодируемый текст.
      * @return string
      * @api
      */
@@ -120,7 +115,7 @@ export class Sql {
     /**
      * Выполнение запроса к базе данных.
      *
-     * @param callback Функция с логикой.
+     * @param {Function} callback Функция с логикой.
      * @return mysqli_result|boolean|null
      * @api
      */
@@ -145,7 +140,7 @@ export class Sql {
     /**
      * Сохранение логов.
      *
-     * @param  errorMsg Текст ошибки.
+     * @param {string} errorMsg Текст ошибки.
      * @return boolean
      */
     protected _saveLog(errorMsg: string): boolean {

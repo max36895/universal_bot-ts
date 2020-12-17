@@ -12,132 +12,108 @@ import {Text} from "../components/standard/Text";
 export abstract class BotController {
     /**
      * Кнопки отображаемые в приложении.
-     * @var buttons Кнопки отображаемые в приложении
      * @see Buttons Смотри тут
      */
     public buttons: Buttons;
     /**
      * Карточки отображаемые в приложении.
-     * @var card Карточки отображаемые в приложении.
      * @see Card Смотри тут
      */
     public card: Card;
     /**
      * Текст который отобразится пользователю.
-     * @var text
      */
     public text: string;
     /**
      * Текст который услышит пользователь.
-     * @var tts Текст который услышит пользователь.
      * !Важно, если переменная заполняется для других типов приложения, тогда отправляется запрос в yandex speechkit для преобразования текста в звук.
      * Полученный звук отправляется пользователю как аудио сообщение.
      */
     public tts: string;
     /**
      * Обработанный nlu в приложении.
-     * @var nlu Обработанный nlu в приложении.
      * @link [nlu](https://www.maxim-m.ru/glossary/nlu)
      * @see Nlu Смотри тут
      */
     public nlu: Nlu;
     /**
      * Звуки которые будут присутствовать в приложении.
-     * @var sound Звуки в приложении.
      * @see Sound Смотри тут
      */
     public sound: Sound;
     /**
      * Идентификатор пользователя.
-     * @var userId Идентификатор пользователя.
      */
     public userId: string | number;
     /**
-     * Пользовательский токен. Инициализируется когда пользователь авторизован (Актуально для Алисы).
-     * @var userToken Пользовательский токен. Инициализируется тогда, когда пользователь авторизован (Актуально для Алисы).
+     * Пользовательский токен. Инициализируется когда пользователь авторизовался (Актуально для Алисы).
      */
     public userToken: string;
     /**
      * Meta данные пользователя.
-     * @var userMeta Meta данные пользователя.
      */
     public userMeta: any;
     /**
      * Id сообщения(Порядковый номер сообщения), необходим для того, чтобы понять в 1 раз пишет пользователь или нет.
-     * @var messageId Id сообщения(Порядковый номер сообщения), необходим для того, чтобы понять в 1 раз пишет пользователь или нет.
      */
     public messageId: number | string;
     /**
      * Запрос пользователя в нижнем регистре.
-     * @var userCommand Запрос пользователь в нижнем регистре.
      */
     public userCommand: string;
     /**
      * Оригинальный запрос пользователя.
-     * @var originalUserCommand Оригинальный запрос пользователя.
      */
     public originalUserCommand: string;
     /**
      * Дополнительные параметры к запросу.
-     * @var payload Дополнительные параметры запроса.
      */
     public payload: object;
     /**
-     * Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
-     * @var userData Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
+     * Пользовательские данные, сохраненные в приложении (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
      */
     public userData: any;
     /**
      * Запросить авторизацию для пользователя или нет (Актуально для Алисы).
-     * @var isAuth Запросить авторизацию пользователя или нет (Актуально для Алисы).
      */
     public isAuth: boolean;
     /**
      * Проверка что авторизация пользователя прошла успешно (Актуально для Алисы).
-     * @var isAuthSuccess Проверка что авторизация пользователя прошла успешно (Актуально для Алисы).
      */
     public isAuthSuccess: true | false | null;
     /**
      * Пользовательское локальное хранилище (Актуально для Алисы).
-     * @var state Пользовательское хранилище (Актуально для Алисы).
      */
     public state: object | string;
     /**
-     * Присутствие экрана.
-     * @var isScreen
+     * Наличие экрана.
      */
     public isScreen: boolean;
     /**
      * Завершение сессии.
-     * @var isEnd
      */
     public isEnd: boolean;
     /**
      * Отправлять в конце запрос или нет. (Актуально для Vk и Telegram) False тогда, когда все запросы отправлены внутри логики приложения, и больше ничего отправлять не нужно.
-     * @var isSend
      */
     public isSend: boolean;
     /**
      * Полученный запрос.
-     * @var requestObject Полученный запрос.
      */
     public requestObject: object | string;
 
     /**
      * Идентификатор предыдущего действия пользователя.
-     * @var oldIntentName
      */
     public oldIntentName: string;
 
     /**
      * Идентификатор текущего действия пользователя.
-     * @var thisIntentName
      */
     public thisIntentName: string;
 
     /**
      * Эмоция, с котороей будет общаться приложение. Актуально для Сбер.
-     * @var emotion
      */
     public emotion: string;
 
@@ -147,7 +123,6 @@ export abstract class BotController {
      * "official" - оффициальный тон общения(на Вы)
      * "no_official" - Общаемся на ты
      * null - можно использовать любой тон
-     * @var appeal
      */
     public appeal: "official" | "no_official";
 
@@ -182,17 +157,17 @@ export abstract class BotController {
     /**
      * Получение всех обрабатываемых команд приложения.
      *
-     * @return array
+     * @return IAppIntent[]
      */
     protected _intents(): IAppIntent[] {
         return mmApp.params.intents || [];
     }
 
     /**
-     * Поиск нужной команды в  пользовательском запросе.
+     * Поиск нужной команды в пользовательском запросе.
      * В случае успеха вернет название действия.
      *
-     * @param text Текст, в котором происходит поиск вхождений.
+     * @param {string} text Текст, в котором происходит поиск вхождений.
      * @return string|null
      */
     protected _getIntent(text: string): string {
@@ -208,11 +183,11 @@ export abstract class BotController {
     /**
      * Обработка пользовательских команд.
      *
-     * Если intentName === null, значит не удалось найти обрабатываемых команд в тексте.
+     * Если intentName === null, значит не удалось найти обрабатываемых команд в запросе.
      * В таком случе стоит смотреть либо на предыдущую команду пользователя.
      * Либо вернуть текст помощи.
      *
-     * @param intentName Название действия.
+     * @param {string} intentName Название действия.
      */
     public abstract action(intentName: string): void;
 

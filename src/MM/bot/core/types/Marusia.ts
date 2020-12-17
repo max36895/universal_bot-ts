@@ -1,9 +1,3 @@
-/**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Макруси.
- * Class Marusia
- * @package bot\core\types
- * @see TemplateTypeModel Смотри тут
- */
 import {TemplateTypeModel} from "./TemplateTypeModel";
 import {IAlisaBigImage, IAlisaItemsList} from "../interfaces/IAlisa";
 import {
@@ -16,6 +10,12 @@ import {BotController} from "../../controller/BotController";
 import {mmApp} from "../mmApp";
 import {Text} from "../../components/standard/Text";
 
+/**
+ * Класс, отвечающий за корректную инициализацию и отправку ответа для Макруси.
+ * Class Marusia
+ * @class bot\core\types
+ * @see TemplateTypeModel Смотри тут
+ */
 export class Marusia extends TemplateTypeModel {
     /**
      * @const string Версия Маруси.
@@ -27,12 +27,11 @@ export class Marusia extends TemplateTypeModel {
     private readonly MAX_TIME_REQUEST: number = 2.8;
     /**
      * Информация о сессии пользователя.
-     * @var array|null session Информация о сессии пользователя.
      */
     protected _session: IMarusiaSession;
 
     /**
-     * Получение ответа пользователю.
+     * Получение данных, необходимых для постоения ответа пользователю.
      *
      * @return IMarusiaResponse
      */
@@ -65,10 +64,10 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация параметров.
+     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
-     * @param query Запрос пользователя.
-     * @param controller Ссылка на класс с логикой навык/бота.
+     * @param {IMarusiaWebhookRequest|string} query Запрос пользователя.
+     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return boolean
      * @see TemplateTypeModel::init() Смотри тут
      * @api
@@ -126,7 +125,7 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Отправка ответа пользователю.
+     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return string
      * @see TemplateTypeModel::getContext() Смотри тут

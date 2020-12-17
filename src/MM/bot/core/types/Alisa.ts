@@ -13,7 +13,7 @@ import {Text} from "../../components/standard/Text";
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы
  * Class Alisa
- * @package bot\core\types
+ * @class bot\core\types
  * @see TemplateTypeModel Смотри тут
  */
 export class Alisa extends TemplateTypeModel {
@@ -27,22 +27,19 @@ export class Alisa extends TemplateTypeModel {
     private readonly MAX_TIME_REQUEST: number = 2800;
     /**
      * Информация о сессии пользователя.
-     * @var session Информация о сессии пользователя.
      */
     protected _session: IAlisaSession;
     /**
-     * Использование хранилища.
-     * @var isState Использование хранилища.
+     * Использование хранилища. True - используется, false - нет.
      */
     protected _isState: boolean = false;
     /**
-     * Название хранилища. Зависит от куда берутся данные(локально, глобально).
-     * @var stateName Название хранилища. Зависит от куда берутся данные(локально, глобально).
+     * Название хранилища. Зависит от того, от куда берутся данные(локально, глобально).
      */
     protected _stateName: string;
 
     /**
-     * Получение ответа пользователю.
+     * Получение ответа для пользователю.
      *
      * @return IAlisaResponse
      */
@@ -62,10 +59,10 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация параметров.
+     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
-     * @param query Запрос пользователя.
-     * @param controller Ссылка на класс с логикой навык/бота.
+     * @param {IAlisaWebhookRequest|string} query Запрос пользователя.
+     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return boolean
      * @see TemplateTypeModel::init() Смотри тут
      * @api
@@ -159,9 +156,9 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Отправка ответа пользователю.
+     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return IAlisaWebhookResponse
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
@@ -196,14 +193,16 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Получить данные из локального хранилища Алисы
+     * Получение данные из локального хранилища Алисы
+     * @returns {any | string}
      */
     public getLocalStorage(): any | string {
         return this.controller.state;
     }
 
     /**
-     * Проверка что используется локальное хранилище
+     * Проверка на использование локального хранилища
+     * @returns {boolean}
      */
     public isLocalStorage(): boolean {
         return this.controller.state !== null;

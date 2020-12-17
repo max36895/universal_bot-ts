@@ -1,24 +1,30 @@
-/**
- * Класс отвечающий за отображение карточки в Телеграме.
- * Class TelegramCard
- * @package bot\components\card\types
- */
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {TelegramRequest} from "../../../api/TelegramRequest";
 import {mmApp} from "../../../core/mmApp";
 import {ImageTokens} from "../../../models/ImageTokens";
 
 export interface ITelegramCard {
+    /**
+     * Опрос
+     */
     question: string;
+    /**
+     * Варианты ответа
+     */
     options: string[];
 }
 
+/**
+ * Класс отвечающий за отображение карточки в Телеграме.
+ * Class TelegramCard
+ * @class bot\components\card\types
+ */
 export class TelegramCard extends TemplateCardTypes {
     /**
-     * Получить карточку для отображения пользователю.
+     * Получение карточки для отображения пользователю.
      *
      * todo подумать над корректным отображением.
-     * @param isOne True, если отобразить только 1 картинку. Не используется.
+     * @param {boolean} isOne True, если отобразить только 1 картинку. Не используется.
      * @return ITelegramCard
      * @api
      */

@@ -5,9 +5,9 @@ import {IRequestSend} from "../interfaces/IRequest";
  * Class Request
  *
  * Класс для отправки curl запросов на необходимый url.
- * Поддерживаются различные заголовки, а также есть возможность отправки файлов.
+ * Поддерживаются различные заголовки, а также присутствует возможность отправки файлов.
  *
- * @package bot\api\request
+ * @class bot\api\request
  */
 export class Request {
     public static readonly HEADER_RSS_XML: Record<string, string> = {'Content-Type': 'application/rss+xml'};
@@ -17,59 +17,50 @@ export class Request {
     public static readonly HEADER_FORM_DATA: Record<string, string> = {'Content-Type': 'multipart/form-data'};
 
     /**
-     * Адрес, на который будет отправляться запрос.
-     * @var url Адрес, на который будет отправляться запрос.
+     * Адрес, на который отправляется запрос.
      */
     public url: string;
     /**
      * Get параметры запроса.
-     * @var get Get параметры запроса.
      */
     public get: IGetParams;
     /**
      * Post параметры запроса.
-     * @var post Post параметры запроса.
      */
     public post: any;
     /**
      * Отправляемые заголовки.
-     * @var header Отправляемые заголовки.
      */
     public header: HeadersInit;
     /**
-     * Прикрепленные файла (url, путь к файлу на сервере либо содержимое файла).
-     * @var attach Прикрепленные файла (url, путь к файлу на сервере либо содержимое файла).
+     * Прикрепленны файл (url, путь к файлу на сервере либо содержимое файла).
      */
     public attach: string;
     /**
+     * Тип передаваемого файла.
      * True если передается содержимое файла. По умолчанию: false.
-     * @var isAttachContent True если передается содержимое файла. По умолчанию: false.
      */
     public isAttachContent: boolean;
     /**
      * Название параметра при отправке файла (По умолчанию file).
-     * @var attachName Название параметра при отправке файла (По умолчанию file).
      */
     public attachName: string;
     /**
      * Кастомный (Пользовательский) заголовок (DELETE и тд.).
-     * @var customRequest Кастомный (Пользовательский) заголовок (DELETE и тд.).
      */
     public customRequest: string;
     /**
-     * Максимально время, за которое должен быть получен ответ. В мсек.
-     * @var maxTimeQuery Максимально время, за которое должен быть получен ответ. В мсек.
+     * Максимально время, за которое должены получить ответ. В мсек.
      */
     public maxTimeQuery: number;
     /**
+     * Формат ответа.
      * True, если полученный ответ нужно преобразовать как json. По умолчанию true.
-     * @var isConvertJson True, если полученный ответ нужно преобразовать как json. По умолчанию true.
      */
     public isConvertJson: boolean;
 
     /**
      * Ошибки при выполнении запросов.
-     * @var _error Ошибки при выполнении запросов.
      */
     private _error: string;
 
@@ -91,7 +82,7 @@ export class Request {
     }
 
     /**
-     * Возвращает текст с ошибкой, которая произошла при выполнении запроса.
+     * Возвращает текст с ошибкой, произошедшей при выполнении запроса.
      *
      * @return string
      * @api
@@ -101,7 +92,7 @@ export class Request {
     }
 
     /**
-     *
+     * Получить корретные параментры для отправки запроса.
      * @return RequestInit
      * @private
      */
@@ -143,6 +134,8 @@ export class Request {
     }
 
     /**
+     * Получить url адрес с get запросом.
+     *
      * @return string
      * @private
      */
@@ -155,7 +148,7 @@ export class Request {
     }
 
     /**
-     * Запуск отправки curl запроса.
+     * Начинаем отправку curl запроса.
      * В случае успеха возвращает содержимое запроса, в противном случае null.
      *
      * @return mixed
@@ -180,7 +173,7 @@ export class Request {
     }
 
     /**
-     * Запуск отправки curl запроса.
+     * Начинаем отправку синхронного curl запроса.
      * В случае успеха возвращает содержимое запроса, в противном случае null.
      *
      * @return mixed
@@ -202,11 +195,11 @@ export class Request {
     }
 
     /**
-     * Отправка запрос.
+     * Отправка запроса.
      * Возвращает массив. В случае успеха свойство 'status' = true.
      *
-     * @param url Адрес, на который отправляется запрос.
-     * @param isAsync Отправить запрос синхронно.
+     * @param {string} url Адрес, на который отправляется запрос.
+     * @param {boolean} isAsync Отправить запрос синхронно или фсинхронно.
      * @return IRequestSend
      * [
      *  - bool status Статус выполнения запроса.
@@ -214,7 +207,7 @@ export class Request {
      * ]
      * @api
      */
-    public send(url: string = null, isAsync = true): IRequestSend {
+    public send(url: string = null, isAsync: boolean = true): IRequestSend {
         if (url) {
             this.url = url;
         }

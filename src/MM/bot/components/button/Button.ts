@@ -3,7 +3,7 @@ import {mmApp} from "../../core/mmApp";
 
 /**
  * Class Button
- * @package bot\components\button
+ * @class bot\components\button
  *
  * Отображаемые кнопки при отправке сообщения пользователю
  * Тип кнопок(кнопка и сайджест) влияют только при отображении в Алисе.
@@ -26,32 +26,26 @@ export class Button {
 
     /**
      * Тип кнопки.
-     * @var string|null $type Тип кнопки.
      */
     public type: string;
     /**
      * Текст на кнопке.
-     * @var string|null $title Текст на кнопке.
      */
     public title: string;
     /**
      * Ссылка для перехода при нажатии кнопки.
-     * @var string|null $url Ссылка для перехода при нажатии кнопки.
      */
     public url: string;
     /**
      * Произвольные данные, отправляемые при нажатии кнопки.
-     * @var string|array $payload Произвольные данные, отправляемые при нажатии кнопки.
      */
     public payload: TButtonPayload;
     /**
      * True, чтобы отображать кнопку как сайджест.
-     * @var bool $hide True, чтобы отображать кнопку как сайджест.
      */
     public hide: boolean;
     /**
-     * Дополнительные параметры кнопки.
-     * @var array $options Дополнительные параметры кнопки.
+     * Дополнительные параметры для кнопки.
      */
     public options: object;
 
@@ -70,10 +64,10 @@ export class Button {
     /**
      * Инициализация кнопки.
      *
-     * @param title Текст на кнопке.
-     * @param url Ссылка для перехода, при нажатии кнопки.
-     * @param payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param hide True, чтобы отображать кнопку как сайджест.
+     * @param {string} title Текст на кнопке.
+     * @param {string} url Ссылка для перехода, при нажатии кнопки.
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
+     * @param {boolean} hide True, чтобы отображать кнопку как сайджест.
      * @return boolean
      */
     private _init(title: string, url: string, payload: TButtonPayload, hide: boolean): boolean {
@@ -111,9 +105,9 @@ export class Button {
     /**
      * Инициализация кнопки в виде сайджеста(ссылки под текстом).
      *
-     * @param title Текст на кнопке.
-     * @param url Ссылка для перехода, при нажатии кнопки.
-     * @param payload Произвольные данные, отправляемые при нажатии кнопки.
+     * @param {string} title Текст на кнопке.
+     * @param {string} url Ссылка для перехода, при нажатии кнопки.
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
      * @return boolean
      * @api
      */
@@ -124,9 +118,9 @@ export class Button {
     /**
      * Инициализация кнопки в виде кнопки.
      *
-     * @param title Текст на кнопке.
-     * @param url Ссылка для перехода, при нажатии кнопки.
-     * @param payload Произвольные данные, отправляемые при нажатии кнопки.
+     * @param {string} title Текст на кнопке.
+     * @param {string} url Ссылка для перехода, при нажатии кнопки.
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
      * @return boolean
      * @api
      */

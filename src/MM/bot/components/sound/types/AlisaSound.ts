@@ -1,18 +1,18 @@
-/**
- * Класс отвечающий за воспроизведение звуков в Алисе.
- * Class AlisaSound
- * @package bot\components\sound\types
- */
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
 import {is_file} from "../../../utils/functins";
 import {SoundTokens} from "../../../models/SoundTokens";
 
+/**
+ * Класс отвечающий за воспроизведение звуков в Алисе.
+ * Class AlisaSound
+ * @class bot\components\sound\types
+ */
 export class AlisaSound implements TemplateSoundTypes {
     /**
-     * True, если использовать стандартные звуки.
-     * @var isUsedStandardSound True, если использовать стандартные звуки.
+     * Использование стандартных звуков.
+     * True - используются стандартные звуки.
      */
     public isUsedStandardSound: boolean = true;
 
@@ -26,7 +26,6 @@ export class AlisaSound implements TemplateSoundTypes {
     private readonly S_EFFECT_END = '<speaker effect="-">';
 
     /** Стандартные звуки.
-     * @var standardSounds Стандартные звуки.
      */
     protected _standardSounds: ISound[] = [
         {
@@ -315,9 +314,9 @@ export class AlisaSound implements TemplateSoundTypes {
 
 
     /**
-     * Получить разметку для вставки паузы между словами.
+     * Получение разметки для вставки паузы между словами.
      *
-     * @param milliseconds Пауза в миллисекундах.
+     * @param {number} milliseconds Пауза в миллисекундах.
      * @return string
      * @see (https://yandex.ru/dev/dialogs/alice/doc/speech-tuning-docpage/) Смотри тут
      * @api
@@ -327,10 +326,10 @@ export class AlisaSound implements TemplateSoundTypes {
     }
 
     /**
-     * Получить корректно составленный текст, в котором все ключи заменены на соответствующие звуки.
+     * Получение корректно составленный текст, в котором все ключи заменены на соответствующие звуки.
      *
-     * @param sounds Пользовательские звуки.
-     * @param text Исходный текст.
+     * @param {ISound[]} sounds Пользовательские звуки.
+     * @param {string} text Исходный текст.
      * @return string
      * @api
      */
@@ -366,11 +365,11 @@ export class AlisaSound implements TemplateSoundTypes {
     }
 
     /**
-     * Заменить ключи в текста на соответствующие им звуки.
+     * Замена ключей в тексте на соответствующие им звуки.
      *
-     * @param key Ключ для поиска.
-     * @param value Звук или массив звуков.
-     * @param text Обрабатываемый текст.
+     * @param {string} key Ключ для поиска.
+     * @param {string|string[]} value Звук или массив звуков.
+     * @param {string} text Обрабатываемый текст.
      * @return string
      * @api
      */
@@ -381,7 +380,7 @@ export class AlisaSound implements TemplateSoundTypes {
     /**
      * Удаление любых звуков и эффектов из текста.
      *
-     * @param text Обрабатываемый текст.
+     * @param {string} text Обрабатываемый текст.
      * @return string
      * @api
      */

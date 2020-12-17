@@ -1,9 +1,3 @@
-/**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для ВКонтакте.
- * Class Vk
- * @package bot\core\types
- * @see TemplateTypeModel Смотри тут
- */
 import {TemplateTypeModel} from "./TemplateTypeModel";
 import {BotController} from "../../controller/BotController";
 import {IVkRequestContent, IVkRequestObject} from "../interfaces/IVk";
@@ -12,12 +6,18 @@ import {VkRequest} from "../../api/VkRequest";
 import {IVkParams} from "../../api/interfaces/IVkApi";
 import {Buttons} from "../../components/button/Buttons";
 
+/**
+ * Класс, отвечающий за корректную инициализацию и отправку ответа для ВКонтакте.
+ * Class Vk
+ * @class bot\core\types
+ * @see TemplateTypeModel Смотри тут
+ */
 export class Vk extends TemplateTypeModel {
     /**
-     * Инициализация параметров.
+     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
-     * @param query Запрос пользователя.
-     * @param controller Ссылка на класс с логикой навык/бота.
+     * @param {IVkRequestContent|string} query Запрос пользователя.
+     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return boolean
      * @see TemplateTypeModel::init() Смотри тут
      * @api
@@ -98,7 +98,7 @@ export class Vk extends TemplateTypeModel {
     }
 
     /**
-     * Отправка ответа пользователю.
+     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return string
      * @see TemplateTypeModel::getContext() Смотри тут

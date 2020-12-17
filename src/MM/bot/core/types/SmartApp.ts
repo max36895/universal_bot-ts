@@ -13,7 +13,7 @@ import {Buttons} from "../../components/button/Buttons";
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp
  * Class SmartApp
- * @package bot\core\types
+ * @class bot\core\types
  * @see TemplateTypeModel Смотри тут
  */
 export class SmartApp extends TemplateTypeModel {
@@ -23,12 +23,11 @@ export class SmartApp extends TemplateTypeModel {
     private readonly MAX_TIME_REQUEST: number = 2800;
     /**
      * Информация о сессии пользователя.
-     * @var session Информация о сессии пользователя.
      */
     protected _session: ISberSmartAppSession;
 
     /**
-     * Получение ответа пользователю.
+     * Получение данных, необходимых для постоения ответа пользователю.
      *
      * @return ISberSmartAppResponsePayload
      */
@@ -78,10 +77,10 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация параметров.
+     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
-     * @param query Запрос пользователя.
-     * @param controller Ссылка на класс с логикой навык/бота.
+     * @param {ISberSmartAppWebhookRequest|string} query Запрос пользователя.
+     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return boolean
      * @see TemplateTypeModel::init() Смотри тут
      * @api
@@ -150,7 +149,7 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Отправка ответа пользователю.
+     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return string
      * @see TemplateTypeModel::getContext() Смотри тут

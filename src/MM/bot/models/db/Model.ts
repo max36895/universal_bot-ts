@@ -1,9 +1,3 @@
-/**
- * Class Model
- * @package bot\models\db
- *
- * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
- */
 import {mmApp} from "../../core/mmApp";
 import {IModelRules} from "../interface/IModel";
 import {Text} from "../../components/standard/Text";
@@ -16,15 +10,19 @@ export interface IModelRes {
     data?: any;
 }
 
+/**
+ * Class Model
+ * @class bot\models\db
+ *
+ * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
+ */
 export abstract class Model {
     /**
      * Стартовое значение для индекса.
-     * @var int startIndex Стартовое значение для индекса.
      */
     public startIndex = 0;
     /**
      * Подключение к базе данных.
-     * @var Sql|null db Подключение к базе данных.
      */
     private _db: Sql;
 
@@ -69,7 +67,7 @@ export abstract class Model {
     /**
      * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
      *
-     * @param text Исходный текст.
+     * @param {string | number} text Исходный текст.
      * @return string
      * @api
      */
@@ -153,7 +151,7 @@ export abstract class Model {
     }
 
     /**
-     * Выполняет запрос с поиском по уникальному ключу.
+     * Выполнение запроса с поиском по уникальному ключу.
      *
      * @return boolean|mysqli_result|array|null
      * @api
@@ -198,7 +196,7 @@ export abstract class Model {
      * Сохранение значения в базу данных.
      * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
      *
-     * @param isNew Добавить новую запись в базу данных без поиска по ключу.
+     * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
      * @return boolean|mysqli_result|null
      * @api
      */

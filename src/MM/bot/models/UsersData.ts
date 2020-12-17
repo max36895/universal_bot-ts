@@ -1,13 +1,13 @@
-/**
- * Class UsersData
- * @package bot\models
- *
- * Модель для взаимодействия со всеми пользовательскими данными.
- */
 import {Model} from "./db/Model";
 import {IModelRules} from "./interface/IModel";
 import {mmApp} from "../core/mmApp";
 
+/**
+ * Class UsersData
+ * @class bot\models
+ *
+ * Модель для взаимодействия со всеми пользовательскими данными.
+ */
 export class UsersData extends Model {
     public static readonly TABLE_NAME = 'UsersData';
     public static readonly T_ALISA = 0;
@@ -21,22 +21,18 @@ export class UsersData extends Model {
 
     /**
      * Идентификатор пользователя (Уникальный ключ).
-     * @var string|null userId Идентификатор пользователя (Уникальный ключ).
      */
     public userId: string | number;
     /**
      * Meta данные пользователя.
-     * @var string|array|null meta Meta данные пользователя.
      */
     public meta: any;
     /**
      * Пользовательские данные.
-     * @var string|array|null data Пользовательские данные.
      */
     public data: any;
     /**
      * Тип записи (0 - Алиса; 1 - Vk; 2 - Telegram).
-     * @var int type Тип записи (0 - Алиса; 1 - Vk; 2 - Telegram).
      */
     public type: number;
 
@@ -58,14 +54,14 @@ export class UsersData extends Model {
      * @api
      */
     public createTable() {
-       /* const sql = `CREATE TABLE IF NOT EXISTS \`${this.tableName()}\` (
- \`userId\` VARCHAR(250) COLLATE utf8_unicode_ci NOT NULL,
- \`meta\` TEXT COLLATE utf8_unicode_ci DEFAULT NULL,
- \`data\` TEXT COLLATE utf8_unicode_ci DEFAULT NULL,
- \`type\` INT(3) DEFAULT 0,
- PRIMARY KEY (\`userId\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;`;
-        return this.query(sql);*/
+        /* const sql = `CREATE TABLE IF NOT EXISTS \`${this.tableName()}\` (
+  \`userId\` VARCHAR(250) COLLATE utf8_unicode_ci NOT NULL,
+  \`meta\` TEXT COLLATE utf8_unicode_ci DEFAULT NULL,
+  \`data\` TEXT COLLATE utf8_unicode_ci DEFAULT NULL,
+  \`type\` INT(3) DEFAULT 0,
+  PRIMARY KEY (\`userId\`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;`;
+         return this.query(sql);*/
     }
 
     /**
@@ -75,9 +71,9 @@ export class UsersData extends Model {
      * @api
      */
     public dropTable() {
-/*
-        return this.query(`DROP TABLE IF EXISTS \`${this.tableName()}\`;`);
-*/
+        /*
+                return this.query(`DROP TABLE IF EXISTS \`${this.tableName()}\`;`);
+        */
     }
 
     /**
@@ -172,7 +168,7 @@ export class UsersData extends Model {
     /**
      * Инициализация параметров.
      *
-     * @param data Массив с данными.
+     * @param {any} data Массив с данными.
      * @api
      */
     public init(data: any): void {

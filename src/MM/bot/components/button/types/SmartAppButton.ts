@@ -1,16 +1,16 @@
-/**
- * Класс отвечающий за отображение кнопок в Сбер SmartApp
- * Class AlisaButton
- * @package bot\components\button\types
- */
 import {TemplateButtonTypes} from "./TemplateButtonTypes";
 import {Text} from "../../standard/Text";
 import {ISberSmartAppCardAction, ISberSmartAppSuggestionButton} from "../../../core/interfaces/ISberSmartApp";
 
+/**
+ * Класс отвечающий за отображение кнопок в Сбер SmartApp
+ * Class AlisaButton
+ * @class bot\components\button\types
+ */
 export class SmartAppButton extends TemplateButtonTypes {
     /**
-     * True, чтобы получить кнопки для карточки. По умолчанию false
-     * @var isCard True, чтобы получить кнопки для карточки. По умолчанию false
+     * Использование кнопок для карточки
+     * True - получение кнопки для карточки. По умолчанию false
      */
     public isCard: boolean;
 
@@ -23,7 +23,7 @@ export class SmartAppButton extends TemplateButtonTypes {
     }
 
     /**
-     * Получить массив с кнопками для ответа пользователю.
+     * Получение массива с кнопками для ответа пользователю.
      *
      * @return ISberSmartAppSuggestionButton[]|ISberSmartAppCardAction
      * [

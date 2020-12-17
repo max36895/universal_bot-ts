@@ -1,9 +1,3 @@
-/**
- * Class SoundTokens
- * @package bot\models
- *
- * Модель для взаимодействия со всеми звуками.
- */
 import {Model} from "./db/Model";
 import {mmApp} from "../core/mmApp";
 import {IModelRules} from "./interface/IModel";
@@ -13,6 +7,12 @@ import {IYandexRequestDownloadSound} from "../api/interfaces/IYandexApi";
 import {TelegramRequest} from "../api/TelegramRequest";
 import {VkRequest} from "../api/VkRequest";
 
+/**
+ * Class SoundTokens
+ * @class bot\models
+ *
+ * Модель для взаимодействия со всеми звуками.
+ */
 export class SoundTokens extends Model {
     private readonly TABLE_NAME = 'SoundTokens';
     public static readonly T_ALISA = 0;
@@ -22,22 +22,18 @@ export class SoundTokens extends Model {
 
     /**
      * Идентификатор/токен мелодии.
-     * @var string|null soundToken Идентификатор/токен мелодии.
      */
     public soundToken: string;
     /**
      * Расположение звукового файла(url|/директория).
-     * @var string|null path Расположение звукового файла(url|/директория).
      */
     public path: string;
     /**
      * Тип приложения, для которого загружена мелодия.
-     * @var string|int type Тип приложения, для которого загружена мелодия.
      */
     public type: number;
     /**
      * True если передается содержимое файла. По умолчанию: false.
-     * @var bool isAttachContent True если передается содержимое файла. По умолчанию: false.
      */
     public isAttachContent: boolean;
 
@@ -129,7 +125,7 @@ export class SoundTokens extends Model {
     }
 
     /**
-     * Получить идентификатор/токен мелодии.
+     * Получение идентификатора/токена мелодии.
      *
      * @return string|null
      * @api

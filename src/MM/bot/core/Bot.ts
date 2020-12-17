@@ -36,50 +36,56 @@ export type TRunResult = IAlisaWebhookResponse | IMarusiaWebhookResponse | strin
 
 export interface IBotTestParams {
     /**
-     * @typedef {boolean} isShowResult Отображать полный навыка.
+     * Отображать полный ответ навыка.
      */
     isShowResult?: boolean;
     /**
-     * @typedef {boolean} isShowStorage Отображать данные из хранилища.
+     * Отображать данные из хранилища.
      */
     isShowStorage?: boolean;
     /**
-     * @typedef {boolean} isShowTime Отображать время выполнения запроса.
+     * Отображать время выполнения запроса.
      */
     isShowTime?: boolean;
     /**
-     * @typedef {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
+     * Пользовательский класс для обработки команд.
      */
     userBotClass?: TemplateTypeModel;
     /**
-     * @typedef {Function} userBotConfig Функция, возвращающая параметры пользовательского приложения.
-     * @param query Пользовательский запрос.
-     * @param count Номер сообщения.
-     * @param state Данные из хранилища.
+     * Функция, возвращающая параметры пользовательского приложения.
+     * @param {string} query Пользовательский запрос.
+     * @param {number} count Номер сообщения.
+     * @param {object|string} state Данные из хранилища.
      */
     userBotConfig?: Function;
 }
 
 export * from './interfaces/IBot';
 
+/**
+ * Класс отвечающий за запуск приложения.
+ * В нем происхожит инициализации параметров, выбор типа приложения, запуск логики и возврат корректного результата.
+ * @class bot\core
+ */
 export class Bot {
     /**
-     * Полученный запрос. В основном JSON.
-     * @var content Полученный запрос. В основном JSON.
+     * Полученный запрос. В основном JSON или объект.
      */
     private _content: TBotContent;
     /**
-     * Логика приложения.
-     * @var botController Логика приложения.
+     * Контроллер с логикой приложения.
      * @see BotController Смотри тут
      */
     protected _botController: BotController;
     /**
      * Авторизационный токен если есть (Актуально для Алисы). Передастся в том случае, если пользователь произвел авторизацию в навыке.
-     * @var auth Авторизационный токен если есть (Актуально для Алисы). Передастся в том случае, если пользователь произвел авторизацию в навыке.
      */
     protected _auth: TBotAuth;
 
+    /**
+     * Bot constructor.
+     * @param {TAppType} type
+     */
     constructor(type?: TAppType) {
         this._auth = null;
         this._botController = null;
@@ -110,7 +116,7 @@ export class Bot {
     /**
      * Инициализация конфигурации приложения.
      *
-     * @param config Конфигурация приложения.
+     * @param {IAppConfig} config Конфигурация приложения.
      * @api
      */
     public initConfig(config: IAppConfig): void {
@@ -122,7 +128,7 @@ export class Bot {
     /**
      * Инициализация параметров приложения.
      *
-     * @param params Параметры приложения.
+     * @param {IAppParam} params Параметры приложения.
      * @api
      */
     public initParams(params: IAppParam): void {
@@ -134,7 +140,7 @@ export class Bot {
     /**
      * Подключение логики приложения.
      *
-     * @param fn Контроллер с логикой приложения.
+     * @param {BotController} fn Контроллер с логикой приложения.
      * @api
      */
     public initBotController(fn: BotController): void {
@@ -144,7 +150,7 @@ export class Bot {
     /**
      * Запуск приложения.
      *
-     * @param userBotClass Пользовательский класс для обработки команд.
+     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
      * @return string
      * @api
      */
@@ -262,11 +268,11 @@ export class Bot {
 
 
     /**
-     * Запуск Webhook
+     * Запуск приложениячерез Webhook
      *
-     * @param req
-     * @param res
-     * @param userBotClass Пользовательский класс для обработки команд.
+     * @param {IncomingMessage} req Полученный запрос
+     * @param {ServerResponse} res Возврат запроса
+     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
      * @return string
      * @api
      */
@@ -303,7 +309,7 @@ export class Bot {
      *
      * Для корректной работы, внутри логики навыка не должно быть пользовательских вызовов к серверу бота.
      *
-     * @param params Параметры для теста
+     * @param {IBotTestParams} params Параметры для теста
      * @api
      */
     public async test({
@@ -374,10 +380,10 @@ export class Bot {
     /**
      * Возвращает корректную конфигурацию для конкретного типа приложения.
      *
-     * @param query Пользовательский запрос.
-     * @param count Номер сообщения.
-     * @param state Данные из хранилища.
-     * @param userBotConfig Функция, возвращающая параметры пользовательского приложения.
+     * @param {string} query Пользовательский запрос.
+     * @param {number} count Номер сообщения.
+     * @param {object | string} state Данные из хранилища.
+     * @param {Function} userBotConfig Функция, возвращающая параметры пользовательского приложения.
      * @return any
      */
     protected getSkillContent(query: string, count: number, state: object | string, userBotConfig: Function): any {

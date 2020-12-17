@@ -1,25 +1,22 @@
-/**
- * Класс отвечающий за подключение и взаимодействие с Базой Данных
- * Class DB
- * @package bot\models\db
- */
 import {IAppDB} from "../../core/mmApp";
 import * as mongoDb from "mongodb";
 
+/**
+ * Класс отвечающий за подключение и взаимодействие с Базой Данных
+ * Class DB
+ * @class bot\models\db
+ */
 export class DB {
     /**
      * Подключение к базе данных
-     * @var sql Подключение к базе данных
      */
     public sql: mongoDb.MongoClient;
     /**
      * Ошибки при выполнении запросов
-     * @var array errors Ошибки при выполнении запросов
      */
     public errors: string[];
     /**
-     * параметры для конфигурации. имеют следующие поля:
-     * @var array|null params параметры для конфигурации. имеют следующие поля:
+     * Параметры для конфигурации. имеют следующие поля:
      * [
      *  - string host:  Местоположение базы данных
      *  - string user Имя пользователя

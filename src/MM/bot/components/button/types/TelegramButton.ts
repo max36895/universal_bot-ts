@@ -1,23 +1,41 @@
-/**
- * Класс отвечающий за отображение кнопок в Телеграме
- * Class TelegramButton
- * @package bot\components\button\types
- */
 import {TemplateButtonTypes} from "./TemplateButtonTypes";
 import {TButtonPayload} from "../interfaces/button";
 
 export interface ITelegramInlineKeyboard {
+    /**
+     * Текст внутри кнопки
+     */
     text: string,
+    /**
+     * Ссылка по которой передет пользователь после нажатия
+     */
     url?: string;
+    /**
+     * Дополнительные параметры, которые передадутся после нажатия на кнопку
+     */
     callback_data?: TButtonPayload;
 }
 
 export interface ITelegramKeyboard {
+    /**
+     * Кнопки в виде ссылки
+     */
     inline_keyboard?: ITelegramInlineKeyboard[];
+    /**
+     * Кнопки в виде кнопок. ОТображаются вместо клавиатуры
+     */
     keyboard?: string[];
+    /**
+     * Удалить все кнопки
+     */
     remove_keyboard?: boolean;
 }
 
+/**
+ * Класс отвечающий за отображение кнопок в Телеграме
+ * Class TelegramButton
+ * @class bot\components\button\types
+ */
 export class TelegramButton extends TemplateButtonTypes {
     /**
      * Получить массив с кнопками для ответа пользователю.
