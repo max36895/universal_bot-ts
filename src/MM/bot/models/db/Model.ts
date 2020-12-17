@@ -411,8 +411,8 @@ export abstract class Model {
                 while (!data.done) {
                     regDatas.push(
                         {
-                            key: data.value[2].replace(/\`/g, ''),
-                            val: data.value[3].replace(/\"/g, '')
+                            key: data.value[2].replace(/`/g, ''),
+                            val: data.value[3].replace(/"/g, '')
                         });
                     data = datas.next();
                 }
@@ -495,7 +495,7 @@ export abstract class Model {
      */
     public getFileData() {
         const path = mmApp.config.json;
-        const fileName = this.tableName().replace(/\`/g, '');
+        const fileName = this.tableName().replace(/`/g, '');
         const file = `${path}/${fileName}.json`;
         if (is_file(file)) {
             return JSON.parse(fread(file));
