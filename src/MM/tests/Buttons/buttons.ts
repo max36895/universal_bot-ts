@@ -28,10 +28,10 @@ describe('Buttons test', () => {
         button.initBtn('btn', 'https://google.com');
         assert.equal(button.url, 'https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
 
-        button.initBtn('btn','https://google.com?utm_source=test');
+        button.initBtn('btn', 'https://google.com?utm_source=test');
         assert.equal(button.url, 'https://google.com?utm_source=test');
 
-        button.initBtn('btn','https://google.com?data=test');
+        button.initBtn('btn', 'https://google.com?data=test');
         assert.equal(button.url, 'https://google.com?data=test&utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
 
         mmApp.params.utm_text = 'my_utm_text';
@@ -71,14 +71,14 @@ describe('Buttons test', () => {
         ];
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS), alisaButtons);
 
-        defaultButtons.btn = [
+        defaultButtons.btns = [
             {
                 title: 'btn',
                 url: 'https://test.ru',
                 payload: 'test'
             }
         ];
-        defaultButtons.link = [
+        defaultButtons.links = [
             {
                 title: 'link',
                 url: 'https://test.ru',
@@ -153,14 +153,14 @@ describe('Buttons test', () => {
         };
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
-        defaultButtons.btn = [
+        defaultButtons.btns = [
             {
                 title: 'btn',
                 url: 'https://test.ru',
                 payload: 'test'
             }
         ];
-        defaultButtons.link = [
+        defaultButtons.links = [
             {
                 title: 'link',
                 url: 'https://test.ru',
@@ -253,7 +253,7 @@ describe('Buttons test', () => {
         defaultButtons.addLink('3', 'https://test.ru');
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
-        defaultButtons.btn = [
+        defaultButtons.btns = [
             {
                 title: 'btn',
                 url: 'https://test.ru',
@@ -262,7 +262,7 @@ describe('Buttons test', () => {
                 }
             }
         ];
-        defaultButtons.link = [
+        defaultButtons.links = [
             {
                 title: 'link',
                 url: 'https://test.ru',
@@ -330,14 +330,14 @@ describe('Buttons test', () => {
         };
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS), viberButtons);
 
-        defaultButtons.btn = [
+        defaultButtons.btns = [
             {
                 title: 'btn',
                 url: 'https://test.ru',
                 payload: 'test'
             }
         ];
-        defaultButtons.link = [
+        defaultButtons.links = [
             {
                 title: 'link',
                 url: 'https://test.ru',
@@ -366,14 +366,14 @@ describe('Buttons test', () => {
 
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
 
-        defaultButtons.btn = [
+        defaultButtons.btns = [
             {
                 title: 'btn',
                 url: 'https://test.ru',
                 payload: 'test'
             }
         ];
-        defaultButtons.link = [
+        defaultButtons.links = [
             {
                 title: 'link',
                 url: 'https://test.ru',

@@ -1,54 +1,106 @@
 import {fwrite, isDir, mkdir} from "../utils/functins";
 
-export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application';
+export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart-app';
 
+/**
+ * Используется Алиса
+ * @type {string}
+ */
 export const T_ALISA: TAppType = 'alisa';
+/**
+ * Используется vk бот
+ * @type {string}
+ */
 export const T_VK: TAppType = 'vk';
+/**
+ * Используется telegram бот
+ * @type {string}
+ */
 export const T_TELEGRAM: TAppType = 'telegram';
+/**
+ * Используется viber бот
+ * @type {string}
+ */
 export const T_VIBER: TAppType = 'viber';
+/**
+ * Используется Марус
+ * @type {string}
+ */
 export const T_MARUSIA: TAppType = 'marusia';
+/**
+ * Используется Сбер SmartApp
+ * @type {string}
+ */
+export const T_SMARTAPP: TAppType = 'smart-app';
+/**
+ * Используется пользовательский тип приложения
+ * @type {string}
+ */
 export const T_USER_APP: TAppType = 'user_application';
 
+/**
+ * Название интента для приветствия
+ * @type {string}
+ */
 export const WELCOME_INTENT_NAME = 'welcome';
+/**
+ * Название интента для помощи
+ * @type {string}
+ */
 export const HELP_INTENT_NAME = 'help';
 
+/**
+ * @typeof {object} IAppDB Параметры для подключения к Базе Данных
+ */
 export interface IAppDB {
+    /**
+     * Адресс, по которому находится База Данных
+     */
     host: string;
+    /**
+     * Логин для подключения к БД
+     */
     user: string;
+    /**
+     * Пароль для подключения к БД
+     */
     pass: string;
+    /**
+     * Название БД
+     */
     database: string;
 }
 
 export interface IAppIntent {
     /**
-     * @typeof {string} name Название команды. Используется для идентификации команд.
+     * Название команды. Используется для идентификации команд.
      */
     name: string;
     /**
-     * @typeof {string[]} slots Какие слова активируют команду. (Можно использовать регулярные выражения если установлено свойство is_pattern).
+     * Какие слова активируют команду. (Можно использовать регулярные выражения если установлено свойство is_pattern).
      */
     slots: string[];
     /**
-     * @typeof {boolean} is_pattern Использовать регулярное выражение или нет. По умолчанию false.
+     * Использовать регулярное выражение или нет. По умолчанию false.
      */
     is_pattern?: boolean;
 }
 
 export interface IAppConfig {
     /**
-     * @typeof {string}[error_log=/../../] error_log Директория, в которую будут записываться логи и ошибки выполнения.
+     * Директория, в которую будут записываться логи и ошибки выполнения.
      */
     error_log: string;
     /**
-     * @typeof {string}[json=/../../json]json Директория, в которую будут записываться json файлы.
+     * Директория, в которую будут записываться json файлы.
      */
     json: string;
     /**
-     * @typeof {IAppDB} db Настройка подключения к базе данных. Актуально если isSaveDb = true.
+     * Настройка подключения к базе данных. Актуально если isSaveDb = true.
      */
     db?: IAppDB;
     /**
-     * @typeof {boolean}[isLocalStorage=false] isLocalStorage Использование локального хранилища вместо БД. Актуально для Алисы.
+     * Использование локального хранилища вместо БД. Актуально для Алисы.
      * Важно! Чтобы опция работала, нужно поставить галку "Использовать хранилище данных в навыке" в кабинете разработчика.
      */
     isLocalStorage?: boolean;
@@ -56,69 +108,70 @@ export interface IAppConfig {
 
 export interface IAppParam {
     /**
-     * @typeof {string} viber_token Viber токен для отправки сообщений, загрузки изображений и звуков.
+     * Viber токен для отправки сообщений, загрузки изображений и звуков.
      */
     viber_token?: string;
     /**
-     * @typeof {string} viber_sender Имя пользователя, от которого будет отправляться сообщение.
+     * Имя пользователя, от которого будет отправляться сообщение.
      */
     viber_sender?: string;
     /**
-     * @typeof {number} viber_api_version Версия api для Viber
+     * Версия api для Viber
      */
     viber_api_version?: number;
     /**
-     * @typeof {string} telegram_token Telegram токен для отправки сообщений, загрузки изображений и звуков.
+     * Telegram токен для отправки сообщений, загрузки изображений и звуков.
      */
     telegram_token?: string;
     /**
-     * @typeof {string} vk_api_version Версия Vk api. По умолчанию используется v5.103.
+     * Версия Vk api. По умолчанию используется v5.103.
      */
     vk_api_version?: string;
     /**
-     * @typeof {string} vk_confirmation_token Код для проверки корректности Vk бота. Необходим для подтверждения бота.
+     * Код для проверки корректности Vk бота. Необходим для подтверждения бота.
      */
     vk_confirmation_token?: string;
     /**
-     * @typeof {string} vk_token Vk Токен для отправки сообщений, загрузки изображений и звуков.
+     * Vk Токен для отправки сообщений, загрузки изображений и звуков.
      */
     vk_token?: string;
     /**
-     * @typeof {string} yandex_token Яндекс Токен для загрузки изображений и звуков в навыке.
+     * Яндекс Токен для загрузки изображений и звуков в навыке.
      */
     yandex_token?: string;
     /**
-     * @typeof {string}
+     * Токен для отправки запросов в Yandex speesh kit.
      */
     yandex_speech_kit_token?: string;
     /**
-     * @typeof {boolean} y_isAuthUser Актуально для Алисы!
+     * Актуально для Алисы!
      *      - Использовать в качестве идентификатора пользователя Id в поле session->user.
      *      - Если true, то для всех пользователей, которые авторизованы в Яндекс будет использоваться один токен, а не разный.
      */
     y_isAuthUser?: boolean;
     /**
-     * @typeof {string} app_id Идентификатор приложения.
+     * Идентификатор приложения.
      *      - Заполняется автоматически.
      */
     app_id?: string;
     /**
-     * @typeof {string|number} user_id Идентификатор пользователя.
+     *Идентификатор пользователя.
      *      - Заполняется автоматически.
      */
     user_id?: string | number;
     /**
-     * @typeof {string} welcome_text Текст приветствия.
+     * Текст приветствия.
      */
     welcome_text?: string;
     /**
-     * @typeof {string} help_text Текст помощи.
+     * Текст помощи.
      */
     help_text?: string;
     /**
-     * @typeof {IAppIntent} intents Обрабатываемые команды.
+     * Обрабатываемые команды.
      *
      * @demo Пример intent с регулярным выражением:
+     * ```json
      *  [
      *      -'name' : 'regex',
      *      -'slots' : [
@@ -132,10 +185,11 @@ export interface IAppParam {
      *      ],
      *      -'is_pattern' : true
      *  ]
+     *  ```
      */
     intents: IAppIntent[];
     /**
-     * @typeof {string}
+     * Текст для UTM метки. По умолчанию utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone
      */
     utm_text?: string;
 }
@@ -144,18 +198,15 @@ export class mmApp {
 
     /**
      * Куда сохраняются пользовательские данные. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
-     * @type {boolean}
      */
     public static isSaveDb: boolean = false;
 
     /**
      * Тип приложения. (Алиса, бот vk|telegram).
-     * @var TAppType $appType Тип приложения. (Алиса, бот vk|telegram).
      */
     public static appType: TAppType;
     /**
      * Основная конфигурация приложения.
-     * @var config Основная конфигурация приложения.
      */
     public static config: IAppConfig = {
         error_log: '/../../logs',
@@ -170,7 +221,6 @@ export class mmApp {
     };
     /**
      * Основные параметры приложения.
-     * @var params Основные параметры приложения.
      */
     public static params: IAppParam = {
         viber_token: null,
@@ -208,8 +258,8 @@ export class mmApp {
     /**
      * Объединение 2 массивов.
      *
-     * @param array1 Массив с котором необходимо объединить значение.
-     * @param array2 Массив для объединения.
+     * @param {object[]} array1 Массив с котором необходимо объединить значение.
+     * @param {object[]} array2 Массив для объединения.
      * @return object
      * @api
      */
@@ -223,7 +273,7 @@ export class mmApp {
     /**
      * Инициализация конфигурации приложения.
      *
-     * @param config Пользовательская конфигурация.
+     * @param {IAppConfig} config Пользовательская конфигурация.
      * @api
      */
     public static setConfig(config: IAppConfig): void {
@@ -233,7 +283,7 @@ export class mmApp {
     /**
      * Инициализация параметров приложения.
      *
-     * @param params Пользовательские параметры.
+     * @param {IAppParam} params Пользовательские параметры.
      * @api
      */
     public static setParams(params: IAppParam): void {
@@ -250,10 +300,10 @@ export class mmApp {
     }
 
     /**
-     * Сохранение json файла.
+     * Сохранение данных в json файл.
      *
-     * @param fileName Название файла.
-     * @param data Сохраняемые данные.
+     * @param {string} fileName Название файла.
+     * @param {any} data Сохраняемые данные.
      * @return boolean
      * @api
      */
@@ -270,8 +320,8 @@ export class mmApp {
     /**
      * Сохранение логов.
      *
-     * @param fileName Название файла.
-     * @param errorText Текст ошибки.
+     * @param {string} fileName Название файла.
+     * @param {string} errorText Текст ошибки.
      * @return boolean
      * @api
      */

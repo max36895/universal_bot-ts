@@ -1,45 +1,42 @@
-/**
- * Отвечает за отображение определенной карточки, в зависимости от типа приложения.
- * Class Card
- * @package bot\components\card
- */
 import {Buttons} from "../button/Buttons";
 import {Image} from "../image/Image";
 import {TButton} from "../button/interfaces/button";
 import {TemplateCardTypes} from "./types/TemplateCardTypes";
-import {mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
+import {mmApp, T_ALISA, T_MARUSIA, T_SMARTAPP, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
 import {AlisaCard} from "./types/AlisaCard";
 import {TelegramCard} from "./types/TelegramCard";
 import {VkCard} from "./types/VkCard";
 import {ViberCard} from "./types/ViberCard";
 import {MarusiaCard} from "./types/MarusiaCard";
+import {SmartAppCard} from "./types/SmartAppCard";
 
+/**
+ * Отвечает за отображение определенной карточки, в зависимости от типа приложения.
+ * Class Card
+ * @class bot\components\card
+ */
 export class Card {
     /**
      * Заголовок для карточки.
-     * @var title Заголовок для карточки.
      */
     public title: string;
     /**
-     * Описание карточки.
-     * @var desc Описание карточки.
+     * Описание для карточки.
      */
     public desc: string;
     /**
      * Массив с картинками или элементами карточки.
-     * @var images Массив с картинками или элементами карточки.
      * @see Image Смотри тут
      */
     public images: Image[];
     /**
      * Кнопки для карточки.
-     * @var button Кнопки для карточки.
      * @see Buttons Смотри тут
      */
     public button: Buttons;
     /**
+     * В карточке отобразить только 1 элемент/картинку.
      * True, если в любом случае отобразить только 1 изображение.
-     * @var isOne True, если в любом случае отобразить только 1 изображение.
      */
     public isOne: boolean;
 
@@ -53,7 +50,7 @@ export class Card {
     }
 
     /**
-     * Удалить все карточки с изображениями.
+     * Очистить все карточки с изображениями.
      * @api
      */
     public clear() {
@@ -63,10 +60,10 @@ export class Card {
     /**
      * Вставить элемент в каточку|список.
      *
-     * @param image Идентификатор или расположение картинки.
-     * @param title Заголовок для картинки.
-     * @param desc Описание для картинки.
-     * @param button Кнопки, обрабатывающие команды при нажатии на элемент.
+     * @param {string} image Идентификатор или расположение картинки.
+     * @param {string} title Заголовок для картинки.
+     * @param {string} desc Описание для картинки.
+     * @param {TButton} button Кнопки, обрабатывающие команды при нажатии на элемент.
      * @api
      */
     public add(image: string, title: string, desc: string = ' ', button: TButton = null): void {
@@ -77,9 +74,9 @@ export class Card {
     }
 
     /**
-     * Получить все элементы типа карточка.
+     * Получить все элементы карточки.
      *
-     * @param userCard Пользовательский класс для отображения каточки.
+     * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return any
      * @api
      */
@@ -106,6 +103,10 @@ export class Card {
                 card = new MarusiaCard();
                 break;
 
+            case T_SMARTAPP:
+                card = new SmartAppCard();
+                break;
+
             case T_USER_APP:
                 card = userCard;
                 break;
@@ -120,12 +121,13 @@ export class Card {
     }
 
     /**
-     * Возвращает json строку с данными о карточке.
+     * Возвращает json строку со всеми элементами карточки.
      *
+     * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return string
      * @api
      */
-    public getCardsJson(): string {
-        return JSON.stringify(this.getCards());
+    public getCardsJson(userCard: TemplateCardTypes = null): string {
+        return JSON.stringify(this.getCards(userCard));
     }
 }

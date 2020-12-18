@@ -1,8 +1,3 @@
-/**
- * Класс отвечающий за отправку голосовых сообщений в ВКонтакте.
- * Class VkSound
- * @package bot\components\sound\types
- */
 import {ISound} from "../interfaces/sound";
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {is_file} from "../../../utils/functins";
@@ -10,13 +5,18 @@ import {Text} from "../../standard/Text";
 import {SoundTokens} from "../../../models/SoundTokens";
 import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
 
+/**
+ * Класс отвечающий за отправку голосовых сообщений в ВКонтакте.
+ * Class VkSound
+ * @class bot\components\sound\types
+ */
 export class VkSound implements TemplateSoundTypes {
     /**
      * Возвращает массив с отображаемыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
      *
-     * @param sounds Массив звуков.
-     * @param text Исходный текст.
+     * @param {ISound[]} sounds Массив звуков.
+     * @param {string} text Исходный текст.
      * @return string[]
      * @api
      */

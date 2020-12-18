@@ -1,8 +1,3 @@
-/**
- * Класс отвечающий за отправку голосовых сообщений в Телеграме.
- * Class TelegramSound
- * @package bot\components\sound\types
- */
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
@@ -12,13 +7,18 @@ import {mmApp} from "../../../core/mmApp";
 import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
 import {SoundTokens} from "../../../models/SoundTokens";
 
+/**
+ * Класс отвечающий за отправку голосовых сообщений в Телеграме.
+ * Class TelegramSound
+ * @class bot\components\sound\types
+ */
 export class TelegramSound implements TemplateSoundTypes {
     /**
      * Возвращает массив с отображаемыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
      *
-     * @param sounds Массив звуков.
-     * @param text Исходный текст.
+     * @param {ISound[]} sounds Массив звуков.
+     * @param {string} text Исходный текст.
      * @return string[]
      * @api
      */

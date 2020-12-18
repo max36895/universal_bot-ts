@@ -1,48 +1,43 @@
+import {Text} from "./Text";
+
 /**
  * Класс, отвечающий за корректную навигацию по элементам меню.
  * Class Navigation
- * @package bot\components\standard
+ * @class bot\components\standard
  */
-import {Text} from "./Text";
-
 export class Navigation {
     public STANDARD_NEXT_TEXT: string[] = ['дальше', 'вперед'];
     public STANDARD_OLD_TEXT: string[] = ['назад'];
 
     /**
-     * Если true, тогда используются стандартные команды для навигации.
-     * @var bool $isUsedStandardText Если true, тогда используются стандартные команды для навигации.
+     * Использование стандартных команд навигации
+     * Если true, тогда используются стандартные команды.
      */
     public isUsedStandardText: boolean;
     /**
      * Массив с возможными командами для навигации вперед.
-     * @var nextText Массив с возможными командами для навигации вперед.
      */
     public nextText: string[];
     /**
      * Массив с возможными командами для навигации назад.
-     * @var oldText Массив с возможными командами для навигации назад.
      */
     public oldText: string[];
     /**
      * Массив элементов для обработки.
-     * @var elements Массив элементов для обработки.
      */
     public elements: any[];
     /**
      * (default 5) Максимальное количество отображаемых элементов.
-     * @var maxVisibleElements (default 5) Максимальное количество отображаемых элементов.
      */
     public maxVisibleElements: number;
     /**
      * (default 0) Текущая страница. Рекомендуется получать это значение после завершения всех операция.
-     * @var int $thisPage (default 0) Текущая страница. Рекомендуется получать это значение после завершения всех операция.
      */
     public thisPage: number;
 
     /**
      * Navigation constructor.
-     * @param maxVisibleElements Максимально количество отображаемых элементов.
+     * @param {number} maxVisibleElements Максимально количество отображаемых элементов.
      */
     public constructor(maxVisibleElements: number = 5) {
         this.isUsedStandardText = true;
@@ -56,7 +51,7 @@ export class Navigation {
     /**
      * Пользователь хочет двигаться дальше по массиву.
      *
-     * @param text Пользовательский запрос.
+     * @param {string} text Пользовательский запрос.
      * @return boolean
      * @api
      */
@@ -73,7 +68,7 @@ export class Navigation {
     /**
      * Пользователь хочет двигаться назад по массиву.
      *
-     * @param text Пользовательский запрос.
+     * @param {string} text Пользовательский запрос.
      * @return boolean
      * @api
      */
@@ -91,7 +86,7 @@ export class Navigation {
      * Пользователь переходит на определенную страницу.
      * В случае успешного перехода вернет true.
      *
-     * @param text Пользовательский запрос.
+     * @param {string} text Пользовательский запрос.
      * @return boolean
      */
     public numberPage(text: string): boolean {
@@ -111,10 +106,10 @@ export class Navigation {
     }
 
     /**
-     * Пользователь переходит на следующую страницу.
+     * Переход на следующую страницу.
      * В случае успешного перехода вернет true.
      *
-     * @param text Пользовательский запрос.
+     * @param {string} text Пользовательский запрос.
      * @return boolean
      */
     protected _nextPage(text: string): boolean {
@@ -130,10 +125,10 @@ export class Navigation {
     }
 
     /**
-     * Пользователь переходит на предыдущую страницу.
+     * Переход на предыдущую страницу.
      * В случае успешного перехода вернет true.
      *
-     * @param text Пользовательский запрос.
+     * @param {string} text Пользовательский запрос.
      * @return boolean
      */
     protected _oldPage(text: string): boolean {
@@ -150,8 +145,8 @@ export class Navigation {
     /**
      * Возвращает новый массив с учетом текущего положения.
      *
-     * @param elements Элемент для обработки.
-     * @param text Пользовательский запрос.
+     * @param {any[]} elements Элемент для обработки.
+     * @param {string} text Пользовательский запрос.
      * @return any[]
      * @api
      */
@@ -172,12 +167,12 @@ export class Navigation {
     }
 
     /**
-     * Пользователь выбирает определенный элемент списка на нужной странице.
+     * Выбор определенного элемента списка на нужной странице.
      *
-     * @param elements Элемент для обработки.
-     * @param text Пользовательский запрос.
-     * @param key Поиск элемента по ключу массива. Если null, тогда подразумевается что передан массив из строк.
-     * @param thisPage Текущая страница.
+     * @param {any[]} elements Элемент для обработки.
+     * @param {string} text Пользовательский запрос.
+     * @param {string[] | string} key Поиск элемента по ключу массива. Если null, тогда подразумевается что передан массив из строк.
+     * @param {number} thisPage Текущая страница.
      * @return any
      * @api
      */
@@ -204,7 +199,7 @@ export class Navigation {
                 if (index == number) {
                     return this.elements[i];
                 }
-                if (key == null) {
+                if (key === null) {
                     const r = Text.textSimilarity(this.elements[i].toString(), text, 75);
                     if (r.status && r.percent > maxPercent) {
                         selectElement = this.elements[i];
@@ -238,9 +233,9 @@ export class Navigation {
     }
 
     /**
-     * Возвращает кнопки для навигации.
+     * Возвращает кнопки с навигацией.
      *
-     * @param isNumber Использование числовой навигации. Если true, тогда будут отображаться кнопки с числовой навигацией.
+     * @param {boolean} isNumber Использование числовой навигации. Если true, тогда будут отображаться кнопки с числовой навигацией.
      * @return string[]
      * @api
      */
@@ -282,7 +277,7 @@ export class Navigation {
     }
 
     /**
-     * Возвращает информацию о текущей позиции пользователя.
+     * Возвращает информацию о текущей позиции.
      *
      * @return string
      * @api
@@ -304,7 +299,7 @@ export class Navigation {
     /**
      * Возвращает максимальное количество страниц.
      *
-     * @param elements Элемент для обработки.
+     * @param {any[]} elements Элемент для обработки.
      * @return number
      * @api
      */

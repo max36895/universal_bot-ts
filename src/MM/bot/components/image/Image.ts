@@ -1,45 +1,44 @@
-/**
- * Класс отвечает за обработку и корректное отображение изображения, в зависимости от типа приложения.
- * Class Image
- * @package bot\components\image
- */
 import {Buttons} from "../button/Buttons";
 import {TButton, TButtonPayload} from "../button/interfaces/button";
 import {Text} from "../standard/Text";
 import {is_file} from "../../utils/functins";
 
+/**
+ * Класс отвечает за обработку и корректное отображение изображения, в зависимости от типа приложения.
+ * Class Image
+ * @class bot\components\image
+ */
 export class Image {
     /**
-     * Кнопки, обрабатывающие действия на нажатие изображения или непосредственно кнопок.
-     * @var button Кнопки, обрабатывающие действия на нажатие изображения или непосредственно кнопок.
+     * Кнопки, обрабатывающие действия на нажатие на изображение или кнопоку (Зависит от типа приложения).
      * @see Buttons Смотри тут
      */
     public button: Buttons;
     /**
      * Название картинки.
-     * @var title Название картинки.
      */
     public title: string;
     /**
-     * Описание картинки.
-     * @var desc Описание картинки.
+     * Описание для картинки.
      */
     public desc: string;
     /**
      * Идентификатор картинки.
-     * @var imageToken Идентификатор картинки.
      */
     public imageToken: string;
     /**
      * Расположение картинки в сети/директории.
-     * @var imageDir Расположение картинки в сети/директории.
      */
     public imageDir: string;
     /**
      * True, если однозначно используется идентификатор/токен картинки. По умолчанию false.
-     * @var isToken True, если однозначно используется идентификатор/токен картинки. По умолчанию false.
      */
     public isToken: boolean;
+
+    /**
+     * Дополнительные параметры для изобржения.
+     */
+    public params: any;
 
     /**
      * Image constructor.
@@ -51,15 +50,16 @@ export class Image {
         this.imageToken = null;
         this.imageDir = null;
         this.isToken = false;
+        this.params = {};
     }
 
     /**
-     * Инициализация значений для картинки.
+     * Инициализация картинки.
      *
-     * @param image Путь до картинки в сети/папке. Либо идентификатор картинки.
-     * @param title Заголовок для картинки.
-     * @param desc Описание для картинки.
-     * @param button Возможные кнопки для картинки.
+     * @param {string} image Путь до картинки в сети/папке. Либо идентификатор картинки.
+     * @param {string} title Заголовок для картинки.
+     * @param {string} desc Описание для картинки.
+     * @param {TButton} button Возможные кнопки для картинки.
      * @return boolean
      * @api
      */

@@ -1,12 +1,3 @@
-/**
- * Отправка запросов к Vk серверу.
- *
- * Документация по ВК api.
- * @see (https://vk.com/dev/bots_docs) Смотри тут
- *
- * Class VkRequest
- * @package bot\api
- */
 import {Request} from "./request/Request";
 import {mmApp} from "../core/mmApp";
 import {
@@ -20,6 +11,15 @@ import {
     TVkPeerId
 } from "./interfaces/IVkApi";
 
+/**
+ * Отправка запросов на Vk сервер.
+ *
+ * Документация по ВК api.
+ * @see (https://vk.com/dev/bots_docs) Смотри тут
+ *
+ * Class VkRequest
+ * @class bot\api
+ */
 export class VkRequest {
     /**
      * @const string Стандартная версия Api.
@@ -32,29 +32,25 @@ export class VkRequest {
 
     /**
      * Используемая версия Api.
-     * @var string _vkApiVersion Используемая версия Api.
      */
     protected _vkApiVersion: string;
     /**
-     * Отправка запроса.
-     * @var Request request Отправка запроса.
+     * Отправка запросов.
      * @see Request Смотри тут
      */
     protected _request: Request;
     /**
      * Текст ошибки.
-     * @var string|null error Текст ошибки.
      */
     protected _error;
 
     /**
      * Vk токен, необходимый для отправки запросов на сервер.
-     * @var string|null token Vk токен, необходимый для отправки запросов на сервер.
      */
     public token: string;
     /**
+     * Тип контента файла.
      * True если передается содержимое файла. По умолчанию: false.
-     * @var bool isAttachContent True если передается содержимое файла. По умолчанию: false.
      */
     public isAttachContent: boolean;
 
@@ -72,14 +68,14 @@ export class VkRequest {
         }
         this.token = null;
         if (mmApp.params.vk_token) {
-            this.token = mmApp.params.vk_token;
+            this.initToken(mmApp.params.vk_token);
         }
     }
 
     /**
      * Установить vk токен.
      *
-     * @param token Токен для загрузки данных на сервер.
+     * @param {string} token Токен для загрузки данных на сервер.
      * @api
      */
     public initToken(token: string): void {
@@ -89,7 +85,7 @@ export class VkRequest {
     /**
      * Вызов методов vk.
      *
-     * @param method Название метода.
+     * @param {string} method Название метода.
      * @return any|null
      * @api
      */
@@ -118,8 +114,8 @@ export class VkRequest {
     /**
      * Загрузка файлов на vk сервер.
      *
-     * @param url Адрес, на который отправляется запрос.
-     * @param file Загружаемый файл(ссылка или содержимое файла).
+     * @param {string} url Адрес, на который отправляется запрос.
+     * @param {string} file Загружаемый файл(ссылка или содержимое файла).
      * @return IVkUploadFile|null
      * [
      *  - 'photo' => array
@@ -152,9 +148,9 @@ export class VkRequest {
     /**
      * Отправка сообщения пользователю.
      *
-     * @param peerId Идентификатор места назначения.
-     * @param message Текст сообщения.
-     * @param params Пользовательские параметры:
+     * @param {TVkPeerId} peerId Идентификатор места назначения.
+     * @param {string} message Текст сообщения.
+     * @param {IVkParams} params Пользовательские параметры:
      * [
      * - integer user_id: User ID (by default — current user).
      * - integer random_id: Unique identifier to avoid resending the message.
@@ -192,19 +188,23 @@ export class VkRequest {
             peer_id: peerId,
             message
         };
+
         if (typeof peerId !== "number") {
             this._request.post.domain = peerId;
             delete this._request.post.peer_id;
         }
+
         if (typeof params.random_id !== "undefined") {
             this._request.post.random_id = params.random_id;
         } else {
             this._request.post.random_id = Date.now();
         }
+
         if (typeof params.attachments !== "undefined") {
             this._request.post.attachment = params.attachments.join(',');
             delete params.attachments;
         }
+
         if (typeof params.template !== 'undefined') {
             if (typeof params.template !== 'string') {
                 params.template = JSON.stringify(params.template);
@@ -212,6 +212,7 @@ export class VkRequest {
             this._request.post.template = params.template;
             delete params.template;
         }
+
         if (typeof params.keyboard !== 'undefined') {
             if (typeof this._request.post.template !== 'undefined') {
                 this.call(method);
@@ -223,6 +224,7 @@ export class VkRequest {
             this._request.post.keyboard = params.keyboard;
             delete params.keyboard;
         }
+
         if (Object.keys(params).length) {
             this._request.post = {...params, ...this._request.post};
         }
@@ -232,8 +234,8 @@ export class VkRequest {
     /**
      * Получение данные о пользователе.
      *
-     * @param userId Идентификатор пользователя.
-     * @param params Пользовательские параметры:
+     * @param {TVkPeerId | string[]} userId Идентификатор пользователя.
+     * @param {IVkParamsUsersGet} params Пользовательские параметры:
      * [
      * - array[string] user_ids: User IDs or screen names ('screen_name'). By default, current user ID.
      * - array fields: Profile fields to return. Sample values: 'nickname', 'screen_name', 'sex', 'bdate' (birthdate), 'city', 'country', 'timezone', 'photo', 'photo_medium', 'photo_big', 'has_mobile', 'contacts', 'education', 'online', 'counters', 'relation', 'last_seen', 'activity', 'can_write_private_message', 'can_see_all_posts', 'can_post', 'universities'.
@@ -263,7 +265,7 @@ export class VkRequest {
     /**
      * Получение данные по загрузке изображения на vk сервер.
      *
-     * @param peerId Идентификатор места назначения.
+     * @param {TVkPeerId} peerId Идентификатор места назначения.
      * @return IVkUploadServer|null
      * [
      *  - 'upload_url' => string Адрес сервера для загрузки изображения
@@ -280,9 +282,9 @@ export class VkRequest {
     /**
      * Сохранение файла на vk сервер.
      *
-     * @param photo Фотография.
-     * @param server Сервер.
-     * @param hash Хэш.
+     * @param {string} photo Фотография.
+     * @param {string} server Сервер.
+     * @param {string} hash Хэш.
      * @return IVkPhotosSave|null
      * [
      *  - 'id' => int Идентификатор изображения
@@ -311,8 +313,8 @@ export class VkRequest {
     /**
      * Получение данные по загрузке файла на vk сервер.
      *
-     * @param peerId Идентификатор места назначения.
-     * @param type ('doc' - Обычный документ, 'audio_message' - Голосовое сообщение, 'graffiti' - Граффити).
+     * @param {TVkPeerId} peerId Идентификатор места назначения.
+     * @param {TVkDocType} type ('doc' - Обычный документ, 'audio_message' - Голосовое сообщение, 'graffiti' - Граффити).
      * @return IVkUploadServer|null
      * [
      *  - 'upload_url' => url Адрес сервера для загрузки документа
@@ -330,9 +332,9 @@ export class VkRequest {
     /**
      * Загрузка файла на vk сервер.
      *
-     * @param file Сам файл.
-     * @param title Заголовок файла.
-     * @param tags Теги, по которым будет осуществляться поиск.
+     * @param {string} file Сам файл.
+     * @param {string} title Заголовок файла.
+     * @param {string} tags Теги, по которым будет осуществляться поиск.
      * @return IVkDocSave|null
      * [
      *  - 'type' => string Тип загруженного документа
@@ -407,7 +409,7 @@ export class VkRequest {
     /**
      * Сохранение логов.
      *
-     * @param error Текст ошибки.
+     * @param {string} error Текст ошибки.
      */
     protected log(error: string): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;

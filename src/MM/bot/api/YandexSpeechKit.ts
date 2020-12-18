@@ -1,13 +1,13 @@
+import {YandexRequest} from "./YandexRequest";
+import {mmApp} from "../core/mmApp";
+
 /**
  * Класс для преобразования текста в аудио файл.
  * Преобразование осуществляется через сервис Yandex SpeechKit.
  *
  * Class YandexSpeechKit
- * @package bot\api
+ * @class bot\api
  */
-import {YandexRequest} from "./YandexRequest";
-import {mmApp} from "../core/mmApp";
-
 export class YandexSpeechKit extends YandexRequest {
     /**
      * @const string Адрес, на который будет отправляться запрос
@@ -39,7 +39,6 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Текст, который нужно озвучить, в кодировке UTF-8.
-     * @var text Текст, который нужно озвучить, в кодировке UTF-8.
      * Можно использовать только одно из полей text и ssml.
      * Для передачи слов-омографов используйте + перед ударной гласной. Например, гот+ов или def+ect.
      * Чтобы отметить паузу между словами, используйте -.
@@ -48,7 +47,6 @@ export class YandexSpeechKit extends YandexRequest {
     public text: string;
     /**
      * Язык.
-     * @var lang Язык.
      * Допустимые значения:
      * ru-RU (по умолчанию) — русский язык;
      * en-US — английский язык;
@@ -57,12 +55,10 @@ export class YandexSpeechKit extends YandexRequest {
     public lang: string;
     /**
      * Желаемый голос для синтеза речи из списка. Значение параметра по умолчанию: oksana.
-     * @var voice Желаемый голос для синтеза речи из списка. Значение параметра по умолчанию: oksana.
      */
     public voice: string;
     /**
      * Эмоциональная окраска голоса. Поддерживается только при выборе русского языка (ru-RU) и голосов jane или omazh.
-     * @var emotion Эмоциональная окраска голоса. Поддерживается только при выборе русского языка (ru-RU) и голосов jane или omazh.
      * Допустимые значения:
      * good — доброжелательный;
      * evil — злой;
@@ -71,7 +67,6 @@ export class YandexSpeechKit extends YandexRequest {
     public emotion: string;
     /**
      * Скорость (темп) синтезированной речи. Для премиум-голосов временно не поддерживается.
-     * @var speed Скорость (темп) синтезированной речи. Для премиум-голосов временно не поддерживается.
      * Скорость речи задается дробным числом в диапазоне от 0.1 до 3.0. Где:
      * 3.0 — самый быстрый темп;
      * 1.0 (по умолчанию) — средняя скорость человеческой речи;
@@ -80,7 +75,6 @@ export class YandexSpeechKit extends YandexRequest {
     public speed: number;
     /**
      * Формат синтезируемого аудио.
-     * @var format Формат синтезируемого аудио.
      * Допустимые значения:
      * lpcm — аудиофайл синтезируется в формате LPCM без WAV-заголовка. Характеристики аудио:
      * Дискретизация — 8, 16 или 48 кГц в зависимости от значения параметра sampleRateHertz.
@@ -92,7 +86,6 @@ export class YandexSpeechKit extends YandexRequest {
     public format: string;
     /**
      * Частота дискретизации синтезируемого аудио.
-     * @var sampleRateHertz Частота дискретизации синтезируемого аудио.
      * Применяется, если значение format равно lpcm. Допустимые значения:
      * 48000 (по умолчанию) — частота дискретизации 48 кГц;
      * 16000 — частота дискретизации 16 кГц;
@@ -101,14 +94,13 @@ export class YandexSpeechKit extends YandexRequest {
     public sampleRateHertz: number;
     /**
      * Идентификатор каталога, к которому у вас есть доступ. Требуется для авторизации с пользовательским аккаунтом (см. ресурс UserAccount ). Не используйте это поле, если вы делаете запрос от имени сервисного аккаунта.
-     * @var folderId Идентификатор каталога, к которому у вас есть доступ. Требуется для авторизации с пользовательским аккаунтом (см. ресурс UserAccount ). Не используйте это поле, если вы делаете запрос от имени сервисного аккаунта.
      * Максимальная длина строки в символах — 50.
      */
     public folderId: number;
 
     /**
      * YandexSpeechKit constructor.
-     * @param oauth Авторизационный токен для успешного получения tts.
+     * @param {string} oauth Авторизационный токен для успешного получения tts.
      */
     public constructor(oauth: string = null) {
         super(oauth);
@@ -154,7 +146,7 @@ export class YandexSpeechKit extends YandexRequest {
      * Если синтез прошел успешно, в ответе будет бинарное содержимое аудиофайла.
      * Формат выходных данных зависит от значения параметра format.
      *
-     * @param text Текст для преобразования
+     * @param {string} text Текст для преобразования
      * @return any
      * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
      * @api

@@ -1,15 +1,15 @@
-/**
- * Загрузка изображения в навык.
- * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
- *
- * Class YandexImageRequest
- * @package bot\api
- */
 import {YandexRequest} from "./YandexRequest";
 import {mmApp} from "../core/mmApp";
 import {Request} from "./request/Request";
 import {IYandexCheckOutPlace, IYandexRequestDownloadImage} from "./interfaces/IYandexApi";
 
+/**
+ * Загрузка изображения в навык.
+ * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
+ *
+ * Class YandexImageRequest
+ * @class bot\api
+ */
 export class YandexImageRequest extends YandexRequest {
     /**
      * @const string Адрес, на который будет отправляться запрос
@@ -17,7 +17,6 @@ export class YandexImageRequest extends YandexRequest {
     private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
      * Идентификатор навыка, необходим для корректного сохранения изображения(Обязательный параметр)
-     * @var skillId Идентификатор навыка, необходим для корректного сохранения изображения(Обязательный параметр)
      * @see YandexRequest Смотри тут
      */
     public skillId: string;
@@ -25,8 +24,8 @@ export class YandexImageRequest extends YandexRequest {
     /**
      * YandexImageRequest constructor.
      *
-     * @param oauth Авторизационный токен для загрузки изображений.
-     * @param skillId Идентификатор навыка.
+     * @param {string} oauth Авторизационный токен для загрузки изображений.
+     * @param {string} skillId Идентификатор навыка.
      * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документация.
      * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
      */
@@ -76,7 +75,7 @@ export class YandexImageRequest extends YandexRequest {
      * - id - Идентификатор изображения.
      * - origUrl - Адрес изображения.
      *
-     * @param imageUrl Адрес картинки из интернета.
+     * @param {string} imageUrl Адрес картинки из интернета.
      * @return IYandexRequestDownloadImage|null
      * [
      *  - string id: Идентификатор изображения.
@@ -110,7 +109,7 @@ export class YandexImageRequest extends YandexRequest {
      * - id - Идентификатор изображения.
      * - origUrl - Адрес изображения.
      *
-     * @param imageDir Адрес картинки из интернета.
+     * @param {string} imageDir Путь к картинке, расположенной на сервере.
      * @return IYandexRequestDownloadImage|null
      * [
      *  - string id: Идентификатор изображения.
@@ -166,7 +165,7 @@ export class YandexImageRequest extends YandexRequest {
      * Удаление выбранной картинки.
      * В случае успеха вернет 'ok'.
      *
-     * @param imageId Идентификатор картинки, которую необходимо удалить.
+     * @param {string} imageId Идентификатор картинки, которую необходимо удалить.
      * @return string|null
      * @api
      */

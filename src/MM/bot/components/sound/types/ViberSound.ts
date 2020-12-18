@@ -1,21 +1,21 @@
-/**
- * Класс отвечающий за отправку голосовых сообщений в Viber.
- * Class ViberSound
- * @package bot\components\sound\types
- */
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
 import {mmApp} from "../../../core/mmApp";
 import {ViberRequest} from "../../../api/ViberRequest";
 
+/**
+ * Класс отвечающий за отправку голосовых сообщений в Viber.
+ * Class ViberSound
+ * @class bot\components\sound\types
+ */
 export class ViberSound implements TemplateSoundTypes {
     /**
      * Возвращает массив с отображаемыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос(не отправляется!).
      *
-     * @param sounds Массив звуков.
-     * @param text Исходный текст.
+     * @param {ISound[]} sounds Массив звуков.
+     * @param {string} text Исходный текст.
      * @return string[]
      * @api
      */

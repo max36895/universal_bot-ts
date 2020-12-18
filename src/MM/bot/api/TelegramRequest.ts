@@ -1,17 +1,17 @@
-/**
- * Отправка запросов к telegram серверу.
- *
- * Документация по telegram api.
- * @see (https://core.telegram.org/bots/api) Смотри тут
- *
- * Class TelegramRequest
- * @package bot\api
- */
 import {Request} from "./request/Request";
 import {mmApp} from "../core/mmApp";
 import {ITelegramParams, ITelegramResult, TTelegramChatId} from "./interfaces/ITelegramApi";
 import {is_file} from "../utils/functins";
 
+/**
+ * Отправка запросов на telegram сервер.
+ *
+ * Документация по telegram api.
+ * @see (https://core.telegram.org/bots/api) Смотри тут
+ *
+ * Class TelegramRequest
+ * @class bot\api
+ */
 export class TelegramRequest {
     /**
      * @const string: Адрес, на который отправляться запрос.
@@ -19,18 +19,15 @@ export class TelegramRequest {
     public readonly API_ENDPOINT = 'https://api.telegram.org/bot';
     /**
      * Отправка запросов.
-     * @var Request _request Отправка запросов.
      * @see Request Смотри тут
      */
     protected _request: Request;
     /**
      * Строка с ошибками.
-     * @var string|null error Строка с ошибками.
      */
     protected _error: string;
     /**
-     * Авторизационный токен бота, необходим для отправки данных.
-     * @var string|null token Авторизационный токен бота, необходим для отправки данных.
+     * Авторизационный токен бота, необходимый для отправки данных.
      */
     public token: string;
 
@@ -42,14 +39,14 @@ export class TelegramRequest {
         this._request.maxTimeQuery = 5500;
         this.token = null;
         if (typeof mmApp.params.telegram_token !== "undefined") {
-            this.token = mmApp.params.telegram_token;
+            this.initToken(mmApp.params.telegram_token);
         }
     }
 
     /**
      * Установить токен.
      *
-     * @param token Токен для загрузки данных на сервер.
+     * @param {string} token Токен для загрузки данных на сервер.
      * @api
      */
     public initToken(token: string): void {
@@ -66,10 +63,10 @@ export class TelegramRequest {
     }
 
     /**
-     * Отправка запросов к telegram серверу.
+     * Отправка запросов на telegram сервер.
      *
-     * @param method Отправляемый метод, что именно будет отправляться(Изображение, сообщение и тд).
-     * @param userId Идентификатор пользователя/чата
+     * @param {string} method Отправляемый метод, что именно будет отправляться(Изображение, сообщение и тд).
+     * @param {TTelegramChatId} userId Идентификатор пользователя/чата
      * @return any|null
      * @api
      */
@@ -100,9 +97,9 @@ export class TelegramRequest {
      * Отправка сообщения пользователю.
      *
      * @see https://core.telegram.org/bots/api#sendmessage Смотри тут
-     * @param chatId Идентификатор пользователя/чата.
-     * @param message Текст сообщения.
-     * @param params Пользовательские параметры:
+     * @param {TTelegramChatId}  chatId Идентификатор пользователя/чата.
+     * @param {string} message Текст сообщения.
+     * @param {ITelegramParams} params Пользовательские параметры:
      * [
      *  - string|int chat_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string text: Текст отправляемого сообщения, 1-4096 символов после синтаксического анализа сущностей.
@@ -156,10 +153,10 @@ export class TelegramRequest {
     /**
      * Отправка опроса пользователю.
      *
-     * @param chatId Идентификатор пользователя/чата.
-     * @param question Название опроса.
-     * @param options Варианты ответов.
-     * @param params Пользовательские параметры:
+     * @param {TTelegramChatId} chatId Идентификатор пользователя/чата.
+     * @param {string} question Название опроса.
+     * @param {string[]} options Варианты ответов.
+     * @param {ITelegramParams} params Пользовательские параметры:
      * [
      *  - int|string chat_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string question: Опросный вопрос, 1-255 символов.
@@ -236,7 +233,7 @@ export class TelegramRequest {
             }
             return this.call('sendPoll');
         } else {
-            this._log('Недостаточной количество вариантов. Должно быть от 2 - 10 вариантов!');
+            this._log('Недостаточное количество вариантов. Должно быть от 2 - 10 вариантов!');
             return null;
         }
     }
@@ -244,10 +241,10 @@ export class TelegramRequest {
     /**
      * Отправка изображения пользователю.
      *
-     * @param userId Идентификатор пользователя.
-     * @param file Название файла.
-     * @param desc Описание к фотографии.
-     * @param params Пользовательские команды:
+     * @param {TTelegramChatId} userId Идентификатор пользователя.
+     * @param {string} file Название файла.
+     * @param {string} desc Описание к фотографии.
+     * @param {ITelegramParams} params Пользовательские команды:
      * [
      *  - int|string chart_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string photo: Фото для отправки. Передайте file_id в качестве строки для отправки фотографии, которая существует на серверах Telegram (рекомендуется), передайте HTTP URL в качестве строки для Telegram, чтобы получить фотографию из интернета, или загрузите новую фотографию с помощью multipart/form-data. Более подробная информация об отправке файлов» (https://core.telegram.org/bots/api#sending-files).
@@ -315,9 +312,9 @@ export class TelegramRequest {
     /**
      * Отправка документа пользователю.
      *
-     * @param userId Идентификатор пользователя.
-     * @param file Путь к файлу.
-     * @param params Пользовательские параметры:
+     * @param {TTelegramChatId} userId Идентификатор пользователя.
+     * @param {string} file Путь к файлу.
+     * @param {ITelegramParams} params Пользовательские параметры:
      * [
      *  - int|string chart_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string document: Файл для отправки. Передайте file_id в качестве строки для отправки файла, который существует на серверах Telegram (рекомендуется), передайте HTTP URL в качестве строки для Telegram, чтобы получить файл из интернета, или загрузите новый, используя multipart/form-data. Более подробная информация об отправке файлов» (https://core.telegram.org/bots/api#sending-files).
@@ -387,9 +384,9 @@ export class TelegramRequest {
     /**
      * Отправка Аудио файла пользователю.
      *
-     * @param userId Идентификатор пользователя.
-     * @param file Путь или содержимое файла.
-     * @param params Пользовательские параметры:
+     * @param {TTelegramChatId} userId Идентификатор пользователя.
+     * @param {string} file Путь или содержимое файла.
+     * @param {ITelegramParams} params Пользовательские параметры:
      * [
      *  - int|string chart_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string audio: Аудио Файл для отправки. Передайте file_id в виде строки для отправки аудиофайла, существующего на серверах Telegram (рекомендуется), передайте HTTP URL в виде строки для Telegram, чтобы получить аудиофайл из интернета, или загрузите новый, используя multipart/form-data. Более подробная информация об отправке файлов» (https://core.telegram.org/bots/api#sending-files).
@@ -464,9 +461,9 @@ export class TelegramRequest {
     /**
      * Отправка видео файла пользователю.
      *
-     * @param userId Идентификатор пользователя.
-     * @param file Путь к файлу.
-     * @param params Пользовательские параметры:
+     * @param {TTelegramChatId} userId Идентификатор пользователя.
+     * @param {string} file Путь к файлу.
+     * @param {ITelegramParams} params Пользовательские параметры:
      * [
      *  - int|string chart_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string video: Видео для отправки. Передайте file_id в качестве строки для отправки видео, которое существует на серверах Telegram (рекомендуется), передайте HTTP URL в качестве строки для Telegram, чтобы получить видео из интернета, или загрузите новое видео с помощью multipart/form-data. Более подробная информация об отправке файлов» (https://core.telegram.org/bots/api#sending-files).
@@ -543,10 +540,10 @@ export class TelegramRequest {
     /**
      * Сохранение логов в файл.
      *
-     * @param error Текст ошибки.
+     * @param {string} error Текст ошибки.
      */
     protected _log(error: string): void {
         error = `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        mmApp.saveLog('telegramApi._log', error);
+        mmApp.saveLog('telegramApi.log', error);
     }
 }

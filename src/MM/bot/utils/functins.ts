@@ -1,3 +1,7 @@
+/**
+ * Вспомогательные утилиты
+ * @packageDocumentation
+ */
 import * as fs from 'fs'
 import * as readline from 'readline';
 
@@ -7,8 +11,8 @@ export interface IGetParams {
 
 /**
  * Получить случайное число из диапазона
- * @param {number} min
- * @param {number} max
+ * @param {number} min Минимальное значение
+ * @param {number} max Максимальное значение
  * @returns {number}
  */
 export function rand(min: number, max: number) {
@@ -16,9 +20,9 @@ export function rand(min: number, max: number) {
 }
 
 /**
- * Проверить схожесть текста
- * @param {string} first
- * @param {string} second
+ * Проверяет схожесть текста
+ * @param {string} first Текст который проверяем
+ * @param {string} second Текст с которым сравниваем
  * @param {number} percent
  * @returns {number}
  */
@@ -68,8 +72,8 @@ export function similar_text(first: string, second: string, percent: number = 0)
 }
 
 /**
- * Проверка на существование файла
- * @param {string} file
+ * Проверяем существование файла
+ * @param {string} file Файл, который необходимо проверить
  * @returns {boolean}
  */
 export function is_file(file: string): boolean {
@@ -82,8 +86,8 @@ export function is_file(file: string): boolean {
 }
 
 /**
- * Прочитать содержимое файла
- * @param {string} fileName
+ * Читаем содержимое файла
+ * @param {string} fileName Файл, содержмое которогонужно получить.
  * @returns {string}
  */
 export function fread(fileName: string): string {
@@ -91,10 +95,10 @@ export function fread(fileName: string): string {
 }
 
 /**
- * Записать в файл
- * @param {string} fileName
- * @param {string} fileContent
- * @param {string} mode
+ * Записать данные в файл
+ * @param {string} fileName Файл, в который необходимо записать данные.
+ * @param {string} fileContent Данные, записываемые в файл.
+ * @param {string} mode Режим записи.
  */
 export function fwrite(fileName: string, fileContent: string, mode: string = 'w'): void {
     if (mode === 'w') {
@@ -105,8 +109,8 @@ export function fwrite(fileName: string, fileContent: string, mode: string = 'w'
 }
 
 /**
- * Удалить файл
- * @param {string} fileName
+ * Удаление файла
+ * @param {string} fileName Файл, который необходимо удалить
  */
 export function unlink(fileName: string): void {
     fs.unlinkSync(fileName);
@@ -114,7 +118,7 @@ export function unlink(fileName: string): void {
 
 /**
  * Проверка на существование директории
- * @param {string} path
+ * @param {string} path Проверяемая дирректория
  * @returns {boolean}
  */
 export function isDir(path: string): boolean {
@@ -122,16 +126,16 @@ export function isDir(path: string): boolean {
 }
 
 /**
- * Создать директорию
- * @param {string} path
- * @param {"fs".Mode} mask
+ * Создание директории
+ * @param {string} path Директория, которую необходимо создать.
+ * @param {"fs".Mode} mask Маска для создания директории.
  */
 export function mkdir(path: string, mask: fs.Mode = '0774'): void {
     fs.mkdirSync(path, mask);
 }
 
 /**
- * Получить Get объект
+ * Получение Get объект
  * @param {IGetParams} formData
  * @param {string} separator
  * @returns {string}
@@ -168,7 +172,7 @@ if (typeof window !== 'undefined') {
 export {GET}
 
 /**
- * Чтение введенных данных в консоли
+ * Чтение введенных данных в консоль
  * @returns {Promise<string>}
  */
 export function stdin(): Promise<string> {

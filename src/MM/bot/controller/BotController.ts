@@ -5,119 +5,126 @@ import {Nlu} from "../components/nlu/Nlu";
 import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from "../core/mmApp";
 import {Text} from "../components/standard/Text";
 
+/**
+ * Абстрактный класс, который должны унаследовать все классы, обрабатывающие логику приложения.
+ * @class BotController
+ */
 export abstract class BotController {
     /**
-     * Кнопки отображаемые в приложении
-     * @var buttons Кнопки отображаемые в приложении
+     * Кнопки отображаемые в приложении.
      * @see Buttons Смотри тут
      */
     public buttons: Buttons;
     /**
      * Карточки отображаемые в приложении.
-     * @var card Карточки отображаемые в приложении.
      * @see Card Смотри тут
      */
     public card: Card;
     /**
-     * Текст который увидит пользователь.
-     * @var text
+     * Текст который отобразится пользователю.
      */
     public text: string;
     /**
      * Текст который услышит пользователь.
-     * @var tts Текст который услышит пользователь.
      * !Важно, если переменная заполняется для других типов приложения, тогда отправляется запрос в yandex speechkit для преобразования текста в звук.
      * Полученный звук отправляется пользователю как аудио сообщение.
      */
     public tts: string;
     /**
      * Обработанный nlu в приложении.
-     * @var nlu Обработанный nlu в приложении.
      * @link [nlu](https://www.maxim-m.ru/glossary/nlu)
      * @see Nlu Смотри тут
      */
     public nlu: Nlu;
     /**
-     * Звуки в приложении.
-     * @var sound Звуки в приложении.
+     * Звуки которые будут присутствовать в приложении.
      * @see Sound Смотри тут
      */
     public sound: Sound;
     /**
      * Идентификатор пользователя.
-     * @var userId Идентификатор пользователя.
      */
     public userId: string | number;
     /**
-     * Пользовательский токен. Инициализируется тогда, когда пользователь авторизован (Актуально для Алисы).
-     * @var userToken Пользовательский токен. Инициализируется тогда, когда пользователь авторизован (Актуально для Алисы).
+     * Пользовательский токен. Инициализируется когда пользователь авторизовался (Актуально для Алисы).
      */
     public userToken: string;
     /**
      * Meta данные пользователя.
-     * @var userMeta Meta данные пользователя.
      */
     public userMeta: any;
     /**
      * Id сообщения(Порядковый номер сообщения), необходим для того, чтобы понять в 1 раз пишет пользователь или нет.
-     * @var messageId Id сообщения(Порядковый номер сообщения), необходим для того, чтобы понять в 1 раз пишет пользователь или нет.
      */
     public messageId: number | string;
     /**
-     * Запрос пользователь в нижнем регистре.
-     * @var userCommand Запрос пользователь в нижнем регистре.
+     * Запрос пользователя в нижнем регистре.
      */
     public userCommand: string;
     /**
      * Оригинальный запрос пользователя.
-     * @var originalUserCommand Оригинальный запрос пользователя.
      */
     public originalUserCommand: string;
     /**
-     * Дополнительные параметры запроса.
-     * @var payload Дополнительные параметры запроса.
+     * Дополнительные параметры к запросу.
      */
     public payload: object;
     /**
-     * Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
-     * @var userData Пользовательские данные (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
+     * Пользовательские данные, сохраненные в приложении (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
      */
     public userData: any;
     /**
-     * Запросить авторизацию пользователя или нет (Актуально для Алисы).
-     * @var isAuth Запросить авторизацию пользователя или нет (Актуально для Алисы).
+     * Запросить авторизацию для пользователя или нет (Актуально для Алисы).
      */
     public isAuth: boolean;
     /**
      * Проверка что авторизация пользователя прошла успешно (Актуально для Алисы).
-     * @var isAuthSuccess Проверка что авторизация пользователя прошла успешно (Актуально для Алисы).
      */
     public isAuthSuccess: true | false | null;
     /**
-     * Пользовательское хранилище (Актуально для Алисы).
-     * @var state Пользовательское хранилище (Актуально для Алисы).
+     * Пользовательское локальное хранилище (Актуально для Алисы).
      */
     public state: object | string;
     /**
-     * Если ли экран (Актуально для Алисы).
-     * @var isScreen Если ли экран (Актуально для Алисы).
+     * Наличие экрана.
      */
     public isScreen: boolean;
     /**
-     * Завершение сессии (Актуально для Алисы).
-     * @var isEnd Завершение сессии (Актуально для Алисы).
+     * Завершение сессии.
      */
     public isEnd: boolean;
     /**
      * Отправлять в конце запрос или нет. (Актуально для Vk и Telegram) False тогда, когда все запросы отправлены внутри логики приложения, и больше ничего отправлять не нужно.
-     * @var isSend Отправлять в конце запрос или нет. (Актуально для Vk и Telegram) False тогда, когда все запросы отправлены внутри логики приложения, и больше ничего отправлять не нужно.
      */
     public isSend: boolean;
     /**
      * Полученный запрос.
-     * @var requestObject Полученный запрос.
      */
     public requestObject: object | string;
+
+    /**
+     * Идентификатор предыдущего действия пользователя.
+     */
+    public oldIntentName: string;
+
+    /**
+     * Идентификатор текущего действия пользователя.
+     */
+    public thisIntentName: string;
+
+    /**
+     * Эмоция, с котороей будет общаться приложение. Актуально для Сбер.
+     */
+    public emotion: string;
+
+    /**
+     * Манера общения с пользователем. Общаемся на "Вы" или на "ты".
+     * Возможные значения:
+     * "official" - оффициальный тон общения(на Вы)
+     * "no_official" - Общаемся на ты
+     * null - можно использовать любой тон
+     */
+    public appeal: "official" | "no_official";
 
     protected constructor() {
         this.buttons = new Buttons();
@@ -141,22 +148,26 @@ export abstract class BotController {
         this.isAuthSuccess = null;
         this.isSend = true;
         this.requestObject = null;
+        this.oldIntentName = null;
+        this.thisIntentName = null;
+        this.emotion = null;
+        this.appeal = null;
     }
 
     /**
      * Получение всех обрабатываемых команд приложения.
      *
-     * @return array
+     * @return IAppIntent[]
      */
     protected _intents(): IAppIntent[] {
         return mmApp.params.intents || [];
     }
 
     /**
-     * Поиск нужной команды в  пользовательском запросе.
+     * Поиск нужной команды в пользовательском запросе.
      * В случае успеха вернет название действия.
      *
-     * @param text Текст, в котором происходит поиск вхождений.
+     * @param {string} text Текст, в котором происходит поиск вхождений.
      * @return string|null
      */
     protected _getIntent(text: string): string {
@@ -172,11 +183,11 @@ export abstract class BotController {
     /**
      * Обработка пользовательских команд.
      *
-     * Если intentName === null, значит не удалось найти обрабатываемых команд в тексте.
-     * В таком случе стоит смотреть либо на предыдущую команду пользователя(которая сохранена в бд).
+     * Если intentName === null, значит не удалось найти обрабатываемых команд в запросе.
+     * В таком случе стоит смотреть либо на предыдущую команду пользователя.
      * Либо вернуть текст помощи.
      *
-     * @param intentName Название действия.
+     * @param {string} intentName Название действия.
      */
     public abstract action(intentName: string): void;
 
@@ -196,6 +207,7 @@ export abstract class BotController {
             case WELCOME_INTENT_NAME:
                 this.text = Text.getText(mmApp.params.welcome_text || '');
                 break;
+
             case HELP_INTENT_NAME:
                 this.text = Text.getText(mmApp.params.help_text || '');
                 break;

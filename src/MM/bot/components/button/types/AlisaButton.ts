@@ -1,16 +1,16 @@
-/**
- * Класс отвечающий за отображение кнопок в Алисе
- * Class AlisaButton
- * @package bot\components\button\types
- */
 import {TemplateButtonTypes} from "./TemplateButtonTypes";
 import {IAlisaButton, IAlisaButtonCard} from "../../../core/interfaces/IAlisa";
 import {Text} from "../../standard/Text";
 
+/**
+ * Класс отвечающий за отображение кнопок в Алисе
+ * Class AlisaButton
+ * @class bot\components\button\types
+ */
 export class AlisaButton extends TemplateButtonTypes {
     /**
-     * True, чтобы получить кнопки для карточки. По умолчанию false
-     * @var isCard True, чтобы получить кнопки для карточки. По умолчанию false
+     * Использование кнопок для карточки
+     * True - получение кнопки для карточки. По умолчанию false
      */
     public isCard: boolean;
 
@@ -23,7 +23,7 @@ export class AlisaButton extends TemplateButtonTypes {
     }
 
     /**
-     * Получить массив с кнопками для ответа пользователю.
+     * получение массива с кнопками для ответа пользователю.
      *
      * @return IAlisaButton[]|IAlisaButtonCard
      * [

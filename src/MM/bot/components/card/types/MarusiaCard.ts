@@ -1,23 +1,23 @@
-/**
- * Класс отвечающий за отображение карточки в Марусе.
- * Class MarusiaCard
- * @package bot\components\card\types
- */
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {Buttons} from "../../button/Buttons";
 import {ImageTokens} from "../../../models/ImageTokens";
 import {Text} from "../../standard/Text";
 import {IAlisaButtonCard, IAlisaImage, IAlisaItemsList} from "../../../core/interfaces/IAlisa";
 
+/**
+ * Класс отвечающий за отображение карточки в Марусе.
+ * Class MarusiaCard
+ * @class bot\components\card\types
+ */
 export class MarusiaCard extends TemplateCardTypes {
     public static readonly MARUSIA_CARD_BIG_IMAGE = 'BigImage';
     public static readonly MARUSIA_CARD_ITEMS_LIST = 'ItemsList';
     public static readonly MARUSIA_MAX_IMAGES = 5;
 
     /**
-     * Получить карточку для отображения пользователю.
+     * Получение карточки для отображения пользователю.
      *
-     * @param isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
      * @return IAlisaBigImage | IAlisaItemsList
      * @api
      */

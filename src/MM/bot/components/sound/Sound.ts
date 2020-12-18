@@ -1,25 +1,24 @@
-/**
- * Класс отвечает за обработку и корректное воспроизведение звуков, в зависимости от типа приложения.
- * Class Sound
- * @package bot\components\sound
- */
 import {TemplateSoundTypes} from "./types/TemplateSoundTypes";
-import {mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
+import {mmApp, T_ALISA, T_MARUSIA, T_SMARTAPP, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
 import {AlisaSound} from "./types/AlisaSound";
 import {TelegramSound} from "./types/TelegramSound";
 import {VkSound} from "./types/VkSound";
 import {ViberSound} from "./types/ViberSound";
 import {ISound} from "./interfaces/sound";
 
+/**
+ * Класс отвечает за обработку и корректное воспроизведение звуков, в зависимости от типа приложения.
+ * Class Sound
+ * @class bot\components\sound
+ */
 export class Sound {
     /**
      * Массив звуков.
-     * @var sounds Массив звуков.
      */
     public sounds: ISound[];
     /**
-     * True, если использовать стандартные звуки. Актуально для Алисы. По умолчанию true.
-     * @var isUsedStandardSound True, если использовать стандартные звуки. Актуально для Алисы. По умолчанию true.
+     * Использовать стандартные звуки.
+     * Если true - используются стандартные звуки. Актуально для Алисы. По умолчанию true.
      */
     public isUsedStandardSound: boolean;
 
@@ -34,8 +33,8 @@ export class Sound {
     /**
      * Получить корректно поставленные звуки в текст.
      *
-     * @param text Исходный текст.
-     * @param userSound Пользовательский класс для обработки звуков.
+     * @param {string} text Исходный текст.
+     * @param {TemplateSoundTypes} userSound Пользовательский класс для обработки звуков.
      * @return any
      * @api
      */
@@ -59,6 +58,10 @@ export class Sound {
                 break;
 
             case T_MARUSIA:
+                sound = null;
+                break;
+
+            case T_SMARTAPP:
                 sound = null;
                 break;
 

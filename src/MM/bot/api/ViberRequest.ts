@@ -1,12 +1,3 @@
-/**
- * Отправка запросов к viber серверу.
- *
- * Документация по viber api.
- * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
- *
- * Class ViberRequest
- * @package bot\api
- */
 import {Request} from "./request/Request";
 import {mmApp} from "../core/mmApp";
 import {
@@ -18,6 +9,15 @@ import {
 import {IViberButton} from "../components/button/interfaces/IViberButton";
 import {Text} from "../components/standard/Text";
 
+/**
+ * Отправка запросов на viber сервер.
+ *
+ * Документация по viber api.
+ * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
+ *
+ * Class ViberRequest
+ * @class bot\api
+ */
 export class ViberRequest {
     /**
      * @const string: Адрес, на который отправляться запрос.
@@ -26,19 +26,16 @@ export class ViberRequest {
 
     /**
      * Отправка запросов.
-     * @var Request request Отправка запросов.
      * @see Request Смотри тут
      */
     protected _request: Request;
     /**
      * Ошибки при выполнении.
-     * @var string error Ошибки при выполнении.
      */
     protected _error: string;
 
     /**
-     * Авторизационный токен бота, необходим для отправки данных.
-     * @var string|null token Авторизационный токен бота, необходим для отправки данных.
+     * Авторизационный токен бота, необходимый для отправки данных.
      */
     public token: string;
 
@@ -49,14 +46,14 @@ export class ViberRequest {
         this._request = new Request();
         this.token = null;
         if (mmApp.params.viber_token) {
-            this.token = mmApp.params.viber_token;
+            this.initToken(mmApp.params.viber_token);
         }
     }
 
     /**
      * Установить токен.
      *
-     * @param token Токен необходимый для отправки данных на сервер.
+     * @param {string} token Токен необходимый для отправки данных на сервер.
      * @api
      */
     public initToken(token: string): void {
@@ -64,9 +61,9 @@ export class ViberRequest {
     }
 
     /**
-     * Отправка запросов к viber серверу.
+     * Отправка запросов на viber сервер.
      *
-     * @param method Название метода.
+     * @param {string} method Название метода.
      * @return any|null
      * @api
      */
@@ -101,7 +98,7 @@ export class ViberRequest {
      * Этот запрос может быть отправлен дважды в течение 12 часов для каждого идентификатора пользователя.
      * @see (https://developers.viber.com/docs/api/rest-bot-api/#get-user-details) Смотри тут
      *
-     * @param id Уникальный идентификатор пользователя.
+     * @param {string} id Уникальный идентификатор пользователя.
      * @return IViberGetUserDetails|null
      * [
      *  - int status: Результат действия.
@@ -136,14 +133,14 @@ export class ViberRequest {
      * Отправка сообщения пользователю будет возможна только после того, как пользователь подпишется на бота, отправив ему сообщение.
      * @see (https://developers.viber.com/docs/api/rest-bot-api/#send-message) Смотри тут
      *
-     * @param receiver Уникальный идентификатор пользователя Viber.
-     * @param sender Отправитель:
+     * @param {string} receiver Уникальный идентификатор пользователя Viber.
+     * @param {IViberSender} sender Отправитель:
      * [
      *  - string name: Имя отправителя для отображения (Максимум 28 символов).
      *  - string avatar: URL-адрес Аватара отправителя (Размер аватара должен быть не более 100 Кб. Рекомендуется 720x720).
      * ]
-     * @param text Текст сообщения.
-     * @param params Дополнительные параметры:
+     * @param {string} text Текст сообщения.
+     * @param {IViberParams} params Дополнительные параметры:
      * [
      *  - string receiver: Уникальный идентификатор пользователя Viber.
      *  - string type: Тип сообщения. (Доступные типы сообщений: text, picture, video, file, location, contact, sticker, carousel content и url).
@@ -192,8 +189,8 @@ export class ViberRequest {
      * Установка webhook для vider.
      * @see (https://developers.viber.com/docs/api/rest-bot-api/#webhooks) Смотри тут
      *
-     * @param url Адресс webhook`а.
-     * @param params Дополнительные параметры.
+     * @param {string} url Адресс webhook`а.
+     * @param {IViberWebhookParams} params Дополнительные параметры.
      * @return any|null
      * @api
      */
@@ -227,9 +224,9 @@ export class ViberRequest {
      * Отправка карточки пользователю.
      * @see (https://developers.viber.com/docs/api/rest-bot-api/#message-types) Смотри тут
      *
-     * @param receiver Уникальный идентификатор пользователя Viber.
-     * @param richMedia Отображаемые данные. Параметр 'Buttons'.
-     * @param params Дополнительные параметры.
+     * @param {string} receiver Уникальный идентификатор пользователя Viber.
+     * @param {IViberButton} richMedia Отображаемые данные. Параметр 'Buttons'.
+     * @param {IViberRichMediaParams} params Дополнительные параметры.
      * @return any|null
      * @see sendMessage() Смотри тут
      * @api
@@ -255,9 +252,9 @@ export class ViberRequest {
     /**
      * Отправить файл на сервер.
      *
-     * @param receiver Уникальный идентификатор пользователя Viber.
-     * @param file Ссылка на файл.
-     * @param params Дополнительные параметры.
+     * @param {string} receiver Уникальный идентификатор пользователя Viber.
+     * @param {string} file Ссылка на файл.
+     * @param {IViberParams} params Дополнительные параметры.
      * @return any|null
      * @see sendMessage() Смотри тут
      * @api
@@ -282,7 +279,7 @@ export class ViberRequest {
     /**
      * Запись логов.
      *
-     * @param error Текст ошибки.
+     * @param {string} error Текст ошибки.
      */
     protected log(error: string): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;

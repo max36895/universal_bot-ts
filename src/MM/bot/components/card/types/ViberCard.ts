@@ -1,26 +1,68 @@
-/**
- * Класс отвечающий за отображение карточки в Viber.
- * Class ViberCard
- * @package bot\components\card\types
- */
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {IViberButtonObject} from "../../button/interfaces/IViberButton";
 import {Buttons} from "../../button/Buttons";
+import {Image} from "../../image/Image";
 
 export interface IViberCard {
+    /**
+     * Количество колонок
+     */
     Columns: number;
+    /**
+     * Количество столбцов
+     */
     Rows: number;
+    /**
+     * Ссылка на изображение
+     */
     Image?: string;
+    /**
+     * Текст
+     */
     Text?: string;
     ActionType?: string;
     ActionBody?: string;
 }
 
+/**
+ * Класс отвечающий за отображение карточки в Viber.
+ * Class ViberCard
+ * @class bot\components\card\types
+ */
 export class ViberCard extends TemplateCardTypes {
     /**
-     * Получить карточку для отображения пользователю.
+     * Получить елемент карточки.
+     * @param {Image} image Объект с изображением
+     * @param {number} countImage Количество изображений
+     * @returns {IViberCard}
+     * @private
+     */
+    protected static _getElement(image: Image, countImage: number = 1): IViberCard {
+        if (!image.imageToken) {
+            if (image.imageDir) {
+                image.imageToken = image.imageDir;
+            }
+        }
+
+        let element: IViberCard = {
+            Columns: countImage,
+            Rows: 6,
+        };
+        if (image.imageToken) {
+            element.Image = image.imageToken;
+        }
+        const btn: IViberButtonObject = image.button.getButtons(Buttons.T_VIBER_BUTTONS);
+        if (btn && typeof btn.Buttons !== 'undefined') {
+            element = {...element, ...btn.Buttons[0]};
+            element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;
+        }
+        return element;
+    }
+
+    /**
+     * Получение карточки для отображения пользователю.
      *
-     * @param  isOne True, если в любом случае использовать 1 картинку.
+     * @param  {boolean} isOne True, если в любом случае использовать 1 картинку.
      * @return IViberCard[] | IViberCard
      * @api
      */
@@ -38,39 +80,11 @@ export class ViberCard extends TemplateCardTypes {
                     }
                 }
                 if (this.images[0].imageToken) {
-                    let element: IViberCard = {
-                        Columns: 1,
-                        Rows: 6,
-                        Image: this.images[0].imageToken
-                    };
-                    const btn: IViberButtonObject = this.images[0].button.getButtons(Buttons.T_VIBER_BUTTONS);
-                    if (btn && typeof btn.Buttons !== 'undefined') {
-                        element = {...element, ...btn.Buttons[0]};
-                        element.Text = `<font color=#000><b>${this.images[0].title}</b></font><font color=#000>${this.images[0].desc}</font>`;
-                    }
-                    return element;
+                    return ViberCard._getElement(this.images[0]);
                 }
             } else {
                 this.images.forEach((image) => {
-                    if (!image.imageToken) {
-                        if (image.imageDir) {
-                            image.imageToken = image.imageDir;
-                        }
-                    }
-
-                    let element: IViberCard = {
-                        Columns: countImage,
-                        Rows: 6,
-                    };
-                    if (image.imageToken) {
-                        element.Image = image.imageToken;
-                    }
-                    const btn: IViberButtonObject = image.button.getButtons(Buttons.T_VIBER_BUTTONS);
-                    if (btn && typeof btn.Buttons !== 'undefined') {
-                        element = {...element, ...btn.Buttons[0]};
-                        element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;
-                    }
-                    objects.push(element);
+                    objects.push(ViberCard._getElement(image, countImage));
                 })
             }
         }

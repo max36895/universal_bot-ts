@@ -1,33 +1,54 @@
-/**
- * Класс отвечающий за отображение карточки в ВКонтакте.
- * Class VkCard
- * @package bot\components\card\types
- */
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {ImageTokens} from "../../../models/ImageTokens";
 import {Buttons} from "../../button/Buttons";
 import {IVkButton} from "../../button/interfaces/IVkButton";
 
+/**
+ * Класс отвечающий за отображение карточки в ВКонтакте.
+ * Class VkCard
+ * @class bot\components\card\types
+ */
 export interface IVkCardElement {
+    /**
+     * Заголовок
+     */
     title: string;
+    /**
+     * Описание
+     */
     description: string;
+    /**
+     * Ид изображения
+     */
     photo_id: string;
+    /**
+     * Кнопки
+     */
     buttons?: IVkButton[];
+    /**
+     * Действие, происходящее при нажатии на элемент карточки
+     */
     action?: {
         type: string;
     }
 }
 
 export interface IVkCard {
+    /**
+     * Тип карточки
+     */
     type: string;
+    /**
+     * Элементы карточки
+     */
     elements: IVkCardElement[]
 }
 
 export class VkCard extends TemplateCardTypes {
     /**
-     * Получить карточку для отображения пользователю.
+     * Получение карточки для отображения пользователю.
      *
-     * @param isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
      * @return IVkCard | string[]
      * @api
      */

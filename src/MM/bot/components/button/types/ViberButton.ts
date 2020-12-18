@@ -1,11 +1,11 @@
-/**
- * Класс отвечающий за отображение кнопок в Viber
- * Class ViberButton
- * @package bot\components\button\types
- */
 import {TemplateButtonTypes} from "./TemplateButtonTypes";
 import {IViberButton, IViberButtonObject} from "../interfaces/IViberButton";
 
+/**
+ * Класс отвечающий за отображение кнопок в Viber
+ * Class ViberButton
+ * @class bot\components\button\types
+ */
 export class ViberButton extends TemplateButtonTypes {
     public static readonly T_REPLY = 'reply';
     public static readonly T_OPEN_URL = 'open-url';
@@ -14,7 +14,7 @@ export class ViberButton extends TemplateButtonTypes {
     public static readonly T_NONE = 'none';
 
     /**
-     * Получить массив с кнопками для ответа пользователю.
+     * Получение массива с кнопками для ответа пользователю.
      *
      * @return IViberButtonObject
      * @api

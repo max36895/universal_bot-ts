@@ -1,11 +1,5 @@
-/**
- * Class Model
- * @package bot\models\db
- *
- * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
- */
 import {mmApp} from "../../core/mmApp";
-import {IModelRules, TModelRulesType} from "../interface/IModel";
+import {IModelRules} from "../interface/IModel";
 import {Text} from "../../components/standard/Text";
 import {Sql} from "./Sql";
 import {fread, is_file} from "../../utils/functins";
@@ -16,15 +10,19 @@ export interface IModelRes {
     data?: any;
 }
 
+/**
+ * Class Model
+ * @class bot\models\db
+ *
+ * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
+ */
 export abstract class Model {
     /**
      * Стартовое значение для индекса.
-     * @var int startIndex Стартовое значение для индекса.
      */
     public startIndex = 0;
     /**
      * Подключение к базе данных.
-     * @var Sql|null db Подключение к базе данных.
      */
     private _db: Sql;
 
@@ -69,7 +67,7 @@ export abstract class Model {
     /**
      * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
      *
-     * @param text Исходный текст.
+     * @param {string | number} text Исходный текст.
      * @return string
      * @api
      */
@@ -153,7 +151,7 @@ export abstract class Model {
     }
 
     /**
-     * Выполняет запрос с поиском по уникальному ключу.
+     * Выполнение запроса с поиском по уникальному ключу.
      *
      * @return boolean|mysqli_result|array|null
      * @api
@@ -198,7 +196,7 @@ export abstract class Model {
      * Сохранение значения в базу данных.
      * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
      *
-     * @param isNew Добавить новую запись в базу данных без поиска по ключу.
+     * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
      * @return boolean|mysqli_result|null
      * @api
      */
@@ -413,8 +411,8 @@ export abstract class Model {
                 while (!data.done) {
                     regDatas.push(
                         {
-                            key: data.value[2].replace(/\`/g, ''),
-                            val: data.value[3].replace(/\"/g, '')
+                            key: data.value[2].replace(/`/g, ''),
+                            val: data.value[3].replace(/"/g, '')
                         });
                     data = datas.next();
                 }
@@ -497,7 +495,7 @@ export abstract class Model {
      */
     public getFileData() {
         const path = mmApp.config.json;
-        const fileName = this.tableName().replace(/\`/g, '');
+        const fileName = this.tableName().replace(/`/g, '');
         const file = `${path}/${fileName}.json`;
         if (is_file(file)) {
             return JSON.parse(fread(file));

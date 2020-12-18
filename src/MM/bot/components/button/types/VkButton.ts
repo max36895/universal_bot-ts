@@ -1,12 +1,12 @@
-/**
- * Класс отвечающий за отображение кнопок в ВКонтакте
- * Class VkButton
- * @package bot\components\button\types
- */
 import {TemplateButtonTypes} from "./TemplateButtonTypes";
 import {IVkButton, IVkButtonObject} from "../interfaces/IVkButton";
 import {Button} from "../Button";
 
+/**
+ * Класс отвечающий за отображение кнопок в ВКонтакте
+ * Class VkButton
+ * @class bot\components\button\types
+ */
 export class VkButton extends TemplateButtonTypes {
     /**
      * @const string: Название для группы. Использовать следующим способом:
@@ -16,7 +16,7 @@ export class VkButton extends TemplateButtonTypes {
     public static readonly GROUP_NAME = '_group';
 
     /**
-     * Получить массив с кнопками для ответа пользователю.
+     * Получение массива с кнопками для ответа пользователю.
      *
      * @return IVkButtonObject
      * @api
