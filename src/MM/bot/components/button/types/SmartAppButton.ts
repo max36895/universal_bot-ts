@@ -15,7 +15,7 @@ export class SmartAppButton extends TemplateButtonTypes {
     public isCard: boolean;
 
     /**
-     * AlisaButton constructor.
+     * SmartAppButton constructor.
      */
     public constructor() {
         super();
