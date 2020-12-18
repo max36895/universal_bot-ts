@@ -22,7 +22,7 @@
     "build": "rm -rf dist/ && tsc",
     "test": "node node_modules/mocha/bin/mocha dist/src/MM/tests/**/*.js",
     "bt": "npm run build && npm test",
-    "doc": "typedoc --readme README.md --name typedin --out ./docs/ --tsconfig tsconfig.json --excludePrivate --excludeNotExported --excludeExternals"
+    "doc": "typedoc --readme README.md --name u_bot --out ./docs/ --tsconfig tsconfig.json --excludePrivate --excludeNotExported --excludeExternals"
   },
   "repository": {
     "type": "git",
