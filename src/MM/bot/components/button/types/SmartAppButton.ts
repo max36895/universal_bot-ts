@@ -4,7 +4,7 @@ import {ISberSmartAppCardAction, ISberSmartAppSuggestionButton} from "../../../c
 
 /**
  * Класс отвечающий за отображение кнопок в Сбер SmartApp
- * Class AlisaButton
+ * Class SmartAppButton 
  * @class bot\components\button\types
  */
 export class SmartAppButton extends TemplateButtonTypes {
