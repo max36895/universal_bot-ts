@@ -109,7 +109,7 @@ export class YandexImageRequest extends YandexRequest {
      * - id - Идентификатор изображения.
      * - origUrl - Адрес изображения.
      *
-     * @param {string} imageDir Адрес картинки из интернета.
+     * @param {string} imageDir Путь к картинке, расположенной на сервере.
      * @return IYandexRequestDownloadImage|null
      * [
      *  - string id: Идентификатор изображения.
