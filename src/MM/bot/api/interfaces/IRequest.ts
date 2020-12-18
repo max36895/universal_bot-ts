@@ -1,6 +1,6 @@
 export interface IRequestSend {
     /**
-     * Статут ответа. True, если запрос успешно выполнился, иначе false.
+     * Статус ответа. True, если запрос успешно выполнился, иначе false.
      */
     status: boolean;
     /**
