@@ -75,7 +75,7 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * Загрузить аудиофайл.
      *
-     * @param {string} soundDir Расположение картинки на сервере.
+     * @param {string} soundDir Расположение аудиофайла на сервере.
      *
      * @return IYandexRequestDownloadSound|null
      * [
