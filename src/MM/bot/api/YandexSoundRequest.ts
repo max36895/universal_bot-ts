@@ -16,7 +16,7 @@ export class YandexSoundRequest extends YandexRequest {
      */
     private readonly STANDARD_URL = 'https://dialogs.yandex.net/api/v1/';
     /**
-     * Идентификатор навыка, необходим для корректного сохранения изображений(Обязательный параметр).
+     * Идентификатор навыка, необходимый для корректного сохранения аудиофайлов (Обязательный параметр).
      * @see YandexRequest Смотри тут
      */
     public skillId: string;
