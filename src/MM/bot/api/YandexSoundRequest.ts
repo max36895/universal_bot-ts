@@ -24,7 +24,7 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * YandexSoundRequest constructor.
      *
-     * @param {string} oauth Авторизационный токен для загрузки изображений.
+     * @param {string} oauth Авторизационный токен для загрузки аудиофайлов.
      * @param {string} skillId Идентификатор навыка.
      * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документацияю.
      * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
