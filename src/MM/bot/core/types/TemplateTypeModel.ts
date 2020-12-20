@@ -1,8 +1,7 @@
 import {BotController} from "../../controller/BotController";
 
 /**
- * Class TemplateTypeModel
- * @class bot\core\types
+ * @class TemplateTypeModel
  *
  * Абстрактный класс, который унаследуют все классы, отвечающие за инициализацию параметров, и обработку запросов пользователя.
  */
@@ -70,7 +69,6 @@ export abstract class TemplateTypeModel {
      * @param {any} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return boolean
-     * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
     public abstract init(query: any, controller: BotController): boolean;

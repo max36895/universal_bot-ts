@@ -5,12 +5,11 @@ import {Image} from "../../image/Image";
 
 /**
  * Класс отвечающий за отображение карточки в Сбер SmartApp
- * Class SmartAppCard
- * @class bot\components\button\types
+ * @class SmartAppCard
  */
 export class SmartAppCard extends TemplateCardTypes {
     /**
-     * Получить элементы для карточки
+     * Получение элементов для карточки
      *
      * @param {Image} image Объект с картинкой
      * @returns {ISberSmartAppCardItem}
@@ -47,7 +46,7 @@ export class SmartAppCard extends TemplateCardTypes {
     /**
      * Получение карточки для отображения пользователю.
      *
-     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return ISberSmartAppItem
      * @api
      */

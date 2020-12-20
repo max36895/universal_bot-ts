@@ -11,26 +11,25 @@ import {MarusiaCard} from "./types/MarusiaCard";
 import {SmartAppCard} from "./types/SmartAppCard";
 
 /**
- * Отвечает за отображение определенной карточки, в зависимости от типа приложения.
- * Class Card
- * @class bot\components\card
+ * Класс отвечающий за отображение определенной карточки, в зависимости от типа приложения.
+ * @class Card
  */
 export class Card {
     /**
-     * Заголовок для карточки.
+     * Заголовок для элемента карточки.
      */
     public title: string;
     /**
-     * Описание для карточки.
+     * Описание для элемента карточки.
      */
     public desc: string;
     /**
-     * Массив с картинками или элементами карточки.
+     * Массив с изображениями или элементами карточки.
      * @see Image Смотри тут
      */
     public images: Image[];
     /**
-     * Кнопки для карточки.
+     * Кнопки для элемента карточки.
      * @see Buttons Смотри тут
      */
     public button: Buttons;
@@ -39,6 +38,12 @@ export class Card {
      * True, если в любом случае отобразить только 1 изображение.
      */
     public isOne: boolean;
+
+    /**
+     * Использование галереи изображений. Передайте true, если хотите отобразить галерею из изображений.
+     * @type {boolean}
+     */
+    public isUsedGallery: boolean = false;
 
     /**
      * Card constructor.
@@ -50,7 +55,7 @@ export class Card {
     }
 
     /**
-     * Очистить все карточки с изображениями.
+     * Очистить все элементы карточки.
      * @api
      */
     public clear() {
@@ -60,9 +65,9 @@ export class Card {
     /**
      * Вставить элемент в каточку|список.
      *
-     * @param {string} image Идентификатор или расположение картинки.
-     * @param {string} title Заголовок для картинки.
-     * @param {string} desc Описание для картинки.
+     * @param {string} image Идентификатор или расположение изображения.
+     * @param {string} title Заголовок для изображения.
+     * @param {string} desc Описание для изображения.
      * @param {TButton} button Кнопки, обрабатывающие команды при нажатии на элемент.
      * @api
      */
@@ -74,7 +79,7 @@ export class Card {
     }
 
     /**
-     * Получить все элементы карточки.
+     * Получение всех элементов карточки.
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return any
@@ -112,6 +117,7 @@ export class Card {
                 break;
         }
         if (card) {
+            card.isUsedGallery = this.isUsedGallery;
             card.images = this.images;
             card.button = this.button;
             card.title = this.title;
@@ -121,7 +127,7 @@ export class Card {
     }
 
     /**
-     * Возвращает json строку со всеми элементами карточки.
+     * Возвращаем json строку со всеми элементами карточки.
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return string

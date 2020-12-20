@@ -6,8 +6,7 @@ import {SoundTokens} from "../../../models/SoundTokens";
 
 /**
  * Класс отвечающий за воспроизведение звуков в Алисе.
- * Class AlisaSound
- * @class bot\components\sound\types
+ * @class AlisaSound
  */
 export class AlisaSound implements TemplateSoundTypes {
     /**
@@ -326,7 +325,7 @@ export class AlisaSound implements TemplateSoundTypes {
     }
 
     /**
-     * Получение корректно составленный текст, в котором все ключи заменены на соответствующие звуки.
+     * Получение корректно составленного текста, в котором все ключи заменены на соответствующие звуки.
      *
      * @param {ISound[]} sounds Пользовательские звуки.
      * @param {string} text Исходный текст.

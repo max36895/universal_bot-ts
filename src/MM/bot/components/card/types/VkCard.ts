@@ -3,11 +3,6 @@ import {ImageTokens} from "../../../models/ImageTokens";
 import {Buttons} from "../../button/Buttons";
 import {IVkButton} from "../../button/interfaces/IVkButton";
 
-/**
- * Класс отвечающий за отображение карточки в ВКонтакте.
- * Class VkCard
- * @class bot\components\card\types
- */
 export interface IVkCardElement {
     /**
      * Заголовок
@@ -44,11 +39,15 @@ export interface IVkCard {
     elements: IVkCardElement[]
 }
 
+/**
+ * Класс отвечающий за отображение карточки в ВКонтакте.
+ * @class VkCard
+ */
 export class VkCard extends TemplateCardTypes {
     /**
      * Получение карточки для отображения пользователю.
      *
-     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return IVkCard | string[]
      * @api
      */

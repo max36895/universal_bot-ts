@@ -4,13 +4,12 @@ import {Text} from "../../standard/Text";
 
 /**
  * Класс отвечающий за отображение кнопок в Алисе
- * Class AlisaButton
- * @class bot\components\button\types
+ * @class AlisaButton
  */
 export class AlisaButton extends TemplateButtonTypes {
     /**
      * Использование кнопок для карточки
-     * True - получение кнопки для карточки. По умолчанию false
+     * True, если нужно отобразить кнопку для карточки. По умолчанию false
      */
     public isCard: boolean;
 
@@ -23,12 +22,12 @@ export class AlisaButton extends TemplateButtonTypes {
     }
 
     /**
-     * получение массива с кнопками для ответа пользователю.
+     * Получение массива с кнопками для ответа пользователю.
      *
      * @return IAlisaButton[]|IAlisaButtonCard
      * [
      *  - string text: Текст на кнопке.
-     *  - string payload: Произвольные данные, которые будут отправлены пр нажатии на кнопку.
+     *  - string payload: Произвольные данные, которые будут отправлены при нажатии на кнопку.
      *  - string url: Ссылка по которой будет произведен переход после нажатия на кнопку.
      * ]
      * @api

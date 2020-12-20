@@ -12,8 +12,7 @@ import {Buttons} from "../../components/button/Buttons";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp
- * Class SmartApp
- * @class bot\core\types
+ * @class SmartApp
  * @see TemplateTypeModel Смотри тут
  */
 export class SmartApp extends TemplateTypeModel {
@@ -27,7 +26,7 @@ export class SmartApp extends TemplateTypeModel {
     protected _session: ISberSmartAppSession;
 
     /**
-     * Получение данных, необходимых для постоения ответа пользователю.
+     * Получение данных, необходимых для построения ответа пользователю.
      *
      * @return ISberSmartAppResponsePayload
      */

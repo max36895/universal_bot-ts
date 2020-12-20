@@ -2,11 +2,10 @@ import {YandexRequest} from "./YandexRequest";
 import {mmApp} from "../core/mmApp";
 
 /**
- * Класс для преобразования текста в аудио файл.
+ * Класс отвечающий за преобразование текста в аудио файл.
  * Преобразование осуществляется через сервис Yandex SpeechKit.
  *
- * Class YandexSpeechKit
- * @class bot\api
+ * @class YandexSpeechKit
  */
 export class YandexSpeechKit extends YandexRequest {
     /**

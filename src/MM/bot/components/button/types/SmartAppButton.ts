@@ -4,13 +4,12 @@ import {ISberSmartAppCardAction, ISberSmartAppSuggestionButton} from "../../../c
 
 /**
  * Класс отвечающий за отображение кнопок в Сбер SmartApp
- * Class SmartAppButton 
- * @class bot\components\button\types
+ * @class SmartAppButton
  */
 export class SmartAppButton extends TemplateButtonTypes {
     /**
      * Использование кнопок для карточки
-     * True - получение кнопки для карточки. По умолчанию false
+     * True, если нужно отобразить кнопку для карточки. По умолчанию false По умолчанию false
      */
     public isCard: boolean;
 
@@ -28,7 +27,7 @@ export class SmartAppButton extends TemplateButtonTypes {
      * @return ISberSmartAppSuggestionButton[]|ISberSmartAppCardAction
      * [
      *  - string text: Текст на кнопке.
-     *  - string payload: Произвольные данные, которые будут отправлены пр нажатии на кнопку.
+     *  - string payload: Произвольные данные, которые будут отправлены при нажатии на кнопку.
      *  - string url: Ссылка по которой будет произведен переход после нажатия на кнопку.
      * ]
      * @api

@@ -1,36 +1,36 @@
 export interface IYandexCheckOutPlace {
     /**
-     * Сколько всего места
+     * Все доступное место.
      */
     total: number;
     /**
-     * Сколько места осталось
+     * Занятое место.
      */
     used: string;
 }
 
 export interface IYandexRequestDownloadImage {
     /**
-     * Ид загруженой картинки
+     * Ид загруженной изображения
      */
     id: string;
     /**
-     * Оригинальный адрес, с которого была загружена картинка
+     * Адрес изображения
      */
     origUrl: string;
     /**
-     * Размер картинки
+     * Размер изображения
      */
     size: number;
     /**
-     * Дата загрузки картинки
+     * Дата загрузки изображения
      */
     createdAt: number;
 }
 
 export interface IYandexRequestDownloadSound {
     /**
-     * Ид загруженного звука
+     * Ид загруженного аудиофайла
      */
     id: string;
     /**

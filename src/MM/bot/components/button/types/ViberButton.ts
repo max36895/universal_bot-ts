@@ -3,8 +3,7 @@ import {IViberButton, IViberButtonObject} from "../interfaces/IViberButton";
 
 /**
  * Класс отвечающий за отображение кнопок в Viber
- * Class ViberButton
- * @class bot\components\button\types
+ * @class ViberButton
  */
 export class ViberButton extends TemplateButtonTypes {
     public static readonly T_REPLY = 'reply';

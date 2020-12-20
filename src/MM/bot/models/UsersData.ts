@@ -3,8 +3,7 @@ import {IModelRules} from "./interface/IModel";
 import {mmApp} from "../core/mmApp";
 
 /**
- * Class UsersData
- * @class bot\models
+ * @class UsersData
  *
  * Модель для взаимодействия со всеми пользовательскими данными.
  */
@@ -126,7 +125,7 @@ export class UsersData extends Model {
     }
 
     /**
-     * Выполнить запрос на поиск одного значения.
+     * Выполнение запроса на поиск одного значения.
      * В случае успешного поиска вернет true.
      *
      * @return boolean

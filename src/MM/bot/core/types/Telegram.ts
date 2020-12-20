@@ -10,8 +10,7 @@ import {ITelegramCard} from "../../components/card/types/TelegramCard";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Телеграма.
- * Class Telegram
- * @class bot\core\types
+ * @class Telegram
  * @see TemplateTypeModel Смотри тут
  */
 export class Telegram extends TemplateTypeModel {

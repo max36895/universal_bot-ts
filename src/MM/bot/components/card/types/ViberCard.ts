@@ -26,12 +26,11 @@ export interface IViberCard {
 
 /**
  * Класс отвечающий за отображение карточки в Viber.
- * Class ViberCard
- * @class bot\components\card\types
+ * @class ViberCard
  */
 export class ViberCard extends TemplateCardTypes {
     /**
-     * Получить елемент карточки.
+     * Получение элемента карточки.
      * @param {Image} image Объект с изображением
      * @param {number} countImage Количество изображений
      * @returns {IViberCard}
@@ -62,7 +61,7 @@ export class ViberCard extends TemplateCardTypes {
     /**
      * Получение карточки для отображения пользователю.
      *
-     * @param  {boolean} isOne True, если в любом случае использовать 1 картинку.
+     * @param  {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return IViberCard[] | IViberCard
      * @api
      */

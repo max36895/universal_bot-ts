@@ -8,8 +8,7 @@ import {Buttons} from "../../components/button/Buttons";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для ВКонтакте.
- * Class Vk
- * @class bot\core\types
+ * @class Vk
  * @see TemplateTypeModel Смотри тут
  */
 export class Vk extends TemplateTypeModel {

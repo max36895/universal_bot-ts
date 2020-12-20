@@ -21,7 +21,7 @@ export interface INluThisUser {
      */
     first_name?: string;
     /**
-     * ОТчество
+     * Отчество
      */
     last_name?: string;
 }

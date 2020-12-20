@@ -6,8 +6,7 @@ import {IAlisaButtonCard, IAlisaImage, IAlisaItemsList} from "../../../core/inte
 
 /**
  * Класс отвечающий за отображение карточки в Марусе.
- * Class MarusiaCard
- * @class bot\components\card\types
+ * @class MarusiaCard
  */
 export class MarusiaCard extends TemplateCardTypes {
     public static readonly MARUSIA_CARD_BIG_IMAGE = 'BigImage';
@@ -17,7 +16,7 @@ export class MarusiaCard extends TemplateCardTypes {
     /**
      * Получение карточки для отображения пользователю.
      *
-     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return IAlisaBigImage | IAlisaItemsList
      * @api
      */

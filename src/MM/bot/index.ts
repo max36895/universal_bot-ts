@@ -55,12 +55,12 @@ export * from './components/card/types/TemplateCardTypes';
 export * from './components/card/types/ViberCard';
 export * from './components/card/types/VkCard';
 export * from './components/card/Card';
-// Картинки
+// изображения
 export * from './components/image/Image';
 // Определение пользовательских запросов
 export * from './components/nlu/interfaces/INlu';
 export * from './components/nlu/Nlu';
-// Изобржения
+// изображения
 export * from './components/sound/interfaces/sound';
 export * from './components/sound/types/AlisaSound';
 export * from './components/sound/types/TelegramSound';

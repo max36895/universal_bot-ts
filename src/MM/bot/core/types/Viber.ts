@@ -8,8 +8,7 @@ import {Buttons} from "../../components/button/Buttons";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Viber.
- * Class Viber
- * @class bot\core\types
+ * @class Viber
  * @see TemplateTypeModel Смотри тут
  */
 export class Viber extends TemplateTypeModel {

@@ -10,13 +10,12 @@ import {IViberButton} from "../components/button/interfaces/IViberButton";
 import {Text} from "../components/standard/Text";
 
 /**
- * Отправка запросов на viber сервер.
+ * Класс отвечающий за отправку запросов на viber сервер.
  *
  * Документация по viber api.
  * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
  *
- * Class ViberRequest
- * @class bot\api
+ * @class ViberRequest
  */
 export class ViberRequest {
     /**
@@ -61,7 +60,7 @@ export class ViberRequest {
     }
 
     /**
-     * Отправка запросов на viber сервер.
+     * Класс отвечающий за отправку запросов на viber сервер.
      *
      * @param {string} method Название метода.
      * @return any|null

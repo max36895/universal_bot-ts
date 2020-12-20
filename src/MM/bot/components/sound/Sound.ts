@@ -7,9 +7,8 @@ import {ViberSound} from "./types/ViberSound";
 import {ISound} from "./interfaces/sound";
 
 /**
- * Класс отвечает за обработку и корректное воспроизведение звуков, в зависимости от типа приложения.
- * Class Sound
- * @class bot\components\sound
+ * Класс отвечающий за обработку и корректное воспроизведение звуков, в зависимости от типа приложения.
+ * @class Sound
  */
 export class Sound {
     /**
@@ -17,7 +16,7 @@ export class Sound {
      */
     public sounds: ISound[];
     /**
-     * Использовать стандартные звуки.
+     * Использование стандартных звуков.
      * Если true - используются стандартные звуки. Актуально для Алисы. По умолчанию true.
      */
     public isUsedStandardSound: boolean;
@@ -31,7 +30,7 @@ export class Sound {
     }
 
     /**
-     * Получить корректно поставленные звуки в текст.
+     * Получение корректно поставленные звуков в текст.
      *
      * @param {string} text Исходный текст.
      * @param {TemplateSoundTypes} userSound Пользовательский класс для обработки звуков.

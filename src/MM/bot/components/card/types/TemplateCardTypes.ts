@@ -2,10 +2,9 @@ import {Image} from "../../image/Image";
 import {Buttons} from "../../button/Buttons";
 
 /**
- * Class TemplateCardTypes
- * @class bot\components\card\types
+ * @class TemplateCardTypes
  *
- * Шаблонный класс для второстепенных классов.
+ * Шаблонный класс для карточек.
  * Нужен для отображения карточек в ответе пользователю.
  */
 export abstract class TemplateCardTypes {
@@ -24,9 +23,15 @@ export abstract class TemplateCardTypes {
     public title: string;
 
     /**
+     * Использование галереи изображений.
+     * @type {boolean}
+     */
+    public isUsedGallery: boolean = false;
+
+    /**
      * Получение карточки для отображения пользователю.
      *
-     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return any
      */
     public abstract getCard(isOne: boolean): any;

@@ -8,10 +8,9 @@ import {TelegramRequest} from "../api/TelegramRequest";
 import {VkRequest} from "../api/VkRequest";
 
 /**
- * Class ImageTokens
- * @class bot\models
+ * @class ImageTokens
  *
- * Модель для взаимодействия со всеми картинками.
+ * Модель для взаимодействия со всеми изображениями.
  */
 export class ImageTokens extends Model {
     private TABLE_NAME = 'ImageTokens';
@@ -21,11 +20,11 @@ export class ImageTokens extends Model {
     public static readonly T_MARUSIA = 3;
 
     /**
-     * Идентификатор/токен картинки.
+     * Идентификатор/токен изображения.
      */
     public imageToken: string;
     /**
-     * Расположение картинки (url/директория).
+     * Расположение изображения (url/директория).
      */
     public path: string;
     /**
@@ -33,7 +32,7 @@ export class ImageTokens extends Model {
      */
     public type: number;
     /**
-     * Описание картинки (Не обязательное поле).
+     * Описание изображения (Не обязательное поле).
      */
     public caption: string;
 

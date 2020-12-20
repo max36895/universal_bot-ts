@@ -6,12 +6,11 @@ import {ViberRequest} from "../../../api/ViberRequest";
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в Viber.
- * Class ViberSound
- * @class bot\components\sound\types
+ * @class ViberSound
  */
 export class ViberSound implements TemplateSoundTypes {
     /**
-     * Возвращает массив с отображаемыми звуками.
+     * Возвращаем массив с отображаемыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос(не отправляется!).
      *
      * @param {ISound[]} sounds Массив звуков.

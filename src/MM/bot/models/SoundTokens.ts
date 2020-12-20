@@ -8,8 +8,7 @@ import {TelegramRequest} from "../api/TelegramRequest";
 import {VkRequest} from "../api/VkRequest";
 
 /**
- * Class SoundTokens
- * @class bot\models
+ * @class SoundTokens
  *
  * Модель для взаимодействия со всеми звуками.
  */

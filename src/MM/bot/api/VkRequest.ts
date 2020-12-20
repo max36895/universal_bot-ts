@@ -12,13 +12,12 @@ import {
 } from "./interfaces/IVkApi";
 
 /**
- * Отправка запросов на Vk сервер.
+ * Класс отвечающий за отправку запросов на Vk сервер.
  *
  * Документация по ВК api.
  * @see (https://vk.com/dev/bots_docs) Смотри тут
  *
- * Class VkRequest
- * @class bot\api
+ * @class VkRequest
  */
 export class VkRequest {
     /**
@@ -50,7 +49,7 @@ export class VkRequest {
     public token: string;
     /**
      * Тип контента файла.
-     * True если передается содержимое файла. По умолчанию: false.
+     * True, если передается содержимое файла. По умолчанию: false.
      */
     public isAttachContent: boolean;
 

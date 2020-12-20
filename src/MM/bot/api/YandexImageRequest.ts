@@ -4,11 +4,10 @@ import {Request} from "./request/Request";
 import {IYandexCheckOutPlace, IYandexRequestDownloadImage} from "./interfaces/IYandexApi";
 
 /**
- * Загрузка изображения в навык.
+ * Класс отвечающий за загрузку изображений в навык.
  * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
  *
- * Class YandexImageRequest
- * @class bot\api
+ * @class YandexImageRequest
  */
 export class YandexImageRequest extends YandexRequest {
     /**
@@ -16,7 +15,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
-     * Идентификатор навыка, необходим для корректного сохранения изображения(Обязательный параметр)
+     * Идентификатор навыка, необходимый для корректного сохранения изображения (Обязательный параметр)
      * @see YandexRequest Смотри тут
      */
     public skillId: string;
@@ -36,7 +35,7 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Получить адрес для загрузки изображения.
+     * Получение адреса для загрузки изображения.
      *
      * @return string
      */
@@ -46,10 +45,6 @@ export class YandexImageRequest extends YandexRequest {
 
     /**
      * Проверка занятого места.
-     *
-     * Возвращает массив
-     * - total - Все доступное место.
-     * - used - Занятое место.
      *
      * @return IYandexCheckOutPlace|null
      * [
@@ -71,11 +66,7 @@ export class YandexImageRequest extends YandexRequest {
     /**
      * Загрузка изображения из интернета.
      *
-     * Возвращает массив
-     * - id - Идентификатор изображения.
-     * - origUrl - Адрес изображения.
-     *
-     * @param {string} imageUrl Адрес картинки из интернета.
+     * @param {string} imageUrl Адрес изображения из интернета.
      * @return IYandexRequestDownloadImage|null
      * [
      *  - string id: Идентификатор изображения.
@@ -104,10 +95,6 @@ export class YandexImageRequest extends YandexRequest {
 
     /**
      * Загрузка изображения из файла.
-     *
-     * Возвращает массив
-     * - id - Идентификатор изображения.
-     * - origUrl - Адрес изображения.
      *
      * @param {string} imageDir Путь к картинке, расположенной на сервере.
      * @return IYandexRequestDownloadImage|null
@@ -162,10 +149,10 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Удаление выбранной картинки.
+     * Удаление выбранного изображения.
      * В случае успеха вернет 'ok'.
      *
-     * @param {string} imageId Идентификатор картинки, которую необходимо удалить.
+     * @param {string} imageId Идентификатор изображения, которую необходимо удалить.
      * @return string|null
      * @api
      */
@@ -190,9 +177,9 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Удаление всех картинок.
-     * Если при удалении произошел сбой, то картинка останется.
-     * Чтобы точно удалить все картинки лучше использовать грубое удаление.
+     * Удаление всех изображений.
+     * Если при удалении произошел сбой, то изображение останется.
+     * Чтобы точно удалить все изображения лучше использовать грубое удаление.
      *
      * @return boolean
      * @api

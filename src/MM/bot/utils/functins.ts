@@ -10,7 +10,7 @@ export interface IGetParams {
 }
 
 /**
- * Получить случайное число из диапазона
+ * Получение случайного числа из диапазона
  * @param {number} min Минимальное значение
  * @param {number} max Максимальное значение
  * @returns {number}
@@ -20,7 +20,7 @@ export function rand(min: number, max: number) {
 }
 
 /**
- * Проверяет схожесть текста
+ * Проверяем схожесть текста
  * @param {string} first Текст который проверяем
  * @param {string} second Текст с которым сравниваем
  * @param {number} percent
@@ -87,7 +87,7 @@ export function is_file(file: string): boolean {
 
 /**
  * Читаем содержимое файла
- * @param {string} fileName Файл, содержмое которогонужно получить.
+ * @param {string} fileName Файл, содержимое которого нужно получить.
  * @returns {string}
  */
 export function fread(fileName: string): string {
@@ -95,7 +95,7 @@ export function fread(fileName: string): string {
 }
 
 /**
- * Записать данные в файл
+ * Записаваем данные в файл
  * @param {string} fileName Файл, в который необходимо записать данные.
  * @param {string} fileContent Данные, записываемые в файл.
  * @param {string} mode Режим записи.
@@ -118,7 +118,7 @@ export function unlink(fileName: string): void {
 
 /**
  * Проверка на существование директории
- * @param {string} path Проверяемая дирректория
+ * @param {string} path Проверяемая директория
  * @returns {boolean}
  */
 export function isDir(path: string): boolean {

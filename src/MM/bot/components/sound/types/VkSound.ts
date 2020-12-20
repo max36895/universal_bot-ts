@@ -7,12 +7,11 @@ import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в ВКонтакте.
- * Class VkSound
- * @class bot\components\sound\types
+ * @class VkSound
  */
 export class VkSound implements TemplateSoundTypes {
     /**
-     * Возвращает массив с отображаемыми звуками.
+     * Возвращаем массив с отображаемыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
      *
      * @param {ISound[]} sounds Массив звуков.

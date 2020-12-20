@@ -3,8 +3,7 @@ import * as mongoDb from "mongodb";
 
 /**
  * Класс отвечающий за подключение и взаимодействие с Базой Данных
- * Class DB
- * @class bot\models\db
+ * @class DB
  */
 export class DB {
     /**

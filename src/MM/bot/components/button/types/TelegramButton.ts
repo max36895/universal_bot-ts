@@ -7,7 +7,7 @@ export interface ITelegramInlineKeyboard {
      */
     text: string,
     /**
-     * Ссылка по которой передет пользователь после нажатия
+     * Ссылка по которой перейдёт пользователь после нажатия
      */
     url?: string;
     /**
@@ -22,7 +22,7 @@ export interface ITelegramKeyboard {
      */
     inline_keyboard?: ITelegramInlineKeyboard[];
     /**
-     * Кнопки в виде кнопок. ОТображаются вместо клавиатуры
+     * Кнопки в виде кнопок. Отображаются вместо клавиатуры
      */
     keyboard?: string[];
     /**
@@ -33,12 +33,11 @@ export interface ITelegramKeyboard {
 
 /**
  * Класс отвечающий за отображение кнопок в Телеграме
- * Class TelegramButton
- * @class bot\components\button\types
+ * @class TelegramButton
  */
 export class TelegramButton extends TemplateButtonTypes {
     /**
-     * Получить массив с кнопками для ответа пользователю.
+     * Получение массива с кнопками для ответа пользователю.
      *
      * @return ITelegramKeyboard
      * @api

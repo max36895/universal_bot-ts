@@ -4,7 +4,7 @@ import {Buttons} from "../../../../../src/MM/bot/components/button/Buttons";
 
 export class UserCard extends TemplateCardTypes {
     /**
-     * Получение массива для отображения карточки/картинки
+     * Получение массива для отображения карточки/изображения
      *
      * @param isOne True, если отобразить только 1 картинку.
      * @return array

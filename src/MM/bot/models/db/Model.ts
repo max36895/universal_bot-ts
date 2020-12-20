@@ -5,14 +5,22 @@ import {Sql} from "./Sql";
 import {fread, is_file} from "../../utils/functins";
 
 export interface IModelRes {
+    /**
+     * Статус выполнения
+     */
     status: boolean;
+    /**
+     * Ошибки, возникшие при выполнении
+     */
     error?: string;
+    /**
+     * Полученный результат
+     */
     data?: any;
 }
 
 /**
- * Class Model
- * @class bot\models\db
+ * @class Model
  *
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
@@ -115,7 +123,7 @@ export abstract class Model {
     }
 
     /**
-     * Возвращает название уникального ключа таблицы.
+     * Возвращаем название уникального ключа таблицы.
      *
      * @return number|string|null
      */

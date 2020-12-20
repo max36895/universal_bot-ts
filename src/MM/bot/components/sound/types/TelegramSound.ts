@@ -9,12 +9,11 @@ import {SoundTokens} from "../../../models/SoundTokens";
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в Телеграме.
- * Class TelegramSound
- * @class bot\components\sound\types
+ * @class TelegramSound
  */
 export class TelegramSound implements TemplateSoundTypes {
     /**
-     * Возвращает массив с отображаемыми звуками.
+     * Возвращаем массив с отображаемыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
      *
      * @param {ISound[]} sounds Массив звуков.

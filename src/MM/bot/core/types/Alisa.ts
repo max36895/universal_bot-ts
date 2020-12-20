@@ -12,8 +12,7 @@ import {Text} from "../../components/standard/Text";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы
- * Class Alisa
- * @class bot\core\types
+ * @class Alisa
  * @see TemplateTypeModel Смотри тут
  */
 export class Alisa extends TemplateTypeModel {
@@ -34,12 +33,12 @@ export class Alisa extends TemplateTypeModel {
      */
     protected _isState: boolean = false;
     /**
-     * Название хранилища. Зависит от того, от куда берутся данные(локально, глобально).
+     * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
      */
     protected _stateName: string;
 
     /**
-     * Получение ответа для пользователю.
+     * Получение данных, необходимых для построения ответа пользователю.
      *
      * @return IAlisaResponse
      */
@@ -135,6 +134,9 @@ export class Alisa extends TemplateTypeModel {
                 } else if (typeof content.state.session !== 'undefined') {
                     this.controller.state = content.state.session;
                     this._stateName = 'session_state';
+                } else if(typeof  content.state.application !== 'undefined'){
+                    this.controller.state = content.state.application;
+                    this._stateName = 'application_state';
                 }
             }
 

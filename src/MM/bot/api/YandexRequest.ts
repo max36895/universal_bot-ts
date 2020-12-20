@@ -3,10 +3,9 @@ import {mmApp} from "../core/mmApp";
 import {IRequestSend} from "./interfaces/IRequest";
 
 /**
- * Отправка запросов на Yandex сервер.
+ * Класс отвечающий за отправку запросов на Yandex сервер.
  *
- * Class YandexRequest
- * @class bot\core\api
+ * @class YandexRequest
  */
 export class YandexRequest {
     /**

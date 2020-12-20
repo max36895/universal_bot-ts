@@ -1,10 +1,9 @@
 import {Button} from "../Button";
 
 /**
- * Class TemplateButtonTypes
- * @class bot\components\button\types
+ * @class TemplateButtonTypes
  *
- * Шаблонный класс для второстепенных классов.
+ * Шаблонный класс для кнопок.
  * Нужен для отображения кнопок в ответе пользователю.
  */
 export abstract class TemplateButtonTypes {

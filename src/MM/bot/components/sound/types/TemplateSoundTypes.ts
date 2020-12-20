@@ -1,15 +1,14 @@
 import {ISound} from "../interfaces/sound";
 
 /**
- * Class TemplateSoundTypes
- * @class bot\components\sound\types
+ * @class TemplateSoundTypes
  *
- * Шаблонный класс для второстепенных классов.
+ * Шаблонный класс для обработки звуков.
  * Нужен для воспроизведения звуков в ответе пользователю.
  */
 export interface TemplateSoundTypes {
     /**
-     * Получить звуки, которые необходимо отобразить в приложении.
+     * Получение звуков, которые необходимо воспроизвести или отправить.
      * В случае Алисы, Маруси и Сбер это tts.
      *
      * @param {ISound[]} sounds Массив звуков.

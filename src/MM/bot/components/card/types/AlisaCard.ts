@@ -1,27 +1,71 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {Buttons} from "../../button/Buttons";
-import {IAlisaBigImage, IAlisaButtonCard, IAlisaImage, IAlisaItemsList} from "../../../core/interfaces/IAlisa";
+import {
+    IAlisaBigImage, IAlisaButtonCard, IAlisaImage, IAlisaImageGallery,
+    IAlisaItemsList
+} from "../../../core/interfaces/IAlisa";
 import {Text} from "../../standard/Text";
 import {ImageTokens} from "../../../models/ImageTokens";
 
 /**
  * Класс отвечающий за отображение карточки в Алисе.
- * Class AlisaCard
- * @class bot\components\card\types
+ * @class AlisaCard
  */
 export class AlisaCard extends TemplateCardTypes {
     public static readonly ALISA_CARD_BIG_IMAGE = 'BigImage';
     public static readonly ALISA_CARD_ITEMS_LIST = 'ItemsList';
     public static readonly ALISA_MAX_IMAGES = 5;
+    public static readonly ALISA_MAX_GALLERY_IMAGES = 7;
+
+    /**
+     * Получаем элемент карточки
+     * @private
+     */
+    protected _getItem(): IAlisaImage[] {
+        let items: IAlisaImage[] = [];
+        for (const image of this.images) {
+            const maxCount = this.isUsedGallery ? AlisaCard.ALISA_MAX_GALLERY_IMAGES : AlisaCard.ALISA_MAX_IMAGES;
+            if (items.length <= maxCount) {
+                let button: IAlisaButtonCard = null;
+                if (!this.isUsedGallery) {
+                    button = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                    if (!button.text) {
+                        button = null;
+                    }
+                }
+                if (!image.imageToken) {
+                    if (image.imageDir) {
+                        const mImage = new ImageTokens();
+                        mImage.type = ImageTokens.T_ALISA;
+                        image.imageToken = mImage.getToken();
+                    }
+                }
+                const item: IAlisaImage = {
+                    title: Text.resize(image.title, 128),
+                };
+                if (!this.isUsedGallery) {
+                    item.description = Text.resize(image.desc, 256);
+                }
+                if (image.imageToken) {
+                    item.image_id = image.imageToken;
+                }
+                if (button && !this.isUsedGallery) {
+                    item.button = button[0];
+                }
+                items.push(item);
+            }
+        }
+        return items;
+    }
 
     /**
      * Получение карточки для отображения пользователю.
      *
-     * @param {boolean} isOne True, если в любом случае использовать 1 картинку.
+     * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return IAlisaBigImage | IAlisaItemsList
      * @api
      */
-    public getCard(isOne: boolean): IAlisaBigImage | IAlisaItemsList {
+    public getCard(isOne: boolean): IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery {
         this.button.type = Buttons.T_ALISA_CARD_BUTTON;
         const countImage = this.images.length;
         if (countImage) {
@@ -50,51 +94,29 @@ export class AlisaCard extends TemplateCardTypes {
                     return object;
                 }
             } else {
-                const object: IAlisaItemsList = {
-                    type: AlisaCard.ALISA_CARD_ITEMS_LIST,
-                    header: {
-                        text: Text.resize(this.title, 64)
-                    }
-                };
-                let items: IAlisaImage[] = [];
-                for (const image of this.images) {
-                    if (items.length <= AlisaCard.ALISA_MAX_IMAGES) {
-                        let button: IAlisaButtonCard = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-                        if (!button.text) {
-                            button = null;
-                        }
-                        if (!image.imageToken) {
-                            if (image.imageDir) {
-                                const mImage = new ImageTokens();
-                                mImage.type = ImageTokens.T_ALISA;
-                                image.imageToken = mImage.getToken();
-                            }
-                        }
-                        //if (image.imageToken !== null) {
-                        const item: IAlisaImage = {
-                            title: Text.resize(image.title, 128),
-                            description: Text.resize(image.desc, 256),
-                        };
-                        if (image.imageToken) {
-                            item.image_id = image.imageToken;
-                        }
-                        if (button) {
-                            item.button = button[0];
-                        }
-                        items.push(item);
-                    }
-                    //}
-                }
-                object.items = items;
-                items = null;
-                const btn: IAlisaButtonCard = this.button.getButtons();
-                if (btn.text) {
-                    object.footer = {
-                        text: btn.text,
-                        button: btn
+                if (this.isUsedGallery) {
+                    const object: IAlisaImageGallery = {
+                        type: "ImageGallery"
                     };
+                    object.items = this._getItem();
+                    return object;
+                } else {
+                    const object: IAlisaItemsList = {
+                        type: AlisaCard.ALISA_CARD_ITEMS_LIST,
+                        header: {
+                            text: Text.resize(this.title, 64)
+                        }
+                    };
+                    object.items = this._getItem();
+                    const btn: IAlisaButtonCard = this.button.getButtons();
+                    if (btn.text) {
+                        object.footer = {
+                            text: btn.text,
+                            button: btn
+                        };
+                    }
+                    return object;
                 }
-                return object;
             }
         }
         return null;

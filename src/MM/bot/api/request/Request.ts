@@ -2,12 +2,10 @@ import {http_build_query, IGetParams, is_file} from "../../utils/functins";
 import {IRequestSend} from "../interfaces/IRequest";
 
 /**
- * Class Request
- *
- * Класс для отправки curl запросов на необходимый url.
+ * Класс отвечающий за отправку curl запросов на необходимый url.
  * Поддерживаются различные заголовки, а также присутствует возможность отправки файлов.
  *
- * @class bot\api\request
+ * @class Request
  */
 export class Request {
     public static readonly HEADER_RSS_XML: Record<string, string> = {'Content-Type': 'application/rss+xml'};
@@ -33,12 +31,12 @@ export class Request {
      */
     public header: HeadersInit;
     /**
-     * Прикрепленны файл (url, путь к файлу на сервере либо содержимое файла).
+     * Прикреплённый файл (url, путь к файлу на сервере либо содержимое файла).
      */
     public attach: string;
     /**
      * Тип передаваемого файла.
-     * True если передается содержимое файла. По умолчанию: false.
+     * True, если передается содержимое файла, иначе false. По умолчанию: false.
      */
     public isAttachContent: boolean;
     /**
@@ -50,7 +48,7 @@ export class Request {
      */
     public customRequest: string;
     /**
-     * Максимально время, за которое должены получить ответ. В мсек.
+     * Максимально время, за которое должен быть получен ответ. В мсек.
      */
     public maxTimeQuery: number;
     /**
@@ -60,7 +58,7 @@ export class Request {
     public isConvertJson: boolean;
 
     /**
-     * Ошибки при выполнении запросов.
+     * Ошибки при выполнении запроса.
      */
     private _error: string;
 
@@ -82,7 +80,7 @@ export class Request {
     }
 
     /**
-     * Возвращает текст с ошибкой, произошедшей при выполнении запроса.
+     * Возвращаем текст с ошибкой, произошедшей при выполнении запроса.
      *
      * @return string
      * @api
@@ -92,7 +90,7 @@ export class Request {
     }
 
     /**
-     * Получить корретные параментры для отправки запроса.
+     * Получение корректного  параметра для отправки запроса.
      * @return RequestInit
      * @private
      */
@@ -134,7 +132,7 @@ export class Request {
     }
 
     /**
-     * Получить url адрес с get запросом.
+     * Получение url адреса с get запросом.
      *
      * @return string
      * @private
@@ -149,7 +147,7 @@ export class Request {
 
     /**
      * Начинаем отправку curl запроса.
-     * В случае успеха возвращает содержимое запроса, в противном случае null.
+     * В случае успеха возвращаем содержимое запроса, в противном случае null.
      *
      * @return mixed
      */
@@ -174,7 +172,7 @@ export class Request {
 
     /**
      * Начинаем отправку синхронного curl запроса.
-     * В случае успеха возвращает содержимое запроса, в противном случае null.
+     * В случае успеха возвращаем содержимое запроса, в противном случае null.
      *
      * @return mixed
      */
@@ -196,10 +194,10 @@ export class Request {
 
     /**
      * Отправка запроса.
-     * Возвращает массив. В случае успеха свойство 'status' = true.
+     * Возвращаем массив. В случае успеха свойство 'status' = true.
      *
      * @param {string} url Адрес, на который отправляется запрос.
-     * @param {boolean} isAsync Отправить запрос синхронно или фсинхронно.
+     * @param {boolean} isAsync Отправить запрос синхронно или асинхронно.
      * @return IRequestSend
      * [
      *  - bool status Статус выполнения запроса.

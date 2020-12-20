@@ -4,13 +4,12 @@ import {ITelegramParams, ITelegramResult, TTelegramChatId} from "./interfaces/IT
 import {is_file} from "../utils/functins";
 
 /**
- * Отправка запросов на telegram сервер.
+ * Класс отвечающий за отправку запросов на telegram сервер.
  *
  * Документация по telegram api.
  * @see (https://core.telegram.org/bots/api) Смотри тут
  *
- * Class TelegramRequest
- * @class bot\api
+ * @class TelegramRequest
  */
 export class TelegramRequest {
     /**
@@ -54,7 +53,7 @@ export class TelegramRequest {
     }
 
     /**
-     * Получить url, на который будет отправляться запрос.
+     * Получение url адреса, на который будет отправляться запрос.
      *
      * @return string
      */
@@ -63,9 +62,9 @@ export class TelegramRequest {
     }
 
     /**
-     * Отправка запросов на telegram сервер.
+     * Отправка запроса на telegram сервер.
      *
-     * @param {string} method Отправляемый метод, что именно будет отправляться(Изображение, сообщение и тд).
+     * @param {string} method Отправляемый метод, что именно будет отправляться (Изображение, сообщение и тд).
      * @param {TTelegramChatId} userId Идентификатор пользователя/чата
      * @return any|null
      * @api
@@ -382,7 +381,7 @@ export class TelegramRequest {
     }
 
     /**
-     * Отправка Аудио файла пользователю.
+     * Отправка Аудиофайла пользователю.
      *
      * @param {TTelegramChatId} userId Идентификатор пользователя.
      * @param {string} file Путь или содержимое файла.

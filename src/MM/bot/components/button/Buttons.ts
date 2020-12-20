@@ -8,9 +8,8 @@ import {ViberButton} from "./types/ViberButton";
 import {SmartAppButton} from "./types/SmartAppButton";
 
 /**
- * Отвечает за отображение определенных кнопок, в зависимости от типа приложения.
- * Class Buttons
- * @class bot\components\button
+ * Класс отвечающий за отображение определенных кнопок, в зависимости от типа приложения.
+ * @class Buttons
  */
 export class Buttons {
     /**
@@ -190,7 +189,7 @@ export class Buttons {
     }
 
     /**
-     * Возвращает массив с кнопками для ответа пользователю.
+     * Возвращаем массив с кнопками для ответа пользователю.
      *
      * @param {string} type Тип кнопки.
      * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
@@ -249,7 +248,7 @@ export class Buttons {
     }
 
     /**
-     * Возвращает json строку c кнопками.
+     * Возвращаем json строку c кнопками.
      *
      * @param {string} type Тип приложения.
      * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.

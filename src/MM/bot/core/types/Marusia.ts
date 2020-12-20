@@ -12,8 +12,7 @@ import {Text} from "../../components/standard/Text";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Макруси.
- * Class Marusia
- * @class bot\core\types
+ * @class Marusia
  * @see TemplateTypeModel Смотри тут
  */
 export class Marusia extends TemplateTypeModel {
@@ -31,7 +30,7 @@ export class Marusia extends TemplateTypeModel {
     protected _session: IMarusiaSession;
 
     /**
-     * Получение данных, необходимых для постоения ответа пользователю.
+     * Получение данных, необходимых для построения ответа пользователю.
      *
      * @return IMarusiaResponse
      */

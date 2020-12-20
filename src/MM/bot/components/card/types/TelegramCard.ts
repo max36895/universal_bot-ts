@@ -16,15 +16,14 @@ export interface ITelegramCard {
 
 /**
  * Класс отвечающий за отображение карточки в Телеграме.
- * Class TelegramCard
- * @class bot\components\card\types
+ * @class TelegramCard
  */
 export class TelegramCard extends TemplateCardTypes {
     /**
      * Получение карточки для отображения пользователю.
      *
      * todo подумать над корректным отображением.
-     * @param {boolean} isOne True, если отобразить только 1 картинку. Не используется.
+     * @param {boolean} isOne True, если нужно отобразить только 1 элемент. Не используется.
      * @return ITelegramCard
      * @api
      */

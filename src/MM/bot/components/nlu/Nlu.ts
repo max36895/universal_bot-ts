@@ -2,9 +2,8 @@ import {INlu, INluIntent, INluResult, INluThisUser} from "./interfaces/INlu";
 import {Text} from "../standard/Text";
 
 /**
- * Класс для обработки естественной речи. Осуществляет поиск различных сущностей в тексте.
- * Class Nlu
- * @class bot\components\nlu
+ * Класс отвечающий за обработку естественной речи. Осуществляет поиск различных сущностей в тексте.
+ * @class Nlu
  */
 export class Nlu {
     /**
@@ -79,7 +78,7 @@ export class Nlu {
     }
 
     /**
-     * Получить обработанный nlu для определенного типа.
+     * Получение обработанного nlu для определенного типа.
      *
      * @param {string} type Тип данных.
      * @return any|null
@@ -298,7 +297,7 @@ export class Nlu {
     /**
      * Вернет true, если пользователь не даёт согласие.
      *
-     * @param {string} userCommand Фраза пользователя. Если нет совпадения по интенту, то поиск не согласия идет по тексту.
+     * @param {string} userCommand Фраза пользователя. Если нет совпадения по интенту, то поиск несогласия идет по тексту.
      * @return boolean
      * @api
      */

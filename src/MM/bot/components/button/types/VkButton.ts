@@ -4,8 +4,7 @@ import {Button} from "../Button";
 
 /**
  * Класс отвечающий за отображение кнопок в ВКонтакте
- * Class VkButton
- * @class bot\components\button\types
+ * @class VkButton
  */
 export class VkButton extends TemplateButtonTypes {
     /**
