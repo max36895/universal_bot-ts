@@ -1,6 +1,7 @@
 import {TemplateTypeModel} from "./TemplateTypeModel";
-import {IAlisaBigImage, IAlisaItemsList} from "../interfaces/IAlisa";
 import {
+    IMarusiaBigImage,
+    IMarusiaItemsList,
     IMarusiaResponse,
     IMarusiaSession,
     IMarusiaSessionResponse, IMarusiaWebhookRequest,
@@ -42,7 +43,7 @@ export class Marusia extends TemplateTypeModel {
         };
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
-                response.card = <IAlisaItemsList | IAlisaBigImage>this.controller.card.getCards();
+                response.card = <IMarusiaItemsList | IMarusiaBigImage>this.controller.card.getCards();
             }
             response.buttons = this.controller.buttons.getButtons();
         }
