@@ -1,7 +1,7 @@
-import {TemplateSoundTypes} from "../../../../../src/MM/bot/components/sound/types/TemplateSoundTypes";
-import {ISound} from "../../../../../src/MM/bot/components/sound/interfaces/sound";
-import {YandexSpeechKit} from "../../../../../src/MM/bot/api/YandexSpeechKit";
-import {Text} from "../../../../../src/MM/bot/components/standard/Text";
+import {TemplateSoundTypes} from "../../../../../src/components/sound/types/TemplateSoundTypes";
+import {ISound} from "../../../../../src/components/sound/interfaces/sound";
+import {YandexSpeechKit} from "../../../../../src/api/YandexSpeechKit";
+import {Text} from "../../../../../src/components/standard/Text";
 
 export class UserSound implements TemplateSoundTypes {
     /**

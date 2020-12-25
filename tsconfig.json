@@ -22,8 +22,9 @@
     }
   },
   "include": [
-    "src/MM/**/*",
-    "demo/**/*"
+    "src/**/*",
+    "demo/**/*",
+    "tests/**/*"
   ],
   "exclude": [
     "node_modules"

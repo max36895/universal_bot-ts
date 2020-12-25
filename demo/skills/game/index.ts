@@ -3,7 +3,7 @@
  * @version 1.0
  * @author Maxim-M maximco36895@yandex.ru
  */
-import {Bot, IBotTestParams} from "../../../src/MM/bot/core/Bot";
+import {Bot} from "../../../src/core/Bot";
 import skillGameConfig from "../../config/skillGameConfig";
 import skillGameParam from "../../config/skillGameParam";
 import {GameController} from "./controller/GameController";
@@ -22,4 +22,4 @@ bot.initBotController(logic);
 // bot.test(params);
 module.exports = async (req, res) => {
     bot.start(req, res)
-}
+};

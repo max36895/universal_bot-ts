@@ -4,14 +4,14 @@
  * @author Maxim-M maximco36895@yandex.ru
  */
 
-import {Bot, IBotTestParams} from "../../../src/MM/bot/core/Bot";
+import {Bot, IBotTestParams} from "../../../src/core/Bot";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillDefaultParam from "../../config/skillDefaultParam";
 import {UserAppController} from "./controller/UserAppController";
 import {UserApp} from "./UserTemplate/Controller/UserApp";
 import userDataConfig from "./UserTemplate/userDataConfig";
 
-const bot = new Bot()
+const bot = new Bot();
 bot.initConfig(skillStorageConfig());
 bot.initParams(skillDefaultParam());
 const logic = new UserAppController();
@@ -28,5 +28,5 @@ const params: IBotTestParams = {
     isShowTime: true,
     userBotClass: userApp,
     userBotConfig: userDataConfig
-}
+};
 bot.test(params);

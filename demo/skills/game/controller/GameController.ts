@@ -4,10 +4,14 @@
  * @author Maxim-M maximco36895@yandex.ru
  */
 
-import {BotController} from "../../../../src/MM/bot/controller/BotController";
-import {rand} from "../../../../src/MM/bot/utils/functins";
-import {HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src/MM/bot/core/mmApp";
+import {BotController} from "../../../../src/controller/BotController";
+import {rand} from "../../../../src/utils/functins";
+import {HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src/core/mmApp";
 
+interface IGameControllerExample {
+    example: string;
+    result: number;
+}
 /**
  * Пример с игрой в математику.
  *
@@ -18,7 +22,7 @@ export class GameController extends BotController {
         super();
     }
 
-    protected _getExample() {
+    protected _getExample(): IGameControllerExample {
         const value1 = rand(0, 20);
         const value2 = rand(0, 20);
         if (rand(0, 1)) {
@@ -41,7 +45,7 @@ export class GameController extends BotController {
         }
     }
 
-    protected game() {
+    protected game(): void {
         if (this.userData.example) {
             if (this.userData.result == this.userCommand) {
                 this.text = "Молодец! Это правильный ответ! Сколько будет: \n";
@@ -62,7 +66,7 @@ export class GameController extends BotController {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет! Давай поиграем в математику!' +
                     'Чтобы начать игру скажи играть.';
-                this.buttons.addBtn('Играть')
+                this.buttons.addBtn('Играть');
                 break;
 
             case HELP_INTENT_NAME:
@@ -89,7 +93,7 @@ export class GameController extends BotController {
                 break;
 
             default:
-                if (!(this.userData['isGame'] ?? false)) {
+                if (!(this.userData['isGame'] || false)) {
                     this.text = 'Извини, я тебя не понимаю...' +
                         'Если хочешь поиграть, скажи играть';
                     this.buttons.addBtn('Играть');

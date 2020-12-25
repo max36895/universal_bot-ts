@@ -3,7 +3,7 @@
  * @version 1.0
  * @author Maxim-M maximco36895@yandex.ru
  */
-import {IAppConfig} from "../../src/MM/bot/core/mmApp";
+import {IAppConfig} from "../../src/core/mmApp";
 
 export default function (): IAppConfig {
     return {

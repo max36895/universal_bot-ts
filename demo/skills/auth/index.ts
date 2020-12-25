@@ -5,12 +5,12 @@
  */
 
 
-import {Bot, IBotTestParams} from "../../../src/MM/bot/core/Bot";
+import {Bot, IBotTestParams} from "../../../src/core/Bot";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillAuthParam from "../../config/skillAuthParam";
 import {AuthController} from "./controller/AuthController";
 
-const bot = new Bot()
+const bot = new Bot();
 bot.initConfig(skillStorageConfig());
 bot.initParams(skillAuthParam());
 const logic = new AuthController();
@@ -22,5 +22,5 @@ const params: IBotTestParams = {
     isShowResult: true,
     isShowStorage: true,
     isShowTime: true,
-}
+};
 bot.test(params);

@@ -4,7 +4,7 @@
  * @author Maxim-M maximco36895@yandex.ru
  */
 
-import {IAppParam} from "../../src/MM/bot/core/mmApp";
+import {IAppParam} from "../../src/core/mmApp";
 
 export default function (): IAppParam {
     return {

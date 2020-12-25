@@ -3,12 +3,12 @@
  * @version 1.0
  * @author Maxim-M maximco36895@yandex.ru
  */
-import {Bot, IBotTestParams} from "../../../src/MM/bot/core/Bot";
+import {Bot, IBotTestParams} from "../../../src/core/Bot";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillDefaultParam from "../../config/skillDefaultParam";
 import {LocalStorageController} from "./controller/LocalStorageController";
 
-const bot = new Bot()
+const bot = new Bot();
 bot.initConfig(skillStorageConfig());
 bot.initParams(skillDefaultParam());
 const logic = new LocalStorageController();
@@ -20,5 +20,5 @@ const params: IBotTestParams = {
     isShowResult: true,
     isShowStorage: true,
     isShowTime: true,
-}
+};
 bot.test(params);
