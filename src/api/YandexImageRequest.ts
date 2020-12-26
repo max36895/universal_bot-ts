@@ -152,7 +152,7 @@ export class YandexImageRequest extends YandexRequest {
      * Удаление выбранного изображения.
      * В случае успеха вернет 'ok'.
      *
-     * @param {string} imageId Идентификатор изображения, которую необходимо удалить.
+     * @param {string} imageId Идентификатор изображения, которое необходимо удалить.
      * @return string|null
      * @api
      */

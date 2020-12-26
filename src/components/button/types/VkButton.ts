@@ -57,12 +57,12 @@ export class VkButton extends TemplateButtonTypes {
                 object.hash = button.payload.hash || null;
             }
             object = {...object, ...button.options};
-            if (typeof button.payload[VkButton.GROUP_NAME] !== 'undefined') {
+            if (typeof button.options[VkButton.GROUP_NAME] !== 'undefined') {
                 delete object.action.payload[VkButton.GROUP_NAME];
-                if (typeof groups[button.payload[VkButton.GROUP_NAME]] !== 'undefined') {
-                    (<IVkButton[]>buttons[groups[button.payload[VkButton.GROUP_NAME]]]).push(object);
+                if (typeof groups[button.options[VkButton.GROUP_NAME]] !== 'undefined') {
+                    (<IVkButton[]>buttons[groups[button.options[VkButton.GROUP_NAME]]]).push(object);
                 } else {
-                    groups[button.payload[VkButton.GROUP_NAME]] = index;
+                    groups[button.options[VkButton.GROUP_NAME]] = index;
                     buttons[index] = [object];
                     index++;
                 }

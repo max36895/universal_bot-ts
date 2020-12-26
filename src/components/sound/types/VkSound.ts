@@ -11,7 +11,7 @@ import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
  */
 export class VkSound implements TemplateSoundTypes {
     /**
-     * Возвращаем массив с отображаемыми звуками.
+     * Возвращаем массив с воспроизводимыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
      *
      * @param {ISound[]} sounds Массив звуков.

@@ -13,7 +13,7 @@ import {SoundTokens} from "../../../models/SoundTokens";
  */
 export class TelegramSound implements TemplateSoundTypes {
     /**
-     * Возвращаем массив с отображаемыми звуками.
+     * Возвращаем массив с воспроизводимыми звуками.
      * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
      *
      * @param {ISound[]} sounds Массив звуков.

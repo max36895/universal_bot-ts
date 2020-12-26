@@ -60,7 +60,7 @@ export class ViberRequest {
     }
 
     /**
-     * Класс отвечающий за отправку запросов на viber сервер.
+     * Отвечает за отправку запросов на viber сервер.
      *
      * @param {string} method Название метода.
      * @return any|null

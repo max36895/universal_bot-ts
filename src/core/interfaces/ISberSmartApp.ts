@@ -570,7 +570,7 @@ interface ISberSmartAppCardText {
     actions?: ISberSmartAppCardAction;
 }
 
-interface ISberSmartAppCardPadding {
+export interface ISberSmartAppCardPadding {
     /**
      * Размер отступа.
      */

@@ -5,7 +5,7 @@ import {Text} from "../../../../../src/components/standard/Text";
 
 export class UserSound implements TemplateSoundTypes {
     /**
-     * Возвращаем массив с отображаемыми звуками.
+     * Возвращаем массив с воспроизводимыми звуками.
      * В случае если передается параметр text, то можно отправить запрос в Yandex SpeechKit, для преобразования текста в голос
      *
      * @param sounds Массив звуков

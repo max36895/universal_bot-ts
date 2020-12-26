@@ -1,6 +1,18 @@
 import {TButtonPayload} from "./interfaces/button";
 import {mmApp} from "../../core/mmApp";
 
+interface IButtonOptions {
+    /**
+     * Задается в том случае, если нужно объеденить кнопку в группу.
+     */
+    _group?: string;
+
+    /**
+     * Дополнительные опции для кнопки.
+     */
+    [name: string]: any;
+}
+
 /**
  * @class Button
  *
@@ -46,7 +58,7 @@ export class Button {
     /**
      * Дополнительные параметры для кнопки.
      */
-    public options: object;
+    public options: IButtonOptions;
 
     /**
      * Button constructor.

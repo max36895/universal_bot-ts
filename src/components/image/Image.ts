@@ -2,6 +2,47 @@ import {Buttons} from "../button/Buttons";
 import {TButton, TButtonPayload} from "../button/interfaces/button";
 import {Text} from "../standard/Text";
 import {is_file} from "../../utils/functins";
+import {ISberSmartAppCardPadding} from "../../core/interfaces/ISberSmartApp";
+
+interface IImageParams {
+    /**
+     * Стиль верхнего текста
+     */
+    topTypeface?: string;
+    /**
+     * Цвет верхнего текста
+     */
+    topText_color?: string;
+    /**
+     * Отступы верхнего текста
+     */
+    topMargins?: ISberSmartAppCardPadding;
+    /**
+     * Максимальное количество строк верхнего текста
+     */
+    topMax_lines?: number;
+    /**
+     * Стиль нижнего текста
+     */
+    bottomTypeface?: string;
+    /**
+     * Цвет нижнего текста
+     */
+    bottomText_color?: string;
+    /**
+     * Отступы нижнего текста
+     */
+    bottomMargins?: ISberSmartAppCardPadding;
+    /**
+     * Максимальное количество строк нижнего текста
+     */
+    bottomMax_lines?: number;
+
+    /**
+     * Дополнительные параметры изображения
+     */
+    [name: string]: any;
+}
 
 /**
  * Класс отвечающий за обработку и корректное отображение изображения, в зависимости от типа приложения.
