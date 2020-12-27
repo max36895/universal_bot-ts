@@ -60,7 +60,7 @@ export * from './components/image/Image';
 // Определение пользовательских запросов
 export * from './components/nlu/interfaces/INlu';
 export * from './components/nlu/Nlu';
-// изображения
+// Звуки
 export * from './components/sound/interfaces/sound';
 export * from './components/sound/types/AlisaSound';
 export * from './components/sound/types/TelegramSound';
