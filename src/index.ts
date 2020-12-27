@@ -55,7 +55,7 @@ export * from './components/card/types/TemplateCardTypes';
 export * from './components/card/types/ViberCard';
 export * from './components/card/types/VkCard';
 export * from './components/card/Card';
-// изображения
+// Изображения
 export * from './components/image/Image';
 // Определение пользовательских запросов
 export * from './components/nlu/interfaces/INlu';

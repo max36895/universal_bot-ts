@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "lib": [
+      "es2016",
+      "dom"
+    ],
+    "moduleResolution": "node",
+    "removeComments": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@api/*": ["src/MM/bot/api/*"],
+      "@components/*": ["src/MM/bot/components/*"],
+      "@controller/*": ["src/MM/bot/controller/*"],
+      "@core/*": ["src/MM/bot/core/*"],
+      "@models/*": ["src/MM/bot/models/*"],
+      "@utils/*": ["src/MM/bot/utils/*"],
+      "*": ["node_modules/*", "src/types/*"]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "types": [ "mocha", "chai" ],
+  "typeRoots": [
+    "./node_modules/@types"
+  ]
+}
