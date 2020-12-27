@@ -4,8 +4,8 @@
  * @author Maxim-M maximco36895@yandex.ru
  */
 
-import {HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src/MM/bot/core/mmApp";
-import {BotController} from "../../../../src/MM/bot/controller/BotController";
+import {HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src/core/mmApp";
+import {BotController} from "../../../../src/controller/BotController";
 
 /**
  * Пример с авторизацией в навыке.
@@ -22,8 +22,8 @@ export class AuthController extends BotController {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btn = ['Пример кнопки галереи'];
-                this.buttons.link = ['Пример ссылки для картинки'];
+                this.buttons.btns = ['Пример кнопки галереи'];
+                this.buttons.links = ['Пример ссылки для изображения'];
                 break;
 
             case HELP_INTENT_NAME:

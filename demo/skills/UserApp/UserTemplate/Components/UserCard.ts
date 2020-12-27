@@ -1,10 +1,10 @@
-import {TemplateCardTypes} from "../../../../../src/MM/bot/components/card/types/TemplateCardTypes";
+import {TemplateCardTypes} from "../../../../../src/components/card/types/TemplateCardTypes";
 import {UserButton} from "./UserButton";
-import {Buttons} from "../../../../../src/MM/bot/components/button/Buttons";
+import {Buttons} from "../../../../../src/components/button/Buttons";
 
 export class UserCard extends TemplateCardTypes {
     /**
-     * Получение массива для отображения карточки/картинки
+     * Получение массива для отображения карточки/изображения
      *
      * @param isOne True, если отобразить только 1 картинку.
      * @return array

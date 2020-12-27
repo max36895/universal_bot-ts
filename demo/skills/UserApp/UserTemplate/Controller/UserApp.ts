@@ -1,8 +1,8 @@
-import {TemplateTypeModel} from "../../../../../src/MM/bot/core/types/TemplateTypeModel";
-import {BotController} from "../../../../../src/MM/bot/controller/BotController";
-import {mmApp} from "../../../../../src/MM/bot/core/mmApp";
+import {TemplateTypeModel} from "../../../../../src/core/types/TemplateTypeModel";
+import {BotController} from "../../../../../src/controller/BotController";
+import {mmApp} from "../../../../../src/core/mmApp";
 import {UserButton} from "../Components/UserButton";
-import {Buttons} from "../../../../../src/MM/bot/components/button/Buttons";
+import {Buttons} from "../../../../../src/components/button/Buttons";
 import {UserCard} from "../Components/UserCard";
 import {UserSound} from "../Components/UserSound";
 

@@ -1,4 +1,4 @@
-import {TemplateButtonTypes} from "../../../../../src/MM/bot/components/button/types/TemplateButtonTypes";
+import {TemplateButtonTypes} from "../../../../../src/components/button/types/TemplateButtonTypes";
 
 export class UserButton extends TemplateButtonTypes {
     /**
@@ -12,7 +12,7 @@ export class UserButton extends TemplateButtonTypes {
             /*
              * Заполняем массив object нужными данными
              */
-        })
+        });
         return objects;
     }
 }
