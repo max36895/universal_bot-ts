@@ -1,5 +1,5 @@
 import {Button} from "./Button";
-import {IButton, TButton, TButtonPayload} from "./interfaces/button";
+import {IButton, TButton, TButtonPayload, IButtonOptions} from "./interfaces/button";
 import {TemplateButtonTypes} from "./types/TemplateButtonTypes";
 import {AlisaButton} from "./types/AlisaButton";
 import {TelegramButton} from "./types/TelegramButton";
@@ -108,17 +108,18 @@ export class Buttons {
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
      * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
      * @param {boolean} hide True, если отображать кнопку как сайджест.
+     * @param {IButtonOptions} options Дополнительные параметры для кнопки
      *
      * @return boolean
      */
-    protected _add(title: string, url: string, payload: TButtonPayload, hide: boolean = false): boolean {
+    protected _add(title: string, url: string, payload: TButtonPayload, hide: boolean = false, options: IButtonOptions = {}): boolean {
         let button = new Button();
         if (hide === Button.B_LINK) {
-            if (!button.initLink(title, url, payload)) {
+            if (!button.initLink(title, url, payload, options)) {
                 button = null;
             }
         } else {
-            if (!button.initBtn(title, url, payload)) {
+            if (!button.initBtn(title, url, payload, options)) {
                 button = null;
             }
         }
@@ -135,11 +136,12 @@ export class Buttons {
      * @param {string} title Текст на кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
      * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
+     * @param {IButtonOptions} options Дополнительные параметры для кнопки
      * @return boolean
      * @api
      */
-    public addBtn(title: string, url: string = '', payload: TButtonPayload = ''): boolean {
-        return this._add(title, url, payload, Button.B_BTN);
+    public addBtn(title: string, url: string = '', payload: TButtonPayload = '', options: IButtonOptions = {}): boolean {
+        return this._add(title, url, payload, Button.B_BTN, options);
     }
 
     /**
@@ -148,11 +150,12 @@ export class Buttons {
      * @param {string} title Текст на кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
      * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
+     * @param {IButtonOptions} options Дополнительные параметры для кнопки
      * @return boolean
      * @api
      */
-    public addLink(title: string, url: string = '', payload: TButtonPayload = ''): boolean {
-        return this._add(title, url, payload, Button.B_LINK);
+    public addLink(title: string, url: string = '', payload: TButtonPayload = '', options: IButtonOptions = {}): boolean {
+        return this._add(title, url, payload, Button.B_LINK, options);
     }
 
     /**
@@ -164,7 +167,8 @@ export class Buttons {
             if (typeof this.btns === 'object') {
                 this.btns.forEach((btn) => {
                     if (typeof btn !== 'string') {
-                        this.addBtn(btn.title || null, (<IButton>btn).url || '', btn.payload || null);
+                        this.addBtn(btn.title || null, (<IButton>btn).url || '',
+                            btn.payload || null, btn.options || {});
                     } else {
                         this.addBtn(btn);
                     }
@@ -177,7 +181,8 @@ export class Buttons {
             if (typeof this.links === 'object') {
                 this.links.forEach((link) => {
                     if (typeof link !== 'string') {
-                        this.addLink(link.title || null, (<IButton>link).url || '', link.payload || null);
+                        this.addLink(link.title || null, (<IButton>link).url || '',
+                            link.payload || null, link.options || {});
                     } else {
                         this.addLink(link);
                     }

@@ -58,7 +58,7 @@ export class VkButton extends TemplateButtonTypes {
             }
             object = {...object, ...button.options};
             if (typeof button.options[VkButton.GROUP_NAME] !== 'undefined') {
-                delete object.action.payload[VkButton.GROUP_NAME];
+                delete object[VkButton.GROUP_NAME];
                 if (typeof groups[button.options[VkButton.GROUP_NAME]] !== 'undefined') {
                     (<IVkButton[]>buttons[groups[button.options[VkButton.GROUP_NAME]]]).push(object);
                 } else {

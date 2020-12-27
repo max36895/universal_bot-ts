@@ -244,12 +244,12 @@ describe('Buttons test', () => {
             ]
         };
         defaultButtons.clear();
-        defaultButtons.addBtn('1', null, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addLink('1', 'https://test.ru', {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addBtn('2', null, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addLink('2', 'https://test.ru', {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addBtn('1', null, {}, {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addLink('1', 'https://test.ru', {}, {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addBtn('2', null, {}, {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addLink('2', 'https://test.ru', {}, {[VkButton.GROUP_NAME]: 0});
 
-        defaultButtons.addBtn('3', null, {[VkButton.GROUP_NAME]: 1});
+        defaultButtons.addBtn('3', null, {}, {[VkButton.GROUP_NAME]: 1});
         defaultButtons.addLink('3', 'https://test.ru');
         assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
@@ -257,7 +257,8 @@ describe('Buttons test', () => {
             {
                 title: 'btn',
                 url: 'https://test.ru',
-                payload: {
+                payload: {},
+                options: {
                     [VkButton.GROUP_NAME]: 1
                 }
             }
