@@ -78,14 +78,12 @@ curl https://get.acme.sh | sh
 ## Issue and install certificate for site
 ```bash
 acme.sh --issue -d {{domain}} -w {{domain dir}}
-~/.acme.sh/acme.sh  --issue -d {{domain}} -w {{domain dir}}
 ```
 1. domain - Название домена (example.com)
 2. domain dir - Директория, в которой находится сайт
 
 ```bash
 acme.sh --install-cert -d {{domain}} --key-file {{key file}} --fullchain-file {{cert file}} --reloadcmd "service nginx reload"
-~/.acme.sh/acme.sh --install-cert -d {{domain}} --key-file {{key file}} --fullchain-file {{cert file}} --reloadcmd "service nginx reload"
 ```
 1. domain - Название домена (example.com)
 2. key file - Директория, в которой хранится ключ сертификата
