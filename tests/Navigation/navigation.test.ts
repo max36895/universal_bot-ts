@@ -96,12 +96,26 @@ describe('Navigation tests', () => {
         assert.deepStrictEqual(navigation.getPageNav(true), ['1', '[2]']);
 
         navigation.maxVisibleElements = 1;
-        assert.deepStrictEqual(navigation.getPageNav(true), ['1', '[2]', '3', '4', '5']);
-        navigation.thisPage = 9;
-        assert.deepStrictEqual(navigation.getPageNav(true), ['8', '9', '[10]']);
-
+        navigation.thisPage = 0;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['[1]', '2', '3', '4', '5', '... 10']);
+        navigation.thisPage = 1;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1', '[2]', '3', '4', '5', '... 10']);
+        navigation.thisPage = 2;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1', '2', '[3]', '4', '5', '... 10']);
+        navigation.thisPage = 3;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1', '2', '3', '[4]', '5', '6', '... 10']);
         navigation.thisPage = 4;
-        assert.deepStrictEqual(navigation.getPageNav(true), ['3', '4', '[5]', '6', '7']);
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '3', '4', '[5]', '6', '7', '... 10']);
+        navigation.thisPage = 5;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '4', '5', '[6]', '7', '8', '... 10']);
+        navigation.thisPage = 6;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '5', '6', '[7]', '8', '9', '10']);
+        navigation.thisPage = 7;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '6', '7', '[8]', '9', '10']);
+        navigation.thisPage = 8;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '7', '8', '[9]', '10']);
 
+        navigation.thisPage = 9;
+        assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '8', '9', '[10]']);
     })
 });
