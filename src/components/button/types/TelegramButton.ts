@@ -1,5 +1,5 @@
 import {TemplateButtonTypes} from "./TemplateButtonTypes";
-import {TButtonPayload} from "../interfaces/button";
+import {TButtonPayload} from "../interfaces/IButton";
 
 export interface ITelegramInlineKeyboard {
     /**

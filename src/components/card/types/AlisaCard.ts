@@ -1,5 +1,5 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
-import {Buttons} from "../../button/Buttons";
+import {Buttons} from "../../button";
 import {
     IAlisaBigImage, IAlisaButtonCard, IAlisaImage, IAlisaImageGallery,
     IAlisaItemsList

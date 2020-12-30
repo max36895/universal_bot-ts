@@ -4,7 +4,7 @@ import {IVkRequestContent, IVkRequestObject} from "../interfaces/IVk";
 import {mmApp} from "../mmApp";
 import {VkRequest} from "../../api/VkRequest";
 import {IVkParams} from "../../api/interfaces/IVkApi";
-import {Buttons} from "../../components/button/Buttons";
+import {Buttons} from "../../components/button";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для ВКонтакте.

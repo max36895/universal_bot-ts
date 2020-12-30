@@ -1,4 +1,4 @@
-import {rand, similar_text} from "../../utils/functins";
+import {rand, similar_text} from "../../utils";
 
 type TFind = string | string[];
 

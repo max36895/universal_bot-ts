@@ -1,8 +1,8 @@
-import {mmApp} from "../../core/mmApp";
+import {mmApp} from "../../core";
 import {IModelRules} from "../interface/IModel";
 import {Text} from "../../components/standard/Text";
 import {Sql} from "./Sql";
-import {fread, is_file} from "../../utils/functins";
+import {fread, is_file} from "../../utils";
 
 export interface IModelRes {
     /**

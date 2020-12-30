@@ -2,7 +2,7 @@ export type TButtonPayload = any;
 
 export interface IButtonOptions {
     /**
-     * Задается в том случае, если нужно объеденить кнопку в группу.
+     * Задается в том случае, если нужно объединить кнопку в группу.
      */
     _group?: string | number;
 

@@ -14,7 +14,7 @@ import {
 import {BotController} from "../controller/BotController";
 import {TemplateTypeModel} from "./types/TemplateTypeModel";
 import {Alisa} from "./types/Alisa";
-import {GET, stdin} from "../utils/functins";
+import {GET, stdin} from "../utils";
 import alisaConfig from "./skillsTemplateConfig/alisaConfig";
 import {Telegram} from "./types/Telegram";
 import {UsersData} from "../models/UsersData";

@@ -1,4 +1,4 @@
-import {mmApp} from "../../core/mmApp";
+import {mmApp} from "../../core";
 import {DB} from "./DB";
 import {IModelRes} from "./Model";
 

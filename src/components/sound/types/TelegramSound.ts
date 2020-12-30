@@ -1,10 +1,9 @@
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
-import {is_file} from "../../../utils/functins";
-import {TelegramRequest} from "../../../api/TelegramRequest";
+import {is_file} from "../../../utils";
 import {mmApp} from "../../../core/mmApp";
-import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
+import {TelegramRequest, YandexSpeechKit} from "../../../api";
 import {SoundTokens} from "../../../models/SoundTokens";
 
 /**

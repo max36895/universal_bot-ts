@@ -1,4 +1,4 @@
-import {TButtonPayload, IButtonOptions} from "./interfaces/button";
+import {TButtonPayload, IButtonOptions} from "./interfaces/IButton";
 import {mmApp} from "../../core/mmApp";
 
 /**

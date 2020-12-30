@@ -1,4 +1,4 @@
-import {http_build_query, IGetParams, is_file} from "../../utils/functins";
+import {http_build_query, IGetParams, is_file} from "../../utils";
 import {IRequestSend} from "../interfaces/IRequest";
 
 /**

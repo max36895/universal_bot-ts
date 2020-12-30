@@ -1,5 +1,5 @@
 import {Image} from "../../image/Image";
-import {Buttons} from "../../button/Buttons";
+import {Buttons} from "../../button";
 
 /**
  * @class TemplateCardTypes

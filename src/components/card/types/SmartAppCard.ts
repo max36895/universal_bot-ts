@@ -1,6 +1,6 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {ISberSmartAppCard, ISberSmartAppCardItem, ISberSmartAppItem} from "../../../core/interfaces/ISberSmartApp";
-import {Buttons} from "../../button/Buttons";
+import {Buttons} from "../../button";
 import {Image} from "../../image/Image";
 
 /**

@@ -1,4 +1,4 @@
-import {fwrite, isDir, mkdir} from "../utils/functins";
+import {fwrite, isDir, mkdir} from "../utils";
 
 export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart-app';
 

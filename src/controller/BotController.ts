@@ -1,7 +1,7 @@
-import {Buttons} from "../components/button/Buttons";
-import {Card} from "../components/card/Card";
-import {Sound} from "../components/sound/Sound";
-import {Nlu} from "../components/nlu/Nlu";
+import {Buttons} from "../components/button";
+import {Card} from "../components/card";
+import {Sound} from "../components/sound";
+import {Nlu} from "../components/nlu";
 import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from "../core/mmApp";
 import {Text} from "../components/standard/Text";
 
