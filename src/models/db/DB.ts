@@ -44,7 +44,13 @@ export class DB {
         this.errors = [];
         if (this.params) {
             this.close();
-            this.sql = new mongoDb.MongoClient(this.params.host);
+            const options = {
+                auth: {
+                    user: this.params.user,
+                    password: this.params.pass
+                }
+            }
+            this.sql = new mongoDb.MongoClient(this.params.host, options);
             return true;
         } else {
             this.errors.push('Отсутствуют данные для подключения в БД!');
