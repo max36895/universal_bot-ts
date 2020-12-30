@@ -4,14 +4,13 @@
  * @author Maxim-M maximco36895@yandex.ru
  */
 
-import {BotController} from "../../../../src/controller/BotController";
-import {rand} from "../../../../src/utils/functins";
-import {HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src/core/mmApp";
+import {BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src";
 
 interface IGameControllerExample {
     example: string;
     result: number;
 }
+
 /**
  * Пример с игрой в математику.
  *
@@ -93,7 +92,7 @@ export class GameController extends BotController {
                 break;
 
             default:
-                if (!(this.userData['isGame'] || false)) {
+                if (!(this.userData['isGame'])) {
                     this.text = 'Извини, я тебя не понимаю...' +
                         'Если хочешь поиграть, скажи играть';
                     this.buttons.addBtn('Играть');

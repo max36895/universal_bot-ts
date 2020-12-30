@@ -4,8 +4,7 @@
  * @author Maxim-M maximco36895@yandex.ru
  */
 
-import {HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src/core/mmApp";
-import {BotController} from "../../../../src/controller/BotController";
+import {HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController} from "../../../../src";
 
 /**
  * Пример с авторизацией в навыке.

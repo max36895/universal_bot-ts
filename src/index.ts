@@ -24,9 +24,9 @@ export * from './api/interfaces/ITelegramApi';
 export * from './api/interfaces/IViberApi';
 export * from './api/interfaces/IVkApi';
 export * from './api/interfaces/IYandexApi';
-// Отправка запростов
+// Отправка запросов
 export * from './api/request/Request';
-// Взаимодествие с api платформы
+// Взаимодействие с api платформы
 export * from './api/TelegramRequest';
 export * from './api/ViberRequest';
 export * from './api/VkRequest';
@@ -42,7 +42,7 @@ export * from './components/button/interfaces/IViberButton';
 export * from './components/button/interfaces/IVkButton';
 export * from './components/button/types/AlisaButton';
 export * from './components/button/types/TelegramButton';
-export * from './components/button/types/TelegramButton';
+export * from './components/button/types/TemplateButtonTypes';
 export * from './components/button/types/ViberButton';
 export * from './components/button/types/VkButton';
 export * from './components/button/Button';

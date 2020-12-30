@@ -1,6 +1,5 @@
-import {TemplateCardTypes} from "../../../../../src/components/card/types/TemplateCardTypes";
+import {TemplateCardTypes, Buttons} from "../../../../../src";
 import {UserButton} from "./UserButton";
-import {Buttons} from "../../../../../src/components/button/Buttons";
 
 export class UserCard extends TemplateCardTypes {
     /**
