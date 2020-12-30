@@ -3,7 +3,7 @@
  * @version 1.0
  * @author Maxim-M maximco36895@yandex.ru
  */
-import {Bot} from "../../../src/core/Bot";
+import {Bot} from "../../../src";
 import skillGameConfig from "../../config/skillGameConfig";
 import skillGameParam from "../../config/skillGameParam";
 import {GameController} from "./controller/GameController";

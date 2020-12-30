@@ -1,8 +1,5 @@
-import {TemplateTypeModel} from "../../../../../src/core/types/TemplateTypeModel";
-import {BotController} from "../../../../../src/controller/BotController";
-import {mmApp} from "../../../../../src/core/mmApp";
+import {TemplateTypeModel, BotController, mmApp, Buttons} from "../../../../../src";
 import {UserButton} from "../Components/UserButton";
-import {Buttons} from "../../../../../src/components/button/Buttons";
 import {UserCard} from "../Components/UserCard";
 import {UserSound} from "../Components/UserSound";
 
@@ -24,7 +21,7 @@ export class UserApp extends TemplateTypeModel {
      */
     public init(query: string | IUserApp, controller: BotController): boolean {
         if (query) {
-            let content: IUserApp = null;
+            let content: IUserApp;
             if (typeof query === 'string') {
                 content = <IUserApp>JSON.parse(query);
             } else {

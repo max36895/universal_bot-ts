@@ -1,30 +1,28 @@
 import {assert} from 'chai';
-import {Sound} from "../../src/components/sound/Sound";
-import {mmApp, T_ALISA} from "../../src/core/mmApp";
-import {AlisaSound} from "../../src/components/sound/types/AlisaSound";
+import {Sound, mmApp, T_ALISA, AlisaSound} from "../../src";
 
 describe('sound', () => {
     it('AlisaSound getPause', () => {
-        assert.equal(AlisaSound.getPause(1), 'sil <[1]>');
-        assert.equal(AlisaSound.getPause(10), 'sil <[10]>');
-        assert.equal(AlisaSound.getPause(100), 'sil <[100]>');
-        assert.equal(AlisaSound.getPause(1000), 'sil <[1000]>');
+        assert.strictEqual(AlisaSound.getPause(1), 'sil <[1]>');
+        assert.strictEqual(AlisaSound.getPause(10), 'sil <[10]>');
+        assert.strictEqual(AlisaSound.getPause(100), 'sil <[100]>');
+        assert.strictEqual(AlisaSound.getPause(1000), 'sil <[1000]>');
     });
 
     it('AlisaSound removeSound', () => {
         const speakAudio = '<speaker audio="alice-sounds-game-win-1.opus">';
         const speakEffect = '<speaker effect="alice-sounds-game-win-1.opus">';
         const pause = AlisaSound.getPause(12);
-        assert.equal(AlisaSound.removeSound(`${speakAudio}1${speakAudio}`), '1');
-        assert.equal(AlisaSound.removeSound(`${speakEffect}1${speakEffect}`), '1');
-        assert.equal(AlisaSound.removeSound(`${pause}1${pause}`), '1');
-        assert.equal(AlisaSound.removeSound(`${speakEffect}1${speakAudio}1${pause}`), '11');
+        assert.strictEqual(AlisaSound.removeSound(`${speakAudio}1${speakAudio}`), '1');
+        assert.strictEqual(AlisaSound.removeSound(`${speakEffect}1${speakEffect}`), '1');
+        assert.strictEqual(AlisaSound.removeSound(`${pause}1${pause}`), '1');
+        assert.strictEqual(AlisaSound.removeSound(`${speakEffect}1${speakAudio}1${pause}`), '11');
     });
 
     it('getSounds', () => {
         const sound = new Sound();
         mmApp.appType = T_ALISA;
-        assert.equal(sound.getSounds('hello'), 'hello');
+        assert.strictEqual(sound.getSounds('hello'), 'hello');
         sound.sounds = [
             {
                 key: '[{test}]',
@@ -33,9 +31,9 @@ describe('sound', () => {
                 ]
             }
         ];
-        assert.equal(sound.getSounds('hello'), 'hello');
-        assert.equal(sound.getSounds('hello [{test}] listen'), 'hello <my_Sound> listen');
+        assert.strictEqual(sound.getSounds('hello'), 'hello');
+        assert.strictEqual(sound.getSounds('hello [{test}] listen'), 'hello <my_Sound> listen');
         mmApp.appType = null;
-        assert.equal(sound.getSounds('hello [{test}] listen'), 'hello [{test}] listen');
+        assert.strictEqual(sound.getSounds('hello [{test}] listen'), 'hello [{test}] listen');
     });
 });

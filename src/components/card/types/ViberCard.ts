@@ -1,6 +1,5 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
-import {IViberButtonObject} from "../../button/interfaces/IViberButton";
-import {Buttons} from "../../button/Buttons";
+import {Buttons, IViberButtonObject} from "../../button";
 import {Image} from "../../image/Image";
 
 export interface IViberCard {

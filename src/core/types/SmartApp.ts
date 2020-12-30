@@ -8,7 +8,7 @@ import {
     ISberSmartAppWebhookResponse, TSberSmartAppEmotionId
 } from "../interfaces/ISberSmartApp";
 import {Text} from "../../components/standard/Text";
-import {Buttons} from "../../components/button/Buttons";
+import {Buttons} from "../../components/button";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp

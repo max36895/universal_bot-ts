@@ -4,7 +4,7 @@ import {IViberContent} from "../interfaces/IViber";
 import {mmApp} from "../mmApp";
 import {ViberRequest} from "../../api/ViberRequest";
 import {IViberParams} from "../../api/interfaces/IViberApi";
-import {Buttons} from "../../components/button/Buttons";
+import {Buttons} from "../../components/button";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Viber.

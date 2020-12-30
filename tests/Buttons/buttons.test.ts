@@ -1,13 +1,15 @@
 import {assert} from 'chai';
-import {Button} from "../../src/components/button/Button";
-import {Buttons} from "../../src/components/button/Buttons";
-import {IAlisaButton} from "../../src/core/interfaces/IAlisa";
-import {ITelegramKeyboard} from "../../src/components/button/types/TelegramButton";
-import {IViberButtonObject} from "../../src/components/button/interfaces/IViberButton";
-import {ViberButton} from "../../src/components/button/types/ViberButton";
-import {IVkButtonObject} from "../../src/components/button/interfaces/IVkButton";
-import {VkButton} from "../../src/components/button/types/VkButton";
-import {mmApp} from "../../src/core/mmApp";
+import {
+    Button,
+    Buttons,
+    IAlisaButton,
+    ITelegramKeyboard,
+    IViberButtonObject,
+    ViberButton,
+    IVkButtonObject,
+    VkButton,
+    mmApp
+} from "../../src";
 
 describe('Buttons test', () => {
     let defaultButtons: Buttons;
@@ -26,17 +28,17 @@ describe('Buttons test', () => {
         const button = new Button();
         mmApp.params.utm_text = null;
         button.initBtn('btn', 'https://google.com');
-        assert.equal(button.url, 'https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
+        assert.strictEqual(button.url, 'https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
 
         button.initBtn('btn', 'https://google.com?utm_source=test');
-        assert.equal(button.url, 'https://google.com?utm_source=test');
+        assert.strictEqual(button.url, 'https://google.com?utm_source=test');
 
         button.initBtn('btn', 'https://google.com?data=test');
-        assert.equal(button.url, 'https://google.com?data=test&utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
+        assert.strictEqual(button.url, 'https://google.com?data=test&utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
 
         mmApp.params.utm_text = 'my_utm_text';
         button.initBtn('btn', 'https://google.com');
-        assert.equal(button.url, 'https://google.com?my_utm_text');
+        assert.strictEqual(button.url, 'https://google.com?my_utm_text');
     });
 
     it('Get buttons Alisa', () => {
@@ -69,7 +71,7 @@ describe('Buttons test', () => {
                 url: 'https://test.ru'
             }
         ];
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS), alisaButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS), alisaButtons);
 
         defaultButtons.btns = [
             {
@@ -98,10 +100,10 @@ describe('Buttons test', () => {
             payload: 'test',
             hide: false
         });
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS), alisaButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS), alisaButtons);
     });
     it('Get buttons Alisa card', () => {
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_ALISA_CARD_BUTTON), {
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_ALISA_CARD_BUTTON), {
             text: '1'
         });
     });
@@ -151,7 +153,7 @@ describe('Buttons test', () => {
                 }
             ]
         };
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
         defaultButtons.btns = [
             {
@@ -183,10 +185,10 @@ describe('Buttons test', () => {
                 payload: 'test'
             }
         });
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
         defaultButtons.clear();
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), {one_time: false, buttons: []});
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), {one_time: false, buttons: []});
 
     });
     it('Get buttons Vk group', () => {
@@ -251,7 +253,7 @@ describe('Buttons test', () => {
 
         defaultButtons.addBtn('3', null, {}, {[VkButton.GROUP_NAME]: 1});
         defaultButtons.addLink('3', 'https://test.ru');
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
         defaultButtons.btns = [
             {
@@ -289,7 +291,7 @@ describe('Buttons test', () => {
                 payload: 'test'
             }
         });
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
     });
 
     it('Get buttons Viber', () => {
@@ -329,7 +331,7 @@ describe('Buttons test', () => {
                 },
             ]
         };
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS), viberButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS), viberButtons);
 
         defaultButtons.btns = [
             {
@@ -355,7 +357,7 @@ describe('Buttons test', () => {
             ActionType: ViberButton.T_OPEN_URL,
             ActionBody: 'https://test.ru'
         },);
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS), viberButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS), viberButtons);
     });
 
     it('Get buttons Telegram', () => {
@@ -365,7 +367,7 @@ describe('Buttons test', () => {
             ]
         };
 
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
 
         defaultButtons.btns = [
             {
@@ -394,9 +396,9 @@ describe('Buttons test', () => {
             callback_data: 'test'
         });
 
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), telegramButtons);
 
         defaultButtons.clear();
-        assert.deepEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), {remove_keyboard: true});
+        assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS), {remove_keyboard: true});
     });
 });

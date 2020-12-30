@@ -1,6 +1,5 @@
-import {Buttons} from "../button/Buttons";
+import {Buttons, TButton} from "../button";
 import {Image} from "../image/Image";
-import {TButton} from "../button/interfaces/button";
 import {TemplateCardTypes} from "./types/TemplateCardTypes";
 import {mmApp, T_ALISA, T_MARUSIA, T_SMARTAPP, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "../../core/mmApp";
 import {AlisaCard} from "./types/AlisaCard";

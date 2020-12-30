@@ -1,13 +1,17 @@
 import {assert} from 'chai'
-import {Buttons} from "../../src/components/button/Buttons";
-import {Card} from "../../src/components/card/Card";
-import {IAlisaBigImage, IAlisaItemsList} from "../../src/core/interfaces/IAlisa";
-import {AlisaCard} from "../../src/components/card/types/AlisaCard";
-import {mmApp, T_ALISA, T_VIBER, T_VK} from "../../src/core/mmApp";
-import {IVkCard} from "../../src/components/card/types/VkCard";
-import {IViberCard} from "../../src/components/card/types/ViberCard";
-import {Button} from "../../src/components/button/Button";
-import {ViberButton} from "../../src/components/button/types/ViberButton";
+import {
+    Buttons,
+    Card,
+    IAlisaBigImage,
+    IAlisaItemsList,
+    AlisaCard,
+    mmApp,
+    T_ALISA, T_VIBER, T_VK,
+    IVkCard,
+    IViberCard,
+    Button,
+    ViberButton
+} from "../../src";
 
 describe('Card test', () => {
     let defaultCard: Card;
@@ -46,7 +50,7 @@ describe('Card test', () => {
             ]
         };
         mmApp.appType = T_ALISA;
-        assert.deepEqual(defaultCard.getCards(), alisaCard);
+        assert.deepStrictEqual(defaultCard.getCards(), alisaCard);
 
         defaultCard.button.addBtn('1', 'https://test.ru');
         alisaCard.footer = {
@@ -56,7 +60,7 @@ describe('Card test', () => {
                 url: 'https://test.ru'
             }
         };
-        assert.deepEqual(defaultCard.getCards(), alisaCard);
+        assert.deepStrictEqual(defaultCard.getCards(), alisaCard);
 
         defaultCard.isOne = true;
 
@@ -70,11 +74,11 @@ describe('Card test', () => {
                 url: 'https://test.ru'
             }
         };
-        assert.deepEqual(defaultCard.getCards(), alisaCardOne);
+        assert.deepStrictEqual(defaultCard.getCards(), alisaCardOne);
 
         defaultCard.button = new Buttons();
         delete alisaCardOne.button;
-        assert.deepEqual(defaultCard.getCards(), alisaCardOne);
+        assert.deepStrictEqual(defaultCard.getCards(), alisaCardOne);
     });
 
     it('Get Viber card', () => {
@@ -96,11 +100,11 @@ describe('Card test', () => {
             }
         ];
         mmApp.appType = T_VIBER;
-        assert.deepEqual(defaultCard.getCards(), viberCard);
+        assert.deepStrictEqual(defaultCard.getCards(), viberCard);
 
         defaultCard.isOne = true;
         viberCard[0].Columns = 1;
-        assert.deepEqual(defaultCard.getCards(), viberCard[0]);
+        assert.deepStrictEqual(defaultCard.getCards(), viberCard[0]);
 
         viberCard[0].Text = '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>';
         viberCard[0].ActionType = ViberButton.T_REPLY;
@@ -108,11 +112,11 @@ describe('Card test', () => {
         const buttons = new Buttons();
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
-        assert.deepEqual(defaultCard.getCards(), viberCard[0]);
+        assert.deepStrictEqual(defaultCard.getCards(), viberCard[0]);
 
         defaultCard.isOne = false;
         viberCard[0].Columns = 3;
-        assert.deepEqual(defaultCard.getCards(), viberCard);
+        assert.deepStrictEqual(defaultCard.getCards(), viberCard);
     });
 
     it('Get Vk card', () => {
@@ -138,15 +142,15 @@ describe('Card test', () => {
             ]
         };
         mmApp.appType = T_VK;
-        assert.deepEqual(defaultCard.getCards(), []);
+        assert.deepStrictEqual(defaultCard.getCards(), []);
 
         defaultCard.isOne = true;
-        assert.deepEqual(defaultCard.getCards(), ['36895']);
+        assert.deepStrictEqual(defaultCard.getCards(), ['36895']);
 
         defaultCard.isOne = false;
         const buttons = new Buttons();
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
-        assert.deepEqual(defaultCard.getCards(), vkCard);
+        assert.deepStrictEqual(defaultCard.getCards(), vkCard);
     })
 });

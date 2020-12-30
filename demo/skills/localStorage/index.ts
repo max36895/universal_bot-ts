@@ -3,7 +3,7 @@
  * @version 1.0
  * @author Maxim-M maximco36895@yandex.ru
  */
-import {Bot, IBotTestParams} from "../../../src/core/Bot";
+import {Bot, IBotTestParams} from "../../../src";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillDefaultParam from "../../config/skillDefaultParam";
 import {LocalStorageController} from "./controller/LocalStorageController";

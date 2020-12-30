@@ -1,6 +1,6 @@
 import {ISound} from "../interfaces/sound";
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
-import {is_file} from "../../../utils/functins";
+import {is_file} from "../../../utils";
 import {Text} from "../../standard/Text";
 import {SoundTokens} from "../../../models/SoundTokens";
 import {YandexSpeechKit} from "../../../api/YandexSpeechKit";

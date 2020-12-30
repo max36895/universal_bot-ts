@@ -542,6 +542,33 @@ export interface ISberSmartAppCardAction {
     deep_link?: string;
 }
 
+export type TSberSmartAppTypeface =
+    'headline1'
+    | 'headline2'
+    | 'headline3'
+    | 'title1'
+    | 'title2'
+    | 'body1'
+    | 'body2'
+    | 'body3'
+    | 'text1'
+    | 'paragraphText1'
+    | 'paragraphText2'
+    | 'footnote1'
+    | 'footnote2'
+    | 'button1'
+    | 'button2'
+    | 'caption';
+export type TSberSmartAppTextColor =
+    'default'
+    | 'secondary'
+    | 'tertiary'
+    | 'inverse'
+    | 'brand'
+    | 'warning'
+    | 'critical'
+    | 'link';
+
 interface ISberSmartAppCardText {
     /**
      * Текст, который необходимо отобразить. Минимальная длина текста 1 символ.
@@ -550,11 +577,11 @@ interface ISberSmartAppCardText {
     /**
      * Стиль текста
      */
-    typeface: 'headline1' | 'headline2' | 'headline3' | 'title1' | 'title2' | 'body1' | 'body2' | 'body3' | 'text1' | 'paragraphText1' | 'paragraphText2' | 'footnote1' | 'footnote2' | 'button1' | 'button2' | 'caption';
+    typeface: TSberSmartAppTypeface;
     /**
      * Цвет текста.
      */
-    text_color: 'default' | 'secondary' | 'tertiary' | 'inverse' | 'brand' | 'warning' | 'critical' | 'link';
+    text_color: TSberSmartAppTextColor;
     /**
      * Отступы.
      */

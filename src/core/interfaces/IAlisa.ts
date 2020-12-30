@@ -1,4 +1,4 @@
-import {TButtonPayload} from "../../components/button/interfaces/button";
+import {TButtonPayload} from "../../components/button/interfaces/IButton";
 
 interface IAlisaEntities {
     /**

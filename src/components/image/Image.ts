@@ -1,18 +1,22 @@
 import {Buttons} from "../button/Buttons";
-import {TButton, TButtonPayload} from "../button/interfaces/button";
+import {TButton, TButtonPayload} from "../button/interfaces/IButton";
 import {Text} from "../standard/Text";
-import {is_file} from "../../utils/functins";
-import {ISberSmartAppCardPadding} from "../../core/interfaces/ISberSmartApp";
+import {is_file} from "../../utils";
+import {
+    ISberSmartAppCardPadding,
+    TSberSmartAppTextColor,
+    TSberSmartAppTypeface
+} from "../../core/interfaces/ISberSmartApp";
 
 interface IImageParams {
     /**
      * Стиль верхнего текста
      */
-    topTypeface?: string;
+    topTypeface?: TSberSmartAppTypeface;
     /**
      * Цвет верхнего текста
      */
-    topText_color?: string;
+    topText_color?: TSberSmartAppTextColor;
     /**
      * Отступы верхнего текста
      */
@@ -24,11 +28,11 @@ interface IImageParams {
     /**
      * Стиль нижнего текста
      */
-    bottomTypeface?: string;
+    bottomTypeface?: TSberSmartAppTypeface;
     /**
      * Цвет нижнего текста
      */
-    bottomText_color?: string;
+    bottomText_color?: TSberSmartAppTextColor;
     /**
      * Отступы нижнего текста
      */
@@ -78,7 +82,7 @@ export class Image {
     /**
      * Дополнительные параметры для изображения.
      */
-    public params: any;
+    public params: IImageParams;
 
     /**
      * Image constructor.

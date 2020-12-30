@@ -1,7 +1,4 @@
-import {TemplateSoundTypes} from "../../../../../src/components/sound/types/TemplateSoundTypes";
-import {ISound} from "../../../../../src/components/sound/interfaces/sound";
-import {YandexSpeechKit} from "../../../../../src/api/YandexSpeechKit";
-import {Text} from "../../../../../src/components/standard/Text";
+import {TemplateSoundTypes, ISound, YandexSpeechKit, Text} from "../../../../../src";
 
 export class UserSound implements TemplateSoundTypes {
     /**

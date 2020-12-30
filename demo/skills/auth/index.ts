@@ -5,7 +5,7 @@
  */
 
 
-import {Bot, IBotTestParams} from "../../../src/core/Bot";
+import {Bot, IBotTestParams} from "../../../src";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillAuthParam from "../../config/skillAuthParam";
 import {AuthController} from "./controller/AuthController";

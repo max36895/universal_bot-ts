@@ -1,4 +1,4 @@
-import {TemplateButtonTypes} from "../../../../../src/components/button/types/TemplateButtonTypes";
+import {TemplateButtonTypes} from "../../../../../src";
 
 export class UserButton extends TemplateButtonTypes {
     /**

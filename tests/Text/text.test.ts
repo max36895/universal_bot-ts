@@ -1,5 +1,5 @@
 import {assert} from 'chai';
-import {Text} from "../../src/components/standard/Text";
+import {Text} from "../../src";
 
 describe('Text', () => {
     it('Is say true', () => {
@@ -46,17 +46,17 @@ describe('Text', () => {
     });
 
     it('Get ending', () => {
-        assert.equal(Text.getEnding(1, ['яблоко', 'яблока', 'яблок']), 'яблоко');
-        assert.equal(Text.getEnding(2, ['яблоко', 'яблока', 'яблок']), 'яблока');
-        assert.equal(Text.getEnding(3, ['яблоко', 'яблока', 'яблок']), 'яблока');
-        assert.equal(Text.getEnding(4, ['яблоко', 'яблока', 'яблок']), 'яблока');
+        assert.strictEqual(Text.getEnding(1, ['яблоко', 'яблока', 'яблок']), 'яблоко');
+        assert.strictEqual(Text.getEnding(2, ['яблоко', 'яблока', 'яблок']), 'яблока');
+        assert.strictEqual(Text.getEnding(3, ['яблоко', 'яблока', 'яблок']), 'яблока');
+        assert.strictEqual(Text.getEnding(4, ['яблоко', 'яблока', 'яблок']), 'яблока');
 
         for (let i = 5; i < 21; i++) {
-            assert.equal(Text.getEnding(i, ['яблоко', 'яблока', 'яблок']), 'яблок');
+            assert.strictEqual(Text.getEnding(i, ['яблоко', 'яблока', 'яблок']), 'яблок');
         }
 
-        assert.equal(Text.getEnding(21, ['яблоко', 'яблока', 'яблок']), 'яблоко');
-        assert.equal(Text.getEnding(22, ['яблоко', 'яблока', 'яблок']), 'яблока');
-        assert.equal(Text.getEnding(29, ['яблоко', 'яблока', 'яблок']), 'яблок');
+        assert.strictEqual(Text.getEnding(21, ['яблоко', 'яблока', 'яблок']), 'яблоко');
+        assert.strictEqual(Text.getEnding(22, ['яблоко', 'яблока', 'яблок']), 'яблока');
+        assert.strictEqual(Text.getEnding(29, ['яблоко', 'яблока', 'яблок']), 'яблок');
     });
 });

@@ -1,7 +1,7 @@
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
-import {is_file} from "../../../utils/functins";
+import {is_file} from "../../../utils";
 import {SoundTokens} from "../../../models/SoundTokens";
 
 /**

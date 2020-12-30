@@ -1,7 +1,6 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {ImageTokens} from "../../../models/ImageTokens";
-import {Buttons} from "../../button/Buttons";
-import {IVkButton} from "../../button/interfaces/IVkButton";
+import {Buttons, IVkButton} from "../../button";
 
 export interface IVkCardElement {
     /**

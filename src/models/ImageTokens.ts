@@ -1,11 +1,13 @@
 import {Model} from "./db/Model";
-import {mmApp} from "../core/mmApp";
+import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {YandexImageRequest} from "../api/YandexImageRequest";
+import {
+    YandexImageRequest,
+    IYandexRequestDownloadImage,
+    TelegramRequest,
+    VkRequest
+} from "../api";
 import {Text} from "../components/standard/Text";
-import {IYandexRequestDownloadImage} from "../api/interfaces/IYandexApi";
-import {TelegramRequest} from "../api/TelegramRequest";
-import {VkRequest} from "../api/VkRequest";
 
 /**
  * @class ImageTokens

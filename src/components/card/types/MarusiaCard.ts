@@ -1,5 +1,5 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
-import {Buttons} from "../../button/Buttons";
+import {Buttons} from "../../button";
 import {ImageTokens} from "../../../models/ImageTokens";
 import {Text} from "../../standard/Text";
 import {IAlisaButtonCard, IAlisaImage, IAlisaItemsList} from "../../../core/interfaces/IAlisa";

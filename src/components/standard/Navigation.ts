@@ -260,6 +260,11 @@ export class Navigation {
                 index = 0;
             }
             let count: number = 0;
+            if (index === 1) {
+                buttons.push('1');
+            } else if (index) {
+                buttons.push('1 ...');
+            }
             for (let i = index; i < maxPage; i++) {
                 if (i == this.thisPage) {
                     buttons.push(`[${i + 1}]`);
@@ -268,6 +273,11 @@ export class Navigation {
                 }
                 count++;
                 if (count > 4) {
+                    if (i === maxPage - 2) {
+                        buttons.push(`${maxPage}`);
+                    } else if (i < maxPage - 2) {
+                        buttons.push(`... ${maxPage}`);
+                    }
                     break;
                 }
             }

@@ -1,6 +1,5 @@
 import {assert} from 'chai'
-import {Nlu} from "../../src/components/nlu/Nlu";
-import {INlu} from "../../src/components/nlu/interfaces/INlu";
+import {Nlu, INlu} from "../../src";
 
 describe('Nlu test', () => {
     let nlu: Nlu = null;
@@ -106,7 +105,7 @@ describe('Nlu test', () => {
     });
 
     it('find user name', () => {
-        assert.deepEqual(nlu.getUserName(), {
+        assert.deepStrictEqual(nlu.getUserName(), {
             username: 'name',
             first_name: 'fn',
             last_name: 'ln'
@@ -115,26 +114,26 @@ describe('Nlu test', () => {
 
     it('Get fio', () => {
         assert.isTrue(nlu.getFio().status);
-        assert.deepEqual(nlu.getFio().result, [{first_name: 'fn'}]);
+        assert.deepStrictEqual(nlu.getFio().result, [{first_name: 'fn'}]);
     });
 
     it('Get geo', () => {
         assert.isTrue(nlu.getGeo().status);
-        assert.deepEqual(nlu.getGeo().result, [{city: 'city'}]);
+        assert.deepStrictEqual(nlu.getGeo().result, [{city: 'city'}]);
     });
 
     it('Get date time', () => {
         assert.isTrue(nlu.getDateTime().status);
-        assert.deepEqual(nlu.getDateTime().result, [{year: 2020}]);
+        assert.deepStrictEqual(nlu.getDateTime().result, [{year: 2020}]);
     });
 
     it('Get number', () => {
         assert.isTrue(nlu.getNumber().status);
-        assert.deepEqual(nlu.getNumber().result, [{integer: 512}]);
+        assert.deepStrictEqual(nlu.getNumber().result, [{integer: 512}]);
     });
 
     it('Get intent', () => {
-        assert.deepEqual(nlu.getIntent('custom'), {
+        assert.deepStrictEqual(nlu.getIntent('custom'), {
             slots: {
                 name: {
                     type: "YANDEX.STRING",
