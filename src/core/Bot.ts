@@ -294,7 +294,7 @@ export class Bot {
      * @api
      */
     public async start(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel = null) {
-        let statusCode = 200;
+        let statusCode;
 
         // Принимаем только POST-запросы:
         if (req.method !== "POST") {

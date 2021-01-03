@@ -86,7 +86,7 @@ export class SmartApp extends TemplateTypeModel {
      */
     public init(query: string | ISberSmartAppWebhookRequest, controller: BotController): boolean {
         if (query) {
-            let content: ISberSmartAppWebhookRequest = null;
+            let content: ISberSmartAppWebhookRequest;
             if (typeof query === 'string') {
                 content = <ISberSmartAppWebhookRequest>JSON.parse(query);
             } else {

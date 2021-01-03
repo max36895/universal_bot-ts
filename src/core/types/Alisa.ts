@@ -68,7 +68,7 @@ export class Alisa extends TemplateTypeModel {
      */
     public init(query: string | IAlisaWebhookRequest, controller: BotController): boolean {
         if (query) {
-            let content: IAlisaWebhookRequest = null;
+            let content: IAlisaWebhookRequest;
             if (typeof query === 'string') {
                 content = <IAlisaWebhookRequest>JSON.parse(query);
             } else {

@@ -17,7 +17,7 @@ export class UserAppController extends BotController {
         super();
     }
 
-    public action(intentName): void {
+    public action(intentName: string): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';

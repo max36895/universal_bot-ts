@@ -50,7 +50,7 @@ export class Vk extends TemplateTypeModel {
              *  - string event_id:
              *  - string secret:
              */
-            let content: IVkRequestContent = null;
+            let content: IVkRequestContent;
             if (typeof query === 'string') {
                 content = <IVkRequestContent>JSON.parse(query);
             } else {

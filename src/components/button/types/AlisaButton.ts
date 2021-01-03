@@ -32,7 +32,7 @@ export class AlisaButton extends TemplateButtonTypes {
     protected _getButton(button: Button): IAlisaButtonCard | IAlisaButton {
         const title = Text.resize(button.title, 64);
         if (title) {
-            let object: IAlisaButtonCard | IAlisaButton = null;
+            let object: IAlisaButtonCard | IAlisaButton;
             if (this.isCard) {
                 object = <IAlisaButtonCard>{
                     text: title
