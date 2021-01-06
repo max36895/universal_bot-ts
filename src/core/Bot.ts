@@ -256,6 +256,8 @@ export class Bot {
                 this._botController.run();
                 if (this._botController.thisIntentName) {
                     this._botController.userData.oldIntentName = this._botController.thisIntentName;
+                } else {
+                    delete this._botController.userData.oldIntentName;
                 }
                 let content: any = botClass.getContext();
                 if (!isLocalStorage) {
