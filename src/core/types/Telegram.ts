@@ -57,7 +57,7 @@ export class Telegram extends TemplateTypeModel {
              *  - array poll: Новое состояние опроса. Боты получают только обновления о остановленных опросах и опросах, которые отправляются ботом. @see (https://core.telegram.org/bots/api#poll) Смотри тут
              *  - array poll_answer: Пользователь изменил свой ответ в неанонимном опросе. Боты получают новые голоса только в опросах, которые были отправлены самим ботом. @see (https://core.telegram.org/bots/api#poll_answer) Смотри тут
              */
-            let content: ITelegramContent = null;
+            let content: ITelegramContent;
             if (typeof query === 'string') {
                 content = <ITelegramContent>JSON.parse(query);
             } else {

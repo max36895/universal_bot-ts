@@ -74,7 +74,7 @@ export class Marusia extends TemplateTypeModel {
      */
     public init(query: string | IMarusiaWebhookRequest, controller: BotController): boolean {
         if (query) {
-            let content: IMarusiaWebhookRequest = null;
+            let content: IMarusiaWebhookRequest;
             if (typeof query === 'string') {
                 content = <IMarusiaWebhookRequest>JSON.parse(query);
             } else {

@@ -53,7 +53,7 @@ export class Viber extends TemplateTypeModel {
              *      - array duration: Длина видео в секундах. Актуально для type='video'
              *      - array sticker_id: Viber наклейка id. Актуально для type='sticker'
              */
-            let content: IViberContent = null;
+            let content: IViberContent;
             if (typeof query === 'string') {
                 content = <IViberContent>JSON.parse(query);
             } else {

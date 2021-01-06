@@ -256,6 +256,8 @@ export class Bot {
                 this._botController.run();
                 if (this._botController.thisIntentName) {
                     this._botController.userData.oldIntentName = this._botController.thisIntentName;
+                } else {
+                    delete this._botController.userData.oldIntentName;
                 }
                 let content: any = botClass.getContext();
                 if (!isLocalStorage) {
@@ -294,7 +296,7 @@ export class Bot {
      * @api
      */
     public async start(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel = null) {
-        let statusCode = 200;
+        let statusCode;
 
         // Принимаем только POST-запросы:
         if (req.method !== "POST") {
