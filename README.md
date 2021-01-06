@@ -4,7 +4,8 @@
 
 Документация
 ------------
-Документация: [u-bot-ts](https://www.maxim-m.ru/bot/ts-doc/index.html). Получить информации о работе приложения можно в телеграм канале [MM](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw) или группе [MM](https://t.me/mm_universal_bot)
+Документация: [u-bot-ts](https://www.maxim-m.ru/bot/ts-doc/index.html). Получить информации о работе приложения можно в телеграм канале [MM](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw) или группе [MM](https://t.me/mm_universal_bot).
+Также можно прочитать [статью, в которой рассказано как создать навык "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
 
 ### Создание документации
 Для создания документации, установите typedoc. 
