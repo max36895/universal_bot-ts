@@ -24,19 +24,19 @@ export class TelegramCard extends TemplateCardTypes {
      *
      * todo подумать над корректным отображением.
      * @param {boolean} isOne True, если нужно отобразить только 1 элемент. Не используется.
-     * @return ITelegramCard
+     * @return {Promise<ITelegramCard>}
      * @api
      */
-    public getCard(isOne: boolean): ITelegramCard {
+    public async getCard(isOne: boolean): Promise<ITelegramCard> {
         let object: ITelegramCard = null;
         const options: string[] = [];
-        this.images.forEach((image) => {
+        await this.images.forEach(async (image) => {
             if (!image.imageToken) {
                 if (image.imageDir) {
                     const mImage = new ImageTokens();
                     mImage.type = ImageTokens.T_TELEGRAM;
                     mImage.caption = image.desc;
-                    image.imageToken = mImage.getToken();
+                    image.imageToken = await mImage.getToken();
                 }
             } else {
                 (new TelegramRequest()).sendPhoto(mmApp.params.user_id, image.imageToken, image.desc);

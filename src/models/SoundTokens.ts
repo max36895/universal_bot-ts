@@ -128,13 +128,17 @@ export class SoundTokens extends Model {
     /**
      * Получение идентификатора/токена мелодии.
      *
-     * @return string|null
+     * @return {Promise<string>}
      * @api
      */
-    public getToken(): string {
+    public async getToken(): Promise<string> {
+        const where = {
+            path: this.path,
+            type: this.type
+        };
         switch (this.type) {
             case SoundTokens.T_ALISA:
-                if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${SoundTokens.T_ALISA}`)) {
+                if (await this.whereOne(where)) {
                     return this.soundToken;
                 } else {
                     const yImage = new YandexSoundRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
@@ -143,7 +147,7 @@ export class SoundTokens extends Model {
                         mmApp.saveLog('SoundTokens.log', 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!');
                         return null;
                     } else {
-                        res = yImage.downloadSoundFile(this.path);
+                        res = await yImage.downloadSoundFile(this.path);
                     }
                     if (res) {
                         this.soundToken = res.id;
@@ -155,15 +159,15 @@ export class SoundTokens extends Model {
                 break;
 
             case SoundTokens.T_VK:
-                if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${SoundTokens.T_VK}`)) {
+                if (await this.whereOne(where)) {
                     return this.soundToken;
                 } else {
                     const vkApi = new VkRequest();
-                    const uploadServerResponse = vkApi.docsGetMessagesUploadServer(mmApp.params.user_id, 'audio_message');
+                    const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(mmApp.params.user_id, 'audio_message');
                     if (uploadServerResponse) {
-                        const uploadResponse = vkApi.upload(uploadServerResponse.upload_url, this.path);
+                        const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, this.path);
                         if (uploadResponse) {
-                            const doc = vkApi.docsSave(uploadResponse.file, 'Voice message');
+                            const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
                             if (doc) {
                                 this.soundToken = `doc${doc.owner_id}_${doc.id}`;
                                 if (this.save(true)) {
@@ -177,11 +181,11 @@ export class SoundTokens extends Model {
 
             case SoundTokens.T_TELEGRAM:
                 const telegramApi = new TelegramRequest();
-                if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${SoundTokens.T_TELEGRAM}`)) {
-                    telegramApi.sendAudio(mmApp.params.user_id, this.soundToken);
+                if (await this.whereOne(where)) {
+                    await telegramApi.sendAudio(mmApp.params.user_id, this.soundToken);
                     return this.soundToken;
                 } else {
-                    const sound = telegramApi.sendAudio(mmApp.params.user_id, this.path);
+                    const sound = await telegramApi.sendAudio(mmApp.params.user_id, this.path);
                     if (sound && sound.ok) {
                         if (typeof sound.result.audio.file_id !== 'undefined') {
                             this.soundToken = sound.result.audio.file_id;

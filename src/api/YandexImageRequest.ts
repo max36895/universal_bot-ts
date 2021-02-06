@@ -46,16 +46,16 @@ export class YandexImageRequest extends YandexRequest {
     /**
      * Проверка занятого места.
      *
-     * @return IYandexCheckOutPlace|null
+     * @return Promise<IYandexCheckOutPlace>
      * [
      *  - int total: Все доступное место.
      *  - int used: Занятое место.
      * ]
      * @api
      */
-    public checkOutPlace(): IYandexCheckOutPlace {
+    public async checkOutPlace(): Promise<IYandexCheckOutPlace> {
         this._request.url = this.STANDARD_URL + 'status';
-        const query = this.call();
+        const query = await this.call();
         if (typeof query.images.quota !== 'undefined') {
             return query.images.quota;
         }
@@ -67,7 +67,7 @@ export class YandexImageRequest extends YandexRequest {
      * Загрузка изображения из интернета.
      *
      * @param {string} imageUrl Адрес изображения из интернета.
-     * @return IYandexRequestDownloadImage|null
+     * @return Promise<IYandexRequestDownloadImage>
      * [
      *  - string id: Идентификатор изображения.
      *  - string origUrl: Адрес изображения.
@@ -76,12 +76,12 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public downloadImageUrl(imageUrl: string): IYandexRequestDownloadImage {
+    public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = {url: imageUrl};
-            const query = this.call();
+            const query = await this.call();
             if (typeof query.image.id !== 'undefined') {
                 return query.image;
             } else {
@@ -97,7 +97,7 @@ export class YandexImageRequest extends YandexRequest {
      * Загрузка изображения из файла.
      *
      * @param {string} imageDir Путь к картинке, расположенной на сервере.
-     * @return IYandexRequestDownloadImage|null
+     * @return Promise<IYandexRequestDownloadImage>
      * [
      *  - string id: Идентификатор изображения.
      *  - string origUrl: Адрес изображения.
@@ -106,12 +106,12 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public downloadImageFile(imageDir: string): IYandexRequestDownloadImage {
+    public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;
-            const query = this.call();
+            const query = await this.call();
             if (typeof query.image.id !== 'undefined') {
                 return query.image;
             } else {
@@ -126,7 +126,7 @@ export class YandexImageRequest extends YandexRequest {
     /**
      * Просмотр всех загруженных изображений.
      *
-     * @return IYandexRequestDownloadImage[]|null
+     * @return Promise<IYandexRequestDownloadImage[]>
      * [
      *  [
      *      - string id: Идентификатор изображения.
@@ -137,10 +137,10 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public getLoadedImages(): IYandexRequestDownloadImage[] {
+    public async getLoadedImages(): Promise<IYandexRequestDownloadImage[]> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
-            const query = this.call();
+            const query = await this.call();
             return query.images || null;
         } else {
             this._log('YandexImageRequest::getLoadedImages() Error: Не выбран навык!');
@@ -153,15 +153,15 @@ export class YandexImageRequest extends YandexRequest {
      * В случае успеха вернет 'ok'.
      *
      * @param {string} imageId Идентификатор изображения, которое необходимо удалить.
-     * @return string|null
+     * @return Promise<string>
      * @api
      */
-    public deleteImage(imageId: string): string {
+    public async deleteImage(imageId: string): Promise<string> {
         if (this.skillId) {
             if (imageId) {
                 this._request.url = `${this._getImagesUrl()}/${imageId}`;
                 this._request.customRequest = 'DELETE';
-                const query = this.call();
+                const query = await this.call();
                 if (typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
@@ -184,9 +184,9 @@ export class YandexImageRequest extends YandexRequest {
      * @return boolean
      * @api
      */
-    public deleteImages(): boolean {
+    public async deleteImages(): Promise<boolean> {
         if (this.skillId) {
-            const images = this.getLoadedImages();
+            const images = await this.getLoadedImages();
             if (images) {
                 images.forEach((image) => {
                     this.deleteImage(image.id);

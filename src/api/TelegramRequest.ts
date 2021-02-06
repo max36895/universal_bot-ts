@@ -81,16 +81,16 @@ export class TelegramRequest {
      *
      * @param {string} method Отправляемый метод, что именно будет отправляться (Изображение, сообщение и тд).
      * @param {TTelegramChatId} userId Идентификатор пользователя/чата
-     * @return any|null
+     * @return {Promise<any>}
      * @api
      */
-    public call(method: string, userId: TTelegramChatId = null): any {
+    public async call(method: string, userId: TTelegramChatId = null): Promise<any> {
         if (userId) {
             this._request.post.chat_id = userId;
         }
         if (this.token) {
             if (method) {
-                const data = this._request.send(this._getUrl() + method);
+                const data = await this._request.send(this._getUrl() + method);
                 if (data.status) {
                     if (data.data.ok === false) {
                         this._error = data.data.description;
@@ -123,7 +123,7 @@ export class TelegramRequest {
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
      *  - string reply_markup: Дополнительные опции интерфейса. JSON-сериализованный объект для встроенной клавиатуры, пользовательской клавиатуры ответа, инструкций по удалению клавиатуры ответа или принудительному получению ответа от пользователя.
      * ]
-     * @return ITelegramResult|null
+     * @return Promise<ITelegramResult>
      * [
      *  - 'ok' => bool, Статус отправки сообщения
      *  - 'result' => [
@@ -153,7 +153,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendMessage(chatId: TTelegramChatId, message: string, params: ITelegramParams = null): ITelegramResult {
+    public sendMessage(chatId: TTelegramChatId, message: string, params: ITelegramParams = null): Promise<ITelegramResult> {
         this._request.post = {
             chat_id: chatId,
             text: message
@@ -184,7 +184,7 @@ export class TelegramRequest {
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
      *  - string reply_markup: Дополнительные опции интерфейса. JSON-сериализованный объект для встроенной клавиатуры, пользовательской клавиатуры ответа, инструкций по удалению клавиатуры ответа или принудительному получению ответа от пользователя.
      * ]
-     * @return ITelegramResult|null
+     * @return Promise<ITelegramResult>
      * [
      *  - 'ok' => bool, Статус отправки опроса
      *  - 'result' => [
@@ -224,7 +224,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendPoll(chatId: TTelegramChatId, question: string, options: string[], params: ITelegramParams = null): ITelegramResult {
+    public sendPoll(chatId: TTelegramChatId, question: string, options: string[], params: ITelegramParams = null): Promise<ITelegramResult> {
         this._request.post = {
             chat_id: chatId,
             question,
@@ -268,7 +268,7 @@ export class TelegramRequest {
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
      *  - string reply_markup: Дополнительные опции интерфейса. JSON-сериализованный объект для встроенной клавиатуры, пользовательской клавиатуры ответа, инструкций по удалению клавиатуры ответа или принудительному получению ответа от пользователя.
      * ]
-     * @return ITelegramResult|null
+     * @return Promise<ITelegramResult>
      * [
      *  - 'ok' => bool, Статус отправки изображения
      *  - 'result' => [
@@ -307,7 +307,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendPhoto(userId: TTelegramChatId, file: string, desc: string = null, params: ITelegramParams = null): ITelegramResult {
+    public sendPhoto(userId: TTelegramChatId, file: string, desc: string = null, params: ITelegramParams = null): Promise<ITelegramResult> {
         this._initPostFile('photo', file);
         if (desc) {
             this._request.post.caption = desc;
@@ -334,7 +334,7 @@ export class TelegramRequest {
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
      *  - string reply_markup: Дополнительные опции интерфейса. JSON-сериализованный объект для встроенной клавиатуры, пользовательской клавиатуры ответа, инструкций по удалению клавиатуры ответа или принудительному получению ответа от пользователя.
      * ]
-     * @return ITelegramResult|null
+     * @return Promise<ITelegramResult>
      * [
      *  - 'ok' => bool, Статус отправки документа
      *  - 'result' => [
@@ -378,7 +378,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendDocument(userId: TTelegramChatId, file: string, params: ITelegramParams = null): ITelegramResult {
+    public sendDocument(userId: TTelegramChatId, file: string, params: ITelegramParams = null): Promise<ITelegramResult> {
         this._initPostFile('document', file);
         if (params) {
             this._request.post = {...params, ...this._request.post};
@@ -405,7 +405,7 @@ export class TelegramRequest {
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
      *  - string reply_markup: Дополнительные опции интерфейса. JSON-сериализованный объект для встроенной клавиатуры, пользовательской клавиатуры ответа, инструкций по удалению клавиатуры ответа или принудительному получению ответа от пользователя.
      * ]
-     * @return ITelegramResult|null
+     * @return Promise<ITelegramResult>
      * [
      *  - 'ok' => bool, Статус отправки аудио файла
      *  - 'result' => [
@@ -451,7 +451,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendAudio(userId: TTelegramChatId, file: string, params: ITelegramParams = null): ITelegramResult {
+    public sendAudio(userId: TTelegramChatId, file: string, params: ITelegramParams = null): Promise<ITelegramResult> {
         this._initPostFile('audio', file);
         if (params) {
             this._request.post = {...params, ...this._request.post};
@@ -479,7 +479,7 @@ export class TelegramRequest {
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
      *  - string reply_markup: Дополнительные опции интерфейса. JSON-сериализованный объект для встроенной клавиатуры, пользовательской клавиатуры ответа, инструкций по удалению клавиатуры ответа или принудительному получению ответа от пользователя.
      * ]
-     * @return ITelegramResult|null
+     * @return Promise<ITelegramResult>
      * [
      *  - 'ok' => bool, Статус отправки видео файла
      *  - 'result' => [
@@ -526,7 +526,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendVideo(userId: TTelegramChatId, file: string, params: ITelegramParams = null): ITelegramResult {
+    public sendVideo(userId: TTelegramChatId, file: string, params: ITelegramParams = null): Promise<ITelegramResult> {
         this._initPostFile('video', file);
         if (params) {
             this._request.post = {...params, ...this._request.post};

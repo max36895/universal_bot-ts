@@ -6,9 +6,9 @@ export class UserCard extends TemplateCardTypes {
      * Получение массива для отображения карточки/изображения
      *
      * @param isOne True, если отобразить только 1 картинку.
-     * @return array
+     * @return {Promise<Object[]>}
      */
-    public getCard(isOne: boolean): object[] {
+    public async getCard(isOne: boolean): Promise<object[]> {
         let object = [];
         let countImage = this.images.length;
         if (countImage > 7) {

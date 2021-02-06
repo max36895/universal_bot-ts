@@ -24,7 +24,7 @@ describe('Buttons test', () => {
 
     });
 
-    it('Button init', () => {
+    it('Button utm text', () => {
         const button = new Button();
         mmApp.params.utm_text = null;
         button.initBtn('btn', 'https://google.com');

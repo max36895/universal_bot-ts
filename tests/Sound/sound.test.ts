@@ -19,10 +19,10 @@ describe('sound', () => {
         assert.strictEqual(AlisaSound.removeSound(`${speakEffect}1${speakAudio}1${pause}`), '11');
     });
 
-    it('getSounds', () => {
+    it('getSounds', async () => {
         const sound = new Sound();
         mmApp.appType = T_ALISA;
-        assert.strictEqual(sound.getSounds('hello'), 'hello');
+        assert.strictEqual(await sound.getSounds('hello'), 'hello');
         sound.sounds = [
             {
                 key: '[{test}]',
@@ -31,9 +31,9 @@ describe('sound', () => {
                 ]
             }
         ];
-        assert.strictEqual(sound.getSounds('hello'), 'hello');
-        assert.strictEqual(sound.getSounds('hello [{test}] listen'), 'hello <my_Sound> listen');
+        assert.strictEqual(await sound.getSounds('hello'), 'hello');
+        assert.strictEqual(await sound.getSounds('hello [{test}] listen'), 'hello <my_Sound> listen');
         mmApp.appType = null;
-        assert.strictEqual(sound.getSounds('hello [{test}] listen'), 'hello [{test}] listen');
+        assert.strictEqual(await sound.getSounds('hello [{test}] listen'), 'hello [{test}] listen');
     });
 });

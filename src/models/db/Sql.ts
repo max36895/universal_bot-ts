@@ -51,14 +51,14 @@ export class Sql {
             if (config.host && config.database) {
                 this.initParam(config.host, config.user, config.pass, config.database);
             } else {
-                this._saveLog('Sql::standardInit(): Не переданы настройки для подключения к Базе Данных!');
+                Sql._saveLog('Sql::standardInit(): Не переданы настройки для подключения к Базе Данных!');
                 return false;
             }
             try {
                 return this.connect();
             } catch (exception) {
                 console.warn(exception);
-                this._saveLog(`Ошибка при инициализации БД.\n${exception}`);
+                Sql._saveLog(`Ошибка при инициализации БД.\n${exception}`);
             }
         }
         return false;
@@ -94,10 +94,36 @@ export class Sql {
      */
     public connect(): boolean {
         if (_vDB.connect() === false) {
-            this._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${_vDB.errors[0]}`);
+            Sql._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${_vDB.errors[0]}`);
             return false;
         }
         return true;
+    }
+
+    /**
+     * Проверка подключения к БД.
+     * При успешном подключении вернется true, иначе false
+     *
+     * @return {Promise<boolean>}
+     */
+    public async isConnected(): Promise<boolean> {
+        try {
+            if (_vDB.dbConnect) {
+                const client = await _vDB.dbConnect;
+                return client.isConnected();
+            }
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Закрываем подключение к базе данных
+     */
+    public close(): void {
+        _vDB.destroy();
+        _vDB = null;
     }
 
     /**
@@ -108,31 +134,36 @@ export class Sql {
      * @api
      */
     public escapeString(text: string | number): string {
-        return text.toString();
+        return text + '';
     }
 
     /**
      * Выполнение запроса к базе данных.
      *
      * @param {Function} callback Функция с логикой.
-     * @return mysqli_result|boolean|null
+     * @return {Promise<any>}
      * @api
      */
-    public async query(callback: Function) {
-        return await _vDB.sql.connect((err, client) => {
-            if (err) {
-                this._saveLog(err);
+    public async query(callback: Function): Promise<any> {
+        try {
+            if (_vDB.dbConnect) {
+                const client = await _vDB.dbConnect;
+                const db = client.db(_vDB.params.database);
+                const data: IModelRes = await callback(client, db);
+                if (data && data.status) {
+                    return data.data;
+                }
+                Sql._saveLog(data.error + '');
+                return null;
+            } else {
+                Sql._saveLog('Не удалось выполнить запрос.');
                 return null;
             }
-            const db = client.db(_vDB.params.database);
-            const data: IModelRes = callback(client, db);
-            client.close();
-            if (data && data.status) {
-                return data.data;
-            }
-            this._saveLog(data.error.toString());
+        } catch (err) {
+            Sql._saveLog(err);
+            _vDB.dbConnect = null;
             return null;
-        });
+        }
     }
 
 
@@ -140,9 +171,10 @@ export class Sql {
      * Сохранение логов.
      *
      * @param {string} errorMsg Текст ошибки.
-     * @return boolean
+     * @return {boolean}
+     * @private
      */
-    protected _saveLog(errorMsg: string): boolean {
+    protected static _saveLog(errorMsg: string): boolean {
         if (mmApp.saveLog('sql.log', errorMsg)) {
             return true;
         }

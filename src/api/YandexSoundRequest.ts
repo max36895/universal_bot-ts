@@ -49,16 +49,16 @@ export class YandexSoundRequest extends YandexRequest {
      *
      * Для каждого аккаунта на Яндексе действует лимит на загрузку аудиофайлов — вы можете хранить на Диалогах не больше 1 ГБ файлов. Обратите внимание, лимит учитывает размер сжатых аудиофайлов, а не размер оригиналов. Диалоги конвертируют загруженные аудиофайлы в формат OPUS и обрезают их до 120 секунд — размер этих файлов и будет учитываться в лимите.
      *
-     * @return IYandexCheckOutPlace|null
+     * @return Promise<IYandexCheckOutPlace>
      * [
      * - int total: Все доступное место.
      * - int used: Занятое место.
      * ]
      * @api
      */
-    public checkOutPlace(): IYandexCheckOutPlace {
+    public async checkOutPlace(): Promise<IYandexCheckOutPlace> {
         this._request.url = this.STANDARD_URL + 'status';
-        const query = this.call();
+        const query = await this.call();
         if (typeof query.sounds.quota !== 'undefined') {
             return query.sounds.quota;
         }
@@ -72,7 +72,7 @@ export class YandexSoundRequest extends YandexRequest {
      *
      * @param {string} soundDir Расположение аудиофайла на сервере.
      *
-     * @return IYandexRequestDownloadSound|null
+     * @return Promise<IYandexRequestDownloadSound>
      * [
      *  - string id: Идентификатор аудиофайла.
      *  - string skillId: Идентификатор навыка.
@@ -84,12 +84,12 @@ export class YandexSoundRequest extends YandexRequest {
      * ]
      * @api
      */
-    public downloadSoundFile(soundDir: string): IYandexRequestDownloadSound {
+    public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound> {
         if (this.skillId) {
             this._request.url = this._getSoundsUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
-            const query = this.call();
+            const query = await this.call();
             if (typeof query.sound.id !== 'undefined') {
                 return query.sound;
             } else {
@@ -104,7 +104,7 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * Просмотр всех загруженных аудиофайлов.
      *
-     * @return IYandexRequestDownloadSound[]|null
+     * @return Promise<IYandexRequestDownloadSound[]>
      * [
      *  [
      *      - string id: Идентификатор аудиофайла.
@@ -118,10 +118,10 @@ export class YandexSoundRequest extends YandexRequest {
      * ]
      * @api
      */
-    public getLoadedSounds(): IYandexRequestDownloadSound[] {
+    public async getLoadedSounds(): Promise<IYandexRequestDownloadSound[]> {
         if (this.skillId) {
             this._request.url = this._getSoundsUrl();
-            const query = this.call();
+            const query = await this.call();
             return query.sounds || null;
         } else {
             this._log('YandexSoundRequest::getLoadedSounds() Error: Не выбран навык!');
@@ -135,15 +135,15 @@ export class YandexSoundRequest extends YandexRequest {
      *
      * @param {string} soundId Идентификатор аудиофайла, который необходимо удалить.
      *
-     * @return string
+     * @return Promise<string>
      * @api
      */
-    public deleteSound(soundId: string): string {
+    public async deleteSound(soundId: string): Promise<string> {
         if (this.skillId) {
             if (soundId) {
                 this._request.url = `${this._getSoundsUrl()}/${soundId}`;
                 this._request.customRequest = 'DELETE';
-                const query = this.call();
+                const query = await this.call();
                 if (typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
@@ -163,12 +163,12 @@ export class YandexSoundRequest extends YandexRequest {
      * Если при удалении произошел сбой, то аудиофайл останется.
      * Чтобы точно удалить все аудиофайлы лучше использовать грубое удаление.
      *
-     * @return boolean
+     * @return Promise<boolean>
      * @api
      */
-    public deleteSounds(): boolean {
+    public async deleteSounds(): Promise<boolean> {
         if (this.skillId) {
-            const sounds = this.getLoadedSounds();
+            const sounds = await this.getLoadedSounds();
             if (sounds) {
                 sounds.forEach((sound) => {
                     this.deleteSound(sound.id);

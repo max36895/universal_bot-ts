@@ -18,11 +18,11 @@ export class Telegram extends TemplateTypeModel {
      *
      * @param {ITelegramContent|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return boolean
+     * @return Promise<boolean>
      * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
-    public init(query: string | ITelegramContent, controller: BotController): boolean {
+    public async init(query: string | ITelegramContent, controller: BotController): Promise<boolean> {
         if (query) {
             /**
              * array content
@@ -90,11 +90,11 @@ export class Telegram extends TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return {Promise<string>}
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
-    public getContext(): string {
+    public async getContext(): Promise<string> {
         if (this.controller.isSend) {
             const telegramApi = new TelegramRequest();
             const params: ITelegramParams = {};
@@ -104,17 +104,17 @@ export class Telegram extends TemplateTypeModel {
             }
             params.parse_mode = 'markdown';
 
-            telegramApi.sendMessage(this.controller.userId, this.controller.text, params);
+            await telegramApi.sendMessage(this.controller.userId, this.controller.text, params);
 
             if (this.controller.card.images.length) {
-                const res: ITelegramCard = this.controller.card.getCards();
+                const res: ITelegramCard = await this.controller.card.getCards();
                 if (res) {
                     telegramApi.sendPoll(this.controller.userId, res.question, res.options);
                 }
             }
 
             if (this.controller.sound.sounds.length) {
-                this.controller.sound.getSounds(this.controller.tts);
+                await this.controller.sound.getSounds(this.controller.tts);
             }
         }
         return 'ok';

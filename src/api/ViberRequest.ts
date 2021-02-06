@@ -63,17 +63,17 @@ export class ViberRequest {
      * Отвечает за отправку запросов на viber сервер.
      *
      * @param {string} method Название метода.
-     * @return any|null
+     * @return Promise<any>
      * @api
      */
-    public call(method: string): any {
+    public async call(method: string): Promise<any> {
         if (this.token) {
             if (method) {
                 this._request.header = {
                     'X-Viber-Auth-Token: ': this.token
                 };
                 this._request.post.min_api_version = mmApp.params.viber_api_version || 2;
-                const data = this._request.send(this.API_ENDPOINT + method).data;
+                const data = await this._request.send(this.API_ENDPOINT + method).data;
                 if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
                     this._error = JSON.stringify(data.failed_list);
                     this.log(data.status_message);
@@ -99,7 +99,7 @@ export class ViberRequest {
      * @see (https://developers.viber.com/docs/api/rest-bot-api/#get-user-details) Смотри тут
      *
      * @param {string} id Уникальный идентификатор пользователя.
-     * @return IViberGetUserDetails|null
+     * @return Promise<IViberGetUserDetails>
      * [
      *  - int status: Результат действия.
      *  - string status_message: Статус сообщения.
@@ -121,7 +121,7 @@ export class ViberRequest {
      * ]
      * @api
      */
-    public getUserDetails(id: string): IViberGetUserDetails {
+    public getUserDetails(id: string): Promise<IViberGetUserDetails> {
         this._request.post = {
             id
         };
@@ -165,10 +165,10 @@ export class ViberRequest {
      *  ]
      *  - int sticker_id: Уникальный идентификатор стикера Viber. Актуально для type = sticker.
      * ]
-     * @return any|null
+     * @return Promise<any>
      * @api
      */
-    public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams = null): any {
+    public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams = null):Promise<any> {
         this._request.post.receiver = receiver;
         if (typeof sender !== 'string') {
             this._request.post.sender = sender;
@@ -191,10 +191,10 @@ export class ViberRequest {
      *
      * @param {string} url Адресс webhook`а.
      * @param {IViberWebhookParams} params Дополнительные параметры.
-     * @return any|null
+     * @return Promise<any>
      * @api
      */
-    public setWebhook(url: string, params: IViberWebhookParams = null): any {
+    public setWebhook(url: string, params: IViberWebhookParams = null): Promise<any> {
         if (url) {
             this._request.post = {
                 url,
@@ -227,11 +227,11 @@ export class ViberRequest {
      * @param {string} receiver Уникальный идентификатор пользователя Viber.
      * @param {IViberButton} richMedia Отображаемые данные. Параметр 'Buttons'.
      * @param {IViberRichMediaParams} params Дополнительные параметры.
-     * @return any|null
+     * @return Promise<any>
      * @see sendMessage() Смотри тут
      * @api
      */
-    public richMedia(receiver: string, richMedia: IViberButton[], params: IViberRichMediaParams = null): any {
+    public richMedia(receiver: string, richMedia: IViberButton[], params: IViberRichMediaParams = null): Promise<any> {
         this._request.post = {
             receiver,
             type: 'rich_media',
@@ -255,11 +255,11 @@ export class ViberRequest {
      * @param {string} receiver Уникальный идентификатор пользователя Viber.
      * @param {string} file Ссылка на файл.
      * @param {IViberParams} params Дополнительные параметры.
-     * @return any|null
+     * @return Promise<any>
      * @see sendMessage() Смотри тут
      * @api
      */
-    public sendFile(receiver: string, file: string, params: IViberParams = null): any {
+    public sendFile(receiver: string, file: string, params: IViberParams = null): Promise<any> {
         this._request.post = {
             receiver
         };

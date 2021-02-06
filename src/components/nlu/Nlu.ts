@@ -87,7 +87,7 @@ export class Nlu {
     private _getData(type: string): any {
         let data: object[] = null;
         this._nlu.entities.forEach((entity) => {
-            if ((typeof entity.type !== "undefined") && entity.type == type) {
+            if ((typeof entity.type !== "undefined") && entity.type === type) {
                 if (data === null) {
                     data = [];
                 }

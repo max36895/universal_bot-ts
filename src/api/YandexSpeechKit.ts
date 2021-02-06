@@ -146,11 +146,11 @@ export class YandexSpeechKit extends YandexRequest {
      * Формат выходных данных зависит от значения параметра format.
      *
      * @param {string} text Текст для преобразования
-     * @return any
+     * @return Promise<any>
      * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
      * @api
      */
-    public getTts(text: string = null): any {
+    public getTts(text: string = null): Promise<any> {
         if (text) {
             this.text = text;
         }

@@ -40,9 +40,10 @@ export class Alisa extends TemplateTypeModel {
     /**
      * Получение данных, необходимых для построения ответа пользователю.
      *
-     * @return IAlisaResponse
+     * @return {Promise<IAlisaResponse>}
+     * @private
      */
-    protected _getResponse(): IAlisaResponse {
+    protected async _getResponse(): Promise<IAlisaResponse> {
         const response: IAlisaResponse = {
             text: Text.resize(this.controller.text, 1024),
             tts: Text.resize(this.controller.tts, 1024),
@@ -50,7 +51,7 @@ export class Alisa extends TemplateTypeModel {
         };
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
-                response.card = <IAlisaItemsList | IAlisaBigImage>this.controller.card.getCards();
+                response.card = <IAlisaItemsList | IAlisaBigImage>(await this.controller.card.getCards());
             }
             response.buttons = this.controller.buttons.getButtons();
         }
@@ -62,11 +63,11 @@ export class Alisa extends TemplateTypeModel {
      *
      * @param {IAlisaWebhookRequest|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return boolean
+     * @return Promise<boolean>
      * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
-    public init(query: string | IAlisaWebhookRequest, controller: BotController): boolean {
+    public async init(query: string | IAlisaWebhookRequest, controller: BotController): Promise<boolean> {
         if (query) {
             let content: IAlisaWebhookRequest;
             if (typeof query === 'string') {
@@ -87,7 +88,7 @@ export class Alisa extends TemplateTypeModel {
             this.controller = controller;
             this.controller.requestObject = content;
 
-            if (content.request.type == 'SimpleUtterance') {
+            if (content.request.type === 'SimpleUtterance') {
                 this.controller.userCommand = content.request.command.trim() || '';
                 this.controller.originalUserCommand = content.request.original_utterance.trim() || '';
             } else {
@@ -113,7 +114,7 @@ export class Alisa extends TemplateTypeModel {
                 }
             }
 
-            if (userId == null) {
+            if (userId === null) {
                 if (typeof this._session.application !== 'undefined' && this._session.application.application_id !== 'undefined') {
                     userId = this._session.application.application_id;
                 } else {
@@ -146,7 +147,7 @@ export class Alisa extends TemplateTypeModel {
              * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
              * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут
              */
-            if (this.controller.originalUserCommand == 'ping') {
+            if (this.controller.originalUserCommand === 'ping') {
                 this.controller.text = 'pong';
                 this.sendInInit = this.getContext();
             }
@@ -160,11 +161,11 @@ export class Alisa extends TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return IAlisaWebhookResponse
+     * @return {Promise<IAlisaWebhookResponse>}
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
-    public getContext(): IAlisaWebhookResponse {
+    public async getContext(): Promise<IAlisaWebhookResponse> {
         const result: IAlisaWebhookResponse = {
             version: this.VERSION,
         };
@@ -176,9 +177,9 @@ export class Alisa extends TemplateTypeModel {
                 if (this.controller.tts === null) {
                     this.controller.tts = this.controller.text;
                 }
-                this.controller.tts = this.controller.sound.getSounds(this.controller.tts);
+                this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
             }
-            result.response = this._getResponse();
+            result.response = await this._getResponse();
         }
         if (this._isState || this.isUsedLocalStorage) {
             if (this.isUsedLocalStorage && this.controller.userData) {
@@ -196,7 +197,7 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Получение данные из локального хранилища Алисы
-     * @returns {any | string}
+     * @return {any | string}
      */
     public getLocalStorage(): any | string {
         return this.controller.state;
@@ -204,7 +205,7 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Проверка на использование локального хранилища
-     * @returns {boolean}
+     * @return {boolean}
      */
     public isLocalStorage(): boolean {
         return this.controller.state !== null;

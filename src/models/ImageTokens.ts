@@ -128,21 +128,22 @@ export class ImageTokens extends Model {
     /**
      * Получение идентификатора/токена изображения.
      *
-     * @return string|null
+     * @return {Promise<string>}
      * @api
      */
-    public getToken(): string {
+    public async getToken(): Promise<string> {
+        const where = {path: this.path, type: this.type};
         switch (this.type) {
             case ImageTokens.T_ALISA:
-                if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${ImageTokens.T_ALISA}`)) {
+                if (await this.whereOne(where)) {
                     return this.imageToken;
                 } else {
                     const yImage = new YandexImageRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadImage = null;
                     if (Text.isSayText(['http\:\/\/', 'https\:\/\/'], this.path)) {
-                        res = yImage.downloadImageUrl(this.path);
+                        res = await yImage.downloadImageUrl(this.path);
                     } else {
-                        res = yImage.downloadImageFile(this.path);
+                        res = await yImage.downloadImageFile(this.path);
                     }
                     if (res) {
                         this.imageToken = res.id;
@@ -155,15 +156,16 @@ export class ImageTokens extends Model {
 
             case ImageTokens.T_VK:
             case ImageTokens.T_MARUSIA: // TODO не понятно как получить токен, возможно также и в вк
-                if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${ImageTokens.T_VK}`)) {
+                where.type = ImageTokens.T_VK;
+                if (await this.whereOne(where)) {
                     return this.imageToken;
                 } else {
                     const vkApi = new VkRequest();
-                    const uploadServerResponse = vkApi.photosGetMessagesUploadServer(mmApp.params.user_id);
+                    const uploadServerResponse = await vkApi.photosGetMessagesUploadServer(mmApp.params.user_id);
                     if (uploadServerResponse) {
-                        const uploadResponse = vkApi.upload(uploadServerResponse.upload_url, this.path);
+                        const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, this.path);
                         if (uploadResponse) {
-                            const photo = vkApi.photosSaveMessagesPhoto(uploadResponse.photo, uploadResponse.server, uploadResponse.hash);
+                            const photo = await vkApi.photosSaveMessagesPhoto(uploadResponse.photo, uploadResponse.server, uploadResponse.hash);
                             if (photo) {
                                 this.imageToken = `photo${photo.owner_id}_${photo.id}`;
                                 if (this.save(true)) {
@@ -177,11 +179,11 @@ export class ImageTokens extends Model {
 
             case ImageTokens.T_TELEGRAM:
                 const telegramApi = new TelegramRequest();
-                if (this.whereOne(`\`path\`=\"${this.path}\" AND \`type\`=${ImageTokens.T_TELEGRAM}`)) {
-                    telegramApi.sendPhoto(mmApp.params.user_id, this.imageToken, this.caption);
+                if (await this.whereOne(where)) {
+                    await telegramApi.sendPhoto(mmApp.params.user_id, this.imageToken, this.caption);
                     return this.imageToken;
                 } else {
-                    const photo = telegramApi.sendPhoto(mmApp.params.user_id, this.path, this.caption);
+                    const photo = await telegramApi.sendPhoto(mmApp.params.user_id, this.path, this.caption);
                     if (photo && photo.ok) {
                         if (typeof photo.result.photo.file_id !== 'undefined') {
                             this.imageToken = photo.result.photo.file_id;

@@ -17,11 +17,11 @@ export class Vk extends TemplateTypeModel {
      *
      * @param {IVkRequestContent|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return boolean
+     * @return Promise<boolean>
      * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
-    public init(query: string | IVkRequestContent, controller: BotController): boolean {
+    public async init(query: string | IVkRequestContent, controller: BotController): Promise<boolean> {
         if (query) {
             /**
              * array content
@@ -72,7 +72,7 @@ export class Vk extends TemplateTypeModel {
                         this.controller.originalUserCommand = object.message.text.trim();
                         this.controller.messageId = object.message.id;
                         this.controller.payload = object.message.payload || null;
-                        const user = (new VkRequest()).usersGet(this.controller.userId);
+                        const user = await (new VkRequest()).usersGet(this.controller.userId);
                         if (user) {
                             const thisUser = {
                                 username: null,
@@ -99,11 +99,11 @@ export class Vk extends TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return {Promise<string>}
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
-    public getContext(): string {
+    public async getContext(): Promise<string> {
         if (this.controller.isSend) {
             const keyboard = this.controller.buttons.getButtonJson(Buttons.T_VK_BUTTONS);
             const params: IVkParams = {};
@@ -111,7 +111,7 @@ export class Vk extends TemplateTypeModel {
                 params.keyboard = keyboard;
             }
             if (this.controller.card.images.length) {
-                const attach = this.controller.card.getCards();
+                const attach = await this.controller.card.getCards();
                 if (attach.type) {
                     params.template = attach;
                 } else {
@@ -119,7 +119,7 @@ export class Vk extends TemplateTypeModel {
                 }
             }
             if (this.controller.sound.sounds.length) {
-                const attach = this.controller.sound.getSounds(this.controller.tts);
+                const attach = await this.controller.sound.getSounds(this.controller.tts);
                 params.attachments = {...attach, ...params.attachments};
             }
             const vkApi = new VkRequest();

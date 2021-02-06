@@ -84,10 +84,10 @@ export class Card {
      * Получение всех элементов карточки.
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
-     * @return any
+     * @return {Promise<any>}
      * @api
      */
-    public getCards(userCard: TemplateCardTypes = null): any {
+    public async getCards(userCard: TemplateCardTypes = null): Promise<any> {
         let card = null;
         switch (mmApp.appType) {
             case T_ALISA:
@@ -123,7 +123,7 @@ export class Card {
             card.images = this.images;
             card.button = this.button;
             card.title = this.title;
-            return card.getCard(this.isOne);
+            return await card.getCard(this.isOne);
         }
         return [];
     }
@@ -132,10 +132,10 @@ export class Card {
      * Возвращаем json строку со всеми элементами карточки.
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
-     * @return string
+     * @return {Promise<string>}
      * @api
      */
-    public getCardsJson(userCard: TemplateCardTypes = null): string {
-        return JSON.stringify(this.getCards(userCard));
+    public async getCardsJson(userCard: TemplateCardTypes = null): Promise<string> {
+        return JSON.stringify(await this.getCards(userCard));
     }
 }

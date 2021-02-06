@@ -12,7 +12,7 @@ export class SmartAppCard extends TemplateCardTypes {
      * Получение элементов для карточки
      *
      * @param {Image} image Объект с картинкой
-     * @returns {ISberSmartAppCardItem}
+     * @return {ISberSmartAppCardItem}
      * @private
      */
     protected static _getCardItem(image: Image): ISberSmartAppCardItem {
@@ -47,10 +47,10 @@ export class SmartAppCard extends TemplateCardTypes {
      * Получение карточки для отображения пользователю.
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return ISberSmartAppItem
+     * @return {Promise<ISberSmartAppItem>}
      * @api
      */
-    public getCard(isOne: boolean): ISberSmartAppItem {
+    public async getCard(isOne: boolean): Promise<ISberSmartAppItem> {
         const countImage = this.images.length;
         if (countImage) {
             if (isOne) {

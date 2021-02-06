@@ -56,11 +56,11 @@ export class YandexRequest {
      * Отправка запроса для обработки данных.
      *
      * @param {string} url Адрес запроса.
-     * @return any
+     * @return Promise<any>
      * @api
      */
-    public call(url: string = null): any {
-        const data: IRequestSend = this._request.send(url);
+    public async call(url: string = null): Promise<any> {
+        const data: IRequestSend = await this._request.send(url);
         if (data.status) {
             if (typeof data.data.error !== 'undefined') {
                 this._error = JSON.stringify(data.data.error);

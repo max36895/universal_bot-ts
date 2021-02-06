@@ -85,15 +85,15 @@ export class VkRequest {
      * Вызов методов vk.
      *
      * @param {string} method Название метода.
-     * @return any|null
+     * @return Promise<any>
      * @api
      */
-    public call(method: string): any {
+    public async call(method: string): Promise<any> {
         if (this.token) {
             this._request.header = null;
             this._request.post.access_token = this.token;
             this._request.post.v = this._vkApiVersion;
-            const data = this._request.send(this.VK_API_ENDPOINT + method);
+            const data = await this._request.send(this.VK_API_ENDPOINT + method);
             if (data.status) {
                 this._error = JSON.stringify(data.err || []);
                 if (typeof data.data.error !== 'undefined') {
@@ -115,7 +115,7 @@ export class VkRequest {
      *
      * @param {string} url Адрес, на который отправляется запрос.
      * @param {string} file Загружаемый файл(ссылка или содержимое файла).
-     * @return IVkUploadFile|null
+     * @return Promise<IVkUploadFile>
      * [
      *  - 'photo' => array
      *  - 'server' => string
@@ -127,11 +127,11 @@ export class VkRequest {
      * ]
      * @api
      */
-    public upload(url: string, file: string): IVkUploadFile {
+    public async upload(url: string, file: string): Promise<IVkUploadFile> {
         this._request.attach = file;
         this._request.isAttachContent = this.isAttachContent;
         this._request.header = Request.HEADER_FORM_DATA;
-        const data = this._request.send(url);
+        const data = await this._request.send(url);
         if (data.status) {
             if (typeof data.data.error !== 'undefined') {
                 this._error = JSON.stringify(data.data.error);
@@ -171,7 +171,7 @@ export class VkRequest {
      * - boolean dont_parse_links.
      * - boolean disable_mentions.
      * ]
-     * @return IVKSendMessage|null
+     * @return Promise<IVKSendMessage>
      * - int: response
      * or in user_ids
      * [[
@@ -181,7 +181,7 @@ export class VkRequest {
      * ]]
      * @api
      */
-    public messagesSend(peerId: TVkPeerId, message: string, params: IVkParams = null): IVKSendMessage {
+    public async messagesSend(peerId: TVkPeerId, message: string, params: IVkParams = null): Promise<IVKSendMessage> {
         const method = 'messages.send';
         this._request.post = {
             peer_id: peerId,
@@ -214,7 +214,7 @@ export class VkRequest {
 
         if (typeof params.keyboard !== 'undefined') {
             if (typeof this._request.post.template !== 'undefined') {
-                this.call(method);
+                await this.call(method);
                 delete this._request.post.template;
             }
             if (typeof params.keyboard !== 'string') {
@@ -227,7 +227,7 @@ export class VkRequest {
         if (Object.keys(params).length) {
             this._request.post = {...params, ...this._request.post};
         }
-        return this.call(method);
+        return await this.call(method);
     }
 
     /**
@@ -240,7 +240,7 @@ export class VkRequest {
      * - array fields: Profile fields to return. Sample values: 'nickname', 'screen_name', 'sex', 'bdate' (birthdate), 'city', 'country', 'timezone', 'photo', 'photo_medium', 'photo_big', 'has_mobile', 'contacts', 'education', 'online', 'counters', 'relation', 'last_seen', 'activity', 'can_write_private_message', 'can_see_all_posts', 'can_post', 'universities'.
      * - string name_case: Case for declension of user name and surname: 'nom' — nominative (default), 'gen' — genitive , 'dat' — dative, 'acc' — accusative , 'ins' — instrumental , 'abl' — prepositional.
      * ]
-     * @return IVkUsersGet|null
+     * @return Promise<IVkUsersGet>
      * [
      *  - 'id' => int Идентификатор пользователя
      *  - 'first_name' => string Имя пользователя
@@ -251,7 +251,7 @@ export class VkRequest {
      * ]
      * @api
      */
-    public usersGet(userId: TVkPeerId | string[], params: IVkParamsUsersGet = null): IVkUsersGet {
+    public usersGet(userId: TVkPeerId | string[], params: IVkParamsUsersGet = null): Promise<IVkUsersGet> {
         if (typeof userId !== 'number') {
             this._request.post = {user_ids: userId};
         } else {
@@ -265,7 +265,7 @@ export class VkRequest {
      * Получение данные по загрузке изображения на vk сервер.
      *
      * @param {TVkPeerId} peerId Идентификатор места назначения.
-     * @return IVkUploadServer|null
+     * @return Promise<IVkUploadServer>
      * [
      *  - 'upload_url' => string Адрес сервера для загрузки изображения
      *  - 'album_id' => int Идентификатор альбома
@@ -273,7 +273,7 @@ export class VkRequest {
      * ]
      * @api
      */
-    public photosGetMessagesUploadServer(peerId: TVkPeerId): IVkUploadServer {
+    public photosGetMessagesUploadServer(peerId: TVkPeerId): Promise<IVkUploadServer> {
         this._request.post = {peer_id: peerId};
         return this.call('photos.getMessagesUploadServer');
     }
@@ -284,7 +284,7 @@ export class VkRequest {
      * @param {string} photo Фотография.
      * @param {string} server Сервер.
      * @param {string} hash Хэш.
-     * @return IVkPhotosSave|null
+     * @return Promise<IVkPhotosSave>
      * [
      *  - 'id' => int Идентификатор изображения
      *  - 'pid' => int
@@ -300,7 +300,7 @@ export class VkRequest {
      * @see upload() Смотри тут
      * @api
      */
-    public photosSaveMessagesPhoto(photo: string, server: string, hash: string): IVkPhotosSave {
+    public photosSaveMessagesPhoto(photo: string, server: string, hash: string): Promise<IVkPhotosSave> {
         this._request.post = {
             photo,
             server,
@@ -314,13 +314,13 @@ export class VkRequest {
      *
      * @param {TVkPeerId} peerId Идентификатор места назначения.
      * @param {TVkDocType} type ('doc' - Обычный документ, 'audio_message' - Голосовое сообщение, 'graffiti' - Граффити).
-     * @return IVkUploadServer|null
+     * @return Promise<IVkUploadServer>
      * [
      *  - 'upload_url' => url Адрес сервера для загрузки документа
      * ]
      * @api
      */
-    public docsGetMessagesUploadServer(peerId: TVkPeerId, type: TVkDocType): IVkUploadServer {
+    public docsGetMessagesUploadServer(peerId: TVkPeerId, type: TVkDocType): Promise<IVkUploadServer> {
         this._request.post = {
             peer_id: peerId,
             type
@@ -334,7 +334,7 @@ export class VkRequest {
      * @param {string} file Сам файл.
      * @param {string} title Заголовок файла.
      * @param {string} tags Теги, по которым будет осуществляться поиск.
-     * @return IVkDocSave|null
+     * @return Promise<IVkDocSave>
      * [
      *  - 'type' => string Тип загруженного документа
      *  - 'graffiti' => [
@@ -394,7 +394,7 @@ export class VkRequest {
      * ]
      * @api
      */
-    public docsSave(file: string, title: string, tags: string = null): IVkDocSave {
+    public docsSave(file: string, title: string, tags: string = null): Promise<IVkDocSave> {
         this._request.post = {
             file,
             title

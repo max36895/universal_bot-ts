@@ -71,7 +71,7 @@ export class Button {
      * @return boolean
      */
     private _init(title: string, url: string, payload: TButtonPayload, hide: boolean, options: IButtonOptions = {}): boolean {
-        if (title || title == '') {
+        if (title || title === '') {
             this.title = title;
             if (url && !!url.match(/((http|s:\/\/)[^( |\n)]+)/umig)) {
                 if (mmApp.params.utm_text === null) {

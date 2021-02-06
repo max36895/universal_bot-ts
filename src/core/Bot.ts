@@ -159,7 +159,7 @@ export class Bot {
      * @return {IBotBotClassAndType}
      * @private
      */
-    protected _getBotClassAndType(userBotClass: TemplateTypeModel = null): IBotBotClassAndType {
+    protected static _getBotClassAndType(userBotClass: TemplateTypeModel = null): IBotBotClassAndType {
         let botClass: TemplateTypeModel = null;
         let type: number = null;
         switch (mmApp.appType) {
@@ -207,19 +207,19 @@ export class Bot {
      * Запуск приложения.
      *
      * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
-     * @return string
+     * @return {Promise<TRunResult>}
      * @api
      */
-    public run(userBotClass: TemplateTypeModel = null): TRunResult {
-        const {botClass, type} = this._getBotClassAndType(userBotClass);
+    public async run(userBotClass: TemplateTypeModel = null): Promise<TRunResult> {
+        const {botClass, type} = Bot._getBotClassAndType(userBotClass);
 
         if (botClass) {
             if (this._botController.userToken === null) {
                 this._botController.userToken = this._auth;
             }
-            if (botClass.init(this._content, this._botController)) {
+            if (await botClass.init(this._content, this._botController)) {
                 if (botClass.sendInInit) {
-                    return botClass.sendInInit;
+                    return await botClass.sendInInit;
                 }
                 const userData = new UsersData();
                 this._botController.userId = userData.escapeString(this._botController.userId);
@@ -234,12 +234,14 @@ export class Bot {
                     botClass.isUsedLocalStorage = isLocalStorage;
                     this._botController.userData = botClass.getLocalStorage();
                 } else {
-                    let sql = `\`userId\`=\"${userData.escapeString(this._botController.userId)}\"`;
+                    const sql = {
+                        userId: userData.escapeString(this._botController.userId)
+                    };
                     if (this._auth) {
-                        sql = `\`userId\`=\"${userData.escapeString(this._botController.userToken)}\"`;
+                        sql.userId = userData.escapeString(this._botController.userToken);
                     }
 
-                    if (userData.whereOne(sql)) {
+                    if (await userData.whereOne(sql)) {
                         this._botController.userData = userData.data;
                         isNew = false;
                     } else {
@@ -259,20 +261,29 @@ export class Bot {
                 } else {
                     delete this._botController.userData.oldIntentName;
                 }
-                let content: any = botClass.getContext();
+                let content: any = await botClass.getContext();
                 if (!isLocalStorage) {
                     userData.data = this._botController.userData;
 
                     if (isNew) {
-                        userData.save(true);
+                        userData.save(true).then((res) => {
+                            if (!res) {
+                                mmApp.saveLog('bot.log', 'Bot.ts::run(): Не удалось сохранить данные пользователя.')
+                            }
+                        });
                     } else {
-                        userData.update();
+                        userData.update().then((res) => {
+                            if (!res) {
+                                mmApp.saveLog('bot.log', 'Bot.ts::run(): Не удалось обновить данные пользователя.')
+                            }
+                        });
                     }
                 }
 
                 if (botClass.getError()) {
                     mmApp.saveLog('bot.log', botClass.getError());
                 }
+                userData.destroy();
                 return content;
             } else {
                 console.error(botClass.getError());
@@ -289,10 +300,10 @@ export class Bot {
     /**
      * Запуск приложения через Webhook
      *
-     * @param {IncomingMessage} req Полученный запрос
-     * @param {ServerResponse} res Возврат запроса
+     * @param {"http".IncomingMessage} req Полученный запрос
+     * @param {"http".ServerResponse} res Возврат запроса
      * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
-     * @return string
+     * @return {Promise<void>}
      * @api
      */
     public async start(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel = null) {
@@ -311,7 +322,7 @@ export class Bot {
                 this._auth = req.headers.authorization.replace('Bearer', '');
             }
             this._content = query;
-            const result = this.run(userBotClass);
+            const result = await this.run(userBotClass);
             statusCode = result === 'notFound' ? 404 : 200;
             send(res, statusCode, result);
         } else {
@@ -329,6 +340,7 @@ export class Bot {
      * Для корректной работы, внутри логики навыка не должно быть пользовательских вызовов к серверу бота.
      *
      * @param {IBotTestParams} params Параметры для теста
+     * @return {Promise<void>}
      * @api
      */
     public async test({
@@ -343,7 +355,7 @@ export class Bot {
         let state: string | object = {};
         do {
             let query = '';
-            if (count == 0) {
+            if (count === 0) {
                 console.log("Для выхода введите exit\n");
                 query = 'Привет';
             } else {
@@ -360,7 +372,7 @@ export class Bot {
                 this._content = JSON.parse(this._content);
             }
 
-            let result: any = this.run(userBotClass);
+            let result: any = await this.run(userBotClass);
             if (isShowResult) {
                 console.log(`Результат работы: > \n${JSON.stringify(result)}\n\n`);
             }

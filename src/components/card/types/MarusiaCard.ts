@@ -17,10 +17,10 @@ export class MarusiaCard extends TemplateCardTypes {
      * Получение карточки для отображения пользователю.
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return IAlisaBigImage | IAlisaItemsList
+     * @return {Promise<IAlisaBigImage | IAlisaItemsList>}
      * @api
      */
-    public getCard(isOne: boolean): any {
+    public async getCard(isOne: boolean): Promise<any> {
         let object = {};
         this.button.type = Buttons.T_ALISA_CARD_BUTTON;
         const countImage = this.images.length;
@@ -30,7 +30,7 @@ export class MarusiaCard extends TemplateCardTypes {
                     if (this.images[0].imageDir) {
                         const mImage = new ImageTokens();
                         mImage.type = ImageTokens.T_ALISA;
-                        this.images[0].imageToken = mImage.getToken();
+                        this.images[0].imageToken = await mImage.getToken();
                     }
                 }
                 if (this.images[0].imageToken) {
@@ -59,7 +59,7 @@ export class MarusiaCard extends TemplateCardTypes {
                             if (image.imageDir) {
                                 const mImage = new ImageTokens();
                                 mImage.type = ImageTokens.T_ALISA;
-                                image.imageToken = mImage.getToken();
+                                image.imageToken = await mImage.getToken();
                             }
                         }
                         //if (image.imageToken !== null) {

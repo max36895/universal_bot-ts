@@ -47,10 +47,10 @@ export class UserApp extends TemplateTypeModel {
     /**
      * Отправка ответа пользователю
      *
-     * @return string
+     * @return {Promise<string>}
      * @see TemplateTypeModel::getContext() Смотри тут
      */
-    public getContext(): string {
+    public async getContext(): Promise<string> {
         // Проверяем отправлять ответ пользователю или нет
         if (this.controller.isSend) {
             /**
@@ -66,13 +66,13 @@ export class UserApp extends TemplateTypeModel {
             /*
              * Получить информацию о карточке
              */
-            const cards = this.controller.card.getCards(cardClass);
+            const cards = await this.controller.card.getCards(cardClass);
 
             const soundClass = new UserSound();// Класс отвечающий за отображение звуков. Должен быть унаследован от TemplateSoundTypes
             /*
              * Получить все звуки
              */
-            const sounds = this.controller.sound.getSounds('', soundClass);
+            const sounds = await this.controller.sound.getSounds('', soundClass);
         }
         return 'ok';
     }

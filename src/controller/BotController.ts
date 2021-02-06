@@ -157,9 +157,10 @@ export abstract class BotController {
     /**
      * Получение всех обрабатываемых команд приложения.
      *
-     * @return IAppIntent[]
+     * @return {IAppIntent[]}
+     * @private
      */
-    protected _intents(): IAppIntent[] {
+    protected static _intents(): IAppIntent[] {
         return mmApp.params.intents || [];
     }
 
@@ -168,10 +169,11 @@ export abstract class BotController {
      * В случае успеха вернет название действия.
      *
      * @param {string} text Текст, в котором происходит поиск вхождений.
-     * @return string|null
+     * @return {string}
+     * @private
      */
-    protected _getIntent(text: string): string {
-        const intents: IAppIntent[] = this._intents();
+    protected static _getIntent(text: string): string {
+        const intents: IAppIntent[] = BotController._intents();
         for (const intent of intents) {
             if (Text.isSayText((intent.slots || []), text, (intent.is_pattern || false))) {
                 return intent.name;
@@ -196,8 +198,8 @@ export abstract class BotController {
      * @api
      */
     public run(): void {
-        let intent: string = this._getIntent(this.userCommand);
-        if (intent === null && this.messageId == 0) {
+        let intent: string = BotController._getIntent(this.userCommand);
+        if (intent === null && this.messageId === 0) {
             intent = WELCOME_INTENT_NAME;
         }
         /**

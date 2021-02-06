@@ -73,6 +73,21 @@ export abstract class Model {
     }
 
     /**
+     * Проверка подключения к Базе Данных.
+     * При использовании БД, проверяется статус подключения.
+     * Если удалось подключиться, возвращается true, в противном случае false.
+     * При сохранении данных в файл, всегда возвращается true.
+     *
+     * @return {Promise<boolean>}
+     */
+    public async isConnected(): Promise<boolean> {
+        if (mmApp.isSaveDb) {
+            return await this._db.isConnected();
+        }
+        return true;
+    }
+
+    /**
      * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
      *
      * @param {string | number} text Исходный текст.
@@ -83,7 +98,7 @@ export abstract class Model {
         if (mmApp.isSaveDb) {
             return this._db.escapeString(text);
         }
-        return text.toString();
+        return text + '';
     }
 
     /**
@@ -125,7 +140,7 @@ export abstract class Model {
     /**
      * Возвращаем название уникального ключа таблицы.
      *
-     * @return number|string|null
+     * @return number|string
      */
     protected getId(): string | number {
         const labels = this.attributeLabels();
@@ -150,7 +165,7 @@ export abstract class Model {
         const labels = this.attributeLabels();
         Object.keys(labels).forEach((index) => {
             if (mmApp.isSaveDb) {
-                this[index] = data[i] || data[index];
+                this[index] = data[index] || data[i] || '';
             } else {
                 this[index] = data[index] || '';
             }
@@ -161,15 +176,15 @@ export abstract class Model {
     /**
      * Выполнение запроса с поиском по уникальному ключу.
      *
-     * @return boolean|mysqli_result|array|null
+     * @return {Promise<IModelRes | any>}
      * @api
      */
-    public selectOne(): IModelRes | any {
+    public async selectOne(): Promise<IModelRes | any> {
         const idName = this.getId();
         if (idName) {
             if (this[idName]) {
                 if (mmApp.isSaveDb) {
-                    return this._db.query(async (client, db) => {
+                    return await this._db.query(async (client, db) => {
                         let res: IModelRes = {
                             status: false
                         };
@@ -177,20 +192,23 @@ export abstract class Model {
                         let data = {
                             [idName]: this[idName]
                         };
-                        await collection.findOne(data, (err, result) => {
-                            if (err) {
-                                res = {status: false, error: err};
+                        const result = new Promise((resolve) => {
+                            collection.findOne(data, (err, result) => {
+                                if (err) {
+                                    res = {status: false, error: err};
+                                    resolve(res);
+                                    return res;
+                                }
+                                res = {
+                                    status: true,
+                                    data: result
+                                };
+                                resolve(res);
                                 return res;
-                            }
-                            client.close();
-                            res = {
-                                status: true,
-                                data: result.ops
-                            };
-                            return res;
+                            });
                         });
-                        return res;
-                    })
+                        return await result;
+                    });
                 } else {
                     const data = this.getFileData();
                     return data[this[idName]] || null;
@@ -205,33 +223,33 @@ export abstract class Model {
      * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
      *
      * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
-     * @return boolean|mysqli_result|null
+     * @return {Promise<any>}
      * @api
      */
-    public save(isNew: boolean = false) {
+    public async save(isNew: boolean = false): Promise<any> {
         this.validate();
         if (isNew) {
-            return this.add();
+            return await this.add();
         }
-        if (this.selectOne()) {
-            return this.update();
+        if (await this.selectOne()) {
+            return await this.update();
         } else {
-            return this.add();
+            return await this.add();
         }
     }
 
     /**
      * Обновление значения в таблице.
      *
-     * @return boolean|mysqli_result|null
+     * @return {Promise<any>}
      * @api
      */
-    public update() {
+    public async update(): Promise<any> {
         if (mmApp.isSaveDb) {
             this.validate();
             const idName = this.getId();
             if (idName) {
-                return this._db.query(async (client, db) => {
+                return !!await this._db.query(async (client, db) => {
                     let res: IModelRes = {
                         status: false
                     };
@@ -242,19 +260,23 @@ export abstract class Model {
                             data[index] = this[index];
                         }
                     });
-                    await collection.updateOne({[idName]: this[idName]}, {$set: data}, (err, result) => {
-                        if (err) {
-                            res = {status: false, error: err};
+                    const result = new Promise((resolve) => {
+                        collection.updateOne({[idName]: this[idName]}, {$set: data}, (err, result) => {
+                            if (err) {
+                                res = {status: false, error: err};
+                                resolve(res);
+                                return res;
+                            }
+                            res = {
+                                status: true,
+                                data: result.modifiedCount
+                            };
+
+                            resolve(res);
                             return res;
-                        }
-                        client.close();
-                        res = {
-                            status: true,
-                            data: result.ops
-                        };
-                        return res;
+                        });
                     });
-                    return res;
+                    return await result;
                 });
             }
         } else {
@@ -276,39 +298,42 @@ export abstract class Model {
     /**
      * Добавление значения в таблицу.
      *
-     * @return boolean|mysqli_result|null
+     * @return {Promise<any>}
      * @api
      */
-    public add() {
+    public async add(): Promise<any> {
         if (mmApp.isSaveDb) {
             this.validate();
             const idName = this.getId();
             if (idName) {
-                return this._db.query(async (client, db) => {
+                return !!await this._db.query(async (client, db) => {
                     let res: IModelRes = {
                         status: false
                     };
                     let data = {};
                     Object.keys(this.attributeLabels()).forEach((index) => {
-                        if (index !== idName && this[index]) {
+                        if (typeof this[index] !== 'undefined') {
                             data[index] = this[index];
                         }
                     });
                     const collection = db.collection(this.tableName());
 
-                    await collection.insertOne(data, (err, result) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            return res
-                        }
-                        client.close();
-                        res = {
-                            status: true,
-                            data: result.ops
-                        };
-                        return res;
+                    const result = new Promise((resolve) => {
+                        collection.insertOne(data, (err, result) => {
+                            if (err) {
+                                res = {status: false, error: err};
+                                resolve(res);
+                                return res
+                            }
+                            res = {
+                                status: true,
+                                data: result.insertedId
+                            };
+                            resolve(res);
+                            return res;
+                        });
                     });
-                    return res;
+                    return await result;
                 });
             }
         } else {
@@ -328,10 +353,10 @@ export abstract class Model {
     /**
      * Удаление значения из таблицы.
      *
-     * @return boolean|mysqli_result|null
+     * @return {Promise<boolean>}
      * @api
      */
-    public remove() {
+    public async remove(): Promise<boolean> {
         if (mmApp.isSaveDb) {
             const idName = this.getId();
             let data = null;
@@ -344,25 +369,28 @@ export abstract class Model {
                 }
             }
             if (data) {
-                return this._db.query(async (client, db) => {
+                return !!await this._db.query(async (client, db) => {
                     let res: IModelRes = {
                         status: false
                     };
                     const collection = db.collection(this.tableName());
 
-                    await collection.deleteOne(data, (err, result) => {
-                        if (err) {
-                            res = {status: false, error: err};
+                    const result = new Promise((resolve) => {
+                        collection.deleteOne(data, (err, result) => {
+                            if (err) {
+                                res = {status: false, error: err};
+                                resolve(res);
+                                return res;
+                            }
+                            res = {
+                                status: true,
+                                data: result.deletedCount
+                            };
+                            resolve(res);
                             return res;
-                        }
-                        client.close();
-                        res = {
-                            status: true,
-                            data: result.ops
-                        };
-                        return res;
+                        });
                     });
-                    return res;
+                    return await result;
                 });
             }
         } else {
@@ -381,13 +409,13 @@ export abstract class Model {
      * Выполнение запроса к данным.
      *
      * @param where Запрос к таблице.
-     * @param isOne Вывести только 1 результат. Используется только при поиске по файлу.
-     * @return boolean|mysqli_result|array|null
+     * @param {boolean} isOne Вывести только 1 результат. Используется только при поиске по файлу.
+     * @return {Promise<any>}
      * @api
      */
-    public where(where: any = '1', isOne: boolean = false) {
+    public async where(where: any = '1', isOne: boolean = false): Promise<any> {
         if (mmApp.isSaveDb) {
-            return this._db.query(async (client, db) => {
+            return await this._db.query(async (client, db) => {
                 let res: IModelRes = {
                     status: false
                 };
@@ -395,41 +423,74 @@ export abstract class Model {
                 if (typeof where === 'string') {
                     where = {};
                 }
-                await collection.find(where).toArray((err, results) => {
-                    if (err) {
-                        res = {status: false, error: err};
-                    }
-                    client.close();
-                    res = {
-                        status: true,
-                        data: results
-                    };
-                    return res
+
+                const result = new Promise((resolve) => {
+                    collection.find(where).toArray((err, results) => {
+                        if (err) {
+                            res = {status: false, error: err};
+                            resolve(res);
+                        }
+                        res = {
+                            status: true,
+                            data: results
+                        };
+                        resolve(res);
+                        return res
+                    });
                 });
-                return res;
+                return await result;
             });
         } else {
-            const datas = where.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gmi);
-            const content = this.getFileData();
-            if (datas) {
-                let result = null;
+            if (typeof where === 'string') {
+                const datas = where.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gmi);
+                const content = this.getFileData();
+                if (datas) {
+                    let result = null;
 
-                const regDatas: { key: string, val: string }[] = [];
-                let data = datas.next();
-                while (!data.done) {
-                    regDatas.push(
-                        {
-                            key: data.value[2].replace(/`/g, ''),
-                            val: data.value[3].replace(/"/g, '')
-                        });
-                    data = datas.next();
+                    const regDatas: { key: string, val: string }[] = [];
+                    let data = datas.next();
+                    while (!data.done) {
+                        regDatas.push(
+                            {
+                                key: data.value[2].replace(/`/g, ''),
+                                val: data.value[3].replace(/"/g, '')
+                            });
+                        data = datas.next();
+                    }
+
+                    for (const key in content) {
+                        let isSelected = null;
+
+                        for (const regData of regDatas) {
+                            isSelected = content[key][regData.key] === regData.val;
+                            if (isSelected === false) {
+                                break;
+                            }
+                        }
+
+                        if (isSelected) {
+                            if (isOne) {
+                                result = content[key];
+                                return content[key];
+                            }
+                            if (result === null) {
+                                result = [];
+                            }
+                            result.push(content[key]);
+                        }
+                    }
+                    if (result) {
+                        return result;
+                    }
                 }
-
+            } else {
+                let result = null;
+                const content = this.getFileData();
                 for (const key in content) {
                     let isSelected = null;
 
-                    for (const regData of regDatas) {
-                        isSelected = content[key][regData.key] === regData.val;
+                    for (const data in where) {
+                        isSelected = content[key][data] === where[data];
                         if (isSelected === false) {
                             break;
                         }
@@ -458,12 +519,12 @@ export abstract class Model {
      * Выполнение запроса и инициализация переменных в случае успешного запроса.
      *
      * @param where Запрос к таблице.
-     * @return boolean
+     * @return {Promise<boolean>}
      * @api
      */
-    public whereOne(where: any = '1'): boolean {
+    public async whereOne(where: any = '1'): Promise<boolean> {
         if (mmApp.isSaveDb) {
-            return !!this._db.query(async (client, db) => {
+            return !!await this._db.query(async (client, db) => {
                 let res: IModelRes = {
                     status: false
                 };
@@ -471,22 +532,31 @@ export abstract class Model {
                 if (typeof where === 'string') {
                     where = {};
                 }
-                await collection.findOne(where, (err, result) => {
-                    if (err) {
-                        res = {status: false, error: err};
+                const result = new Promise((resolve) => {
+                    collection.findOne(where, (err, result) => {
+                        if (err) {
+                            res = {status: false, error: err};
+                            resolve(res);
+                            return res;
+                        }
+
+                        res = {
+                            status: true,
+                            data: result
+                        };
+                        if (result) {
+                            this.init(result);
+                        } else {
+                            res.status = false;
+                        }
+                        resolve(res);
                         return res;
-                    }
-                    client.close();
-                    res = {
-                        status: true,
-                        data: result
-                    };
-                    return res;
+                    });
                 });
-                return res;
+                return await result;
             });
         } else {
-            const query = this.where(where, true);
+            const query = await this.where(where, true);
             if (query) {
                 this.init(query);
                 return true;
@@ -498,7 +568,7 @@ export abstract class Model {
     /**
      * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
      *
-     * @return array|mixed
+     * @return {any}
      * @api
      */
     public getFileData(): any {
@@ -515,14 +585,24 @@ export abstract class Model {
     /**
      * Выполнение произвольного запрос к базе данных.
      *
-     * @param callback Непосредственно запрос к бд.
-     * @return boolean|mysqli_result|null
+     * @param {Function} callback Непосредственно запрос к бд.
+     * @return {any}
      * @api
      */
-    public query(callback: Function) {
+    public query(callback: Function): any {
         if (mmApp.isSaveDb) {
             return this._db.query(callback);
         }
         return null;
+    }
+
+    /**
+     * Уделение подключения к БД
+     */
+    public destroy() {
+        if (mmApp.isSaveDb) {
+            this._db.close();
+            this._db = null;
+        }
     }
 }
