@@ -13,9 +13,9 @@ export interface IGetParams {
  * Получение случайного числа из диапазона
  * @param {number} min Минимальное значение
  * @param {number} max Максимальное значение
- * @returns {number}
+ * @return {number}
  */
-export function rand(min: number, max: number) {
+export function rand(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
@@ -24,7 +24,7 @@ export function rand(min: number, max: number) {
  * @param {string} first Текст который проверяем
  * @param {string} second Текст с которым сравниваем
  * @param {number} percent
- * @returns {number}
+ * @return {number}
  */
 export function similar_text(first: string, second: string, percent: number = 0): number {
     if (first === null || second === null) {
@@ -74,7 +74,7 @@ export function similar_text(first: string, second: string, percent: number = 0)
 /**
  * Проверяем существование файла
  * @param {string} file Файл, который необходимо проверить
- * @returns {boolean}
+ * @return {boolean}
  */
 export function is_file(file: string): boolean {
     try {
@@ -88,7 +88,7 @@ export function is_file(file: string): boolean {
 /**
  * Читаем содержимое файла
  * @param {string} fileName Файл, содержимое которого нужно получить.
- * @returns {string}
+ * @return {string}
  */
 export function fread(fileName: string): string {
     return fs.readFileSync(fileName, 'utf-8');
@@ -119,7 +119,7 @@ export function unlink(fileName: string): void {
 /**
  * Проверка на существование директории
  * @param {string} path Проверяемая директория
- * @returns {boolean}
+ * @return {boolean}
  */
 export function isDir(path: string): boolean {
     return fs.existsSync(path);
@@ -138,15 +138,15 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): void {
  * Получение Get объект
  * @param {IGetParams} formData
  * @param {string} separator
- * @returns {string}
+ * @return {string}
  */
-export function http_build_query(formData: IGetParams, separator: string = '&') {
+export function http_build_query(formData: IGetParams, separator: string = '&'): string {
     let key: string;
     let query: string[] = [];
     for (key in formData) {
         if (formData.hasOwnProperty(key)) {
             key = escape(key);
-            let val: string = escape((formData[key].toString())).replace(/%20/g, '+');
+            let val: string = escape((formData[key] + '')).replace(/%20/g, '+');
             query.push(`${key}=${val}`);
         }
     }
@@ -173,7 +173,7 @@ export {GET}
 
 /**
  * Чтение введенных данных в консоль
- * @returns {Promise<string>}
+ * @return {Promise<string>}
  */
 export function stdin(): Promise<string> {
     const rl = readline.createInterface({

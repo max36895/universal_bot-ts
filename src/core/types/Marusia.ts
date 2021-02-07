@@ -33,9 +33,9 @@ export class Marusia extends TemplateTypeModel {
     /**
      * Получение данных, необходимых для построения ответа пользователю.
      *
-     * @return IMarusiaResponse
+     * @return {Promise<IMarusiaResponse>}
      */
-    protected getResponse(): IMarusiaResponse {
+    protected async getResponse(): Promise<IMarusiaResponse> {
         const response: IMarusiaResponse = {
             text: Text.resize(this.controller.text, 1024),
             tts: Text.resize(this.controller.tts, 1024),
@@ -43,7 +43,7 @@ export class Marusia extends TemplateTypeModel {
         };
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
-                response.card = <IMarusiaItemsList | IMarusiaBigImage>this.controller.card.getCards();
+                response.card = <IMarusiaItemsList | IMarusiaBigImage>(await this.controller.card.getCards());
             }
             response.buttons = this.controller.buttons.getButtons();
         }
@@ -68,11 +68,11 @@ export class Marusia extends TemplateTypeModel {
      *
      * @param {IMarusiaWebhookRequest|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return boolean
+     * @return Promise<boolean>
      * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
-    public init(query: string | IMarusiaWebhookRequest, controller: BotController): boolean {
+    public async init(query: string | IMarusiaWebhookRequest, controller: BotController): Promise<boolean> {
         if (query) {
             let content: IMarusiaWebhookRequest;
             if (typeof query === 'string') {
@@ -127,15 +127,15 @@ export class Marusia extends TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return {Promise<IMarusiaWebhookResponse>}
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
-    public getContext(): IMarusiaWebhookResponse {
+    public async getContext(): Promise<IMarusiaWebhookResponse> {
         const result: IMarusiaWebhookResponse = {
             version: this.VERSION,
         };
-        result.response = this.getResponse();
+        result.response = await this.getResponse();
         result.session = this.getSession();
         const timeEnd = this.getProcessingTime();
         if (timeEnd >= this.MAX_TIME_REQUEST) {

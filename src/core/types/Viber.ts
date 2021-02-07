@@ -17,11 +17,11 @@ export class Viber extends TemplateTypeModel {
      *
      * @param {IViberContent|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return boolean
+     * @return Promise<boolean>
      * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
-    public init(query: string | IViberContent, controller: BotController): boolean {
+    public async init(query: string | IViberContent, controller: BotController): Promise<boolean> {
         if (query) {
             /**
              * array content
@@ -111,11 +111,11 @@ export class Viber extends TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return {Promise<string>}
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
-    public getContext(): string {
+    public async getContext(): Promise<string> {
         if (this.controller.isSend) {
             const viberApi = new ViberRequest();
             const params: IViberParams = {};
@@ -125,17 +125,17 @@ export class Viber extends TemplateTypeModel {
                 params.keyboard.Type = 'keyboard';
             }
 
-            viberApi.sendMessage(<string>this.controller.userId, mmApp.params.viber_sender, this.controller.text, params);
+            await viberApi.sendMessage(<string>this.controller.userId, mmApp.params.viber_sender, this.controller.text, params);
 
             if (this.controller.card.images.length) {
-                const res = this.controller.card.getCards();
+                const res = await this.controller.card.getCards();
                 if (res.length) {
                     viberApi.richMedia(<string>this.controller.userId, res);
                 }
             }
 
             if (this.controller.sound.sounds.length) {
-                this.controller.sound.getSounds(this.controller.tts);
+                await this.controller.sound.getSounds(this.controller.tts);
             }
         }
         return 'ok';

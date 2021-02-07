@@ -329,15 +329,15 @@ export class AlisaSound implements TemplateSoundTypes {
      *
      * @param {ISound[]} sounds Пользовательские звуки.
      * @param {string} text Исходный текст.
-     * @return string
+     * @return {Promise<string>}
      * @api
      */
-    public getSounds(sounds: ISound[], text: string): string {
+    public async getSounds(sounds: ISound[], text: string): Promise<string> {
         if (this.isUsedStandardSound) {
             sounds = [...this._standardSounds, ...sounds];
         }
         if (sounds && sounds.length) {
-            sounds.forEach((sound) => {
+            await sounds.forEach(async(sound) => {
                 if (typeof sound === 'object') {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string = Text.getText(sound.sounds);
@@ -350,11 +350,11 @@ export class AlisaSound implements TemplateSoundTypes {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_ALISA;
                             sModel.path = sText;
-                            sText = `<speaker audio="${sModel.getToken()}">`;
+                            sText = `<speaker audio="${await sModel.getToken()}">`;
                         }
 
                         if (sText) {
-                            text = this.replaceSound(sound.key, sText, text);
+                            text = AlisaSound.replaceSound(sound.key, sText, text);
                         }
                     }
                 }
@@ -369,10 +369,10 @@ export class AlisaSound implements TemplateSoundTypes {
      * @param {string} key Ключ для поиска.
      * @param {string|string[]} value Звук или массив звуков.
      * @param {string} text Обрабатываемый текст.
-     * @return string
+     * @return {string}
      * @api
      */
-    public replaceSound(key: string, value: string | string[], text: string): string {
+    public static replaceSound(key: string, value: string | string[], text: string): string {
         return text.replace(key, Text.getText(value));
     }
 

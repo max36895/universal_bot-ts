@@ -146,37 +146,12 @@ export class Request {
     }
 
     /**
-     * Начинаем отправку curl запроса.
+     * Начинаем отправку fetch запроса.
      * В случае успеха возвращаем содержимое запроса, в противном случае null.
      *
-     * @return mixed
+     * @return Promise<any>
      */
-    private _run() {
-        if (this.url) {
-            const response = fetch(this._getUrl(), this._getOptions());
-            return response.then((res) => {
-                if (res.ok) {
-                    if (this.isConvertJson) {
-                        return res.json();
-                    }
-                    return res.text();
-                } else {
-                    this._error = `Ошибка при получении данных: ${res.status}`;
-                }
-            })
-        } else {
-            this._error = 'Не указан url!';
-        }
-        return null;
-    }
-
-    /**
-     * Начинаем отправку синхронного curl запроса.
-     * В случае успеха возвращаем содержимое запроса, в противном случае null.
-     *
-     * @return mixed
-     */
-    private async _runSync() {
+    private async _run(): Promise<any> {
         if (this.url) {
             const response = await fetch(this._getUrl(), this._getOptions());
             if (response.ok) {
@@ -185,7 +160,7 @@ export class Request {
                 }
                 return await response.text();
             }
-            this._error = 'Не удалось получить данные';
+            this._error = 'Не удалось получить данные с ' + this.url;
         } else {
             this._error = 'Не указан url!';
         }
@@ -197,28 +172,23 @@ export class Request {
      * Возвращаем массив. В случае успеха свойство 'status' = true.
      *
      * @param {string} url Адрес, на который отправляется запрос.
-     * @param {boolean} isAsync Отправить запрос синхронно или асинхронно.
-     * @return IRequestSend
+     * @return Promise<IRequestSend>
      * [
      *  - bool status Статус выполнения запроса.
      *  - mixed data Данные полученные при выполнении запроса.
      * ]
      * @api
      */
-    public send(url: string = null, isAsync: boolean = true): IRequestSend {
+    public async send(url: string = null): Promise<IRequestSend> {
         if (url) {
             this.url = url;
         }
 
         this._error = null;
-        if (isAsync) {
-            const data: any = this._runSync();
-            if (this._error) {
-                return {status: false, err: this._error};
-            }
-            return {status: true, data};
-        } else {
-            return {status: true, data: this._run()};
+        const data: any = await this._run();
+        if (this._error) {
+            return {status: false, err: this._error};
         }
+        return {status: true, data};
     }
 }

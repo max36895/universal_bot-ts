@@ -32,7 +32,7 @@ export class ViberCard extends TemplateCardTypes {
      * Получение элемента карточки.
      * @param {Image} image Объект с изображением
      * @param {number} countImage Количество изображений
-     * @returns {IViberCard}
+     * @return {IViberCard}
      * @private
      */
     protected static _getElement(image: Image, countImage: number = 1): IViberCard {
@@ -61,10 +61,10 @@ export class ViberCard extends TemplateCardTypes {
      * Получение карточки для отображения пользователю.
      *
      * @param  {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return IViberCard[] | IViberCard
+     * @return {Promise<IViberCard[] | IViberCard>}
      * @api
      */
-    public getCard(isOne: boolean): IViberCard[] | IViberCard {
+    public async getCard(isOne: boolean): Promise<IViberCard[] | IViberCard> {
         let objects: IViberCard[] = [];
         let countImage = this.images.length;
         if (countImage > 7) {

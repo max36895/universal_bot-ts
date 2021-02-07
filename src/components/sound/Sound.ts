@@ -34,10 +34,10 @@ export class Sound {
      *
      * @param {string} text Исходный текст.
      * @param {TemplateSoundTypes} userSound Пользовательский класс для обработки звуков.
-     * @return any
+     * @return {Promise<any>}
      * @api
      */
-    public getSounds(text: string, userSound: TemplateSoundTypes = null): any {
+    public async getSounds(text: string, userSound: TemplateSoundTypes = null): Promise<any> {
         let sound: any = null;
         switch (mmApp.appType) {
             case T_ALISA:
@@ -70,7 +70,7 @@ export class Sound {
                 break;
         }
         if (sound) {
-            return sound.getSounds(this.sounds, text);
+            return await sound.getSounds(this.sounds, text);
         }
         return text;
     }

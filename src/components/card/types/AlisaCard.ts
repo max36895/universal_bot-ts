@@ -19,9 +19,10 @@ export class AlisaCard extends TemplateCardTypes {
 
     /**
      * Получаем элемент карточки
+     * @return {Promise<IAlisaImage[]>}
      * @private
      */
-    protected _getItem(): IAlisaImage[] {
+    protected async _getItem(): Promise<IAlisaImage[]> {
         let items: IAlisaImage[] = [];
         for (const image of this.images) {
             const maxCount = this.isUsedGallery ? AlisaCard.ALISA_MAX_GALLERY_IMAGES : AlisaCard.ALISA_MAX_IMAGES;
@@ -37,7 +38,7 @@ export class AlisaCard extends TemplateCardTypes {
                     if (image.imageDir) {
                         const mImage = new ImageTokens();
                         mImage.type = ImageTokens.T_ALISA;
-                        image.imageToken = mImage.getToken();
+                        image.imageToken = await mImage.getToken();
                     }
                 }
                 const item: IAlisaImage = {
@@ -62,10 +63,10 @@ export class AlisaCard extends TemplateCardTypes {
      * Получение карточки для отображения пользователю.
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return IAlisaBigImage | IAlisaItemsList
+     * @return {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery>}
      * @api
      */
-    public getCard(isOne: boolean): IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery {
+    public async getCard(isOne: boolean): Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery> {
         this.button.type = Buttons.T_ALISA_CARD_BUTTON;
         const countImage = this.images.length;
         if (countImage) {
@@ -78,7 +79,7 @@ export class AlisaCard extends TemplateCardTypes {
                     if (this.images[0].imageDir) {
                         const mImage = new ImageTokens();
                         mImage.type = ImageTokens.T_ALISA;
-                        this.images[0].imageToken = mImage.getToken();
+                        this.images[0].imageToken = await mImage.getToken();
                     }
                 }
                 if (this.images[0].imageToken) {
@@ -98,7 +99,7 @@ export class AlisaCard extends TemplateCardTypes {
                     const object: IAlisaImageGallery = {
                         type: "ImageGallery"
                     };
-                    object.items = this._getItem();
+                    object.items = await this._getItem();
                     return object;
                 } else {
                     const object: IAlisaItemsList = {
@@ -107,7 +108,7 @@ export class AlisaCard extends TemplateCardTypes {
                             text: Text.resize(this.title, 64)
                         }
                     };
-                    object.items = this._getItem();
+                    object.items = await this._getItem();
                     const btn: IAlisaButtonCard = this.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
                     if (btn.text) {
                         object.footer = {

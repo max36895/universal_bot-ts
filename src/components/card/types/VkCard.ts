@@ -47,10 +47,10 @@ export class VkCard extends TemplateCardTypes {
      * Получение карточки для отображения пользователю.
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return IVkCard | string[]
+     * @return {Promise<IVkCard | string[]>}
      * @api
      */
-    public getCard(isOne: boolean): IVkCard | string[] {
+    public async getCard(isOne: boolean): Promise<IVkCard | string[]> {
         let object = [];
         const countImage = this.images.length;
         if (countImage) {
@@ -59,7 +59,7 @@ export class VkCard extends TemplateCardTypes {
                     if (this.images[0].imageDir) {
                         const mImage = new ImageTokens();
                         mImage.type = ImageTokens.T_VK;
-                        this.images[0].imageToken = mImage.getToken();
+                        this.images[0].imageToken = await mImage.getToken();
                     }
                 }
                 if (this.images[0].imageToken) {
@@ -67,12 +67,12 @@ export class VkCard extends TemplateCardTypes {
                 }
             } else {
                 const elements = [];
-                this.images.forEach((image) => {
+                await this.images.forEach(async (image) => {
                     if (!image.imageToken) {
                         if (image.imageDir) {
                             const mImage = new ImageTokens();
                             mImage.type = ImageTokens.T_VK;
-                            image.imageToken = mImage.getToken();
+                            image.imageToken = await mImage.getToken();
                         }
                     }
                     if (image.imageToken) {

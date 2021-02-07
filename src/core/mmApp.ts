@@ -60,11 +60,11 @@ export interface IAppDB {
     /**
      * Логин для подключения к БД
      */
-    user: string;
+    user?: string;
     /**
      * Пароль для подключения к БД
      */
-    pass: string;
+    pass?: string;
     /**
      * Название БД
      */
@@ -90,11 +90,11 @@ export interface IAppConfig {
     /**
      * Директория, в которую будут записываться логи и ошибки выполнения.
      */
-    error_log: string;
+    error_log?: string;
     /**
      * Директория, в которую будут записываться json файлы.
      */
-    json: string;
+    json?: string;
     /**
      * Настройка подключения к базе данных. Актуально если isSaveDb = true.
      */

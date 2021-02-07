@@ -114,7 +114,6 @@ describe('Navigation tests', () => {
         assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '6', '7', '[8]', '9', '10']);
         navigation.thisPage = 8;
         assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '7', '8', '[9]', '10']);
-
         navigation.thisPage = 9;
         assert.deepStrictEqual(navigation.getPageNav(true), ['1 ...', '8', '9', '[10]']);
     })

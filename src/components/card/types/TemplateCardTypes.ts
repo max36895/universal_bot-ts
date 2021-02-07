@@ -32,7 +32,7 @@ export abstract class TemplateCardTypes {
      * Получение карточки для отображения пользователю.
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return any
+     * @return {Promise<any>}
      */
-    public abstract getCard(isOne: boolean): any;
+    public abstract async getCard(isOne: boolean): Promise<any>;
 }

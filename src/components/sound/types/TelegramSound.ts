@@ -17,13 +17,13 @@ export class TelegramSound implements TemplateSoundTypes {
      *
      * @param {ISound[]} sounds Массив звуков.
      * @param {string} text Исходный текст.
-     * @return string[]
+     * @return {Promise<string[]>}
      * @api
      */
-    public getSounds(sounds: ISound[], text: string = ''): string[] {
+    public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];
         if (sounds) {
-            sounds.forEach((sound) => {
+            await sounds.forEach(async(sound) => {
                 if (sound) {
                     if (sound.sounds && sound.key) {
                         let sText = Text.getText(sound.sounds);
@@ -31,7 +31,7 @@ export class TelegramSound implements TemplateSoundTypes {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_TELEGRAM;
                             sModel.path = sText;
-                            sText = sModel.getToken();
+                            sText = await sModel.getToken();
                         } else {
                             (new TelegramRequest()).sendAudio(mmApp.params.user_id, sText);
                         }
@@ -45,7 +45,7 @@ export class TelegramSound implements TemplateSoundTypes {
         }
         if (text) {
             const speechKit = new YandexSpeechKit();
-            const content = speechKit.getTts(text);
+            const content = await speechKit.getTts(text);
             if (content) {
                 (new TelegramRequest()).sendAudio(mmApp.params.user_id, content);
             }

@@ -156,8 +156,9 @@ export class Navigation {
         }
         this._nextPage(text);
         this._oldPage(text);
-        const start = this.thisPage * this.maxVisibleElements;
-        for (let i = start; i < (start + this.maxVisibleElements); i++) {
+        const start: number = this.thisPage * this.maxVisibleElements;
+        const end: number = start + this.maxVisibleElements;
+        for (let i = start; i < end; i++) {
             if (typeof this.elements[i] !== 'undefined') {
                 showElements.push(this.elements[i]);
             }
@@ -193,13 +194,14 @@ export class Navigation {
         let index: number = 1;
         let selectElement: object = null;
         let maxPercent: number = 0;
-        for (let i = start; i < (start + this.maxVisibleElements); i++) {
+        const end: number = start + this.maxVisibleElements;
+        for (let i = start; i < end; i++) {
             if (typeof this.elements[i] !== 'undefined') {
-                if (index == number) {
+                if (index === number) {
                     return this.elements[i];
                 }
                 if (key === null) {
-                    const r = Text.textSimilarity(this.elements[i].toString(), text, 75);
+                    const r = Text.textSimilarity(this.elements[i] + '', text, 75);
                     if (r.status && r.percent > maxPercent) {
                         selectElement = this.elements[i];
                     }
@@ -247,7 +249,7 @@ export class Navigation {
             this.thisPage = maxPage - 1;
         }
         const buttons: string[] = [];
-        if (isNumber == false) {
+        if (isNumber === false) {
             if (this.thisPage) {
                 buttons.push('👈 Назад');
             }
@@ -266,7 +268,7 @@ export class Navigation {
                 buttons.push('1 ...');
             }
             for (let i = index; i < maxPage; i++) {
-                if (i == this.thisPage) {
+                if (i === this.thisPage) {
                     buttons.push(`[${i + 1}]`);
                 } else {
                     buttons.push(`${i + 1}`);

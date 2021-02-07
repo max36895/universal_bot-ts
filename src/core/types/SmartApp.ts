@@ -28,9 +28,10 @@ export class SmartApp extends TemplateTypeModel {
     /**
      * Получение данных, необходимых для построения ответа пользователю.
      *
-     * @return ISberSmartAppResponsePayload
+     * @return {Promise<ISberSmartAppResponsePayload>}
+     * @private
      */
-    protected _getPayload(): ISberSmartAppResponsePayload {
+    protected async _getPayload(): Promise<ISberSmartAppResponsePayload> {
         const payload: ISberSmartAppResponsePayload = {
             pronounceText: this.controller.text,
             pronounceTextType: 'application/text',
@@ -66,7 +67,7 @@ export class SmartApp extends TemplateTypeModel {
                 if (typeof payload.items === 'undefined') {
                     payload.items = [];
                 }
-                payload.items.push(<ISberSmartAppItem>this.controller.card.getCards());
+                payload.items.push(await <ISberSmartAppItem>this.controller.card.getCards());
             }
             payload.suggestions = {
                 buttons: this.controller.buttons.getButtons(Buttons.T_SMARTAPP_BUTTONS)
@@ -80,11 +81,11 @@ export class SmartApp extends TemplateTypeModel {
      *
      * @param {ISberSmartAppWebhookRequest|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return boolean
+     * @return Promise<boolean>
      * @see TemplateTypeModel::init() Смотри тут
      * @api
      */
-    public init(query: string | ISberSmartAppWebhookRequest, controller: BotController): boolean {
+    public async init(query: string | ISberSmartAppWebhookRequest, controller: BotController): Promise<boolean> {
         if (query) {
             let content: ISberSmartAppWebhookRequest;
             if (typeof query === 'string') {
@@ -150,11 +151,11 @@ export class SmartApp extends TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return string
+     * @return {Promise<ISberSmartAppWebhookResponse>}
      * @see TemplateTypeModel::getContext() Смотри тут
      * @api
      */
-    public getContext(): ISberSmartAppWebhookResponse {
+    public async getContext(): Promise<ISberSmartAppWebhookResponse> {
         const result: ISberSmartAppWebhookResponse = {
             messageName: 'ANSWER_TO_USER',
             sessionId: this._session.sessionId,
@@ -166,9 +167,9 @@ export class SmartApp extends TemplateTypeModel {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
-            this.controller.tts = this.controller.sound.getSounds(this.controller.tts);
+            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
         }
-        result.payload = this._getPayload();
+        result.payload = await this._getPayload();
         const timeEnd: number = this.getProcessingTime();
         if (timeEnd >= this.MAX_TIME_REQUEST) {
             this.error = `SmartApp:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;

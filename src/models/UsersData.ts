@@ -128,11 +128,11 @@ export class UsersData extends Model {
      * Выполнение запроса на поиск одного значения.
      * В случае успешного поиска вернет true.
      *
-     * @return boolean
+     * @return {Promise<boolean>}
      * @api
      */
-    public getOne(): boolean {
-        const one: IModelRes | any = this.selectOne();
+    public async getOne(): Promise<boolean> {
+        const one: IModelRes | any = await this.selectOne();
         if (mmApp.isSaveDb) {
             if (one && one.status) {
                 this.init(one.data);
@@ -176,7 +176,11 @@ export class UsersData extends Model {
                 this.meta = JSON.parse(this.meta);
             }
             if (typeof this.data === 'string') {
-                this.data = JSON.parse(this.data);
+                try {
+                    this.data = JSON.parse(this.data);
+                } catch (e) {
+
+                }
             }
         }
     }

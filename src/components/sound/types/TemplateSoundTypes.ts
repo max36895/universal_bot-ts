@@ -13,7 +13,7 @@ export interface TemplateSoundTypes {
      *
      * @param {ISound[]} sounds Массив звуков.
      * @param {string} text Исходный текст.
-     * @return any
+     * @return {Promise<any>}
      */
-    getSounds(sounds: ISound[], text?: string): any;
+    getSounds(sounds: ISound[], text?: string): Promise<any>;
 }

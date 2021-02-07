@@ -26,7 +26,7 @@ export class AlisaButton extends TemplateButtonTypes {
      * Отображаем кнопку
      *
      * @param {Button} button Кнопка для отображения
-     * @returns {IAlisaButtonCard | IAlisaButton}
+     * @return {IAlisaButtonCard | IAlisaButton}
      * @private
      */
     protected _getButton(button: Button): IAlisaButtonCard | IAlisaButton {

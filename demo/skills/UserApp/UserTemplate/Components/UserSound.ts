@@ -7,9 +7,9 @@ export class UserSound implements TemplateSoundTypes {
      *
      * @param sounds Массив звуков
      * @param text Исходный текст
-     * @return array
+     * @return {Promise<string>}
      */
-    public getSounds(sounds: ISound[], text: string = ''): string {
+    public async getSounds(sounds: ISound[], text: string = ''): Promise<string> {
         if (sounds) {
             sounds.forEach((sound) => {
                 if (sound) {

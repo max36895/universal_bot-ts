@@ -15,10 +15,10 @@ export class ViberSound implements TemplateSoundTypes {
      *
      * @param {ISound[]} sounds Массив звуков.
      * @param {string} text Исходный текст.
-     * @return string[]
+     * @return {Promise<string[]>}
      * @api
      */
-    public getSounds(sounds: ISound[], text: string = ''): string[] {
+    public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         if (sounds) {
             sounds.forEach((sound) => {
                 if (sound) {
