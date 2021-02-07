@@ -168,7 +168,7 @@ export class ViberRequest {
      * @return Promise<any>
      * @api
      */
-    public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams = null):Promise<any> {
+    public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams = null): Promise<any> {
         this._request.post.receiver = receiver;
         if (typeof sender !== 'string') {
             this._request.post.sender = sender;
