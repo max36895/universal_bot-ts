@@ -4,7 +4,8 @@ import {
     IMarusiaItemsList,
     IMarusiaResponse,
     IMarusiaSession,
-    IMarusiaSessionResponse, IMarusiaWebhookRequest,
+    IMarusiaSessionResponse,
+    IMarusiaWebhookRequest,
     IMarusiaWebhookResponse
 } from "../interfaces/IMarusia";
 import {BotController} from "../../controller/BotController";

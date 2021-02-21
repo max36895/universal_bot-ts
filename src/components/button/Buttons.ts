@@ -1,5 +1,5 @@
 import {Button} from "./Button";
-import {IButton, TButton, TButtonPayload, IButtonOptions} from "./interfaces/IButton";
+import {IButton, IButtonOptions, TButton, TButtonPayload} from "./interfaces/IButton";
 import {TemplateButtonTypes} from "./types/TemplateButtonTypes";
 import {AlisaButton} from "./types/AlisaButton";
 import {TelegramButton} from "./types/TelegramButton";

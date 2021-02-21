@@ -68,7 +68,7 @@ export class AlisaButton extends TemplateButtonTypes {
     public getButtons(): IAlisaButton[] | IAlisaButtonCard {
         const objects: IAlisaButton[] = [];
         if (this.isCard) {
-            if(this.buttons.length) {
+            if (this.buttons.length) {
                 return this._getButton(this.buttons[0]);
             }
         } else {

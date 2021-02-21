@@ -3,11 +3,13 @@ import {mmApp} from "../core/mmApp";
 import {
     IVkDocSave,
     IVkParams,
-    IVkParamsUsersGet, IVkPhotosSave,
+    IVkParamsUsersGet,
+    IVkPhotosSave,
     IVKSendMessage,
     IVkUploadFile,
     IVkUploadServer,
-    IVkUsersGet, TVkDocType,
+    IVkUsersGet,
+    TVkDocType,
     TVkPeerId
 } from "./interfaces/IVkApi";
 

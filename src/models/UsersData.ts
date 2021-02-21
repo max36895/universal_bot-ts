@@ -132,17 +132,10 @@ export class UsersData extends Model {
      * @api
      */
     public async getOne(): Promise<boolean> {
-        const one: IModelRes | any = await this.selectOne();
-        if (mmApp.isSaveDb) {
-            if (one && one.status) {
-                this.init(one.data);
-                return true;
-            }
-        } else {
-            if (one) {
-                this.init(one);
-                return true;
-            }
+        const query: IModelRes | any = await this.selectOne();
+        if (query && query.status) {
+            this.init(this.dbController.getValue(query));
+            return true;
         }
         return false;
     }

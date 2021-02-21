@@ -19,7 +19,7 @@ export class UserApp extends TemplateTypeModel {
      * @return bool
      * @see TemplateTypeModel::init() Смотри тут
      */
-    public init(query: string | IUserApp, controller: BotController): boolean {
+    public async init(query: string | IUserApp, controller: BotController): Promise<boolean> {
         if (query) {
             let content: IUserApp;
             if (typeof query === 'string') {

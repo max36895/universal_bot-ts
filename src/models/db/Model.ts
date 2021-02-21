@@ -1,20 +1,20 @@
 import {mmApp} from "../../core";
 import {IModelRules} from "../interface/IModel";
-import {Text} from "../../components/standard/Text";
-import {Sql} from "./Sql";
-import {fread, is_file} from "../../utils";
+import {DbControllerModel} from "./DbControllerModel";
+import {IQueryData, QueryData} from "./QueryData";
+import {DbController} from "./DbController";
 
 export interface IModelRes {
     /**
-     * Статус выполнения
+     * Статус выполнения запроса
      */
     status: boolean;
     /**
-     * Ошибки, возникшие при выполнении
+     * Ошибки, возникшие во время выполнения запроса
      */
     error?: string;
     /**
-     * Полученный результат
+     * Полученный результат запроса
      */
     data?: any;
 }
@@ -25,14 +25,12 @@ export interface IModelRes {
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
 export abstract class Model {
+    public dbController: DbControllerModel;
+    public queryData: QueryData;
     /**
      * Стартовое значение для индекса.
      */
     public startIndex = 0;
-    /**
-     * Подключение к базе данных.
-     */
-    private _db: Sql;
 
     /**
      * Правила для обработки полей. Где 1 - Элемент это название поля, 2 - Элемент тип поля, max - Максимальная длина.
@@ -65,11 +63,15 @@ export abstract class Model {
      * Model constructor.
      */
     protected constructor() {
-        if (mmApp.isSaveDb) {
-            this._db = new Sql();
+        if (mmApp.userDbController) {
+            this.dbController = mmApp.userDbController;
         } else {
-            this._db = null;
+            this.dbController = new DbController();
         }
+        this.dbController.tableName = this.tableName();
+        this.dbController.setRules(this.rules());
+        this.dbController.primaryKeyName = this.getId();
+        this.queryData = new QueryData;
     }
 
     /**
@@ -81,10 +83,7 @@ export abstract class Model {
      * @return {Promise<boolean>}
      */
     public async isConnected(): Promise<boolean> {
-        if (mmApp.isSaveDb) {
-            return await this._db.isConnected();
-        }
-        return true;
+        return await this.dbController.isConnected();
     }
 
     /**
@@ -95,10 +94,7 @@ export abstract class Model {
      * @api
      */
     public escapeString(text: string | number): string {
-        if (mmApp.isSaveDb) {
-            return this._db.escapeString(text);
-        }
-        return text + '';
+        return this.dbController.escapeString(text);
     }
 
     /**
@@ -106,35 +102,6 @@ export abstract class Model {
      * @api
      */
     public validate(): void {
-        if (mmApp.isSaveDb) {
-            const rules = this.rules();
-            if (rules) {
-                rules.forEach((rule) => {
-                    let type = 'number';
-                    switch (rule.type) {
-                        case 'string':
-                        case 'text':
-                            type = 'string';
-                            break;
-                        case 'int':
-                        case 'integer':
-                        case 'bool':
-                            type = 'number';
-                            break;
-                    }
-                    rule.name.forEach((data) => {
-                        if (type === 'string') {
-                            if (typeof rule.max !== 'undefined') {
-                                this[data] = Text.resize(this[data], rule.max);
-                            }
-                            this[data] = this.escapeString(this[data]);
-                        } else {
-                            this[data] = +this[data];
-                        }
-                    })
-                })
-            }
-        }
     }
 
     /**
@@ -164,10 +131,16 @@ export abstract class Model {
         let i = this.startIndex;
         const labels = this.attributeLabels();
         Object.keys(labels).forEach((index) => {
-            if (mmApp.isSaveDb) {
-                this[index] = data[index] || data[i] || '';
+            if (data) {
+                if (typeof data[index] !== 'undefined') {
+                    this[index] = data[index];
+                } else if (typeof data[i] !== 'undefined') {
+                    this[index] = data[i];
+                } else {
+                    this[index] = '';
+                }
             } else {
-                this[index] = data[index] || '';
+                this[index] = '';
             }
             i++;
         })
@@ -180,42 +153,12 @@ export abstract class Model {
      * @api
      */
     public async selectOne(): Promise<IModelRes | any> {
-        const idName = this.getId();
-        if (idName) {
-            if (this[idName]) {
-                if (mmApp.isSaveDb) {
-                    return await this._db.query(async (client, db) => {
-                        let res: IModelRes = {
-                            status: false
-                        };
-                        const collection = db.collection(this.tableName());
-                        let data = {
-                            [idName]: this[idName]
-                        };
-                        const result = new Promise((resolve) => {
-                            collection.findOne(data, (err, result) => {
-                                if (err) {
-                                    res = {status: false, error: err};
-                                    resolve(res);
-                                    return res;
-                                }
-                                res = {
-                                    status: true,
-                                    data: result
-                                };
-                                resolve(res);
-                                return res;
-                            });
-                        });
-                        return await result;
-                    });
-                } else {
-                    const data = this.getFileData();
-                    return data[this[idName]] || null;
-                }
-            }
-        }
-        return null;
+        const idName = this.dbController.primaryKeyName;
+        this.queryData.setQuery({
+            [idName]: this[idName]
+        });
+        this.queryData.setData(null);
+        return await this.dbController.select(this.queryData.getQuery(), true);
     }
 
     /**
@@ -228,14 +171,18 @@ export abstract class Model {
      */
     public async save(isNew: boolean = false): Promise<any> {
         this.validate();
-        if (isNew) {
-            return await this.add();
-        }
-        if (await this.selectOne()) {
-            return await this.update();
-        } else {
-            return await this.add();
-        }
+        const idName = this.dbController.primaryKeyName;
+        this.queryData.setQuery({
+            [idName]: this[idName]
+        });
+        const data: IQueryData = {};
+        Object.keys(this.attributeLabels()).forEach((index) => {
+            if (index !== idName) {
+                data[index] = this[index];
+            }
+        });
+        this.queryData.setData(data);
+        return await this.dbController.save(this.queryData, isNew);
     }
 
     /**
@@ -245,54 +192,19 @@ export abstract class Model {
      * @api
      */
     public async update(): Promise<any> {
-        if (mmApp.isSaveDb) {
-            this.validate();
-            const idName = this.getId();
-            if (idName) {
-                return !!await this._db.query(async (client, db) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    const collection = db.collection(this.tableName());
-                    let data = {};
-                    Object.keys(this.attributeLabels()).forEach((index) => {
-                        if (index != idName) {
-                            data[index] = this[index];
-                        }
-                    });
-                    const result = new Promise((resolve) => {
-                        collection.updateOne({[idName]: this[idName]}, {$set: data}, (err, result) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res;
-                            }
-                            res = {
-                                status: true,
-                                data: result.modifiedCount
-                            };
-
-                            resolve(res);
-                            return res;
-                        });
-                    });
-                    return await result;
-                });
+        this.validate();
+        const idName = this.dbController.primaryKeyName;
+        this.queryData.setQuery({
+            [idName]: this[idName]
+        });
+        const data: IQueryData = {};
+        Object.keys(this.attributeLabels()).forEach((index) => {
+            if (index !== idName) {
+                data[index] = this[index];
             }
-        } else {
-            const data = this.getFileData();
-            const idName = this.getId();
-            if (typeof data[this[idName]] !== 'undefined') {
-                const tmp: any = {};
-                Object.keys(this.attributeLabels()).forEach((index) => {
-                    tmp[index] = this[index];
-                });
-                data[this[idName]] = tmp;
-                mmApp.saveJson(`${this.tableName()}.json`, data);
-            }
-            return true;
-        }
-        return null;
+        });
+        this.queryData.setData(data);
+        return await this.dbController.update(this.queryData);
     }
 
     /**
@@ -302,52 +214,14 @@ export abstract class Model {
      * @api
      */
     public async add(): Promise<any> {
-        if (mmApp.isSaveDb) {
-            this.validate();
-            const idName = this.getId();
-            if (idName) {
-                return !!await this._db.query(async (client, db) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    let data = {};
-                    Object.keys(this.attributeLabels()).forEach((index) => {
-                        if (typeof this[index] !== 'undefined') {
-                            data[index] = this[index];
-                        }
-                    });
-                    const collection = db.collection(this.tableName());
-
-                    const result = new Promise((resolve) => {
-                        collection.insertOne(data, (err, result) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res
-                            }
-                            res = {
-                                status: true,
-                                data: result.insertedId
-                            };
-                            resolve(res);
-                            return res;
-                        });
-                    });
-                    return await result;
-                });
-            }
-        } else {
-            const data = this.getFileData();
-            const idName = this.getId();
-            const tmp = {};
-            Object.keys(this.attributeLabels()).forEach((index) => {
-                tmp[index] = this[index];
-            });
-            data[this[idName]] = tmp;
-            mmApp.saveJson(`${this.tableName()}.json`, data);
-            return true;
-        }
-        return null;
+        this.validate();
+        this.queryData.setQuery(null);
+        const data: IQueryData = {};
+        Object.keys(this.attributeLabels()).forEach((index) => {
+            data[index] = this[index];
+        });
+        this.queryData.setData(data);
+        return await this.dbController.insert(this.queryData);
     }
 
     /**
@@ -357,52 +231,13 @@ export abstract class Model {
      * @api
      */
     public async remove(): Promise<boolean> {
-        if (mmApp.isSaveDb) {
-            const idName = this.getId();
-            let data = null;
-            if (idName) {
-                const val = this[idName];
-                if (val) {
-                    data = {
-                        [idName]: val
-                    };
-                }
-            }
-            if (data) {
-                return !!await this._db.query(async (client, db) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    const collection = db.collection(this.tableName());
-
-                    const result = new Promise((resolve) => {
-                        collection.deleteOne(data, (err, result) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res;
-                            }
-                            res = {
-                                status: true,
-                                data: result.deletedCount
-                            };
-                            resolve(res);
-                            return res;
-                        });
-                    });
-                    return await result;
-                });
-            }
-        } else {
-            const data = this.getFileData();
-            const idName = this.getId();
-            if (typeof data[this[idName]] !== 'undefined') {
-                delete data[this[idName]];
-                mmApp.saveJson(`${this.tableName()}.json`, data);
-            }
-            return true;
-        }
-        return false;
+        this.validate();
+        const idName = this.dbController.primaryKeyName;
+        this.queryData.setQuery({
+            [idName]: this[idName]
+        });
+        this.queryData.setData(null);
+        return await this.dbController.remove(this.queryData);
     }
 
     /**
@@ -410,109 +245,17 @@ export abstract class Model {
      *
      * @param where Запрос к таблице.
      * @param {boolean} isOne Вывести только 1 результат. Используется только при поиске по файлу.
-     * @return {Promise<any>}
+     * @return {Promise<IModelRes>}
      * @api
      */
-    public async where(where: any = '1', isOne: boolean = false): Promise<any> {
-        if (mmApp.isSaveDb) {
-            return await this._db.query(async (client, db) => {
-                let res: IModelRes = {
-                    status: false
-                };
-                const collection = db.collection(this.tableName());
-                if (typeof where === 'string') {
-                    where = {};
-                }
-
-                const result = new Promise((resolve) => {
-                    collection.find(where).toArray((err, results) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            resolve(res);
-                        }
-                        res = {
-                            status: true,
-                            data: results
-                        };
-                        resolve(res);
-                        return res
-                    });
-                });
-                return await result;
-            });
+    public async where(where: any = '1', isOne: boolean = false): Promise<IModelRes> {
+        let select: IQueryData = {};
+        if (typeof where === 'string') {
+            select = QueryData.getQueryData(where);
         } else {
-            if (typeof where === 'string') {
-                const datas = where.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gmi);
-                const content = this.getFileData();
-                if (datas) {
-                    let result = null;
-
-                    const regDatas: { key: string, val: string }[] = [];
-                    let data = datas.next();
-                    while (!data.done) {
-                        regDatas.push(
-                            {
-                                key: data.value[2].replace(/`/g, ''),
-                                val: data.value[3].replace(/"/g, '')
-                            });
-                        data = datas.next();
-                    }
-
-                    for (const key in content) {
-                        let isSelected = null;
-
-                        for (const regData of regDatas) {
-                            isSelected = content[key][regData.key] === regData.val;
-                            if (isSelected === false) {
-                                break;
-                            }
-                        }
-
-                        if (isSelected) {
-                            if (isOne) {
-                                result = content[key];
-                                return content[key];
-                            }
-                            if (result === null) {
-                                result = [];
-                            }
-                            result.push(content[key]);
-                        }
-                    }
-                    if (result) {
-                        return result;
-                    }
-                }
-            } else {
-                let result = null;
-                const content = this.getFileData();
-                for (const key in content) {
-                    let isSelected = null;
-
-                    for (const data in where) {
-                        isSelected = content[key][data] === where[data];
-                        if (isSelected === false) {
-                            break;
-                        }
-                    }
-
-                    if (isSelected) {
-                        if (isOne) {
-                            result = content[key];
-                            return content[key];
-                        }
-                        if (result === null) {
-                            result = [];
-                        }
-                        result.push(content[key]);
-                    }
-                }
-                if (result) {
-                    return result;
-                }
-            }
+            select = where;
         }
-        return null;
+        return await this.dbController.select(select, isOne);
     }
 
     /**
@@ -523,63 +266,12 @@ export abstract class Model {
      * @api
      */
     public async whereOne(where: any = '1'): Promise<boolean> {
-        if (mmApp.isSaveDb) {
-            return !!await this._db.query(async (client, db) => {
-                let res: IModelRes = {
-                    status: false
-                };
-                const collection = db.collection(this.tableName());
-                if (typeof where === 'string') {
-                    where = {};
-                }
-                const result = new Promise((resolve) => {
-                    collection.findOne(where, (err, result) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            resolve(res);
-                            return res;
-                        }
-
-                        res = {
-                            status: true,
-                            data: result
-                        };
-                        if (result) {
-                            this.init(result);
-                        } else {
-                            res.status = false;
-                        }
-                        resolve(res);
-                        return res;
-                    });
-                });
-                return await result;
-            });
-        } else {
-            const query = await this.where(where, true);
-            if (query) {
-                this.init(query);
-                return true;
-            }
+        const res = await this.where(where, true);
+        if (res && res.status) {
+            this.init(this.dbController.getValue(res));
+            return true;
         }
         return false;
-    }
-
-    /**
-     * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
-     *
-     * @return {any}
-     * @api
-     */
-    public getFileData(): any {
-        const path = mmApp.config.json;
-        const fileName = this.tableName().replace(/`/g, '');
-        const file = `${path}/${fileName}.json`;
-        if (is_file(file)) {
-            return JSON.parse(fread(file));
-        } else {
-            return {};
-        }
     }
 
     /**
@@ -590,19 +282,13 @@ export abstract class Model {
      * @api
      */
     public query(callback: Function): any {
-        if (mmApp.isSaveDb) {
-            return this._db.query(callback);
-        }
-        return null;
+        return this.dbController.query(callback);
     }
 
     /**
      * Уделение подключения к БД
      */
     public destroy() {
-        if (mmApp.isSaveDb) {
-            this._db.close();
-            this._db = null;
-        }
+        this.dbController.destroy();
     }
 }

@@ -4,8 +4,10 @@ import {mmApp} from "../mmApp";
 import {
     ISberSmartAppItem,
     ISberSmartAppResponsePayload,
-    ISberSmartAppSession, ISberSmartAppWebhookRequest,
-    ISberSmartAppWebhookResponse, TSberSmartAppEmotionId
+    ISberSmartAppSession,
+    ISberSmartAppWebhookRequest,
+    ISberSmartAppWebhookResponse,
+    TSberSmartAppEmotionId
 } from "../interfaces/ISberSmartApp";
 import {Text} from "../../components/standard/Text";
 import {Buttons} from "../../components/button";

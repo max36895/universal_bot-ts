@@ -1,12 +1,7 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {
-    YandexSoundRequest,
-    IYandexRequestDownloadSound,
-    TelegramRequest,
-    VkRequest,
-} from "../api";
+import {IYandexRequestDownloadSound, TelegramRequest, VkRequest, YandexSoundRequest,} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**

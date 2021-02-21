@@ -1,7 +1,10 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
 import {Buttons} from "../../button";
 import {
-    IAlisaBigImage, IAlisaButtonCard, IAlisaImage, IAlisaImageGallery,
+    IAlisaBigImage,
+    IAlisaButtonCard,
+    IAlisaImage,
+    IAlisaImageGallery,
     IAlisaItemsList
 } from "../../../core/interfaces/IAlisa";
 import {Text} from "../../standard/Text";

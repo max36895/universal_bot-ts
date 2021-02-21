@@ -76,20 +76,24 @@ export class VkCard extends TemplateCardTypes {
                         }
                     }
                     if (image.imageToken) {
-                        const element: IVkCardElement = {
-                            title: image.title,
-                            description: image.desc,
-                            photo_id: image.imageToken.replace('photo', '')
-                        };
-                        const button = image.button.getButtons(Buttons.T_VK_BUTTONS);
-                        /**
-                         * У карточки в любом случае должна быть хоть одна кнопка.
-                         * Максимальное количество кнопок 3
-                         */
-                        if (button.one_time) {
-                            element.buttons = button.buttons.splice(0, 3);
-                            element.action = {type: 'open_photo'};
-                            elements.push(element);
+                        if (this.isUsedGallery) {
+                            object.push(image.imageToken);
+                        } else {
+                            const element: IVkCardElement = {
+                                title: image.title,
+                                description: image.desc,
+                                photo_id: image.imageToken.replace('photo', '')
+                            };
+                            const button = image.button.getButtons(Buttons.T_VK_BUTTONS);
+                            /**
+                             * У карточки в любом случае должна быть хоть одна кнопка.
+                             * Максимальное количество кнопок 3
+                             */
+                            if (button.one_time) {
+                                element.buttons = button.buttons.splice(0, 3);
+                                element.action = {type: 'open_photo'};
+                                elements.push(element);
+                            }
                         }
                     }
                 });

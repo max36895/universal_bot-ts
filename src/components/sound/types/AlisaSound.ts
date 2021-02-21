@@ -337,7 +337,7 @@ export class AlisaSound implements TemplateSoundTypes {
             sounds = [...this._standardSounds, ...sounds];
         }
         if (sounds && sounds.length) {
-            await sounds.forEach(async(sound) => {
+            await sounds.forEach(async (sound) => {
                 if (typeof sound === 'object') {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string = Text.getText(sound.sounds);

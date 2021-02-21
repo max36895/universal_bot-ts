@@ -1,4 +1,5 @@
 import {fwrite, isDir, mkdir} from "../utils";
+import {DbControllerModel} from "../models/db/DbControllerModel";
 
 export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart-app';
 
@@ -50,7 +51,7 @@ export const WELCOME_INTENT_NAME = 'welcome';
 export const HELP_INTENT_NAME = 'help';
 
 /**
- * @typeof {object} IAppDB Параметры для подключения к Базе Данных
+ *  Параметры для подключения к Базе Данных
  */
 export interface IAppDB {
     /**
@@ -160,13 +161,13 @@ export interface IAppParam {
      */
     user_id?: string | number;
     /**
-     * Текст приветствия.
+     * Текст, или масив из текста для приветствия.
      */
-    welcome_text?: string;
+    welcome_text?: string | string[];
     /**
-     * Текст помощи.
+     * Текст, или масив из текста для  помощи.
      */
-    help_text?: string;
+    help_text?: string | string[];
     /**
      * Обрабатываемые команды.
      *
@@ -177,7 +178,7 @@ export interface IAppParam {
      *      -'slots' : [
      *          -'\b{_value_}\b', // Поиск точного совпадения. Например, если _value_ = 'привет', поиск будет осуществляться по точному совпадению. Слово "приветствую" в данном случае не будет считаться как точка срабатывания
      *          -'\b{_value_}[^\s]+\b', // Поиск по точному началу. При данной опции слово "приветствую" станет точкой срабатывания
-     *          -'(\b{_value_}(|[^\s]+)\b)', // Поиск по точному началу или точному совпадению. (Используется по умолчанию)
+     *          -'(\b{_value_}(|[^\s]+)\b)', // Поиск по точному началу или точному совпадению.
      *          -'\b(\d{3})\b', // Поиск всех чисел от 100 до 999.
      *          -'{_value_} \d {_value_}', // Поиск по определенному условию. Например регулярное "завтра в \d концерт", тогда точкой срабатывания станет пользовательский текст, в котором есть вхождение что и в регулярном выражении, где "\d" это любое число.
      *          -'{_value_}', // Поиск любого похожего текста. Похоже на strpos()
@@ -199,6 +200,13 @@ export interface IAppParam {
  * @class mmApp
  */
 export class mmApp {
+    /**
+     * Использование стороннего контроллера для подключения к БД.
+     * Класс должен быть унаследован от DbControllerModel. Стоит применять в том случае, если используется другая СУБД.
+     * Если опция не передается, то используется стандартное подключение MongoDb.
+     * @see DbControllerModel
+     */
+    public static userDbController: DbControllerModel;
     /**
      * Куда сохраняются пользовательские данные. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
      */

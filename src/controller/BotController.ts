@@ -123,6 +123,8 @@ export abstract class BotController {
      * "official" - официальный тон общения(на Вы)
      * "no_official" - Общаемся на ты
      * null - можно использовать любой тон
+     * Актуально для Сбер
+     * @default null
      */
     public appeal: "official" | "no_official";
 

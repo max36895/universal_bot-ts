@@ -3,7 +3,7 @@ import {BotController} from "../../controller/BotController";
 import {ITelegramContent} from "../interfaces/ITelegram";
 import {mmApp} from "../mmApp";
 import {INluThisUser} from "../../components/nlu";
-import {TelegramRequest, ITelegramParams} from "../../api";
+import {ITelegramParams, TelegramRequest} from "../../api";
 import {Buttons} from "../../components/button";
 import {ITelegramCard} from "../../components/card";
 

@@ -9,10 +9,10 @@ export class MyController extends BotController {
     }
 
     testIntent(text: string) {
-        return this._getIntent(text);
+        return BotController._getIntent(text);
     }
 
     testIntents() {
-        return this._intents();
+        return BotController._intents();
     }
 }

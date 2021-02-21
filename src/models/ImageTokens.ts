@@ -1,12 +1,7 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {
-    YandexImageRequest,
-    IYandexRequestDownloadImage,
-    TelegramRequest,
-    VkRequest
-} from "../api";
+import {IYandexRequestDownloadImage, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**

@@ -23,7 +23,7 @@ export class TelegramSound implements TemplateSoundTypes {
     public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];
         if (sounds) {
-            await sounds.forEach(async(sound) => {
+            await sounds.forEach(async (sound) => {
                 if (sound) {
                     if (sound.sounds && sound.key) {
                         let sText = Text.getText(sound.sounds);

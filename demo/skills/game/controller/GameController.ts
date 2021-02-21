@@ -1,9 +1,3 @@
-/**
- * Универсальное приложение по созданию навыков и ботов.
- * @version 1.0
- * @author Maxim-M maximco36895@yandex.ru
- */
-
 import {BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src";
 
 interface IGameControllerExample {
