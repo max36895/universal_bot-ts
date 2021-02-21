@@ -22,7 +22,7 @@ export default function (query: string, userId: string, count: number): IMarusia
             session_id: 'local',
             skill_id: 'local_test',
             user_id: userId,
-            'new': !!count
+            'new': (count === 0)
         },
         request: {
             command: query.toLowerCase(),
