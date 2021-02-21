@@ -40,7 +40,7 @@ export abstract class DbControllerModel {
      */
     protected _primaryKeyName: TKey;
 
-    constructor() {
+    protected constructor() {
         this._connectConfig = mmApp.config.db;
     }
 

@@ -67,7 +67,8 @@ export class VkCard extends TemplateCardTypes {
                 }
             } else {
                 const elements = [];
-                await this.images.forEach(async (image) => {
+                for (let i = 0; i < this.images.length; i++) {
+                    const image = this.images[i];
                     if (!image.imageToken) {
                         if (image.imageDir) {
                             const mImage = new ImageTokens();
@@ -96,7 +97,7 @@ export class VkCard extends TemplateCardTypes {
                             }
                         }
                     }
-                });
+                }
                 if (elements.length) {
                     return {
                         type: 'carousel',

@@ -30,7 +30,8 @@ export class TelegramCard extends TemplateCardTypes {
     public async getCard(isOne: boolean): Promise<ITelegramCard> {
         let object: ITelegramCard = null;
         const options: string[] = [];
-        await this.images.forEach(async (image) => {
+        for (let i = 0; i < this.images.length; i++) {
+            const image = this.images[i];
             if (!image.imageToken) {
                 if (image.imageDir) {
                     const mImage = new ImageTokens();
@@ -39,10 +40,10 @@ export class TelegramCard extends TemplateCardTypes {
                     image.imageToken = await mImage.getToken();
                 }
             } else {
-                (new TelegramRequest()).sendPhoto(mmApp.params.user_id, image.imageToken, image.desc);
+                await (new TelegramRequest()).sendPhoto(mmApp.params.user_id, image.imageToken, image.desc);
             }
             options.push(image.title);
-        });
+        }
         if (options.length > 1) {
             object = {
                 question: this.title,

@@ -146,7 +146,7 @@ export class SoundTokens extends Model {
                     }
                     if (res) {
                         this.soundToken = res.id;
-                        if (this.save(true)) {
+                        if (await this.save(true)) {
                             return this.soundToken;
                         }
                     }
@@ -165,7 +165,7 @@ export class SoundTokens extends Model {
                             const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
                             if (doc) {
                                 this.soundToken = `doc${doc.owner_id}_${doc.id}`;
-                                if (this.save(true)) {
+                                if (await this.save(true)) {
                                     return this.soundToken;
                                 }
                             }
@@ -184,7 +184,7 @@ export class SoundTokens extends Model {
                     if (sound && sound.ok) {
                         if (typeof sound.result.audio.file_id !== 'undefined') {
                             this.soundToken = sound.result.audio.file_id;
-                            if (this.save(true)) {
+                            if (await this.save(true)) {
                                 return this.soundToken;
                             }
                         }

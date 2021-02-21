@@ -133,7 +133,7 @@ export class Alisa extends TemplateTypeModel {
                 if (typeof content.state.user !== 'undefined') {
                     this.controller.state = content.state.user;
                     this._stateName = 'user_state_update';
-                } else if (typeof  content.state.application !== 'undefined') {
+                } else if (typeof content.state.application !== 'undefined') {
                     this.controller.state = content.state.application;
                     this._stateName = 'application_state';
                 } else if (typeof content.state.session !== 'undefined') {

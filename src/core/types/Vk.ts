@@ -123,7 +123,7 @@ export class Vk extends TemplateTypeModel {
                 params.attachments = {...attach, ...params.attachments};
             }
             const vkApi = new VkRequest();
-            vkApi.messagesSend(this.controller.userId, this.controller.text, params);
+            await vkApi.messagesSend(this.controller.userId, this.controller.text, params);
         }
         return 'ok';
     }

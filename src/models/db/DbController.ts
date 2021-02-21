@@ -326,9 +326,11 @@ export class DbController extends DbControllerModel {
                     let isSelected = null;
 
                     for (const data in where) {
-                        isSelected = content[key][data] === where[data];
-                        if (isSelected === false) {
-                            break;
+                        if (content[key].hasOwnProperty(data) && where.hasOwnProperty(data)) {
+                            isSelected = content[key][data] === where[data];
+                            if (isSelected === false) {
+                                break;
+                            }
                         }
                     }
 

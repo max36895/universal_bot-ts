@@ -249,7 +249,7 @@ export abstract class Model {
      * @api
      */
     public async where(where: any = '1', isOne: boolean = false): Promise<IModelRes> {
-        let select: IQueryData = {};
+        let select: IQueryData;
         if (typeof where === 'string') {
             select = QueryData.getQueryData(where);
         } else {

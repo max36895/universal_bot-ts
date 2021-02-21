@@ -130,7 +130,7 @@ export class Viber extends TemplateTypeModel {
             if (this.controller.card.images.length) {
                 const res = await this.controller.card.getCards();
                 if (res.length) {
-                    viberApi.richMedia(<string>this.controller.userId, res);
+                    await viberApi.richMedia(<string>this.controller.userId, res);
                 }
             }
 

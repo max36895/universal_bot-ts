@@ -109,7 +109,7 @@ export class Telegram extends TemplateTypeModel {
             if (this.controller.card.images.length) {
                 const res: ITelegramCard = await this.controller.card.getCards();
                 if (res) {
-                    telegramApi.sendPoll(this.controller.userId, res.question, res.options);
+                    await telegramApi.sendPoll(this.controller.userId, res.question, res.options);
                 }
             }
 
