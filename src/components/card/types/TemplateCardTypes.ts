@@ -34,5 +34,5 @@ export abstract class TemplateCardTypes {
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return {Promise<any>}
      */
-    public abstract async getCard(isOne: boolean): Promise<any>;
+    public abstract getCard(isOne: boolean): Promise<any>;
 }

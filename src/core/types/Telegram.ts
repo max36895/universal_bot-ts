@@ -3,7 +3,7 @@ import {BotController} from "../../controller/BotController";
 import {ITelegramContent} from "../interfaces/ITelegram";
 import {mmApp} from "../mmApp";
 import {INluThisUser} from "../../components/nlu";
-import {TelegramRequest, ITelegramParams} from "../../api";
+import {ITelegramParams, TelegramRequest} from "../../api";
 import {Buttons} from "../../components/button";
 import {ITelegramCard} from "../../components/card";
 
@@ -109,7 +109,7 @@ export class Telegram extends TemplateTypeModel {
             if (this.controller.card.images.length) {
                 const res: ITelegramCard = await this.controller.card.getCards();
                 if (res) {
-                    telegramApi.sendPoll(this.controller.userId, res.question, res.options);
+                    await telegramApi.sendPoll(this.controller.userId, res.question, res.options);
                 }
             }
 

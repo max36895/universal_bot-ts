@@ -49,29 +49,29 @@ describe('Db file connect', () => {
 
     it('Where string', async () => {
         let query = '`userId`="userId1"';
-        let uData = await userData.where(query);
+        let uData = (await userData.where(query)).data;
         assert.isTrue(uData.length === 1);
         assert.deepStrictEqual(uData[0], data.userId1);
 
         query = '`userId`="userId3" AND `meta`="user meta 1"';
-        uData = await userData.where(query);
+        uData = (await userData.where(query)).data;
         assert.isTrue(uData.length === 1);
         assert.deepStrictEqual(uData[0], data.userId13);
 
         query = '`meta`="user meta 1"';
-        uData = await userData.where(query);
+        uData = (await userData.where(query)).data;
         assert.isTrue(uData.length === 2);
         assert.deepStrictEqual(uData[0], data.userId1);
         assert.deepStrictEqual(uData[1], data.userId13);
 
         query = '`userId`="NotFound"';
-        assert.isTrue(await userData.where(query) === null);
+        assert.isTrue((await userData.where(query)).status === false);
     });
     it('Where object', async () => {
         let query: IData = {
             userId: 'userId1'
         };
-        let uData = await userData.where(query);
+        let uData = (await userData.where(query)).data;
         assert.isTrue(uData.length === 1);
         assert.deepStrictEqual(uData[0], data.userId1);
 
@@ -79,14 +79,14 @@ describe('Db file connect', () => {
             userId: 'userId3',
             meta: 'user meta 1'
         };
-        uData = await userData.where(query);
+        uData = (await userData.where(query)).data;
         assert.isTrue(uData.length === 1);
         assert.deepStrictEqual(uData[0], data.userId13);
 
         query = {
             meta: 'user meta 1'
         };
-        uData = await userData.where(query);
+        uData = (await userData.where(query)).data;
         assert.isTrue(uData.length === 2);
         assert.deepStrictEqual(uData[0], data.userId1);
         assert.deepStrictEqual(uData[1], data.userId13);
@@ -94,7 +94,7 @@ describe('Db file connect', () => {
         query = {
             userId: 'NotFound'
         };
-        assert.isTrue(await userData.where(query) === null);
+        assert.isTrue((await userData.where(query)).status === false);
     });
 
     it('Where one', async () => {
@@ -159,8 +159,11 @@ describe('Db file connect', () => {
         assert.isTrue(userData.userId === 'userId5');
         assert.deepStrictEqual(userData.data, {name: 'user 5'});
     });
+});
 
-    it('MongoDb Save data', async () => {
+describe('Db is MongoDb', () => {
+    let isConnected: boolean = true;
+    beforeEach(() => {
         mmApp.setIsSaveDb(true);
         mmApp.setConfig({
             db: {
@@ -168,53 +171,56 @@ describe('Db file connect', () => {
                 database: 'test'
             }
         });
-        const usersData = new UsersData();
-        if (await usersData.isConnected()) {
-            usersData.userId = 'test';
-            usersData.type = UsersData.T_ALISA;
-            usersData.data = {};
-            usersData.meta = {};
-            assert.isTrue(await usersData.save());
-            assert.isTrue(await usersData.whereOne({userId: 'test'}));
-            usersData.destroy();
+    });
+    it('MongoDb Save data', async () => {
+        if (isConnected) {
+            const usersData = new UsersData();
+            if (await usersData.isConnected()) {
+                usersData.userId = 'test';
+                usersData.type = UsersData.T_ALISA;
+                usersData.data = {};
+                usersData.meta = {};
+                assert.isTrue(await usersData.save());
+                assert.isTrue(await usersData.whereOne({userId: 'test'}));
+                usersData.destroy();
+            } else {
+                isConnected = false;
+            }
+            mmApp.setIsSaveDb(false);
         }
     });
     it('MongoDb Update data', async () => {
-        mmApp.setIsSaveDb(true);
-        mmApp.setConfig({
-            db: {
-                host: 'mongodb://127.0.0.1:27017/',
-                database: 'test'
+        if (isConnected) {
+            const usersData = new UsersData();
+            if (await usersData.isConnected()) {
+                usersData.userId = 'test';
+                usersData.type = UsersData.T_ALISA;
+                usersData.data = 'data';
+                usersData.meta = {};
+                assert.isTrue(await usersData.save());
+                assert.isTrue(await usersData.whereOne({data: 'data'}));
+                usersData.destroy();
+            } else {
+                isConnected = false;
             }
-        });
-        const usersData = new UsersData();
-        if (await usersData.isConnected()) {
-            usersData.userId = 'test';
-            usersData.type = UsersData.T_ALISA;
-            usersData.data = 'data';
-            usersData.meta = {};
-            assert.isTrue(await usersData.save());
-            assert.isTrue(await usersData.whereOne({data: 'data'}));
-            usersData.destroy();
+            mmApp.setIsSaveDb(false);
         }
     });
     it('MongoDb Remove data', async () => {
-        mmApp.setIsSaveDb(true);
-        mmApp.setConfig({
-            db: {
-                host: 'mongodb://127.0.0.1:27017/',
-                database: 'test'
+        if (isConnected) {
+            const usersData = new UsersData();
+            if (await usersData.isConnected()) {
+                usersData.userId = 'test';
+                usersData.type = UsersData.T_ALISA;
+                usersData.data = 'data';
+                usersData.meta = {};
+                assert.isTrue(await usersData.remove());
+                assert.isFalse(await usersData.whereOne({userId: 'test'}));
+                usersData.destroy();
+            } else {
+                isConnected = false;
             }
-        });
-        const usersData = new UsersData();
-        if (await usersData.isConnected()) {
-            usersData.userId = 'test';
-            usersData.type = UsersData.T_ALISA;
-            usersData.data = 'data';
-            usersData.meta = {};
-            assert.isTrue(await usersData.remove());
-            assert.isFalse(await usersData.whereOne({userId: 'test'}));
-            usersData.destroy();
+            mmApp.setIsSaveDb(false);
         }
     });
 });

@@ -2,7 +2,8 @@ import {Request} from "./request/Request";
 import {mmApp} from "../core/mmApp";
 import {
     IViberGetUserDetails,
-    IViberParams, IViberRichMediaParams,
+    IViberParams,
+    IViberRichMediaParams,
     IViberSender,
     IViberWebhookParams
 } from "./interfaces/IViberApi";
@@ -73,7 +74,7 @@ export class ViberRequest {
                     'X-Viber-Auth-Token: ': this.token
                 };
                 this._request.post.min_api_version = mmApp.params.viber_api_version || 2;
-                const data = await this._request.send(this.API_ENDPOINT + method).data;
+                const data = (await this._request.send(this.API_ENDPOINT + method)).data;
                 if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
                     this._error = JSON.stringify(data.failed_list);
                     this.log(data.status_message);

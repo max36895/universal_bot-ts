@@ -337,7 +337,8 @@ export class AlisaSound implements TemplateSoundTypes {
             sounds = [...this._standardSounds, ...sounds];
         }
         if (sounds && sounds.length) {
-            await sounds.forEach(async(sound) => {
+            for (let i = 0; i < sounds.length; i++) {
+                const sound = sounds[i];
                 if (typeof sound === 'object') {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string = Text.getText(sound.sounds);
@@ -358,7 +359,7 @@ export class AlisaSound implements TemplateSoundTypes {
                         }
                     }
                 }
-            })
+            }
         }
         return text;
     }

@@ -1,10 +1,9 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es6",
+    "target": "es2020",
     "lib": [
-      "es2016",
-      "es2020.string",
+      "es2020",
       "dom"
     ], // Какие библиотеки включать
     "moduleResolution": "node", // Формат модулей (на входе)

@@ -71,14 +71,14 @@ export abstract class TemplateTypeModel {
      * @return Promise<boolean>
      * @api
      */
-    public async abstract init(query: any, controller: BotController): Promise<boolean>;
+    public abstract init(query: any, controller: BotController): Promise<boolean>;
 
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<any>}
      */
-    public abstract async getContext(): Promise<any>;
+    public abstract getContext(): Promise<any>;
 
     /**
      * Доступно ли использование локального хранилища.

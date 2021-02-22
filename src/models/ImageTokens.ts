@@ -1,12 +1,7 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {
-    YandexImageRequest,
-    IYandexRequestDownloadImage,
-    TelegramRequest,
-    VkRequest
-} from "../api";
+import {IYandexRequestDownloadImage, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**
@@ -147,7 +142,7 @@ export class ImageTokens extends Model {
                     }
                     if (res) {
                         this.imageToken = res.id;
-                        if (this.save(true)) {
+                        if (await this.save(true)) {
                             return this.imageToken;
                         }
                     }
@@ -168,7 +163,7 @@ export class ImageTokens extends Model {
                             const photo = await vkApi.photosSaveMessagesPhoto(uploadResponse.photo, uploadResponse.server, uploadResponse.hash);
                             if (photo) {
                                 this.imageToken = `photo${photo.owner_id}_${photo.id}`;
-                                if (this.save(true)) {
+                                if (await this.save(true)) {
                                     return this.imageToken;
                                 }
                             }
@@ -187,7 +182,7 @@ export class ImageTokens extends Model {
                     if (photo && photo.ok) {
                         if (typeof photo.result.photo.file_id !== 'undefined') {
                             this.imageToken = photo.result.photo.file_id;
-                            if (this.save(true)) {
+                            if (await this.save(true)) {
                                 return this.imageToken;
                             }
                         }

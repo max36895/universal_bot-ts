@@ -2,6 +2,13 @@ import {assert} from 'chai';
 import {Text} from "../../src";
 
 describe('Text', () => {
+    it('Resize', () => {
+        assert.equal('test te', Text.resize('test te'));
+        assert.equal('testing', Text.resize('testing te', 7, false));
+        assert.equal('test...', Text.resize('testing te', 7));
+        assert.equal('test...', Text.resize('testing te', 7, true));
+    });
+
     it('Is say true', () => {
         assert.isTrue(Text.isSayTrue('конечно да'));
         assert.isTrue(Text.isSayTrue('наверное да'));
@@ -37,7 +44,8 @@ describe('Text', () => {
 
     it('Is say text', () => {
         assert.isTrue(Text.isSayText(Text.getEncodeText('да'), 'куда', true));
-        assert.isFalse(Text.isSayText('да', 'куда'));
+        assert.isTrue(Text.isSayText('да', 'куда'));
+        assert.isFalse(Text.isSayText(`(?:^|\\s)${Text.getEncodeText('да')}\\b`, 'куда'));
 
         const text = 'По полю шол человек, который сильно устал. Но он н отчаивался и пошел спать';
 

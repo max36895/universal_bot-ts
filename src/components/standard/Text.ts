@@ -46,7 +46,7 @@ export class Text {
                 }
             }
         } else {
-            text = '';
+            return '';
         }
         return text;
     }
@@ -59,13 +59,16 @@ export class Text {
      * @api
      */
     public static isSayTrue(text: string): boolean {
-        const confirmText = [
-            `(?:^|\\s)${Text.getEncodeText('да')}\\b`,
-            `(?:^|\\s)${Text.getEncodeText('конечно')}\\b`,
-            `(?:^|\\s)${Text.getEncodeText('соглас')}[^s]+\\b`,
-            `(?:^|\\s)${Text.getEncodeText('подтвер')}[^s]+\\b`
-        ];
-        return Text.isSayText(confirmText, text, true);
+        if (text) {
+            const confirmText = [
+                `(?:^|\\s)${Text.getEncodeText('да')}\\b`,
+                `(?:^|\\s)${Text.getEncodeText('конечно')}\\b`,
+                `(?:^|\\s)${Text.getEncodeText('соглас')}[^s]+\\b`,
+                `(?:^|\\s)${Text.getEncodeText('подтвер')}[^s]+\\b`
+            ];
+            return Text.isSayText(confirmText, text, true);
+        }
+        return false;
         //const reg: RegExp = /(\bда\b)|(\bконечно\b)|(\bсоглас[^s]+\b)|(\bподтвер[^s]+\b)/umi;
         //return text.search(reg) !== -1;
         //return reg.test(text);
@@ -79,12 +82,15 @@ export class Text {
      * @api
      */
     public static isSayFalse(text: string): boolean {
-        const unconfirmText = [
-            `(?:^|\\s)${Text.getEncodeText('нет')}\\b`,
-            `(?:^|\\s)${Text.getEncodeText('неа')}\\b`,
-            `(?:^|\\s)${Text.getEncodeText('не')}\\b`,
-        ];
-        return Text.isSayText(unconfirmText, text, true);
+        if (text) {
+            const unconfirmText = [
+                `(?:^|\\s)${Text.getEncodeText('нет')}\\b`,
+                `(?:^|\\s)${Text.getEncodeText('неа')}\\b`,
+                `(?:^|\\s)${Text.getEncodeText('не')}\\b`,
+            ];
+            return Text.isSayText(unconfirmText, text, true);
+        }
+        return false;
         //const reg: RegExp = /(\bнет\b)|(\bнеа\b)|(\bне\b)/umi;
         //return text.search(reg) !== -1;
         //return reg.test(text);
@@ -100,29 +106,43 @@ export class Text {
      * @api
      */
     public static isSayText(find: TFind, text: string, isPattern: boolean = false): boolean {
-        let pattern: string = '';
-        if (typeof find === 'object') {
-            find.forEach((f) => {
-                if (pattern) {
-                    pattern += '|';
+        if (text) {
+            let pattern: string = '';
+            if (typeof find === 'object') {
+                const result = find.some((value) => {
+                    if (isPattern) {
+                        if (pattern) {
+                            pattern += '|';
+                        }
+                        pattern += `(${value})`;
+                    } else {
+                        if (text.indexOf(value) !== -1) {
+                            return true;
+                        }
+                        /*value = Text.getEncodeText(value);
+                        pattern += `((?:^|\\s)${value}(|[^\\s]+)\\b)`;*/
+                    }
+                });
+                if (!isPattern) {
+                    return result;
                 }
-                if (isPattern) {
-                    pattern += `(${f})`;
-                } else {
-                    f = Text.getEncodeText(f);
-                    pattern += `((?:^|\\s)${f}(|[^\\s]+)\\b)`;
-                }
-            })
-        } else {
-            if (isPattern) {
-                pattern = find;
             } else {
-                find = Text.getEncodeText(find);
-                pattern = `((?:^|\\s)${find}(|[^\\s]+)\\b)`;
+                if (isPattern) {
+                    pattern = find;
+                } else {
+                    if (text.indexOf(find) !== -1) {
+                        return true;
+                    }
+                    /*find = Text.getEncodeText(find);
+                    pattern = `((?:^|\\s)${find}(|[^\\s]+)\\b)`;*/
+                }
+            }
+            if (isPattern && pattern) {
+                text = Text.getEncodeText(text);
+                return !!text.match((new RegExp(pattern, 'umig')));
             }
         }
-        text = Text.getEncodeText(text);
-        return !!text.match((new RegExp(pattern, 'umig')));
+        return false;
     }
 
     /**

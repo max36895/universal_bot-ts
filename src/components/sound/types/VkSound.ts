@@ -22,7 +22,8 @@ export class VkSound implements TemplateSoundTypes {
     public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];
         if (sounds) {
-            await sounds.forEach(async (sound) => {
+            for (let i = 0; i < sounds.length; i++) {
+                const sound = sounds[i];
                 if (sound) {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText = Text.getText(sound.sounds);
@@ -38,7 +39,7 @@ export class VkSound implements TemplateSoundTypes {
                         }
                     }
                 }
-            });
+            }
         }
         if (text) {
             const speechKit = new YandexSpeechKit();

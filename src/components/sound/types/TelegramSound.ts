@@ -23,7 +23,8 @@ export class TelegramSound implements TemplateSoundTypes {
     public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];
         if (sounds) {
-            await sounds.forEach(async(sound) => {
+            for (let i = 0; i < sounds.length; i++) {
+                const sound = sounds[i];
                 if (sound) {
                     if (sound.sounds && sound.key) {
                         let sText = Text.getText(sound.sounds);
@@ -33,7 +34,7 @@ export class TelegramSound implements TemplateSoundTypes {
                             sModel.path = sText;
                             sText = await sModel.getToken();
                         } else {
-                            (new TelegramRequest()).sendAudio(mmApp.params.user_id, sText);
+                            await (new TelegramRequest()).sendAudio(mmApp.params.user_id, sText);
                         }
 
                         if (sText) {
@@ -41,13 +42,13 @@ export class TelegramSound implements TemplateSoundTypes {
                         }
                     }
                 }
-            })
+            }
         }
         if (text) {
             const speechKit = new YandexSpeechKit();
             const content = await speechKit.getTts(text);
             if (content) {
-                (new TelegramRequest()).sendAudio(mmApp.params.user_id, content);
+                await (new TelegramRequest()).sendAudio(mmApp.params.user_id, content);
             }
         }
         return data;
