@@ -177,7 +177,7 @@ class CreateController {
 
             console.log(`Проект успешно создан, и находится в директории: ${this._path}`);
         } else {
-            console.log('Не удалось созадать проект!');
+            console.log('Не удалось создать проект!');
         }
     };
 
