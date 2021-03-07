@@ -26,7 +26,8 @@
     "console/**/*"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "console/template/**/*"
   ],
   "types": [ "mocha", "chai" ],
   "typeRoots": [

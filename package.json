@@ -21,7 +21,7 @@
     "build": "shx rm -rf dist && tsc",
     "test": "node node_modules/mocha/bin/mocha dist/tests/**/*.test.js",
     "bt": "npm run build && npm test",
-    "doc": "typedoc --readme README.md --name u_bot --out ./docs/ --tsconfig tsconfigForDoc.json --excludePrivate --excludeExternals --entryPoints src\/**\/*"
+    "doc": "typedoc --readme README.md --name u_bot --out ./docs/ --tsconfig tsconfigForDoc.json --excludePrivate --excludeExternals --entryPoints src"
   },
   "bugs": {
     "url": "https://github.com/max36895/universal_bot-ts/issues"
