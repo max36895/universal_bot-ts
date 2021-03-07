@@ -3,7 +3,7 @@ import {Sql} from "./Sql";
 import {mmApp} from "../../core/mmApp";
 import {IQueryData, QueryData} from "./QueryData";
 import {fread, is_file} from "../../utils/index";
-import {IModelRes} from "./Model";
+import {IModelRes} from "../interface/IModel";
 import {Text} from "../../components/standard/Text";
 
 export class DbController extends DbControllerModel {

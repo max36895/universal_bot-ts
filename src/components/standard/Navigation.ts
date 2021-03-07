@@ -201,9 +201,11 @@ export class Navigation {
                     return this.elements[i];
                 }
                 if (key === null) {
-                    const r = Text.textSimilarity(this.elements[i] + '', text, 75);
-                    if (r.status && r.percent > maxPercent) {
-                        selectElement = this.elements[i];
+                    if (typeof this.elements[i] === 'string') {
+                        const r = Text.textSimilarity(this.elements[i] + '', text, 75);
+                        if (r.status && r.percent > maxPercent) {
+                            selectElement = this.elements[i];
+                        }
                     }
                 } else {
                     if (typeof key === 'object') {

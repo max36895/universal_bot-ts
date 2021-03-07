@@ -7,8 +7,8 @@
       "dom"
     ],
     "moduleResolution": "node",
-    "removeComments": true,
-    "sourceMap": true,
+    "removeComments": false,
+    "sourceMap": false,
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
@@ -22,7 +22,8 @@
     }
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "console/**/*"
   ],
   "exclude": [
     "node_modules"

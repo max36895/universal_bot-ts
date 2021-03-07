@@ -11,6 +11,8 @@ import {
     mmApp
 } from "../../src";
 
+const DEFAULT_URL = 'https://test.ru';
+
 describe('Buttons test', () => {
     let defaultButtons: Buttons;
 
@@ -19,9 +21,8 @@ describe('Buttons test', () => {
         defaultButtons = new Buttons();
         for (let i = 0; i < 3; i++) {
             defaultButtons.addBtn(`${i + 1}`);
-            defaultButtons.addLink(`${i + 1}`, 'https://test.ru');
+            defaultButtons.addLink(`${i + 1}`, DEFAULT_URL);
         }
-
     });
 
     it('Button utm text', () => {
@@ -50,7 +51,7 @@ describe('Buttons test', () => {
             {
                 title: '1',
                 hide: false,
-                url: 'https://test.ru'
+                url: DEFAULT_URL
             },
             {
                 title: '2',
@@ -59,7 +60,7 @@ describe('Buttons test', () => {
             {
                 title: '2',
                 hide: false,
-                url: 'https://test.ru'
+                url: DEFAULT_URL
             },
             {
                 title: '3',
@@ -68,7 +69,7 @@ describe('Buttons test', () => {
             {
                 title: '3',
                 hide: false,
-                url: 'https://test.ru'
+                url: DEFAULT_URL
             }
         ];
         assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS), alisaButtons);
@@ -76,27 +77,27 @@ describe('Buttons test', () => {
         defaultButtons.btns = [
             {
                 title: 'btn',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
         defaultButtons.links = [
             {
                 title: 'link',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
 
         alisaButtons.push({
             title: 'btn',
-            url: 'https://test.ru',
+            url: DEFAULT_URL,
             payload: 'test',
             hide: true
         });
         alisaButtons.push({
             title: 'link',
-            url: 'https://test.ru',
+            url: DEFAULT_URL,
             payload: 'test',
             hide: false
         });
@@ -121,7 +122,7 @@ describe('Buttons test', () => {
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
-                        link: 'https://test.ru',
+                        link: DEFAULT_URL,
                         label: '1'
                     }
                 },
@@ -134,7 +135,7 @@ describe('Buttons test', () => {
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
-                        link: 'https://test.ru',
+                        link: DEFAULT_URL,
                         label: '2'
                     }
                 },
@@ -147,7 +148,7 @@ describe('Buttons test', () => {
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
-                        link: 'https://test.ru',
+                        link: DEFAULT_URL,
                         label: '3'
                     }
                 }
@@ -158,21 +159,21 @@ describe('Buttons test', () => {
         defaultButtons.btns = [
             {
                 title: 'btn',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
         defaultButtons.links = [
             {
                 title: 'link',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
         vkButtons.buttons.push({
             action: {
                 type: Button.VK_TYPE_LINK,
-                link: 'https://test.ru',
+                link: DEFAULT_URL,
                 label: 'btn',
                 payload: 'test'
             }
@@ -180,7 +181,7 @@ describe('Buttons test', () => {
         vkButtons.buttons.push({
             action: {
                 type: Button.VK_TYPE_LINK,
-                link: 'https://test.ru',
+                link: DEFAULT_URL,
                 label: 'link',
                 payload: 'test'
             }
@@ -206,7 +207,7 @@ describe('Buttons test', () => {
                     {
                         action: {
                             type: Button.VK_TYPE_LINK,
-                            link: 'https://test.ru',
+                            link: DEFAULT_URL,
                             label: '1',
                             payload: '{}'
                         }
@@ -221,7 +222,7 @@ describe('Buttons test', () => {
                     {
                         action: {
                             type: Button.VK_TYPE_LINK,
-                            link: 'https://test.ru',
+                            link: DEFAULT_URL,
                             label: '2',
                             payload: '{}'
                         }
@@ -239,7 +240,7 @@ describe('Buttons test', () => {
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
-                        link: 'https://test.ru',
+                        link: DEFAULT_URL,
                         label: '3'
                     }
                 }
@@ -247,18 +248,18 @@ describe('Buttons test', () => {
         };
         defaultButtons.clear();
         defaultButtons.addBtn('1', null, {}, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addLink('1', 'https://test.ru', {}, {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addLink('1', DEFAULT_URL, {}, {[VkButton.GROUP_NAME]: 0});
         defaultButtons.addBtn('2', null, {}, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addLink('2', 'https://test.ru', {}, {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addLink('2', DEFAULT_URL, {}, {[VkButton.GROUP_NAME]: 0});
 
         defaultButtons.addBtn('3', null, {}, {[VkButton.GROUP_NAME]: 1});
-        defaultButtons.addLink('3', 'https://test.ru');
+        defaultButtons.addLink('3', DEFAULT_URL);
         assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VK_BUTTONS), vkButtons);
 
         defaultButtons.btns = [
             {
                 title: 'btn',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: {},
                 options: {
                     [VkButton.GROUP_NAME]: 1
@@ -268,7 +269,7 @@ describe('Buttons test', () => {
         defaultButtons.links = [
             {
                 title: 'link',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
@@ -277,7 +278,7 @@ describe('Buttons test', () => {
             {
                 action: {
                     type: Button.VK_TYPE_LINK,
-                    link: 'https://test.ru',
+                    link: DEFAULT_URL,
                     label: 'btn',
                     payload: '{}'
                 }
@@ -286,7 +287,7 @@ describe('Buttons test', () => {
         vkButtons.buttons.push({
             action: {
                 type: Button.VK_TYPE_LINK,
-                link: 'https://test.ru',
+                link: DEFAULT_URL,
                 label: 'link',
                 payload: 'test'
             }
@@ -307,7 +308,7 @@ describe('Buttons test', () => {
                 {
                     Text: '1',
                     ActionType: ViberButton.T_OPEN_URL,
-                    ActionBody: 'https://test.ru'
+                    ActionBody: DEFAULT_URL
                 },
                 {
                     Text: '2',
@@ -317,7 +318,7 @@ describe('Buttons test', () => {
                 {
                     Text: '2',
                     ActionType: ViberButton.T_OPEN_URL,
-                    ActionBody: 'https://test.ru'
+                    ActionBody: DEFAULT_URL
                 },
                 {
                     Text: '3',
@@ -327,7 +328,7 @@ describe('Buttons test', () => {
                 {
                     Text: '3',
                     ActionType: ViberButton.T_OPEN_URL,
-                    ActionBody: 'https://test.ru'
+                    ActionBody: DEFAULT_URL
                 },
             ]
         };
@@ -336,26 +337,26 @@ describe('Buttons test', () => {
         defaultButtons.btns = [
             {
                 title: 'btn',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
         defaultButtons.links = [
             {
                 title: 'link',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
         viberButtons.Buttons.push({
             Text: 'btn',
             ActionType: ViberButton.T_OPEN_URL,
-            ActionBody: 'https://test.ru'
+            ActionBody: DEFAULT_URL
         },);
         viberButtons.Buttons.push({
             Text: 'link',
             ActionType: ViberButton.T_OPEN_URL,
-            ActionBody: 'https://test.ru'
+            ActionBody: DEFAULT_URL
         },);
         assert.deepStrictEqual(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS), viberButtons);
     });
@@ -372,14 +373,14 @@ describe('Buttons test', () => {
         defaultButtons.btns = [
             {
                 title: 'btn',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
         defaultButtons.links = [
             {
                 title: 'link',
-                url: 'https://test.ru',
+                url: DEFAULT_URL,
                 payload: 'test'
             }
         ];
@@ -387,12 +388,12 @@ describe('Buttons test', () => {
         telegramButtons.inline_keyboard = [];
         telegramButtons.inline_keyboard.push({
             text: 'btn',
-            url: 'https://test.ru',
+            url: DEFAULT_URL,
             callback_data: 'test'
         });
         telegramButtons.inline_keyboard.push({
             text: 'link',
-            url: 'https://test.ru',
+            url: DEFAULT_URL,
             callback_data: 'test'
         });
 

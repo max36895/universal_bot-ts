@@ -14,3 +14,18 @@ export interface IModelRules {
      */
     max?: number
 }
+
+export interface IModelRes {
+    /**
+     * Статус выполнения запроса
+     */
+    status: boolean;
+    /**
+     * Ошибки, возникшие во время выполнения запроса
+     */
+    error?: string;
+    /**
+     * Полученный результат запроса
+     */
+    data?: any;
+}

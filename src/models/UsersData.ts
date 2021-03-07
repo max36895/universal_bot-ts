@@ -1,5 +1,5 @@
-import {IModelRes, Model} from "./db/Model";
-import {IModelRules} from "./interface/IModel";
+import {Model} from "./db/Model";
+import {IModelRules, IModelRes} from "./interface/IModel";
 import {mmApp} from "../core";
 
 /**

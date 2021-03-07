@@ -1,23 +1,8 @@
 import {mmApp} from "../../core";
-import {IModelRules} from "../interface/IModel";
+import {IModelRes, IModelRules} from "../interface/IModel";
 import {DbControllerModel} from "./DbControllerModel";
 import {IQueryData, QueryData} from "./QueryData";
 import {DbController} from "./DbController";
-
-export interface IModelRes {
-    /**
-     * Статус выполнения запроса
-     */
-    status: boolean;
-    /**
-     * Ошибки, возникшие во время выполнения запроса
-     */
-    error?: string;
-    /**
-     * Полученный результат запроса
-     */
-    data?: any;
-}
 
 /**
  * @class Model
