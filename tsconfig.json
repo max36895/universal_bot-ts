@@ -5,8 +5,8 @@
     "lib": [
       "es2020",
       "dom"
-    ], // Какие библиотеки включать
-    "moduleResolution": "node", // Формат модулей (на входе)
+    ],
+    "moduleResolution": "node",
     "removeComments": true,
     "sourceMap": true,
     "outDir": "dist",

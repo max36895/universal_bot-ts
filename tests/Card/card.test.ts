@@ -1,17 +1,22 @@
 import {assert} from 'chai'
 import {
+    AlisaCard,
+    Button,
     Buttons,
     Card,
     IAlisaBigImage,
     IAlisaItemsList,
-    AlisaCard,
-    mmApp,
-    T_ALISA, T_VIBER, T_VK,
-    IVkCard,
     IViberCard,
-    Button,
+    IVkCard,
+    mmApp,
+    T_ALISA,
+    T_VIBER,
+    T_VK,
     ViberButton
 } from "../../src";
+import {IAlisaImageGallery} from "../../src/core/interfaces/IAlisa";
+
+const URL = 'https://test.ru';
 
 describe('Card test', () => {
     let defaultCard: Card;
@@ -25,7 +30,7 @@ describe('Card test', () => {
         }
     });
 
-    it('Get Alisa card', async() => {
+    it('Get Alisa card', async () => {
         const alisaCard: IAlisaItemsList = {
             type: AlisaCard.ALISA_CARD_ITEMS_LIST,
             header: {
@@ -52,12 +57,12 @@ describe('Card test', () => {
         mmApp.appType = T_ALISA;
         assert.deepStrictEqual(await defaultCard.getCards(), alisaCard);
 
-        defaultCard.button.addBtn('1', 'https://test.ru');
+        defaultCard.button.addBtn('1', URL);
         alisaCard.footer = {
             text: '1',
             button: {
                 text: '1',
-                url: 'https://test.ru'
+                url: URL
             }
         };
         assert.deepStrictEqual(await defaultCard.getCards(), alisaCard);
@@ -71,7 +76,7 @@ describe('Card test', () => {
             description: 'запись: 1',
             button: {
                 text: '1',
-                url: 'https://test.ru'
+                url: URL
             }
         };
         assert.deepStrictEqual(await defaultCard.getCards(), alisaCardOne);
@@ -79,9 +84,76 @@ describe('Card test', () => {
         defaultCard.button = new Buttons();
         delete alisaCardOne.button;
         assert.deepStrictEqual(await defaultCard.getCards(), alisaCardOne);
+
+
+        defaultCard.clear();
+        defaultCard.isOne = false;
+        defaultCard.add('36895', 'Запись 1', 'Описание 1', 'Кнопка');
+        defaultCard.add('36895', 'Запись 2', 'Описание 2', {title: 'Кнопка', url: URL});
+        defaultCard.add('36895', 'Запись 3', 'Описание 3', {title: 'Кнопка', payload: {text: 'text'}});
+        const alisaCardButton: IAlisaItemsList = {
+            type: AlisaCard.ALISA_CARD_ITEMS_LIST,
+            header: {
+                text: 'title'
+            },
+            items: [
+                {
+                    title: 'Запись 1',
+                    description: 'Описание 1',
+                    image_id: '36895',
+                    button: {
+                        text: 'Кнопка'
+                    }
+                },
+                {
+                    title: 'Запись 2',
+                    description: 'Описание 2',
+                    image_id: '36895',
+                    button: {
+                        text: 'Кнопка',
+                        url: URL
+                    }
+                },
+                {
+                    title: 'Запись 3',
+                    description: 'Описание 3',
+                    image_id: '36895',
+                    button: {
+                        text: 'Кнопка',
+                        payload: {
+                            text: 'text'
+                        }
+                    }
+                },
+            ]
+        };
+        assert.deepStrictEqual(await defaultCard.getCards(), alisaCardButton);
     });
 
-    it('Get Viber card', async() => {
+    it('Get Alisa gallery', async () => {
+        defaultCard.isUsedGallery = true;
+        const alisaGallery: IAlisaImageGallery = {
+            type: 'ImageGallery',
+            items: [
+                {
+                    title: '1',
+                    image_id: '36895'
+                },
+                {
+                    title: '2',
+                    image_id: '36895'
+                },
+                {
+                    title: '3',
+                    image_id: '36895'
+                }
+            ]
+        };
+        assert.deepStrictEqual(await defaultCard.getCards(), alisaGallery);
+        defaultCard.isUsedGallery = false;
+    });
+
+    it('Get Viber card', async () => {
         const viberCard: IViberCard[] = [
             {
                 Columns: 3,
@@ -119,7 +191,7 @@ describe('Card test', () => {
         assert.deepStrictEqual(await defaultCard.getCards(), viberCard);
     });
 
-    it('Get Vk card', async() => {
+    it('Get Vk card', async () => {
         const vkCard: IVkCard = {
             type: 'carousel',
             elements: [

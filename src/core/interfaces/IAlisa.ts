@@ -248,7 +248,7 @@ export interface IAlisaImage {
     image_id?: string;
     /**
      * Заголовок для изображения. Максимум 128 символов.
-     * Игнорируется для типов карточки ItemsList и ImageGallery.
+     * Игнорируется для типов карточки ItemsList.
      */
     title: string;
     /**

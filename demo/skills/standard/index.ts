@@ -1,8 +1,3 @@
-/**
- * Универсальное приложение по созданию навыков и ботов.
- * @version 1.1.0
- * @author Maxim-M maximco36895@yandex.ru
- */
 import {Bot} from "../../../src/core/Bot";
 import skillDefaultConfig from "../../config/skillDefaultConfig";
 import skillDefaultParam from "../../config/skillDefaultParam";

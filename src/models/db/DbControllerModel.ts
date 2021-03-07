@@ -1,7 +1,6 @@
 import {IAppDB, mmApp} from "../../core/mmApp";
 import {IQueryData, QueryData} from "./QueryData";
-import {IModelRules} from "../interface/IModel";
-import {IModelRes} from "./Model";
+import {IModelRules, IModelRes} from "../interface/IModel";
 
 type TKey = string | number
 
