@@ -240,7 +240,7 @@ interface ISberSmartAppAnnotations {
          */
         classes: ["politicians", "obscene", "model_response"],
         /**
-         * Коэффициенты подцензурных категорий. Сопоставляются по индексам, в соотвествии со списком категорий censor_data.classes.
+         * Коэффициенты подцензурных категорий. Сопоставляются по индексам, в соответствии со списком категорий censor_data.classes.
          * Для категорий politicians и obscene могут принимать только значения 0 и 1.
          */
         probas: [number, number, number]
@@ -344,7 +344,7 @@ export interface ISberSmartAppRequestPayload {
      */
     server_action?: ISberSmartAppServerAction
     /**
-     * Результат предобработки.
+     * Результат пред обработки.
      */
     message: ISberSmartAppMessageInfo
 }
@@ -415,8 +415,8 @@ export type TSberResponseMessageName = 'ANSWER_TO_USER' | 'POLICY_RUN_APP' | 'NO
  * @variant zhdu_otvet — анимация ожидания реакции от пользователя, например, ответа на заданный вопрос;
  * @variant zadumalsa — анимация размышление над репликой пользователя, например, если её не удалось распознать;
  * @variant neznayu — анимация отсутствия ответа.
- * @variant nedoumenie — анимация сомнения, например, когда не удаётся точно распосзнать реплику.
- * @variant nedovolstvo — анимация негативной рекакции в ответ на реплику
+ * @variant nedoumenie — анимация сомнения, например, когда не удаётся точно распознать реплику.
+ * @variant nedovolstvo — анимация негативной реакции в ответ на реплику
  * @variant nesoglasie — анимация несогласия с пользователем.
  * @variant pechal — анимация грусти и тоскливого настроения.
  * @variant radost — анимация радости или удовлетворения действиями или репликами пользователя.
