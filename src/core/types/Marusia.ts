@@ -13,7 +13,7 @@ import {mmApp} from "../mmApp";
 import {Text} from "../../components/standard/Text";
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Макруси.
+ * Класс, отвечающий за корректную инициализацию и отправку ответа для Маруси.
  * @class Marusia
  * @see TemplateTypeModel Смотри тут
  */

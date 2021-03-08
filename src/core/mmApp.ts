@@ -55,7 +55,7 @@ export const HELP_INTENT_NAME = 'help';
  */
 export interface IAppDB {
     /**
-     * Адресс, по которому находится База Данных
+     * Адрес, по которому находится База Данных
      */
     host: string;
     /**
@@ -161,11 +161,11 @@ export interface IAppParam {
      */
     user_id?: string | number;
     /**
-     * Текст, или масив из текста для приветствия.
+     * Текст, или массив из текста для приветствия.
      */
     welcome_text?: string | string[];
     /**
-     * Текст, или масив из текста для  помощи.
+     * Текст, или массив из текста для  помощи.
      */
     help_text?: string | string[];
     /**

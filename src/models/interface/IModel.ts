@@ -10,7 +10,7 @@ export interface IModelRules {
      */
     type: TModelRulesType;
     /**
-     * Максимальное значени. Актуально, если type=string
+     * Максимальное значение. Актуально, если type=string
      */
     max?: number
 }

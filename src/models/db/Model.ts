@@ -271,7 +271,7 @@ export abstract class Model {
     }
 
     /**
-     * Уделение подключения к БД
+     * Удаление подключения к БД
      */
     public destroy() {
         this.dbController.destroy();

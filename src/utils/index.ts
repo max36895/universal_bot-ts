@@ -95,7 +95,7 @@ export function fread(fileName: string): string {
 }
 
 /**
- * Записаваем данные в файл
+ * Записываем данные в файл
  * @param {string} fileName Файл, в который необходимо записать данные.
  * @param {string} fileContent Данные, записываемые в файл.
  * @param {string} mode Режим записи.
