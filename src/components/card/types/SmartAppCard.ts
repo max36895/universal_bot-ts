@@ -142,15 +142,15 @@ export class SmartAppCard extends TemplateCardTypes {
                 const card: ISberSmartAppCard = {
                     type: 'list_card'
                 };
-                card.sells = SmartAppCard._getCardItem(this.images[0], true) as ISberSmartAppCardItem[];
+                card.cells = SmartAppCard._getCardItem(this.images[0], true) as ISberSmartAppCardItem[];
                 return {card};
             } else {
                 const card: ISberSmartAppCard = {
                     type: 'list_card',
-                    sells: []
+                    cells: []
                 };
                 if (this.title) {
-                    card.sells.push({
+                    card.cells.push({
                         type: "text_cell_view",
                         paddings: {
                             top: "4x",

@@ -745,7 +745,7 @@ export interface ISberSmartAppCard {
      * Ячейки карточки. Минимум 1 ячейка.
      */
     items?: ISberSmartAppCardItem[];
-    sells?: ISberSmartAppCardItem[];
+    cells?: ISberSmartAppCardItem[];
 }
 
 export interface ISberSmartAppItem {
