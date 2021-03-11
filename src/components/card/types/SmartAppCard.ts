@@ -149,8 +149,23 @@ export class SmartAppCard extends TemplateCardTypes {
                     type: 'list_card',
                     sells: []
                 };
+                if (this.title) {
+                    card.sells.push({
+                        type: "text_cell_view",
+                        paddings: {
+                            top: "4x",
+                            left: "2x",
+                            right: "2x"
+                        },
+                        content: {
+                            text: this.title,
+                            typeface: "title1",
+                            text_color: "default"
+                        }
+                    })
+                }
                 this.images.forEach((image) => {
-                    card.items.push(SmartAppCard._getCardItem(image) as ISberSmartAppCardItem);
+                    card.sells.push(SmartAppCard._getCardItem(image) as ISberSmartAppCardItem);
                 });
                 return {card};
             }
