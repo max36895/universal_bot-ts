@@ -99,7 +99,7 @@ export class DbController extends DbControllerModel {
                 let idVal = select[this.primaryKeyName];
                 if (idVal !== undefined) {
                     if (typeof data[idVal] !== 'undefined') {
-                        data[idVal] = update;
+                        data[idVal] = {...data[idVal], ...update};
                         mmApp.saveJson(`${this.tableName}.json`, data);
                     }
                     return true;

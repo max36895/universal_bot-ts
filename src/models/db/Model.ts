@@ -21,11 +21,6 @@ export abstract class Model {
      * Правила для обработки полей. Где 1 - Элемент это название поля, 2 - Элемент тип поля, max - Максимальная длина.
      *
      * @return IModelRules[]
-     * [
-     *  - string|array 0: Название поля.
-     *  - string 1: Тип поля (text, string, integer, ...).
-     *  - int max: Максимальная длина строки.
-     * ]
      */
     public abstract rules(): IModelRules[];
 
@@ -134,16 +129,34 @@ export abstract class Model {
     /**
      * Выполнение запроса с поиском по уникальному ключу.
      *
-     * @return {Promise<IModelRes | any>}
+     * @return {Promise<IModelRes>}
      * @api
      */
-    public async selectOne(): Promise<IModelRes | any> {
+    public async selectOne(): Promise<IModelRes> {
         const idName = this.dbController.primaryKeyName;
         this.queryData.setQuery({
             [idName]: this[idName]
         });
         this.queryData.setData(null);
         return await this.dbController.select(this.queryData.getQuery(), true);
+    }
+
+    /**
+     * Инициализация параметров для запроса
+     */
+    private _initData(): void {
+        this.validate();
+        const idName = this.dbController.primaryKeyName;
+        this.queryData.setQuery({
+            [idName]: this[idName]
+        });
+        const data: IQueryData = {};
+        Object.keys(this.attributeLabels()).forEach((index) => {
+            if (index !== idName) {
+                data[index] = this[index];
+            }
+        });
+        this.queryData.setData(data);
     }
 
     /**
@@ -155,18 +168,7 @@ export abstract class Model {
      * @api
      */
     public async save(isNew: boolean = false): Promise<any> {
-        this.validate();
-        const idName = this.dbController.primaryKeyName;
-        this.queryData.setQuery({
-            [idName]: this[idName]
-        });
-        const data: IQueryData = {};
-        Object.keys(this.attributeLabels()).forEach((index) => {
-            if (index !== idName) {
-                data[index] = this[index];
-            }
-        });
-        this.queryData.setData(data);
+        this._initData();
         return await this.dbController.save(this.queryData, isNew);
     }
 
@@ -177,18 +179,7 @@ export abstract class Model {
      * @api
      */
     public async update(): Promise<any> {
-        this.validate();
-        const idName = this.dbController.primaryKeyName;
-        this.queryData.setQuery({
-            [idName]: this[idName]
-        });
-        const data: IQueryData = {};
-        Object.keys(this.attributeLabels()).forEach((index) => {
-            if (index !== idName) {
-                data[index] = this[index];
-            }
-        });
-        this.queryData.setData(data);
+        this._initData();
         return await this.dbController.update(this.queryData);
     }
 
@@ -273,7 +264,7 @@ export abstract class Model {
     /**
      * Удаление подключения к БД
      */
-    public destroy() {
+    public destroy(): void {
         this.dbController.destroy();
     }
 }

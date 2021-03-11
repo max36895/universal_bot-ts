@@ -1,7 +1,7 @@
 import {fwrite, isDir, mkdir} from "../utils";
 import {DbControllerModel} from "../models/db/DbControllerModel";
 
-export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart-app';
+export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart_app';
 
 /**
  * Используется Алиса
@@ -32,7 +32,7 @@ export const T_MARUSIA: TAppType = 'marusia';
  * Используется Сбер SmartApp
  * @type {string}
  */
-export const T_SMARTAPP: TAppType = 'smart-app';
+export const T_SMARTAPP: TAppType = 'smart_app';
 /**
  * Используется пользовательский тип приложения
  * @type {string}

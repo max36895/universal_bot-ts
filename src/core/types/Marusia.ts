@@ -89,8 +89,9 @@ export class Marusia extends TemplateTypeModel {
                 this.error = 'Marusia::init(): Не корректные данные!';
                 return false;
             }
-
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             if (content.request.type === 'SimpleUtterance') {

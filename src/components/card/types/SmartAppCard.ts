@@ -12,30 +12,115 @@ export class SmartAppCard extends TemplateCardTypes {
      * Получение элементов для карточки
      *
      * @param {Image} image Объект с картинкой
+     * @param {boolean} isOne Получить результат для 1 карточки
      * @return {ISberSmartAppCardItem}
      * @private
      */
-    protected static _getCardItem(image: Image): ISberSmartAppCardItem {
+    protected static _getCardItem(image: Image, isOne: boolean = false): ISberSmartAppCardItem | ISberSmartAppCardItem[] {
+        if (isOne) {
+            let res: ISberSmartAppCardItem[] = [];
+            if (image.imageDir) {
+                res.push({
+                    type: "image_cell_view",
+                    content: {
+                        url: image.imageDir
+                    }
+                });
+            }
+            if (image.title) {
+                res.push({
+                    type: "text_cell_view",
+                    paddings: {
+                        top: "6x",
+                        left: "8x",
+                        right: "8x"
+                    },
+                    content: {
+                        text: image.title,
+                        typeface: image.params.titleTypeface || "title1",
+                        text_color: image.params.titleText_color || "default"
+                    }
+                });
+            }
+            if (image.desc) {
+                res.push({
+                    type: "text_cell_view",
+                    paddings: {
+                        top: "4x",
+                        left: "8x",
+                        right: "8x"
+                    },
+                    content: {
+                        text: image.desc,
+                        typeface: image.params.descTypeface || "footnote1",
+                        text_color: image.params.descText_color || "secondary"
+                    }
+                });
+            }
+            const button = image.button.getButtons(Buttons.T_SMARTAPP_BUTTON_CARD);
+            if (button) {
+                res.push({
+                    type: "text_cell_view",
+                    paddings: {
+                        top: "12x",
+                        left: "8x",
+                        right: "8x"
+                    },
+                    content: {
+                        actions: [
+                            button
+                        ],
+                        text: button.text,
+                        typeface: "button1",
+                        text_color: "brand"
+                    }
+                });
+            }
+            return res;
+        }
         const cardItem: ISberSmartAppCardItem = {
-            type: 'media_gallery_item',
-            top_text: {
-                text: image.title,
-                typeface: image.params.topTypeface || 'footnote1',
-                text_color: image.params.topText_color || 'default',
-                margins: image.params.topMargins || undefined,
-                max_lines: image.params.topMax_lines || 0,
+            type: 'left_right_cell_view',
+            paddings: {
+                left: "4x",
+                top: "4x",
+                right: "4x",
+                bottom: "4x",
             },
-            bottom_text: {
-                text: image.desc,
-                typeface: image.params.bottomTypeface || 'caption',
-                text_color: image.params.bottomText_color || 'default',
-                margins: image.params.bottomMargins || undefined,
-                max_lines: image.params.bottomMax_lines || 0,
-            },
-            image: {
-                url: image.imageDir
+            left: {
+                type: 'fast_answer_left_view',
+                icon_vertical_gravity: "top",
+                icon_and_value: {
+                    value: {
+                        text: image.desc,
+                        typeface: image.params.descTypeface || 'body3',
+                        text_color: image.params.descText_color || 'default',
+                        max_lines: image.params.descMax_lines || 0
+                    }
+                },
+                label: {
+                    text: image.title,
+                    typeface: image.params.titleTypeface || 'headline2',
+                    text_color: image.params.titleText_color || 'default',
+                    max_lines: image.params.titleMax_lines || 0
+                }
             }
         };
+        if (image.imageDir) {
+            cardItem.left.icon_and_value.icon = {
+                address: {
+                    type: 'url',
+                    url: image.imageDir
+                },
+                size: {
+                    width: 'xlarge',
+                    height: 'xlarge'
+                },
+                margin: {
+                    left: '0x',
+                    right: '6x'
+                }
+            }
+        }
         const button = image.button.getButtons(Buttons.T_SMARTAPP_BUTTON_CARD);
         if (button) {
             cardItem.bottom_text.actions = button;
@@ -55,21 +140,17 @@ export class SmartAppCard extends TemplateCardTypes {
         if (countImage) {
             if (isOne) {
                 const card: ISberSmartAppCard = {
-                    can_be_disabled: false,
-                    type: 'gallery_card'
+                    type: 'list_card'
                 };
-                card.items = [
-                    SmartAppCard._getCardItem(this.images[0])
-                ];
+                card.sells = SmartAppCard._getCardItem(this.images[0], true) as ISberSmartAppCardItem[];
                 return {card};
             } else {
                 const card: ISberSmartAppCard = {
-                    can_be_disabled: false,
-                    type: 'gallery_card',
-                    items: []
+                    type: 'list_card',
+                    sells: []
                 };
                 this.images.forEach((image) => {
-                    card.items.push(SmartAppCard._getCardItem(image));
+                    card.items.push(SmartAppCard._getCardItem(image) as ISberSmartAppCardItem);
                 });
                 return {card};
             }

@@ -85,8 +85,9 @@ export class Alisa extends TemplateTypeModel {
                 this.error = 'Alisa::init(): Не корректные данные!';
                 return false;
             }
-
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             if (content.request.type === 'SimpleUtterance') {

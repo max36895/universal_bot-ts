@@ -97,7 +97,9 @@ export class SmartApp extends TemplateTypeModel {
                 content = {...query};
             }
 
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             switch (content.messageName) {
@@ -143,7 +145,12 @@ export class SmartApp extends TemplateTypeModel {
             this.controller.messageId = content.messageId;
 
             mmApp.params.app_id = content.payload.app_info.applicationId;
-            this.controller.isScreen = content.payload.device.capabilities.screen.available;
+            if (content.payload.device.capabilities && content.payload.device.capabilities.screen) {
+                this.controller.isScreen = content.payload.device.capabilities.screen.available;
+            } else {
+                this.controller.isScreen = true;
+            }
+
             return true;
         } else {
             this.error = 'SmartApp:init(): Отправлен пустой запрос!';

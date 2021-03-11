@@ -111,7 +111,13 @@ export class Bot {
      */
     public initTypeInGet(): boolean {
         if (GET['type']) {
-            if ([T_TELEGRAM, T_ALISA, T_VIBER, T_VK, T_USER_APP, T_MARUSIA].indexOf(GET['type'])) {
+            if ([T_TELEGRAM,
+                T_ALISA,
+                T_VIBER,
+                T_VK,
+                T_USER_APP,
+                T_MARUSIA,
+            T_SMARTAPP].indexOf(GET['type'])) {
                 mmApp.appType = GET['type'];
                 return true;
             }
