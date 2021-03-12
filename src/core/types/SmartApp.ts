@@ -101,7 +101,7 @@ export class SmartApp extends TemplateTypeModel {
                 this.controller = controller;
             }
             this.controller.requestObject = content;
-
+            this.controller.messageId = content.messageId;
             switch (content.messageName) {
                 case 'MESSAGE_TO_SKILL':
                 case 'CLOSE_APP':
@@ -114,6 +114,9 @@ export class SmartApp extends TemplateTypeModel {
                     this.controller.payload = content.payload.server_action.parameters;
                     if (typeof this.controller.payload === 'string') {
                         this.controller.userCommand = this.controller.originalUserCommand = this.controller.payload;
+                    }
+                    if (content.messageName === 'RUN_APP') {
+                        this.controller.messageId = 0;
                     }
                     break;
             }
@@ -142,7 +145,6 @@ export class SmartApp extends TemplateTypeModel {
             this.controller.nlu.setNlu(nlu);
 
             this.controller.userMeta = content.payload.meta || {};
-            this.controller.messageId = content.messageId;
 
             mmApp.params.app_id = content.payload.app_info.applicationId;
             if (content.payload.device.capabilities && content.payload.device.capabilities.screen) {
