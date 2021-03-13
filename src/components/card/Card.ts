@@ -45,6 +45,13 @@ export class Card {
     public isUsedGallery: boolean = false;
 
     /**
+     * Произвольных шаблон, который отобразится вместо стандартного.
+     * Рекомендуется использовать для smartApp, так как для него существует множество вариация для отображения карточек + есть списки
+     * При использовании переменной, Вы сами отвечаете за корректное отображение карточки.
+     */
+    public template: any = null;
+
+    /**
      * Card constructor.
      */
     public constructor() {
@@ -88,6 +95,9 @@ export class Card {
      * @api
      */
     public async getCards(userCard: TemplateCardTypes = null): Promise<any> {
+        if (this.template) {
+            return this.template;
+        }
         let card = null;
         switch (mmApp.appType) {
             case T_ALISA:
