@@ -314,7 +314,7 @@ export class mmApp {
      * Сохранение данных в json файл.
      *
      * @param {string} fileName Название файла.
-     * @param {any} data Сохраняемые данные.
+     * @param {Object|Object[]} data Сохраняемые данные.
      * @return boolean
      * @api
      */

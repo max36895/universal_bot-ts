@@ -34,7 +34,7 @@ export class Sound {
      *
      * @param {string} text Исходный текст.
      * @param {TemplateSoundTypes} userSound Пользовательский класс для обработки звуков.
-     * @return {Promise<any>}
+     * @return {Promise<Object|string>}
      * @api
      */
     public async getSounds(text: string, userSound: TemplateSoundTypes = null): Promise<any> {

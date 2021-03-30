@@ -165,7 +165,7 @@ export class SmartAppCard extends TemplateCardTypes {
                     })
                 }
                 this.images.forEach((image) => {
-                    card.sells.push(SmartAppCard._getCardItem(image) as ISberSmartAppCardItem);
+                    card.cells.push(SmartAppCard._getCardItem(image) as ISberSmartAppCardItem);
                 });
                 return {card};
             }

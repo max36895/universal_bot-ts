@@ -164,7 +164,7 @@ export abstract class Model {
      * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
      *
      * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async save(isNew: boolean = false): Promise<any> {
@@ -175,7 +175,7 @@ export abstract class Model {
     /**
      * Обновление значения в таблице.
      *
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async update(): Promise<any> {
@@ -186,7 +186,7 @@ export abstract class Model {
     /**
      * Добавление значения в таблицу.
      *
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async add(): Promise<any> {
@@ -254,7 +254,7 @@ export abstract class Model {
      * Выполнение произвольного запрос к базе данных.
      *
      * @param {Function} callback Непосредственно запрос к бд.
-     * @return {any}
+     * @return {Object|Object[]}
      * @api
      */
     public query(callback: Function): any {

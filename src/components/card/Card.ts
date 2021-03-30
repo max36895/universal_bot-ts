@@ -91,7 +91,7 @@ export class Card {
      * Получение всех элементов карточки.
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async getCards(userCard: TemplateCardTypes = null): Promise<any> {
@@ -135,7 +135,7 @@ export class Card {
             card.title = this.title;
             return await card.getCard(this.isOne);
         }
-        return [];
+        return {};
     }
 
     /**

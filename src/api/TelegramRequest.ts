@@ -81,7 +81,7 @@ export class TelegramRequest {
      *
      * @param {string} method Отправляемый метод, что именно будет отправляться (Изображение, сообщение и тд).
      * @param {TTelegramChatId} userId Идентификатор пользователя/чата
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async call(method: string, userId: TTelegramChatId = null): Promise<any> {

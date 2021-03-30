@@ -11,6 +11,7 @@ import {
 } from "../interfaces/ISberSmartApp";
 import {Text} from "../../components/standard/Text";
 import {Buttons} from "../../components/button";
+import {Request} from "../../api";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp
@@ -178,7 +179,7 @@ export class SmartApp extends TemplateTypeModel {
             uuid: this._session.uuid
         };
 
-        if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
+        if (this.controller.sound.sounds.length/* || this.controller.sound.isUsedStandardSound*/) {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
@@ -190,5 +191,44 @@ export class SmartApp extends TemplateTypeModel {
             this.error = `SmartApp:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
         }
         return result;
+    }
+
+    protected async _getUserData(): Promise<any | string> {
+        const request = new Request();
+        request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
+        return await request.send();
+    }
+
+    protected async _setUserData(data: any) {
+        const request = new Request();
+        request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
+        request.post = data;
+        return await request.send();
+    }
+
+    /**
+     * Сохранение данных в хранилище.
+     *
+     * @return Promise<void>
+     * @api
+     */
+    public async setLocalStorage(data: any): Promise<void> {
+        await this._setUserData(data);
+    }
+
+    /**
+     * Получение данные из локального хранилища
+     * @return {Object | string}
+     */
+    public async getLocalStorage(): Promise<any | string> {
+        return this._getUserData();
+    }
+
+    /**
+     * Проверка на использование локального хранилища
+     * @return {boolean}
+     */
+    public isLocalStorage(): boolean {
+        return true;
     }
 }

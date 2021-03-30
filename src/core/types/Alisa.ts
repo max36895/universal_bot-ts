@@ -199,10 +199,10 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Получение данные из локального хранилища Алисы
-     * @return {any | string}
+     * @return {Promise<Object | string>}
      */
-    public getLocalStorage(): any | string {
-        return this.controller.state;
+    public async getLocalStorage(): Promise<any | string> {
+        return Promise.resolve(this.controller.state);
     }
 
     /**
