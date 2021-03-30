@@ -1,4 +1,4 @@
-import {IAppConfig} from "../../src/core/mmApp";
+import {IAppConfig} from "../../src/core";
 
 export default function (): IAppConfig {
     return {

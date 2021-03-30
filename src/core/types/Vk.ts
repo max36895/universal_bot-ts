@@ -56,7 +56,9 @@ export class Vk extends TemplateTypeModel {
             } else {
                 content = {...query}
             }
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
             switch (content.type || null) {
                 case 'confirmation':

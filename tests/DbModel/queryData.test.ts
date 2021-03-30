@@ -1,5 +1,5 @@
 import {assert} from 'chai'
-import {IQueryData, QueryData} from "../../src/models/db/QueryData";
+import {IQueryData, QueryData} from "../../src/models";
 
 describe('queryData', () => {
     it('getQueryData', () => {

@@ -620,7 +620,7 @@ interface ISberSmartAppCardImage {
     /**
      * Адрес изображения.
      */
-    url: string;
+    url?: string;
     /**
      * Хэш изображения.
      */
@@ -666,11 +666,11 @@ export interface ISberSmartAppCardItem {
     /**
      * Тип ячейки.
      */
-    type: 'greeting_grid_item' | 'media_gallery_item' | 'gallery_more_button_item';
+    type: 'greeting_grid_item' | 'media_gallery_item' | 'gallery_more_button_item' | 'image_cell_view' | 'text_cell_view' | 'left_right_cell_view';
     /**
      * Параметры верхнего текста.
      */
-    top_text: ISberSmartAppCardText;
+    top_text?: ISberSmartAppCardText;
     /**
      * Параметры нижнего текста.
      */
@@ -691,6 +691,29 @@ export interface ISberSmartAppCardItem {
      * Отступы.
      */
     paddings?: ISberSmartAppCardPadding;
+
+    left?: {
+        type: string,
+        icon_vertical_gravity?: string,
+        label?: ISberSmartAppCardText,
+        icon_and_value?: {
+            icon?: {
+                address?: {
+                    type: string,
+                    url: string
+                },
+                size: {
+                    width: string,
+                    height: string
+                },
+                margin?: ISberSmartAppCardPadding
+            }
+            value?: ISberSmartAppCardText
+        }
+    };
+    right?: any;
+
+    content?: ISberSmartAppCardImage | ISberSmartAppCardText;
 }
 
 export interface ISberSmartAppCard {
@@ -701,14 +724,15 @@ export interface ISberSmartAppCard {
     /**
      * Указывает что карточка может отображаться как отключённая. По умолчанию false.
      */
-    can_be_disabled: boolean;
+    can_be_disabled?: boolean;
     /**
      * Тип карточки, который определяет наличие различных полей в объекте card.
      * Возможные значения:
      * gallery_card — горизонтальная галерея;
      * grid_card — карточка с сеткой ячеек.
+     * list_card - Вертикальная карточка
      */
-    type: 'gallery_card' | 'grid_card'
+    type: 'gallery_card' | 'grid_card' | 'list_card'
     /**
      * Количество столбцов. По умолчанию 1 столбец.
      */
@@ -721,6 +745,7 @@ export interface ISberSmartAppCard {
      * Ячейки карточки. Минимум 1 ячейка.
      */
     items?: ISberSmartAppCardItem[];
+    cells?: ISberSmartAppCardItem[];
 }
 
 export interface ISberSmartAppItem {

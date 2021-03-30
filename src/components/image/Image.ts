@@ -12,35 +12,35 @@ interface IImageParams {
     /**
      * Стиль верхнего текста
      */
-    topTypeface?: TSberSmartAppTypeface;
+    titleTypeface?: TSberSmartAppTypeface;
     /**
      * Цвет верхнего текста
      */
-    topText_color?: TSberSmartAppTextColor;
+    titleText_color?: TSberSmartAppTextColor;
     /**
      * Отступы верхнего текста
      */
-    topMargins?: ISberSmartAppCardPadding;
+    titleMargins?: ISberSmartAppCardPadding;
     /**
      * Максимальное количество строк верхнего текста
      */
-    topMax_lines?: number;
+    titleMax_lines?: number;
     /**
      * Стиль нижнего текста
      */
-    bottomTypeface?: TSberSmartAppTypeface;
+    descTypeface?: TSberSmartAppTypeface;
     /**
      * Цвет нижнего текста
      */
-    bottomText_color?: TSberSmartAppTextColor;
+    descText_color?: TSberSmartAppTextColor;
     /**
      * Отступы нижнего текста
      */
-    bottomMargins?: ISberSmartAppCardPadding;
+    descMargins?: ISberSmartAppCardPadding;
     /**
      * Максимальное количество строк нижнего текста
      */
-    bottomMax_lines?: number;
+    descMax_lines?: number;
 
     /**
      * Дополнительные параметры изображения

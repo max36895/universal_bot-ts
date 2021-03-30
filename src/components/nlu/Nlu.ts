@@ -59,7 +59,7 @@ export class Nlu {
 
     /**
      * Приводим nlu в пригодный для работы вид.
-     * @param {any} nlu
+     * @param {Object} nlu
      * @return INlu
      */
     protected _serializeNlu(nlu: any): INlu {
@@ -70,7 +70,7 @@ export class Nlu {
     /**
      * Проинициализировать nlu данные.
      *
-     * @param {any} nlu Значение для nlu. В случае с Алисой передается в запросе. Для других типов инициируется самостоятельно.
+     * @param {Object} nlu Значение для nlu. В случае с Алисой передается в запросе. Для других типов инициируется самостоятельно.
      * @api
      */
     public setNlu(nlu: any): void {

@@ -63,7 +63,9 @@ export class Telegram extends TemplateTypeModel {
             } else {
                 content = {...query};
             }
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             if (typeof content.message !== 'undefined') {

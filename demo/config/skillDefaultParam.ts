@@ -1,4 +1,4 @@
-import {IAppParam} from "../../src/core/mmApp";
+import {IAppParam} from "../../src/core";
 
 export default function (): IAppParam {
     return {

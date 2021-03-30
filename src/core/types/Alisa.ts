@@ -85,8 +85,9 @@ export class Alisa extends TemplateTypeModel {
                 this.error = 'Alisa::init(): Не корректные данные!';
                 return false;
             }
-
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             if (content.request.type === 'SimpleUtterance') {
@@ -198,10 +199,10 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Получение данные из локального хранилища Алисы
-     * @return {any | string}
+     * @return {Promise<Object | string>}
      */
-    public getLocalStorage(): any | string {
-        return this.controller.state;
+    public async getLocalStorage(): Promise<any | string> {
+        return Promise.resolve(this.controller.state);
     }
 
     /**

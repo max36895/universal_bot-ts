@@ -141,7 +141,7 @@ export class Sql {
      * Выполнение запроса к базе данных.
      *
      * @param {Function} callback Функция с логикой.
-     * @return {Promise<any>}
+     * @return {Promise<Object|Object[]>}
      * @api
      */
     public async query(callback: Function): Promise<any> {
