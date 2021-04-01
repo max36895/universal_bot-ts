@@ -286,7 +286,7 @@ export class Bot {
                         });
                     }
                 } else {
-                    await botClass.setLocalStorage(userData.data);
+                    await botClass.setLocalStorage(this._botController.userData);
                 }
 
                 if (botClass.getError()) {
