@@ -196,11 +196,16 @@ export class SmartApp extends TemplateTypeModel {
     protected async _getUserData(): Promise<any | string> {
         const request = new Request();
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
-        return await request.send();
+        const result = await request.send();
+        if (result.status && result.data) {
+            return result.data;
+        }
+        return {};
     }
 
     protected async _setUserData(data: any) {
         const request = new Request();
+        request.header = Request.HEADER_AP_JSON;
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
         request.post = data;
         return await request.send();
