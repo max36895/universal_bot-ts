@@ -201,6 +201,9 @@ export abstract class BotController {
      */
     public run(): void {
         let intent: string = BotController._getIntent(this.userCommand);
+        if (intent === null && this.originalUserCommand && this.userCommand !== this.originalUserCommand) {
+            intent = BotController._getIntent(this.originalUserCommand.toLowerCase());
+        }
         if (intent === null && this.messageId === 0) {
             intent = WELCOME_INTENT_NAME;
         }
