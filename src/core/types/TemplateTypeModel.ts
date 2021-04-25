@@ -66,7 +66,7 @@ export abstract class TemplateTypeModel {
     /**
      * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
-     * @param {any} query Запрос пользователя.
+     * @param {Object} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @api
@@ -76,7 +76,7 @@ export abstract class TemplateTypeModel {
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
-     * @return {Promise<any>}
+     * @return {Promise<Object|string>}
      */
     public abstract getContext(): Promise<any>;
 
@@ -95,10 +95,20 @@ export abstract class TemplateTypeModel {
     /**
      * Возвращаем данные из хранилища.
      *
-     * @return object | string
+     * @return Promise<object | string>
      * @api
      */
-    public getLocalStorage(): object | string {
-        return null;
+    public getLocalStorage(): Promise<object | string> {
+        return Promise.resolve(null);
+    }
+
+    /**
+     * Сохранение данных в хранилище.
+     *
+     * @param data сохраняемые данные
+     * @return Promise<void>
+     * @api
+     */
+    public async setLocalStorage(data: any): Promise<void> {
     }
 }

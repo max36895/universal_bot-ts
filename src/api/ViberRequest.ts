@@ -149,7 +149,7 @@ export class ViberRequest {
      *  - string tracking_data: Разрешить учетной записи отслеживать сообщения и ответы пользователя. Отправлено tracking_data значение будет передано обратно с ответом пользователя.
      *  - string min_api_version: Минимальная версия API, необходимая клиентам для этого сообщения (по умолчанию 1).
      *  - string text Текст сообщения. (Обязательный параметр).
-     *  - string media: Url адрес отправляемого контента. Атуально при отправке файлов.
+     *  - string media: Url адрес отправляемого контента. Актуально при отправке файлов.
      *  - string thumbnail: URL-адрес изображения уменьшенного размера. Актуально при отправке файлов.
      *  - int size: Размер файла в байтах.
      *  - int duration: Продолжительность видео или аудио в секундах. Будет отображаться на приемнике.
@@ -190,7 +190,7 @@ export class ViberRequest {
      * Установка webhook для vider.
      * @see (https://developers.viber.com/docs/api/rest-bot-api/#webhooks) Смотри тут
      *
-     * @param {string} url Адресс webhook`а.
+     * @param {string} url Адрес webhook`а.
      * @param {IViberWebhookParams} params Дополнительные параметры.
      * @return Promise<any>
      * @api

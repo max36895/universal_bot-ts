@@ -1,4 +1,4 @@
-import {http_build_query, IGetParams, is_file} from "../../utils";
+import {fread, http_build_query, IGetParams, is_file} from "../../utils";
 import {IRequestSend} from "../interfaces/IRequest";
 
 /**
@@ -104,10 +104,14 @@ export class Request {
             options.signal = signal;
         }
 
-        let post: object = {};
+        let post: object = null;
         if (this.attach) {
             if (is_file(this.attach)) {
-                post = {...post, [this.attachName]: `@${this.attach}`};
+                const form = new FormData();
+                const buffer = fread(this.attach);
+                form.append("Content-Type", "application/octect-stream");
+                form.append(this.attachName, buffer);
+                post = form;
             } else {
                 this._error = `Не удалось найти файл: ${this.attach}`;
                 return null;

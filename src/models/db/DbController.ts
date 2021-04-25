@@ -28,7 +28,7 @@ export class DbController extends DbControllerModel {
      *
      * @param {QueryData} queryData Данные для сохранения записи
      * @param {boolean} isNew В любом случае выполнить добавление записи
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async save(queryData: QueryData, isNew: boolean = false): Promise<any> {
@@ -59,7 +59,7 @@ export class DbController extends DbControllerModel {
      * Выполнение запроса на обновление записи в таблице
      *
      * @param {QueryData} updateQuery Данные для обновления записи
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async update(updateQuery: QueryData): Promise<any> {
@@ -99,7 +99,7 @@ export class DbController extends DbControllerModel {
                 let idVal = select[this.primaryKeyName];
                 if (idVal !== undefined) {
                     if (typeof data[idVal] !== 'undefined') {
-                        data[idVal] = update;
+                        data[idVal] = {...data[idVal], ...update};
                         mmApp.saveJson(`${this.tableName}.json`, data);
                     }
                     return true;
@@ -113,7 +113,7 @@ export class DbController extends DbControllerModel {
      * Выполнение запроса на добавление записи в таблицу
      *
      * @param {QueryData} insertQuery Данные для добавления записи
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async insert(insertQuery: QueryData): Promise<any> {
@@ -212,7 +212,7 @@ export class DbController extends DbControllerModel {
     /**
      * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
      *
-     * @return {any}
+     * @return {Object|Object[]}
      * @api
      */
     public getFileData(): any {
@@ -230,7 +230,7 @@ export class DbController extends DbControllerModel {
      * Выполнение произвольного запроса к таблице
      *
      * @param {Function} callback Запрос, который необходимо выполнить
-     * @return {any}
+     * @return {Object|Object[]}
      * @api
      */
     public query(callback: Function): any {

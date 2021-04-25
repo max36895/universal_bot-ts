@@ -111,7 +111,13 @@ export class Bot {
      */
     public initTypeInGet(): boolean {
         if (GET['type']) {
-            if ([T_TELEGRAM, T_ALISA, T_VIBER, T_VK, T_USER_APP, T_MARUSIA].indexOf(GET['type'])) {
+            if ([T_TELEGRAM,
+                T_ALISA,
+                T_VIBER,
+                T_VK,
+                T_USER_APP,
+                T_MARUSIA,
+                T_SMARTAPP].indexOf(GET['type'])) {
                 mmApp.appType = GET['type'];
                 return true;
             }
@@ -154,7 +160,7 @@ export class Bot {
     }
 
     /**
-     * Возвращаем корректно заполенный тип приложения, а также класс, отвечающий за возврат результата.
+     * Возвращаем корректно заполненный тип приложения, а также класс, отвечающий за возврат результата.
      *
      * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
      * @return {IBotBotClassAndType}
@@ -233,7 +239,7 @@ export class Bot {
                 let isNew = true;
                 if (isLocalStorage) {
                     botClass.isUsedLocalStorage = isLocalStorage;
-                    this._botController.userData = botClass.getLocalStorage();
+                    this._botController.userData = await botClass.getLocalStorage();
                 } else {
                     const sql = {
                         userId: userData.escapeString(this._botController.userId)
@@ -279,6 +285,8 @@ export class Bot {
                             }
                         });
                     }
+                } else {
+                    await botClass.setLocalStorage(this._botController.userData);
                 }
 
                 if (botClass.getError()) {

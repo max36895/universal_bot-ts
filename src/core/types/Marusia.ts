@@ -13,7 +13,7 @@ import {mmApp} from "../mmApp";
 import {Text} from "../../components/standard/Text";
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Макруси.
+ * Класс, отвечающий за корректную инициализацию и отправку ответа для Маруси.
  * @class Marusia
  * @see TemplateTypeModel Смотри тут
  */
@@ -89,8 +89,9 @@ export class Marusia extends TemplateTypeModel {
                 this.error = 'Marusia::init(): Не корректные данные!';
                 return false;
             }
-
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             if (content.request.type === 'SimpleUtterance') {

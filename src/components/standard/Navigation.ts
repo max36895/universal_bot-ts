@@ -144,7 +144,7 @@ export class Navigation {
     /**
      * Возвращаем новый массив с учетом текущего положения.
      *
-     * @param {any[]} elements Элемент для обработки.
+     * @param {Object[]|string[]|number[]} elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
      * @return any[]
      * @api
@@ -169,7 +169,7 @@ export class Navigation {
     /**
      * Выбор определенного элемента списка на нужной странице.
      *
-     * @param {any[]} elements Элемент для обработки.
+     * @param {Object[]|string[]|number[]} elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
      * @param {string[] | string} key Поиск элемента по ключу массива. Если null, тогда подразумевается, что передан массив из строк.
      * @param {number} thisPage Текущая страница.
@@ -312,7 +312,7 @@ export class Navigation {
     /**
      * Возвращаем максимальное количество страниц.
      *
-     * @param {any[]} elements Элемент для обработки.
+     * @param {Object[]|string[]|number[]} elements Элемент для обработки.
      * @return number
      * @api
      */

@@ -59,7 +59,9 @@ export class Viber extends TemplateTypeModel {
             } else {
                 content = {...query};
             }
-            this.controller = controller;
+            if (!this.controller) {
+                this.controller = controller;
+            }
             this.controller.requestObject = content;
 
             if (content.message) {

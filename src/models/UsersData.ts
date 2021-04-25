@@ -159,7 +159,7 @@ export class UsersData extends Model {
     /**
      * Инициализация параметров.
      *
-     * @param {any} data Массив с данными.
+     * @param {Object} data Массив с данными.
      * @api
      */
     public init(data: any): void {

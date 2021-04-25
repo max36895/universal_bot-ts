@@ -21,11 +21,6 @@ export abstract class Model {
      * Правила для обработки полей. Где 1 - Элемент это название поля, 2 - Элемент тип поля, max - Максимальная длина.
      *
      * @return IModelRules[]
-     * [
-     *  - string|array 0: Название поля.
-     *  - string 1: Тип поля (text, string, integer, ...).
-     *  - int max: Максимальная длина строки.
-     * ]
      */
     public abstract rules(): IModelRules[];
 
@@ -134,10 +129,10 @@ export abstract class Model {
     /**
      * Выполнение запроса с поиском по уникальному ключу.
      *
-     * @return {Promise<IModelRes | any>}
+     * @return {Promise<IModelRes>}
      * @api
      */
-    public async selectOne(): Promise<IModelRes | any> {
+    public async selectOne(): Promise<IModelRes> {
         const idName = this.dbController.primaryKeyName;
         this.queryData.setQuery({
             [idName]: this[idName]
@@ -147,14 +142,9 @@ export abstract class Model {
     }
 
     /**
-     * Сохранение значения в базу данных.
-     * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
-     *
-     * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
-     * @return {Promise<any>}
-     * @api
+     * Инициализация параметров для запроса
      */
-    public async save(isNew: boolean = false): Promise<any> {
+    private _initData(): void {
         this.validate();
         const idName = this.dbController.primaryKeyName;
         this.queryData.setQuery({
@@ -167,35 +157,36 @@ export abstract class Model {
             }
         });
         this.queryData.setData(data);
+    }
+
+    /**
+     * Сохранение значения в базу данных.
+     * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
+     *
+     * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
+     * @return {Promise<Object>}
+     * @api
+     */
+    public async save(isNew: boolean = false): Promise<any> {
+        this._initData();
         return await this.dbController.save(this.queryData, isNew);
     }
 
     /**
      * Обновление значения в таблице.
      *
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async update(): Promise<any> {
-        this.validate();
-        const idName = this.dbController.primaryKeyName;
-        this.queryData.setQuery({
-            [idName]: this[idName]
-        });
-        const data: IQueryData = {};
-        Object.keys(this.attributeLabels()).forEach((index) => {
-            if (index !== idName) {
-                data[index] = this[index];
-            }
-        });
-        this.queryData.setData(data);
+        this._initData();
         return await this.dbController.update(this.queryData);
     }
 
     /**
      * Добавление значения в таблицу.
      *
-     * @return {Promise<any>}
+     * @return {Promise<Object>}
      * @api
      */
     public async add(): Promise<any> {
@@ -263,7 +254,7 @@ export abstract class Model {
      * Выполнение произвольного запрос к базе данных.
      *
      * @param {Function} callback Непосредственно запрос к бд.
-     * @return {any}
+     * @return {Object|Object[]}
      * @api
      */
     public query(callback: Function): any {
@@ -271,9 +262,9 @@ export abstract class Model {
     }
 
     /**
-     * Уделение подключения к БД
+     * Удаление подключения к БД
      */
-    public destroy() {
+    public destroy(): void {
         this.dbController.destroy();
     }
 }
