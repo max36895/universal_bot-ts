@@ -96,7 +96,7 @@ export class Request {
      */
     public static getAttachFile(filePath: string, fileName?: string): FormData {
         if (!fileName) {
-            fileName = (filePath.match(/\w+\.\w+$/)[0] || filePath);
+            fileName = (filePath.match(/((\/|\\|^)(\w+)\.(\w{1,6})$)/)[0] || filePath);
         }
         const form = new FormData();
         const buffer = fread(filePath);
