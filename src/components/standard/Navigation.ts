@@ -82,6 +82,24 @@ export class Navigation {
     }
 
     /**
+     * Валидация введенной страницы
+     *
+     * @param maxPage
+     * @private
+     */
+    protected _validatePage(maxPage?: number): void {
+        if (typeof maxPage === 'undefined') {
+            maxPage = this.getMaxPage();
+        }
+        if (this.thisPage >= maxPage) {
+            this.thisPage = maxPage - 1;
+        }
+        if (this.thisPage < 0) {
+            this.thisPage = 0;
+        }
+    }
+
+    /**
      * Пользователь переходит на определенную страницу.
      * В случае успешного перехода вернет true.
      *
@@ -92,13 +110,7 @@ export class Navigation {
         const data = text.match(/((-|)\d) страни/umi);
         if (data) {
             this.thisPage = +data[1] - 1;
-            const maxPage = this.getMaxPage();
-            if (this.thisPage >= maxPage) {
-                this.thisPage = maxPage - 1;
-            }
-            if (this.thisPage < 0) {
-                this.thisPage = 0;
-            }
+            this._validatePage();
             return true;
         }
         return false;
@@ -114,10 +126,7 @@ export class Navigation {
     protected _nextPage(text: string): boolean {
         if (this.isNext(text)) {
             this.thisPage++;
-            const maxPage = this.getMaxPage();
-            if (this.thisPage >= maxPage) {
-                this.thisPage = maxPage - 1;
-            }
+            this._validatePage();
             return true;
         }
         return false;
@@ -133,9 +142,7 @@ export class Navigation {
     protected _oldPage(text: string): boolean {
         if (this.isOld(text)) {
             this.thisPage--;
-            if (this.thisPage < 0) {
-                this.thisPage = 0;
-            }
+            this._validatePage();
             return true;
         }
         return false;
@@ -158,9 +165,11 @@ export class Navigation {
         this._oldPage(text);
         const start: number = this.thisPage * this.maxVisibleElements;
         const end: number = start + this.maxVisibleElements;
-        for (let i = start; i < end; i++) {
-            if (typeof this.elements[i] !== 'undefined') {
-                showElements.push(this.elements[i]);
+        if (this.elements.length >= start) {
+            for (let i = start; i < end; i++) {
+                if (typeof this.elements[i] !== 'undefined') {
+                    showElements.push(this.elements[i]);
+                }
             }
         }
         return showElements;
@@ -244,12 +253,7 @@ export class Navigation {
      */
     public getPageNav(isNumber: boolean = false): string[] {
         const maxPage: number = this.getMaxPage();
-        if (this.thisPage < 0) {
-            this.thisPage = 0;
-        }
-        if (this.thisPage > maxPage) {
-            this.thisPage = maxPage - 1;
-        }
+        this._validatePage(maxPage);
         const buttons: string[] = [];
         if (isNumber === false) {
             if (this.thisPage) {

@@ -1,5 +1,6 @@
-import {IButtonOptions, TButtonPayload} from "./interfaces/IButton";
+import {TButtonPayload, IButtonOptions} from "./interfaces/IButton";
 import {mmApp} from "../../core/mmApp";
+import {Text} from "../standard";
 
 /**
  * @class Button
@@ -73,23 +74,13 @@ export class Button {
     private _init(title: string, url: string, payload: TButtonPayload, hide: boolean, options: IButtonOptions = {}): boolean {
         if (title || title === '') {
             this.title = title;
-            if (url && !!url.match(/((http|s:\/\/)[^( |\n)]+)/umig)) {
+            if (url && Text.isUrl(url)) {
                 if (mmApp.params.utm_text === null) {
-                    if (url.indexOf('utm_source') === -1) {
-                        if (url.indexOf('?') !== -1) {
-                            url += '&';
-                        } else {
-                            url += '?';
-                        }
-                        url += 'utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone';
+                    if (!url.includes('utm_source')) {
+                        url += `${url.includes('?') ? '&' : '?'}utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone`;
                     }
                 } else if (mmApp.params.utm_text) {
-                    if (url.indexOf('?') !== -1) {
-                        url += '&';
-                    } else {
-                        url += '?';
-                    }
-                    url += mmApp.params.utm_text;
+                    url += (url.includes('?') ? '&' : '?') + mmApp.params.utm_text;
                 }
             } else {
                 url = null;

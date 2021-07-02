@@ -77,7 +77,7 @@ export class ViberRequest {
                 const data = (await this._request.send(this.API_ENDPOINT + method)).data;
                 if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
                     this._error = JSON.stringify(data.failed_list);
-                    this.log(data.status_message);
+                    this._log(data.status_message);
                 }
                 if (data.status === 0) {
                     return data;
@@ -85,11 +85,11 @@ export class ViberRequest {
                 const statusMessage = typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
                 if (statusMessage !== 'ok') {
                     this._error = '';
-                    this.log(data.status_message);
+                    this._log(data.status_message);
                 }
             }
         } else {
-            this.log('Не указан viber токен!');
+            this._log('Не указан viber токен!');
         }
         return null;
     }
@@ -282,7 +282,7 @@ export class ViberRequest {
      *
      * @param {string} error Текст ошибки.
      */
-    protected log(error: string): void {
+    protected _log(error: string): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('viberApi.log', error);
     }

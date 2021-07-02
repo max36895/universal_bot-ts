@@ -69,8 +69,7 @@ export class TelegramRequest {
      */
     protected _initPostFile(type: string, file: string): void {
         if (is_file(file)) {
-            // todo поправить
-            this._request.post[type] = `@${file}`;
+            this._request.post[type] = Request.getAttachFile(file);
         } else {
             this._request.post[type] = file;
         }

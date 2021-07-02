@@ -1,7 +1,12 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {IYandexRequestDownloadSound, TelegramRequest, VkRequest, YandexSoundRequest,} from "../api";
+import {
+    YandexSoundRequest,
+    IYandexRequestDownloadSound,
+    TelegramRequest,
+    VkRequest,
+} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**
@@ -138,7 +143,7 @@ export class SoundTokens extends Model {
                 } else {
                     const yImage = new YandexSoundRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadSound = null;
-                    if (Text.isSayText(['http\:\/\/', 'https\:\/\/'], this.path)) {
+                    if (Text.isUrl(this.path)) {
                         mmApp.saveLog('SoundTokens.log', 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!');
                         return null;
                     } else {

@@ -173,6 +173,7 @@ export class YandexSoundRequest extends YandexRequest {
                 sounds.forEach((sound) => {
                     this.deleteSound(sound.id);
                 });
+                return true;
             } else {
                 this._log('YandexSoundRequest::deleteSounds() Error: Не удалось получить загруженные звуки!');
             }

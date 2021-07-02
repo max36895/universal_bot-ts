@@ -1,7 +1,12 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {IYandexRequestDownloadImage, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
+import {
+    YandexImageRequest,
+    IYandexRequestDownloadImage,
+    TelegramRequest,
+    VkRequest
+} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**
@@ -135,7 +140,7 @@ export class ImageTokens extends Model {
                 } else {
                     const yImage = new YandexImageRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadImage = null;
-                    if (Text.isSayText(['http\:\/\/', 'https\:\/\/'], this.path)) {
+                    if (Text.isUrl(this.path)) {
                         res = await yImage.downloadImageUrl(this.path);
                     } else {
                         res = await yImage.downloadImageFile(this.path);

@@ -30,11 +30,7 @@ export class YandexRequest {
      * @param {string} oauth Авторизационный токен для загрузки данных.
      */
     public constructor(oauth: string = null) {
-        if (oauth) {
-            this.setOAuth(oauth);
-        } else {
-            this.setOAuth(mmApp.params.yandex_token || null);
-        }
+        this.setOAuth(oauth || mmApp.params.yandex_token || null);
         this._request = new Request();
         this._request.maxTimeQuery = 1500;
     }

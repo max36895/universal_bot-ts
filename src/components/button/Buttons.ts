@@ -1,5 +1,5 @@
 import {Button} from "./Button";
-import {IButton, IButtonOptions, TButton, TButtonPayload} from "./interfaces/IButton";
+import {IButton, TButton, TButtonPayload, IButtonOptions} from "./interfaces/IButton";
 import {TemplateButtonTypes} from "./types/TemplateButtonTypes";
 import {AlisaButton} from "./types/AlisaButton";
 import {TelegramButton} from "./types/TelegramButton";
@@ -159,37 +159,36 @@ export class Buttons {
     }
 
     /**
+     * Дополнительная функция для инициализации дополнительных кнопок
+     * @param buttons Массив кнопок
+     * @param callback Callback нужной функции, addBtn или addLink
+     * @private
+     */
+    protected _initProcessingBtn(buttons: TButton[], callback: Function): void {
+        if (typeof buttons === 'object') {
+            buttons.forEach((button) => {
+                if (typeof button !== 'string') {
+                    callback(button.title || null, (<IButton>button).url || '',
+                        button.payload || null, button.options || {});
+                } else {
+                    callback(button);
+                }
+            });
+        } else {
+            callback(buttons);
+        }
+    }
+
+    /**
      * Дополнительная обработка второстепенных кнопок.
      * А именно обрабатываются массивы btns и links. После чего все значения вносятся в массив buttons.
      */
     protected _processing(): void {
         if (this.btns.length) {
-            if (typeof this.btns === 'object') {
-                this.btns.forEach((btn) => {
-                    if (typeof btn !== 'string') {
-                        this.addBtn(btn.title || null, (<IButton>btn).url || '',
-                            btn.payload || null, btn.options || {});
-                    } else {
-                        this.addBtn(btn);
-                    }
-                });
-            } else {
-                this.addBtn(this.btns);
-            }
+            this._initProcessingBtn(this.btns, this.addBtn.bind(this));
         }
         if (this.links.length) {
-            if (typeof this.links === 'object') {
-                this.links.forEach((link) => {
-                    if (typeof link !== 'string') {
-                        this.addLink(link.title || null, (<IButton>link).url || '',
-                            link.payload || null, link.options || {});
-                    } else {
-                        this.addLink(link);
-                    }
-                })
-            } else {
-                this.addLink(this.links);
-            }
+            this._initProcessingBtn(this.links, this.addLink.bind(this));
         }
         this.btns = [];
         this.links = [];

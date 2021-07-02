@@ -90,6 +90,22 @@ export class Request {
     }
 
     /**
+     * Получение содержимого файла, пригодного для отправки в запросе
+     * @param {string} filePath Расположение файла
+     * @param {string} fileName Имя файла
+     */
+    public static getAttachFile(filePath: string, fileName?: string): FormData {
+        if (!fileName) {
+            fileName = (filePath.match(/\w+\.\w+$/)[0] || filePath);
+        }
+        const form = new FormData();
+        const buffer = fread(filePath);
+        form.append("Content-Type", "application/octect-stream");
+        form.append(fileName, buffer);
+        return form;
+    }
+
+    /**
      * Получение корректного  параметра для отправки запроса.
      * @return RequestInit
      * @private
@@ -107,11 +123,7 @@ export class Request {
         let post: object = null;
         if (this.attach) {
             if (is_file(this.attach)) {
-                const form = new FormData();
-                const buffer = fread(this.attach);
-                form.append("Content-Type", "application/octect-stream");
-                form.append(this.attachName, buffer);
-                post = form;
+                post = Request.getAttachFile(this.attach, this.attachName);
             } else {
                 this._error = `Не удалось найти файл: ${this.attach}`;
                 return null;

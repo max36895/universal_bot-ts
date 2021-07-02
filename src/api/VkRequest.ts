@@ -100,14 +100,14 @@ export class VkRequest {
                 this._error = JSON.stringify(data.err || []);
                 if (typeof data.data.error !== 'undefined') {
                     this._error = JSON.stringify(data.data.error);
-                    this.log('');
+                    this._log('');
                     return null;
                 }
                 return data.data.response || data.data;
             }
-            this.log(data.err);
+            this._log(data.err);
         } else {
-            this.log('Не указан vk токен!');
+            this._log('Не указан vk токен!');
         }
         return null;
     }
@@ -137,12 +137,12 @@ export class VkRequest {
         if (data.status) {
             if (typeof data.data.error !== 'undefined') {
                 this._error = JSON.stringify(data.data.error);
-                this.log('');
+                this._log('');
                 return null;
             }
             return data.data;
         }
-        this.log(data.err);
+        this._log(data.err);
         return null;
     }
 
@@ -412,7 +412,7 @@ export class VkRequest {
      *
      * @param {string} error Текст ошибки.
      */
-    protected log(error: string): void {
+    protected _log(error: string): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('vkApi.log', error);
     }

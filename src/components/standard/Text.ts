@@ -52,6 +52,17 @@ export class Text {
     }
 
     /**
+     * Возвращает true в том случае, если передана ссылка
+     *
+     * @param {string} link Проверяемая строка
+     * @return boolean
+     * @api
+     */
+    public static isUrl(link: string): boolean {
+        return !!link.match(/((http|s:\/\/)[^( |\n)]+)/umig);
+    }
+
+    /**
      * Возвращаем true в том случае, если пользователь выражает согласие.
      *
      * @param {string} text Пользовательский текст.
