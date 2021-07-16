@@ -454,7 +454,7 @@ export class Bot {
                 break;
 
             case T_MARUSIA:
-                content = marusiaConfig(query, userId, count);
+                content = marusiaConfig(query, userId, count, state);
                 break;
 
             case T_VK:
