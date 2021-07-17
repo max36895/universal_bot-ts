@@ -137,6 +137,10 @@ export interface IAppParam {
      */
     vk_token?: string;
     /**
+     * Маруся Токен для загрузки изображений и звуков в навыке.
+     */
+    marusia_token?: string;
+    /**
      * Яндекс Токен для загрузки изображений и звуков в навыке.
      */
     yandex_token?: string;
@@ -241,6 +245,7 @@ export class mmApp {
         vk_api_version: null,
         vk_confirmation_token: null,
         vk_token: null,
+        marusia_token: null,
         yandex_token: null,
         y_isAuthUser: false,
         app_id: null,

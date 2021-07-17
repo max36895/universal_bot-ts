@@ -71,7 +71,7 @@ export class SmartApp extends TemplateTypeModel {
                 if (typeof payload.items === 'undefined') {
                     payload.items = [];
                 }
-                const cards: ISberSmartAppItem = await this.controller.card.getCards()
+                const cards: ISberSmartAppItem = await this.controller.card.getCards();
                 payload.items.push(cards);
             }
             payload.suggestions = {

@@ -82,7 +82,7 @@ export abstract class BotController {
      */
     public isAuthSuccess: true | false | null;
     /**
-     * Пользовательское локальное хранилище (Актуально для Алисы).
+     * Пользовательское локальное хранилище (Актуально для Алисы и Маруси).
      */
     public state: object | string;
     /**
@@ -108,7 +108,7 @@ export abstract class BotController {
     public oldIntentName: string;
 
     /**
-     * Идентификатор текущего действия пользователя.
+     * Идентификатор текущего действия пользователя. Чтобы не сохранять идентификатор предыдущей команды, стоит передавать null.
      */
     public thisIntentName: string;
 
