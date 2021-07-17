@@ -1,12 +1,7 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {
-    YandexSoundRequest,
-    IYandexRequestDownloadSound,
-    TelegramRequest,
-    VkRequest,
-} from "../api";
+import {IYandexRequestDownloadSound, TelegramRequest, VkRequest, YandexSoundRequest,} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**
@@ -143,11 +138,13 @@ export class SoundTokens extends Model {
                 } else {
                     const yImage = new YandexSoundRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadSound = null;
-                    if (Text.isUrl(this.path)) {
-                        mmApp.saveLog('SoundTokens.log', 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!');
-                        return null;
-                    } else {
-                        res = await yImage.downloadSoundFile(this.path);
+                    if (this.path) {
+                        if (Text.isUrl(this.path)) {
+                            mmApp.saveLog('SoundTokens.log', 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!');
+                            return null;
+                        } else {
+                            res = await yImage.downloadSoundFile(this.path);
+                        }
                     }
                     if (res) {
                         this.soundToken = res.id;
@@ -161,7 +158,7 @@ export class SoundTokens extends Model {
             case SoundTokens.T_VK:
                 if (await this.whereOne(where)) {
                     return this.soundToken;
-                } else {
+                } else if (this.path) {
                     const vkApi = new VkRequest();
                     const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(mmApp.params.user_id, 'audio_message');
                     if (uploadServerResponse) {
@@ -184,7 +181,7 @@ export class SoundTokens extends Model {
                 if (await this.whereOne(where)) {
                     await telegramApi.sendAudio(mmApp.params.user_id, this.soundToken);
                     return this.soundToken;
-                } else {
+                } else if (this.path) {
                     const sound = await telegramApi.sendAudio(mmApp.params.user_id, this.path);
                     if (sound && sound.ok) {
                         if (typeof sound.result.audio.file_id !== 'undefined') {

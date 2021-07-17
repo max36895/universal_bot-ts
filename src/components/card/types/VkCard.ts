@@ -59,6 +59,7 @@ export class VkCard extends TemplateCardTypes {
                     if (this.images[0].imageDir) {
                         const mImage = new ImageTokens();
                         mImage.type = ImageTokens.T_VK;
+                        mImage.path = this.images[0].imageDir;
                         this.images[0].imageToken = await mImage.getToken();
                     }
                 }
@@ -73,6 +74,7 @@ export class VkCard extends TemplateCardTypes {
                         if (image.imageDir) {
                             const mImage = new ImageTokens();
                             mImage.type = ImageTokens.T_VK;
+                            mImage.path = image.imageDir;
                             image.imageToken = await mImage.getToken();
                         }
                     }

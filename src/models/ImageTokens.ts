@@ -1,12 +1,7 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {
-    YandexImageRequest,
-    IYandexRequestDownloadImage,
-    TelegramRequest,
-    VkRequest
-} from "../api";
+import {IYandexRequestDownloadImage, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
 import {Text} from "../components/standard/Text";
 
 /**
@@ -140,10 +135,12 @@ export class ImageTokens extends Model {
                 } else {
                     const yImage = new YandexImageRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
                     let res: IYandexRequestDownloadImage = null;
-                    if (Text.isUrl(this.path)) {
-                        res = await yImage.downloadImageUrl(this.path);
-                    } else {
-                        res = await yImage.downloadImageFile(this.path);
+                    if (this.path) {
+                        if (Text.isUrl(this.path)) {
+                            res = await yImage.downloadImageUrl(this.path);
+                        } else {
+                            res = await yImage.downloadImageFile(this.path);
+                        }
                     }
                     if (res) {
                         this.imageToken = res.id;
@@ -159,7 +156,7 @@ export class ImageTokens extends Model {
                 where.type = ImageTokens.T_VK;
                 if (await this.whereOne(where)) {
                     return this.imageToken;
-                } else {
+                } else if (this.path) {
                     const vkApi = new VkRequest();
                     const uploadServerResponse = await vkApi.photosGetMessagesUploadServer(mmApp.params.user_id);
                     if (uploadServerResponse) {
@@ -182,7 +179,7 @@ export class ImageTokens extends Model {
                 if (await this.whereOne(where)) {
                     await telegramApi.sendPhoto(mmApp.params.user_id, this.imageToken, this.caption);
                     return this.imageToken;
-                } else {
+                } else if (this.path) {
                     const photo = await telegramApi.sendPhoto(mmApp.params.user_id, this.path, this.caption);
                     if (photo && photo.ok) {
                         if (typeof photo.result.photo.file_id !== 'undefined') {
