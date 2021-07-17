@@ -5,6 +5,7 @@ import {TelegramSound} from "./types/TelegramSound";
 import {VkSound} from "./types/VkSound";
 import {ViberSound} from "./types/ViberSound";
 import {ISound} from "./interfaces/sound";
+import {MarusiaSound} from "./types/MarusiaSound";
 
 /**
  * Класс отвечающий за обработку и корректное воспроизведение звуков, в зависимости от типа приложения.
@@ -45,6 +46,11 @@ export class Sound {
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
+            case T_MARUSIA:
+                sound = new MarusiaSound();
+                sound.isUsedStandardSound = this.isUsedStandardSound;
+                break;
+
             case T_VK:
                 sound = new VkSound();
                 break;
@@ -55,10 +61,6 @@ export class Sound {
 
             case T_VIBER:
                 sound = new ViberSound();
-                break;
-
-            case T_MARUSIA:
-                sound = null;
                 break;
 
             case T_SMARTAPP:
