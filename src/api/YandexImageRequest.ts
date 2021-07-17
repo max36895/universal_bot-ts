@@ -192,6 +192,7 @@ export class YandexImageRequest extends YandexRequest {
                     this.deleteImage(image.id);
                     // todo added timeout
                 });
+                return true;
             } else {
                 this._log('YandexImageRequest::deleteImages() Error: Не удалось получить загруженные звуки!');
             }

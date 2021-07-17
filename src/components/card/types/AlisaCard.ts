@@ -27,37 +27,36 @@ export class AlisaCard extends TemplateCardTypes {
      */
     protected async _getItem(): Promise<IAlisaImage[]> {
         let items: IAlisaImage[] = [];
-        for (const image of this.images) {
-            const maxCount = this.isUsedGallery ? AlisaCard.ALISA_MAX_GALLERY_IMAGES : AlisaCard.ALISA_MAX_IMAGES;
-            if (items.length <= maxCount) {
-                let button: IAlisaButtonCard = null;
-                if (!this.isUsedGallery) {
-                    button = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-                    if (!button.text) {
-                        button = null;
-                    }
+        const maxCount = this.isUsedGallery ? AlisaCard.ALISA_MAX_GALLERY_IMAGES : AlisaCard.ALISA_MAX_IMAGES;
+        const images = this.images.slice(0, maxCount);
+        for (const image of images) {
+            let button: IAlisaButtonCard = null;
+            if (!this.isUsedGallery) {
+                button = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                if (!button.text) {
+                    button = null;
                 }
-                if (!image.imageToken) {
-                    if (image.imageDir) {
-                        const mImage = new ImageTokens();
-                        mImage.type = ImageTokens.T_ALISA;
-                        image.imageToken = await mImage.getToken();
-                    }
-                }
-                const item: IAlisaImage = {
-                    title: Text.resize(image.title, 128),
-                };
-                if (!this.isUsedGallery) {
-                    item.description = Text.resize(image.desc, 256);
-                }
-                if (image.imageToken) {
-                    item.image_id = image.imageToken;
-                }
-                if (button && !this.isUsedGallery) {
-                    item.button = button;
-                }
-                items.push(item);
             }
+            if (!image.imageToken) {
+                if (image.imageDir) {
+                    const mImage = new ImageTokens();
+                    mImage.type = ImageTokens.T_ALISA;
+                    image.imageToken = await mImage.getToken();
+                }
+            }
+            const item: IAlisaImage = {
+                title: Text.resize(image.title, 128),
+            };
+            if (!this.isUsedGallery) {
+                item.description = Text.resize(image.desc, 256);
+            }
+            if (image.imageToken) {
+                item.image_id = image.imageToken;
+            }
+            if (button && !this.isUsedGallery) {
+                item.button = button;
+            }
+            items.push(item);
         }
         return items;
     }

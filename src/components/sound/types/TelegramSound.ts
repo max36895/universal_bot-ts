@@ -28,7 +28,7 @@ export class TelegramSound implements TemplateSoundTypes {
                 if (sound) {
                     if (sound.sounds && sound.key) {
                         let sText = Text.getText(sound.sounds);
-                        if (is_file(sText) || Text.isSayText(['http\:\/\/', 'https\:\/\/'], sText)) {
+                        if (is_file(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_TELEGRAM;
                             sModel.path = sText;

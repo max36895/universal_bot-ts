@@ -323,7 +323,7 @@ export class mmApp {
         if (!isDir(path)) {
             mkdir(path);
         }
-        fileName = fileName.replace('`', '');
+        fileName = fileName.replace(/`/g, '');
         fwrite(`${path}/${fileName}`, JSON.stringify(data));
         return true;
     }

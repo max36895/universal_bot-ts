@@ -95,11 +95,7 @@ export class Bot {
     constructor(type?: TAppType) {
         this._auth = null;
         this._botController = null;
-        if (!type) {
-            mmApp.appType = T_ALISA;
-        } else {
-            mmApp.appType = type;
-        }
+        mmApp.appType = !type ? T_ALISA : type;
     }
 
     /**
@@ -211,11 +207,26 @@ export class Bot {
     }
 
     /**
-     * Запуск приложения.
+     * Устанавливает данные, полученные сервером. Не рекомендуется записывать данные самостоятельно.
+     * Стоит использовать тогда, когда запуск осуществляется через свой webhook.
+     * При этом данные не валидируется, и разработчик сам отвечает за переданный контент.
+     *
+     * @param {TBotContent} content Данные, полученные сервером.
+     */
+    public setContent(content: TBotContent): void {
+        this._content = content;
+    }
+
+    /**
+     * Запуск приложения. В случае ошибки вернет исключение.
+     * Рекомендуется вызывать метод в том случае, когда используется свой webhook отличный от micro.
+     * При этому нужно самому заполнить данные в _content, а также обработать данные, переданные в заголовке.
      *
      * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
      * @return {Promise<TRunResult>}
      * @api
+     * @see start
+     * @see setContent
      */
     public async run(userBotClass: TemplateTypeModel = null): Promise<TRunResult> {
         const {botClass, type} = Bot._getBotClassAndType(userBotClass);
@@ -241,14 +252,14 @@ export class Bot {
                     botClass.isUsedLocalStorage = isLocalStorage;
                     this._botController.userData = await botClass.getLocalStorage();
                 } else {
-                    const sql = {
+                    const query = {
                         userId: userData.escapeString(this._botController.userId)
                     };
                     if (this._auth) {
-                        sql.userId = userData.escapeString(this._botController.userToken);
+                        query.userId = userData.escapeString(this._botController.userToken);
                     }
 
-                    if (await userData.whereOne(sql)) {
+                    if (await userData.whereOne(query)) {
                         this._botController.userData = userData.data;
                         isNew = false;
                     } else {
@@ -295,19 +306,18 @@ export class Bot {
                 userData.destroy();
                 return content;
             } else {
-                console.error(botClass.getError());
                 mmApp.saveLog('bot.log', botClass.getError());
+                throw new Error(botClass.getError());
             }
         } else {
-            console.error('Не удалось определить тип приложения!');
             mmApp.saveLog('bot.log', 'Не удалось определить тип приложения!');
+            throw new Error(botClass.getError());
         }
-        return 'notFound';
     }
 
 
     /**
-     * Запуск приложения через Webhook
+     * Запуск приложения через Webhook micro
      *
      * @param {"http".IncomingMessage} req Полученный запрос
      * @param {"http".ServerResponse} res Возврат запроса
@@ -330,10 +340,14 @@ export class Bot {
             if (req.headers && req.headers.authorization) {
                 this._auth = req.headers.authorization.replace('Bearer', '');
             }
-            this._content = query;
-            const result = await this.run(userBotClass);
-            statusCode = result === 'notFound' ? 404 : 200;
-            send(res, statusCode, result);
+            this.setContent(query);
+            try {
+                const result = await this.run(userBotClass);
+                statusCode = result === 'notFound' ? 404 : 200;
+                send(res, statusCode, result);
+            } catch (e) {
+                send(res, 404, 'notFound');
+            }
         } else {
             statusCode = 400;
             send(res, statusCode, 'Bad Request');
@@ -342,7 +356,7 @@ export class Bot {
     }
 
     /**
-     * Тестирование навыка.
+     * Тестирование приложения.
      * Отображает только ответы навыка.
      * Никакой прочей информации (изображения, звуки, кнопки и тд) не отображаются!
      *
@@ -374,11 +388,11 @@ export class Bot {
                 }
             }
             if (!this._content) {
-                this._content = JSON.stringify(this.getSkillContent(query, count, state, userBotConfig));
+                this.setContent(JSON.stringify(this.getSkillContent(query, count, state, userBotConfig)));
             }
             const timeStart: number = Date.now();
             if (typeof this._content === 'string') {
-                this._content = JSON.parse(this._content);
+                this.setContent(JSON.parse(this._content));
             }
 
             let result: any = await this.run(userBotClass);
@@ -440,7 +454,7 @@ export class Bot {
                 break;
 
             case T_MARUSIA:
-                content = marusiaConfig(query, userId, count);
+                content = marusiaConfig(query, userId, count, state);
                 break;
 
             case T_VK:

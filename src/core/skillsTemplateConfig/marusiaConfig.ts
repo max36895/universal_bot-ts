@@ -5,8 +5,9 @@ import {IMarusiaWebhookRequest} from "../interfaces/IMarusia";
  * @param query Запрос пользователя
  * @param userId Идентификатор пользователя
  * @param count Номер сообщения
+ * @param state Локальное хранилище
  */
-export default function (query: string, userId: string, count: number): IMarusiaWebhookRequest {
+export default function (query: string, userId: string, count: number, state: object | string): IMarusiaWebhookRequest {
     return {
         meta: {
             locale: 'ru-Ru',
@@ -29,6 +30,9 @@ export default function (query: string, userId: string, count: number): IMarusia
             original_utterance: query,
             nlu: null,
             type: 'SimpleUtterance'
+        },
+        state: {
+            session: state,
         },
         version: '1.0'
     };

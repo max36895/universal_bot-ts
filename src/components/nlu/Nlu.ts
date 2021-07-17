@@ -417,7 +417,7 @@ export class Nlu {
      * @api
      */
     public static getEMail(query: string): INluResult {
-        const mail = query.match(/([^@^\s]+@[^.^\s]+\.\S+)/umig);
+        const mail = query.match(/(\b\S+@\S+\.\S{2,6}\b)/umig);
         if (mail) {
             return {
                 status: true,

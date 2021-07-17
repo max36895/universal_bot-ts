@@ -30,6 +30,10 @@ export class Marusia extends TemplateTypeModel {
      * Информация о сессии пользователя.
      */
     protected _session: IMarusiaSession;
+    /**
+     * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
+     */
+    protected _stateName: string;
 
     /**
      * Получение данных, необходимых для построения ответа пользователю.
@@ -108,6 +112,16 @@ export class Marusia extends TemplateTypeModel {
                 this.controller.userCommand = this.controller.originalUserCommand;
             }
 
+            if (typeof content.state !== 'undefined') {
+                if (typeof content.state.user !== 'undefined') {
+                    this.controller.state = content.state.user;
+                    this._stateName = 'user_state_update';
+                } else if (typeof content.state.session !== 'undefined') {
+                    this.controller.state = content.state.session;
+                    this._stateName = 'session_state';
+                }
+            }
+
             this._session = content.session;
 
             this.controller.userId = this._session.user_id;
@@ -139,10 +153,29 @@ export class Marusia extends TemplateTypeModel {
         };
         result.response = await this.getResponse();
         result.session = this.getSession();
+        if (this.isUsedLocalStorage && this.controller.userData) {
+            result[this._stateName] = this.controller.userData;
+        }
         const timeEnd = this.getProcessingTime();
         if (timeEnd >= this.MAX_TIME_REQUEST) {
             this.error = `Marusia:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
         }
         return result;
+    }
+
+    /**
+     * Получение данные из локального хранилища Алисы
+     * @return {Promise<Object | string>}
+     */
+    public async getLocalStorage(): Promise<any | string> {
+        return Promise.resolve(this.controller.state);
+    }
+
+    /**
+     * Проверка на использование локального хранилища
+     * @return {boolean}
+     */
+    public isLocalStorage(): boolean {
+        return this.controller.state !== null;
     }
 }

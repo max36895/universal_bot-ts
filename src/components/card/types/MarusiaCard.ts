@@ -49,32 +49,31 @@ export class MarusiaCard extends TemplateCardTypes {
                     }
                 };
                 let items: IAlisaImage[] = [];
-                for (const image of this.images) {
-                    if (items.length <= MarusiaCard.MARUSIA_MAX_IMAGES) {
-                        let button: IAlisaButtonCard = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-                        if (!button.text) {
-                            button = null;
-                        }
-                        if (!image.imageToken) {
-                            if (image.imageDir) {
-                                const mImage = new ImageTokens();
-                                mImage.type = ImageTokens.T_ALISA;
-                                image.imageToken = await mImage.getToken();
-                            }
-                        }
-                        //if (image.imageToken !== null) {
-                        const item: IAlisaImage = {
-                            title: Text.resize(image.title, 128),
-                            description: Text.resize(image.desc, 256),
-                        };
-                        if (image.imageToken) {
-                            item.image_id = image.imageToken;
-                        }
-                        if (button) {
-                            item.button = button;
-                        }
-                        items.push(item);
+                const images = this.images.slice(0, MarusiaCard.MARUSIA_MAX_IMAGES);
+                for (const image of images) {
+                    let button: IAlisaButtonCard = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                    if (!button.text) {
+                        button = null;
                     }
+                    if (!image.imageToken) {
+                        if (image.imageDir) {
+                            const mImage = new ImageTokens();
+                            mImage.type = ImageTokens.T_ALISA;
+                            image.imageToken = await mImage.getToken();
+                        }
+                    }
+                    //if (image.imageToken !== null) {
+                    const item: IAlisaImage = {
+                        title: Text.resize(image.title, 128),
+                        description: Text.resize(image.desc, 256),
+                    };
+                    if (image.imageToken) {
+                        item.image_id = image.imageToken;
+                    }
+                    if (button) {
+                        item.button = button;
+                    }
+                    items.push(item);
                     //}
                 }
                 tmp.items = items;

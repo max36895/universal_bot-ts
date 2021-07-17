@@ -111,7 +111,7 @@ export class Image {
         if (this.isToken) {
             this.imageToken = image;
         } else {
-            if (image && (Text.isSayText(['http\:\/\/', 'https\:\/\/'], image) || is_file(image))) {
+            if (image && (Text.isUrl(image) || is_file(image))) {
                 this.imageDir = image;
                 this.imageToken = null;
             } else {
