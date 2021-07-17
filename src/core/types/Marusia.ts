@@ -40,7 +40,7 @@ export class Marusia extends TemplateTypeModel {
      *
      * @return {Promise<IMarusiaResponse>}
      */
-    protected async getResponse(): Promise<IMarusiaResponse> {
+    protected async _getResponse(): Promise<IMarusiaResponse> {
         const response: IMarusiaResponse = {
             text: Text.resize(this.controller.text, 1024),
             tts: Text.resize(this.controller.tts, 1024),
@@ -63,7 +63,7 @@ export class Marusia extends TemplateTypeModel {
      *
      * @return IMarusiaSessionResponse
      */
-    protected getSession(): IMarusiaSessionResponse {
+    protected _getSession(): IMarusiaSessionResponse {
         return {
             session_id: this._session.session_id,
             message_id: this._session.message_id,
@@ -154,8 +154,14 @@ export class Marusia extends TemplateTypeModel {
         const result: IMarusiaWebhookResponse = {
             version: this.VERSION,
         };
-        result.response = await this.getResponse();
-        result.session = this.getSession();
+        if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
+            if (this.controller.tts === null) {
+                this.controller.tts = this.controller.text;
+            }
+            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
+        }
+        result.response = await this._getResponse();
+        result.session = this._getSession();
         if (this.isUsedLocalStorage && this.controller.userData) {
             result[this._stateName] = this.controller.userData;
         }
