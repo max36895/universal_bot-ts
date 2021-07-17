@@ -53,6 +53,9 @@ export class Alisa extends TemplateTypeModel {
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
                 response.card = <IAlisaItemsList | IAlisaBigImage>(await this.controller.card.getCards());
+                if (!response.card) {
+                    response.card = undefined;
+                }
             }
             response.buttons = this.controller.buttons.getButtons();
         }
