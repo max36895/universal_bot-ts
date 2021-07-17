@@ -71,7 +71,7 @@ export class AlisaSound implements TemplateSoundTypes {
         {
             key: '#game_gun#',
             sounds: [
-                '<speaker audio="alice-sounds-game-8-bit-machine-gun-1.opus',
+                '<speaker audio="alice-sounds-game-8-bit-machine-gun-1.opus">',
             ]
         },
         {
