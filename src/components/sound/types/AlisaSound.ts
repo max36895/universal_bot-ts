@@ -347,7 +347,7 @@ export class AlisaSound implements TemplateSoundTypes {
                          * Лучше загружать звуки через консоль администратора!
                          * @see (https://dialogs.yandex.ru/developer/skills/<skill_id>/resources/sounds) Смотри тут
                          */
-                        if (is_file(sText) || Text.isSayText(['http\:\/\/', 'https\:\/\/'], sText)) {
+                        if (is_file(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_ALISA;
                             sModel.path = sText;

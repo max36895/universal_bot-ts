@@ -41,6 +41,7 @@ export class AlisaCard extends TemplateCardTypes {
                 if (image.imageDir) {
                     const mImage = new ImageTokens();
                     mImage.type = ImageTokens.T_ALISA;
+                    mImage.path = image.imageDir;
                     image.imageToken = await mImage.getToken();
                 }
             }
@@ -81,6 +82,7 @@ export class AlisaCard extends TemplateCardTypes {
                     if (this.images[0].imageDir) {
                         const mImage = new ImageTokens();
                         mImage.type = ImageTokens.T_ALISA;
+                        mImage.path = this.images[0].imageDir;
                         this.images[0].imageToken = await mImage.getToken();
                     }
                 }

@@ -37,6 +37,7 @@ export class TelegramCard extends TemplateCardTypes {
                     const mImage = new ImageTokens();
                     mImage.type = ImageTokens.T_TELEGRAM;
                     mImage.caption = image.desc;
+                    mImage.path = image.imageDir;
                     image.imageToken = await mImage.getToken();
                 }
             } else {
