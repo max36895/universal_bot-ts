@@ -30,10 +30,7 @@ export class MarusiaRequest extends VkRequest {
     /**
      * Получение данные по загрузке изображения на сервер маруси.
      *
-     * @return Promise<IMarusiaApiPictureUpdateLink>
-     * [
-     *  - 'picture_upload_link' => string Адрес сервера для загрузки изображения
-     * ]
+     * @return {Promise<IMarusiaApiPictureUpdateLink>}
      * @api
      */
     public async marusiaGetPictureUploadLink(): Promise<IMarusiaApiPictureUpdateLink> {
@@ -43,14 +40,10 @@ export class MarusiaRequest extends VkRequest {
     /**
      * Сохранение картинки на сервер Маруси.
      *
-     * @param photo Фотография.
-     * @param server Сервер.
-     * @param hash Хэш.
-     * @return Promise<IMarusiaApiSavePicture>
-     * [
-     *  - 'app_id' => int Идентификатор приложения
-     *  - 'photo_id' => int Идентификатор изображения
-     * ]
+     * @param {string} photo Фотография.
+     * @param {string} server Сервер.
+     * @param {string} hash Хэш.
+     * @return {Promise<IMarusiaApiSavePicture>}
      * @see upload() Смотри тут
      * @api
      */
@@ -65,7 +58,7 @@ export class MarusiaRequest extends VkRequest {
 
     /**
      * Получение всех загруженных изображений
-     * @return Promise<any>
+     * @return {Promise<any>}
      */
     public async marusiaGetPictures(): Promise<any> {
         return await this.call('marusia.getPictures');
@@ -74,10 +67,7 @@ export class MarusiaRequest extends VkRequest {
     /**
      * Получение данные по загрузке изображения на сервер маруси.
      *
-     * @return Promise<IMarusiaApiAudioUpdateLink>
-     * [
-     *  - 'audio_upload_link' => string Адрес сервера для загрузки аудио
-     * ]
+     * @return {Promise<IMarusiaApiAudioUpdateLink>}
      * @api
      */
     public async marusiaGetAudioUploadLink(): Promise<IMarusiaApiAudioUpdateLink> {
@@ -87,15 +77,10 @@ export class MarusiaRequest extends VkRequest {
     /**
      * Сохранение аудиио на сервер Маруси.
      *
-     * @param audio_meta анные полученные после загрузки аудио.
-     * @return Promise<any>
-     * [
-     *  - 'id' => int Идентификатор аудио
-     *  - 'title' => string Название аудио
-     * ]
+     * @param {Object} audio_meta анные полученные после загрузки аудио.
+     * @return {Promise<IMarusiaApiCreateAudio>}
      * @see upload() Смотри тут
      * @api
-     * @throws Exception
      */
     public async marusiaCreateAudio(audio_meta: object): Promise<IMarusiaApiCreateAudio> {
         this._request.post = {
