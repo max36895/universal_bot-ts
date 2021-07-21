@@ -3,6 +3,7 @@ import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
 import {IYandexRequestDownloadSound, TelegramRequest, VkRequest, YandexSoundRequest,} from "../api";
 import {Text} from "../components/standard/Text";
+import {MarusiaRequest} from "../api/MarusiaRequest";
 
 /**
  * @class SoundTokens
@@ -196,7 +197,26 @@ export class SoundTokens extends Model {
                 break;
 
             case SoundTokens.T_MARUSIA:
+                if (await this.whereOne(where)) {
+                    return this.soundToken;
+                } else if (this.path) {
+                    const marusiaApi = new MarusiaRequest();
+                    const uploadServerResponse = await marusiaApi.marusiaGetAudioUploadLink();
+                    if (uploadServerResponse) {
+                        const uploadResponse = await marusiaApi.upload(uploadServerResponse.audio_upload_link, this.path);
+                        if (uploadResponse) {
+                            const doc = await marusiaApi.marusiaCreateAudio(uploadResponse);
+                            if (doc) {
+                                this.soundToken = doc.id;
+                                if (await this.save(true)) {
+                                    return this.soundToken;
+                                }
+                            }
+                        }
+                    }
+                }
                 return null;
+                break;
         }
         return null;
     }

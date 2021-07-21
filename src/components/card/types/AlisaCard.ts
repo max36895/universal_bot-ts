@@ -74,10 +74,6 @@ export class AlisaCard extends TemplateCardTypes {
         const countImage = this.images.length;
         if (countImage) {
             if (isOne) {
-                let button: IAlisaButtonCard = this.images[0].button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-                if (!button.text) {
-                    button = this.button.getButtons();
-                }
                 if (!this.images[0].imageToken) {
                     if (this.images[0].imageDir) {
                         const mImage = new ImageTokens();
@@ -87,6 +83,10 @@ export class AlisaCard extends TemplateCardTypes {
                     }
                 }
                 if (this.images[0].imageToken) {
+                    let button: IAlisaButtonCard = this.images[0].button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                    if (!button.text) {
+                        button = this.button.getButtons();
+                    }
                     const object: IAlisaBigImage = {
                         type: AlisaCard.ALISA_CARD_BIG_IMAGE,
                         image_id: this.images[0].imageToken,

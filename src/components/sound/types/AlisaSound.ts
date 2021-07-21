@@ -385,6 +385,6 @@ export class AlisaSound implements TemplateSoundTypes {
      * @api
      */
     public static removeSound(text: string): string {
-        return text.replace(/(<speaker audio="([^"]+)">)|(<speaker effect="([^"]+)">)|(sil <\[\d*\]>)/iumg, '');
+        return text.replace(/(<speaker audio="([^"]+)">)|(<speaker effect="([^"]+)">)|(sil <\[\d+]>)/img, '');
     }
 }

@@ -274,7 +274,7 @@ export class Bot {
                 }
 
                 this._botController.run();
-                if (this._botController.thisIntentName) {
+                if (this._botController.thisIntentName !== null) {
                     this._botController.userData.oldIntentName = this._botController.thisIntentName;
                 } else {
                     delete this._botController.userData.oldIntentName;

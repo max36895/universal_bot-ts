@@ -3,6 +3,7 @@ import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
 import {IYandexRequestDownloadImage, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
 import {Text} from "../components/standard/Text";
+import {MarusiaRequest} from "../api/MarusiaRequest";
 
 /**
  * @class ImageTokens
@@ -151,8 +152,29 @@ export class ImageTokens extends Model {
                 }
                 break;
 
+            case ImageTokens.T_MARUSIA:
+                where.type = ImageTokens.T_MARUSIA;
+                if (await this.whereOne(where)) {
+                    return this.imageToken;
+                } else if (this.path) {
+                    const marusiaApi = new MarusiaRequest();
+                    const uploadServerResponse = await marusiaApi.marusiaGetPictureUploadLink();
+                    if (uploadServerResponse) {
+                        const uploadResponse = await marusiaApi.upload(uploadServerResponse.picture_upload_link, this.path);
+                        if (uploadResponse) {
+                            const photo = await marusiaApi.marusiaSavePicture(uploadResponse.photo, uploadResponse.server, uploadResponse.hash);
+                            if (photo) {
+                                this.imageToken = photo.photo_id;
+                                if (await this.save(true)) {
+                                    return this.imageToken;
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+
             case ImageTokens.T_VK:
-            case ImageTokens.T_MARUSIA: // TODO не понятно как получить токен, возможно также и в вк
                 where.type = ImageTokens.T_VK;
                 if (await this.whereOne(where)) {
                     return this.imageToken;

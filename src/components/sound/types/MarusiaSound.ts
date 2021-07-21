@@ -282,13 +282,11 @@ export class MarusiaSound implements TemplateSoundTypes {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string = Text.getText(sound.sounds);
                         /**
-                         * Не стоит так делать, так как нужно время, пока Yandex обработает звуковую дорожку.
+                         * Не стоит так делать, так как нужно время, пока Vk обработает звуковую дорожку.
                          * Лучше загружать звуки через консоль администратора!
                          * @see (https://vk.com/dev/marusia_skill_docs10) Смотри тут
                          */
                         if (is_file(sText) || Text.isUrl(sText)) {
-                            // todo потом добавить
-                            continue;
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_MARUSIA;
                             sModel.path = sText;
