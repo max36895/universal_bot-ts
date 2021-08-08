@@ -100,6 +100,9 @@ export class Alisa extends TemplateTypeModel {
                 if (typeof content.request.payload === 'string') {
                     this.controller.userCommand = content.request.payload;
                     this.controller.originalUserCommand = content.request.payload;
+                } else {
+                    this.controller.userCommand = content.request.command?.trim() || '';
+                    this.controller.originalUserCommand = content.request.original_utterance?.trim() || '';
                 }
                 this.controller.payload = content.request.payload;
             }
