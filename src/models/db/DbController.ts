@@ -67,7 +67,7 @@ export class DbController extends DbControllerModel {
      * Иначе будет добавлена новая запись.
      *
      * @param {QueryData} queryData Данные для сохранения записи
-     * @param {boolean} isNew Определяет необходимость добавления новой записси
+     * @param {boolean} isNew Определяет необходимость добавления новой записи
      * @return {Promise<Object>}
      * @api
      */
