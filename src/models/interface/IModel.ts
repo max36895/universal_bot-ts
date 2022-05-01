@@ -29,3 +29,7 @@ export interface IModelRes {
      */
     data?: any;
 }
+
+export interface ILabelAttr {
+    [name: string | number]: any
+}

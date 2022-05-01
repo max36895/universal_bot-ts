@@ -1,5 +1,5 @@
 import {mmApp} from "../../core";
-import {IModelRes, IModelRules} from "../interface/IModel";
+import {IModelRes, IModelRules, ILabelAttr} from "../interface/IModel";
 import {DbControllerModel, IDbControllerResult} from "./DbControllerModel";
 import {IQueryData, QueryData} from "./QueryData";
 import {DbController} from "./DbController";
@@ -30,7 +30,7 @@ export abstract class Model implements IDbControllerResult {
      *
      * @return object
      */
-    public abstract attributeLabels(): { [name: string | number]: any };
+    public abstract attributeLabels(): ILabelAttr ;
 
     /**
      * Название таблицы/файла с данными.
@@ -93,6 +93,7 @@ export abstract class Model implements IDbControllerResult {
         const labels = this.attributeLabels();
         let key = null;
         Object.keys(labels).forEach((index) => {
+            // @ts-ignore
             if (labels[index] === 'id' || labels[index] === 'ID') {
                 key = index;
                 return index;
