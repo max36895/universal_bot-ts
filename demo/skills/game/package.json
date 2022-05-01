@@ -2,7 +2,8 @@
   "name": "u_bot_demo",
   "description": "Демо пример игры",
   "keywords": [
-    "Игра математика"],
+    "Игра математика"
+  ],
   "author": "Maxim-M",
   "license": "MIT",
   "version": "1.0.0",

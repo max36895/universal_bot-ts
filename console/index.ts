@@ -1,48 +1,17 @@
-#!/usr/bin/env node
-'use strict';
-/**
- * Универсальное приложение по созданию навыков и ботов.
- * Скрипт позволяет создавать шаблон для приложения.
- * @version 1.0
- * @author Maxim-M maximco36895@yandex.ru
- * @module
- */
-
-const consoleController = require('./controllers/ConsoleController');
-const utils = require('./utils').utils;
-
-const argv = process.argv;
-
-const param = {};
-if (argv[2]) {
-    param.command = argv[2].toLowerCase();
-    if (argv[3]) {
-        if (argv[3].indexOf('.json') !== -1) {
-            if (utils.is_file(argv[3])) {
-                const jsonParam = utils.fread(argv[3]);
-                param.appName = jsonParam.name;
-                param.params = jsonParam;
-            }
-        } else {
-            param.appName = argv[3];
-        }
-    }
-}
-consoleController.main(param);
-process.exitCode = 1;
-
 /**
  * Консольный скрипт
  * =================
+ *
  * Назначение
  * ----------
  * Скрипт предназначен для быстрого создания приложения.
  * Он способен создать шаблон приложения.
+ *
  * Использование
  * -------------
  * Чтобы воспользоваться скриптом, запустите файл ubot.js, и передайте необходимые параметры.
  * ```bash
- * npm ubot ...
+ * npm ubot
  * ```
  *
  * Команды
@@ -57,11 +26,11 @@ process.exitCode = 1;
  * -----------------
  * ```json
  * {
- *   "name": "Название проекта (*)",
- *   "type": "Тип проекта. default, quiz",
- *   "config": ["Конфигурация для подключения к бд. Структуру смотри в mmApp.config"],
- *   "params": ["Параметры приложения. Структуру смотри в mmApp.params"],
- *   "path": "Директория, в которой будет создан проект. По умолчанию, проект создается в папке и именем проекта, в директории запуска скрипта."
+ *  "name": "Название проекта (*)",
+ *  "type": "Тип проекта. default, quiz",
+ *  "config": ["Конфигурация для подключения к бд. Структуру смотри в mmApp.config"],
+ *  "params": ["Параметры приложения. Структуру смотри в mmApp.params"],
+ *  "path": "Директория, в которой будет создан проект. По умолчанию, проект создается в папке и именем проекта, в директории запуска скрипта."
  * }
  * ```
  * '*' - обозначены обязательные поля.
@@ -75,11 +44,16 @@ process.exitCode = 1;
  * Создание проекта, используя в качестве параметра json
  * ```json
  * {
- *   "name": "project",
- *   "type": "quiz"
+ *  "name": "project",
+ *  "type": "quiz"
  * }
  * ```
  * ```bash
  * npm ubot create project.json
  * ```
+ * @module
  */
+export * from './ubot'
+export * from './utils'
+export * from './controllers/ConsoleController';
+export * from './controllers/CreateController';

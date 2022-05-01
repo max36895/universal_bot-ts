@@ -1,11 +1,13 @@
-export interface IMarusiaApiPictureUpdateLink {
+import {IVkApi} from "./IVkApi";
+
+export interface IMarusiaApiPictureUpdateLink extends IVkApi {
     /**
      * Адрес сервера для загрузки изображения
      */
     picture_upload_link: string;
 }
 
-export interface IMarusiaApiSavePicture {
+export interface IMarusiaApiSavePicture extends IVkApi {
     /**
      * Идентификатор приложения
      */
@@ -16,14 +18,14 @@ export interface IMarusiaApiSavePicture {
     photo_id: string;
 }
 
-export interface IMarusiaApiAudioUpdateLink {
+export interface IMarusiaApiAudioUpdateLink extends IVkApi {
     /**
      * Адрес сервера для загрузки аудио
      */
     audio_upload_link: string;
 }
 
-export interface IMarusiaApiCreateAudio {
+export interface IMarusiaApiCreateAudio extends IVkApi {
     /**
      * Идентификатор аудио
      */

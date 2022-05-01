@@ -2,10 +2,9 @@ import {assert} from 'chai'
 import {Nlu, INlu} from "../../src";
 
 describe('Nlu test', () => {
-    let nlu: Nlu = null;
+    let nlu: Nlu = new Nlu();
 
     beforeEach(() => {
-        nlu = new Nlu();
         const nluContent: INlu = {
             thisUser: {
                 username: 'name',
@@ -29,9 +28,7 @@ describe('Nlu test', () => {
                         start: 0,
                         end: 1
                     },
-                    value: {
-                        integer: 512
-                    }
+                    value: 512
                 },
                 {
                     type: Nlu.T_FIO,
@@ -129,7 +126,7 @@ describe('Nlu test', () => {
 
     it('Get number', () => {
         assert.isTrue(nlu.getNumber().status);
-        assert.deepStrictEqual(nlu.getNumber().result, [{integer: 512}]);
+        assert.deepStrictEqual(nlu.getNumber().result, [512]);
     });
 
     it('Get intent', () => {

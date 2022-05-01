@@ -2,6 +2,7 @@ import {Bot} from "../../../src";
 import skillGameConfig from "../../config/skillGameConfig";
 import skillGameParam from "../../config/skillGameParam";
 import {GameController} from "./controller/GameController";
+import {IncomingMessage, ServerResponse} from "http";
 
 const bot = new Bot();
 bot.initConfig(skillGameConfig());
@@ -15,6 +16,6 @@ bot.initBotController(logic);
 //     isShowTime: true,
 // }
 // bot.test(params);
-module.exports = async (req, res) => {
+module.exports = async (req: IncomingMessage, res: ServerResponse) => {
     bot.start(req, res)
 };

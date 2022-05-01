@@ -1,6 +1,6 @@
 import {IAlisaNlu} from "../../../core/interfaces/IAlisa";
 
-export interface INluResult {
+export interface INluResult<T = object> {
     /**
      * Статус. Если удалось найти значение, вернет true, иначе false
      */
@@ -8,22 +8,49 @@ export interface INluResult {
     /**
      * Результат поиска
      */
-    result: string | object;
+    result: T | null;
+}
+
+export interface INluFIO {
+    first_name?: string;
+    patronymic_name?: string;
+    last_name?: string;
+}
+
+export interface INluGeo {
+    country?: string;
+    city?: string;
+    street?: string;
+    house_number?: string;
+    airport?: string;
+}
+
+export interface INluDateTime {
+    year?: number;
+    year_is_relative?: boolean;
+    month?: number;
+    month_is_relative?: boolean;
+    day?: number;
+    day_is_relative?: boolean;
+    hour?: number;
+    hour_is_relative?: boolean;
+    minute?: number;
+    minute_is_relative?: boolean;
 }
 
 export interface INluThisUser {
     /**
      * Имя
      */
-    username: string;
+    username: string | null;
     /**
      * Фамилия
      */
-    first_name?: string;
+    first_name?: string | null;
     /**
      * Отчество
      */
-    last_name?: string;
+    last_name?: string | null;
 }
 
 export interface INluSlot {
@@ -38,6 +65,10 @@ export interface INluSlot {
     [name: string]: any;
 }
 
+export interface INluIntents {
+    [name: string]: INluIntent;
+}
+
 export interface INluIntent {
     /**
      * Слоты. В Алисе разработчик сам их задает
@@ -50,4 +81,5 @@ export interface INlu extends IAlisaNlu {
      * Информация о пользователе
      */
     thisUser?: INluThisUser;
+    intents?: INluIntents;
 }

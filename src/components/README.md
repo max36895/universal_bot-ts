@@ -14,6 +14,7 @@
 Класс со статическими методами, упрощающий работу с текстом. В классе предусмотрена возможность по обрезанию текста, поиск вхождений, а также другие методы.
 #### Обрезание текста
 ```typescript
+import {Text} from "./standard/Text";
 const text = 'testing long long text';
 // Обрезание текста троеточием
 Text.resize(text, 7); // -> test...
@@ -23,6 +24,7 @@ Text.resize(text, 7, false); // -> testing
 #### Поиск вхождений
 В случае успешного поиска вернет true, иначе false.
 ```typescript
+import {Text} from "./standard/Text";
 const text = 'testing long long text';
 // Поиск определенного значения
 Text.isSayText('test', text); // -> true
@@ -41,11 +43,13 @@ Text.isSayText(['and', '\btest\b'], text, true); // -> true
 'percent' => number, На сколько процентов текста похожи\
 }
 ```typescript
+import {Text} from "./standard/Text";
 Text.textSimilarity('test', 'test', 90); // -> {persent: 100, index: 0, status: true, text: 'test'};
 Text.textSimilarity('test', 'demo', 90); // -> {index: null, status: false, text: null};
 ```
 #### Добавление правильного окончания
 ```typescript
+import {Text} from "./standard/Text";
 const titles = [
     'Яблоко',
     'Яблока',
@@ -59,13 +63,13 @@ Text.getEnding(10, titles); // -> Яблок
 Text.getEnding(10, titles, 0); // -> Яблоко
 ```
 
-
 ### Navigation
 Класс отвечающий за корректную навигацию по элементам меню. Удобен в том случае, если в приложении есть карточки с большим количеством элементов и нужна возможность для навигации.
 Класс позволяет не только перемещаться по различным страницам, а также определяет на какой из элементов списка нажал пользователь.
 #### Примеры использования
 Стандартная навигация
 ```typescript
+import {Navigation} from "./standard/Navigation";
 const elements = [1,2,3,4,5,6,7,8,9,0]; // Массив с элементами
 const maxVisibleElements = 5; // Количество отображаемых элементов
 const nav = new Navigation(maxVisibleElements); // Подключаем класс с навигацией
@@ -74,6 +78,7 @@ console.log(showElements); // -> [1,2,3,4,5]
 ```
 Навигация с отслеживанием команд "Дальше" или "Назад"
 ```typescript
+import {Navigation} from "./standard/Navigation";
 const elements = [1,2,3,4,5,6,7,8,9,0];
 const maxVisibleElements = 5;
 const nav = new Navigation(maxVisibleElements);
@@ -86,6 +91,7 @@ console.log(showElements); // -> [1,2,3,4,5]
 ```
 Навигация с отслеживанием текущей страницы пользователя
 ```typescript
+import {Navigation} from "./standard/Navigation";
 const elements = [1,2,3,4,5,6,7,8,9,0];
 const maxVisibleElements = 5;
 const nav = new Navigation(maxVisibleElements);
@@ -97,11 +103,12 @@ console.log(nav.thisPage); // -> 0
 ```
 Выбор пользователем определенного элемента списка
 ```typescript
+import {Navigation} from "./standard/Navigation";
 const elements = [1,2,3,4,5,6,7,8,9,0];
 const maxVisibleElements = 5;
 const nav = new Navigation(maxVisibleElements);
 nav.thisPage = 1;
-selectedElement = nav.selectedElement(elements, '1');
+let selectedElement = nav.selectedElement(elements, '1');
 console.log(selectedElement); // -> 6
 nav.thisPage = 0;
 selectedElement = nav.selectedElement(elements, '1');
@@ -109,6 +116,7 @@ console.log(selectedElement); // -> 1
 ```
 Если передается массив массивов, то можно указать ключ для поиска.
 ```typescript
+import {Navigation} from "./standard/Navigation";
 const elements = [
     {
         title: 'title 1',

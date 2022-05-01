@@ -97,7 +97,7 @@ export interface IViberContent {
     /**
      * Информация о пользователе. Для event='message' придет sender, иначе user
      */
-    sender?: IViberUser;
+    sender: IViberUser;
     /**
      * Информация о пользователе. Для event='message' придет sender, иначе user
      */

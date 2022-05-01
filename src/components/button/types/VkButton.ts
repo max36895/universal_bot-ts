@@ -9,7 +9,7 @@ import {Button} from "../Button";
 export class VkButton extends TemplateButtonTypes {
     /**
      * @const string: Название для группы. Использовать следующим способом:
-     * button.payload[VkButton::GROUP_NAME] = <Название_группы>
+     * button.payload[VkButton.GROUP_NAME] = <Название_группы>
      * Используется для группировки кнопок
      */
     public static readonly GROUP_NAME = '_group';
@@ -21,7 +21,7 @@ export class VkButton extends TemplateButtonTypes {
      * @api
      */
     public getButtons(): IVkButtonObject {
-        const groups = [];
+        const groups: number[] = [];
         const buttons: IVkButton[] | IVkButton[][] = [];
         let index = 0;
         this.buttons.forEach((button) => {
@@ -57,12 +57,15 @@ export class VkButton extends TemplateButtonTypes {
                 object.hash = button.payload.hash || null;
             }
             object = {...object, ...button.options};
-            if (typeof button.options[VkButton.GROUP_NAME] !== 'undefined') {
-                delete object[VkButton.GROUP_NAME];
-                if (typeof groups[button.options[VkButton.GROUP_NAME]] !== 'undefined') {
-                    (<IVkButton[]>buttons[groups[button.options[VkButton.GROUP_NAME]]]).push(object);
+            const groupOptions = button.options[VkButton.GROUP_NAME];
+            if (typeof groupOptions !== 'undefined') {
+                if (typeof object[VkButton.GROUP_NAME] !== 'undefined') {
+                    delete object[VkButton.GROUP_NAME];
+                }
+                if (typeof groups[+groupOptions] !== 'undefined') {
+                    (<IVkButton[]>buttons[groups[+groupOptions]]).push(object);
                 } else {
-                    groups[button.options[VkButton.GROUP_NAME]] = index;
+                    groups[+groupOptions] = index;
                     buttons[index] = [object];
                     index++;
                 }

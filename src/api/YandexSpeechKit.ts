@@ -43,7 +43,7 @@ export class YandexSpeechKit extends YandexRequest {
      * Чтобы отметить паузу между словами, используйте -.
      * Ограничение на длину строки: 5000 символов.
      */
-    public text: string;
+    public text: string | undefined;
     /**
      * Язык.
      * Допустимые значения:
@@ -90,24 +90,25 @@ export class YandexSpeechKit extends YandexRequest {
      * 16000 — частота дискретизации 16 кГц;
      * 8000 — частота дискретизации 8 кГц.
      */
-    public sampleRateHertz: number;
+    public sampleRateHertz: number | undefined;
     /**
      * Идентификатор каталога, к которому у вас есть доступ. Требуется для авторизации с пользовательским аккаунтом (см. ресурс UserAccount ). Не используйте это поле, если вы делаете запрос от имени сервисного аккаунта.
      * Максимальная длина строки в символах — 50.
      */
-    public folderId: number;
+    public folderId: number | null;
 
     /**
      * YandexSpeechKit constructor.
      * @param {string} oauth Авторизационный токен для успешного получения tts.
      */
-    public constructor(oauth: string = null) {
+    public constructor(oauth: string | null = null) {
         super(oauth);
         this.lang = YandexSpeechKit.L_RU;
         this.emotion = YandexSpeechKit.E_NEUTRAL;
         this.speed = 1.0;
         this.format = YandexSpeechKit.F_OGGOPUS;
         this.folderId = null;
+        this.voice = 'oksana'
         if (oauth === null) {
             this.setOAuth(mmApp.params.yandex_speech_kit_token || null);
         }
@@ -150,13 +151,13 @@ export class YandexSpeechKit extends YandexRequest {
      * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
      * @api
      */
-    public getTts(text: string = null): Promise<any> {
+    public getTts(text: string | null = null): Promise<any> {
         if (text) {
             this.text = text;
         }
         this._request.url = YandexSpeechKit.TTS_API_URL;
         this._request.isConvertJson = false;
         this._initPost();
-        return this.call();
+        return this.call<any>();
     }
 }

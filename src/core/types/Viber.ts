@@ -4,7 +4,7 @@ import {IViberContent} from "../interfaces/IViber";
 import {mmApp} from "../mmApp";
 import {ViberRequest} from "../../api/ViberRequest";
 import {IViberParams} from "../../api/interfaces/IViberApi";
-import {Buttons} from "../../components/button";
+import {Buttons, IViberButtonObject} from "../../components/button";
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Viber.
@@ -18,7 +18,7 @@ export class Viber extends TemplateTypeModel {
      * @param {IViberContent|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @see TemplateTypeModel::init() Смотри тут
+     * @see TemplateTypeModel.init() Смотри тут
      * @api
      */
     public async init(query: string | IViberContent, controller: BotController): Promise<boolean> {
@@ -67,13 +67,15 @@ export class Viber extends TemplateTypeModel {
             if (content.message) {
                 switch (content.event) {
                     case 'conversation_started':
-                        this.controller.userId = content.user.id;
+                        if (content.user) {
+                            this.controller.userId = content.user.id;
 
-                        this.controller.userCommand = '';
-                        this.controller.messageId = 0;
+                            this.controller.userCommand = '';
+                            this.controller.messageId = 0;
 
-                        mmApp.params.viber_api_version = content.user.api_version || 2;
-                        this.setNlu(content.sender.name || '');
+                            mmApp.params.viber_api_version = content.user.api_version || 2;
+                            this.setNlu(content.sender.name || '');
+                        }
                         return true;
 
                     case 'message':
@@ -114,20 +116,20 @@ export class Viber extends TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<string>}
-     * @see TemplateTypeModel::getContext() Смотри тут
+     * @see TemplateTypeModel.getContext() Смотри тут
      * @api
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
             const viberApi = new ViberRequest();
             const params: IViberParams = {};
-            const keyboard = this.controller.buttons.getButtons(Buttons.T_VIBER_BUTTONS);
+            const keyboard = this.controller.buttons.getButtons<IViberButtonObject>(Buttons.T_VIBER_BUTTONS);
             if (keyboard) {
                 params.keyboard = keyboard;
                 params.keyboard.Type = 'keyboard';
             }
 
-            await viberApi.sendMessage(<string>this.controller.userId, mmApp.params.viber_sender, this.controller.text, params);
+            await viberApi.sendMessage(<string>this.controller.userId, mmApp.params.viber_sender as string, this.controller.text, params);
 
             if (this.controller.card.images.length) {
                 const res = await this.controller.card.getCards();

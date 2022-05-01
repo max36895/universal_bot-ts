@@ -38,7 +38,10 @@ export class Sound {
      * @return {Promise<Object|string>}
      * @api
      */
-    public async getSounds(text: string, userSound: TemplateSoundTypes = null): Promise<any> {
+    public async getSounds(text: string | null, userSound: TemplateSoundTypes | null = null): Promise<any> {
+        if (!text) {
+            return '';
+        }
         let sound: any = null;
         switch (mmApp.appType) {
             case T_ALISA:

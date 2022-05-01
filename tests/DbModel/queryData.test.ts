@@ -3,7 +3,7 @@ import {IQueryData, QueryData} from "../../src/models";
 
 describe('queryData', () => {
     it('getQueryData', () => {
-        let result: IQueryData = QueryData.getQueryData('');
+        let result: IQueryData | null = QueryData.getQueryData('');
         assert.isTrue(result === null);
 
         result = QueryData.getQueryData('`test`=512');

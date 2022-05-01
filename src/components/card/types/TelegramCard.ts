@@ -2,6 +2,7 @@ import {TemplateCardTypes} from "./TemplateCardTypes";
 import {TelegramRequest} from "../../../api/TelegramRequest";
 import {mmApp} from "../../../core/mmApp";
 import {ImageTokens} from "../../../models/ImageTokens";
+import {TTelegramChatId} from "../../../api";
 
 export interface ITelegramCard {
     /**
@@ -27,8 +28,8 @@ export class TelegramCard extends TemplateCardTypes {
      * @return {Promise<ITelegramCard>}
      * @api
      */
-    public async getCard(isOne: boolean): Promise<ITelegramCard> {
-        let object: ITelegramCard = null;
+    public async getCard(isOne: boolean): Promise<ITelegramCard | null> {
+        let object: ITelegramCard | null = null;
         const options: string[] = [];
         for (let i = 0; i < this.images.length; i++) {
             const image = this.images[i];
@@ -41,13 +42,13 @@ export class TelegramCard extends TemplateCardTypes {
                     image.imageToken = await mImage.getToken();
                 }
             } else {
-                await (new TelegramRequest()).sendPhoto(mmApp.params.user_id, image.imageToken, image.desc);
+                await (new TelegramRequest()).sendPhoto(mmApp.params.user_id as TTelegramChatId, image.imageToken, image.desc);
             }
             options.push(image.title);
         }
         if (options.length > 1) {
             object = {
-                question: this.title,
+                question: this.title || '',
                 options: options
             };
         }

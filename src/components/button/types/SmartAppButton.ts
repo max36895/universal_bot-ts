@@ -26,7 +26,7 @@ export class SmartAppButton extends TemplateButtonTypes {
      *
      * @return ISberSmartAppSuggestionButton[]|ISberSmartAppCardAction
      * [
-     *  - string text: Текст на кнопке.
+     *  - string text: Текст в кнопке.
      *  - string payload: Произвольные данные, которые будут отправлены при нажатии на кнопку.
      *  - string url: Ссылка по которой будет произведен переход после нажатия на кнопку.
      * ]
@@ -43,7 +43,7 @@ export class SmartAppButton extends TemplateButtonTypes {
                         type: 'deep_link'
                     };
                 } else {
-                    const text = Text.resize(button.title, 64);
+                    const text = Text.resize(button.title || '', 64);
                     if (text) {
                         return {
                             text,
@@ -54,7 +54,7 @@ export class SmartAppButton extends TemplateButtonTypes {
             }
         } else {
             this.buttons.forEach((button) => {
-                const title = Text.resize(button.title, 64);
+                const title = Text.resize(button.title || '', 64);
                 if (title) {
                     const object: ISberSmartAppSuggestionButton = {
                         title,

@@ -2,7 +2,7 @@ const fs = require('fs');
 const utils = require('../utils').utils;
 
 /**
- * Класс, позволяющий создать проект
+ * Класс, создающий пустой проект, или шаблон для готового проекта.
  */
 class CreateController {
     /**
@@ -185,6 +185,7 @@ class CreateController {
      * Инициализация параметров проекта
      * @param name Имя проекта
      * @param type Тип проекта
+     * @public
      */
     init = function (name = null, type = this.T_DEFAULT) {
         if (name) {
@@ -212,5 +213,8 @@ class CreateController {
     };
 }
 
+/**
+ * @method init
+ */
 
 exports.create = CreateController;

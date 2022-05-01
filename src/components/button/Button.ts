@@ -1,4 +1,4 @@
-import {TButtonPayload, IButtonOptions} from "./interfaces/IButton";
+import {IButtonOptions, TButtonPayload} from "./interfaces/IButton";
 import {mmApp} from "../../core/mmApp";
 import {Text} from "../standard";
 
@@ -27,25 +27,25 @@ export class Button {
     /**
      * Тип кнопки.
      */
-    public type: string;
+    public type: string | null;
     /**
-     * Текст на кнопке.
+     * Текст в кнопке.
      */
-    public title: string;
+    public title: string | null;
     /**
-     * Ссылка для перехода при нажатии кнопки.
+     * Ссылка для перехода при нажатии на кнопку.
      */
-    public url: string;
+    public url: string | null;
     /**
-     * Произвольные данные, отправляемые при нажатии кнопки.
+     * Произвольные данные, отправляемые при нажатии на кнопку.
      */
     public payload: TButtonPayload;
     /**
-     * True, чтобы отображать кнопку как сайджест.
+     * Определяет отображение кнопки как сайджеста.
      */
     public hide: boolean;
     /**
-     * Дополнительные параметры для кнопки.
+     * Дополнительные параметры кнопки.
      */
     public options: IButtonOptions;
 
@@ -64,14 +64,14 @@ export class Button {
     /**
      * Инициализация кнопки.
      *
-     * @param {string} title Текст на кнопке.
-     * @param {string} url Ссылка для перехода, при нажатии кнопки.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param {boolean} hide True, чтобы отображать кнопку как сайджест.
-     * @param {IButtonOptions} options Дополнительные параметры для кнопки
+     * @param {string} title Текст в кнопке.
+     * @param {string} url Ссылка для перехода, при нажатии на кнопку.
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
+     * @param {boolean} hide Определяет отображение кнопки как сайджеста.
+     * @param {IButtonOptions} options Дополнительные параметры кнопки
      * @return boolean
      */
-    private _init(title: string, url: string, payload: TButtonPayload, hide: boolean, options: IButtonOptions = {}): boolean {
+    private _init(title: string | null, url: string | null, payload: TButtonPayload, hide: boolean, options: IButtonOptions = {}): boolean {
         if (title || title === '') {
             this.title = title;
             if (url && Text.isUrl(url)) {
@@ -97,28 +97,28 @@ export class Button {
     /**
      * Инициализация кнопки в виде сайджеста(ссылки под текстом).
      *
-     * @param {string} title Текст на кнопке.
-     * @param {string} url Ссылка для перехода, при нажатии кнопки.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param {IButtonOptions} options Дополнительные параметры для кнопки
+     * @param {string} title Текст в кнопке.
+     * @param {string} url Ссылка для перехода, при нажатии на кнопку.
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
+     * @param {IButtonOptions} options Дополнительные параметры кнопки
      * @return boolean
      * @api
      */
-    public initLink(title: string, url: string = '', payload: TButtonPayload = null, options: IButtonOptions = {}): boolean {
+    public initLink(title: string | null, url: string | null = '', payload: TButtonPayload = null, options: IButtonOptions = {}): boolean {
         return this._init(title, url, payload, Button.B_LINK, options);
     }
 
     /**
      * Инициализация кнопки в виде кнопки.
      *
-     * @param {string} title Текст на кнопке.
-     * @param {string} url Ссылка для перехода, при нажатии кнопки.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param {IButtonOptions} options Дополнительные параметры для кнопки
+     * @param {string} title Текст в кнопке.
+     * @param {string} url Ссылка для перехода, при нажатии на кнопку.
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
+     * @param {IButtonOptions} options Дополнительные параметры кнопки
      * @return boolean
      * @api
      */
-    public initBtn(title: string, url: string = '', payload: TButtonPayload = null, options: IButtonOptions = {}): boolean {
+    public initBtn(title: string | null, url: string | null = '', payload: TButtonPayload = null, options: IButtonOptions = {}): boolean {
         return this._init(title, url, payload, Button.B_BTN, options);
     }
 }

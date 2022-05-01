@@ -54,7 +54,7 @@ export class GameController extends BotController {
         this.text += this.userData['example'];
     }
 
-    public action(intentName): void {
+    public action(intentName: string): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет! Давай поиграем в математику!' +

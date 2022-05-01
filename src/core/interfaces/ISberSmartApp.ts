@@ -5,11 +5,11 @@
  * @variant RUN_APP — сообщает о запуске смартапа;
  * @variant CLOSE_APP — сообщает о закрытии смартапа.
  */
-type TMessageName = 'MESSAGE_TO_SKILL' | 'SERVER_ACTION' | 'RUN_APP' | 'CLOSE_APP'
+export type TMessageName = 'MESSAGE_TO_SKILL' | 'SERVER_ACTION' | 'RUN_APP' | 'CLOSE_APP'
 
-type TSberSmartAppType = 'DIALOG' | 'WEB_APP' | 'APK' | 'CHAT_APP';
+export type TSberSmartAppType = 'DIALOG' | 'WEB_APP' | 'APK' | 'CHAT_APP';
 
-interface ISberSmartAppDeviceInfo {
+export interface ISberSmartAppDeviceInfo {
     /**
      * Операционная система устройства.
      * Возможные значения:
@@ -74,7 +74,7 @@ interface ISberSmartAppDeviceInfo {
     additionalInfo: object;
 }
 
-interface ISberSmartAppAppInfo {
+export interface ISberSmartAppAppInfo {
     /**
      * Идентификатор проекта в SmartApp Studio.
      */
@@ -106,7 +106,7 @@ interface ISberSmartAppAppInfo {
     frontendStateId?: string
 }
 
-interface ISberSmartAppCharacterInfo {
+export interface ISberSmartAppCharacterInfo {
     /**
      * Идентификатор персонажа, которого выбрал пользователь.
      * Возможные значения:
@@ -133,7 +133,7 @@ interface ISberSmartAppCharacterInfo {
     appeal: "official" | "no_official";
 }
 
-interface ISberSmartAppMetaInfo {
+export interface ISberSmartAppMetaInfo {
     /**
      * Данные о текущем времени на устройстве пользователя.
      */
@@ -153,7 +153,7 @@ interface ISberSmartAppMetaInfo {
     }
 }
 
-interface ISberSmartAppEntities {
+export interface ISberSmartAppEntities {
     /**
      *
      */
@@ -172,7 +172,7 @@ interface ISberSmartAppEntities {
     adjectival_number?: boolean
 }
 
-interface ISberSmartAppMessageInfo {
+export interface ISberSmartAppMessageInfo {
     /**
      * Исходное сообщение пользователя: распознанный голос или введенный текст. В случае распознанного голоса предоставляется текст запроса без нормализации числительных и другого, соответственно, все числа, номера телефонов и тд представлены словами.
      * Пример: "хочу заказать пиццу на девять вечера за пятьсот рублей".
@@ -212,7 +212,7 @@ export interface ISberSmartAppServerAction {
     parameters: any
 }
 
-interface ISberSmartAppSelectedItem {
+export interface ISberSmartAppSelectedItem {
     /**
      * Номер элемента из списка, начиная с 0.
      */
@@ -227,7 +227,7 @@ interface ISberSmartAppSelectedItem {
     is_query_by_number: boolean
 }
 
-interface ISberSmartAppAnnotations {
+export interface ISberSmartAppAnnotations {
     /**
      * Информация о прохождении цензуры.
      */
@@ -349,7 +349,7 @@ export interface ISberSmartAppRequestPayload {
     message: ISberSmartAppMessageInfo
 }
 
-interface ISberSmartAppUuId {
+export interface ISberSmartAppUuId {
     /**
      * Идентификатор канала коммуникации.
      */
@@ -448,7 +448,7 @@ export type TSberSmartAppEmotionId =
     | 'strakh'
     | 'zainteresovannost';
 
-interface ISberSmartAppSuggestionAction {
+export interface ISberSmartAppSuggestionAction {
     /**
      * Текст, который появится на экране. Передается, только в действии типа text.
      */
@@ -484,7 +484,7 @@ export interface ISberSmartAppSuggestionButton {
  * @variant preserve_panel_state — сохраняет текущее состояние шторки независимо от длины текста.
  * @default auto_expand.
  */
-type TSberSmartAppExpandPolicy = 'auto_expand' | 'force_expand' | 'preserve_panel_state'
+export type TSberSmartAppExpandPolicy = 'auto_expand' | 'force_expand' | 'preserve_panel_state'
 
 export interface ISberSmartAppBubble {
     /**
@@ -503,7 +503,7 @@ export interface ISberSmartAppBubble {
     expand_policy: TSberSmartAppExpandPolicy;
 }
 
-type TSberSmartAppPadding = '0x' | '1x' | '2x' | '4x' | '5x' | '6x' | '8x' | '9x' | '10x' | '12x' | '16x';
+export type TSberSmartAppPadding = '0x' | '1x' | '2x' | '4x' | '5x' | '6x' | '8x' | '9x' | '10x' | '12x' | '16x';
 
 export interface ISberSmartAppCardAction {
     /**
@@ -569,7 +569,7 @@ export type TSberSmartAppTextColor =
     | 'critical'
     | 'link';
 
-interface ISberSmartAppCardText {
+export interface ISberSmartAppCardText {
     /**
      * Текст, который необходимо отобразить. Минимальная длина текста 1 символ.
      */
@@ -616,7 +616,7 @@ export interface ISberSmartAppCardPadding {
     bottom?: TSberSmartAppPadding;
 }
 
-interface ISberSmartAppCardImage {
+export interface ISberSmartAppCardImage {
     /**
      * Адрес изображения.
      */
@@ -797,7 +797,7 @@ export interface ISberSmartAppResponsePayload {
         /**
          * Список кнопок с предложениями смартапа. Каждая кнопка представлена в виде отдельного объекта.
          */
-        buttons: ISberSmartAppSuggestionButton[]
+        buttons: ISberSmartAppSuggestionButton[] | null;
     }
     /**
      * Интент, который смартап получит в следующем ответе ассистента.

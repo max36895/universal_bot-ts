@@ -20,13 +20,19 @@ export abstract class TemplateCardTypes {
     /**
      * Заголовок для карточки.
      */
-    public title: string;
+    public title: string | null;
 
     /**
      * Использование галереи изображений.
      * @type {boolean}
      */
     public isUsedGallery: boolean = false;
+
+    constructor() {
+        this.title = null;
+        this.images = []
+        this.button = new Buttons();
+    }
 
     /**
      * Получение карточки для отображения пользователю.

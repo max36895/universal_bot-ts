@@ -1,3 +1,7 @@
+/**
+ * Абстрактный контроллер, обрабатывающий логику приложения
+ * @module controller/BotController
+ */
 import {Buttons} from "../components/button";
 import {Card} from "../components/card";
 import {Sound} from "../components/sound";
@@ -6,127 +10,128 @@ import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_
 import {Text} from "../components/standard/Text";
 
 /**
- * Абстрактный класс, который должны унаследовать все классы, обрабатывающие логику приложения.
+ * Абстрактный класс, от которого наследуются все классы, обрабатывающие логику приложения.
  * @class BotController
  */
 export abstract class BotController {
     /**
-     * Кнопки отображаемые в приложении.
+     * Компонент, позволяющий отображать кнопки пользователю.
      * @see Buttons Смотри тут
      */
     public buttons: Buttons;
     /**
-     * Карточки отображаемые в приложении.
+     * Компонент, позволяющий отображать карточки пользователю.
      * @see Card Смотри тут
      */
     public card: Card;
     /**
-     * Текст который отобразится пользователю.
+     * Текст, отображаемый пользователю.
      */
     public text: string;
     /**
-     * Текст который услышит пользователь.
-     * !Важно, если переменная заполняется для других типов приложения, тогда отправляется запрос в yandex speechkit для преобразования текста в звук.
+     * Текст, воспроизводимый пользователю.
+     * !Важно, если переменная заполняется для типов приложения отличных от голосовых ассистентов, то отправляется запрос в yandex speechkit для преобразования текста в речь.
      * Полученный звук отправляется пользователю как аудио сообщение.
      */
-    public tts: string;
+    public tts: string | null;
     /**
-     * Обработанный nlu в приложении.
+     * Обработанный nlu.
      * @link [nlu](https://www.maxim-m.ru/glossary/nlu)
      * @see Nlu Смотри тут
      */
     public nlu: Nlu;
     /**
-     * Звуки которые будут присутствовать в приложении.
+     * Звуки, присутствующие в приложении.
      * @see Sound Смотри тут
      */
     public sound: Sound;
     /**
      * Идентификатор пользователя.
      */
-    public userId: string | number;
+    public userId: string | number | null;
     /**
      * Пользовательский токен. Инициализируется когда пользователь авторизовался (Актуально для Алисы).
      */
-    public userToken: string;
+    public userToken: string | null;
     /**
      * Meta данные пользователя.
      */
     public userMeta: any;
     /**
-     * Id сообщения(Порядковый номер сообщения), необходим для того, чтобы понять в 1 раз пишет пользователь или нет.
+     * Id сообщения(Порядковый номер сообщения), необходимый для определения начала нового диалога с приложением.
      */
-    public messageId: number | string;
+    public messageId: number | string | null;
     /**
      * Запрос пользователя в нижнем регистре.
      */
-    public userCommand: string;
+    public userCommand: string | null;
     /**
      * Оригинальный запрос пользователя.
      */
-    public originalUserCommand: string;
+    public originalUserCommand: string | null;
     /**
      * Дополнительные параметры к запросу.
      */
-    public payload: object;
+    public payload: object | string | null | undefined;
     /**
-     * Пользовательские данные, сохраненные в приложении (Хранятся в бд либо в файле. Зависит от параметра mmApp.isSaveDb).
+     * Пользовательские данные, хранящиеся в приложении. (Данный хранятся в базе данных либо в файле, тип зависит от параметра mmApp.isSaveDb).
      */
     public userData: any;
     /**
-     * Запросить авторизацию для пользователя или нет (Актуально для Алисы).
+     * Определяет необходимость запроса авторизации для пользователя (Актуально для Алисы).
      */
     public isAuth: boolean;
     /**
-     * Проверка что авторизация пользователя прошла успешно (Актуально для Алисы).
+     * Определяет успешность авторизации пользователя (Актуально для Алисы).
      */
     public isAuthSuccess: true | false | null;
     /**
-     * Пользовательское локальное хранилище (Актуально для Алисы и Маруси).
+     * Пользовательское локальное хранилище (Актуально для Алисы и Маруси и Сбера).
      */
-    public state: object | string;
+    public state: object | string | null;
     /**
-     * Наличие экрана.
+     * Определяет наличие экрана.
      */
     public isScreen: boolean;
     /**
-     * Завершение сессии.
+     * Определяет состояние завершения сессии.
      */
     public isEnd: boolean;
     /**
-     * Отправлять в конце запрос или нет. (Актуально для Vk и Telegram) False тогда, когда все запросы отправлены внутри логики приложения, и больше ничего отправлять не нужно.
+     * Определяет необходимость отправки запроса к api сервиса. Актуально для Vk и Telegram. Используется в случае, когда все запросы были отправлены в логике приложения, и дополнительных запросов делать не нужно.
      */
     public isSend: boolean;
     /**
      * Полученный запрос.
      */
-    public requestObject: object | string;
+    public requestObject: object | string | null;
 
     /**
      * Идентификатор предыдущего действия пользователя.
      */
-    public oldIntentName: string;
+    public oldIntentName: string | null;
 
     /**
-     * Идентификатор текущего действия пользователя. Чтобы не сохранять идентификатор предыдущей команды, стоит передавать null.
+     * Идентификатор текущего действия пользователя.
+     * В случае, когда не нужно сохранять идентификатор предыдущей команды, необходимо значение установить в null
      */
-    public thisIntentName: string;
+    public thisIntentName: string | null;
 
     /**
-     * Эмоция, с которой будет общаться приложение. Актуально для Сбер.
+     * Определяет эмоцию, с которой будет общаться приложение с пользователем. Актуально для Сбер.
      */
-    public emotion: string;
+    public emotion: string | null;
 
     /**
-     * Манера общения с пользователем. Общаемся на "Вы" или на "ты".
+     * Определяет манеру общения с пользователем. Общаемся на "Вы" или на "ты".
      * Возможные значения:
-     * "official" - официальный тон общения(на Вы)
+     * "official" - Официальный тон общения(на Вы)
      * "no_official" - Общаемся на ты
      * null - можно использовать любой тон
      * Актуально для Сбер
      * @default null
      */
-    public appeal: "official" | "no_official";
+    public appeal: "official" | "no_official" | null;
 
     protected constructor() {
         this.buttons = new Buttons();
@@ -154,6 +159,7 @@ export abstract class BotController {
         this.thisIntentName = null;
         this.emotion = null;
         this.appeal = null;
+        this.payload = null;
     }
 
     /**
@@ -174,7 +180,10 @@ export abstract class BotController {
      * @return {string}
      * @private
      */
-    protected static _getIntent(text: string): string {
+    protected static _getIntent(text: string | null): string | null {
+        if (!text) {
+            return null;
+        }
         const intents: IAppIntent[] = BotController._intents();
         for (const intent of intents) {
             if (Text.isSayText((intent.slots || []), text, (intent.is_pattern || false))) {
@@ -187,20 +196,19 @@ export abstract class BotController {
     /**
      * Обработка пользовательских команд.
      *
-     * Если intentName === null, значит не удалось найти обрабатываемых команд в запросе.
-     * В таком случе стоит смотреть либо на предыдущую команду пользователя.
-     * Либо вернуть текст помощи.
+     * Если не удалось найти обрабатываемых команд в запросе, то в indentName придет null
+     * В таком случае стоит смотреть на предыдущую команду пользователя, либо вернуть текст помощи.
      *
      * @param {string} intentName Название действия.
      */
-    public abstract action(intentName: string): void;
+    public abstract action(intentName: string | null): void;
 
     /**
      * Запуск приложения.
      * @api
      */
     public run(): void {
-        let intent: string = BotController._getIntent(this.userCommand);
+        let intent: string | null = BotController._getIntent(this.userCommand);
         if (intent === null && this.originalUserCommand && this.userCommand !== this.originalUserCommand) {
             intent = BotController._getIntent(this.originalUserCommand.toLowerCase());
         }
@@ -220,7 +228,7 @@ export abstract class BotController {
                 break;
         }
 
-        this.action(intent);
+        this.action(intent as string);
         if (this.tts === null && (mmApp.appType === T_ALISA || mmApp.appType === T_MARUSIA)) {
             this.tts = this.text;
         }

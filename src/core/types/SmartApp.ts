@@ -5,6 +5,7 @@ import {
     ISberSmartAppItem,
     ISberSmartAppResponsePayload,
     ISberSmartAppSession,
+    ISberSmartAppSuggestionButton,
     ISberSmartAppWebhookRequest,
     ISberSmartAppWebhookResponse,
     TSberSmartAppEmotionId
@@ -26,7 +27,7 @@ export class SmartApp extends TemplateTypeModel {
     /**
      * Информация о сессии пользователя.
      */
-    protected _session: ISberSmartAppSession;
+    protected _session: ISberSmartAppSession | null = null;
 
     /**
      * Получение данных, необходимых для построения ответа пользователю.
@@ -38,9 +39,9 @@ export class SmartApp extends TemplateTypeModel {
         const payload: ISberSmartAppResponsePayload = {
             pronounceText: this.controller.text,
             pronounceTextType: 'application/text',
-            device: this._session.device,
-            intent: this.controller.thisIntentName,
-            projectName: this._session.projectName,
+            device: (this._session as ISberSmartAppSession).device,
+            intent: this.controller.thisIntentName as string,
+            projectName: (this._session as ISberSmartAppSession).projectName,
             auto_listening: !this.controller.isEnd,
             finished: this.controller.isEnd
         };
@@ -75,7 +76,7 @@ export class SmartApp extends TemplateTypeModel {
                 payload.items.push(cards);
             }
             payload.suggestions = {
-                buttons: this.controller.buttons.getButtons(Buttons.T_SMARTAPP_BUTTONS)
+                buttons: this.controller.buttons.getButtons<ISberSmartAppSuggestionButton[]>(Buttons.T_SMARTAPP_BUTTONS)
             };
         }
         return payload;
@@ -87,7 +88,7 @@ export class SmartApp extends TemplateTypeModel {
      * @param {ISberSmartAppWebhookRequest|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @see TemplateTypeModel::init() Смотри тут
+     * @see TemplateTypeModel.init() Смотри тут
      * @api
      */
     public async init(query: string | ISberSmartAppWebhookRequest, controller: BotController): Promise<boolean> {
@@ -113,7 +114,7 @@ export class SmartApp extends TemplateTypeModel {
 
                 case 'SERVER_ACTION':
                 case 'RUN_APP':
-                    this.controller.payload = content.payload.server_action.parameters;
+                    this.controller.payload = content.payload?.server_action?.parameters;
                     if (typeof this.controller.payload === 'string') {
                         this.controller.userCommand = this.controller.originalUserCommand = this.controller.payload;
                     }
@@ -168,15 +169,15 @@ export class SmartApp extends TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<ISberSmartAppWebhookResponse>}
-     * @see TemplateTypeModel::getContext() Смотри тут
+     * @see TemplateTypeModel.getContext() Смотри тут
      * @api
      */
     public async getContext(): Promise<ISberSmartAppWebhookResponse> {
         const result: ISberSmartAppWebhookResponse = {
             messageName: 'ANSWER_TO_USER',
-            sessionId: this._session.sessionId,
-            messageId: this._session.messageId,
-            uuid: this._session.uuid
+            sessionId: (this._session as ISberSmartAppSession).sessionId,
+            messageId: (this._session as ISberSmartAppSession).messageId,
+            uuid: (this._session as ISberSmartAppSession).uuid
         };
 
         if (this.controller.sound.sounds.length/* || this.controller.sound.isUsedStandardSound*/) {

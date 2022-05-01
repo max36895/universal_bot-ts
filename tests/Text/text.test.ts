@@ -4,9 +4,18 @@ import {Text} from "../../src";
 describe('Text', () => {
     it('Resize', () => {
         assert.equal('test te', Text.resize('test te'));
-        assert.equal('testing', Text.resize('testing te', 7, false));
+        assert.equal('test te', Text.resize('test te', 12));
+        assert.equal('test te', Text.resize('test te', 7));
         assert.equal('test...', Text.resize('testing te', 7));
+        assert.equal('...', Text.resize('testing te', 3));
+    });
+
+    it('Resize ellipsis', () => {
+        assert.equal('tes', Text.resize('testing te', 3, false));
+        assert.equal('testing', Text.resize('testing te', 7, false));
+        assert.equal('testing te', Text.resize('testing te', 20, false));
         assert.equal('test...', Text.resize('testing te', 7, true));
+        assert.equal('testing te', Text.resize('testing te', 20, true));
     });
 
     it('Is say true', () => {
@@ -14,6 +23,7 @@ describe('Text', () => {
         assert.isTrue(Text.isSayTrue('наверное да'));
         assert.isTrue(Text.isSayTrue('согласен'));
         assert.isTrue(Text.isSayTrue('согласна'));
+        assert.isTrue(Text.isSayTrue('даю согласие'));
         assert.isTrue(Text.isSayTrue('подтверждаю'));
         assert.isTrue(Text.isSayTrue('не знаю но да наверное'));
         assert.isTrue(Text.isSayTrue('конечно не дам тебе'));
@@ -38,14 +48,17 @@ describe('Text', () => {
 
         assert.isTrue(Text.isSayFalse('конечно не дам тебе'));
         assert.isTrue(Text.isSayFalse('неа'));
+        assert.isTrue(Text.isSayFalse('нет'));
+        assert.isTrue(Text.isSayFalse('не'));
+        assert.isTrue(Text.isSayFalse('не знаю'));
         assert.isTrue(Text.isSayFalse('наверное нет'));
         assert.isTrue(Text.isSayFalse('наверное нет но я надо подумать'));
     });
 
     it('Is say text', () => {
-        assert.isTrue(Text.isSayText(Text.getEncodeText('да'), 'куда', true));
+        assert.isTrue(Text.isSayText('да', 'куда', true));
         assert.isTrue(Text.isSayText('да', 'куда'));
-        assert.isFalse(Text.isSayText(`(?:^|\\s)${Text.getEncodeText('да')}\\b`, 'куда'));
+        assert.isFalse(Text.isSayText(`(?:^|\\s)да\\b`, 'куда'));
 
         const text = 'По полю шол человек, который сильно устал. Но он н отчаивался и пошел спать';
 

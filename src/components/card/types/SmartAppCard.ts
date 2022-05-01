@@ -106,6 +106,7 @@ export class SmartAppCard extends TemplateCardTypes {
             }
         };
         if (image.imageDir) {
+            //@ts-ignore
             cardItem.left.icon_and_value.icon = {
                 address: {
                     type: 'url',
@@ -123,6 +124,13 @@ export class SmartAppCard extends TemplateCardTypes {
         }
         const button = image.button.getButtons(Buttons.T_SMARTAPP_BUTTON_CARD);
         if (button) {
+            if (!cardItem.bottom_text) {
+                cardItem.bottom_text = {
+                    text: image.title,
+                    typeface: image.params.descTypeface || 'body3',
+                    text_color: image.params.descText_color || 'default',
+                };
+            }
             cardItem.bottom_text.actions = button;
         }
         return cardItem;
@@ -135,7 +143,7 @@ export class SmartAppCard extends TemplateCardTypes {
      * @return {Promise<ISberSmartAppItem>}
      * @api
      */
-    public async getCard(isOne: boolean): Promise<ISberSmartAppItem> {
+    public async getCard(isOne: boolean): Promise<ISberSmartAppItem | null> {
         const countImage = this.images.length;
         if (countImage) {
             if (isOne) {
@@ -150,6 +158,7 @@ export class SmartAppCard extends TemplateCardTypes {
                     cells: []
                 };
                 if (this.title) {
+                    // @ts-ignore
                     card.cells.push({
                         type: "text_cell_view",
                         paddings: {
@@ -165,6 +174,7 @@ export class SmartAppCard extends TemplateCardTypes {
                     })
                 }
                 this.images.forEach((image) => {
+                    //@ts-ignore
                     card.cells.push(SmartAppCard._getCardItem(image) as ISberSmartAppCardItem);
                 });
                 return {card};

@@ -5,7 +5,7 @@ import {IModelRes} from "../interface/IModel";
 /**
  * Переменная с подключением к базе данных. Нужна для того, чтобы не было дополнительных подключений к базе.
  */
-export let _vDB = new DB();
+export let _vDB: DB | null = new DB();
 
 /**
  * Класс, позволяющий работать в Базой Данных
@@ -15,19 +15,19 @@ export class Sql {
     /**
      * Местоположение базы данных.
      */
-    public host: string;
+    public host: string | null = null;
     /**
      * Имя пользователя.
      */
-    public user: string;
+    public user: string | null = null;
     /**
      * Пароль пользователя.
      */
-    public pass: string;
+    public pass: string | null = null;
     /**
      * Название базы данных.
      */
-    public database: string;
+    public database: string | null = null;
 
     /**
      * Sql constructor.
@@ -49,9 +49,9 @@ export class Sql {
         if (typeof mmApp.config.db !== 'undefined' && mmApp.config.db) {
             const config = mmApp.config.db;
             if (config.host && config.database) {
-                this.initParam(config.host, config.user, config.pass, config.database);
+                this.initParam(config.host, config.user || '', config.pass || '', config.database);
             } else {
-                Sql._saveLog('Sql::standardInit(): Не переданы настройки для подключения к Базе Данных!');
+                Sql._saveLog('Sql.standardInit(): Не переданы настройки для подключения к Базе Данных!');
                 return false;
             }
             try {
@@ -78,12 +78,14 @@ export class Sql {
         this.user = user;
         this.pass = pass;
         this.database = database;
-        _vDB.params = {
-            host: this.host,
-            user: this.user,
-            pass: this.pass,
-            database: this.database
-        };
+        if (_vDB) {
+            _vDB.params = {
+                host: this.host,
+                user: this.user,
+                pass: this.pass,
+                database: this.database
+            };
+        }
     }
 
     /**
@@ -93,7 +95,7 @@ export class Sql {
      * @api
      */
     public connect(): boolean {
-        if (_vDB.connect() === false) {
+        if (_vDB && !_vDB.connect()) {
             Sql._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${_vDB.errors[0]}`);
             return false;
         }
@@ -108,7 +110,7 @@ export class Sql {
      */
     public async isConnected(): Promise<boolean> {
         try {
-            if (_vDB.dbConnect) {
+            if (_vDB && _vDB.dbConnect) {
                 const client = await _vDB.dbConnect;
                 return client.isConnected();
             }
@@ -122,8 +124,10 @@ export class Sql {
      * Закрываем подключение к базе данных
      */
     public close(): void {
-        _vDB.destroy();
-        _vDB = null;
+        if (_vDB) {
+            _vDB.destroy();
+            _vDB = null;
+        }
     }
 
     /**
@@ -146,9 +150,9 @@ export class Sql {
      */
     public async query(callback: Function): Promise<any> {
         try {
-            if (_vDB.dbConnect) {
+            if (_vDB && _vDB.dbConnect) {
                 const client = await _vDB.dbConnect;
-                const db = client.db(_vDB.params.database);
+                const db = client.db(_vDB.params?.database);
                 const data: IModelRes = await callback(client, db);
                 if (data && data.status) {
                     return data.data;
@@ -160,12 +164,13 @@ export class Sql {
                 return null;
             }
         } catch (err) {
-            Sql._saveLog(err);
-            _vDB.dbConnect = null;
+            Sql._saveLog(err as string);
+            if (_vDB) {
+                _vDB.dbConnect = null;
+            }
             return null;
         }
     }
-
 
     /**
      * Сохранение логов.
@@ -178,7 +183,7 @@ export class Sql {
         if (mmApp.saveLog('sql.log', errorMsg)) {
             return true;
         }
-        console.warn('Sql::connect(): Не удалось создать/открыть файл!');
+        console.warn('Sql.connect(): Не удалось создать/открыть файл!');
         return false;
     }
 }

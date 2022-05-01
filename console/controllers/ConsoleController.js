@@ -1,9 +1,9 @@
 const CreateController = require('./CreateController').create;
 
-VERSION = '1.0';
+const VERSION = '1.0';
 
 /**
- * Консольный скрипт, позволяющий моментально создать проект.
+ * Консольный скрипт, позволяющий создать пустой проект.
  * @param param
  */
 function main(param = {appName: null, command: null}) {

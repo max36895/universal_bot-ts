@@ -1,9 +1,9 @@
-import {Bot, IBotTestParams} from "../../../src";
+import {BotTest, IBotTestParams} from "../../../src/test";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillDefaultParam from "../../config/skillDefaultParam";
 import {LocalStorageController} from "./controller/LocalStorageController";
 
-const bot = new Bot();
+const bot = new BotTest();
 bot.initConfig(skillStorageConfig());
 bot.initParams(skillDefaultParam());
 const logic = new LocalStorageController();

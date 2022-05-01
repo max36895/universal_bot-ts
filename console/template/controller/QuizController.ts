@@ -4,15 +4,20 @@
  * Time: {{time}}
  */
 
-
 import {AlisaSound, BotController, mmApp, Text, WELCOME_INTENT_NAME,} from "ubot";
+
+interface IQuestion {
+    text: string;
+    variants: string[];
+    success: string;
+}
 
 /**
  * Шаблон для викторины
  * Class __className__Controller
  */
 export class __className__Controller extends BotController {
-    public question;
+    public question: IQuestion[];
     protected readonly START_QUESTION = 'start';
     protected readonly GAME_QUESTION = 'game';
 
@@ -47,8 +52,8 @@ export class __className__Controller extends BotController {
      * @param {string} text пользовательский ответ
      * @param {number} questionId номер вопроса
      */
-    protected _isSuccess(text: string, questionId: number) {
-        if (Text.isSayText(this.question[questionId].success, text)) {
+    protected _isSuccess(text: string | null, questionId: number) {
+        if (Text.isSayText(this.question[questionId].success, text || '')) {
             const successTexts = [
                 "Совершенно верно!\n"
             ];
@@ -80,7 +85,7 @@ export class __className__Controller extends BotController {
      * Отображаем пользователю текст помощи.
      */
     protected _help() {
-        this.text = Text.getText(mmApp.params.help_text);
+        this.text = Text.getText(mmApp.params.help_text || '');
     }
 
     /**
@@ -109,11 +114,11 @@ export class __className__Controller extends BotController {
             default:
                 switch (this.userData.prevCommand) {
                     case this.START_QUESTION:
-                        if (Text.isSayTrue(this.userCommand)) {
+                        if (Text.isSayTrue(this.userCommand || '')) {
                             this.text = "Отлично!\nТогда начинаем игу!\n";
                             this._quiz();
                             this.userData.prevCommand = this.GAME_QUESTION;
-                        } else if (Text.isSayFalse(this.userCommand)) {
+                        } else if (Text.isSayFalse(this.userCommand || '')) {
                             this.text = "Хорошо...\nПоиграем в другой раз!";
                             this.isEnd = true;
                         } else {

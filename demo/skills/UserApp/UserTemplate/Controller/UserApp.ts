@@ -4,8 +4,8 @@ import {UserCard} from "../Components/UserCard";
 import {UserSound} from "../Components/UserSound";
 
 interface IUserApp {
-    userId?: string;
-    data?: {
+    userId: string;
+    data: {
         text: string
     };
 }

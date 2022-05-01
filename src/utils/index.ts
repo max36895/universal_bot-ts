@@ -1,6 +1,7 @@
 /**
  * Вспомогательные утилиты
- * @packageDocumentation
+ * @package Documentation
+ * @module utils
  */
 import * as fs from 'fs'
 import * as readline from 'readline';
@@ -57,13 +58,17 @@ export function similar_text(first: string, second: string, percent: number = 0)
 
     if (sum) {
         if (pos1 && pos2) {
-            sum += similar_text(first.substr(0, pos1), second.substr(0, pos2));
+            sum += similar_text(first.substring(0, pos1), second.substring(0, pos2));
         }
 
         if ((pos1 + max < firstLength) && (pos2 + max < secondLength)) {
+            const firstStart = pos1 + max;
+            const firstEnd = firstStart + (firstLength - pos1 - max);
+            const secondStart = pos2 + max;
+            const secondEnd = secondStart + (secondLength - pos2 - max);
             sum += similar_text(
-                first.substr(pos1 + max, firstLength - pos1 - max),
-                second.substr(pos2 + max, secondLength - pos2 - max)
+                first.substring(firstStart, firstEnd),
+                second.substring(secondStart, secondEnd)
             );
         }
     }
@@ -135,25 +140,25 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): void {
 }
 
 /**
- * Получение Get объект
+ * Получение Get объекта
  * @param {IGetParams} formData
  * @param {string} separator
  * @return {string}
  */
-export function http_build_query(formData: IGetParams, separator: string = '&'): string {
+export function httpBuildQuery(formData: IGetParams, separator: string = '&'): string {
     let key: string;
     let query: string[] = [];
     for (key in formData) {
         if (formData.hasOwnProperty(key)) {
-            key = escape(key);
-            let val: string = escape((formData[key] + '')).replace(/%20/g, '+');
+            key = encodeURI(key);
+            let val: string = encodeURI((formData[key] + '')).replace(/%20/g, '+');
             query.push(`${key}=${val}`);
         }
     }
     return query.join(separator);
 }
 
-let GET = {};
+let GET: any = {};
 if (typeof window !== 'undefined') {
     GET = window
         .location
@@ -161,7 +166,7 @@ if (typeof window !== 'undefined') {
         .replace('?', '')
         .split('&')
         .reduce(
-            function (p, e) {
+            function (p: any, e) {
                 let a = e.split('=');
                 p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
                 return p;

@@ -1,5 +1,5 @@
 import {Button} from "./Button";
-import {IButton, TButton, TButtonPayload, IButtonOptions} from "./interfaces/IButton";
+import {IButton, IButtonOptions, TButton, TButtonPayload} from "./interfaces/IButton";
 import {TemplateButtonTypes} from "./types/TemplateButtonTypes";
 import {AlisaButton} from "./types/AlisaButton";
 import {TelegramButton} from "./types/TelegramButton";
@@ -8,47 +8,47 @@ import {ViberButton} from "./types/ViberButton";
 import {SmartAppButton} from "./types/SmartAppButton";
 
 /**
- * Класс отвечающий за отображение определенных кнопок, в зависимости от типа приложения.
+ * Класс, отвечающий за отображение кнопок, в зависимости от типа приложения.
  * @class Buttons
  */
 export class Buttons {
     /**
-     * Кнопки в Алисе.
+     * Кнопки для Алисы.
      * @type {string}
      */
     public static readonly T_ALISA_BUTTONS = 'alisa_btn';
     /**
-     * Кнопки в карточке Алисы.
+     * Кнопки для карточки Алисе.
      * @type {string}
      */
     public static readonly T_ALISA_CARD_BUTTON = 'alisa_card_btn';
     /**
-     * Кнопки в vk.
+     * Кнопки для vk.
      * @type {string}
      */
     public static readonly T_VK_BUTTONS = 'vk_btn';
     /**
-     * Кнопки в Telegram.
+     * Кнопки для Telegram.
      * @type {string}
      */
     public static readonly T_TELEGRAM_BUTTONS = 'telegram_btn';
     /**
-     * Кнопки в viber.
+     * Кнопки для viber.
      * @type {string}
      */
     public static readonly T_VIBER_BUTTONS = 'viber_btn';
     /**
-     * Кнопки в Сбер SmartApp.
+     * Кнопки для Сбер SmartApp.
      * @type {string}
      */
     public static readonly T_SMARTAPP_BUTTONS = 'smart-app_btn';
     /**
-     * Кнопки в карточке Сбер SmartApp.
+     * Кнопки для карточки Сбер SmartApp.
      * @type {string}
      */
     public static readonly T_SMARTAPP_BUTTON_CARD = 'smart-app_card_btn';
     /**
-     * Кнопки в пользовательском типе приложения.
+     * Кнопки для пользовательского типа приложения.
      * @type {string}
      */
     public static readonly T_USER_APP_BUTTONS = 'user_app_btn';
@@ -62,7 +62,7 @@ export class Buttons {
      * Массив из кнопок вида кнопка.
      *  - string Текст, отображаемый на кнопке.
      *  or
-     *  - array
+     *  - object
      *      - string title    Текст, отображаемый на кнопке.
      *      - string url      Ссылка, по которой перейдет пользователь после нажатия на кнопку.
      *      - string payload  Дополнительные параметры, передаваемые при нажатие на кнопку.
@@ -72,7 +72,7 @@ export class Buttons {
      * Массив из кнопок вида ссылка.
      *  - string Текст, отображаемый на кнопке.
      *  or
-     *  - array
+     *  - object
      *      - string title    Текст, отображаемый на кнопке.
      *      - string url      Ссылка, по которой перейдет пользователь после нажатия на кнопку.
      *      - string payload  Дополнительные параметры, передаваемые при нажатие на кнопку.
@@ -87,7 +87,9 @@ export class Buttons {
      * Buttons constructor.
      */
     public constructor() {
-        this.clear();
+        this.buttons = [];
+        this.btns = [];
+        this.links = [];
         this.type = Buttons.T_ALISA_BUTTONS;
     }
 
@@ -102,18 +104,18 @@ export class Buttons {
     }
 
     /**
-     * Добавить кнопку.
+     * Добавление кнопки.
      *
-     * @param {string} title Текст на кнопке.
+     * @param {string} title Текст в кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param {boolean} hide True, если отображать кнопку как сайджест.
-     * @param {IButtonOptions} options Дополнительные параметры для кнопки
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
+     * @param {boolean} hide Определяет отображение кнопки как сайджест.
+     * @param {IButtonOptions} options Дополнительные параметры кнопки
      *
      * @return boolean
      */
-    protected _add(title: string, url: string, payload: TButtonPayload, hide: boolean = false, options: IButtonOptions = {}): boolean {
-        let button = new Button();
+    protected _add(title: string | null, url: string | null, payload: TButtonPayload, hide: boolean = false, options: IButtonOptions = {}): boolean {
+        let button: Button | null = new Button();
         if (hide === Button.B_LINK) {
             if (!button.initLink(title, url, payload, options)) {
                 button = null;
@@ -133,24 +135,24 @@ export class Buttons {
     /**
      * Добавить кнопку типа кнопка.
      *
-     * @param {string} title Текст на кнопке.
+     * @param {string} title Текст в кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param {IButtonOptions} options Дополнительные параметры для кнопки
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
+     * @param {IButtonOptions} options Дополнительные параметры кнопки
      * @return boolean
      * @api
      */
-    public addBtn(title: string, url: string = '', payload: TButtonPayload = '', options: IButtonOptions = {}): boolean {
+    public addBtn(title: string | null, url: string | null = '', payload: TButtonPayload = '', options: IButtonOptions = {}): boolean {
         return this._add(title, url, payload, Button.B_BTN, options);
     }
 
     /**
      * Добавить кнопку типа сайджест.
      *
-     * @param {string} title Текст на кнопке.
+     * @param {string} title Текст в кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии кнопки.
-     * @param {IButtonOptions} options Дополнительные параметры для кнопки
+     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
+     * @param {IButtonOptions} options Дополнительные параметры кнопки
      * @return boolean
      * @api
      */
@@ -161,7 +163,7 @@ export class Buttons {
     /**
      * Дополнительная функция для инициализации дополнительных кнопок
      * @param buttons Массив кнопок
-     * @param callback Callback нужной функции, addBtn или addLink
+     * @param callback Callback нужной функции, adBtn или adLink
      * @private
      */
     protected _initProcessingBtn(buttons: TButton[], callback: Function): void {
@@ -181,7 +183,7 @@ export class Buttons {
 
     /**
      * Дополнительная обработка второстепенных кнопок.
-     * А именно обрабатываются массивы btns и links. После чего все значения вносятся в массив buttons.
+     * А именно обрабатываются массивы btns и links. После чего все значения записываются в buttons.
      */
     protected _processing(): void {
         if (this.btns.length) {
@@ -195,28 +197,28 @@ export class Buttons {
     }
 
     /**
-     * Возвращаем массив с кнопками для ответа пользователю.
+     * Возвращает массив кнопок для ответа пользователю.
      *
      * @param {string} type Тип кнопки.
      * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
      * @return any
      * @api
      */
-    public getButtons(type: string = null, userButton: TemplateButtonTypes = null): any {
+    public getButtons<T = any>(type: string | null = null, userButton: TemplateButtonTypes | null = null): T | null {
         this._processing();
         if (type === null) {
             type = this.type;
         }
-        let button: TemplateButtonTypes = null;
+        let button: TemplateButtonTypes | null = null;
         switch (type) {
             case Buttons.T_ALISA_BUTTONS:
                 button = new AlisaButton();
-                (<AlisaButton>button).isCard = false;
+                (button as AlisaButton).isCard = false;
                 break;
 
             case Buttons.T_ALISA_CARD_BUTTON:
                 button = new AlisaButton();
-                (<AlisaButton>button).isCard = true;
+                (button as AlisaButton).isCard = true;
                 break;
 
             case Buttons.T_VK_BUTTONS:
@@ -233,12 +235,12 @@ export class Buttons {
 
             case Buttons.T_SMARTAPP_BUTTONS:
                 button = new SmartAppButton();
-                (<SmartAppButton>button).isCard = false;
+                (button as SmartAppButton).isCard = false;
                 break;
 
             case Buttons.T_SMARTAPP_BUTTON_CARD:
                 button = new SmartAppButton();
-                (<SmartAppButton>button).isCard = true;
+                (button as SmartAppButton).isCard = true;
                 break;
 
             case Buttons.T_USER_APP_BUTTONS:
@@ -250,20 +252,20 @@ export class Buttons {
             button.buttons = this.buttons;
             return button.getButtons();
         }
-        return [];
+        return null;
     }
 
     /**
-     * Возвращаем json строку c кнопками.
+     * Возвращает json строку c кнопками.
      *
      * @param {string} type Тип приложения.
      * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
      * @return string|null
      * @api
      */
-    public getButtonJson(type: string = null, userButton: TemplateButtonTypes = null): string {
-        const btn: object[] = this.getButtons(type, userButton);
-        if (btn.length) {
+    public getButtonJson(type: string | null = null, userButton: TemplateButtonTypes | null = null): string | null {
+        const btn: object[] | null = this.getButtons(type, userButton);
+        if (btn && btn.length) {
             return JSON.stringify(btn);
         }
         return null;

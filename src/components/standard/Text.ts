@@ -1,6 +1,6 @@
 import {rand, similar_text} from "../../utils";
 
-type TFind = string | string[];
+export type TFind = string | string[];
 
 export interface ITextSimilarity {
     /**
@@ -10,15 +10,15 @@ export interface ITextSimilarity {
     /**
      * В каком тексте значение совпало, либо максимальное. При передаче строки вернет 0
      */
-    index: number;
+    index: number | null;
     /**
      * На сколько процентов текста похожи
      */
-    percent?: number;
+    percent: number;
     /**
      * Текст, который совпал
      */
-    text?: string;
+    text?: string | null;
 }
 
 /**
@@ -27,7 +27,7 @@ export interface ITextSimilarity {
  */
 export class Text {
     /**
-     * Обрезаем текст до необходимого количества символов.
+     * Обрезает текст до необходимого количества символов.
      *
      * @param {string} text Исходный текст.
      * @param {number} size Максимальный размер текста.
@@ -35,14 +35,17 @@ export class Text {
      * @return string
      * @api
      */
-    public static resize(text: string, size: number = 950, isEllipsis: boolean = true): string {
+    public static resize(text: string | null, size: number = 950, isEllipsis: boolean = true): string {
         if (text !== null) {
             if (text.length > size) {
                 if (isEllipsis) {
                     size -= 3;
-                    text = (text.substr(0, size) + '...');
+                    if (size < 0) {
+                        size = 0;
+                    }
+                    text = (text.substring(0, size) + '...');
                 } else {
-                    text = text.substr(0, size);
+                    text = text.substring(0, size);
                 }
             }
         } else {
@@ -52,7 +55,7 @@ export class Text {
     }
 
     /**
-     * Возвращает true в том случае, если передана ссылка
+     * Определяет наличие ссылки в переданном тексте
      *
      * @param {string} link Проверяемая строка
      * @return boolean
@@ -63,7 +66,7 @@ export class Text {
     }
 
     /**
-     * Возвращаем true в том случае, если пользователь выражает согласие.
+     * Определяет наличие в тексте согласие пользователя
      *
      * @param {string} text Пользовательский текст.
      * @return boolean
@@ -72,21 +75,18 @@ export class Text {
     public static isSayTrue(text: string): boolean {
         if (text) {
             const confirmText = [
-                `(?:^|\\s)${Text.getEncodeText('да')}\\b`,
-                `(?:^|\\s)${Text.getEncodeText('конечно')}\\b`,
-                `(?:^|\\s)${Text.getEncodeText('соглас')}[^s]+\\b`,
-                `(?:^|\\s)${Text.getEncodeText('подтвер')}[^s]+\\b`
+                '(?:^|\\s)да(?:^|\\s|$)',
+                '(?:^|\\s)конечно(?:^|\\s|$)',
+                '(?:^|\\s)соглас[^s]+(?:^|\\s|$)',
+                '(?:^|\\s)подтвер[^s]+(?:^|\\s|$)',
             ];
             return Text.isSayText(confirmText, text, true);
         }
         return false;
-        //const reg: RegExp = /(\bда\b)|(\bконечно\b)|(\bсоглас[^s]+\b)|(\bподтвер[^s]+\b)/umi;
-        //return text.search(reg) !== -1;
-        //return reg.test(text);
     }
 
     /**
-     * Возвращаем true в том случае, если пользователь выражает не согласие.
+     * Определяет наличие в тексте не согласие пользователя
      *
      * @param {string} text Пользовательский текст.
      * @return boolean
@@ -95,24 +95,21 @@ export class Text {
     public static isSayFalse(text: string): boolean {
         if (text) {
             const unconfirmText = [
-                `(?:^|\\s)${Text.getEncodeText('нет')}\\b`,
-                `(?:^|\\s)${Text.getEncodeText('неа')}\\b`,
-                `(?:^|\\s)${Text.getEncodeText('не')}\\b`,
+                '(?:^|\\s)нет(?:^|\\s|$)',
+                '(?:^|\\s)неа(?:^|\\s|$)',
+                '(?:^|\\s)не(?:^|\\s|$)',
             ];
             return Text.isSayText(unconfirmText, text, true);
         }
         return false;
-        //const reg: RegExp = /(\bнет\b)|(\bнеа\b)|(\bне\b)/umi;
-        //return text.search(reg) !== -1;
-        //return reg.test(text);
     }
 
     /**
-     * Возвращаем true в том случае, если в тексте выполняется необходимое условие.
+     * Определяет наличие в тексте определенного условия
      *
      * @param {TFind} find Текст который ищем.
      * @param {string} text Исходный текст, в котором осуществляется поиск.
-     * @param {boolean} isPattern Если true, тогда используется пользовательское регулярное выражение.
+     * @param {boolean} isPattern Определяет использование регулярного выражения
      * @return boolean
      * @api
      */
@@ -130,8 +127,6 @@ export class Text {
                         if (text.indexOf(value) !== -1) {
                             return true;
                         }
-                        /*value = Text.getEncodeText(value);
-                        pattern += `((?:^|\\s)${value}(|[^\\s]+)\\b)`;*/
                     }
                 });
                 if (!isPattern) {
@@ -144,12 +139,9 @@ export class Text {
                     if (text.indexOf(find) !== -1) {
                         return true;
                     }
-                    /*find = Text.getEncodeText(find);
-                    pattern = `((?:^|\\s)${find}(|[^\\s]+)\\b)`;*/
                 }
             }
             if (isPattern && pattern) {
-                text = Text.getEncodeText(text);
                 return !!text.match((new RegExp(pattern, 'umig')));
             }
         }
@@ -157,20 +149,7 @@ export class Text {
     }
 
     /**
-     * Переводим unicode text
-     *
-     * TODO найти решение и переделать
-     * Какая-то хрень с регуляркой для русского языка.
-     * Пока сделано так, в дальнейшем нужно переделать
-     * @param {string} text текст для преобразования
-     * @return string
-     */
-    public static getEncodeText(text: string): string {
-        return encodeURIComponent(text).replace(/%20/umig, ' ').replace(/%/umig, 'Z');
-    }
-
-    /**
-     * Получаем строку из массива строк или строки.
+     * Получение строки из массива строк. В случае если передана строка, то вернется исходное значение.
      *
      * @param {TFind} str Исходная строка или массив из строк.
      * @return string
@@ -184,7 +163,7 @@ export class Text {
     }
 
     /**
-     * Добавляем нужное окончание в зависимости от числа.
+     * Добавление нужного окончание в зависимости от переданного числа.
      *
      * @param {number} num - само число.
      * @param {string[]} titles - массив из возможных вариантов. массив должен быть типа ['1 значение','2 значение','3 значение'].
@@ -202,7 +181,7 @@ export class Text {
      * @return string
      * @api
      */
-    public static getEnding(num: number, titles: string[], index: number = null): string {
+    public static getEnding(num: number, titles: string[], index: number | null = null): string | null {
         if (index !== null) {
             if (typeof titles[index] !== 'undefined') {
                 return titles[index];
@@ -216,7 +195,7 @@ export class Text {
     }
 
     /**
-     * Проверяем тексты на сходство.
+     * Проверяет тексты на сходство.
      * В результате вернет статус схожести, а также текст и ключ в массиве.
      *
      * Если текста схожи, тогда status = true, и заполняются поля:
@@ -264,12 +243,13 @@ export class Text {
         }
         if (data.percent >= percent) {
             data.status = true;
-            data.text = text[data.index];
+            data.text = text[data.index as number];
             return data;
         }
         return {
             status: false,
             index: null,
+            percent: 0,
             text: null
         }
     }

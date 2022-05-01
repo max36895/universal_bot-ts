@@ -1,4 +1,8 @@
-import {fread, http_build_query, IGetParams, is_file} from "../../utils";
+/**
+ * Отправка запросов
+ * @module
+ */
+import {fread, httpBuildQuery, IGetParams, is_file} from "../../utils";
 import {IRequestSend} from "../interfaces/IRequest";
 
 /**
@@ -8,20 +12,20 @@ import {IRequestSend} from "../interfaces/IRequest";
  * @class Request
  */
 export class Request {
+    public static readonly HEADER_FORM_DATA: Record<string, string> = {'Content-Type': 'multipart/form-data'};
     public static readonly HEADER_RSS_XML: Record<string, string> = {'Content-Type': 'application/rss+xml'};
-    public static readonly HEADER_GZIP: Record<string, string> = {'Content-Encoding': 'gzip'};
     public static readonly HEADER_AP_JSON: Record<string, string> = {'Content-Type': 'application/json'};
     public static readonly HEADER_AP_XML: Record<string, string> = {'Content-Type': 'application/xml'};
-    public static readonly HEADER_FORM_DATA: Record<string, string> = {'Content-Type': 'multipart/form-data'};
+    public static readonly HEADER_GZIP: Record<string, string> = {'Content-Encoding': 'gzip'};
 
     /**
      * Адрес, на который отправляется запрос.
      */
-    public url: string;
+    public url: string | null;
     /**
      * Get параметры запроса.
      */
-    public get: IGetParams;
+    public get: IGetParams | null;
     /**
      * Post параметры запроса.
      */
@@ -29,11 +33,11 @@ export class Request {
     /**
      * Отправляемые заголовки.
      */
-    public header: HeadersInit;
+    public header: HeadersInit | null;
     /**
      * Прикреплённый файл (url, путь к файлу на сервере либо содержимое файла).
      */
-    public attach: string;
+    public attach: string | null;
     /**
      * Тип передаваемого файла.
      * True, если передается содержимое файла, иначе false. По умолчанию: false.
@@ -46,11 +50,11 @@ export class Request {
     /**
      * Кастомный (Пользовательский) заголовок (DELETE и тд.).
      */
-    public customRequest: string;
+    public customRequest: string | null;
     /**
      * Максимально время, за которое должен быть получен ответ. В мсек.
      */
-    public maxTimeQuery: number;
+    public maxTimeQuery: number | null;
     /**
      * Формат ответа.
      * True, если полученный ответ нужно преобразовать как json. По умолчанию true.
@@ -60,7 +64,7 @@ export class Request {
     /**
      * Ошибки при выполнении запроса.
      */
-    private _error: string;
+    private _error: string | null;
 
     /**
      * Request constructor.
@@ -76,33 +80,68 @@ export class Request {
         this.customRequest = null;
         this.maxTimeQuery = null;
         this.isConvertJson = true;
-        this._error = '';
+        this._error = null;
     }
 
     /**
-     * Возвращаем текст с ошибкой, произошедшей при выполнении запроса.
+     * Отправка запроса.
+     * Возвращаем массив. В случае успеха свойство 'status' = true.
      *
-     * @return string
+     * @param {string} url Адрес, на который отправляется запрос.
+     * @return Promise<IRequestSend>
+     * [
+     *  - bool status Статус выполнения запроса.
+     *  - mixed data Данные полученные при выполнении запроса.
+     * ]
      * @api
      */
-    public getError(): string {
-        return this._error;
+    public async send<T>(url: string | null = null): Promise<IRequestSend<T>> {
+        if (url) {
+            this.url = url;
+        }
+
+        this._error = null;
+        const data: any = await this._run();
+        if (this._error) {
+            return {status: false, data: null, err: this._error};
+        }
+        return {status: true, data};
     }
 
     /**
-     * Получение содержимого файла, пригодного для отправки в запросе
-     * @param {string} filePath Расположение файла
-     * @param {string} fileName Имя файла
+     * Получение url адреса с get запросом.
+     *
+     * @return string
+     * @private
      */
-    public static getAttachFile(filePath: string, fileName?: string): FormData {
-        if (!fileName) {
-            fileName = (filePath.match(/((\/|\\|^)(\w+)\.(\w{1,6})$)/)[0] || filePath);
+    protected _getUrl(): string {
+        let url: string = this.url || '';
+        if (this.get) {
+            url += '?' + httpBuildQuery(this.get);
         }
-        const form = new FormData();
-        const buffer = fread(filePath);
-        form.append("Content-Type", "application/octect-stream");
-        form.append(fileName, buffer);
-        return form;
+        return url;
+    }
+
+    /**
+     * Начинаем отправку fetch запроса.
+     * В случае успеха возвращаем содержимое запроса, в противном случае null.
+     *
+     * @return Promise<any>
+     */
+    private async _run<T>(): Promise<T | string | null> {
+        if (this.url) {
+            const response = await fetch(this._getUrl(), this._getOptions());
+            if (response.ok) {
+                if (this.isConvertJson) {
+                    return await response.json();
+                }
+                return await response.text();
+            }
+            this._error = 'Не удалось получить данные с ' + this.url;
+        } else {
+            this._error = 'Не указан url!';
+        }
+        return null;
     }
 
     /**
@@ -110,23 +149,23 @@ export class Request {
      * @return RequestInit
      * @private
      */
-    protected _getOptions(): RequestInit {
+    protected _getOptions(): RequestInit | undefined {
         const options: RequestInit = {};
 
         if (this.maxTimeQuery) {
             const controller = new AbortController();
             const signal: AbortSignal = controller.signal;
-            const timeoutId = setTimeout(() => controller.abort(), this.maxTimeQuery);
+            setTimeout(() => controller.abort(), this.maxTimeQuery);
             options.signal = signal;
         }
 
-        let post: object = null;
+        let post: object | null = null;
         if (this.attach) {
             if (is_file(this.attach)) {
                 post = Request.getAttachFile(this.attach, this.attachName);
             } else {
                 this._error = `Не удалось найти файл: ${this.attach}`;
-                return null;
+                return;
             }
         }
         if (this.post) {
@@ -148,63 +187,32 @@ export class Request {
     }
 
     /**
-     * Получение url адреса с get запросом.
+     * Получение содержимого файла, пригодного для отправки в запросе
+     * @param {string} filePath Расположение файла
+     * @param {string} fileName Имя файла
+     */
+    public static getAttachFile(filePath: string, fileName?: string): FormData | null {
+        if (!filePath && !fileName) {
+            return null;
+        }
+        if (!fileName) {
+            const match = filePath.match(/((\/|\\|^)(\w+)\.(\w{1,6})$)/);
+            fileName = (match ? match[0] : filePath);
+        }
+        const form = new FormData();
+        const buffer = fread(filePath);
+        form.append("Content-Type", "application/octect-stream");
+        form.append(fileName, buffer);
+        return form;
+    }
+
+    /**
+     * Возвращает текст с ошибкой, произошедшей при выполнении запроса.
      *
      * @return string
-     * @private
-     */
-    protected _getUrl(): string {
-        let url: string = this.url;
-        if (this.get) {
-            url += '?' + http_build_query(this.get);
-        }
-        return url;
-    }
-
-    /**
-     * Начинаем отправку fetch запроса.
-     * В случае успеха возвращаем содержимое запроса, в противном случае null.
-     *
-     * @return Promise<any>
-     */
-    private async _run(): Promise<any> {
-        if (this.url) {
-            const response = await fetch(this._getUrl(), this._getOptions());
-            if (response.ok) {
-                if (this.isConvertJson) {
-                    return await response.json();
-                }
-                return await response.text();
-            }
-            this._error = 'Не удалось получить данные с ' + this.url;
-        } else {
-            this._error = 'Не указан url!';
-        }
-        return null;
-    }
-
-    /**
-     * Отправка запроса.
-     * Возвращаем массив. В случае успеха свойство 'status' = true.
-     *
-     * @param {string} url Адрес, на который отправляется запрос.
-     * @return Promise<IRequestSend>
-     * [
-     *  - bool status Статус выполнения запроса.
-     *  - mixed data Данные полученные при выполнении запроса.
-     * ]
      * @api
      */
-    public async send(url: string = null): Promise<IRequestSend> {
-        if (url) {
-            this.url = url;
-        }
-
-        this._error = null;
-        const data: any = await this._run();
-        if (this._error) {
-            return {status: false, err: this._error};
-        }
-        return {status: true, data};
+    public getError(): string | null {
+        return this._error;
     }
 }

@@ -15,26 +15,26 @@ import {SmartAppCard} from "./types/SmartAppCard";
  */
 export class Card {
     /**
-     * Заголовок для элемента карточки.
+     * Заголовок элемента карточки.
      */
-    public title: string;
+    public title: string | null;
     /**
-     * Описание для элемента карточки.
+     * Описание элемента карточки.
      */
-    public desc: string;
+    public desc: string | null;
     /**
      * Массив с изображениями или элементами карточки.
      * @see Image Смотри тут
      */
     public images: Image[];
     /**
-     * Кнопки для элемента карточки.
+     * Кнопки элемента карточки.
      * @see Buttons Смотри тут
      */
     public button: Buttons;
     /**
-     * В карточке отобразить только 1 элемент/картинку.
-     * True, если в любом случае отобразить только 1 изображение.
+     * Определяет необходимость отображения 1 элемента карточки.
+     * Передайте true, если необходимо отобразить только 1 элемент карточки
      */
     public isOne: boolean;
 
@@ -57,11 +57,14 @@ export class Card {
     public constructor() {
         this.isOne = false;
         this.button = new Buttons();
+        this.images = [];
+        this.title = null;
+        this.desc = null;
         this.clear();
     }
 
     /**
-     * Очистить все элементы карточки.
+     * Очищает все элементы карточки.
      * @api
      */
     public clear() {
@@ -69,16 +72,16 @@ export class Card {
     }
 
     /**
-     * Вставляем элемент в каточку|список. В случае успеха вернет true.
+     * Вставляет элемент в каточку|список. В случае успеха вернет true.
      *
      * @param {string} image Идентификатор или расположение изображения.
-     * @param {string} title Заголовок для изображения.
-     * @param {string} desc Описание для изображения.
+     * @param {string} title Заголовок изображения.
+     * @param {string} desc Описание изображения.
      * @param {TButton} button Кнопки, обрабатывающие команды при нажатии на элемент.
      * @return boolean
      * @api
      */
-    public add(image: string, title: string, desc: string = ' ', button: TButton = null): boolean {
+    public add(image: string | null, title: string, desc: string = ' ', button: TButton | null = null): boolean {
         const img = new Image();
         if (img.init(image, title, desc, button)) {
             this.images.push(img);
@@ -94,7 +97,7 @@ export class Card {
      * @return {Promise<Object>}
      * @api
      */
-    public async getCards(userCard: TemplateCardTypes = null): Promise<any> {
+    public async getCards(userCard: TemplateCardTypes | null = null): Promise<any> {
         if (this.template) {
             return this.template;
         }
@@ -139,13 +142,13 @@ export class Card {
     }
 
     /**
-     * Возвращаем json строку со всеми элементами карточки.
+     * Возвращает json строку со всеми элементами карточки.
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return {Promise<string>}
      * @api
      */
-    public async getCardsJson(userCard: TemplateCardTypes = null): Promise<string> {
+    public async getCardsJson(userCard: TemplateCardTypes | null = null): Promise<string> {
         return JSON.stringify(await this.getCards(userCard));
     }
 }

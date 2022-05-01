@@ -1,6 +1,6 @@
 import {mmApp} from "../../core";
 import {IModelRes, IModelRules} from "../interface/IModel";
-import {DbControllerModel} from "./DbControllerModel";
+import {DbControllerModel, IDbControllerResult} from "./DbControllerModel";
 import {IQueryData, QueryData} from "./QueryData";
 import {DbController} from "./DbController";
 
@@ -9,7 +9,7 @@ import {DbController} from "./DbController";
  *
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
-export abstract class Model {
+export abstract class Model implements IDbControllerResult {
     public dbController: DbControllerModel;
     public queryData: QueryData;
     /**
@@ -30,7 +30,7 @@ export abstract class Model {
      *
      * @return object
      */
-    public abstract attributeLabels(): object;
+    public abstract attributeLabels(): { [name: string | number]: any };
 
     /**
      * Название таблицы/файла с данными.
@@ -55,7 +55,7 @@ export abstract class Model {
     }
 
     /**
-     * Проверка подключения к Базе Данных.
+     * Проверка подключения к источнику данных.
      * При использовании БД, проверяется статус подключения.
      * Если удалось подключиться, возвращается true, в противном случае false.
      * При сохранении данных в файл, всегда возвращается true.
@@ -89,7 +89,7 @@ export abstract class Model {
      *
      * @return number|string
      */
-    protected getId(): string | number {
+    protected getId(): string | number | null {
         const labels = this.attributeLabels();
         let key = null;
         Object.keys(labels).forEach((index) => {
@@ -107,19 +107,27 @@ export abstract class Model {
      * @param data Массив с данными.
      * @api
      */
-    public init(data): void {
+    public init(data: IDbControllerResult[] | IDbControllerResult | null): void {
+        if (data === null) {
+            return;
+        }
         let i = this.startIndex;
         const labels = this.attributeLabels();
         Object.keys(labels).forEach((index) => {
             if (data) {
+                // @ts-ignore
                 if (typeof data[index] !== 'undefined') {
+                    // @ts-ignore
                     this[index] = data[index];
                 } else if (typeof data[i] !== 'undefined') {
+                    // @ts-ignore
                     this[index] = data[i];
                 } else {
+                    // @ts-ignore
                     this[index] = '';
                 }
             } else {
+                // @ts-ignore
                 this[index] = '';
             }
             i++;
@@ -135,6 +143,7 @@ export abstract class Model {
     public async selectOne(): Promise<IModelRes> {
         const idName = this.dbController.primaryKeyName;
         this.queryData.setQuery({
+            // @ts-ignore
             [idName]: this[idName]
         });
         this.queryData.setData(null);
@@ -148,11 +157,13 @@ export abstract class Model {
         this.validate();
         const idName = this.dbController.primaryKeyName;
         this.queryData.setQuery({
+            // @ts-ignore
             [idName]: this[idName]
         });
         const data: IQueryData = {};
         Object.keys(this.attributeLabels()).forEach((index) => {
             if (index !== idName) {
+                // @ts-ignore
                 data[index] = this[index];
             }
         });
@@ -194,6 +205,7 @@ export abstract class Model {
         this.queryData.setQuery(null);
         const data: IQueryData = {};
         Object.keys(this.attributeLabels()).forEach((index) => {
+            // @ts-ignore
             data[index] = this[index];
         });
         this.queryData.setData(data);
@@ -210,6 +222,7 @@ export abstract class Model {
         this.validate();
         const idName = this.dbController.primaryKeyName;
         this.queryData.setQuery({
+            // @ts-ignore
             [idName]: this[idName]
         });
         this.queryData.setData(null);
@@ -225,7 +238,7 @@ export abstract class Model {
      * @api
      */
     public async where(where: any = '1', isOne: boolean = false): Promise<IModelRes> {
-        let select: IQueryData;
+        let select: IQueryData | null;
         if (typeof where === 'string') {
             select = QueryData.getQueryData(where);
         } else {

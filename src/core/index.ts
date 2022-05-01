@@ -1,3 +1,7 @@
+/**
+ * Ядро движка
+ * @module core
+ */
 // Интерфейсы
 export * from './interfaces/IAlisa';
 export * from './interfaces/IBot';

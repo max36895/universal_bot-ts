@@ -2,8 +2,8 @@ import {assert} from 'chai';
 import {Navigation} from "../../src";
 
 describe('Navigation tests', () => {
-    let navigation;
-    let elements = null;
+    let navigation: Navigation<number | { id: number, title: string }>;
+    let elements: any = null;
 
     beforeEach(() => {
         navigation = new Navigation();
@@ -74,7 +74,7 @@ describe('Navigation tests', () => {
         assert.deepStrictEqual(selectedElement, {id: 4, title: 'приветствую тебя мир'});
 
         selectedElement = navigation.selectedElement(elements, 'привет', ['title'], 1);
-        assert.deepStrictEqual(selectedElement, {id: 10, title: 'привет9'});
+        assert.deepStrictEqual(selectedElement, {id: 6, title: 'привет5'});
 
         selectedElement = navigation.selectedElement(elements, 'пока', ['title'], 1);
         assert.deepStrictEqual(selectedElement, null);

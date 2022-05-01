@@ -1,10 +1,19 @@
-import {Text} from "./Text";
+import {ITextSimilarity, Text} from "./Text";
+
+interface IElementType {
+    [name: string]: string;
+}
+
+type TElementType = IElementType | number | string | any;
+
+export type TKeys = string | string[]
 
 /**
  * Класс отвечающий за корректную навигацию по элементам меню.
+ * @typeParam ElementType тип элементов, по которым будет происходить навигация
  * @class Navigation
  */
-export class Navigation {
+export class Navigation<ElementType = TElementType> {
     public STANDARD_NEXT_TEXT: string[] = ['дальше', 'вперед'];
     public STANDARD_OLD_TEXT: string[] = ['назад'];
 
@@ -24,7 +33,7 @@ export class Navigation {
     /**
      * Массив элементов для обработки.
      */
-    public elements: any[];
+    public elements: ElementType[];
     /**
      * (default 5) Максимальное количество отображаемых элементов.
      */
@@ -48,7 +57,7 @@ export class Navigation {
     }
 
     /**
-     * Пользователь хочет двигаться дальше по массиву.
+     * Определяет желание пользователя двигаться вперед.
      *
      * @param {string} text Пользовательский запрос.
      * @return boolean
@@ -65,7 +74,7 @@ export class Navigation {
     }
 
     /**
-     * Пользователь хочет двигаться назад по массиву.
+     * Определяет желание пользователя двигаться назад.
      *
      * @param {string} text Пользовательский запрос.
      * @return boolean
@@ -100,7 +109,7 @@ export class Navigation {
     }
 
     /**
-     * Пользователь переходит на определенную страницу.
+     * Определяет желание пользователя перейти на определенную страницу.
      * В случае успешного перехода вернет true.
      *
      * @param {string} text Пользовательский запрос.
@@ -117,7 +126,7 @@ export class Navigation {
     }
 
     /**
-     * Переходим на следующую страницу.
+     * Осуществляет переход на следующую страницу.
      * В случае успешного перехода вернет true.
      *
      * @param {string} text Пользовательский запрос.
@@ -133,7 +142,7 @@ export class Navigation {
     }
 
     /**
-     * Переходим на предыдущую страницу.
+     * Осуществляет переход на предыдущую страницу.
      * В случае успешного перехода вернет true.
      *
      * @param {string} text Пользовательский запрос.
@@ -149,15 +158,15 @@ export class Navigation {
     }
 
     /**
-     * Возвращаем новый массив с учетом текущего положения.
+     * Возвращает новый массив данных, с учетом текущего положения пользователя.
      *
      * @param {Object[]|string[]|number[]} elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
-     * @return any[]
+     * @return ElementType[]
      * @api
      */
-    public nav(elements: any[] = null, text: string = ''): any[] {
-        const showElements: object[] = [];
+    public nav(elements: ElementType[] | null = null, text: string = ''): ElementType[] {
+        const showElements: ElementType[] = [];
         if (elements) {
             this.elements = elements;
         }
@@ -178,14 +187,15 @@ export class Navigation {
     /**
      * Выбор определенного элемента списка на нужной странице.
      *
-     * @param {Object[]|string[]|number[]} elements Элемент для обработки.
+     * @param elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
-     * @param {string[] | string} key Поиск элемента по ключу массива. Если null, тогда подразумевается, что передан массив из строк.
+     * @param {string[] | string} keys Поиск элемента по ключу массива. Если null, тогда подразумевается, что передан массив из строк.
      * @param {number} thisPage Текущая страница.
      * @return any
      * @api
      */
-    public selectedElement(elements: any[] = null, text: string = '', key: string[] | string = null, thisPage: number = null) {
+    public selectedElement(elements: ElementType[] | null = null, text: string = '',
+                           keys: TKeys | null = null, thisPage: number | null = null): ElementType | null {
         if (thisPage !== null) {
             this.thisPage = thisPage;
         }
@@ -193,7 +203,7 @@ export class Navigation {
             this.elements = elements;
         }
 
-        let number: number = null;
+        let number: number | null = null;
         const data = text.match(/(\d)/umi);
         if (data) {
             number = +data[0][0];
@@ -201,36 +211,43 @@ export class Navigation {
 
         const start: number = this.thisPage * this.maxVisibleElements;
         let index: number = 1;
-        let selectElement: object = null;
+        let selectElement: ElementType | null = null;
         let maxPercent: number = 0;
         const end: number = start + this.maxVisibleElements;
+
+        const setMaxElement = (index: number, res: ITextSimilarity) => {
+            if (res.status && res.percent > maxPercent) {
+                selectElement = this.elements[index];
+                maxPercent = res.percent;
+            }
+        }
+
         for (let i = start; i < end; i++) {
             if (typeof this.elements[i] !== 'undefined') {
                 if (index === number) {
                     return this.elements[i];
                 }
-                if (key === null) {
-                    if (typeof this.elements[i] === 'string') {
-                        const r = Text.textSimilarity(this.elements[i] + '', text, 75);
-                        if (r.status && r.percent > maxPercent) {
-                            selectElement = this.elements[i];
-                        }
-                    }
+
+                const elementsTypeof = typeof this.elements[i];
+
+                if (keys === null || elementsTypeof === 'string') {
+                    const r = Text.textSimilarity(this.elements[i] + '', text, 75);
+                    setMaxElement(i, r);
                 } else {
-                    if (typeof key === 'object') {
-                        key.forEach((k) => {
-                            if (this.elements[i][k]) {
-                                const r = Text.textSimilarity(this.elements[i][k], text, 75);
-                                if (r.status && r.percent > maxPercent) {
-                                    selectElement = this.elements[i];
+                    if (elementsTypeof === 'object') {
+                        if (typeof keys === 'object') {
+                            keys.forEach((key) => {
+                                const value = (this.elements[i] as any)[key];
+                                if (value) {
+                                    const r = Text.textSimilarity(value, text, 75);
+                                    setMaxElement(i, r);
                                 }
-                            }
-                        })
-                    } else {
-                        if (this.elements[i][key]) {
-                            const r = Text.textSimilarity(this.elements[i][key], text, 75);
-                            if (r.status && r.percent > maxPercent) {
-                                selectElement = this.elements[i];
+                            })
+                        } else {
+                            const value = (this.elements[i] as any)[keys];
+                            if (value) {
+                                const r = Text.textSimilarity(value, text, 75);
+                                setMaxElement(i, r);
                             }
                         }
                     }
@@ -245,7 +262,7 @@ export class Navigation {
     }
 
     /**
-     * Возвращаем кнопки с навигацией.
+     * Возвращает кнопки навигации.
      *
      * @param {boolean} isNumber Использование числовой навигации. Если true, тогда будут отображаться кнопки с числовой навигацией.
      * @return string[]
@@ -255,7 +272,7 @@ export class Navigation {
         const maxPage: number = this.getMaxPage();
         this._validatePage(maxPage);
         const buttons: string[] = [];
-        if (isNumber === false) {
+        if (!isNumber) {
             if (this.thisPage) {
                 buttons.push('👈 Назад');
             }
@@ -294,7 +311,7 @@ export class Navigation {
     }
 
     /**
-     * Возвращаем информацию о текущей позиции.
+     * Возвращает информацию о текущей позиции пользователя.
      *
      * @return string
      * @api
@@ -314,23 +331,19 @@ export class Navigation {
     }
 
     /**
-     * Возвращаем максимальное количество страниц.
+     * Возвращает максимальное количество страниц.
      *
-     * @param {Object[]|string[]|number[]} elements Элемент для обработки.
+     * @param elements Элемент для обработки.
      * @return number
      * @api
      */
-    public getMaxPage(elements: any[] = null): number {
+    public getMaxPage(elements: ElementType[] | null = null): number {
         if (elements) {
             this.elements = elements;
         }
         if (typeof this.elements === 'object') {
             const countEl: number = this.elements.length;
-            let maxPage: number = Math.floor(countEl / this.maxVisibleElements);
-            if (countEl % this.maxVisibleElements) {
-                maxPage++;
-            }
-            return maxPage;
+            return Math.ceil(countEl / this.maxVisibleElements);
         }
         return 0;
     }

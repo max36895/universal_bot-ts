@@ -1,0 +1,21 @@
+{
+  "entryPoints": [
+    "src/test.ts",
+    "src/api",
+    "src/components",
+    "src/components/button",
+    "src/components/card",
+    "src/components/nlu",
+    "src/components/sound",
+    "src/components/standard",
+    "src/controller/BotController.ts",
+    "src/core",
+    "src/models",
+    "src/utils",
+    "console"
+  ],
+  "readme": "README.md",
+  "name": "u_bot",
+  "out": "./docs/",
+  "tsconfig": "tsconfigForDoc.json"
+}

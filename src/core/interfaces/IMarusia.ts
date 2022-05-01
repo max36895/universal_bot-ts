@@ -1,6 +1,6 @@
 import {TButtonPayload} from "../../components/button/interfaces/IButton";
 
-interface IMarusiaEntities {
+export interface IMarusiaEntities {
     /**
      * Обозначение начала и конца именованной сущности в массиве слов. Нумерация слов в массиве начинается с 0.
      */
@@ -125,7 +125,7 @@ export interface IMarusiaRequest {
     /**
      * JSON, полученный с нажатой кнопкой от обработчика навыка (в ответе на предыдущий запрос), максимум 4096 байт.
      */
-    payload?: object;
+    payload?: object | string;
     /**
      * Слова и именованные сущности, которые Диалоги извлекли из запроса пользователя.
      * Подробное описание поддерживаемых типов сущностей см. в разделе Именованные сущности в запросах.
@@ -212,7 +212,7 @@ export interface IMarusiaImage {
      */
     image_id?: string;
     /**
-     * Заголовок для изображения. Максимум 128 символов.
+     * Заголовок изображения. Максимум 128 символов.
      * Игнорируется для типов карточки ItemsList и ImageGallery.
      */
     title: string;
@@ -284,7 +284,7 @@ export interface IMarusiaResponse {
      * Кнопки, которые следует показать пользователю.
      * Все указанные кнопки выводятся после основного ответа Алисы, описанного в свойствах response.text и response.card. Кнопки можно использовать как релевантные ответу ссылки или подсказки для продолжения разговора.
      */
-    buttons?: IMarusiaButton[];
+    buttons?: IMarusiaButton[] | null;
     /**
      * Признак конца разговора.
      * Допустимые значения:
@@ -301,6 +301,8 @@ export interface IMarusiaSessionResponse {
 }
 
 export interface IMarusiaWebhookResponse {
+    session_state?: object | string;
+    user_state_update?: object | string;
     /**
      * Данные для ответа пользователю.
      */

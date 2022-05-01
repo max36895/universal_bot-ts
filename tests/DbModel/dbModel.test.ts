@@ -65,7 +65,7 @@ describe('Db file connect', () => {
         assert.deepStrictEqual(uData[1], data.userId13);
 
         query = '`userId`="NotFound"';
-        assert.isTrue((await userData.where(query)).status === false);
+        assert.isFalse((await userData.where(query)).status);
     });
     it('Where object', async () => {
         let query: IData = {

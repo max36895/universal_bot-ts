@@ -85,7 +85,6 @@ describe('Card test', () => {
         delete alisaCardOne.button;
         assert.deepStrictEqual(await defaultCard.getCards(), alisaCardOne);
 
-
         defaultCard.clear();
         defaultCard.isOne = false;
         defaultCard.add('36895', 'Запись 1', 'Описание 1', 'Кнопка');

@@ -18,9 +18,9 @@ export interface ITelegramMessageChat {
 export interface ITelegramMessage {
     message_id: number;
     from?: ITelegramMessageFrom;
-    chat?: ITelegramMessageChat;
+    chat: ITelegramMessageChat;
     date?: number;
-    text?: string;
+    text: string;
 }
 
 export interface ITelegramContent {
@@ -43,7 +43,7 @@ export interface ITelegramContent {
      */
     inline_query?: any;
     /**
-     * Результат встроенного запроса, который был выбран пользователем и отправлен его партнеру по чату. Пожалуйста, ознакомьтесь с нашей документацией по сбору обратной связи для получения подробной информации о том, как включить эти обновления для вашего бота. @see (https://core.telegram.org/bots/api#choseninlineresult) Смотри тут
+     * Результат встроенного запроса, который был выбран пользователем и отправлен его партнеру по чату. Пожалуйста, ознакомьтесь с документацией telegram по сбору обратной связи для получения подробной информации о том, как включить эти обновления для бота. @see (https://core.telegram.org/bots/api#choseninlineresult) Смотри тут
      */
     chosen_inline_result?: any;
     /**

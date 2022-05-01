@@ -28,7 +28,6 @@ export default function (query: string, userId: string, count: number, state: ob
         request: {
             command: query.toLowerCase(),
             original_utterance: query,
-            nlu: null,
             type: 'SimpleUtterance'
         },
         state: {

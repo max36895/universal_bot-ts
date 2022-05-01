@@ -1,5 +1,5 @@
 import {Model} from "./db/Model";
-import {IModelRules, IModelRes} from "./interface/IModel";
+import {IModelRes, IModelRules} from "./interface/IModel";
 import {mmApp} from "../core";
 
 /**
@@ -21,7 +21,7 @@ export class UsersData extends Model {
     /**
      * Идентификатор пользователя (Уникальный ключ).
      */
-    public userId: string | number;
+    public userId: string | number | null;
     /**
      * Meta данные пользователя.
      */
@@ -44,35 +44,6 @@ export class UsersData extends Model {
         this.meta = null;
         this.data = null;
         this.type = UsersData.T_ALISA;
-    }
-
-    /**
-     * Создание таблицы бд для хранения пользовательских данных.
-     *
-     * @return boolean|mysqli_result|null
-     * @api
-     */
-    public createTable() {
-        /* const sql = `CREATE TABLE IF NOT EXISTS \`${this.tableName()}\` (
-  \`userId\` VARCHAR(250) COLLATE utf8_unicode_ci NOT NULL,
-  \`meta\` TEXT COLLATE utf8_unicode_ci DEFAULT NULL,
-  \`data\` TEXT COLLATE utf8_unicode_ci DEFAULT NULL,
-  \`type\` INT(3) DEFAULT 0,
-  PRIMARY KEY (\`userId\`)
- ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;`;
-         return this.query(sql);*/
-    }
-
-    /**
-     * Удаление таблицы бд для хранения пользовательских данных.
-     *
-     * @return boolean|mysqli_result|null
-     * @api
-     */
-    public dropTable() {
-        /*
-                return this.query(`DROP TABLE IF EXISTS \`${this.tableName()}\`;`);
-        */
     }
 
     /**
@@ -172,7 +143,6 @@ export class UsersData extends Model {
                 try {
                     this.data = JSON.parse(this.data);
                 } catch (e) {
-
                 }
             }
         }

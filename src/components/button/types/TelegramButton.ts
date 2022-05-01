@@ -5,7 +5,7 @@ export interface ITelegramInlineKeyboard {
     /**
      * Текст внутри кнопки
      */
-    text: string,
+    text: string | null,
     /**
      * Ссылка по которой перейдёт пользователь после нажатия
      */
@@ -58,7 +58,7 @@ export class TelegramButton extends TemplateButtonTypes {
                     inlines.push(inline);
                 }
             } else {
-                reply.push(button.title);
+                reply.push(button.title || '');
             }
         });
         const rCount = reply.length;
