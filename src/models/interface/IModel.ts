@@ -31,5 +31,6 @@ export interface IModelRes {
 }
 
 export interface ILabelAttr {
-    [name: string | number]: any
+    [name: string]: any;
+    [name: number]: any;
 }

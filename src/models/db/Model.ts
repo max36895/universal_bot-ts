@@ -30,7 +30,7 @@ export abstract class Model implements IDbControllerResult {
      *
      * @return object
      */
-    public abstract attributeLabels(): ILabelAttr ;
+    public abstract attributeLabels(): ILabelAttr;
 
     /**
      * Название таблицы/файла с данными.
