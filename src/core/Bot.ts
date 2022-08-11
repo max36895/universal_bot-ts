@@ -279,7 +279,12 @@ export class Bot {
                 } else {
                     delete this._botController.userData.oldIntentName;
                 }
-                let content: any = await botClass.getContext();
+                let content: any;
+                if (this._botController.isSendRating) {
+                    content = await botClass.getRatingContext();
+                } else {
+                    content = await botClass.getContext();
+                }
                 if (!isLocalStorage) {
                     userData.data = this._botController.userData;
 
