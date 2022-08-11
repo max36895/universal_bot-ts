@@ -1,7 +1,14 @@
 import {YandexRequest} from "./YandexRequest";
 import {mmApp} from "../core/mmApp";
 import {Request} from "./request/Request";
-import {IYandexCheckOutPlace, IYandexRequestDownloadSound} from "./interfaces/IYandexApi";
+import {
+    IYandexCheckOutPlace,
+    IYandexRemoveRequest,
+    IYandexRequestDownloadSound,
+    IYandexRequestDownloadSoundRequest,
+    IYandexRequestDownloadSoundsRequest,
+    IYandexSoundsCheckOutPlaceRequest
+} from "./interfaces/IYandexApi";
 
 /**
  * Класс отвечающий за загрузку аудиофайлов в навык
@@ -18,7 +25,7 @@ export class YandexSoundRequest extends YandexRequest {
      * Идентификатор навыка, необходимый для корректного сохранения аудиофайлов (Обязательный параметр).
      * @see YandexRequest Смотри тут
      */
-    public skillId: string;
+    public skillId: string | null;
 
     /**
      * YandexSoundRequest constructor.
@@ -28,7 +35,7 @@ export class YandexSoundRequest extends YandexRequest {
      * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документация.
      * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
      */
-    constructor(oauth: string = null, skillId: string = null) {
+    constructor(oauth: string | null = null, skillId: string | null = null) {
         super(oauth);
         this.skillId = skillId || (mmApp.params.app_id || null);
         this._request.url = this.STANDARD_URL;
@@ -56,13 +63,13 @@ export class YandexSoundRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async checkOutPlace(): Promise<IYandexCheckOutPlace> {
+    public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = this.STANDARD_URL + 'status';
-        const query = await this.call();
-        if (typeof query.sounds.quota !== 'undefined') {
+        const query = await this.call<IYandexSoundsCheckOutPlaceRequest>();
+        if (query && typeof query.sounds.quota !== 'undefined') {
             return query.sounds.quota;
         }
-        this._log('YandexSoundRequest::checkOutPlace() Error: Не удалось проверить занятое место!');
+        this._log('YandexSoundRequest.checkOutPlace() Error: Не удалось проверить занятое место!');
 
         return null;
     }
@@ -84,19 +91,19 @@ export class YandexSoundRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound> {
+    public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound | null> {
         if (this.skillId) {
             this._request.url = this._getSoundsUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
-            const query = await this.call();
-            if (typeof query.sound.id !== 'undefined') {
+            const query = await this.call<IYandexRequestDownloadSoundRequest>();
+            if (query && query.sound.id !== 'undefined') {
                 return query.sound;
             } else {
-                this._log('YandexSoundRequest::downloadSoundFile() Error: Не удалось загрузить изображение по пути: ' + soundDir);
+                this._log('YandexSoundRequest.downloadSoundFile() Error: Не удалось загрузить изображение по пути: ' + soundDir);
             }
         } else {
-            this._log('YandexSoundRequest::downloadSoundFile() Error: Не выбран навык!');
+            this._log('YandexSoundRequest.downloadSoundFile() Error: Не выбран навык!');
         }
         return null;
     }
@@ -118,13 +125,13 @@ export class YandexSoundRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async getLoadedSounds(): Promise<IYandexRequestDownloadSound[]> {
+    public async getLoadedSounds(): Promise<IYandexRequestDownloadSound[] | null> {
         if (this.skillId) {
             this._request.url = this._getSoundsUrl();
-            const query = await this.call();
-            return query.sounds || null;
+            const query = await this.call<IYandexRequestDownloadSoundsRequest>();
+            return query?.sounds || null;
         } else {
-            this._log('YandexSoundRequest::getLoadedSounds() Error: Не выбран навык!');
+            this._log('YandexSoundRequest.getLoadedSounds() Error: Не выбран навык!');
         }
         return null;
     }
@@ -138,22 +145,22 @@ export class YandexSoundRequest extends YandexRequest {
      * @return Promise<string>
      * @api
      */
-    public async deleteSound(soundId: string): Promise<string> {
+    public async deleteSound(soundId: string): Promise<string | null> {
         if (this.skillId) {
             if (soundId) {
                 this._request.url = `${this._getSoundsUrl()}/${soundId}`;
                 this._request.customRequest = 'DELETE';
-                const query = await this.call();
-                if (typeof query.result !== 'undefined') {
+                const query = await this.call<IYandexRemoveRequest>();
+                if (query && typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
-                    this._log('YandexSoundRequest::deleteSound() Error: Не удалось удалить картинку!');
+                    this._log('YandexSoundRequest.deleteSound() Error: Не удалось удалить картинку!');
                 }
             } else {
-                this._log('YandexSoundRequest::deleteSound() Error: Не выбрано изображение!');
+                this._log('YandexSoundRequest.deleteSound() Error: Не выбрано изображение!');
             }
         } else {
-            this._log('YandexSoundRequest::deleteSound() Error: Не выбран навык!');
+            this._log('YandexSoundRequest.deleteSound() Error: Не выбран навык!');
         }
         return null;
     }
@@ -175,10 +182,10 @@ export class YandexSoundRequest extends YandexRequest {
                 });
                 return true;
             } else {
-                this._log('YandexSoundRequest::deleteSounds() Error: Не удалось получить загруженные звуки!');
+                this._log('YandexSoundRequest.deleteSounds() Error: Не удалось получить загруженные звуки!');
             }
         } else {
-            this._log('YandexSoundRequest::deleteSounds() Error: Не выбран навык!');
+            this._log('YandexSoundRequest.deleteSounds() Error: Не выбран навык!');
         }
         return false;
     }

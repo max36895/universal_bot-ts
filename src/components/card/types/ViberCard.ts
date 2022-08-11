@@ -1,26 +1,8 @@
 import {TemplateCardTypes} from "./TemplateCardTypes";
-import {Buttons, IViberButtonObject} from "../../button";
+import {Buttons, IViberButton, IViberButtonObject} from "../../button";
 import {Image} from "../../image/Image";
 
-export interface IViberCard {
-    /**
-     * Количество колонок
-     */
-    Columns: number;
-    /**
-     * Количество столбцов
-     */
-    Rows: number;
-    /**
-     * Ссылка на изображение
-     */
-    Image?: string;
-    /**
-     * Текст
-     */
-    Text?: string;
-    ActionType?: string;
-    ActionBody?: string;
+export interface IViberCard extends IViberButton {
 }
 
 /**
@@ -44,12 +26,12 @@ export class ViberCard extends TemplateCardTypes {
 
         let element: IViberCard = {
             Columns: countImage,
-            Rows: 6,
+            Rows: 6
         };
         if (image.imageToken) {
             element.Image = image.imageToken;
         }
-        const btn: IViberButtonObject = image.button.getButtons(Buttons.T_VIBER_BUTTONS);
+        const btn: IViberButtonObject | null = image.button.getButtons<IViberButtonObject>(Buttons.T_VIBER_BUTTONS);
         if (btn && typeof btn.Buttons !== 'undefined') {
             element = {...element, ...btn.Buttons[0]};
             element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;

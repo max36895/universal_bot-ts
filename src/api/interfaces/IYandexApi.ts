@@ -1,3 +1,28 @@
+export interface IYandexApi {
+    /**
+     * Ошибка при выполнении действия
+     */
+    error?: string;
+}
+
+export interface IYandexImagesCheckOutPlaceRequest extends IYandexApi {
+    /**
+     * Данные с картинками
+     */
+    images: {
+        quota: IYandexCheckOutPlace;
+    }
+}
+
+export interface IYandexSoundsCheckOutPlaceRequest extends IYandexApi {
+    /**
+     * Данные с аудиофайлами
+     */
+    sounds: {
+        quota: IYandexCheckOutPlace;
+    }
+}
+
 export interface IYandexCheckOutPlace {
     /**
      * Все доступное место.
@@ -7,6 +32,20 @@ export interface IYandexCheckOutPlace {
      * Занятое место.
      */
     used: string;
+}
+
+export interface IYandexRequestDownloadImageRequest extends IYandexApi {
+    /**
+     * Загруженная картинка
+     */
+    image: IYandexRequestDownloadImage;
+}
+
+export interface IYandexRequestDownloadImagesRequest extends IYandexApi {
+    /**
+     * Загруженные картинки
+     */
+    images: IYandexRequestDownloadImage[];
 }
 
 export interface IYandexRequestDownloadImage {
@@ -26,6 +65,20 @@ export interface IYandexRequestDownloadImage {
      * Дата загрузки изображения
      */
     createdAt: number;
+}
+
+export interface IYandexRequestDownloadSoundRequest extends IYandexApi {
+    /**
+     * Загруженный аудиофайл
+     */
+    sound: IYandexRequestDownloadSound;
+}
+
+export interface IYandexRequestDownloadSoundsRequest extends IYandexApi {
+    /**
+     * Загруженные аудиофайлы
+     */
+    sounds: IYandexRequestDownloadSound[];
 }
 
 export interface IYandexRequestDownloadSound {
@@ -53,8 +106,11 @@ export interface IYandexRequestDownloadSound {
      * Статус обработки файла. До тех пор, пока значение false, Алиса не сможет его воспроизвести
      */
     isProcessed: boolean;
+}
+
+export interface IYandexRemoveRequest extends IYandexApi {
     /**
-     * Ошибка при загрузке файла
+     * Результат выполнения действия
      */
-    error?: string;
+    result?: string;
 }

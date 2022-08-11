@@ -1,6 +1,6 @@
 import {TButtonPayload} from "../../components/button/interfaces/IButton";
 
-interface IAlisaEntities {
+export interface IAlisaEntities {
     /**
      * Обозначение начала и конца именованной сущности в массиве слов. Нумерация слов в массиве начинается с 0.
      */
@@ -26,7 +26,7 @@ interface IAlisaEntities {
      * Формальное описание именованной сущности.
      * Формат этого поля для всех поддерживаемых типов сущностей приведен в разделе Именованные сущности в запросах.
      */
-    value: object;
+    value: object | number;
 }
 
 export interface IAlisaNlu {
@@ -159,7 +159,7 @@ export interface IAlisaRequest {
     /**
      * JSON, полученный с нажатой кнопкой от обработчика навыка (в ответе на предыдущий запрос), максимум 4096 байт.
      */
-    payload?: object;
+    payload?: object | string;
     /**
      * Слова и именованные сущности, которые Диалоги извлекли из запроса пользователя.
      * Подробное описание поддерживаемых типов сущностей см. в разделе Именованные сущности в запросах.
@@ -247,7 +247,7 @@ export interface IAlisaImage {
      */
     image_id?: string;
     /**
-     * Заголовок для изображения. Максимум 128 символов.
+     * Заголовок изображения. Максимум 128 символов.
      * Игнорируется для типов карточки ItemsList.
      */
     title: string;
@@ -328,7 +328,7 @@ export interface IAlisaResponse {
      * Кнопки, которые следует показать пользователю.
      * Все указанные кнопки выводятся после основного ответа Алисы, описанного в свойствах response.text и response.card. Кнопки можно использовать как релевантные ответу ссылки или подсказки для продолжения разговора.
      */
-    buttons?: IAlisaButton[];
+    buttons?: IAlisaButton[] | null;
     /**
      * Признак конца разговора.
      * Допустимые значения:
@@ -343,8 +343,9 @@ export interface IAlisaWebhookResponse {
      * Данные для ответа пользователю.
      */
     response?: IAlisaResponse;
-    session_state?: object;
-    user_state_update?: object;
+    session_state?: object | string;
+    application_state?: object | string;
+    user_state_update?: object | string;
     /**
      * Версия протокола. Текущая версия — 1.0.
      */

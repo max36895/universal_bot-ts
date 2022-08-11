@@ -1,6 +1,7 @@
 import {TemplateTypeModel} from "./TemplateTypeModel";
 import {
     IMarusiaBigImage,
+    IMarusiaButton,
     IMarusiaItemsList,
     IMarusiaResponse,
     IMarusiaSession,
@@ -29,11 +30,11 @@ export class Marusia extends TemplateTypeModel {
     /**
      * Информация о сессии пользователя.
      */
-    protected _session: IMarusiaSession;
+    protected _session: IMarusiaSession | null = null;
     /**
      * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
      */
-    protected _stateName: string;
+    protected _stateName: 'user_state_update' | 'session_state' | null = null;
 
     /**
      * Получение данных, необходимых для построения ответа пользователю.
@@ -53,7 +54,7 @@ export class Marusia extends TemplateTypeModel {
                     response.card = undefined;
                 }
             }
-            response.buttons = this.controller.buttons.getButtons();
+            response.buttons = this.controller.buttons.getButtons<IMarusiaButton[]>();
         }
         return response;
     }
@@ -65,9 +66,9 @@ export class Marusia extends TemplateTypeModel {
      */
     protected _getSession(): IMarusiaSessionResponse {
         return {
-            session_id: this._session.session_id,
-            message_id: this._session.message_id,
-            user_id: this._session.user_id
+            session_id: (this._session as IMarusiaSession).session_id,
+            message_id: (this._session as IMarusiaSession).message_id,
+            user_id: (this._session as IMarusiaSession).user_id as string
         };
     }
 
@@ -77,7 +78,7 @@ export class Marusia extends TemplateTypeModel {
      * @param {IMarusiaWebhookRequest|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @see TemplateTypeModel::init() Смотри тут
+     * @see TemplateTypeModel.init() Смотри тут
      * @api
      */
     public async init(query: string | IMarusiaWebhookRequest, controller: BotController): Promise<boolean> {
@@ -93,7 +94,7 @@ export class Marusia extends TemplateTypeModel {
                     this.controller.isAuthSuccess = true;
                     return true;
                 }
-                this.error = 'Marusia::init(): Не корректные данные!';
+                this.error = 'Marusia.init(): Не корректные данные!';
                 return false;
             }
             if (!this.controller) {
@@ -130,7 +131,7 @@ export class Marusia extends TemplateTypeModel {
 
             this._session = content.session;
 
-            this.controller.userId = this._session.user_id;
+            this.controller.userId = this._session.user_id as string;
             mmApp.params.user_id = this.controller.userId;
             this.controller.nlu.setNlu(content.request.nlu || null);
 
@@ -150,22 +151,17 @@ export class Marusia extends TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<IMarusiaWebhookResponse>}
-     * @see TemplateTypeModel::getContext() Смотри тут
+     * @see TemplateTypeModel.getContext() Смотри тут
      * @api
      */
     public async getContext(): Promise<IMarusiaWebhookResponse> {
         const result: IMarusiaWebhookResponse = {
             version: this.VERSION,
         };
-        if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
-            if (this.controller.tts === null) {
-                this.controller.tts = this.controller.text;
-            }
-            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
-        }
+        await this._initTTS();
         result.response = await this._getResponse();
         result.session = this._getSession();
-        if (this.isUsedLocalStorage && this.controller.userData) {
+        if (this.isUsedLocalStorage && this.controller.userData && this._stateName) {
             result[this._stateName] = this.controller.userData;
         }
         const timeEnd = this.getProcessingTime();

@@ -26,7 +26,7 @@ export class VkSound implements TemplateSoundTypes {
                 const sound = sounds[i];
                 if (sound) {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
-                        let sText = Text.getText(sound.sounds);
+                        let sText: string | null = Text.getText(sound.sounds);
                         if (is_file(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_VK;

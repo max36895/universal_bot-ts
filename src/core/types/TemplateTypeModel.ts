@@ -9,11 +9,11 @@ export abstract class TemplateTypeModel {
     /**
      * Строка с ошибками, произошедшими при работе приложения.
      */
-    protected error: string;
+    protected error: string | null;
     /**
      * Время начала работы приложения.
      */
-    protected timeStart: number;
+    protected timeStart: number | null;
     /**
      * Класс с логикой приложения.
      */
@@ -28,11 +28,26 @@ export abstract class TemplateTypeModel {
     public sendInInit: any;
 
     constructor() {
+        // @ts-ignore
         this.controller = null;
         this.error = null;
         this._initProcessingTime();
         this.isUsedLocalStorage = false;
         this.sendInInit = null;
+        this.timeStart = null;
+    }
+
+    /**
+     * Устанавливает в контроллер значение для tts
+     * @private
+     */
+    protected async _initTTS(): Promise<void> {
+        if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
+            if (this.controller.tts === null) {
+                this.controller.tts = this.controller.text;
+            }
+            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
+        }
     }
 
     /**
@@ -50,7 +65,7 @@ export abstract class TemplateTypeModel {
      * @api
      */
     public getProcessingTime(): number {
-        return Date.now() - this.timeStart;
+        return Date.now() - (this.timeStart as number);
     }
 
     /**
@@ -59,7 +74,7 @@ export abstract class TemplateTypeModel {
      * @return string
      * @api
      */
-    public getError(): string {
+    public getError(): string | null {
         return this.error;
     }
 
@@ -108,7 +123,7 @@ export abstract class TemplateTypeModel {
      * @return Promise<object | string>
      * @api
      */
-    public getLocalStorage(): Promise<object | string> {
+    public getLocalStorage(): Promise<object | string | null> {
         return Promise.resolve(null);
     }
 

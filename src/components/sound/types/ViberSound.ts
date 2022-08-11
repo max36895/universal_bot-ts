@@ -34,7 +34,7 @@ export class ViberSound implements TemplateSoundTypes {
             speechKit = new YandexSpeechKit();
             content = speechKit.getTts(text);
             if (content) {
-                (new ViberRequest()).sendFile(mmApp::params['user_id'], content);
+                (new ViberRequest()).sendFile(mmApp.params['user_id'], content);
             }
         }*/
         return [];

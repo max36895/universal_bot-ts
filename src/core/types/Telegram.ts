@@ -19,7 +19,7 @@ export class Telegram extends TemplateTypeModel {
      * @param {ITelegramContent|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @see TemplateTypeModel::init() Смотри тут
+     * @see TemplateTypeModel.init() Смотри тут
      * @api
      */
     public async init(query: string | ITelegramContent, controller: BotController): Promise<boolean> {
@@ -50,7 +50,7 @@ export class Telegram extends TemplateTypeModel {
              *  - array channel_post: Новая версия сообщения, которая известна боту и была отредактирована @see message Смотри тут
              *  - array edited_channel_post: Новый входящий пост канала любого рода-текст, фото, наклейка и т.д. @see message Смотри тут
              *  - array inline_query: Новый входящий встроенный запрос. @see (https://core.telegram.org/bots/api#inlinequery) Смотри тут
-             *  - array chosen_inline_result: Результат встроенного запроса, который был выбран пользователем и отправлен его партнеру по чату. Пожалуйста, ознакомьтесь с нашей документацией по сбору обратной связи для получения подробной информации о том, как включить эти обновления для вашего бота. @see (https://core.telegram.org/bots/api#choseninlineresult) Смотри тут
+             *  - array chosen_inline_result: Результат встроенного запроса, который был выбран пользователем и отправлен его партнеру по чату. Пожалуйста, ознакомьтесь с документацией telegram по сбору обратной связи для получения подробной информации о том, как включить эти обновления для бота. @see (https://core.telegram.org/bots/api#choseninlineresult) Смотри тут
              *  - array callback_query: Новый входящий запрос обратного вызова. @see (https://core.telegram.org/bots/api#callbackquery) Смотри тут
              *  - array shipping_query: Новый входящий запрос на доставку. Только для счетов-фактур с гибкой ценой. @see (https://core.telegram.org/bots/api#shippingquery) Смотри тут
              *  - array pre_checkout_query: Новый входящий запрос предварительной проверки. Содержит полную информацию о кассе. @see (https://core.telegram.org/bots/api#precheckoutquery) Смотри тут
@@ -93,7 +93,7 @@ export class Telegram extends TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<string>}
-     * @see TemplateTypeModel::getContext() Смотри тут
+     * @see TemplateTypeModel.getContext() Смотри тут
      * @api
      */
     public async getContext(): Promise<string> {
@@ -106,12 +106,12 @@ export class Telegram extends TemplateTypeModel {
             }
             params.parse_mode = 'markdown';
 
-            await telegramApi.sendMessage(this.controller.userId, this.controller.text, params);
+            await telegramApi.sendMessage(this.controller.userId as string, this.controller.text, params);
 
             if (this.controller.card.images.length) {
                 const res: ITelegramCard = await this.controller.card.getCards();
                 if (res) {
-                    await telegramApi.sendPoll(this.controller.userId, res.question, res.options);
+                    await telegramApi.sendPoll(this.controller.userId as string, res.question, res.options);
                 }
             }
 

@@ -1,47 +1,78 @@
-import {DbControllerModel, IDbControllerResult} from "./DbControllerModel";
-import {Sql} from "./Sql";
+import {DbControllerModel, IDbControllerResult, TKey} from "./DbControllerModel";
 import {mmApp} from "../../core/mmApp";
 import {IQueryData, QueryData} from "./QueryData";
-import {fread, is_file} from "../../utils/index";
-import {IModelRes} from "../interface/IModel";
-import {Text} from "../../components/standard/Text";
+import {IModelRes, IModelRules} from "../interface/IModel";
+import {DbControllerFile} from "./DbControllerFile";
+import {DbControllerMongoDb} from "./DbControllerMongoDb";
 
+/**
+ * Контроллер, позволяющий работать с данными.
+ * В зависимости от конфигурации приложения, автоматически подключает нужный источник данных.
+ *
+ * @see DbControllerFile
+ * @see DbControllerMongoDb
+ */
 export class DbController extends DbControllerModel {
-    /**
-     * Подключение к базе данных.
-     */
-    private _db: Sql;
+    private _controller: DbControllerFile | DbControllerMongoDb;
 
     constructor() {
         super();
         if (mmApp.isSaveDb) {
-            this._db = new Sql();
+            this._controller = new DbControllerMongoDb();
         } else {
-            this._db = null;
+            this._controller = new DbControllerFile();
         }
+    }
+
+    public setRules(rules: IModelRules[]) {
+        super.setRules(rules);
+        this._controller.setRules(rules);
+    }
+
+    /**
+     * Устанавливает имя уникального ключа
+     * @param {string | number} primaryKey
+     */
+    public set primaryKeyName(primaryKey: TKey) {
+        this._primaryKeyName = primaryKey;
+        this._controller.primaryKeyName = primaryKey;
+    }
+
+    /**
+     * Возвращает имя уникального ключа
+     */
+    public get primaryKeyName(): TKey {
+        return this._controller.primaryKeyName;
+    }
+
+    /**
+     * Устанавливает имя таблицы
+     * @param tableName
+     */
+    public set tableName(tableName: string) {
+        super.tableName = tableName;
+        this._controller.tableName = tableName;
+    }
+
+    /**
+     * Возвращает имя таблицы
+     */
+    public get tableName(): string {
+        return this._controller.tableName;
     }
 
     /**
      * Выполнение запроса на сохранения записи.
-     * Обновление записи происходит в том случае, если запись присутствует в таблице.
+     * Обновление записи происходит в том случае, если запись присутствует в источнике данных.
      * Иначе будет добавлена новая запись.
      *
      * @param {QueryData} queryData Данные для сохранения записи
-     * @param {boolean} isNew В любом случае выполнить добавление записи
+     * @param {boolean} isNew Определяет необходимость добавления новой записи
      * @return {Promise<Object>}
      * @api
      */
     public async save(queryData: QueryData, isNew: boolean = false): Promise<any> {
-        if (isNew) {
-            queryData.setData({...queryData.getData(), ...queryData.getQuery()});
-            return await this.insert(queryData);
-        }
-        if (await this.isSelected(queryData.getQuery())) {
-            return await this.update(queryData);
-        } else {
-            queryData.setData({...queryData.getData(), ...queryData.getQuery()});
-            return await this.insert(queryData);
-        }
+        return this._controller?.save(queryData, isNew);
     }
 
     /**
@@ -50,194 +81,52 @@ export class DbController extends DbControllerModel {
      * @param {IQueryData} query Запрос
      * @return {Promise<boolean>}
      */
-    public async isSelected(query: IQueryData): Promise<boolean> {
-        const select = await this.select(query, true);
-        return (select && select.status);
+    public async isSelected(query: IQueryData | null): Promise<boolean> {
+        return !!(await this._controller.selectOne(query))?.status
     }
 
     /**
-     * Выполнение запроса на обновление записи в таблице
+     * Выполнение запроса на обновление записи в источнике данных
      *
      * @param {QueryData} updateQuery Данные для обновления записи
      * @return {Promise<Object>}
      * @api
      */
     public async update(updateQuery: QueryData): Promise<any> {
-        let update = updateQuery.getData();
-        let select = updateQuery.getQuery();
-        if (mmApp.isSaveDb) {
-            update = this.validate(update);
-            select = this.validate(select);
-            if (this.primaryKeyName) {
-                return !!await this._db.query(async (client, db) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    const collection = db.collection(this.tableName);
-                    const result = new Promise((resolve) => {
-                        collection.updateOne(select, {$set: update}, (err, result) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res;
-                            }
-                            res = {
-                                status: true,
-                                data: result.modifiedCount
-                            };
-
-                            resolve(res);
-                            return res;
-                        });
-                    });
-                    return await result;
-                });
-            }
-        } else {
-            const data = this.getFileData();
-            if (select) {
-                let idVal = select[this.primaryKeyName];
-                if (idVal !== undefined) {
-                    if (typeof data[idVal] !== 'undefined') {
-                        data[idVal] = {...data[idVal], ...update};
-                        mmApp.saveJson(`${this.tableName}.json`, data);
-                    }
-                    return true;
-                }
-            }
-        }
-        return null;
+        return this._controller.update(updateQuery);
     }
 
     /**
-     * Выполнение запроса на добавление записи в таблицу
+     * Выполнение запроса на добавление записи в источник данных
      *
      * @param {QueryData} insertQuery Данные для добавления записи
      * @return {Promise<Object>}
      * @api
      */
     public async insert(insertQuery: QueryData): Promise<any> {
-        let insert = insertQuery.getData();
-        if (mmApp.isSaveDb) {
-            insert = this.validate(insert);
-            if (this.primaryKeyName) {
-                return !!await this._db.query(async (client, db) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    const collection = db.collection(this.tableName);
-                    const result = new Promise((resolve) => {
-                        collection.insertOne(insert, (err, result) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res
-                            }
-                            res = {
-                                status: true,
-                                data: result.insertedId
-                            };
-                            resolve(res);
-                            return res;
-                        });
-                    });
-                    return await result;
-                });
-            }
-        } else {
-            const data = this.getFileData();
-            if (insert) {
-                const idVal = insert[this.primaryKeyName];
-                if (idVal) {
-                    data[idVal] = insert;
-                    mmApp.saveJson(`${this.tableName}.json`, data);
-                    return true;
-                }
-            }
-        }
-        return null;
+        return this._controller.insert(insertQuery);
     }
 
     /**
-     * Выполнение запроса на удаление записи в таблице
+     * Выполнение запроса на удаление записи в источнике данных
      *
      * @param {QueryData} removeQuery Данные для удаления записи
      * @return {Promise<boolean>}
      * @api
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
-        let remove = removeQuery.getQuery();
-        if (mmApp.isSaveDb) {
-            remove = this.validate(remove);
-            return !!await this._db.query(async (client, db) => {
-                let res: IModelRes = {
-                    status: false
-                };
-                const collection = db.collection(this.tableName);
-
-                const result = new Promise((resolve) => {
-                    collection.deleteOne(remove, (err, result) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            resolve(res);
-                            return res;
-                        }
-                        res = {
-                            status: true,
-                            data: result.deletedCount
-                        };
-                        resolve(res);
-                        return res;
-                    });
-                });
-                return await result;
-            });
-        } else {
-            const data = this.getFileData();
-            if (remove) {
-                let idVal = remove[this.primaryKeyName];
-                if (idVal !== undefined) {
-                    if (typeof data[idVal] !== 'undefined') {
-                        delete data[idVal];
-                        mmApp.saveJson(`${this.tableName}.json`, data);
-                    }
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-
-    /**
-     * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
-     *
-     * @return {Object|Object[]}
-     * @api
-     */
-    public getFileData(): any {
-        const path = mmApp.config.json;
-        const fileName = this.tableName;
-        const file = `${path}/${fileName}.json`;
-        if (is_file(file)) {
-            return JSON.parse(fread(file));
-        } else {
-            return {};
-        }
+        return this._controller.remove(removeQuery);
     }
 
     /**
-     * Выполнение произвольного запроса к таблице
+     * Выполнение произвольного запроса к источнику данных
      *
      * @param {Function} callback Запрос, который необходимо выполнить
      * @return {Object|Object[]}
      * @api
      */
     public query(callback: Function): any {
-        if (mmApp.isSaveDb) {
-            return this._db.query(callback);
-        }
-        return null;
+        return this._controller.query(callback);
     }
 
     /**
@@ -246,124 +135,23 @@ export class DbController extends DbControllerModel {
      * @param {IQueryData} element
      * @api
      */
-    public validate(element: IQueryData): IQueryData {
-        if (mmApp.isSaveDb) {
-            const rules = this._rules;
-            if (rules) {
-                rules.forEach((rule) => {
-                    let type = 'number';
-                    switch (rule.type) {
-                        case 'string':
-                        case 'text':
-                            type = 'string';
-                            break;
-                        case 'int':
-                        case 'integer':
-                        case 'bool':
-                            type = 'number';
-                            break;
-                    }
-                    rule.name.forEach((data) => {
-                        if (type === 'string') {
-                            if (typeof rule.max !== 'undefined') {
-                                element[data] = Text.resize(this[data], rule.max);
-                            }
-                            element[data] = this.escapeString(this[data]);
-                        } else {
-                            element[data] = +this[data];
-                        }
-                    })
-                })
-            }
-        }
-        return element;
+    public validate(element: IQueryData | null): IQueryData {
+        return this._controller.validate(element);
     }
 
     /**
-     * Выполнение запроса на поиск записей в таблице
+     * Выполнение запроса на поиск записей в источнике данных
      *
      * @param {IQueryData} where Данные для поиска значения
      * @param {boolean} isOne Вывести только 1 запись.
      * @return {Promise<IModelRes>}
      */
     public async select(where: IQueryData, isOne: boolean = false): Promise<IModelRes> {
-        if (mmApp.isSaveDb) {
-            return await this._db.query(async (client, db) => {
-                let res: IModelRes = {
-                    status: false
-                };
-                const collection = db.collection(this.tableName);
-                const result = new Promise((resolve) => {
-                    const callback = (err, results) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            resolve(res);
-                            return res;
-                        }
-                        res = {
-                            status: true,
-                            data: results
-                        };
-                        if (!results) {
-                            res.status = false;
-                        }
-                        resolve(res);
-                        return res
-                    };
-                    if (isOne) {
-                        collection.findOne(where, callback);
-                    } else {
-                        collection.find(where).toArray(callback);
-                    }
-                });
-                return await result;
-            });
-        } else {
-            let result = null;
-            const content = this.getFileData();
-            for (const key in content) {
-                if (content.hasOwnProperty(key)) {
-                    let isSelected = null;
-
-                    for (const data in where) {
-                        if (content[key].hasOwnProperty(data) && where.hasOwnProperty(data)) {
-                            isSelected = content[key][data] === where[data];
-                            if (isSelected === false) {
-                                break;
-                            }
-                        }
-                    }
-
-                    if (isSelected) {
-                        if (isOne) {
-                            result = content[key];
-                            return {
-                                status: true,
-                                data: result
-                            };
-                        }
-                        if (result === null) {
-                            result = [];
-                        }
-                        result.push(content[key]);
-                    }
-                }
-            }
-            if (result) {
-                return {
-                    status: true,
-                    data: result
-                };
-            }
-        }
-        return {
-            status: false,
-            error: 'Не удалось получить данные'
-        };
+        return this._controller.select(where, isOne);
     }
 
     /**
-     * Приводим полученный результат к требуемому типу.
+     * Приводит полученный результат к требуемому типу.
      * В качестве результата должен вернуться объект вида:
      * {
      *    key: value
@@ -374,22 +162,15 @@ export class DbController extends DbControllerModel {
      * @param {IModelRes} res Результат выполнения запроса
      * @return {IDbControllerResult}
      */
-    public getValue(res: IModelRes): IDbControllerResult {
-        if (res && res.status) {
-            return res.data;
-        }
-        return null;
+    public getValue(res: IModelRes): IDbControllerResult | null {
+        return this._controller.getValue(res)
     }
-
 
     /**
      * Удаление подключения к БД
      */
-    public destroy() {
-        if (mmApp.isSaveDb) {
-            this._db.close();
-            this._db = null;
-        }
+    public destroy(): void {
+        this._controller.destroy();
     }
 
     /**
@@ -400,14 +181,11 @@ export class DbController extends DbControllerModel {
      * @api
      */
     public escapeString(text: string | number): string {
-        if (mmApp.isSaveDb) {
-            return this._db.escapeString(text);
-        }
-        return text + '';
+        return this._controller.escapeString(text);
     }
 
     /**
-     * Проверка подключения к Базе Данных.
+     * Проверка подключения к источнику данных.
      * При использовании БД, проверяется статус подключения.
      * Если удалось подключиться, возвращается true, в противном случае false.
      * При сохранении данных в файл, всегда возвращается true.
@@ -415,9 +193,6 @@ export class DbController extends DbControllerModel {
      * @return {Promise<boolean>}
      */
     public async isConnected(): Promise<boolean> {
-        if (mmApp.isSaveDb) {
-            return await this._db.isConnected();
-        }
-        return true;
+        return this._controller.isConnected();
     }
 }

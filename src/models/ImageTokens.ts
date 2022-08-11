@@ -1,9 +1,8 @@
 import {Model} from "./db/Model";
 import {mmApp} from "../core";
 import {IModelRules} from "./interface/IModel";
-import {IYandexRequestDownloadImage, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
+import {IYandexRequestDownloadImage, MarusiaRequest, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
 import {Text} from "../components/standard/Text";
-import {MarusiaRequest} from "../api/MarusiaRequest";
 
 /**
  * @class ImageTokens
@@ -20,11 +19,11 @@ export class ImageTokens extends Model {
     /**
      * Идентификатор/токен изображения.
      */
-    public imageToken: string;
+    public imageToken: string | null;
     /**
      * Расположение изображения (url/директория).
      */
-    public path: string;
+    public path: string | null;
     /**
      * Тип приложения, для которого загружена картинка.
      */
@@ -32,7 +31,7 @@ export class ImageTokens extends Model {
     /**
      * Описание изображения (Не обязательное поле).
      */
-    public caption: string;
+    public caption: string | null;
 
     /**
      * ImageTokens constructor.
@@ -43,38 +42,6 @@ export class ImageTokens extends Model {
         this.path = null;
         this.type = ImageTokens.T_ALISA;
         this.caption = null;
-    }
-
-    /**
-     * Создание таблицы бд для хранения загруженных картинок.
-     *
-     * @return boolean|mysqli_result|null
-     * @api
-     */
-    public createTable() {
-        /*if (IS_SAVE_DB) {
-            const sql = `CREATE TABLE IF NOT EXISTS \`${this.tableName()}\` (
-  \`imageToken\` VARCHAR(150) COLLATE utf8_unicode_ci NOT NULL,
-  \`path\` VARCHAR(150) COLLATE utf8_unicode_ci DEFAULT NULL,
-  \`type\` INT(3) NOT NULL,
-  PRIMARY KEY (\`imageToken\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;`;
-            return this.query(sql);
-        }
-        return null;*/
-    }
-
-    /**
-     * Удаление таблицы бд для хранения загруженных картинок.
-     *
-     * @return boolean|mysqli_result|null
-     * @api
-     */
-    public dropTable() {
-        /*if (IS_SAVE_DB) {
-            return this.query(`DROP TABLE IF EXISTS \`${this.tableName()}\`;`);
-        }
-        return null;*/
     }
 
     /**
@@ -127,7 +94,7 @@ export class ImageTokens extends Model {
      * @return {Promise<string>}
      * @api
      */
-    public async getToken(): Promise<string> {
+    public async getToken(): Promise<string | null> {
         const where = {path: this.path, type: this.type};
         switch (this.type) {
             case ImageTokens.T_ALISA:
@@ -135,7 +102,7 @@ export class ImageTokens extends Model {
                     return this.imageToken;
                 } else {
                     const yImage = new YandexImageRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
-                    let res: IYandexRequestDownloadImage = null;
+                    let res: IYandexRequestDownloadImage | null = null;
                     if (this.path) {
                         if (Text.isUrl(this.path)) {
                             res = await yImage.downloadImageUrl(this.path);
@@ -162,7 +129,7 @@ export class ImageTokens extends Model {
                     if (uploadServerResponse) {
                         const uploadResponse = await marusiaApi.upload(uploadServerResponse.picture_upload_link, this.path);
                         if (uploadResponse) {
-                            const photo = await marusiaApi.marusiaSavePicture(uploadResponse.photo, uploadResponse.server, uploadResponse.hash);
+                            const photo = await marusiaApi.marusiaSavePicture(uploadResponse.photo as string, uploadResponse.server, uploadResponse.hash);
                             if (photo) {
                                 this.imageToken = photo.photo_id;
                                 if (await this.save(true)) {
@@ -180,11 +147,11 @@ export class ImageTokens extends Model {
                     return this.imageToken;
                 } else if (this.path) {
                     const vkApi = new VkRequest();
-                    const uploadServerResponse = await vkApi.photosGetMessagesUploadServer(mmApp.params.user_id);
+                    const uploadServerResponse = await vkApi.photosGetMessagesUploadServer(mmApp.params.user_id as string);
                     if (uploadServerResponse) {
                         const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, this.path);
                         if (uploadResponse) {
-                            const photo = await vkApi.photosSaveMessagesPhoto(uploadResponse.photo, uploadResponse.server, uploadResponse.hash);
+                            const photo = await vkApi.photosSaveMessagesPhoto(uploadResponse.photo as string, uploadResponse.server, uploadResponse.hash);
                             if (photo) {
                                 this.imageToken = `photo${photo.owner_id}_${photo.id}`;
                                 if (await this.save(true)) {
@@ -199,11 +166,11 @@ export class ImageTokens extends Model {
             case ImageTokens.T_TELEGRAM:
                 const telegramApi = new TelegramRequest();
                 if (await this.whereOne(where)) {
-                    await telegramApi.sendPhoto(mmApp.params.user_id, this.imageToken, this.caption);
+                    await telegramApi.sendPhoto(mmApp.params.user_id as string, this.imageToken as string, this.caption);
                     return this.imageToken;
                 } else if (this.path) {
-                    const photo = await telegramApi.sendPhoto(mmApp.params.user_id, this.path, this.caption);
-                    if (photo && photo.ok) {
+                    const photo = await telegramApi.sendPhoto(mmApp.params.user_id as string, this.path, this.caption);
+                    if (photo && photo.ok && photo.result.photo) {
                         if (typeof photo.result.photo.file_id !== 'undefined') {
                             this.imageToken = photo.result.photo.file_id;
                             if (await this.save(true)) {

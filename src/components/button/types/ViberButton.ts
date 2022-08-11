@@ -18,8 +18,8 @@ export class ViberButton extends TemplateButtonTypes {
      * @return IViberButtonObject
      * @api
      */
-    public getButtons(): IViberButtonObject {
-        let object: IViberButtonObject = null;
+    public getButtons(): IViberButtonObject | null {
+        let object: IViberButtonObject | null = null;
         const buttons: IViberButton[] = [];
         this.buttons.forEach((button) => {
             let btn: IViberButton = {

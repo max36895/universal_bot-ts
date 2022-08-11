@@ -33,8 +33,8 @@ export class MarusiaRequest extends VkRequest {
      * @return {Promise<IMarusiaApiPictureUpdateLink>}
      * @api
      */
-    public async marusiaGetPictureUploadLink(): Promise<IMarusiaApiPictureUpdateLink> {
-        return await this.call('marusia.getPictureUploadLink');
+    public async marusiaGetPictureUploadLink(): Promise<IMarusiaApiPictureUpdateLink | null> {
+        return await this.call<IMarusiaApiPictureUpdateLink>('marusia.getPictureUploadLink');
     }
 
     /**
@@ -47,13 +47,13 @@ export class MarusiaRequest extends VkRequest {
      * @see upload() Смотри тут
      * @api
      */
-    public async marusiaSavePicture(photo: string, server: string, hash: string): Promise<IMarusiaApiSavePicture> {
+    public async marusiaSavePicture(photo: string, server: string, hash: string): Promise<IMarusiaApiSavePicture | null> {
         this._request.post = {
             photo,
             server,
             hash
         };
-        return await this.call('marusia.savePicture');
+        return await this.call<IMarusiaApiSavePicture>('marusia.savePicture');
     }
 
     /**
@@ -70,8 +70,8 @@ export class MarusiaRequest extends VkRequest {
      * @return {Promise<IMarusiaApiAudioUpdateLink>}
      * @api
      */
-    public async marusiaGetAudioUploadLink(): Promise<IMarusiaApiAudioUpdateLink> {
-        return await this.call('marusia.getAudioUploadLink');
+    public async marusiaGetAudioUploadLink(): Promise<IMarusiaApiAudioUpdateLink | null> {
+        return await this.call<IMarusiaApiAudioUpdateLink>('marusia.getAudioUploadLink');
     }
 
     /**
@@ -82,13 +82,12 @@ export class MarusiaRequest extends VkRequest {
      * @see upload() Смотри тут
      * @api
      */
-    public async marusiaCreateAudio(audio_meta: object): Promise<IMarusiaApiCreateAudio> {
+    public async marusiaCreateAudio(audio_meta: object): Promise<IMarusiaApiCreateAudio | null> {
         this._request.post = {
             audio_meta
         };
-        return await this.call('marusia.createAudio');
+        return await this.call<IMarusiaApiCreateAudio>('marusia.createAudio');
     }
-
 
     /**
      * Сохранение логов.

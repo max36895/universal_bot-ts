@@ -9,7 +9,7 @@ export class UserSound implements TemplateSoundTypes {
      * @param text Исходный текст
      * @return {Promise<string>}
      */
-    public async getSounds(sounds: ISound[], text: string = ''): Promise<string> {
+    public async getSounds(sounds: ISound[], text: string = ''): Promise<string | null> {
         if (sounds) {
             sounds.forEach((sound) => {
                 if (sound) {
@@ -27,7 +27,7 @@ export class UserSound implements TemplateSoundTypes {
          */
         if (text) {
             const speechKit = new YandexSpeechKit();
-            const content = speechKit.getTts(text);
+            const content = await speechKit.getTts(text);
             if (content) {
                 /*
                 * Сохраняем данные в массив, либо отправляем данные через запрос.

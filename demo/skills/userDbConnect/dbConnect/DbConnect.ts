@@ -163,7 +163,7 @@ export default class DbConnect extends DbControllerModel {
         return new Promise<IModelRes>((resolve) => {
             res.then(res => {
                 if (res.status) {
-                    let data = res.data;
+                    let data: any = res.data;
                     if (isOne) {
                         data = data[0];
                     }

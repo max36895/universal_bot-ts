@@ -1,5 +1,4 @@
-import {Buttons} from "../button/Buttons";
-import {TButton, TButtonPayload} from "../button/interfaces/IButton";
+import {Buttons, TButton, TButtonPayload} from "../button";
 import {Text} from "../standard/Text";
 import {is_file} from "../../utils";
 import {
@@ -8,7 +7,7 @@ import {
     TSberSmartAppTypeface
 } from "../../core/interfaces/ISberSmartApp";
 
-interface IImageParams {
+export interface IImageParams {
     /**
      * Стиль верхнего текста
      */
@@ -63,24 +62,23 @@ export class Image {
      */
     public title: string;
     /**
-     * Описание для изображения.
+     * Описание изображения.
      */
     public desc: string;
     /**
      * Идентификатор изображения.
      */
-    public imageToken: string;
+    public imageToken: string | null;
     /**
      * Расположение изображения в сети/директории.
      */
-    public imageDir: string;
+    public imageDir: string | null;
     /**
      * True, если однозначно используется идентификатор/токен изображения. По умолчанию false.
      */
     public isToken: boolean;
-
     /**
-     * Дополнительные параметры для изображения.
+     * Дополнительные параметры изображения.
      */
     public params: IImageParams;
 
@@ -101,13 +99,13 @@ export class Image {
      * Инициализация изображения.
      *
      * @param {string} image Путь до изображения в сети/папке. Либо идентификатор изображения.
-     * @param {string} title Заголовок для изображения.
-     * @param {string} desc Описание для изображения.
+     * @param {string} title Заголовок изображения.
+     * @param {string} desc Описание изображения.
      * @param {TButton} button Возможные кнопки для изображения.
      * @return boolean
      * @api
      */
-    public init(image: string, title: string, desc: string = ' ', button: TButton = null): boolean {
+    public init(image: string | null, title: string, desc: string = ' ', button: TButton | null = null): boolean {
         if (this.isToken) {
             this.imageToken = image;
         } else {
@@ -128,8 +126,8 @@ export class Image {
                 if (typeof button === 'string') {
                     this.button.addBtn(button);
                 } else {
-                    const title: string = (button.title || button.text || null);
-                    const url: string = (button.url || null);
+                    const title: string | null = (button.title || button.text || null);
+                    const url: string | null = (button.url || null);
                     const payload: TButtonPayload = (button.payload || null);
                     this.button.addBtn(title, url, payload);
                 }

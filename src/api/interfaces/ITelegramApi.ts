@@ -11,7 +11,7 @@ export interface ITelegramParams {
      */
     text?: string;
     /**
-     * Отправьте Markdown или HTML, если вы хотите, чтобы приложения Telegram отображали полужирный, курсивный, фиксированный по ширине текст или встроенные URL-адреса в сообщении вашего бота.
+     * Отправьте Markdown или HTML, если вы хотите, чтобы приложения Telegram отображали полужирный, курсивный, фиксированный по ширине текст или встроенные URL-адреса в сообщении бота.
      */
     parse_mode?: string;
     /**
@@ -307,7 +307,7 @@ export interface ITelegramResult {
      * Статус отправки сообщения
      */
     ok: boolean;
-    result?: ITelegramResultContent;
+    result: ITelegramResultContent;
     /**
      * Код ошибки
      */

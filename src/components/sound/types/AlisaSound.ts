@@ -292,25 +292,24 @@ export class AlisaSound implements TemplateSoundTypes {
         }
     ];
 
-    private readonly S_AUDIO_GAME_BOOT = '#game_boot#';
-    private readonly S_AUDIO_GAME_8_BIT_COIN = '#game_coin#';
-    private readonly S_AUDIO_GAME_LOSS = '#game_loss#';
-    private readonly S_AUDIO_GAME_PING = '#game_ping#';
-    private readonly S_AUDIO_GAME_WIN = '#game_win#';
-    private readonly S_AUDIO_GAME_8_BIT_FLYBY = '#game_fly#';
-    private readonly S_AUDIO_GAME_8_BIT_MACHINE_GUN = '#game_gun#';
-    private readonly S_AUDIO_GAME_8_BIT_PHONE = '#games_phone#';
-    private readonly S_AUDIO_GAME_POWERUP = '#games_powerup#';
+    public static readonly S_AUDIO_GAME_BOOT = '#game_boot#';
+    public static readonly S_AUDIO_GAME_8_BIT_COIN = '#game_coin#';
+    public static readonly S_AUDIO_GAME_LOSS = '#game_loss#';
+    public static readonly S_AUDIO_GAME_PING = '#game_ping#';
+    public static readonly S_AUDIO_GAME_WIN = '#game_win#';
+    public static readonly S_AUDIO_GAME_8_BIT_FLYBY = '#game_fly#';
+    public static readonly S_AUDIO_GAME_8_BIT_MACHINE_GUN = '#game_gun#';
+    public static readonly S_AUDIO_GAME_8_BIT_PHONE = '#games_phone#';
+    public static readonly S_AUDIO_GAME_POWERUP = '#games_powerup#';
 
-    private readonly S_AUDIO_NATURE_WIND = '#nature_wind#';
-    private readonly S_AUDIO_NATURE_THUNDER = '#nature_thunder#';
-    private readonly S_AUDIO_NATURE_JUNGLE = '#nature_jungle#';
-    private readonly S_AUDIO_NATURE_RAIN = '#nature_rain#';
-    private readonly S_AUDIO_NATURE_FOREST = '#nature_forest#';
-    private readonly S_AUDIO_NATURE_SEA = '#nature_sea#';
-    private readonly S_AUDIO_NATURE_FIRE = '#nature_fire#';
-    private readonly S_AUDIO_NATURE_STREAM = '#nature_stream#';
-
+    public static readonly S_AUDIO_NATURE_WIND = '#nature_wind#';
+    public static readonly S_AUDIO_NATURE_THUNDER = '#nature_thunder#';
+    public static readonly S_AUDIO_NATURE_JUNGLE = '#nature_jungle#';
+    public static readonly S_AUDIO_NATURE_RAIN = '#nature_rain#';
+    public static readonly S_AUDIO_NATURE_FOREST = '#nature_forest#';
+    public static readonly S_AUDIO_NATURE_SEA = '#nature_sea#';
+    public static readonly S_AUDIO_NATURE_FIRE = '#nature_fire#';
+    public static readonly S_AUDIO_NATURE_STREAM = '#nature_stream#';
 
     /**
      * Получение разметки для вставки паузы между словами.

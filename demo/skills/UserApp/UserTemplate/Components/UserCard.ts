@@ -8,8 +8,8 @@ export class UserCard extends TemplateCardTypes {
      * @param isOne True, если отобразить только 1 картинку.
      * @return {Promise<Object[]>}
      */
-    public async getCard(isOne: boolean): Promise<object[]> {
-        let object = [];
+    public async getCard(isOne: boolean): Promise<object | object[]> {
+        let object: object[] = [];
         let countImage = this.images.length;
         if (countImage > 7) {
             countImage = 7;

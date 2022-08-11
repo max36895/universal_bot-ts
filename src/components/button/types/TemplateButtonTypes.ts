@@ -12,6 +12,10 @@ export abstract class TemplateButtonTypes {
      */
     public buttons: Button[];
 
+    public constructor() {
+        this.buttons = [];
+    }
+
     /**
      * Получение массива с кнопками для ответа пользователю.
      *

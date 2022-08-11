@@ -1,12 +1,24 @@
 export interface IViberButton {
+    /**
+     * Количество колонок
+     */
     Columns?: number;
+    /**
+     * Количество столбцов
+     */
     Rows?: number;
     ActionType?: string;
-    ActionBody?: string;
-    Text: string;
+    ActionBody?: string | null;
+    /**
+     * Текст
+     */
+    Text?: string | null;
     TextSize?: string;
     TextVAlign?: string;
     TextHAlign?: string;
+    /**
+     * Ссылка на изображение
+     */
     Image?: string;
 }
 

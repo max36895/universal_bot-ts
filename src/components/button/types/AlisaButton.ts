@@ -29,8 +29,8 @@ export class AlisaButton extends TemplateButtonTypes {
      * @return {IAlisaButtonCard | IAlisaButton}
      * @private
      */
-    protected _getButton(button: Button): IAlisaButtonCard | IAlisaButton {
-        const title = Text.resize(button.title, 64);
+    protected _getButton(button: Button): IAlisaButtonCard | IAlisaButton | null {
+        const title = Text.resize(button.title || '', 64);
         if (title) {
             let object: IAlisaButtonCard | IAlisaButton;
             if (this.isCard) {
@@ -59,13 +59,13 @@ export class AlisaButton extends TemplateButtonTypes {
      *
      * @return IAlisaButton[]|IAlisaButtonCard
      * [
-     *  - string text: Текст на кнопке.
+     *  - string text: Текст в кнопке.
      *  - string payload: Произвольные данные, которые будут отправлены при нажатии на кнопку.
      *  - string url: Ссылка по которой будет произведен переход после нажатия на кнопку.
      * ]
      * @api
      */
-    public getButtons(): IAlisaButton[] | IAlisaButtonCard {
+    public getButtons(): IAlisaButton[] | IAlisaButtonCard | null {
         const objects: IAlisaButton[] = [];
         if (this.isCard) {
             if (this.buttons.length) {
@@ -73,7 +73,7 @@ export class AlisaButton extends TemplateButtonTypes {
             }
         } else {
             this.buttons.forEach((button) => {
-                const object: IAlisaButton = this._getButton(button);
+                const object: IAlisaButton | null = this._getButton(button);
                 if (object) {
                     objects.push(object);
                 }

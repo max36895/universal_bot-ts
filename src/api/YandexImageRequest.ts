@@ -1,7 +1,14 @@
 import {YandexRequest} from "./YandexRequest";
 import {mmApp} from "../core/mmApp";
 import {Request} from "./request/Request";
-import {IYandexCheckOutPlace, IYandexRequestDownloadImage} from "./interfaces/IYandexApi";
+import {
+    IYandexCheckOutPlace,
+    IYandexImagesCheckOutPlaceRequest,
+    IYandexRemoveRequest,
+    IYandexRequestDownloadImage,
+    IYandexRequestDownloadImageRequest,
+    IYandexRequestDownloadImagesRequest
+} from "./interfaces/IYandexApi";
 
 /**
  * Класс отвечающий за загрузку изображений в навык.
@@ -18,7 +25,7 @@ export class YandexImageRequest extends YandexRequest {
      * Идентификатор навыка, необходимый для корректного сохранения изображения (Обязательный параметр)
      * @see YandexRequest Смотри тут
      */
-    public skillId: string;
+    public skillId: string | null;
 
     /**
      * YandexImageRequest constructor.
@@ -28,7 +35,7 @@ export class YandexImageRequest extends YandexRequest {
      * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документация.
      * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
      */
-    constructor(oauth: string = null, skillId: string = null) {
+    constructor(oauth: string | null = null, skillId: string | null = null) {
         super(oauth);
         this.skillId = skillId || (mmApp.params.app_id || null);
         this._request.url = this.STANDARD_URL;
@@ -53,13 +60,13 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async checkOutPlace(): Promise<IYandexCheckOutPlace> {
+    public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = this.STANDARD_URL + 'status';
-        const query = await this.call();
-        if (typeof query.images.quota !== 'undefined') {
+        const query = await this.call<IYandexImagesCheckOutPlaceRequest>();
+        if (query && typeof query.images.quota !== 'undefined') {
             return query.images.quota;
         }
-        this._log('YandexImageRequest::checkOutPlace() Error: Не удалось проверить занятое место!');
+        this._log('YandexImageRequest.checkOutPlace() Error: Не удалось проверить занятое место!');
         return null;
     }
 
@@ -76,19 +83,19 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage> {
+    public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = {url: imageUrl};
-            const query = await this.call();
-            if (typeof query.image.id !== 'undefined') {
+            const query = await this.call<IYandexRequestDownloadImageRequest>();
+            if (query && typeof query.image.id !== 'undefined') {
                 return query.image;
             } else {
-                this._log('YandexImageRequest::downloadImageUrl() Error: Не удалось загрузить изображение с сайта!');
+                this._log('YandexImageRequest.downloadImageUrl() Error: Не удалось загрузить изображение с сайта!');
             }
         } else {
-            this._log('YandexImageRequest::downloadImageUrl() Error: Не выбран навык!');
+            this._log('YandexImageRequest.downloadImageUrl() Error: Не выбран навык!');
         }
         return null;
     }
@@ -106,19 +113,19 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage> {
+    public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;
-            const query = await this.call();
-            if (typeof query.image.id !== 'undefined') {
+            const query = await this.call<IYandexRequestDownloadImageRequest>();
+            if (query && typeof query.image.id !== 'undefined') {
                 return query.image;
             } else {
-                this._log('YandexImageRequest::downloadImageFile() Error: Не удалось загрузить изображение по пути: ' + imageDir);
+                this._log('YandexImageRequest.downloadImageFile() Error: Не удалось загрузить изображение по пути: ' + imageDir);
             }
         } else {
-            this._log('YandexImageRequest::downloadImageFile() Error: Не выбран навык!');
+            this._log('YandexImageRequest.downloadImageFile() Error: Не выбран навык!');
         }
         return null;
     }
@@ -137,13 +144,13 @@ export class YandexImageRequest extends YandexRequest {
      * ]
      * @api
      */
-    public async getLoadedImages(): Promise<IYandexRequestDownloadImage[]> {
+    public async getLoadedImages(): Promise<IYandexRequestDownloadImage[] | null> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
-            const query = await this.call();
-            return query.images || null;
+            const query = await this.call<IYandexRequestDownloadImagesRequest>();
+            return query?.images || null;
         } else {
-            this._log('YandexImageRequest::getLoadedImages() Error: Не выбран навык!');
+            this._log('YandexImageRequest.getLoadedImages() Error: Не выбран навык!');
         }
         return null;
     }
@@ -156,22 +163,22 @@ export class YandexImageRequest extends YandexRequest {
      * @return Promise<string>
      * @api
      */
-    public async deleteImage(imageId: string): Promise<string> {
+    public async deleteImage(imageId: string): Promise<string | null> {
         if (this.skillId) {
             if (imageId) {
                 this._request.url = `${this._getImagesUrl()}/${imageId}`;
                 this._request.customRequest = 'DELETE';
-                const query = await this.call();
-                if (typeof query.result !== 'undefined') {
+                const query = await this.call<IYandexRemoveRequest>();
+                if (query && typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
-                    this._log('YandexImageRequest::deleteImage() Error: Не удалось удалить картинку!');
+                    this._log('YandexImageRequest.deleteImage() Error: Не удалось удалить картинку!');
                 }
             } else {
-                this._log('YandexImageRequest::deleteImage() Error: Не выбрано изображение!');
+                this._log('YandexImageRequest.deleteImage() Error: Не выбрано изображение!');
             }
         } else {
-            this._log('YandexImageRequest::deleteImage() Error: Не выбран навык!');
+            this._log('YandexImageRequest.deleteImage() Error: Не выбран навык!');
         }
         return null;
     }
@@ -194,10 +201,10 @@ export class YandexImageRequest extends YandexRequest {
                 });
                 return true;
             } else {
-                this._log('YandexImageRequest::deleteImages() Error: Не удалось получить загруженные звуки!');
+                this._log('YandexImageRequest.deleteImages() Error: Не удалось получить загруженные звуки!');
             }
         } else {
-            this._log('YandexImageRequest::deleteImages() Error: Не выбран навык!');
+            this._log('YandexImageRequest.deleteImages() Error: Не выбран навык!');
         }
         return false;
     }

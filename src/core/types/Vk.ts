@@ -18,7 +18,7 @@ export class Vk extends TemplateTypeModel {
      * @param {IVkRequestContent|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @see TemplateTypeModel::init() Смотри тут
+     * @see TemplateTypeModel.init() Смотри тут
      * @api
      */
     public async init(query: string | IVkRequestContent, controller: BotController): Promise<boolean> {
@@ -102,7 +102,7 @@ export class Vk extends TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<string>}
-     * @see TemplateTypeModel::getContext() Смотри тут
+     * @see TemplateTypeModel.getContext() Смотри тут
      * @api
      */
     public async getContext(): Promise<string> {
@@ -125,7 +125,7 @@ export class Vk extends TemplateTypeModel {
                 params.attachments = {...attach, ...params.attachments};
             }
             const vkApi = new VkRequest();
-            await vkApi.messagesSend(this.controller.userId, this.controller.text, params);
+            await vkApi.messagesSend(this.controller.userId as string, this.controller.text, params);
         }
         return 'ok';
     }

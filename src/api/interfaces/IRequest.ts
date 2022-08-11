@@ -1,4 +1,7 @@
-export interface IRequestSend {
+/**
+ * @typeParam T Тип, используемый в data
+ */
+export interface IRequestSend<T> {
     /**
      * Статус ответа. True, если запрос успешно выполнился, иначе false.
      */
@@ -6,7 +9,7 @@ export interface IRequestSend {
     /**
      * Полученные данные.
      */
-    data?: any;
+    data: T | null;
     /**
      * Ошибка при отправке запроса.
      */

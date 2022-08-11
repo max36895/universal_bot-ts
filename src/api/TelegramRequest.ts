@@ -24,11 +24,11 @@ export class TelegramRequest {
     /**
      * Строка с ошибками.
      */
-    protected _error: string;
+    protected _error: string | null | undefined;
     /**
      * Авторизационный токен бота, необходимый для отправки данных.
      */
-    public token: string;
+    public token: string | null;
 
     /**
      * TelegramRequest constructor.
@@ -37,6 +37,7 @@ export class TelegramRequest {
         this._request = new Request();
         this._request.maxTimeQuery = 5500;
         this.token = null;
+        this._error = null;
         if (typeof mmApp.params.telegram_token !== "undefined") {
             this.initToken(mmApp.params.telegram_token);
         }
@@ -48,7 +49,7 @@ export class TelegramRequest {
      * @param {string} token Токен для загрузки данных на сервер.
      * @api
      */
-    public initToken(token: string): void {
+    public initToken(token: string | null): void {
         this.token = token;
     }
 
@@ -83,17 +84,17 @@ export class TelegramRequest {
      * @return {Promise<Object>}
      * @api
      */
-    public async call(method: string, userId: TTelegramChatId = null): Promise<any> {
+    public async call(method: string, userId: TTelegramChatId | null = null): Promise<ITelegramResult | null> {
         if (userId) {
             this._request.post.chat_id = userId;
         }
         if (this.token) {
             if (method) {
-                const data = await this._request.send(this._getUrl() + method);
-                if (data.status) {
-                    if (data.data.ok === false) {
+                const data = await this._request.send<ITelegramResult>(this._getUrl() + method);
+                if (data.status && data.data) {
+                    if (!data.data.ok) {
                         this._error = data.data.description;
-                        this._log('');
+                        this._log();
                         return null;
                     }
                     return data.data;
@@ -116,7 +117,7 @@ export class TelegramRequest {
      * [
      *  - string|int chat_id: Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
      *  - string text: Текст отправляемого сообщения, 1-4096 символов после синтаксического анализа сущностей.
-     *  - string parse_mode: Отправьте Markdown или HTML, если вы хотите, чтобы приложения Telegram отображали полужирный, курсивный, фиксированный по ширине текст или встроенные URL-адреса в сообщении вашего бота.
+     *  - string parse_mode: Отправьте Markdown или HTML, если вы хотите, чтобы приложения Telegram отображали полужирный, курсивный, фиксированный по ширине текст или встроенные URL-адреса в сообщении бота.
      *  - bool disable_web_page_preview: Отключает предварительный просмотр ссылок для ссылок в этом сообщении.
      *  - bool disable_notification: Отправляет сообщение молча. Пользователи получат уведомление без звука.
      *  - int reply_to_message_id: Если сообщение является ответом, то идентификатор исходного сообщения.
@@ -152,7 +153,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendMessage(chatId: TTelegramChatId, message: string, params: ITelegramParams = null): Promise<ITelegramResult> {
+    public sendMessage(chatId: TTelegramChatId, message: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
         this._request.post = {
             chat_id: chatId,
             text: message
@@ -223,7 +224,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendPoll(chatId: TTelegramChatId, question: string, options: string[], params: ITelegramParams = null): Promise<ITelegramResult> {
+    public sendPoll(chatId: TTelegramChatId, question: string, options: string[], params: ITelegramParams | null = null): Promise<ITelegramResult | null> | null {
         this._request.post = {
             chat_id: chatId,
             question,
@@ -306,7 +307,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendPhoto(userId: TTelegramChatId, file: string, desc: string = null, params: ITelegramParams = null): Promise<ITelegramResult> {
+    public sendPhoto(userId: TTelegramChatId, file: string, desc: string | null = null, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
         this._initPostFile('photo', file);
         if (desc) {
             this._request.post.caption = desc;
@@ -377,7 +378,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendDocument(userId: TTelegramChatId, file: string, params: ITelegramParams = null): Promise<ITelegramResult> {
+    public sendDocument(userId: TTelegramChatId, file: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
         this._initPostFile('document', file);
         if (params) {
             this._request.post = {...params, ...this._request.post};
@@ -450,7 +451,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendAudio(userId: TTelegramChatId, file: string, params: ITelegramParams = null): Promise<ITelegramResult> {
+    public sendAudio(userId: TTelegramChatId, file: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
         this._initPostFile('audio', file);
         if (params) {
             this._request.post = {...params, ...this._request.post};
@@ -525,7 +526,7 @@ export class TelegramRequest {
      * ]
      * @api
      */
-    public sendVideo(userId: TTelegramChatId, file: string, params: ITelegramParams = null): Promise<ITelegramResult> {
+    public sendVideo(userId: TTelegramChatId, file: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
         this._initPostFile('video', file);
         if (params) {
             this._request.post = {...params, ...this._request.post};
@@ -538,7 +539,7 @@ export class TelegramRequest {
      *
      * @param {string} error Текст ошибки.
      */
-    protected _log(error: string): void {
+    protected _log(error: string = ''): void {
         error = `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('telegramApi.log', error);
     }

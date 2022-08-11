@@ -3,7 +3,7 @@ import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
 import {is_file} from "../../../utils";
 import {mmApp} from "../../../core/mmApp";
-import {TelegramRequest, YandexSpeechKit} from "../../../api";
+import {TelegramRequest, TTelegramChatId, YandexSpeechKit} from "../../../api";
 import {SoundTokens} from "../../../models/SoundTokens";
 
 /**
@@ -27,14 +27,14 @@ export class TelegramSound implements TemplateSoundTypes {
                 const sound = sounds[i];
                 if (sound) {
                     if (sound.sounds && sound.key) {
-                        let sText = Text.getText(sound.sounds);
+                        let sText: string | null = Text.getText(sound.sounds);
                         if (is_file(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_TELEGRAM;
                             sModel.path = sText;
                             sText = await sModel.getToken();
                         } else {
-                            await (new TelegramRequest()).sendAudio(mmApp.params.user_id, sText);
+                            await (new TelegramRequest()).sendAudio(mmApp.params.user_id as TTelegramChatId, sText);
                         }
 
                         if (sText) {
@@ -48,7 +48,7 @@ export class TelegramSound implements TemplateSoundTypes {
             const speechKit = new YandexSpeechKit();
             const content = await speechKit.getTts(text);
             if (content) {
-                await (new TelegramRequest()).sendAudio(mmApp.params.user_id, content);
+                await (new TelegramRequest()).sendAudio(mmApp.params.user_id as TTelegramChatId, content);
             }
         }
         return data;

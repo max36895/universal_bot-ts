@@ -1,6 +1,7 @@
 import {Request} from "./request/Request";
 import {mmApp} from "../core/mmApp";
 import {
+    IVkApi,
     IVkDocSave,
     IVkParams,
     IVkParamsUsersGet,
@@ -43,12 +44,12 @@ export class VkRequest {
     /**
      * Текст ошибки.
      */
-    protected _error;
+    protected _error: string | null;
 
     /**
      * Vk токен, необходимый для отправки запросов на сервер.
      */
-    public token: string;
+    public token: string | null;
     /**
      * Тип контента файла.
      * True, если передается содержимое файла. По умолчанию: false.
@@ -68,6 +69,7 @@ export class VkRequest {
             this._vkApiVersion = this.VK_API_VERSION;
         }
         this.token = null;
+        this._error = null;
         if (mmApp.params.vk_token) {
             this.initToken(mmApp.params.vk_token);
         }
@@ -90,20 +92,20 @@ export class VkRequest {
      * @return Promise<any>
      * @api
      */
-    public async call(method: string): Promise<any> {
+    public async call<T extends IVkApi>(method: string): Promise<T | null> {
         if (this.token) {
             this._request.header = null;
             this._request.post.access_token = this.token;
             this._request.post.v = this._vkApiVersion;
-            const data = await this._request.send(this.VK_API_ENDPOINT + method);
-            if (data.status) {
+            const data = await this._request.send<T>(this.VK_API_ENDPOINT + method);
+            if (data.status && data.data) {
                 this._error = JSON.stringify(data.err || []);
                 if (typeof data.data.error !== 'undefined') {
                     this._error = JSON.stringify(data.data.error);
-                    this._log('');
+                    this._log();
                     return null;
                 }
-                return data.data.response || data.data;
+                return data.data.response as T || data.data;
             }
             this._log(data.err);
         } else {
@@ -129,15 +131,15 @@ export class VkRequest {
      * ]
      * @api
      */
-    public async upload(url: string, file: string): Promise<IVkUploadFile> {
+    public async upload(url: string, file: string): Promise<IVkUploadFile | null> {
         this._request.attach = file;
         this._request.isAttachContent = this.isAttachContent;
         this._request.header = Request.HEADER_FORM_DATA;
-        const data = await this._request.send(url);
-        if (data.status) {
+        const data = await this._request.send<IVkUploadFile>(url);
+        if (data.status && data.data) {
             if (typeof data.data.error !== 'undefined') {
                 this._error = JSON.stringify(data.data.error);
-                this._log('');
+                this._log();
                 return null;
             }
             return data.data;
@@ -183,7 +185,7 @@ export class VkRequest {
      * ]]
      * @api
      */
-    public async messagesSend(peerId: TVkPeerId, message: string, params: IVkParams = null): Promise<IVKSendMessage> {
+    public async messagesSend(peerId: TVkPeerId, message: string, params: IVkParams | null = null): Promise<IVKSendMessage | null> {
         const method = 'messages.send';
         this._request.post = {
             peer_id: peerId,
@@ -194,40 +196,41 @@ export class VkRequest {
             this._request.post.domain = peerId;
             delete this._request.post.peer_id;
         }
-
-        if (typeof params.random_id !== "undefined") {
-            this._request.post.random_id = params.random_id;
-        } else {
-            this._request.post.random_id = Date.now();
-        }
-
-        if (typeof params.attachments !== "undefined") {
-            this._request.post.attachment = params.attachments.join(',');
-            delete params.attachments;
-        }
-
-        if (typeof params.template !== 'undefined') {
-            if (typeof params.template !== 'string') {
-                params.template = JSON.stringify(params.template);
+        if (params) {
+            if (typeof params.random_id !== "undefined") {
+                this._request.post.random_id = params.random_id;
+            } else {
+                this._request.post.random_id = Date.now();
             }
-            this._request.post.template = params.template;
-            delete params.template;
-        }
 
-        if (typeof params.keyboard !== 'undefined') {
-            if (typeof this._request.post.template !== 'undefined') {
-                await this.call(method);
-                delete this._request.post.template;
+            if (typeof params.attachments !== "undefined") {
+                this._request.post.attachment = params.attachments.join(',');
+                delete params.attachments;
             }
-            if (typeof params.keyboard !== 'string') {
-                params.template = JSON.stringify(params.keyboard);
-            }
-            this._request.post.keyboard = params.keyboard;
-            delete params.keyboard;
-        }
 
-        if (Object.keys(params).length) {
-            this._request.post = {...params, ...this._request.post};
+            if (typeof params.template !== 'undefined') {
+                if (typeof params.template !== 'string') {
+                    params.template = JSON.stringify(params.template);
+                }
+                this._request.post.template = params.template;
+                delete params.template;
+            }
+
+            if (typeof params.keyboard !== 'undefined') {
+                if (typeof this._request.post.template !== 'undefined') {
+                    await this.call<IVKSendMessage>(method);
+                    delete this._request.post.template;
+                }
+                if (typeof params.keyboard !== 'string') {
+                    params.template = JSON.stringify(params.keyboard);
+                }
+                this._request.post.keyboard = params.keyboard;
+                delete params.keyboard;
+            }
+
+            if (Object.keys(params).length) {
+                this._request.post = {...params, ...this._request.post};
+            }
         }
         return await this.call(method);
     }
@@ -253,14 +256,16 @@ export class VkRequest {
      * ]
      * @api
      */
-    public usersGet(userId: TVkPeerId | string[], params: IVkParamsUsersGet = null): Promise<IVkUsersGet> {
+    public usersGet(userId: TVkPeerId | string[], params: IVkParamsUsersGet | null = null): Promise<IVkUsersGet | null> {
         if (typeof userId !== 'number') {
             this._request.post = {user_ids: userId};
         } else {
             this._request.post = {user_id: userId};
         }
-        this._request.post = {...this._request.post, ...params};
-        return this.call('users.get');
+        if (params) {
+            this._request.post = {...this._request.post, ...params};
+        }
+        return this.call<IVkUsersGet>('users.get');
     }
 
     /**
@@ -275,9 +280,9 @@ export class VkRequest {
      * ]
      * @api
      */
-    public photosGetMessagesUploadServer(peerId: TVkPeerId): Promise<IVkUploadServer> {
+    public photosGetMessagesUploadServer(peerId: TVkPeerId): Promise<IVkUploadServer | null> {
         this._request.post = {peer_id: peerId};
-        return this.call('photos.getMessagesUploadServer');
+        return this.call<IVkUploadServer>('photos.getMessagesUploadServer');
     }
 
     /**
@@ -302,13 +307,13 @@ export class VkRequest {
      * @see upload() Смотри тут
      * @api
      */
-    public photosSaveMessagesPhoto(photo: string, server: string, hash: string): Promise<IVkPhotosSave> {
+    public photosSaveMessagesPhoto(photo: string, server: string, hash: string): Promise<IVkPhotosSave | null> {
         this._request.post = {
             photo,
             server,
             hash
         };
-        return this.call('photos.saveMessagesPhoto');
+        return this.call<IVkPhotosSave>('photos.saveMessagesPhoto');
     }
 
     /**
@@ -322,12 +327,12 @@ export class VkRequest {
      * ]
      * @api
      */
-    public docsGetMessagesUploadServer(peerId: TVkPeerId, type: TVkDocType): Promise<IVkUploadServer> {
+    public docsGetMessagesUploadServer(peerId: TVkPeerId, type: TVkDocType): Promise<IVkUploadServer | null> {
         this._request.post = {
             peer_id: peerId,
             type
         };
-        return this.call('docs.getMessagesUploadServe');
+        return this.call<IVkUploadServer>('docs.getMessagesUploadServe');
     }
 
     /**
@@ -396,7 +401,7 @@ export class VkRequest {
      * ]
      * @api
      */
-    public docsSave(file: string, title: string, tags: string = null): Promise<IVkDocSave> {
+    public docsSave(file: string, title: string, tags: string | null = null): Promise<IVkDocSave | null> {
         this._request.post = {
             file,
             title
@@ -404,7 +409,7 @@ export class VkRequest {
         if (tags) {
             this._request.post.tags = tags;
         }
-        return this.call('docs.save');
+        return this.call<IVkDocSave>('docs.save');
     }
 
     /**
@@ -412,7 +417,7 @@ export class VkRequest {
      *
      * @param {string} error Текст ошибки.
      */
-    protected _log(error: string): void {
+    protected _log(error: string = ''): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
         mmApp.saveLog('vkApi.log', error);
     }

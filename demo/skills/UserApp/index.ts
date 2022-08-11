@@ -1,11 +1,11 @@
-import {Bot, IBotTestParams} from "../../../src";
+import {BotTest, IBotTestParams} from "../../../src/test";
 import skillStorageConfig from "../../config/skillStorageConfig";
 import skillDefaultParam from "../../config/skillDefaultParam";
 import {UserAppController} from "./controller/UserAppController";
 import {UserApp} from "./UserTemplate/Controller/UserApp";
 import userDataConfig from "./UserTemplate/userDataConfig";
 
-const bot = new Bot();
+const bot = new BotTest();
 bot.initConfig(skillStorageConfig());
 bot.initParams(skillDefaultParam());
 const logic = new UserAppController();

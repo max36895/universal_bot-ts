@@ -1,6 +1,7 @@
 import {TemplateTypeModel} from "./TemplateTypeModel";
 import {
     IAlisaBigImage,
+    IAlisaButton,
     IAlisaItemsList,
     IAlisaResponse,
     IAlisaSession,
@@ -28,7 +29,7 @@ export class Alisa extends TemplateTypeModel {
     /**
      * Информация о сессии пользователя.
      */
-    protected _session: IAlisaSession;
+    protected _session: IAlisaSession | undefined;
     /**
      * Использование хранилища. True - используется, false - нет.
      */
@@ -36,7 +37,7 @@ export class Alisa extends TemplateTypeModel {
     /**
      * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
      */
-    protected _stateName: string;
+    protected _stateName: 'user_state_update' | 'application_state' | 'session_state' | null = null;
 
     /**
      * Получение данных, необходимых для построения ответа пользователю.
@@ -57,7 +58,7 @@ export class Alisa extends TemplateTypeModel {
                     response.card = undefined;
                 }
             }
-            response.buttons = this.controller.buttons.getButtons();
+            response.buttons = this.controller.buttons.getButtons<IAlisaButton[]>();
         }
         return response;
     }
@@ -68,7 +69,7 @@ export class Alisa extends TemplateTypeModel {
      * @param {IAlisaWebhookRequest|string} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @see TemplateTypeModel::init() Смотри тут
+     * @see TemplateTypeModel.init() Смотри тут
      * @api
      */
     public async init(query: string | IAlisaWebhookRequest, controller: BotController): Promise<boolean> {
@@ -85,7 +86,7 @@ export class Alisa extends TemplateTypeModel {
                     this.controller.isAuthSuccess = true;
                     return true;
                 }
-                this.error = 'Alisa::init(): Не корректные данные!';
+                this.error = 'Alisa.init(): Не корректные данные!';
                 return false;
             }
             if (!this.controller) {
@@ -112,7 +113,7 @@ export class Alisa extends TemplateTypeModel {
 
             this._session = content.session;
 
-            let userId: string = null;
+            let userId: string | null = null;
             this._isState = false;
             if (mmApp.params.y_isAuthUser) {
                 if (typeof this._session.user !== 'undefined' && typeof this._session.user.user_id !== 'undefined') {
@@ -126,7 +127,7 @@ export class Alisa extends TemplateTypeModel {
                 if (typeof this._session.application !== 'undefined' && this._session.application.application_id !== 'undefined') {
                     userId = this._session.application.application_id;
                 } else {
-                    userId = this._session.user_id;
+                    userId = this._session.user_id as string;
                 }
             }
             this.controller.userId = userId;
@@ -170,7 +171,7 @@ export class Alisa extends TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<IAlisaWebhookResponse>}
-     * @see TemplateTypeModel::getContext() Смотри тут
+     * @see TemplateTypeModel.getContext() Смотри тут
      * @api
      */
     public async getContext(): Promise<IAlisaWebhookResponse> {
@@ -181,15 +182,10 @@ export class Alisa extends TemplateTypeModel {
             result.start_account_linking = function () {
             };
         } else {
-            if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
-                if (this.controller.tts === null) {
-                    this.controller.tts = this.controller.text;
-                }
-                this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
-            }
+            await this._initTTS();
             result.response = await this._getResponse();
         }
-        if (this._isState || this.isUsedLocalStorage) {
+        if ((this._isState || this.isUsedLocalStorage) && this._stateName) {
             if (this.isUsedLocalStorage && this.controller.userData) {
                 result[this._stateName] = this.controller.userData;
             } else if (this.controller.state) {

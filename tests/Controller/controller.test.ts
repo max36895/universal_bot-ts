@@ -2,7 +2,6 @@ import {assert} from 'chai'
 import {MyController} from "./MyController";
 import {mmApp} from "../../src";
 
-
 describe('Controller', () => {
     const uController = new MyController();
 

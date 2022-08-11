@@ -1,4 +1,13 @@
-import {INlu, INluIntent, INluResult, INluThisUser} from "./interfaces/INlu";
+import {
+    INlu,
+    INluDateTime,
+    INluFIO,
+    INluGeo,
+    INluIntent,
+    INluIntents,
+    INluResult,
+    INluThisUser
+} from "./interfaces/INlu";
 import {Text} from "../standard/Text";
 
 /**
@@ -58,7 +67,7 @@ export class Nlu {
     }
 
     /**
-     * Приводим nlu в пригодный для работы вид.
+     * Приводит nlu в пригодный для работы вид.
      * @param {Object} nlu
      * @return INlu
      */
@@ -68,7 +77,7 @@ export class Nlu {
     }
 
     /**
-     * Проинициализировать nlu данные.
+     * Устанавливает данные
      *
      * @param {Object} nlu Значение для nlu. В случае с Алисой передается в запросе. Для других типов инициируется самостоятельно.
      * @api
@@ -84,16 +93,18 @@ export class Nlu {
      * @return any|null
      * @api
      */
-    private _getData(type: string): any {
-        let data: object[] = null;
-        this._nlu.entities.forEach((entity) => {
-            if ((typeof entity.type !== "undefined") && entity.type === type) {
-                if (data === null) {
-                    data = [];
+    private _getData<T = object>(type: string): T[] | null {
+        let data: (object | number)[] | null = null;
+        if (this._nlu.entities) {
+            this._nlu.entities.forEach((entity) => {
+                if ((typeof entity.type !== "undefined") && entity.type === type) {
+                    if (data === null) {
+                        data = [];
+                    }
+                    data.push(entity.value);
                 }
-                data.push(entity.value);
-            }
-        });
+            });
+        }
         return data;
     }
 
@@ -110,7 +121,7 @@ export class Nlu {
      * ]
      * @api
      */
-    public getUserName(): INluThisUser {
+    public getUserName(): INluThisUser | null {
         return this._nlu.thisUser || null;
     }
 
@@ -120,27 +131,18 @@ export class Nlu {
      * 'status' == true, если значение найдено. Иначе значений найти не удалось.
      * 'result' представляет из себя массив типа
      * [
-     *  [
+     *  {
      *      "first_name" : Имя
      *      "patronymic_name" : Отчество
      *      "last_name" : Фамилия
-     *  ]
+     *  }
      * ]
      *
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     *      [
-     *          - string first_name
-     *          - string patronymic_name
-     *          - string last_name
-     *      ]
-     * ]
+     * @return INluResult<INluFIO[]>
      * @api
      */
-    public getFio(): INluResult {
-        const fio: object = this._getData(Nlu.T_FIO);
+    public getFio(): INluResult<INluFIO[]> {
+        const fio = this._getData<INluFIO>(Nlu.T_FIO);
         const status = !!fio;
         return {
             status,
@@ -163,22 +165,11 @@ export class Nlu {
      *  ]
      * ]
      *
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     *      [
-     *          - string country
-     *          - string city
-     *          - string street
-     *          - int house_number
-     *          - string airport
-     *      ]
-     * ]
+     * @return INluResult<INluGeo[]>
      * @api
      */
-    public getGeo(): INluResult {
-        const geo: object = this._getData(Nlu.T_GEO);
+    public getGeo(): INluResult<INluGeo[]> {
+        const geo = this._getData<INluGeo>(Nlu.T_GEO);
         const status = !!geo;
         return {
             status,
@@ -206,27 +197,11 @@ export class Nlu {
      *  ]
      * ]
      *
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     *      [
-     *          - int year
-     *          - bool year_is_relative
-     *          - int month
-     *          - bool month_is_relative
-     *          - int day
-     *          - bool day_is_relative
-     *          - int hour
-     *          - bool hour_is_relative
-     *          - int minute
-     *          - bool minute_is_relative
-     *      ]
-     * ]
+     * @return INluResult<INluDateTime[]>
      * @api
      */
-    public getDateTime(): INluResult {
-        const dateTime: object = this._getData(Nlu.T_DATETIME);
+    public getDateTime(): INluResult<INluDateTime[]> {
+        const dateTime = this._getData<INluDateTime>(Nlu.T_DATETIME);
         const status = !!dateTime;
         return {
             status,
@@ -240,26 +215,14 @@ export class Nlu {
      * 'status' == true, если значение найдено. Иначе значений найти не удалось.
      * 'result' представляет из себя массив типа
      * [
-     *  [
-     *      "integer" : Целое число
-     *      "float" : Десятичная дробь
-     *  ]
+     *  Число
      * ]
      *
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     *      [
-     *          - int integer
-     *          or
-     *          - float float
-     *      ]
-     * ]
+     * @return INluResult<number>
      * @api
      */
-    public getNumber(): INluResult {
-        const number: object = this._getData(Nlu.T_NUMBER);
+    public getNumber(): INluResult<number[]> {
+        const number = this._getData<number>(Nlu.T_NUMBER);
         const status = !!number;
         return {
             status,
@@ -323,7 +286,7 @@ export class Nlu {
      * @return any|null
      * @api
      */
-    public getIntents(): any {
+    public getIntents(): INluIntents | null {
         return this._nlu.intents || null;
     }
 
@@ -338,17 +301,10 @@ export class Nlu {
      *
      * @param {string} intentName Название intent`а
      * @return INluIntent|null
-     * [
-     *  - array slots
-     *  [
-     *      - string type
-     *      - array value
-     *  ]
-     * ]
      * @api
      */
-    public getIntent(intentName: string): INluIntent {
-        const intents: object = this.getIntents();
+    public getIntent(intentName: string): INluIntent | null {
+        const intents: INluIntents | null = this.getIntents();
         if (intents) {
             return intents[intentName] || null;
         }
@@ -359,14 +315,10 @@ export class Nlu {
      * Получение всех ссылок в тексте.
      *
      * @param {string} query Пользовательский запрос.
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     * ]
+     * @return INluResult<string[]>
      * @api
      */
-    public static getLink(query: string): INluResult {
+    public static getLink(query: string): INluResult<string[]> {
         const link = query.match(/((http|s:\/\/)[^( |\n)]+)/umig);
         if (link) {
             return {
@@ -384,14 +336,10 @@ export class Nlu {
      * Получение всех номеров телефона в тексте.
      *
      * @param {string} query Пользовательский запрос.
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     * ]
+     * @return INluResult<string[]>
      * @api
      */
-    public static getPhone(query: string): INluResult {
+    public static getPhone(query: string): INluResult<string[]> {
         const phone = query.match(/([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/umig);
         if (phone) {
             return {
@@ -409,15 +357,12 @@ export class Nlu {
      * Получение всех e-mail в тексте.
      *
      * @param {string} query Пользовательский запрос.
-     * @return INluResult
-     * [
-     *  - bool status
-     *  - array result
-     * ]
+     * @return INluResult<string[]>
      * @api
      */
-    public static getEMail(query: string): INluResult {
-        const mail = query.match(/(\b\S+@\S+\.\S{2,6}\b)/umig);
+    public static getEMail(query: string): INluResult<string[]> {
+        // можно использовать регулярку (\b\S+@\S+\.\S{2,6}\b), но она работает медленнее
+        const mail = query.match(/(\b[a-zA-Z]+@[a-zA-Z]+.[a-zA-Z]{2,6}\b)/umig);
         if (mail) {
             return {
                 status: true,

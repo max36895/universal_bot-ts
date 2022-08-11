@@ -27,9 +27,8 @@ export class MarusiaCard extends TemplateCardTypes {
         let items: IMarusiaImage[] = [];
         const images = this.images.slice(0, MarusiaCard.MARUSIA_MAX_IMAGES);
         for (const image of images) {
-            let button: IMarusiaButtonCard = null;
-            button = image.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-            if (!button.text) {
+            let button: IMarusiaButtonCard | null = image.button.getButtons<IMarusiaButtonCard>(Buttons.T_ALISA_CARD_BUTTON);
+            if (!button?.text) {
                 button = null;
             }
             if (!image.imageToken) {
@@ -62,7 +61,7 @@ export class MarusiaCard extends TemplateCardTypes {
      * @return {Promise<IMarusiaBigImage | IMarusiaItemsList>}
      * @api
      */
-    public async getCard(isOne: boolean): Promise<IMarusiaBigImage | IMarusiaItemsList> {
+    public async getCard(isOne: boolean): Promise<IMarusiaBigImage | IMarusiaItemsList | null> {
         this.button.type = Buttons.T_ALISA_CARD_BUTTON;
         const countImage = this.images.length;
         if (countImage) {
@@ -76,9 +75,9 @@ export class MarusiaCard extends TemplateCardTypes {
                     }
                 }
                 if (this.images[0].imageToken) {
-                    let button: IMarusiaButtonCard = this.images[0].button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-                    if (!button.text) {
-                        button = this.button.getButtons();
+                    let button: IMarusiaButtonCard | null = this.images[0].button.getButtons<IMarusiaButtonCard>(Buttons.T_ALISA_CARD_BUTTON);
+                    if (!button?.text) {
+                        button = this.button.getButtons<IMarusiaButtonCard>();
                     }
                     const object: IMarusiaBigImage = {
                         type: MarusiaCard.MARUSIA_CARD_BIG_IMAGE,
@@ -86,7 +85,7 @@ export class MarusiaCard extends TemplateCardTypes {
                         title: Text.resize(this.images[0].title, 128),
                         description: Text.resize(this.images[0].desc, 256)
                     };
-                    if (button.text) {
+                    if (button?.text) {
                         object.button = button;
                     }
                     return object;
@@ -95,12 +94,12 @@ export class MarusiaCard extends TemplateCardTypes {
                 const object: IMarusiaItemsList = {
                     type: MarusiaCard.MARUSIA_CARD_ITEMS_LIST,
                     header: {
-                        text: Text.resize(this.title, 64)
+                        text: Text.resize(this.title || '', 64)
                     }
                 };
                 object.items = await this._getItem();
-                const btn: IMarusiaButtonCard = this.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
-                if (btn.text) {
+                const btn: IMarusiaButtonCard | null = this.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                if (btn?.text) {
                     object.footer = {
                         text: btn.text,
                         button: btn

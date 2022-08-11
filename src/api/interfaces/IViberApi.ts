@@ -1,5 +1,17 @@
 import {IViberButton, IViberButtonObject} from "../../components/button/interfaces/IViberButton";
 
+export interface IViberApi {
+    /**
+     * Статус сообщения.
+     */
+    status_message?: string;
+    failed_list?: string[];
+    /**
+     * Результат действия.
+     */
+    status?: number;
+}
+
 export interface IViberUserInfo {
     /**
      * Уникальный идентификатор пользователя Viber.
@@ -58,15 +70,7 @@ export interface IViberSender {
     avatar: string;
 }
 
-export interface IViberGetUserDetails {
-    /**
-     * Результат действия.
-     */
-    status: number;
-    /**
-     * Статус сообщения.
-     */
-    status_message: string;
+export interface IViberGetUserDetails extends IViberApi {
     /**
      * Уникальный идентификатор сообщения.
      */

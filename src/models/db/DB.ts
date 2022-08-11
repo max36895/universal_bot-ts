@@ -1,4 +1,5 @@
 import {IAppDB} from "../../core/mmApp";
+// @ts-ignore
 import * as mongoDb from "mongodb";
 
 /**
@@ -15,7 +16,7 @@ export class DB {
     /**
      * Подключение к базе данных
      */
-    public dbConnect: Promise<mongoDb.MongoClient>;
+    public dbConnect: Promise<mongoDb.MongoClient> | null | undefined;
     /**
      * Ошибки при выполнении запросов
      */
@@ -29,7 +30,7 @@ export class DB {
      *  - string database Название базы данных
      * ]
      */
-    public params: IAppDB;
+    public params: IAppDB | null;
 
     /**
      * DB constructor.
@@ -60,14 +61,14 @@ export class DB {
                 };
             }
             this.sql = new mongoDb.MongoClient(this.params.host, options);
-            this.dbConnect = this.sql.connect((err) => {
+            this.dbConnect = this.sql.connect((err: string) => {
                 if (err) {
                     this.dbConnect = null;
                 }
             });
             return true;
         } else {
-            this.errors.push('Отсутствуют данные для подключения в БД!');
+            this.errors.push('Отсутствуют данные для подключения к источнику данных!');
         }
         return false;
     }
