@@ -136,7 +136,7 @@ export abstract class BotController {
      * Отправляет запрос на оценку приложения
      * @default false
      */
-    public isSendRating;
+    public isSendRating: boolean;
 
     protected constructor() {
         this.buttons = new Buttons();
