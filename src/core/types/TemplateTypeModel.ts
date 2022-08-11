@@ -93,7 +93,17 @@ export abstract class TemplateTypeModel {
      *
      * @return {Promise<Object|string>}
      */
-    public abstract getContext(): Promise<any>;
+    public abstract getContext(): Promise<Object | string>;
+
+    /**
+     * /**
+     * Отправка ответа для выставления оценки приложеня. Актуально для Сбер. Для остальных приложений вызовется getContext()
+     *
+     * @return {Promise<Object|string>}
+     */
+    public getRatingContext(): Promise<Object | string> {
+        return this.getContext();
+    }
 
     /**
      * Доступно ли использование локального хранилища.

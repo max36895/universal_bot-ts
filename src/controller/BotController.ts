@@ -132,6 +132,11 @@ export abstract class BotController {
      * @default null
      */
     public appeal: "official" | "no_official" | null;
+    /**
+     * Отправляет запрос на оценку приложения
+     * @default false
+     */
+    public isSendRating: boolean;
 
     protected constructor() {
         this.buttons = new Buttons();
@@ -160,6 +165,7 @@ export abstract class BotController {
         this.emotion = null;
         this.appeal = null;
         this.payload = null;
+        this.isSendRating = false;
     }
 
     /**

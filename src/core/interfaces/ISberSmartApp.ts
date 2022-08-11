@@ -1,11 +1,12 @@
 /**
  * Тип запроса
  * @variant MESSAGE_TO_SKILL — содержит сообщение для смартапа;
+ * @varianr RATING_RESULT - содержит информацию об оценке
  * @variant SERVER_ACTION — сообщает смартапу о действиях пользователя на фронтенде;
  * @variant RUN_APP — сообщает о запуске смартапа;
  * @variant CLOSE_APP — сообщает о закрытии смартапа.
  */
-export type TMessageName = 'MESSAGE_TO_SKILL' | 'SERVER_ACTION' | 'RUN_APP' | 'CLOSE_APP'
+export type TMessageName = 'MESSAGE_TO_SKILL' | 'RATING_RESULT' | 'SERVER_ACTION' | 'RUN_APP' | 'CLOSE_APP'
 
 export type TSberSmartAppType = 'DIALOG' | 'WEB_APP' | 'APK' | 'CHAT_APP';
 
@@ -393,11 +394,12 @@ export interface ISberSmartAppWebhookRequest {
 
 /**
  * @variant ANSWER_TO_USER — содержит ответ, который ассистент предоставит пользователю;
+ * @variant CALL_RATING - содержит ответ, благодаря которому ассистент понимает что пользователь хочет поставить оценку;
  * @variant POLICY_RUN_APP — сообщает о вызове смартапа из другого приложения;
  * @variant NOTHING_FOUND — смартап не смог найти ответ. Может указывать на то, что приложение было запущено по ошибке;
  * @variant ERROR — возвращается, если смартап недоступен или вернул ошибку.
  */
-export type TSberResponseMessageName = 'ANSWER_TO_USER' | 'POLICY_RUN_APP' | 'NOTHING_FOUND' | 'ERROR'
+export type TSberResponseMessageName = 'ANSWER_TO_USER' | 'CALL_RATING' | 'POLICY_RUN_APP' | 'NOTHING_FOUND' | 'ERROR'
 
 /**
  * Идентификатор эмоции, определяющий эмоцию персонажа.
@@ -850,7 +852,7 @@ export interface ISberSmartAppWebhookResponse {
     /**
      * Объект с данными, которые зависят от типа сообщения.
      */
-    payload?: ISberSmartAppResponsePayload;
+    payload?: ISberSmartAppResponsePayload | object;
 }
 
 export interface ISberSmartAppSession {
