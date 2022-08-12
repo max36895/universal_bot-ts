@@ -9,6 +9,36 @@ import {Nlu} from "../components/nlu";
 import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from "../core/mmApp";
 import {Text} from "../components/standard/Text";
 
+export type TStatus = true | false | null;
+
+/**
+ * Интерфейст для пользовательских событий
+ */
+export interface IUserEvent {
+    /**
+     * Информация об авторизации
+     */
+    auth?: {
+        /**
+         * В случае успешной авторизации вернет true, в противном случае false.
+         */
+        status: TStatus;
+    }
+    /**
+     * Информации об выставлении оценки
+     */
+    rating?: {
+        /**
+         * Вернут true в том случае, если ползователь оценил приложение.
+         */
+        status: TStatus;
+        /**
+         * Поставленная оценка
+         */
+        value?: number;
+    }
+}
+
 /**
  * Абстрактный класс, от которого наследуются все классы, обрабатывающие логику приложения.
  * @class BotController
@@ -82,9 +112,9 @@ export abstract class BotController {
      */
     public isAuth: boolean;
     /**
-     * Определяет успешность авторизации пользователя (Актуально для Алисы).
+     * Определяет статус пользовательских собатий, таких как успешная авторизация, либо оценка приложения.
      */
-    public isAuthSuccess: true | false | null;
+    public userEvents: IUserEvent | null;
     /**
      * Пользовательское локальное хранилище (Актуально для Алисы и Маруси и Сбера).
      */
@@ -157,7 +187,6 @@ export abstract class BotController {
         this.userData = null;
         this.state = null;
         this.isAuth = false;
-        this.isAuthSuccess = null;
         this.isSend = true;
         this.requestObject = null;
         this.oldIntentName = null;
@@ -166,6 +195,7 @@ export abstract class BotController {
         this.appeal = null;
         this.payload = null;
         this.isSendRating = false;
+        this.userEvents = null;
     }
 
     /**

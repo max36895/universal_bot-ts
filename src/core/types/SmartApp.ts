@@ -127,10 +127,13 @@ export class SmartApp extends TemplateTypeModel {
 
                 case 'RATING_RESULT':
                     this.controller.payload = content.payload;
-                    this.controller.messageId = 1;
-                    // todo временный костыль. Придумать как сдеалать лучше
-                    this.controller.originalUserCommand = '$rating_info$';
-                    this.controller.userCommand = '$rating_info$';
+                    this.controller.messageId = 0;
+                    this.controller.userEvents = {
+                        rating: {
+                            status: content.payload.status_code?.code === 1,
+                            value: content.payload.rating?.estimation
+                        }
+                    };
                     break;
             }
 

@@ -91,7 +91,11 @@ export class Marusia extends TemplateTypeModel {
             }
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (typeof content.account_linking_complete_event !== 'undefined') {
-                    this.controller.isAuthSuccess = true;
+                    this.controller.userEvents = {
+                        auth: {
+                            status: true
+                        }
+                    };
                     return true;
                 }
                 this.error = 'Marusia.init(): Не корректные данные!';
