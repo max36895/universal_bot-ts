@@ -176,9 +176,9 @@ export class SmartApp extends TemplateTypeModel {
     public async getRatingContext(): Promise<ISberSmartAppWebhookResponse> {
         return {
             messageName: 'CALL_RATING',
-            sessionId: this._session.sessionId,
-            messageId: this._session.messageId,
-            uuid: this._session.uuid,
+            sessionId: (this._session as ISberSmartAppSession).sessionId,
+            messageId: (this._session as ISberSmartAppSession).messageId,
+            uuid: (this._session as ISberSmartAppSession).uuid,
             payload: {}
         }
     }
