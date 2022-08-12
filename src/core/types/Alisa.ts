@@ -83,7 +83,11 @@ export class Alisa extends TemplateTypeModel {
 
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (content.account_linking_complete_event) {
-                    this.controller.isAuthSuccess = true;
+                    this.controller.userEvents = {
+                        auth: {
+                            status: true
+                        }
+                    };
                     return true;
                 }
                 this.error = 'Alisa.init(): Не корректные данные!';

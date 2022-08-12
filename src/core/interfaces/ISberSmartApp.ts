@@ -282,6 +282,15 @@ export interface ISberSmartAppAnnotations {
     }
 }
 
+export interface ISberRating {
+    estimation: number;
+}
+
+export interface ISberRatingStatusCode {
+    code: 1 | 101 | 104;
+    description: 'SUCCESS' | 'SKIP BY USER' | 'FORBIDDEN'
+}
+
 export interface ISberSmartAppRequestPayload {
     /**
      * Информация об устройстве пользователя.
@@ -329,7 +338,7 @@ export interface ISberSmartAppRequestPayload {
      * false — во всех остальных случаях.
      * По умолчанию: false.
      */
-    new_session?: boolean
+    new_session?: boolean;
     /**
      * Общие характеристики сообщения пользователя.
      */
@@ -337,17 +346,25 @@ export interface ISberSmartAppRequestPayload {
     /**
      * Возможные стратегии смартапа.
      */
-    strategies: { happy_birthday: boolean, last_call: number, is_alice?: boolean },
+    strategies: { happy_birthday: boolean, last_call: number, is_alice?: boolean };
     /**
      * Информация о запускаемом смартапе и параметрах его запуска.
      * Формируется бэкендом приложения.
      * По умолчанию: пустой объект.
      */
-    server_action?: ISberSmartAppServerAction
+    server_action?: ISberSmartAppServerAction;
     /**
      * Результат пред обработки.
      */
-    message: ISberSmartAppMessageInfo
+    message: ISberSmartAppMessageInfo;
+    /**
+     * Результат оценки пользователя
+     */
+    rating: ISberRating;
+    /**
+     * Статут оценки
+     */
+    status_code: ISberRatingStatusCode
 }
 
 export interface ISberSmartAppUuId {
