@@ -39,7 +39,7 @@
     "url": "https://github.com/max36895/universal_bot-ts.git"
   },
   "publishConfig": {
-    "registry":"https://npm.pkg.github.com"
+    "@YOUR-USERNAME:registry": "https://npm.pkg.github.com"
   },
   "devDependencies": {
     "@types/chai": "*",
