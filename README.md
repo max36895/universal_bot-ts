@@ -3,7 +3,7 @@
 
 Документация
 ------------
-Документация: [u-bot-ts](https://www.maxim-m.ru/bot/ts-doc/index.html). Получить информации о работе приложения можно в [телеграм канале](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw) или [группе](https://t.me/mm_universal_bot).
+Документация: [umbot-ts](https://www.maxim-m.ru/bot/ts-doc/index.html). Получить информации о работе приложения можно в [телеграм канале](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw) или [группе](https://t.me/mm_universal_bot).
 Также можно прочитать [статью, в которой рассказано как создать навык "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
 
 ### Создание документации
@@ -30,6 +30,10 @@ npm run doc
 Склонируйте репозиторий с приложением, например в папку u_bot
 ```bash
 git clone https://github.com/max36895/universal_bot-ts.git u_bot
+```
+Или установите из npm
+```bash
+npm i umbot
 ```
 
 ## Запуск

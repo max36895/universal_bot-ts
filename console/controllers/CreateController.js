@@ -33,7 +33,7 @@ class CreateController {
 
     _getHeaderContent = function () {
         let headerContent = "/*\n";
-        headerContent += "/* Created by u_bot\n";
+        headerContent += "/* Created by umbot\n";
         headerContent += " * Date: {{date}}\n";
         headerContent += " * Time: {{time}}\n";
         headerContent += " */\n\n";
@@ -49,7 +49,7 @@ class CreateController {
         }
 
         let content = this._getHeaderContent();
-        content += 'import {IAppParam} from "ubot";\n\n';
+        content += 'import {IAppParam} from "umbot";\n\n';
         content += "export default function(): IAppParam {\n";
         content += '\treturn ';
         content += JSON.stringify(params, null, '\t');
@@ -67,7 +67,7 @@ class CreateController {
             config = defaultConfig;
         }
         let content = this._getHeaderContent();
-        content += 'import {IAppConfig} from "ubot";\n\n';
+        content += 'import {IAppConfig} from "umbot";\n\n';
         content += "export default function (): IAppConfig {\n";
         content += '\treturn ';
         content += JSON.stringify(config, null, '\t');

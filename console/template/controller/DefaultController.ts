@@ -1,9 +1,9 @@
 /**
- * Created by u_bot
+ * Created by umbot
  * Date: {{date}}
  * Time: {{time}}
  */
-import {BotController} from "ubot";
+import {BotController} from "umbot";
 
 export class __className__Controller extends BotController {
     /**

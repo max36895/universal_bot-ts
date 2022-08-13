@@ -40,9 +40,9 @@ process.exitCode = 1;
  * Он способен создать шаблон приложения.
  * Использование
  * -------------
- * Чтобы воспользоваться скриптом, запустите файл ubot.js, и передайте необходимые параметры.
+ * Чтобы воспользоваться скриптом, запустите файл umbot.js, и передайте необходимые параметры.
  * ```bash
- * npm ubot ...
+ * npm umbot ...
  * ```
  *
  * Команды
@@ -70,7 +70,7 @@ process.exitCode = 1;
  * --------------------
  * Создание пустого проекта:
  * ```bash
- * npm ubot create project
+ * npm umbot create project
  * ```
  * Создание проекта, используя в качестве параметра json
  * ```json
@@ -80,6 +80,6 @@ process.exitCode = 1;
  * }
  * ```
  * ```bash
- * npm ubot create project.json
+ * npm umbot create project.json
  * ```
  */
