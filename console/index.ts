@@ -9,9 +9,9 @@
  *
  * Использование
  * -------------
- * Чтобы воспользоваться скриптом, запустите файл ubot.js, и передайте необходимые параметры.
+ * Чтобы воспользоваться скриптом, запустите файл umbot.js, и передайте необходимые параметры.
  * ```bash
- * npm ubot
+ * npm umbot
  * ```
  *
  * Команды
@@ -39,7 +39,7 @@
  * --------------------
  * Создание пустого проекта:
  * ```bash
- * npm ubot create project
+ * npm umbot create project
  * ```
  * Создание проекта, используя в качестве параметра json
  * ```json
@@ -49,11 +49,11 @@
  * }
  * ```
  * ```bash
- * npm ubot create project.json
+ * npm umbot create project.json
  * ```
  * @module
  */
-export * from './ubot'
+export * from './umbot'
 export * from './utils'
 export * from './controllers/ConsoleController';
 export * from './controllers/CreateController';

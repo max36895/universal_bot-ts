@@ -1,6 +1,6 @@
 # Changelog
 
-Все заметные изменения в u_bot задокументированы в этом файле с использованием принципов [Keep a CHANGELOG](http://keepachangelog.com/).
+Все заметные изменения в umbot задокументированы в этом файле с использованием принципов [Keep a CHANGELOG](http://keepachangelog.com/).
 
 ## [1.1.5] - 2022-08-14
 

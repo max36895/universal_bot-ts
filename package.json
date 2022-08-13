@@ -1,5 +1,5 @@
 {
-  "name": "u_bot",
+  "name": "umbot",
   "description": "Universal bot(vk, telegram, viber) or skills for Yandex.Alisa, Маруся and sber",
   "keywords": [
     "vk",
@@ -32,7 +32,7 @@
     "node": ">=10"
   },
   "bin": {
-    "ubot": "console/ubot.js"
+    "ubmot": "console/umbot.js"
   },
   "repository": {
     "type": "git",
