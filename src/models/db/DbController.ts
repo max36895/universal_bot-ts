@@ -163,7 +163,7 @@ export class DbController extends DbControllerModel {
      * @return {IDbControllerResult}
      */
     public getValue(res: IModelRes): IDbControllerResult | null {
-        return this._controller.getValue(res)
+        return this._controller.getValue(res);
     }
 
     /**

@@ -24,7 +24,7 @@ export class MarusiaCard extends TemplateCardTypes {
      * @private
      */
     protected async _getItem(): Promise<IMarusiaImage[]> {
-        let items: IMarusiaImage[] = [];
+        const items: IMarusiaImage[] = [];
         const images = this.images.slice(0, MarusiaCard.MARUSIA_MAX_IMAGES);
         for (const image of images) {
             let button: IMarusiaButtonCard | null = image.button.getButtons<IMarusiaButtonCard>(Buttons.T_ALISA_CARD_BUTTON);

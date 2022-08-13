@@ -1,6 +1,6 @@
 import {ISound} from "../interfaces/sound";
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
-import {is_file} from "../../../utils";
+import {isFile} from "../../../utils";
 import {Text} from "../../standard/Text";
 import {SoundTokens} from "../../../models/SoundTokens";
 import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
@@ -27,7 +27,7 @@ export class VkSound implements TemplateSoundTypes {
                 if (sound) {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string | null = Text.getText(sound.sounds);
-                        if (is_file(sText) || Text.isUrl(sText)) {
+                        if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_VK;
                             sModel.path = sText;

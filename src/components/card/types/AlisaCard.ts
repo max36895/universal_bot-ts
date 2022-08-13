@@ -26,7 +26,7 @@ export class AlisaCard extends TemplateCardTypes {
      * @private
      */
     protected async _getItem(): Promise<IAlisaImage[]> {
-        let items: IAlisaImage[] = [];
+        const items: IAlisaImage[] = [];
         const maxCount = this.isUsedGallery ? AlisaCard.ALISA_MAX_GALLERY_IMAGES : AlisaCard.ALISA_MAX_IMAGES;
         const images = this.images.slice(0, maxCount);
         for (const image of images) {

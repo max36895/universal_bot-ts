@@ -1,6 +1,6 @@
 import {Buttons, TButton, TButtonPayload} from "../button";
 import {Text} from "../standard/Text";
-import {is_file} from "../../utils";
+import {isFile} from "../../utils";
 import {
     ISberSmartAppCardPadding,
     TSberSmartAppTextColor,
@@ -109,7 +109,7 @@ export class Image {
         if (this.isToken) {
             this.imageToken = image;
         } else {
-            if (image && (Text.isUrl(image) || is_file(image))) {
+            if (image && (Text.isUrl(image) || isFile(image))) {
                 this.imageDir = image;
                 this.imageToken = null;
             } else {

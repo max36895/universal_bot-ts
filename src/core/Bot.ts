@@ -197,6 +197,11 @@ export class Bot {
      * @see setContent
      */
     public async run(userBotClass: TemplateTypeModel | null = null): Promise<TRunResult> {
+        if (!this._botController) {
+            const errMsg = 'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController';
+            mmApp.saveLog('bot.log', errMsg);
+            throw new Error(errMsg);
+        }
         const {botClass, type} = Bot._getBotClassAndType(userBotClass);
 
         if (botClass) {
@@ -259,13 +264,13 @@ export class Bot {
                     if (isNew) {
                         userData.save(true).then((res) => {
                             if (!res) {
-                                mmApp.saveLog('bot.log', 'Bot.ts.run(): Не удалось сохранить данные пользователя.')
+                                mmApp.saveLog('bot.log', 'Bot:run(): Не удалось сохранить данные пользователя.')
                             }
                         });
                     } else {
                         userData.update().then((res) => {
                             if (!res) {
-                                mmApp.saveLog('bot.log', 'Bot.ts.run(): Не удалось обновить данные пользователя.')
+                                mmApp.saveLog('bot.log', 'Bot:run(): Не удалось обновить данные пользователя.')
                             }
                         });
                     }
@@ -298,7 +303,7 @@ export class Bot {
      * @api
      */
     public async start(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel | null = null) {
-        const {json, send} = await require('micro')
+        const {json, send} = await require('micro');
         // Принимаем только POST-запросы:
         if (req.method !== "POST") {
             send(res, 400, 'Bad Request');

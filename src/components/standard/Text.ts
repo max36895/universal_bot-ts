@@ -1,4 +1,4 @@
-import {rand, similar_text} from "../../utils";
+import {rand, similarText} from "../../utils";
 
 export type TFind = string | string[];
 
@@ -48,10 +48,9 @@ export class Text {
                     text = text.substring(0, size);
                 }
             }
-        } else {
-            return '';
+            return text;
         }
-        return text;
+        return '';
     }
 
     /**
@@ -235,10 +234,10 @@ export class Text {
                     text: text[i]
                 }
             }
-            let per: number = similar_text(origText, text[i]);
+            let per: number = similarText(origText, text[i]);
             if (data.percent < per) {
                 data.percent = per;
-                data.index = i
+                data.index = i;
             }
         }
         if (data.percent >= percent) {
@@ -251,6 +250,6 @@ export class Text {
             index: null,
             percent: 0,
             text: null
-        }
+        };
     }
 }

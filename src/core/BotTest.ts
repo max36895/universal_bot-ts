@@ -128,7 +128,7 @@ export class BotTest extends Bot {
      * @param {Function} userBotConfig Функция, возвращающая параметры пользовательского приложения.
      * @return any
      */
-    protected getSkillContent(query: string, count: number, state: object | string, userBotConfig: Function | null): any {
+    protected getSkillContent(query: string, count: number, state: object | string, userBotConfig?: Function | null): any {
         /**
          * Все переменные используются внутри шаблонов
          */

@@ -9,12 +9,12 @@ class CreateController {
      * Создает пустой проект
      * @type {string}
      */
-    T_DEFAULT = 'Default';
+    static T_DEFAULT = 'Default';
     /**
      * Создает викторину
      * @type {string}
      */
-    T_QUIZ = 'Quiz';
+    static T_QUIZ = 'Quiz';
 
     _path;
     _name;
@@ -25,7 +25,7 @@ class CreateController {
 
     _getFileContent = function (file) {
         let content = '';
-        if (file && utils.is_file(file)) {
+        if (file && utils.isFile(file)) {
             content = utils.fread(file);
         }
         return content;
@@ -122,7 +122,7 @@ class CreateController {
         console.log('Создается файл с конфигурацией приложения: ...');
         const configFile = `${this._path}/config/{{name}}Config.ts`;
         let configContent;
-        if (utils.is_file(`${path}/config/${type}Config.js`)) {
+        if (utils.isFile(`${path}/config/${type}Config.js`)) {
             const config = require(`${path}/config/${type}Config`);
             configContent = this._initConfig(config.config);
         } else {
@@ -136,7 +136,7 @@ class CreateController {
         console.log('Создается файл с параметрами приложения: ...');
         const paramsFile = `${this._path}/config/{{name}}Params.ts`;
         let paramsContent;
-        if (utils.is_file(`${path}/config/defaultParams.js`)) {
+        if (utils.isFile(`${path}/config/defaultParams.js`)) {
             const param = require(`${path}/config/defaultParams`);
             paramsContent = this._initParams(param.params);
         } else {
@@ -146,8 +146,8 @@ class CreateController {
         console.log('Файл с параметрами успешно создан!');
     };
 
-    _create = function (type = this.T_DEFAULT) {
-        if ([this.T_DEFAULT, this.T_QUIZ].indexOf(type) !== -1) {
+    _create = function (type = CreateController.T_DEFAULT) {
+        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) !== -1) {
             const standardPath = __dirname + '/../template';
             const configFile = `${this._path}/config`;
             if (!utils.is_dir(configFile)) {
@@ -187,7 +187,7 @@ class CreateController {
      * @param type Тип проекта
      * @public
      */
-    init = function (name = null, type = this.T_DEFAULT) {
+    init = function (name = null, type = CreateController.T_DEFAULT) {
         if (name) {
             if (!utils.is_dir(name)) {
                 fs.mkdirSync(name);

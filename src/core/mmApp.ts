@@ -153,7 +153,7 @@ export interface IAppParam {
      */
     yandex_token?: string | null;
     /**
-     * Токен для отправки запросов в Yandex speesh kit.
+     * Токен для отправки запросов в Yandex speech kit.
      */
     yandex_speech_kit_token?: string | null;
     /**
@@ -347,7 +347,7 @@ export class mmApp {
         const dir: IDir = {
             path: mmApp.config.json || __dirname + '/../../json',
             fileName: fileName.replace(/`/g, '')
-        }
+        };
         return this.saveData(dir, JSON.stringify(data));
     }
 
@@ -363,7 +363,7 @@ export class mmApp {
         const dir: IDir = {
             path: mmApp.config.error_log || __dirname + '/../../logs',
             fileName
-        }
+        };
         return this.saveData(dir, `[${Date()}]: ${errorText}\n`, 'a');
     }
 }

@@ -18,7 +18,7 @@ if (argv[2]) {
     param.command = argv[2].toLowerCase();
     if (argv[3]) {
         if (argv[3].indexOf('.json') !== -1) {
-            if (utils.is_file(argv[3])) {
+            if (utils.isFile(argv[3])) {
                 const jsonParam = utils.fread(argv[3]);
                 param.appName = jsonParam.name;
                 param.params = jsonParam;

@@ -36,12 +36,12 @@ export class AlisaButton extends TemplateButtonTypes {
             if (this.isCard) {
                 object = <IAlisaButtonCard>{
                     text: title
-                }
+                };
             } else {
                 object = <IAlisaButton>{
                     title,
                     hide: button.hide
-                }
+                };
             }
             if (button.payload) {
                 object.payload = button.payload;

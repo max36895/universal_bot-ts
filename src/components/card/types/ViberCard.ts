@@ -47,7 +47,7 @@ export class ViberCard extends TemplateCardTypes {
      * @api
      */
     public async getCard(isOne: boolean): Promise<IViberCard[] | IViberCard> {
-        let objects: IViberCard[] = [];
+        const objects: IViberCard[] = [];
         let countImage = this.images.length;
         if (countImage > 7) {
             countImage = 7;
