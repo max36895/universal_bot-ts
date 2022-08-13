@@ -36,7 +36,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/max36895/universal_bot-ts/"
+    "url": "https://github.com/max36895/universal_bot-ts.git"
+  },
+  "publishConfig": {
+    "registry":"https://npm.pkg.github.com"
   },
   "devDependencies": {
     "@types/chai": "*",
@@ -55,5 +58,5 @@
     "mongodb": "^3.6.2",
     "typescript": "^4.1.5"
   },
-  "version": "1.1.6"
+  "version": "1.1.6.0"
 }
