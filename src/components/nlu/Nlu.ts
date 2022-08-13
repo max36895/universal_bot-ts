@@ -345,7 +345,7 @@ export class Nlu {
             return {
                 status: true,
                 result: phone
-            }
+            };
         }
         return {
             status: false,

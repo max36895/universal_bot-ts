@@ -1,7 +1,7 @@
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
-import {is_file} from "../../../utils";
+import {isFile} from "../../../utils";
 import {mmApp} from "../../../core/mmApp";
 import {TelegramRequest, TTelegramChatId, YandexSpeechKit} from "../../../api";
 import {SoundTokens} from "../../../models/SoundTokens";
@@ -28,7 +28,7 @@ export class TelegramSound implements TemplateSoundTypes {
                 if (sound) {
                     if (sound.sounds && sound.key) {
                         let sText: string | null = Text.getText(sound.sounds);
-                        if (is_file(sText) || Text.isUrl(sText)) {
+                        if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_TELEGRAM;
                             sModel.path = sText;

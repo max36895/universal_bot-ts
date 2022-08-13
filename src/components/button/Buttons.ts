@@ -163,7 +163,7 @@ export class Buttons {
     /**
      * Дополнительная функция для инициализации дополнительных кнопок
      * @param buttons Массив кнопок
-     * @param callback Callback нужной функции, adBtn или adLink
+     * @param callback Callback нужной функции, addBtn или addLink
      * @private
      */
     protected _initProcessingBtn(buttons: TButton[], callback: Function): void {

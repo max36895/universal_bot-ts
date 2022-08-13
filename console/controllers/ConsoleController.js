@@ -15,10 +15,10 @@ function main(param = {appName: null, command: null}) {
                 create.params = param.params;
                 let type = CreateController.T_DEFAULT;
                 if (param.params && param.params.type) {
-                    let pType = param.params.type.toLowerCase();
-                    pType = pType.substr(0, 1).toUpperCase() + pType.substr(1);
-                    if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(pType)) {
-                        type = pType;
+                    let paramType = param.params.type.toLowerCase();
+                    paramType = paramType.substr(0, 1).toUpperCase() + paramType.substr(1);
+                    if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(paramType)) {
+                        type = paramType;
                     } else {
                         throw new Exception('Указан не поддерживаемый тип для создания шаблона!');
                     }

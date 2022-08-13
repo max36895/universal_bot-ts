@@ -228,7 +228,7 @@ export class DbControllerMongoDb extends DbControllerModel {
                             res.status = false;
                         }
                         resolve(res);
-                        return res
+                        return res;
                     };
                     if (isOne) {
                         collection.findOne(where, callback);

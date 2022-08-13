@@ -57,7 +57,7 @@ export class SmartAppButton extends TemplateButtonTypes {
                 const title = Text.resize(button.title || '', 64);
                 if (title) {
                     const object: ISberSmartAppSuggestionButton = {
-                        title,
+                        title
                     };
                     if (button.payload) {
                         object.action = {

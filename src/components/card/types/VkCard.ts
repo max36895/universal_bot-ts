@@ -51,7 +51,7 @@ export class VkCard extends TemplateCardTypes {
      * @api
      */
     public async getCard(isOne: boolean): Promise<IVkCard | string[]> {
-        let object = [];
+        const object = [];
         const countImage = this.images.length;
         if (countImage) {
             if (countImage === 1 || isOne) {

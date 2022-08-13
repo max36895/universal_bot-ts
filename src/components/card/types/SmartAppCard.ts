@@ -18,7 +18,7 @@ export class SmartAppCard extends TemplateCardTypes {
      */
     protected static _getCardItem(image: Image, isOne: boolean = false): ISberSmartAppCardItem | ISberSmartAppCardItem[] {
         if (isOne) {
-            let res: ISberSmartAppCardItem[] = [];
+            const res: ISberSmartAppCardItem[] = [];
             if (image.imageDir) {
                 res.push({
                     type: "image_cell_view",

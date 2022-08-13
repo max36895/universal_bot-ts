@@ -27,29 +27,30 @@ export function rand(min: number, max: number): number {
  * @param {number} percent
  * @return {number}
  */
-export function similar_text(first: string, second: string, percent: number = 0): number {
+export function similarText(first: string, second: string, percent: number = 0): number {
     if (first === null || second === null) {
         return 0;
     }
 
-    let pos1: number = 0;
-    let pos2: number = 0;
+    let posFirst: number = 0;
+    let posSecond: number = 0;
     let max: number = 0;
     let firstLength: number = first.length;
     let secondLength: number = second.length;
     let sum: number;
 
-    for (let p = 0; p < firstLength; p++) {
-        for (let q = 0; q < secondLength; q++) {
-            let l: number;
-            for (l = 0;
-                 (p + l < firstLength) && (q + l < secondLength) && (first.charAt(p + l) === second.charAt(q + l));
-                 l++) {
+    for (let firstIndex = 0; firstIndex < firstLength; firstIndex++) {
+        for (let secondIndex = 0; secondIndex < secondLength; secondIndex++) {
+            let len: number;
+            for (len = 0;
+                 (firstIndex + len < firstLength) && (secondIndex + len < secondLength)
+                 && (first.charAt(firstIndex + len) === second.charAt(secondIndex + len));
+                 len++) {
             }
-            if (l > max) {
-                max = l;
-                pos1 = p;
-                pos2 = q;
+            if (len > max) {
+                max = len;
+                posFirst = firstIndex;
+                posSecond = secondIndex;
             }
         }
     }
@@ -57,16 +58,16 @@ export function similar_text(first: string, second: string, percent: number = 0)
     sum = max;
 
     if (sum) {
-        if (pos1 && pos2) {
-            sum += similar_text(first.substring(0, pos1), second.substring(0, pos2));
+        if (posFirst && posSecond) {
+            sum += similarText(first.substring(0, posFirst), second.substring(0, posSecond));
         }
 
-        if ((pos1 + max < firstLength) && (pos2 + max < secondLength)) {
-            const firstStart = pos1 + max;
-            const firstEnd = firstStart + (firstLength - pos1 - max);
-            const secondStart = pos2 + max;
-            const secondEnd = secondStart + (secondLength - pos2 - max);
-            sum += similar_text(
+        if ((posFirst + max < firstLength) && (posSecond + max < secondLength)) {
+            const firstStart = posFirst + max;
+            const firstEnd = firstStart + (firstLength - posFirst - max);
+            const secondStart = posSecond + max;
+            const secondEnd = secondStart + (secondLength - posSecond - max);
+            sum += similarText(
                 first.substring(firstStart, firstEnd),
                 second.substring(secondStart, secondEnd)
             );
@@ -81,7 +82,7 @@ export function similar_text(first: string, second: string, percent: number = 0)
  * @param {string} file Файл, который необходимо проверить
  * @return {boolean}
  */
-export function is_file(file: string): boolean {
+export function isFile(file: string): boolean {
     try {
         const stat: fs.Stats = fs.lstatSync(file);
         return stat.isFile();
@@ -147,11 +148,11 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): void {
  */
 export function httpBuildQuery(formData: IGetParams, separator: string = '&'): string {
     let key: string;
-    let query: string[] = [];
+    const query: string[] = [];
     for (key in formData) {
         if (formData.hasOwnProperty(key)) {
             key = encodeURI(key);
-            let val: string = encodeURI((formData[key] + '')).replace(/%20/g, '+');
+            const val: string = encodeURI((formData[key] + '')).replace(/%20/g, '+');
             query.push(`${key}=${val}`);
         }
     }
@@ -167,7 +168,7 @@ if (typeof window !== 'undefined') {
         .split('&')
         .reduce(
             function (p: any, e) {
-                let a = e.split('=');
+                const a = e.split('=');
                 p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
                 return p;
             },

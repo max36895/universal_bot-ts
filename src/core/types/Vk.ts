@@ -54,7 +54,7 @@ export class Vk extends TemplateTypeModel {
             if (typeof query === 'string') {
                 content = <IVkRequestContent>JSON.parse(query);
             } else {
-                content = {...query}
+                content = {...query};
             }
             if (!this.controller) {
                 this.controller = controller;

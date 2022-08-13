@@ -2,7 +2,7 @@
  * Отправка запросов
  * @module
  */
-import {fread, httpBuildQuery, IGetParams, is_file} from "../../utils";
+import {fread, httpBuildQuery, IGetParams, isFile} from "../../utils";
 import {IRequestSend} from "../interfaces/IRequest";
 
 /**
@@ -161,7 +161,7 @@ export class Request {
 
         let post: object | null = null;
         if (this.attach) {
-            if (is_file(this.attach)) {
+            if (isFile(this.attach)) {
                 post = Request.getAttachFile(this.attach, this.attachName);
             } else {
                 this._error = `Не удалось найти файл: ${this.attach}`;
