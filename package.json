@@ -22,7 +22,7 @@
     "build": "shx rm -rf dist && tsc",
     "test": "node node_modules/mocha/bin/mocha dist/tests/**/*.test.js",
     "bt": "npm run build && npm test",
-    "create": "ubot",
+    "create": "umbot",
     "doc": "typedoc --excludePrivate --excludeExternals"
   },
   "bugs": {
