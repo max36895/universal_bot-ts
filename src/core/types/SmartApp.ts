@@ -79,6 +79,16 @@ export class SmartApp extends TemplateTypeModel {
                 buttons: this.controller.buttons.getButtons<ISberSmartAppSuggestionButton[]>(Buttons.T_SMARTAPP_BUTTONS)
             };
         }
+        if (this.controller.isEnd) {
+            if (typeof payload.items === 'undefined') {
+                payload.items = [];
+            }
+            payload.items.push({
+                command: {
+                    type: 'close_app'
+                }
+            });
+        }
         return payload;
     }
 
