@@ -60,7 +60,7 @@ export class SmartApp extends TemplateTypeModel {
                         expand_policy: 'auto_expand'
                     }
                 }
-            ]
+            ];
         }
         if (this.controller.tts) {
             payload.pronounceText = this.controller.tts;

@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-function is_file(file) {
+function isFile(file) {
     try {
         const stat = fs.lstatSync(file);
         return stat.isFile();
@@ -8,6 +8,7 @@ function is_file(file) {
         return false;
     }
 }
+
 function is_dir(file) {
     try {
         const stat = fs.lstatSync(file);
@@ -16,9 +17,11 @@ function is_dir(file) {
         return false;
     }
 }
+
 function fread(fileName) {
     return fs.readFileSync(fileName, 'utf-8');
 }
+
 function fwrite(fileName, fileContent, mode = 'w') {
     if (mode === 'w') {
         fs.writeFileSync(fileName, fileContent);
@@ -28,7 +31,7 @@ function fwrite(fileName, fileContent, mode = 'w') {
 }
 
 exports.utils = {
-    is_file,
+    isFile,
     is_dir,
     fread,
     fwrite

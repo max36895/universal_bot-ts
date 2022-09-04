@@ -1,7 +1,7 @@
 import {DbControllerModel} from "./DbControllerModel";
 import {mmApp} from "../../core/mmApp";
 import {IQueryData, QueryData} from "./QueryData";
-import {fread, is_file} from "../../utils/index";
+import {fread, isFile} from "../../utils/index";
 import {IModelRes} from "../interface/IModel";
 
 /**
@@ -40,7 +40,7 @@ export class DbControllerFile extends DbControllerModel {
      * @api
      */
     public async insert(insertQuery: QueryData): Promise<any> {
-        let insert = insertQuery.getData();
+        const insert = insertQuery.getData();
         const data = this.getFileData();
         if (insert) {
             const idVal = insert[this.primaryKeyName as string];
@@ -61,10 +61,10 @@ export class DbControllerFile extends DbControllerModel {
      * @api
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
-        let remove = removeQuery.getQuery();
+        const remove = removeQuery.getQuery();
         const data = this.getFileData();
         if (remove) {
-            let idVal = remove[this.primaryKeyName as string];
+            const idVal = remove[this.primaryKeyName as string];
             if (idVal !== undefined) {
                 if (typeof data[idVal] !== 'undefined') {
                     delete data[idVal];
@@ -160,7 +160,7 @@ export class DbControllerFile extends DbControllerModel {
         const path = mmApp.config.json;
         const fileName = this.tableName;
         const file = `${path}/${fileName}.json`;
-        if (is_file(file)) {
+        if (isFile(file)) {
             return JSON.parse(fread(file));
         } else {
             return {};

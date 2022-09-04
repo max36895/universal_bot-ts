@@ -1,7 +1,7 @@
 import {Request} from "./request/Request";
 import {mmApp} from "../core/mmApp";
 import {ITelegramParams, ITelegramResult, TTelegramChatId} from "./interfaces/ITelegramApi";
-import {is_file} from "../utils";
+import {isFile} from "../utils";
 
 /**
  * Класс отвечающий за отправку запросов на telegram сервер.
@@ -69,7 +69,7 @@ export class TelegramRequest {
      * @param {string} file Путь к файлу
      */
     protected _initPostFile(type: string, file: string): void {
-        if (is_file(file)) {
+        if (isFile(file)) {
             this._request.post[type] = Request.getAttachFile(file);
         } else {
             this._request.post[type] = file;

@@ -1,9 +1,9 @@
 /**
- * Created by u_bot
+ * Created by umbot
  * Date: {{date}}
  * Time: {{time}}
  */
-import {Bot} from "ubot";
+import {Bot} from "umbot";
 import {{name}}Config from "./config/{{name}}Config";
 import {{name}}Params from "./config/{{name}}Params";
 import {__className__Controller} from './controller/__className__Controller';

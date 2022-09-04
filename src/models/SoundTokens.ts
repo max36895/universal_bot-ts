@@ -159,7 +159,6 @@ export class SoundTokens extends Model {
                             }
                         }
                     }
-
                 }
                 break;
 

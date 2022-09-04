@@ -1,10 +1,10 @@
 /**
- * Created by u_bot
+ * Created by umbot
  * Date: {{date}}
  * Time: {{time}}
  */
 
-import {AlisaSound, BotController, mmApp, Text, WELCOME_INTENT_NAME,} from "ubot";
+import {AlisaSound, BotController, mmApp, Text, WELCOME_INTENT_NAME,} from "umbot";
 
 interface IQuestion {
     text: string;

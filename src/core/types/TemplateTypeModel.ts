@@ -96,8 +96,7 @@ export abstract class TemplateTypeModel {
     public abstract getContext(): Promise<Object | string>;
 
     /**
-     * /**
-     * Отправка ответа для выставления оценки приложеня. Актуально для Сбер. Для остальных приложений вызовется getContext()
+     * Отправка ответа для выставления оценки приложения. Актуально для Сбер. Для остальных приложений вызовется getContext()
      *
      * @return {Promise<Object|string>}
      */

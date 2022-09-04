@@ -62,6 +62,15 @@ export class Button {
     }
 
     /**
+     * Возвращает разделитель для гет запросов
+     * @param url
+     * @private
+     */
+    private _getUrlSeparator(url: string): string {
+        return url.includes('?') ? '&' : '?';
+    }
+
+    /**
      * Инициализация кнопки.
      *
      * @param {string} title Текст в кнопке.
@@ -77,10 +86,10 @@ export class Button {
             if (url && Text.isUrl(url)) {
                 if (mmApp.params.utm_text === null) {
                     if (!url.includes('utm_source')) {
-                        url += `${url.includes('?') ? '&' : '?'}utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone`;
+                        url += `${this._getUrlSeparator(url)}utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone`;
                     }
                 } else if (mmApp.params.utm_text) {
-                    url += (url.includes('?') ? '&' : '?') + mmApp.params.utm_text;
+                    url += this._getUrlSeparator(url) + mmApp.params.utm_text;
                 }
             } else {
                 url = null;

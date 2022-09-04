@@ -1,7 +1,7 @@
 import {TemplateSoundTypes} from "./TemplateSoundTypes";
 import {ISound} from "../interfaces/sound";
 import {Text} from "../../standard/Text";
-import {is_file} from "../../../utils";
+import {isFile} from "../../../utils";
 import {SoundTokens} from "../../../models/SoundTokens";
 
 /**
@@ -346,7 +346,7 @@ export class AlisaSound implements TemplateSoundTypes {
                          * Лучше загружать звуки через консоль администратора!
                          * @see (https://dialogs.yandex.ru/developer/skills/<skill_id>/resources/sounds) Смотри тут
                          */
-                        if (is_file(sText) || Text.isUrl(sText)) {
+                        if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();
                             sModel.type = SoundTokens.T_ALISA;
                             sModel.path = sText;
