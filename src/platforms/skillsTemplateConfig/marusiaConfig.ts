@@ -1,4 +1,4 @@
-import {IMarusiaWebhookRequest} from "../interfaces/IMarusia";
+import {IMarusiaWebhookRequest} from '../interfaces';
 
 /**
  *

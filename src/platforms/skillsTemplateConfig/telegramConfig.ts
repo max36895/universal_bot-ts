@@ -1,4 +1,4 @@
-import {ITelegramContent} from "../interfaces/ITelegram";
+import {ITelegramContent} from '../interfaces';
 
 /**
  *

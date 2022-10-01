@@ -1,5 +1,6 @@
-import {DbControllerModel, IDbControllerResult, IModelRes, IQueryData, QueryData} from "../../../../src/models";
-import {Request} from "../../../../src/api";
+import {IDbControllerResult, IModelRes,} from '../../../../src/models';
+import {DbControllerModel, IQueryData, QueryData} from '../../../../src/models/db';
+import {Request} from '../../../../src/api';
 
 export default class DbConnect extends DbControllerModel {
 
@@ -153,7 +154,7 @@ export default class DbConnect extends DbControllerModel {
      * @param select
      * @param isOne
      */
-    select(select: IQueryData, isOne: boolean): Promise<IModelRes> {
+    select(select: IQueryData | null, isOne: boolean): Promise<IModelRes> {
         this._query.post = {
             type: 'select',
             table: this.tableName,

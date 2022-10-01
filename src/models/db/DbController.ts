@@ -1,9 +1,9 @@
-import {DbControllerModel, IDbControllerResult, TKey} from "./DbControllerModel";
-import {mmApp} from "../../core/mmApp";
-import {IQueryData, QueryData} from "./QueryData";
-import {IModelRes, IModelRules} from "../interface/IModel";
-import {DbControllerFile} from "./DbControllerFile";
-import {DbControllerMongoDb} from "./DbControllerMongoDb";
+import {DbControllerModel} from './DbControllerModel';
+import {mmApp} from '../../mmApp';
+import {IQueryData, QueryData} from './QueryData';
+import {IModelRes, IModelRules, IDbControllerResult, TKey} from '../interface';
+import {DbControllerFile} from './DbControllerFile';
+import {DbControllerMongoDb} from './DbControllerMongoDb';
 
 /**
  * Контроллер, позволяющий работать с данными.
@@ -142,11 +142,11 @@ export class DbController extends DbControllerModel {
     /**
      * Выполнение запроса на поиск записей в источнике данных
      *
-     * @param {IQueryData} where Данные для поиска значения
+     * @param {IQueryData | null} where Данные для поиска значения
      * @param {boolean} isOne Вывести только 1 запись.
      * @return {Promise<IModelRes>}
      */
-    public async select(where: IQueryData, isOne: boolean = false): Promise<IModelRes> {
+    public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
         return this._controller.select(where, isOne);
     }
 

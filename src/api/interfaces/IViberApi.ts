@@ -1,4 +1,4 @@
-import {IViberButton, IViberButtonObject} from "../../components/button/interfaces/IViberButton";
+import {IViberButton, IViberButtonObject} from '../../components/button/interfaces';
 
 export interface IViberApi {
     /**

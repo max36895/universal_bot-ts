@@ -1,11 +1,10 @@
-import {Buttons, TButton, TButtonPayload} from "../button";
-import {Text} from "../standard/Text";
-import {isFile} from "../../utils";
+import {Buttons, TButton, TButtonPayload} from '../button';
+import {Text, isFile} from '../../utils';
 import {
     ISberSmartAppCardPadding,
     TSberSmartAppTextColor,
     TSberSmartAppTypeface
-} from "../../core/interfaces/ISberSmartApp";
+} from '../../platforms/interfaces';
 
 export interface IImageParams {
     /**
@@ -58,7 +57,7 @@ export class Image {
      */
     public button: Buttons;
     /**
-     * Название изображения.
+     * Заголовок изображения.
      */
     public title: string;
     /**
@@ -75,6 +74,7 @@ export class Image {
     public imageDir: string | null;
     /**
      * True, если однозначно используется идентификатор/токен изображения. По умолчанию false.
+     * Стоит указывать true в том случае, если в метод `init` передается токен изображения
      */
     public isToken: boolean;
     /**

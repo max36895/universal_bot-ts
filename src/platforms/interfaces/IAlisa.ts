@@ -1,4 +1,4 @@
-import {TButtonPayload} from "../../components/button/interfaces/IButton";
+import {TButtonPayload} from '../../components/button/interfaces';
 
 export interface IAlisaEntities {
     /**

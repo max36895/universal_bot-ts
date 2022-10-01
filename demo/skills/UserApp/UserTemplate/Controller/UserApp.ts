@@ -1,7 +1,7 @@
-import {TemplateTypeModel, BotController, mmApp, Buttons} from "../../../../../src";
-import {UserButton} from "../Components/UserButton";
-import {UserCard} from "../Components/UserCard";
-import {UserSound} from "../Components/UserSound";
+import {TemplateTypeModel, BotController, mmApp, Buttons} from '../../../../../src';
+import {UserButton} from '../Components/UserButton';
+import {UserCard} from '../Components/UserCard';
+import {UserSound} from '../Components/UserSound';
 
 interface IUserApp {
     userId: string;

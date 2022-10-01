@@ -1,6 +1,6 @@
-import {TemplateTypeModel} from "./TemplateTypeModel";
-import {BotController} from "../../controller/BotController";
-import {mmApp} from "../mmApp";
+import {TemplateTypeModel} from './TemplateTypeModel';
+import {BotController} from '../controller';
+import {mmApp} from '../mmApp';
 import {
     ISberSmartAppItem,
     ISberSmartAppResponsePayload,
@@ -9,10 +9,10 @@ import {
     ISberSmartAppWebhookRequest,
     ISberSmartAppWebhookResponse,
     TSberSmartAppEmotionId
-} from "../interfaces/ISberSmartApp";
-import {Text} from "../../components/standard/Text";
-import {Buttons} from "../../components/button";
-import {Request} from "../../api";
+} from './interfaces';
+import {Text} from '../utils/standard/Text';
+import {Buttons} from '../components/button';
+import {Request} from '../api';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp

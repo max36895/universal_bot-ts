@@ -1,5 +1,5 @@
-import {fwrite, isDir, mkdir} from "../utils";
-import {DbControllerModel} from "../models/db/DbControllerModel";
+import {fwrite, isDir, mkdir} from './utils/standard/util';
+import {IDbControllerModel} from './models/interface';
 
 export interface IDir {
     path: string;
@@ -216,7 +216,7 @@ export class mmApp {
      * Если опция не передается, то используется стандартное подключение MongoDb.
      * @see DbControllerModel
      */
-    public static userDbController: DbControllerModel;
+    public static userDbController: IDbControllerModel;
     /**
      * Куда сохраняются пользовательские данные. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
      */

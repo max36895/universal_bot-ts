@@ -7,8 +7,8 @@ import {
     INluIntents,
     INluResult,
     INluThisUser
-} from "./interfaces/INlu";
-import {Text} from "../standard/Text";
+} from './interfaces/INlu';
+import {Text} from '../../utils/standard/Text';
 
 /**
  * Класс отвечающий за обработку естественной речи. Осуществляет поиск различных сущностей в тексте.

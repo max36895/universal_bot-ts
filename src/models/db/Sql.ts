@@ -1,6 +1,6 @@
-import {mmApp} from "../../core";
-import {DB} from "./DB";
-import {IModelRes} from "../interface/IModel";
+import {mmApp} from '../../mmApp';
+import {DB} from './DB';
+import {IModelRes} from '../interface';
 
 /**
  * Переменная с подключением к базе данных. Нужна для того, чтобы не было дополнительных подключений к базе.

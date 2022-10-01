@@ -1,8 +1,8 @@
-import {Model} from "./db/Model";
-import {mmApp} from "../core";
-import {IModelRules} from "./interface/IModel";
-import {IYandexRequestDownloadSound, MarusiaRequest, TelegramRequest, VkRequest, YandexSoundRequest} from "../api";
-import {Text} from "../components/standard/Text";
+import {Model} from './db/Model';
+import {mmApp} from '../mmApp';
+import {IModelRules} from './interface';
+import {IYandexRequestDownloadSound, MarusiaRequest, TelegramRequest, VkRequest, YandexSoundRequest} from '../api';
+import {Text} from '../utils/standard/Text';
 
 /**
  * @class SoundTokens

@@ -1,37 +1,36 @@
-import {assert} from 'chai'
-import {Image} from "../../src";
+import {Image} from '../../src';
 
 describe('image', () => {
     it('Image init', () => {
         const image = new Image();
 
-        assert.isFalse(image.init('test', ''));
+        expect(image.init('test', '')).toBe(false);
 
-        assert.isTrue(image.init('test', 'title'));
-        assert.strictEqual(image.title, 'title');
-        assert.strictEqual(image.desc, ' ');
-        assert.isTrue(image.imageDir === null);
-        assert.strictEqual(image.imageToken, 'test');
+        expect(image.init('test', 'title')).toBe(true);
+        expect(image.title).toEqual('title');
+        expect(image.desc).toEqual(' ');
+        expect(image.imageDir === null).toBe(true);
+        expect(image.imageToken).toEqual('test');
 
-        assert.isTrue(image.init('test', 'title', 'desc'));
-        assert.strictEqual(image.desc, 'desc');
+        expect(image.init('test', 'title', 'desc')).toBe(true);
+        expect(image.desc).toEqual('desc');
 
-        assert.isTrue(image.init('https://google.com/image.png', 'title', 'desc'));
-        assert.isTrue(image.imageToken === null);
+        expect(image.init('https://google.com/image.png', 'title', 'desc')).toBe(true);
+        expect(image.imageToken === null).toBe(true);
 
-        assert.isTrue(image.init('test', 'title', 'desc', 'btn'));
-        assert.strictEqual(image.button.buttons[0].title, 'btn');
-        assert.isTrue(image.button.buttons[0].url === null);
+        expect(image.init('test', 'title', 'desc', 'btn')).toBe(true);
+        expect(image.button.buttons[0].title).toEqual('btn');
+        expect(image.button.buttons[0].url === null).toBe(true);
 
-        assert.isTrue(image.init('test', 'title', 'desc', {title: 'btn', url: 'https://google.com'}));
-        assert.strictEqual(image.button.buttons[1].title, 'btn');
-        assert.strictEqual(image.button.buttons[1].url, 'https://google.com');
+        expect(image.init('test', 'title', 'desc', {title: 'btn', url: 'https://google.com'})).toBe(true);
+        expect(image.button.buttons[1].title).toEqual('btn');
+        expect(image.button.buttons[1].url).toEqual('https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
     });
 
     it('Image init isToken', () => {
         const image = new Image();
         image.isToken = true;
-        assert.isTrue(image.init('https://google.com/image.png', 'title', 'desc'));
-        assert.strictEqual(image.imageToken, 'https://google.com/image.png');
+        expect(image.init('https://google.com/image.png', 'title', 'desc')).toBe(true);
+        expect(image.imageToken).toEqual('https://google.com/image.png');
     })
 });

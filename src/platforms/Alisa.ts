@@ -1,4 +1,4 @@
-import {TemplateTypeModel} from "./TemplateTypeModel";
+import {TemplateTypeModel} from './TemplateTypeModel';
 import {
     IAlisaBigImage,
     IAlisaButton,
@@ -7,10 +7,10 @@ import {
     IAlisaSession,
     IAlisaWebhookRequest,
     IAlisaWebhookResponse
-} from "../interfaces/IAlisa";
-import {BotController} from "../../controller/BotController";
-import {mmApp} from "../mmApp";
-import {Text} from "../../components/standard/Text";
+} from './interfaces';
+import {BotController} from '../controller';
+import {mmApp} from '../mmApp';
+import {Text} from '../utils/standard/Text';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы

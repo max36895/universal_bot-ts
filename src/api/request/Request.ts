@@ -1,13 +1,13 @@
 /**
- * Отправка запросов
+ * Модуль отвечающий за отправку запросов
  * @module
  */
-import {fread, httpBuildQuery, IGetParams, isFile} from "../../utils";
-import {IRequestSend} from "../interfaces/IRequest";
+import {fread, httpBuildQuery, IGetParams, isFile} from '../../utils/standard/util';
+import {IRequestSend} from '../interfaces';
 
 /**
  * Класс отвечающий за отправку curl запросов на необходимый url.
- * Поддерживаются различные заголовки, а также присутствует возможность отправки файлов.
+ * Поддерживаются различные заголовки, а также возможность отправки файлов.
  *
  * @class Request
  */
@@ -56,8 +56,8 @@ export class Request {
      */
     public maxTimeQuery: number | null;
     /**
-     * Формат ответа.
-     * True, если полученный ответ нужно преобразовать как json. По умолчанию true.
+     * Преобразовать формат ответа в json.
+     * True, если полученный ответ нужно преобразовать в json. По умолчанию true.
      */
     public isConvertJson: boolean;
 
@@ -85,7 +85,7 @@ export class Request {
 
     /**
      * Отправка запроса.
-     * Возвращаем массив. В случае успеха свойство 'status' = true.
+     * Возвращаем объект. В случае успеха свойство 'status' = true.
      *
      * @param {string} url Адрес, на который отправляется запрос.
      * @return Promise<IRequestSend>
@@ -145,7 +145,7 @@ export class Request {
     }
 
     /**
-     * Получение корректного  параметра для отправки запроса.
+     * Получение корректного параметра для отправки запроса.
      * @return RequestInit
      * @private
      */

@@ -1,4 +1,4 @@
-import {HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController} from "../../../../src";
+import {HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController} from '../../../../src';
 
 /**
  * Стандартный пример приложения.

@@ -1,6 +1,6 @@
-import {IButtonOptions, TButtonPayload} from "./interfaces/IButton";
-import {mmApp} from "../../core/mmApp";
-import {Text} from "../standard";
+import {IButtonOptions, TButtonPayload} from './interfaces';
+import {mmApp} from '../../mmApp';
+import {Text} from '../../utils/standard/Text';
 
 /**
  * @class Button

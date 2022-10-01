@@ -1,14 +1,14 @@
-import {Button} from "./Button";
-import {IButton, IButtonOptions, TButton, TButtonPayload} from "./interfaces/IButton";
-import {TemplateButtonTypes} from "./types/TemplateButtonTypes";
-import {AlisaButton} from "./types/AlisaButton";
-import {TelegramButton} from "./types/TelegramButton";
-import {VkButton} from "./types/VkButton";
-import {ViberButton} from "./types/ViberButton";
-import {SmartAppButton} from "./types/SmartAppButton";
+import {Button} from './Button';
+import {IButton, IButtonOptions, TButton, TButtonPayload} from './interfaces';
+import {TemplateButtonTypes} from './types/TemplateButtonTypes';
+import {AlisaButton} from './types/AlisaButton';
+import {TelegramButton} from './types/TelegramButton';
+import {VkButton} from './types/VkButton';
+import {ViberButton} from './types/ViberButton';
+import {SmartAppButton} from './types/SmartAppButton';
 
 /**
- * Класс, отвечающий за отображение кнопок, в зависимости от типа приложения.
+ * Класс, хранящий в себе все кнопки приложения, а также отвечающий за отображение кнопок, в зависимости от типа приложения.
  * @class Buttons
  */
 export class Buttons {
@@ -94,7 +94,7 @@ export class Buttons {
     }
 
     /**
-     * Очистка всех кнопок.
+     * Очистка массива кнопок.
      * @api
      */
     public clear(): void {
@@ -133,7 +133,7 @@ export class Buttons {
     }
 
     /**
-     * Добавить кнопку типа кнопка.
+     * Добавить кнопку типа `кнопка`.
      *
      * @param {string} title Текст в кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
@@ -147,7 +147,7 @@ export class Buttons {
     }
 
     /**
-     * Добавить кнопку типа сайджест.
+     * Добавить кнопку типа `сайджест`.
      *
      * @param {string} title Текст в кнопке.
      * @param {string} url Ссылка для перехода при нажатии на кнопку.

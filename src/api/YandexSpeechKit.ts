@@ -1,5 +1,5 @@
-import {YandexRequest} from "./YandexRequest";
-import {mmApp} from "../core/mmApp";
+import {YandexRequest} from './YandexRequest';
+import {mmApp} from '../mmApp';
 
 /**
  * Класс отвечающий за преобразование текста в аудио файл.

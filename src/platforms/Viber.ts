@@ -1,10 +1,10 @@
-import {TemplateTypeModel} from "./TemplateTypeModel";
-import {BotController} from "../../controller/BotController";
-import {IViberContent} from "../interfaces/IViber";
-import {mmApp} from "../mmApp";
-import {ViberRequest} from "../../api/ViberRequest";
-import {IViberParams} from "../../api/interfaces/IViberApi";
-import {Buttons, IViberButtonObject} from "../../components/button";
+import {TemplateTypeModel} from './TemplateTypeModel';
+import {BotController} from '../controller';
+import {IViberContent} from './interfaces';
+import {mmApp} from '../mmApp';
+import {ViberRequest} from '../api/ViberRequest';
+import {IViberParams} from '../api/interfaces';
+import {Buttons, IViberButtonObject} from '../components/button';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Viber.

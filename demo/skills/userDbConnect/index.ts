@@ -1,9 +1,9 @@
-import skillDefaultConfig from "../../config/skillDefaultConfig";
-import skillDefaultParam from "../../config/skillDefaultParam";
-import {StandardController} from "./controller/StandardController";
-import {mmApp} from "../../../src/core";
-import {BotTest} from "../../../src/test";
-import DbConnect from "./dbConnect/DbConnect";
+import skillDefaultConfig from '../../config/skillDefaultConfig';
+import skillDefaultParam from '../../config/skillDefaultParam';
+import {StandardController} from './controller/StandardController';
+import {mmApp} from '../../../src/mmApp';
+import {BotTest} from '../../../src/test';
+import DbConnect from './dbConnect/DbConnect';
 
 const bot = new BotTest();
 bot.initConfig(skillDefaultConfig());

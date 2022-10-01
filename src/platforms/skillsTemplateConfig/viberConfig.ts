@@ -1,4 +1,4 @@
-import {IViberContent} from "../interfaces/IViber";
+import {IViberContent} from '../interfaces';
 
 /**
  *

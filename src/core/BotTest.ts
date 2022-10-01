@@ -1,12 +1,8 @@
-import {mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from "./mmApp";
-import {TemplateTypeModel} from "./types/TemplateTypeModel";
-import {stdin} from "../utils";
-import alisaConfig from "./skillsTemplateConfig/alisaConfig";
-import marusiaConfig from "./skillsTemplateConfig/marusiaConfig";
-import vkConfig from "./skillsTemplateConfig/vkConfig";
-import telegramConfig from "./skillsTemplateConfig/telegramConfig";
-import viberConfig from "./skillsTemplateConfig/viberConfig";
-import {Bot} from "./Bot";
+import {mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from '../mmApp';
+import {TemplateTypeModel} from '../platforms';
+import {stdin} from '../utils/standard/util';
+import {alisaConfig, marusiaConfig, vkConfig, telegramConfig, viberConfig} from '../platforms/skillsTemplateConfig';
+import {Bot} from './Bot';
 
 export interface IBotTestParams {
     /**

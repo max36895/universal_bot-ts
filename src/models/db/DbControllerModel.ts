@@ -1,21 +1,13 @@
-import {IAppDB, mmApp} from "../../core/mmApp";
-import {IQueryData, QueryData} from "./QueryData";
-import {IModelRes, IModelRules} from "../interface/IModel";
-
-export type TKey = string | number | null;
-
-export interface IDbControllerResult {
-    [keyStr: string]: any;
-
-    [keyInt: number]: any;
-}
+import {IAppDB, mmApp} from '../../mmApp';
+import {IQueryData, QueryData} from './QueryData';
+import {IModelRes, IModelRules, IDbControllerModel, TKey, IDbControllerResult} from '../interface';
 
 /**
  * Абстрактный класс служащий прослойкой между логикой ядра и подключением к БД.
  * Необходим для корректной настройки контролера, отвечающего за сохранение пользовательских данных.
  * Все прикладные контролеры должны быть унаследованы от него.
  */
-export abstract class DbControllerModel {
+export abstract class DbControllerModel implements IDbControllerModel {
     /**
      * Название таблицы
      */

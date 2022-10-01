@@ -1,8 +1,8 @@
-import {Bot} from "../../../src";
-import skillGameConfig from "../../config/skillGameConfig";
-import skillGameParam from "../../config/skillGameParam";
-import {GameController} from "./controller/GameController";
-import {IncomingMessage, ServerResponse} from "http";
+import {Bot} from '../../../src';
+import skillGameConfig from '../../config/skillGameConfig';
+import skillGameParam from '../../config/skillGameParam';
+import {GameController} from './controller/GameController';
+import {IncomingMessage, ServerResponse} from 'http';
 
 const bot = new Bot();
 bot.initConfig(skillGameConfig());

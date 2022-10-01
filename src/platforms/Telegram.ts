@@ -1,11 +1,11 @@
-import {TemplateTypeModel} from "./TemplateTypeModel";
-import {BotController} from "../../controller/BotController";
-import {ITelegramContent} from "../interfaces/ITelegram";
-import {mmApp} from "../mmApp";
-import {INluThisUser} from "../../components/nlu";
-import {ITelegramParams, TelegramRequest} from "../../api";
-import {Buttons} from "../../components/button";
-import {ITelegramCard} from "../../components/card";
+import {TemplateTypeModel} from './TemplateTypeModel';
+import {BotController} from '../controller';
+import {ITelegramContent} from './interfaces';
+import {mmApp} from '../mmApp';
+import {INluThisUser} from '../components/nlu';
+import {ITelegramParams, TelegramRequest} from '../api';
+import {Buttons} from '../components/button';
+import {ITelegramCard} from '../components/card';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Телеграма.

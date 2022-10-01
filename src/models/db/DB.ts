@@ -1,6 +1,6 @@
-import {IAppDB} from "../../core/mmApp";
+import {IAppDB} from '../../mmApp';
 // @ts-ignore
-import * as mongoDb from "mongodb";
+import * as mongoDb from 'mongodb';
 
 /**
  * Класс отвечающий за подключение и взаимодействие с Базой Данных
@@ -68,7 +68,7 @@ export class DB {
             });
             return true;
         } else {
-            this.errors.push('Отсутствуют данные для подключения к источнику данных!');
+            this.errors.push('Отсутствуют данные для подключения!');
         }
         return false;
     }

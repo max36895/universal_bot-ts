@@ -1,5 +1,5 @@
-import {Request} from "./request/Request";
-import {mmApp} from "../core/mmApp";
+import {Request} from './request/Request';
+import {mmApp} from '../mmApp';
 import {
     IVkApi,
     IVkDocSave,
@@ -12,7 +12,7 @@ import {
     IVkUsersGet,
     TVkDocType,
     TVkPeerId
-} from "./interfaces/IVkApi";
+} from './interfaces';
 
 /**
  * Класс отвечающий за отправку запросов на Vk сервер.

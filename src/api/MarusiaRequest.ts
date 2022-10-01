@@ -1,11 +1,11 @@
-import {mmApp} from "../core/mmApp";
-import {VkRequest} from "./VkRequest";
+import {mmApp} from '../mmApp';
+import {VkRequest} from './VkRequest';
 import {
     IMarusiaApiAudioUpdateLink,
     IMarusiaApiCreateAudio,
     IMarusiaApiPictureUpdateLink,
     IMarusiaApiSavePicture
-} from "./interfaces/IMarusiaApi";
+} from './interfaces';
 
 /**
  * Класс отвечающий за отправку запросов на сервер Маруси.

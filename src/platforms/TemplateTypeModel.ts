@@ -1,4 +1,4 @@
-import {BotController} from "../../controller/BotController";
+import {BotController} from '../controller';
 
 /**
  * @class TemplateTypeModel

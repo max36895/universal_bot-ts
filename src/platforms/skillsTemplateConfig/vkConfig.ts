@@ -1,4 +1,4 @@
-import {IVkRequestContent} from "../interfaces/IVk";
+import {IVkRequestContent} from '../interfaces';
 
 /**
  *

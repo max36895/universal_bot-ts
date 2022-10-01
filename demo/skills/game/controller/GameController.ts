@@ -1,4 +1,4 @@
-import {BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME} from "../../../../src";
+import {BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME} from '../../../../src';
 
 interface IGameControllerExample {
     example: string;

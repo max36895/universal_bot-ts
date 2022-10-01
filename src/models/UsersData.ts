@@ -1,6 +1,6 @@
-import {Model} from "./db/Model";
-import {IModelRes, IModelRules} from "./interface/IModel";
-import {mmApp} from "../core";
+import {Model} from './db/Model';
+import {IModelRes, IModelRules} from './interface';
+import {mmApp} from '../mmApp';
 
 /**
  * @class UsersData

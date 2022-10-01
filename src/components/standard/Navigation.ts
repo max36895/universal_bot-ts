@@ -1,4 +1,4 @@
-import {ITextSimilarity, Text} from "./Text";
+import {ITextSimilarity, Text} from '../../utils/standard/Text';
 
 interface IElementType {
     [name: string]: string;
@@ -9,7 +9,7 @@ type TElementType = IElementType | number | string | any;
 export type TKeys = string | string[]
 
 /**
- * Класс отвечающий за корректную навигацию по элементам меню.
+ * Класс отвечающий за навигацию по элементам меню или списка.
  * @typeParam ElementType тип элементов, по которым будет происходить навигация
  * @class Navigation
  */
@@ -24,10 +24,12 @@ export class Navigation<ElementType = TElementType> {
     public isUsedStandardText: boolean;
     /**
      * Массив с возможными командами для навигации вперед.
+     * Стоит использовать в том случае, если есть необходимость дополнить список существующих команд для навигации вперед
      */
     public nextText: string[];
     /**
      * Массив с возможными командами для навигации назад.
+     * Стоит использовать в том случае, если есть необходимость дополнить список существующих команд для навигации назад
      */
     public oldText: string[];
     /**
@@ -110,7 +112,7 @@ export class Navigation<ElementType = TElementType> {
 
     /**
      * Определяет желание пользователя перейти на определенную страницу.
-     * В случае успешного перехода вернет true.
+     * В случае успешного определения вернет true.
      *
      * @param {string} text Пользовательский запрос.
      * @return boolean
@@ -158,14 +160,14 @@ export class Navigation<ElementType = TElementType> {
     }
 
     /**
-     * Возвращает новый массив данных, с учетом текущего положения пользователя.
+     * Возвращает новый массив данных, с учетом текущей страницы пользователя пользователя.
      *
      * @param {Object[]|string[]|number[]} elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
      * @return ElementType[]
      * @api
      */
-    public nav(elements: ElementType[] | null = null, text: string = ''): ElementType[] {
+    public getPageElements(elements: ElementType[] | null = null, text: string = ''): ElementType[] {
         const showElements: ElementType[] = [];
         if (elements) {
             this.elements = elements;
@@ -185,12 +187,12 @@ export class Navigation<ElementType = TElementType> {
     }
 
     /**
-     * Выбор определенного элемента списка на нужной странице.
+     * Выбор определенного элемента списка на нужной или текущей странице.
      *
      * @param elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
      * @param {string[] | string} keys Поиск элемента по ключу массива. Если null, тогда подразумевается, что передан массив из строк.
-     * @param {number} thisPage Текущая страница.
+     * @param {number} thisPage Текущая страница. Если в аргумент ничего не передано, то используется текущая страница
      * @return any
      * @api
      */
@@ -262,7 +264,7 @@ export class Navigation<ElementType = TElementType> {
     }
 
     /**
-     * Возвращает кнопки навигации.
+     * Возвращает кнопки для навигации.
      *
      * @param {boolean} isNumber Использование числовой навигации. Если true, тогда будут отображаться кнопки с числовой навигацией.
      * @return string[]

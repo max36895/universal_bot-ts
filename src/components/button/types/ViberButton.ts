@@ -1,5 +1,5 @@
-import {TemplateButtonTypes} from "./TemplateButtonTypes";
-import {IViberButton, IViberButtonObject} from "../interfaces/IViberButton";
+import {TemplateButtonTypes} from './TemplateButtonTypes';
+import {IViberButton, IViberButtonObject} from '../interfaces';
 
 /**
  * Класс отвечающий за отображение кнопок в Viber

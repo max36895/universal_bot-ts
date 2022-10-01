@@ -1,4 +1,4 @@
-import {IVkApi} from "./IVkApi";
+import {IVkApi} from './IVkApi';
 
 export interface IMarusiaApiPictureUpdateLink extends IVkApi {
     /**

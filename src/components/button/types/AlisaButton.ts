@@ -1,7 +1,7 @@
-import {TemplateButtonTypes} from "./TemplateButtonTypes";
-import {IAlisaButton, IAlisaButtonCard} from "../../../core/interfaces/IAlisa";
-import {Text} from "../../standard/Text";
-import {Button} from "../Button";
+import {TemplateButtonTypes} from './TemplateButtonTypes';
+import {IAlisaButton, IAlisaButtonCard} from '../../../platforms/interfaces';
+import {Text} from '../../../utils/standard/Text';
+import {Button} from '../Button';
 
 /**
  * Класс отвечающий за отображение кнопок в Алисе

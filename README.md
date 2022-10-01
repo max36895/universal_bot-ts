@@ -31,7 +31,7 @@ npm run doc
 ```bash
 git clone https://github.com/max36895/universal_bot-ts.git u_bot
 ```
-Или установите из npm
+Или установите из `npm`
 ```bash
 npm i umbot
 ```

@@ -1,5 +1,5 @@
-import {Request} from "./request/Request";
-import {mmApp} from "../core/mmApp";
+import {Request} from './request/Request';
+import {mmApp} from '../mmApp';
 import {
     IViberApi,
     IViberGetUserDetails,
@@ -7,9 +7,9 @@ import {
     IViberRichMediaParams,
     IViberSender,
     IViberWebhookParams
-} from "./interfaces/IViberApi";
-import {IViberButton} from "../components/button/interfaces/IViberButton";
-import {Text} from "../components/standard/Text";
+} from './interfaces';
+import {IViberButton} from '../components/button/interfaces';
+import {Text} from '../utils/standard/Text';
 
 /**
  * Класс отвечающий за отправку запросов на viber сервер.

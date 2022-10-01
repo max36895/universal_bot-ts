@@ -1,4 +1,4 @@
-import {IAlisaRequestState, IAlisaWebhookRequest} from "../interfaces/IAlisa";
+import {IAlisaRequestState, IAlisaWebhookRequest} from '../interfaces';
 
 /**
  *

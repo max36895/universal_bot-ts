@@ -1,8 +1,7 @@
-import {mmApp} from "../../core";
-import {IModelRes, IModelRules, ILabelAttr} from "../interface/IModel";
-import {DbControllerModel, IDbControllerResult} from "./DbControllerModel";
-import {IQueryData, QueryData} from "./QueryData";
-import {DbController} from "./DbController";
+import {mmApp} from '../../mmApp';
+import {IModelRes, IModelRules, ILabelAttr, IDbControllerModel, IDbControllerResult} from '../interface';
+import {IQueryData, QueryData} from './QueryData';
+import {DbController} from './DbController';
 
 /**
  * @class Model
@@ -10,7 +9,7 @@ import {DbController} from "./DbController";
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
 export abstract class Model implements IDbControllerResult {
-    public dbController: DbControllerModel;
+    public dbController: IDbControllerModel;
     public queryData: QueryData;
     /**
      * Стартовое значение для индекса.

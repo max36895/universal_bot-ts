@@ -1,9 +1,8 @@
-import {ISound} from "../interfaces/sound";
-import {TemplateSoundTypes} from "./TemplateSoundTypes";
-import {isFile} from "../../../utils";
-import {Text} from "../../standard/Text";
-import {SoundTokens} from "../../../models/SoundTokens";
-import {YandexSpeechKit} from "../../../api/YandexSpeechKit";
+import {ISound} from '../interfaces';
+import {TemplateSoundTypes} from './TemplateSoundTypes';
+import {Text, isFile} from '../../../utils';
+import {SoundTokens} from '../../../models/SoundTokens';
+import {YandexSpeechKit} from '../../../api/YandexSpeechKit';
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в ВКонтакте.

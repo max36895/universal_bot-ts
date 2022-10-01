@@ -1,13 +1,9 @@
-/**
- * Абстрактный контроллер, обрабатывающий логику приложения
- * @module controller/BotController
- */
-import {Buttons} from "../components/button";
-import {Card} from "../components/card";
-import {Sound} from "../components/sound";
-import {Nlu} from "../components/nlu";
-import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from "../core/mmApp";
-import {Text} from "../components/standard/Text";
+import {Buttons} from '../components/button';
+import {Card} from '../components/card';
+import {Sound} from '../components/sound';
+import {Nlu} from '../components/nlu';
+import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from '../mmApp';
+import {Text} from '../utils/standard/Text';
 
 export type TStatus = true | false | null;
 

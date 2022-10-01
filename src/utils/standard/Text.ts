@@ -1,4 +1,4 @@
-import {rand, similarText} from "../../utils";
+import {rand, similarText} from './util';
 
 export type TFind = string | string[];
 
