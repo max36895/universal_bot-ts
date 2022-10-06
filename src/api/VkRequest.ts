@@ -53,6 +53,7 @@ export class VkRequest {
     /**
      * Тип контента файла.
      * True, если передается содержимое файла. По умолчанию: false.
+     * @defaultValue false
      */
     public isAttachContent: boolean;
 

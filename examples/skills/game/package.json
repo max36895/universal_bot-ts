@@ -1,5 +1,5 @@
 {
-  "name": "u_bot_demo",
+  "name": "umbot_demo",
   "description": "Демо пример игры",
   "keywords": [
     "Игра математика"
@@ -7,7 +7,7 @@
   "author": "Maxim-M",
   "license": "MIT",
   "version": "1.0.0",
-  "main": "../../../dist/demo/skills/game/index.js",
+  "main": "./dist/skills/game/index.js",
   "scripts": {
     "start": "micro"
   },

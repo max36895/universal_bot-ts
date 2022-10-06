@@ -20,6 +20,7 @@ export abstract class Model implements IDbControllerResult {
      * Правила для обработки полей. Где 1 - Элемент это название поля, 2 - Элемент тип поля, max - Максимальная длина.
      *
      * @return IModelRules[]
+     * @virtual
      */
     public abstract rules(): IModelRules[];
 
@@ -28,6 +29,7 @@ export abstract class Model implements IDbControllerResult {
      * Для уникального ключа использовать значение ID.
      *
      * @return object
+     * @virtual
      */
     public abstract attributeLabels(): ILabelAttr;
 
@@ -35,6 +37,7 @@ export abstract class Model implements IDbControllerResult {
      * Название таблицы/файла с данными.
      *
      * @return string
+     * @virtual
      */
     public abstract tableName(): string;
 

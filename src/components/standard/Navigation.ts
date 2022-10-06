@@ -37,11 +37,13 @@ export class Navigation<ElementType = TElementType> {
      */
     public elements: ElementType[];
     /**
-     * (default 5) Максимальное количество отображаемых элементов.
+     * Максимальное количество отображаемых элементов.
+     * @defaultValue 5
      */
     public maxVisibleElements: number;
     /**
-     * (default 0) Текущая страница. Рекомендуется получать это значение после завершения всех операция.
+     * Текущая страница. Рекомендуется получать это значение после завершения всех операция.
+     * @defaultValue 0
      */
     public thisPage: number;
 

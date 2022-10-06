@@ -151,7 +151,7 @@ export class BotTest extends Bot {
 
             case T_VIBER:
                 this._botController.isSend = false;
-                content = viberConfig(query, userId, count);
+                content = viberConfig(query, userId);
                 break;
 
             case T_USER_APP:

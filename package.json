@@ -11,13 +11,14 @@
     "api",
     "viber",
     "Маруся",
-    "Sber"
+    "Sber",
+    "bot"
   ],
   "author": "Maxim-M",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
-    "watch": "tsc -watch",
+    "watch": "shx rm -rf dist && tsc -watch",
     "start": "shx rm -rf dist && tsc",
     "build": "shx rm -rf dist && tsc --declaration",
     "test": "jest",
@@ -30,10 +31,10 @@
     "url": "https://github.com/max36895/universal_bot-ts/issues"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=12"
   },
   "bin": {
-    "ubmot": "console/umbot.js"
+    "umbot": "console/umbot.js"
   },
   "repository": {
     "type": "git",

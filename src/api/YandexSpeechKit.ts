@@ -50,10 +50,12 @@ export class YandexSpeechKit extends YandexRequest {
      * ru-RU (по умолчанию) — русский язык;
      * en-US — английский язык;
      * tr-TR — турецкий язык.
+     * @defaultValue ru-RU
      */
     public lang: string;
     /**
      * Желаемый голос для синтеза речи из списка. Значение параметра по умолчанию: oksana.
+     * @defaultValue oksana
      */
     public voice: string;
     /**
@@ -62,6 +64,7 @@ export class YandexSpeechKit extends YandexRequest {
      * good — доброжелательный;
      * evil — злой;
      * neutral (по умолчанию) — нейтральный.
+     * @defaultValue neutral
      */
     public emotion: string;
     /**
@@ -70,6 +73,7 @@ export class YandexSpeechKit extends YandexRequest {
      * 3.0 — самый быстрый темп;
      * 1.0 (по умолчанию) — средняя скорость человеческой речи;
      * 0.1 — самый медленный темп.
+     * @defaultValue 1.0
      */
     public speed: number;
     /**
@@ -81,6 +85,7 @@ export class YandexSpeechKit extends YandexRequest {
      * Порядок байтов — обратный (little-endian).
      * Аудиоданные хранятся как знаковые числа (signed integer).
      * oggopus (по умолчанию) — данные в аудиофайле кодируются с помощью аудиокодека OPUS и упаковываются в контейнер OGG (OggOpus).
+     * @defaultValue oggopus
      */
     public format: string;
     /**
@@ -89,6 +94,7 @@ export class YandexSpeechKit extends YandexRequest {
      * 48000 (по умолчанию) — частота дискретизации 48 кГц;
      * 16000 — частота дискретизации 16 кГц;
      * 8000 — частота дискретизации 8 кГц.
+     * @defaultValue 48000
      */
     public sampleRateHertz: number | undefined;
     /**

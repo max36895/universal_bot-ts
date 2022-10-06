@@ -116,6 +116,7 @@ export interface IViberParams {
     tracking_data?: string;
     /**
      * Минимальная версия API, необходимая клиентам для этого сообщения (по умолчанию 1).
+     * @defaultValue 1
      */
     min_api_version?: string;
     /**

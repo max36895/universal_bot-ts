@@ -4,9 +4,8 @@ import {IViberContent} from '../interfaces';
  *
  * @param query Запрос пользователя
  * @param userId Идентификатор пользователя
- * @param count Номер сообщения
  */
-export default function (query: string, userId: string, count: number): IViberContent {
+export default function (query: string, userId: string): IViberContent {
     return {
         event: 'message',
         message: {

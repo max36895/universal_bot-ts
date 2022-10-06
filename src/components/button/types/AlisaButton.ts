@@ -11,6 +11,7 @@ export class AlisaButton extends TemplateButtonTypes {
     /**
      * Использование кнопок для карточки
      * True, если нужно отобразить кнопку для карточки. По умолчанию false
+     * @defaultValue false
      */
     public isCard: boolean;
 

@@ -11,7 +11,7 @@ export abstract class TemplateTypeModel {
      */
     protected error: string | null;
     /**
-     * Время начала работы приложения.
+     * Время начала обработки запроса приложением приложения.
      */
     protected timeStart: number | null;
     /**
@@ -20,10 +20,12 @@ export abstract class TemplateTypeModel {
     protected controller: BotController;
     /**
      * Использование локального хранилища как БД.
+     * В качестве локального хранилища будут использоваться стандартные механизмы предоставляемые соответствующей платформой.
      */
     public isUsedLocalStorage: boolean;
     /**
      * Отправка запроса сразу после инициализации. Если не null, то никакие команды пользователя не обрабатываются.
+     * Актуально в том случае, если платформа шлет запрос, чтобы убедиться что оно работоспособное. В таком случае нет необходимости запускать логику приложения, а также сохранять данные в источник данных.
      */
     public sendInInit: any;
 
@@ -52,14 +54,14 @@ export abstract class TemplateTypeModel {
 
     /**
      * Установка начального времени.
-     * Необходимо для определения времени выполнения программы.
+     * Необходимо для определения времени выполнения запроса.
      */
     private _initProcessingTime(): void {
         this.timeStart = Date.now();
     }
 
     /**
-     * Получить время выполнения программы.
+     * Получить время выполнения запроса.
      *
      * @return number
      * @api
@@ -85,6 +87,7 @@ export abstract class TemplateTypeModel {
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @api
+     * @virtual
      */
     public abstract init(query: any, controller: BotController): Promise<boolean>;
 
@@ -92,6 +95,7 @@ export abstract class TemplateTypeModel {
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
      *
      * @return {Promise<Object|string>}
+     * @virtual
      */
     public abstract getContext(): Promise<Object | string>;
 
@@ -117,7 +121,7 @@ export abstract class TemplateTypeModel {
     }
 
     /**
-     * Возвращаем данные из хранилища.
+     * Возвращаем данные из локального хранилища.
      *
      * @return Promise<object | string>
      * @api
@@ -127,7 +131,7 @@ export abstract class TemplateTypeModel {
     }
 
     /**
-     * Сохранение данных в хранилище.
+     * Сохранение данных в локальное хранилище.
      *
      * @param data сохраняемые данные
      * @return Promise<void>

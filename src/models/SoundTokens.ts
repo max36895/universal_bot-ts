@@ -30,6 +30,7 @@ export class SoundTokens extends Model {
     public type: number;
     /**
      * True если передается содержимое файла. По умолчанию: false.
+     * @defaultValue false
      */
     public isAttachContent: boolean;
 

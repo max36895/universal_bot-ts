@@ -2,7 +2,7 @@ import {TemplateTypeModel} from './TemplateTypeModel';
 import {
     IAlisaBigImage,
     IAlisaButton,
-    IAlisaItemsList,
+    IAlisaItemsList, IAlisaRequest, IAlisaRequestState,
     IAlisaResponse,
     IAlisaSession,
     IAlisaWebhookRequest,
@@ -64,6 +64,78 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
+     * Устанавливает состояние приложения
+     *
+     * @param state
+     * @private
+     */
+    private _setState(state: IAlisaRequestState): void {
+        if (typeof state.user !== 'undefined') {
+            this.controller.state = state.user;
+            this._stateName = 'user_state_update';
+        } else if (typeof state.application !== 'undefined') {
+            this.controller.state = state.application;
+            this._stateName = 'application_state';
+        } else if (typeof state.session !== 'undefined') {
+            this.controller.state = state.session;
+            this._stateName = 'session_state';
+        }
+    }
+
+    /**
+     * Инициализирует введенные пользователем данные
+     *
+     * @param request
+     * @private
+     */
+    private _initUserCommand(request: IAlisaRequest): void {
+        if (request.type === 'SimpleUtterance') {
+            this.controller.userCommand = request.command.trim() || '';
+            this.controller.originalUserCommand = request.original_utterance.trim() || '';
+        } else {
+            if (typeof request.payload === 'string') {
+                this.controller.userCommand = request.payload;
+                this.controller.originalUserCommand = request.payload;
+            } else {
+                this.controller.userCommand = request.command?.trim() || '';
+                this.controller.originalUserCommand = request.original_utterance?.trim() || '';
+            }
+            this.controller.payload = request.payload;
+        }
+        if (!this.controller.userCommand) {
+            this.controller.userCommand = this.controller.originalUserCommand;
+        }
+    }
+
+    /**
+     * Устанавливает идентификатор пользователя
+     * @private
+     */
+    private _setUserId(): void {
+        if (this._session) {
+            let userId: string | null = null;
+            this._isState = false;
+            if (mmApp.params.y_isAuthUser) {
+                if (typeof this._session.user !== 'undefined' && typeof this._session.user.user_id !== 'undefined') {
+                    userId = this._session.user.user_id;
+                    this._isState = true;
+                    this.controller.userToken = this._session.user.access_token || null;
+                }
+            }
+
+            if (userId === null) {
+                if (typeof this._session.application !== 'undefined' && this._session.application.application_id !== 'undefined') {
+                    userId = this._session.application.application_id;
+                } else {
+                    userId = this._session.user_id as string;
+                }
+            }
+
+            mmApp.params.user_id = this.controller.userId = userId;
+        }
+    }
+
+    /**
      * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
      * @param {IAlisaWebhookRequest|string} query Запрос пользователя.
@@ -97,61 +169,16 @@ export class Alisa extends TemplateTypeModel {
                 this.controller = controller;
             }
             this.controller.requestObject = content;
-
-            if (content.request.type === 'SimpleUtterance') {
-                this.controller.userCommand = content.request.command.trim() || '';
-                this.controller.originalUserCommand = content.request.original_utterance.trim() || '';
-            } else {
-                if (typeof content.request.payload === 'string') {
-                    this.controller.userCommand = content.request.payload;
-                    this.controller.originalUserCommand = content.request.payload;
-                } else {
-                    this.controller.userCommand = content.request.command?.trim() || '';
-                    this.controller.originalUserCommand = content.request.original_utterance?.trim() || '';
-                }
-                this.controller.payload = content.request.payload;
-            }
-            if (!this.controller.userCommand) {
-                this.controller.userCommand = this.controller.originalUserCommand;
-            }
-
+            this._initUserCommand(content.request);
             this._session = content.session;
-
-            let userId: string | null = null;
-            this._isState = false;
-            if (mmApp.params.y_isAuthUser) {
-                if (typeof this._session.user !== 'undefined' && typeof this._session.user.user_id !== 'undefined') {
-                    userId = this._session.user.user_id;
-                    this._isState = true;
-                    this.controller.userToken = this._session.user.access_token || null;
-                }
-            }
-
-            if (userId === null) {
-                if (typeof this._session.application !== 'undefined' && this._session.application.application_id !== 'undefined') {
-                    userId = this._session.application.application_id;
-                } else {
-                    userId = this._session.user_id as string;
-                }
-            }
-            this.controller.userId = userId;
-            mmApp.params.user_id = this.controller.userId;
+            this._setUserId();
             this.controller.nlu.setNlu(content.request.nlu || {});
 
             this.controller.userMeta = content.meta || {};
             this.controller.messageId = this._session.message_id;
 
             if (typeof content.state !== 'undefined') {
-                if (typeof content.state.user !== 'undefined') {
-                    this.controller.state = content.state.user;
-                    this._stateName = 'user_state_update';
-                } else if (typeof content.state.application !== 'undefined') {
-                    this.controller.state = content.state.application;
-                    this._stateName = 'application_state';
-                } else if (typeof content.state.session !== 'undefined') {
-                    this.controller.state = content.state.session;
-                    this._stateName = 'session_state';
-                }
+                this._setState(content.state);
             }
 
             mmApp.params.app_id = this._session.skill_id;

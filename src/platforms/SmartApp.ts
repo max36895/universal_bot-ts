@@ -12,7 +12,7 @@ import {
 } from './interfaces';
 import {Text} from '../utils/standard/Text';
 import {Buttons} from '../components/button';
-import {Request} from '../api';
+import {IRequestSend, Request} from '../api';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp
@@ -93,6 +93,52 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
+     * Инициализирует введенные пользователем данные
+     *
+     * @param content
+     * @private
+     */
+    private _initUserCommand(content: ISberSmartAppWebhookRequest): void {
+        this.controller.requestObject = content;
+        this.controller.messageId = content.messageId;
+        switch (content.messageName) {
+            case 'MESSAGE_TO_SKILL':
+            case 'CLOSE_APP':
+                this.controller.userCommand = content.payload.message.normalized_text;
+                this.controller.originalUserCommand = content.payload.message.original_text;
+                break;
+
+            case 'SERVER_ACTION':
+            case 'RUN_APP':
+                this.controller.payload = content.payload?.server_action?.parameters;
+                if (typeof this.controller.payload === 'string') {
+                    this.controller.userCommand = this.controller.originalUserCommand = this.controller.payload;
+                }
+                if (content.messageName === 'RUN_APP') {
+                    this.controller.messageId = 0;
+                    this.controller.originalUserCommand = this.controller.userCommand;
+                    this.controller.userCommand = '';
+                }
+                break;
+
+            case 'RATING_RESULT':
+                this.controller.payload = content.payload;
+                this.controller.messageId = 0;
+                this.controller.userEvents = {
+                    rating: {
+                        status: content.payload.status_code?.code === 1,
+                        value: content.payload.rating?.estimation
+                    }
+                };
+                break;
+        }
+
+        if (!this.controller.userCommand) {
+            this.controller.userCommand = this.controller.originalUserCommand;
+        }
+    }
+
+    /**
      * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
      * @param {ISberSmartAppWebhookRequest|string} query Запрос пользователя.
@@ -113,43 +159,7 @@ export class SmartApp extends TemplateTypeModel {
             if (!this.controller) {
                 this.controller = controller;
             }
-            this.controller.requestObject = content;
-            this.controller.messageId = content.messageId;
-            switch (content.messageName) {
-                case 'MESSAGE_TO_SKILL':
-                case 'CLOSE_APP':
-                    this.controller.userCommand = content.payload.message.normalized_text;
-                    this.controller.originalUserCommand = content.payload.message.original_text;
-                    break;
-
-                case 'SERVER_ACTION':
-                case 'RUN_APP':
-                    this.controller.payload = content.payload?.server_action?.parameters;
-                    if (typeof this.controller.payload === 'string') {
-                        this.controller.userCommand = this.controller.originalUserCommand = this.controller.payload;
-                    }
-                    if (content.messageName === 'RUN_APP') {
-                        this.controller.messageId = 0;
-                        this.controller.originalUserCommand = this.controller.userCommand;
-                        this.controller.userCommand = '';
-                    }
-                    break;
-
-                case 'RATING_RESULT':
-                    this.controller.payload = content.payload;
-                    this.controller.messageId = 0;
-                    this.controller.userEvents = {
-                        rating: {
-                            status: content.payload.status_code?.code === 1,
-                            value: content.payload.rating?.estimation
-                        }
-                    };
-                    break;
-            }
-
-            if (!this.controller.userCommand) {
-                this.controller.userCommand = this.controller.originalUserCommand;
-            }
+            this._initUserCommand(content);
 
             this._session = {
                 device: content.payload.device,
@@ -225,7 +235,7 @@ export class SmartApp extends TemplateTypeModel {
         return result;
     }
 
-    protected async _getUserData(): Promise<any | string> {
+    protected async _getUserData(): Promise<unknown | string> {
         const request = new Request();
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
         const result = await request.send();
@@ -235,7 +245,7 @@ export class SmartApp extends TemplateTypeModel {
         return {};
     }
 
-    protected async _setUserData(data: any) {
+    protected async _setUserData(data: any): Promise<IRequestSend<unknown>> {
         const request = new Request();
         request.header = Request.HEADER_AP_JSON;
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;

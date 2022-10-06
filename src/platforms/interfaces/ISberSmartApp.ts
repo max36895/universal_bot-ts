@@ -205,6 +205,7 @@ export interface ISberSmartAppServerAction {
     /**
      * Действие, которое обрабатывает бэкенд смартапа.
      * Значение по умолчанию:run_app.
+     * @defaultValue run_app
      */
     action_id: string,
     /**
@@ -336,7 +337,7 @@ export interface ISberSmartAppRequestPayload {
      * Возможные значения:
      * true — приложение запущено впервые или после закрытия приложения, а так же при запуске приложения по истечению тайм-аута (10 минут) или после прерывания работы приложения, например, по запросу "текущее время"i
      * false — во всех остальных случаях.
-     * По умолчанию: false.
+     * @defaultValue false
      */
     new_session?: boolean;
     /**
@@ -351,6 +352,7 @@ export interface ISberSmartAppRequestPayload {
      * Информация о запускаемом смартапе и параметрах его запуска.
      * Формируется бэкендом приложения.
      * По умолчанию: пустой объект.
+     * @defaultValue {}
      */
     server_action?: ISberSmartAppServerAction;
     /**
@@ -541,7 +543,7 @@ export interface ISberSmartAppCardAction {
     /**
      * Может передаваться только в действиях с типом text.
      * Указывает, что сообщение нужно не только отобразить в чате с ассистентом, но и отправить в бэкенд.
-     * По умолчанию true.
+     * @defaultValue true
      */
     should_send_to_backend?: boolean;
     /**
@@ -608,6 +610,7 @@ export interface ISberSmartAppCardText {
     /**
      * Максимальное количество строк. По умолчанию 1.
      * Значение 0 указывает на неограниченное количество строк.
+     * @defaultValue 1
      */
     max_lines?: number;
     /**
@@ -655,7 +658,7 @@ export interface ISberSmartAppCardImage {
     /**
      * Высота контейнера изображения, выраженная в независящих от платформы единицах.
      * Поле игнорируется, если присутствует поле size.
-     * По умолчанию 192.
+     * @defaultValue 192
      */
     height?: number;
     /**
@@ -741,7 +744,8 @@ export interface ISberSmartAppCard {
      */
     paddings?: ISberSmartAppCardPadding;
     /**
-     * Указывает что карточка может отображаться как отключённая. По умолчанию false.
+     * Указывает что карточка может отображаться как отключённая.
+     * @defaultValue false
      */
     can_be_disabled?: boolean;
     /**
@@ -754,6 +758,7 @@ export interface ISberSmartAppCard {
     type: 'gallery_card' | 'grid_card' | 'list_card'
     /**
      * Количество столбцов. По умолчанию 1 столбец.
+     * @defaultValue 1
      */
     columns?: number;
     /**
@@ -836,7 +841,7 @@ export interface ISberSmartAppResponsePayload {
     code?: number;
     /**
      * Указывает, что ассистент должен слушать пользователя после выполнения действия.
-     * По умолчанию false.
+     * @defaultValue false
      */
     auto_listening?: boolean;
     /**

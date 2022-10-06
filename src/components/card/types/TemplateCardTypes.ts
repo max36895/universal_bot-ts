@@ -39,6 +39,7 @@ export abstract class TemplateCardTypes {
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return {Promise<Object|Object[]>}
+     * @virtual
      */
     public abstract getCard(isOne: boolean): Promise<any>;
 }

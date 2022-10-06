@@ -155,12 +155,12 @@ export abstract class BotController {
      * "no_official" - Общаемся на ты
      * null - можно использовать любой тон
      * Актуально для Сбер
-     * @default null
+     * @defaultValue null
      */
     public appeal: "official" | "no_official" | null;
     /**
      * Отправляет запрос на оценку приложения
-     * @default false
+     * @defaultValue false
      */
     public isSendRating: boolean;
 
@@ -232,6 +232,7 @@ export abstract class BotController {
      * В таком случае стоит смотреть на предыдущую команду пользователя, либо вернуть текст помощи.
      *
      * @param {string} intentName Название действия.
+     * @virtual
      */
     public abstract action(intentName: string | null): void;
 

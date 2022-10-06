@@ -19,6 +19,7 @@ export class Sound {
     /**
      * Использование стандартных звуков.
      * Если true - используются стандартные звуки. Актуально для Алисы и Маруси. По умолчанию true.
+     * @defaultValue true
      */
     public isUsedStandardSound: boolean;
 

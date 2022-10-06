@@ -91,6 +91,7 @@ export interface IAppIntent {
     slots: string[];
     /**
      * Использовать регулярное выражение или нет. По умолчанию false.
+     * @defaultValue false
      */
     is_pattern?: boolean;
 }
@@ -134,6 +135,7 @@ export interface IAppParam {
     telegram_token?: string | null;
     /**
      * Версия Vk api. По умолчанию используется v5.103.
+     * @defaultValue v5.103
      */
     vk_api_version?: string | null;
     /**
@@ -200,7 +202,8 @@ export interface IAppParam {
      */
     intents: IAppIntent[] | null;
     /**
-     * Текст для UTM метки. По умолчанию utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone
+     * Текст для UTM метки.
+     * @defaultValue utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone
      */
     utm_text?: string | null;
 }
@@ -210,6 +213,7 @@ export interface IAppParam {
  * @class mmApp
  */
 export class mmApp {
+    private static _isDevMode: boolean;
     /**
      * Использование стороннего контроллера для подключения к БД.
      * Класс должен быть унаследован от DbControllerModel. Стоит применять в том случае, если используется другая СУБД.
@@ -219,6 +223,7 @@ export class mmApp {
     public static userDbController: IDbControllerModel;
     /**
      * Куда сохраняются пользовательские данные. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
+     * @defaultValue false
      */
     public static isSaveDb: boolean = false;
 
@@ -276,6 +281,22 @@ export class mmApp {
         ],
         utm_text: null
     };
+
+    /**
+     * Установить dev режим работы приложения. При его активации, в консоли будут отображаться все ошибки и предупреждения.
+     * @param isDevMode
+     */
+    public static setDevMode(isDevMode: boolean = false): void {
+        mmApp._isDevMode = isDevMode;
+    }
+
+    /**
+     * Возвращает текущий режим работы приложения
+     * @defaultValue false
+     */
+    public static get isDevMode(): boolean {
+        return mmApp._isDevMode;
+    }
 
     /**
      * Объединение 2 массивов.
@@ -364,6 +385,10 @@ export class mmApp {
             path: mmApp.config.error_log || __dirname + '/../../logs',
             fileName
         };
-        return this.saveData(dir, `[${Date()}]: ${errorText}\n`, 'a');
+        const msg = `[${Date()}]: ${errorText}\n`;
+        if (mmApp._isDevMode) {
+            console.warn(msg);
+        }
+        return this.saveData(dir, msg, 'a');
     }
 }

@@ -1,5 +1,6 @@
 {
   "entryPoints": [
+    "src/build.ts",
     "src/test.ts",
     "src/mmApp.ts",
     "src/api",

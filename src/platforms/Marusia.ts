@@ -2,7 +2,7 @@ import {TemplateTypeModel} from './TemplateTypeModel';
 import {
     IMarusiaBigImage,
     IMarusiaButton,
-    IMarusiaItemsList,
+    IMarusiaItemsList, IMarusiaRequest, IMarusiaRequestState,
     IMarusiaResponse,
     IMarusiaSession,
     IMarusiaSessionResponse,
@@ -73,6 +73,47 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
+     * Устанавливает состояние приложения
+     *
+     * @param state
+     * @private
+     */
+    private _setState(state: IMarusiaRequestState): void {
+        if (typeof state.user !== 'undefined') {
+            this.controller.state = state.user;
+            this._stateName = 'user_state_update';
+        } else if (typeof state.session !== 'undefined') {
+            this.controller.state = state.session;
+            this._stateName = 'session_state';
+        }
+    }
+
+    /**
+     * Инициализирует введенные пользователем данные
+     *
+     * @param request
+     * @private
+     */
+    private _initUserCommand(request: IMarusiaRequest): void {
+        if (request.type === 'SimpleUtterance') {
+            this.controller.userCommand = request.command.trim();
+            this.controller.originalUserCommand = request.original_utterance.trim();
+        } else {
+            if (typeof request.payload === 'string') {
+                this.controller.userCommand = request.payload;
+                this.controller.originalUserCommand = request.payload;
+            } else {
+                this.controller.userCommand = request.command?.trim();
+                this.controller.originalUserCommand = request.original_utterance?.trim();
+            }
+            this.controller.payload = request.payload;
+        }
+        if (!this.controller.userCommand) {
+            this.controller.userCommand = this.controller.originalUserCommand;
+        }
+    }
+
+    /**
      * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
      *
      * @param {IMarusiaWebhookRequest|string} query Запрос пользователя.
@@ -105,32 +146,9 @@ export class Marusia extends TemplateTypeModel {
                 this.controller = controller;
             }
             this.controller.requestObject = content;
-
-            if (content.request.type === 'SimpleUtterance') {
-                this.controller.userCommand = content.request.command.trim();
-                this.controller.originalUserCommand = content.request.original_utterance.trim();
-            } else {
-                if (typeof content.request.payload === 'string') {
-                    this.controller.userCommand = content.request.payload;
-                    this.controller.originalUserCommand = content.request.payload;
-                } else {
-                    this.controller.userCommand = content.request.command?.trim();
-                    this.controller.originalUserCommand = content.request.original_utterance?.trim();
-                }
-                this.controller.payload = content.request.payload;
-            }
-            if (!this.controller.userCommand) {
-                this.controller.userCommand = this.controller.originalUserCommand;
-            }
-
+            this._initUserCommand(content.request);
             if (typeof content.state !== 'undefined') {
-                if (typeof content.state.user !== 'undefined') {
-                    this.controller.state = content.state.user;
-                    this._stateName = 'user_state_update';
-                } else if (typeof content.state.session !== 'undefined') {
-                    this.controller.state = content.state.session;
-                    this._stateName = 'session_state';
-                }
+                this._setState(content.state);
             }
 
             this._session = content.session;
