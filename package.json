@@ -11,28 +11,30 @@
     "api",
     "viber",
     "Маруся",
-    "Sber"
+    "Sber",
+    "bot"
   ],
   "author": "Maxim-M",
   "license": "MIT",
-  "main": "dist/src/index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "watch": "tsc -watch",
+    "watch": "shx rm -rf dist && tsc -watch",
     "start": "shx rm -rf dist && tsc",
-    "build": "shx rm -rf dist && tsc",
-    "test": "node node_modules/mocha/bin/mocha dist/tests/**/*.test.js",
+    "build": "shx rm -rf dist && tsc --declaration",
+    "test": "jest",
     "bt": "npm run build && npm test",
     "create": "umbot",
-    "doc": "typedoc --excludePrivate --excludeExternals"
+    "doc": "typedoc --excludePrivate --excludeExternals",
+    "deploy": "npm run build && npm publish"
   },
   "bugs": {
     "url": "https://github.com/max36895/universal_bot-ts/issues"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=12"
   },
   "bin": {
-    "ubmot": "console/umbot.js"
+    "umbot": "console/umbot.js"
   },
   "repository": {
     "type": "git",
@@ -42,21 +44,22 @@
     "@max36895:registry": "https://npm.pkg.github.com"
   },
   "devDependencies": {
-    "@types/chai": "*",
+    "@types/jest": "^29.1.0",
     "@types/micro": "^7.3.7",
-    "@types/mocha": "^8.0.3",
     "@types/node": "^14.6.4",
-    "chai": "*",
-    "mocha": "*",
+    "jest": "^29.1.1",
     "shx": "^0.3.2",
-    "ts-mocha": "^7.0.0",
+    "ts-jest": "^29.0.3",
     "tslint": "^5.18.0",
     "typedoc": "^0.22.13"
   },
   "dependencies": {
     "micro": "^9.3.4",
     "mongodb": "^3.6.2",
-    "typescript": "^4.1.5"
+    "typescript": "^4.6.4"
   },
-  "version": "1.1.7"
+  "files": [
+    "dist"
+  ],
+  "version": "1.1.8"
 }

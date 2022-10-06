@@ -1,7 +1,7 @@
-import {Request} from "./request/Request";
-import {mmApp} from "../core/mmApp";
-import {ITelegramParams, ITelegramResult, TTelegramChatId} from "./interfaces/ITelegramApi";
-import {isFile} from "../utils";
+import {Request} from './request/Request';
+import {mmApp} from '../mmApp';
+import {ITelegramParams, ITelegramResult, TTelegramChatId} from './interfaces';
+import {isFile} from '../utils/standard/util';
 
 /**
  * Класс отвечающий за отправку запросов на telegram сервер.

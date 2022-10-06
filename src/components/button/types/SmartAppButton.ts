@@ -1,6 +1,6 @@
-import {TemplateButtonTypes} from "./TemplateButtonTypes";
-import {Text} from "../../standard/Text";
-import {ISberSmartAppCardAction, ISberSmartAppSuggestionButton} from "../../../core/interfaces/ISberSmartApp";
+import {TemplateButtonTypes} from './TemplateButtonTypes';
+import {Text} from '../../../utils/standard/Text';
+import {ISberSmartAppCardAction, ISberSmartAppSuggestionButton} from '../../../platforms/interfaces';
 
 /**
  * Класс отвечающий за отображение кнопок в Сбер SmartApp
@@ -10,6 +10,7 @@ export class SmartAppButton extends TemplateButtonTypes {
     /**
      * Использование кнопок для карточки
      * True, если нужно отобразить кнопку для карточки. По умолчанию false
+     * @defaultValue false
      */
     public isCard: boolean;
 

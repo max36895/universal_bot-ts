@@ -1,8 +1,8 @@
-import {DbControllerModel} from "./DbControllerModel";
-import {mmApp} from "../../core/mmApp";
-import {IQueryData, QueryData} from "./QueryData";
-import {fread, isFile} from "../../utils/index";
-import {IModelRes} from "../interface/IModel";
+import {DbControllerModel} from './DbControllerModel';
+import {mmApp} from '../../mmApp';
+import {IQueryData, QueryData} from './QueryData';
+import {fread, isFile} from '../../utils/standard/util';
+import {IModelRes} from '../interface';
 
 /**
  * Контроллер, позволяющий работать с данными, хранящимися в файле
@@ -103,40 +103,44 @@ export class DbControllerFile extends DbControllerModel {
     /**
      * Выполнение запроса на поиск записей в источнике данных
      *
-     * @param {IQueryData} where Данные для поиска значения
+     * @param {IQueryData | null} where Данные для поиска значения
      * @param {boolean} isOne Вывести только 1 запись.
      * @return {Promise<IModelRes>}
      */
-    public async select(where: IQueryData, isOne: boolean = false): Promise<IModelRes> {
+    public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
         let result = null;
         const content = this.getFileData();
-        for (const key in content) {
-            if (content.hasOwnProperty(key)) {
-                let isSelected = null;
+        if (where) {
+            for (const key in content) {
+                if (content.hasOwnProperty(key)) {
+                    let isSelected = null;
 
-                for (const data in where) {
-                    if (content[key].hasOwnProperty(data) && where.hasOwnProperty(data)) {
-                        isSelected = content[key][data] === where[data];
-                        if (isSelected === false) {
-                            break;
+                    for (const data in where) {
+                        if (content[key].hasOwnProperty(data) && where.hasOwnProperty(data)) {
+                            isSelected = content[key][data] === where[data];
+                            if (isSelected === false) {
+                                break;
+                            }
                         }
                     }
-                }
 
-                if (isSelected) {
-                    if (isOne) {
-                        result = content[key];
-                        return {
-                            status: true,
-                            data: result
-                        };
+                    if (isSelected) {
+                        if (isOne) {
+                            result = content[key];
+                            return {
+                                status: true,
+                                data: result
+                            };
+                        }
+                        if (result === null) {
+                            result = [];
+                        }
+                        result.push(content[key]);
                     }
-                    if (result === null) {
-                        result = [];
-                    }
-                    result.push(content[key]);
                 }
             }
+        } else {
+            result = isOne ? content[Object.keys(content)[0]] : content;
         }
         if (result) {
             return {

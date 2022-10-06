@@ -1,8 +1,8 @@
-import {Model} from "./db/Model";
-import {mmApp} from "../core";
-import {IModelRules} from "./interface/IModel";
-import {IYandexRequestDownloadImage, MarusiaRequest, TelegramRequest, VkRequest, YandexImageRequest} from "../api";
-import {Text} from "../components/standard/Text";
+import {Model} from './db/Model';
+import {mmApp} from '../mmApp';
+import {IModelRules} from './interface';
+import {IYandexRequestDownloadImage, MarusiaRequest, TelegramRequest, VkRequest, YandexImageRequest} from '../api';
+import {Text} from '../utils/standard/Text';
 
 /**
  * @class ImageTokens

@@ -1,4 +1,4 @@
-import {TBotAuth, TBotContent} from "./interfaces/IBot";
+import {TBotAuth, TBotContent} from './interfaces/IBot';
 import {
     IAppConfig,
     IAppParam,
@@ -11,20 +11,22 @@ import {
     T_VIBER,
     T_VK,
     TAppType
-} from "./mmApp";
-import {BotController} from "../controller/BotController";
-import {TemplateTypeModel} from "./types/TemplateTypeModel";
-import {Alisa} from "./types/Alisa";
-import {GET} from "../utils";
-import {Telegram} from "./types/Telegram";
-import {UsersData} from "../models/UsersData";
-import {Viber} from "./types/Viber";
-import {Marusia} from "./types/Marusia";
-import {Vk} from "./types/Vk";
-import {IAlisaWebhookResponse} from "./interfaces/IAlisa";
-import {IMarusiaWebhookResponse} from "./interfaces/IMarusia";
-import {IncomingMessage, ServerResponse} from "http";
-import {SmartApp} from "./types/SmartApp";
+} from '../mmApp';
+import {BotController} from '../controller';
+import {TemplateTypeModel} from '../platforms/TemplateTypeModel';
+import {GET} from '../utils/standard/util';
+import {
+    Telegram,
+    Viber,
+    Marusia,
+    Vk,
+    SmartApp,
+    Alisa,
+    IAlisaWebhookResponse,
+    IMarusiaWebhookResponse
+} from '../platforms';
+import {UsersData} from '../models/UsersData';
+import {IncomingMessage, ServerResponse} from 'http';
 
 export type TRunResult = IAlisaWebhookResponse | IMarusiaWebhookResponse | string;
 
@@ -42,7 +44,7 @@ interface IBotBotClassAndType {
  */
 export class Bot {
     /**
-     * Полученный запрос. В основном JSON или объект.
+     * Полученный запрос. В основном JSON или строка.
      */
     protected _content: TBotContent = null;
     /**
@@ -175,7 +177,7 @@ export class Bot {
     }
 
     /**
-     * Устанавливает данные, полученные сервером. Не рекомендуется записывать данные самостоятельно.
+     * Устанавливает данные, полученные с сервера. Не рекомендуется записывать данные самостоятельно.
      * Стоит использовать тогда, когда запуск осуществляется через свой webhook.
      * При этом данные не валидируется, и разработчик сам отвечает за переданный контент.
      *
@@ -187,7 +189,7 @@ export class Bot {
 
     /**
      * Запуск приложения. В случае ошибки вернет исключение.
-     * Рекомендуется вызывать метод в том случае, когда используется свой webhook отличный от micro.
+     * Рекомендуется вызывать метод в том случае, когда используется свой сервер отличный от micro.
      * При этому нужно самому заполнить данные в _content, а также обработать данные, переданные в заголовке.
      *
      * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
@@ -264,13 +266,13 @@ export class Bot {
                     if (isNew) {
                         userData.save(true).then((res) => {
                             if (!res) {
-                                mmApp.saveLog('bot.log', 'Bot:run(): Не удалось сохранить данные пользователя.')
+                                mmApp.saveLog('bot.log', `Bot:run(): Не удалось сохранить данные для пользователя: ${this._botController.userId}.`)
                             }
                         });
                     } else {
                         userData.update().then((res) => {
                             if (!res) {
-                                mmApp.saveLog('bot.log', 'Bot:run(): Не удалось обновить данные пользователя.')
+                                mmApp.saveLog('bot.log', `Bot:run(): Не удалось обновить данные для пользователя: ${this._botController.userId}.`)
                             }
                         });
                     }
@@ -294,7 +296,7 @@ export class Bot {
     }
 
     /**
-     * Запуск приложения через Webhook micro
+     * Запуск приложения через micro
      *
      * @param {"http".IncomingMessage} req Полученный запрос
      * @param {"http".ServerResponse} res Возврат запроса

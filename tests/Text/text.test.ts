@@ -1,83 +1,82 @@
-import {assert} from 'chai';
-import {Text} from "../../src";
+import {Text} from '../../src/utils/standard/Text';
 
 describe('Text', () => {
     it('Resize', () => {
-        assert.equal('test te', Text.resize('test te'));
-        assert.equal('test te', Text.resize('test te', 12));
-        assert.equal('test te', Text.resize('test te', 7));
-        assert.equal('test...', Text.resize('testing te', 7));
-        assert.equal('...', Text.resize('testing te', 3));
+        expect('test te').toEqual( Text.resize('test te'));
+        expect('test te').toEqual( Text.resize('test te', 12));
+        expect('test te').toEqual( Text.resize('test te', 7));
+        expect('test...').toEqual( Text.resize('testing te', 7));
+        expect('...').toEqual( Text.resize('testing te', 3));
     });
 
     it('Resize ellipsis', () => {
-        assert.equal('tes', Text.resize('testing te', 3, false));
-        assert.equal('testing', Text.resize('testing te', 7, false));
-        assert.equal('testing te', Text.resize('testing te', 20, false));
-        assert.equal('test...', Text.resize('testing te', 7, true));
-        assert.equal('testing te', Text.resize('testing te', 20, true));
+        expect('tes').toEqual( Text.resize('testing te', 3, false));
+        expect('testing').toEqual( Text.resize('testing te', 7, false));
+        expect('testing te').toEqual( Text.resize('testing te', 20, false));
+        expect('test...').toEqual( Text.resize('testing te', 7, true));
+        expect('testing te').toEqual( Text.resize('testing te', 20, true));
     });
 
     it('Is say true', () => {
-        assert.isTrue(Text.isSayTrue('конечно да'));
-        assert.isTrue(Text.isSayTrue('наверное да'));
-        assert.isTrue(Text.isSayTrue('согласен'));
-        assert.isTrue(Text.isSayTrue('согласна'));
-        assert.isTrue(Text.isSayTrue('даю согласие'));
-        assert.isTrue(Text.isSayTrue('подтверждаю'));
-        assert.isTrue(Text.isSayTrue('не знаю но да наверное'));
-        assert.isTrue(Text.isSayTrue('конечно не дам тебе'));
+        expect(Text.isSayTrue('конечно да')).toBe(true);
+        expect(Text.isSayTrue('наверное да')).toBe(true);
+        expect(Text.isSayTrue('согласен')).toBe(true);
+        expect(Text.isSayTrue('согласна')).toBe(true);
+        expect(Text.isSayTrue('даю согласие')).toBe(true);
+        expect(Text.isSayTrue('подтверждаю')).toBe(true);
+        expect(Text.isSayTrue('не знаю но да наверное')).toBe(true);
+        expect(Text.isSayTrue('конечно не дам тебе')).toBe(true);
 
-        assert.isFalse(Text.isSayTrue('наша дама пошла'));
-        assert.isFalse(Text.isSayTrue('неа'));
+        expect(Text.isSayTrue('наша дама пошла')).toBe(false);
+        expect(Text.isSayTrue('неа')).toBe(false);
     });
 
     it('Is say false', () => {
-        assert.isFalse(Text.isSayFalse('конечно да'));
-        assert.isFalse(Text.isSayFalse('наверное да'));
+        expect(Text.isSayFalse('конечно да')).toBe(false);
+        expect(Text.isSayFalse('наверное да')).toBe(false);
 
-        assert.isTrue(Text.isSayFalse('не согласен'));
-        assert.isFalse(Text.isSayFalse('согласен'));
+        expect(Text.isSayFalse('не согласен')).toBe(true);
+        expect(Text.isSayFalse('согласен')).toBe(false);
 
-        assert.isTrue(Text.isSayFalse('не согласна'));
-        assert.isFalse(Text.isSayFalse('согласна'));
+        expect(Text.isSayFalse('не согласна')).toBe(true);
+        expect(Text.isSayFalse('согласна')).toBe(false);
 
-        assert.isFalse(Text.isSayFalse('подтверждаю'));
-        assert.isFalse(Text.isSayFalse('небоскреб'));
-        assert.isFalse(Text.isSayFalse('пока думаю, но наверное да'));
+        expect(Text.isSayFalse('подтверждаю')).toBe(false);
+        expect(Text.isSayFalse('небоскреб')).toBe(false);
+        expect(Text.isSayFalse('пока думаю, но наверное да')).toBe(false);
 
-        assert.isTrue(Text.isSayFalse('конечно не дам тебе'));
-        assert.isTrue(Text.isSayFalse('неа'));
-        assert.isTrue(Text.isSayFalse('нет'));
-        assert.isTrue(Text.isSayFalse('не'));
-        assert.isTrue(Text.isSayFalse('не знаю'));
-        assert.isTrue(Text.isSayFalse('наверное нет'));
-        assert.isTrue(Text.isSayFalse('наверное нет но я надо подумать'));
+        expect(Text.isSayFalse('конечно не дам тебе')).toBe(true);
+        expect(Text.isSayFalse('неа')).toBe(true);
+        expect(Text.isSayFalse('нет')).toBe(true);
+        expect(Text.isSayFalse('не')).toBe(true);
+        expect(Text.isSayFalse('не знаю')).toBe(true);
+        expect(Text.isSayFalse('наверное нет')).toBe(true);
+        expect(Text.isSayFalse('наверное нет но я надо подумать')).toBe(true);
     });
 
     it('Is say text', () => {
-        assert.isTrue(Text.isSayText('да', 'куда', true));
-        assert.isTrue(Text.isSayText('да', 'куда'));
-        assert.isFalse(Text.isSayText(`(?:^|\\s)да\\b`, 'куда'));
+        expect(Text.isSayText('да', 'куда', true)).toBe(true);
+        expect(Text.isSayText('да', 'куда')).toBe(true);
+        expect(Text.isSayText(`(?:^|\\s)да\\b`, 'куда')).toBe(false);
 
         const text = 'По полю шол человек, который сильно устал. Но он н отчаивался и пошел спать';
 
-        assert.isTrue(Text.isSayText('спать', text));
-        assert.isTrue(Text.isSayText(['пошел', 'утопал'], text));
+        expect(Text.isSayText('спать', text)).toBe(true);
+        expect(Text.isSayText(['пошел', 'утопал'], text)).toBe(true);
     });
 
     it('Get ending', () => {
-        assert.strictEqual(Text.getEnding(1, ['яблоко', 'яблока', 'яблок']), 'яблоко');
-        assert.strictEqual(Text.getEnding(2, ['яблоко', 'яблока', 'яблок']), 'яблока');
-        assert.strictEqual(Text.getEnding(3, ['яблоко', 'яблока', 'яблок']), 'яблока');
-        assert.strictEqual(Text.getEnding(4, ['яблоко', 'яблока', 'яблок']), 'яблока');
+        expect(Text.getEnding(1,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблоко');
+        expect(Text.getEnding(2,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
+        expect(Text.getEnding(3,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
+        expect(Text.getEnding(4,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
 
         for (let i = 5; i < 21; i++) {
-            assert.strictEqual(Text.getEnding(i, ['яблоко', 'яблока', 'яблок']), 'яблок');
+            expect(Text.getEnding(i,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблок');
         }
 
-        assert.strictEqual(Text.getEnding(21, ['яблоко', 'яблока', 'яблок']), 'яблоко');
-        assert.strictEqual(Text.getEnding(22, ['яблоко', 'яблока', 'яблок']), 'яблока');
-        assert.strictEqual(Text.getEnding(29, ['яблоко', 'яблока', 'яблок']), 'яблок');
+        expect(Text.getEnding(21,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблоко');
+        expect(Text.getEnding(22,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
+        expect(Text.getEnding(29,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблок');
     });
 });

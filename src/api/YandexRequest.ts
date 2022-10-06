@@ -1,7 +1,6 @@
-import {Request} from "./request/Request";
-import {mmApp} from "../core/mmApp";
-import {IRequestSend} from "./interfaces/IRequest";
-import {IYandexApi} from "./interfaces/IYandexApi";
+import {Request} from './request/Request';
+import {mmApp} from '../mmApp';
+import {IRequestSend, IYandexApi} from './interfaces';
 
 /**
  * Класс отвечающий за отправку запросов на Yandex сервер.

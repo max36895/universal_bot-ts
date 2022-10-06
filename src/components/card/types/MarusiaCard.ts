@@ -1,13 +1,13 @@
-import {TemplateCardTypes} from "./TemplateCardTypes";
-import {Buttons} from "../../button";
-import {ImageTokens} from "../../../models/ImageTokens";
-import {Text} from "../../standard/Text";
+import {TemplateCardTypes} from './TemplateCardTypes';
+import {Buttons} from '../../button';
+import {ImageTokens} from '../../../models/ImageTokens';
+import {Text} from '../../../utils/standard/Text';
 import {
     IMarusiaBigImage,
     IMarusiaButtonCard,
     IMarusiaImage,
     IMarusiaItemsList
-} from "../../../core/interfaces/IMarusia";
+} from '../../../platforms/interfaces';
 
 /**
  * Класс отвечающий за отображение карточки в Марусе.

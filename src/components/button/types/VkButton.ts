@@ -1,6 +1,6 @@
-import {TemplateButtonTypes} from "./TemplateButtonTypes";
-import {IVkButton, IVkButtonObject} from "../interfaces/IVkButton";
-import {Button} from "../Button";
+import {TemplateButtonTypes} from './TemplateButtonTypes';
+import {IVkButton, IVkButtonObject} from '../interfaces';
+import {Button} from '../Button';
 
 /**
  * Класс отвечающий за отображение кнопок в ВКонтакте

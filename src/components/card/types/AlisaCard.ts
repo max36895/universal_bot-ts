@@ -1,14 +1,14 @@
-import {TemplateCardTypes} from "./TemplateCardTypes";
-import {Buttons} from "../../button";
+import {TemplateCardTypes} from './TemplateCardTypes';
+import {Buttons} from '../../button';
 import {
     IAlisaBigImage,
     IAlisaButtonCard,
     IAlisaImage,
     IAlisaImageGallery,
     IAlisaItemsList
-} from "../../../core/interfaces/IAlisa";
-import {Text} from "../../standard/Text";
-import {ImageTokens} from "../../../models/ImageTokens";
+} from '../../../platforms/interfaces';
+import {Text} from '../../../utils/standard/Text';
+import {ImageTokens} from '../../../models/ImageTokens';
 
 /**
  * Класс отвечающий за отображение карточки в Алисе.

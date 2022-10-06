@@ -1,6 +1,6 @@
-import {YandexRequest} from "./YandexRequest";
-import {mmApp} from "../core/mmApp";
-import {Request} from "./request/Request";
+import {YandexRequest} from './YandexRequest';
+import {mmApp} from '../mmApp';
+import {Request} from './request/Request';
 import {
     IYandexCheckOutPlace,
     IYandexRemoveRequest,
@@ -8,10 +8,10 @@ import {
     IYandexRequestDownloadSoundRequest,
     IYandexRequestDownloadSoundsRequest,
     IYandexSoundsCheckOutPlaceRequest
-} from "./interfaces/IYandexApi";
+} from './interfaces';
 
 /**
- * Класс отвечающий за загрузку аудиофайлов в навык
+ * Класс отвечающий за загрузку аудиофайлов в навык Алисы
  * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-sounds-upload-docpage/) Смотри тут
  *
  * @class YandexSoundRequest

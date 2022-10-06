@@ -1,7 +1,7 @@
-import {TemplateCardTypes} from "./TemplateCardTypes";
-import {ISberSmartAppCard, ISberSmartAppCardItem, ISberSmartAppItem} from "../../../core/interfaces/ISberSmartApp";
-import {Buttons} from "../../button";
-import {Image} from "../../image/Image";
+import {TemplateCardTypes} from './TemplateCardTypes';
+import {ISberSmartAppCard, ISberSmartAppCardItem, ISberSmartAppItem} from '../../../platforms/interfaces';
+import {Buttons} from '../../button';
+import {Image} from '../../image/Image';
 
 /**
  * Класс отвечающий за отображение карточки в Сбер SmartApp

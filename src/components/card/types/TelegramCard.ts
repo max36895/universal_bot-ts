@@ -1,8 +1,8 @@
-import {TemplateCardTypes} from "./TemplateCardTypes";
-import {TelegramRequest} from "../../../api/TelegramRequest";
-import {mmApp} from "../../../core/mmApp";
-import {ImageTokens} from "../../../models/ImageTokens";
-import {TTelegramChatId} from "../../../api";
+import {TemplateCardTypes} from './TemplateCardTypes';
+import {TelegramRequest} from '../../../api/TelegramRequest';
+import {mmApp} from '../../../mmApp';
+import {ImageTokens} from '../../../models/ImageTokens';
+import {TTelegramChatId} from '../../../api';
 
 export interface ITelegramCard {
     /**

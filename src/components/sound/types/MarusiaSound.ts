@@ -1,8 +1,7 @@
-import {TemplateSoundTypes} from "./TemplateSoundTypes";
-import {ISound} from "../interfaces/sound";
-import {Text} from "../../standard/Text";
-import {isFile} from "../../../utils";
-import {SoundTokens} from "../../../models/SoundTokens";
+import {TemplateSoundTypes} from './TemplateSoundTypes';
+import {ISound} from '../interfaces';
+import {Text, isFile} from '../../../utils';
+import {SoundTokens} from '../../../models/SoundTokens';
 
 /**
  * Класс отвечающий за воспроизведение звуков в Марусе.

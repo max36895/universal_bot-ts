@@ -3,4 +3,3 @@
  * @module components/standard
  */
 export * from './Navigation';
-export * from './Text';

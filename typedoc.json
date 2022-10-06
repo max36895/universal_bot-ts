@@ -1,16 +1,15 @@
 {
   "entryPoints": [
+    "src/build.ts",
     "src/test.ts",
+    "src/mmApp.ts",
     "src/api",
     "src/components",
-    "src/components/button",
-    "src/components/card",
-    "src/components/nlu",
-    "src/components/sound",
-    "src/components/standard",
-    "src/controller/BotController.ts",
+    "src/controller",
     "src/core",
+    "src/platforms",
     "src/models",
+    "src/models/db",
     "src/utils",
     "console"
   ],

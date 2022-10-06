@@ -4,7 +4,7 @@
  * Time: {{time}}
  */
 
-import {AlisaSound, BotController, mmApp, Text, WELCOME_INTENT_NAME,} from "umbot";
+import {AlisaSound, BotController, mmApp, Text, WELCOME_INTENT_NAME,} from 'umbot';
 
 interface IQuestion {
     text: string;
