@@ -169,6 +169,7 @@ export class Request {
         if (this.maxTimeQuery) {
             const controller = new AbortController();
             const signal: AbortSignal = controller.signal;
+            // @ts-ignore jest not build...
             this._setTimeOut = setTimeout(() => controller.abort(), this.maxTimeQuery);
             options.signal = signal;
         }
