@@ -1,6 +1,6 @@
-import {YandexRequest} from "./YandexRequest";
-import {mmApp} from "../core/mmApp";
-import {Request} from "./request/Request";
+import {YandexRequest} from './YandexRequest';
+import {mmApp} from '../mmApp';
+import {Request} from './request/Request';
 import {
     IYandexCheckOutPlace,
     IYandexImagesCheckOutPlaceRequest,
@@ -8,10 +8,10 @@ import {
     IYandexRequestDownloadImage,
     IYandexRequestDownloadImageRequest,
     IYandexRequestDownloadImagesRequest
-} from "./interfaces/IYandexApi";
+} from './interfaces';
 
 /**
- * Класс отвечающий за загрузку изображений в навык.
+ * Класс отвечающий за загрузку изображений в навык Алисы.
  * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
  *
  * @class YandexImageRequest

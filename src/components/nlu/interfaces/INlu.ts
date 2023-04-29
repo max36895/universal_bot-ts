@@ -1,4 +1,4 @@
-import {IAlisaNlu} from "../../../core/interfaces/IAlisa";
+import {IAlisaNlu} from '../../../platforms/interfaces';
 
 export interface INluResult<T = object> {
     /**

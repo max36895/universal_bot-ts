@@ -1,13 +1,13 @@
 /**
- * Отправка запросов
+ * Модуль отвечающий за отправку запросов
  * @module
  */
-import {fread, httpBuildQuery, IGetParams, isFile} from "../../utils";
-import {IRequestSend} from "../interfaces/IRequest";
+import {fread, httpBuildQuery, IGetParams, isFile} from '../../utils/standard/util';
+import {IRequestSend} from '../interfaces';
 
 /**
  * Класс отвечающий за отправку curl запросов на необходимый url.
- * Поддерживаются различные заголовки, а также присутствует возможность отправки файлов.
+ * Поддерживаются различные заголовки, а также возможность отправки файлов.
  *
  * @class Request
  */
@@ -41,10 +41,12 @@ export class Request {
     /**
      * Тип передаваемого файла.
      * True, если передается содержимое файла, иначе false. По умолчанию: false.
+     * @defaultValue false
      */
     public isAttachContent: boolean;
     /**
      * Название параметра при отправке файла (По умолчанию file).
+     * @defaultValue file
      */
     public attachName: string;
     /**
@@ -56,8 +58,9 @@ export class Request {
      */
     public maxTimeQuery: number | null;
     /**
-     * Формат ответа.
-     * True, если полученный ответ нужно преобразовать как json. По умолчанию true.
+     * Преобразовать формат ответа в json.
+     * True, если полученный ответ нужно преобразовать в json. По умолчанию true.
+     * @defaultValue true
      */
     public isConvertJson: boolean;
 
@@ -65,6 +68,8 @@ export class Request {
      * Ошибки при выполнении запроса.
      */
     private _error: string | null;
+
+    private _setTimeOut: NodeJS.Timeout | null;
 
     /**
      * Request constructor.
@@ -81,11 +86,12 @@ export class Request {
         this.maxTimeQuery = null;
         this.isConvertJson = true;
         this._error = null;
+        this._setTimeOut = null;
     }
 
     /**
      * Отправка запроса.
-     * Возвращаем массив. В случае успеха свойство 'status' = true.
+     * Возвращаем объект. В случае успеха свойство 'status' = true.
      *
      * @param {string} url Адрес, на который отправляется запрос.
      * @return Promise<IRequestSend>
@@ -130,14 +136,22 @@ export class Request {
      */
     private async _run<T>(): Promise<T | string | null> {
         if (this.url) {
-            const response = await fetch(this._getUrl(), this._getOptions());
-            if (response.ok) {
-                if (this.isConvertJson) {
-                    return await response.json();
+            try {
+                const response = await fetch(this._getUrl(), this._getOptions());
+                if (this._setTimeOut) {
+                    clearTimeout(this._setTimeOut);
+                    this._setTimeOut = null;
                 }
-                return await response.text();
+                if (response.ok) {
+                    if (this.isConvertJson) {
+                        return await response.json();
+                    }
+                    return await response.text();
+                }
+                this._error = 'Не удалось получить данные с ' + this.url;
+            } catch (e) {
+                this._error = (e as DOMException).message;
             }
-            this._error = 'Не удалось получить данные с ' + this.url;
         } else {
             this._error = 'Не указан url!';
         }
@@ -145,7 +159,7 @@ export class Request {
     }
 
     /**
-     * Получение корректного  параметра для отправки запроса.
+     * Получение корректного параметра для отправки запроса.
      * @return RequestInit
      * @private
      */
@@ -155,7 +169,8 @@ export class Request {
         if (this.maxTimeQuery) {
             const controller = new AbortController();
             const signal: AbortSignal = controller.signal;
-            setTimeout(() => controller.abort(), this.maxTimeQuery);
+            // @ts-ignore jest not build...
+            this._setTimeOut = setTimeout(() => controller.abort(), this.maxTimeQuery);
             options.signal = signal;
         }
 

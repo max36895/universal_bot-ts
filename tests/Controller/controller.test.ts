@@ -1,27 +1,26 @@
-import {assert} from 'chai'
-import {MyController} from "./MyController";
-import {mmApp} from "../../src";
+import {MyController} from './MyController';
+import {mmApp} from '../../src';
 
 describe('Controller', () => {
     const uController = new MyController();
 
     it('MyController default intents', () => {
-        assert.deepStrictEqual(uController.testIntents(), mmApp.params.intents);
-        assert.isTrue(uController.testIntent('привет') === 'welcome');
-        assert.isTrue(uController.testIntent('помощь') === 'help');
-        assert.isTrue(uController.testIntent('test') === null);
-        assert.isTrue(uController.testIntent('start') === null);
-        assert.isTrue(uController.testIntent('go') === null);
-        assert.isTrue(uController.testIntent('by') === null);
+        expect(uController.testIntents()).toEqual(mmApp.params.intents);
+        expect(uController.testIntent('привет') === 'welcome').toBe(true);
+        expect(uController.testIntent('помощь') === 'help').toBe(true);
+        expect(uController.testIntent('test') === null).toBe(true);
+        expect(uController.testIntent('start') === null).toBe(true);
+        expect(uController.testIntent('go') === null).toBe(true);
+        expect(uController.testIntent('by') === null).toBe(true);
     });
 
     it('MyController null intents', () => {
         mmApp.params.intents = null;
-        assert.deepStrictEqual(uController.testIntents(), []);
-        assert.isTrue(uController.testIntent('test') === null);
-        assert.isTrue(uController.testIntent('start') === null);
-        assert.isTrue(uController.testIntent('go') === null);
-        assert.isTrue(uController.testIntent('by') === null);
+        expect(uController.testIntents()).toEqual([]);
+        expect(uController.testIntent('test') === null).toBe(true);
+        expect(uController.testIntent('start') === null).toBe(true);
+        expect(uController.testIntent('go') === null).toBe(true);
+        expect(uController.testIntent('by') === null).toBe(true);
     });
 
     it('MyController user intents', () => {
@@ -42,11 +41,11 @@ describe('Controller', () => {
             }
         ];
         mmApp.params.intents = intents;
-        assert.deepStrictEqual(uController.testIntents(), intents);
-        assert.isTrue(uController.testIntent('test') === null);
-        assert.isTrue(uController.testIntent('start') === 'start');
-        assert.isTrue(uController.testIntent('go') === 'start');
-        assert.isTrue(uController.testIntent('by') === 'by');
-        assert.isTrue(uController.testIntent('bye') === 'by');
+        expect(uController.testIntents()).toEqual(intents);
+        expect(uController.testIntent('test') === null).toBe(true);
+        expect(uController.testIntent('start') === 'start').toBe(true);
+        expect(uController.testIntent('go') === 'start').toBe(true);
+        expect(uController.testIntent('by') === 'by').toBe(true);
+        expect(uController.testIntent('bye') === 'by').toBe(true);
     })
 });

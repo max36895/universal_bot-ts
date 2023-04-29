@@ -1,5 +1,4 @@
-import {assert} from 'chai'
-import {Nlu, INlu} from "../../src";
+import {Nlu, INlu} from '../../src';
 
 describe('Nlu test', () => {
     let nlu: Nlu = new Nlu();
@@ -78,31 +77,31 @@ describe('Nlu test', () => {
     });
 
     it('Find phone', () => {
-        assert.isTrue(Nlu.getPhone('123456').status);
-        assert.isTrue(Nlu.getPhone('12-34-56').status);
-        assert.isTrue(Nlu.getPhone('89999999999').status);
-        assert.isTrue(Nlu.getPhone('8(999)999-99-99').status);
-        assert.isFalse(Nlu.getPhone('512').status);
-        assert.isFalse(Nlu.getPhone('test').status);
+        expect(Nlu.getPhone('123456').status).toBe(true);
+        expect(Nlu.getPhone('12-34-56').status).toBe(true);
+        expect(Nlu.getPhone('89999999999').status).toBe(true);
+        expect(Nlu.getPhone('8(999).toBe(true)999-99-99').status);
+        expect(Nlu.getPhone('512').status).toBe(false);
+        expect(Nlu.getPhone('test').status).toBe(false);
     });
 
     it('Find e-mail', () => {
-        assert.isTrue(Nlu.getEMail('test@test.ru').status);
-        assert.isTrue(Nlu.getEMail('test@test.test').status);
-        assert.isTrue(Nlu.getEMail('test@yandex.ru').status);
-        assert.isTrue(Nlu.getEMail('test@google.com').status);
-        assert.isFalse(Nlu.getEMail('test').status);
+        expect(Nlu.getEMail('test@test.ru').status).toBe(true);
+        expect(Nlu.getEMail('test@test.test').status).toBe(true);
+        expect(Nlu.getEMail('test@yandex.ru').status).toBe(true);
+        expect(Nlu.getEMail('test@google.com').status).toBe(true);
+        expect(Nlu.getEMail('test').status).toBe(false);
     });
 
     it('Find link', () => {
-        assert.isTrue(Nlu.getLink('https://test.ru').status);
-        assert.isTrue(Nlu.getLink('https://test.test').status);
-        assert.isTrue(Nlu.getLink('http://test.ru').status);
-        assert.isTrue(Nlu.getLink('http://test.test').status);
+        expect(Nlu.getLink('https://test.ru').status).toBe(true);
+        expect(Nlu.getLink('https://test.test').status).toBe(true);
+        expect(Nlu.getLink('http://test.ru').status).toBe(true);
+        expect(Nlu.getLink('http://test.test').status).toBe(true);
     });
 
     it('find user name', () => {
-        assert.deepStrictEqual(nlu.getUserName(), {
+        expect(nlu.getUserName()).toEqual({
             username: 'name',
             first_name: 'fn',
             last_name: 'ln'
@@ -110,27 +109,27 @@ describe('Nlu test', () => {
     });
 
     it('Get fio', () => {
-        assert.isTrue(nlu.getFio().status);
-        assert.deepStrictEqual(nlu.getFio().result, [{first_name: 'fn'}]);
+        expect(nlu.getFio().status).toBe(true);
+        expect(nlu.getFio().result).toEqual([{first_name: 'fn'}]);
     });
 
     it('Get geo', () => {
-        assert.isTrue(nlu.getGeo().status);
-        assert.deepStrictEqual(nlu.getGeo().result, [{city: 'city'}]);
+        expect(nlu.getGeo().status).toBe(true);
+        expect(nlu.getGeo().result).toEqual([{city: 'city'}]);
     });
 
     it('Get date time', () => {
-        assert.isTrue(nlu.getDateTime().status);
-        assert.deepStrictEqual(nlu.getDateTime().result, [{year: 2020}]);
+        expect(nlu.getDateTime().status).toBe(true);
+        expect(nlu.getDateTime().result).toEqual([{year: 2020}]);
     });
 
     it('Get number', () => {
-        assert.isTrue(nlu.getNumber().status);
-        assert.deepStrictEqual(nlu.getNumber().result, [512]);
+        expect(nlu.getNumber().status).toBe(true);
+        expect(nlu.getNumber().result).toEqual([512]);
     });
 
     it('Get intent', () => {
-        assert.deepStrictEqual(nlu.getIntent('custom'), {
+        expect(nlu.getIntent('custom')).toEqual({
             slots: {
                 name: {
                     type: "YANDEX.STRING",
@@ -150,6 +149,6 @@ describe('Nlu test', () => {
                 }
             }
         });
-        assert.isTrue(nlu.getIntent('test') === null);
+        expect(nlu.getIntent('test') === null).toBe(true);
     });
 });

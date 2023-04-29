@@ -2,7 +2,7 @@
  * Компоненты, необходимые для работы с мелодиями и звуками в приложении
  * @module components/sound
  */
-export * from './interfaces/sound';
+export * from './interfaces';
 
 export * from './types/AlisaSound';
 export * from './types/MarusiaSound';

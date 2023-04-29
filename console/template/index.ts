@@ -3,11 +3,11 @@
  * Date: {{date}}
  * Time: {{time}}
  */
-import {Bot} from "umbot";
-import {{name}}Config from "./config/{{name}}Config";
-import {{name}}Params from "./config/{{name}}Params";
+import {Bot} from 'umbot';
+import {{name}}Config from './config/{{name}}Config';
+import {{name}}Params from './config/{{name}}Params';
 import {__className__Controller} from './controller/__className__Controller';
-import {IncomingMessage, ServerResponse} from "http";
+import {IncomingMessage, ServerResponse} from 'http';
 
 const bot = new Bot();
 bot.initTypeInGet();

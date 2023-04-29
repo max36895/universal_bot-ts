@@ -42,14 +42,17 @@ export interface ITelegramParams {
     options?: any;
     /**
      * True, если опрос должен быть анонимным, по умолчанию используется значение True.
+     * @defaultValue true
      */
     is_anonymous?: boolean;
     /**
      * Типа опрос, “quiz” или “regular”, по умолчанию “regular”.
+     * @defaultValue regular
      */
     type?: TTelegramQuestionType;
     /**
      * True, если опрос допускает несколько ответов, игнорируемых для опросов в режиме викторины, по умолчанию имеет значение False.
+     * @defaultValue false
      */
     allows_multiple_answers?: boolean;
     /**

@@ -1,21 +1,20 @@
-import {assert} from 'chai'
-import {IQueryData, QueryData} from "../../src/models";
+import {IQueryData, QueryData} from '../../src/models/db';
 
 describe('queryData', () => {
     it('getQueryData', () => {
         let result: IQueryData | null = QueryData.getQueryData('');
-        assert.isTrue(result === null);
+        expect(result === null).toBe(true);
 
         result = QueryData.getQueryData('`test`=512');
-        assert.deepStrictEqual({test: 512}, result);
+        expect({test: 512}).toEqual(result);
 
         result = QueryData.getQueryData('`test`="test"');
-        assert.deepStrictEqual({test: "test"}, result);
+        expect({test: "test"}).toEqual( result);
 
         result = QueryData.getQueryData('`test1`=512 `test2`="test"');
-        assert.deepStrictEqual({test1: 512, test2: "test"}, result);
+        expect({test1: 512, test2: "test"}).toEqual( result);
 
         result = QueryData.getQueryData('`test`=512 ');
-        assert.deepStrictEqual({test: 512}, result);
+        expect({test: 512}).toEqual( result);
     });
 });

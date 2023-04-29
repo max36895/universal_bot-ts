@@ -1,13 +1,9 @@
-/**
- * Абстрактный контроллер, обрабатывающий логику приложения
- * @module controller/BotController
- */
-import {Buttons} from "../components/button";
-import {Card} from "../components/card";
-import {Sound} from "../components/sound";
-import {Nlu} from "../components/nlu";
-import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from "../core/mmApp";
-import {Text} from "../components/standard/Text";
+import {Buttons} from '../components/button';
+import {Card} from '../components/card';
+import {Sound} from '../components/sound';
+import {Nlu} from '../components/nlu';
+import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from '../mmApp';
+import {Text} from '../utils/standard/Text';
 
 export type TStatus = true | false | null;
 
@@ -159,12 +155,12 @@ export abstract class BotController {
      * "no_official" - Общаемся на ты
      * null - можно использовать любой тон
      * Актуально для Сбер
-     * @default null
+     * @defaultValue null
      */
     public appeal: "official" | "no_official" | null;
     /**
      * Отправляет запрос на оценку приложения
-     * @default false
+     * @defaultValue false
      */
     public isSendRating: boolean;
 
@@ -236,6 +232,7 @@ export abstract class BotController {
      * В таком случае стоит смотреть на предыдущую команду пользователя, либо вернуть текст помощи.
      *
      * @param {string} intentName Название действия.
+     * @virtual
      */
     public abstract action(intentName: string | null): void;
 

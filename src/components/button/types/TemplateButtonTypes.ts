@@ -1,4 +1,4 @@
-import {Button} from "../Button";
+import {Button} from '../Button';
 
 /**
  * @class TemplateButtonTypes
@@ -20,6 +20,7 @@ export abstract class TemplateButtonTypes {
      * Получение массива с кнопками для ответа пользователю.
      *
      * @return any
+     * @virtual
      */
     public abstract getButtons(): any;
 }

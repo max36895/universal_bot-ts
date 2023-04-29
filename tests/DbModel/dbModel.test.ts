@@ -1,11 +1,12 @@
-import {assert} from 'chai'
-import {mmApp, UsersData} from "../../src";
+import {mmApp, UsersData, isFile, unlink} from '../../src';
 
 interface IData {
     userId?: string;
     meta?: string;
     data?: any;
 }
+
+const FILE_NAME = 'UsersData.json';
 
 describe('Db file connect', () => {
     let data: any;
@@ -44,121 +45,127 @@ describe('Db file connect', () => {
                 }
             }
         };
-        mmApp.saveJson('UsersData.json', data);
+        mmApp.saveJson(FILE_NAME, data);
     });
 
     it('Where string', async () => {
         let query = '`userId`="userId1"';
         let uData = (await userData.where(query)).data;
-        assert.isTrue(uData.length === 1);
-        assert.deepStrictEqual(uData[0], data.userId1);
+        expect(uData.length === 1).toBe(true);
+        expect(uData[0]).toEqual(data.userId1);
 
         query = '`userId`="userId3" AND `meta`="user meta 1"';
         uData = (await userData.where(query)).data;
-        assert.isTrue(uData.length === 1);
-        assert.deepStrictEqual(uData[0], data.userId13);
+        expect(uData.length === 1).toBe(true);
+        expect(uData[0]).toEqual(data.userId13);
 
         query = '`meta`="user meta 1"';
         uData = (await userData.where(query)).data;
-        assert.isTrue(uData.length === 2);
-        assert.deepStrictEqual(uData[0], data.userId1);
-        assert.deepStrictEqual(uData[1], data.userId13);
+        expect(uData.length === 2).toBe(true);
+        expect(uData[0]).toEqual(data.userId1);
+        expect(uData[1]).toEqual(data.userId13);
 
         query = '`userId`="NotFound"';
-        assert.isFalse((await userData.where(query)).status);
+        expect((await userData.where(query)).status).toBe(false);
     });
     it('Where object', async () => {
         let query: IData = {
             userId: 'userId1'
         };
         let uData = (await userData.where(query)).data;
-        assert.isTrue(uData.length === 1);
-        assert.deepStrictEqual(uData[0], data.userId1);
+        expect(uData.length === 1).toBe(true);
+        expect(uData[0]).toEqual(data.userId1);
 
         query = {
             userId: 'userId3',
             meta: 'user meta 1'
         };
         uData = (await userData.where(query)).data;
-        assert.isTrue(uData.length === 1);
-        assert.deepStrictEqual(uData[0], data.userId13);
+        expect(uData.length === 1).toBe(true);
+        expect(uData[0]).toEqual(data.userId13);
 
         query = {
             meta: 'user meta 1'
         };
         uData = (await userData.where(query)).data;
-        assert.isTrue(uData.length === 2);
-        assert.deepStrictEqual(uData[0], data.userId1);
-        assert.deepStrictEqual(uData[1], data.userId13);
+        expect(uData.length === 2).toBe(true);
+        expect(uData[0]).toEqual(data.userId1);
+        expect(uData[1]).toEqual(data.userId13);
 
         query = {
             userId: 'NotFound'
         };
-        assert.isTrue((await userData.where(query)).status === false);
+        expect((await userData.where(query)).status === false).toBe(true);
     });
 
     it('Where one', async () => {
         let query = '`userId`="userId1"';
-        assert.isTrue(await userData.whereOne(query));
-        assert.deepStrictEqual(userData.data, data.userId1.data);
+        expect(await userData.whereOne(query)).toBe(true);
+        expect(userData.data).toEqual(data.userId1.data);
 
         query = '`userId`="userId3" AND `meta`="user meta 1"';
-        assert.isTrue(await userData.whereOne(query));
-        assert.deepStrictEqual(userData.data, data.userId13.data);
+        expect(await userData.whereOne(query)).toBe(true);
+        expect(userData.data).toEqual(data.userId13.data);
 
         query = '`userId`="NotFound"';
-        assert.isFalse(await userData.whereOne(query));
+        expect(await userData.whereOne(query)).toBe(false);
     });
     it('Where one Object', async () => {
         let query: IData = {
             userId: 'userId1'
         };
-        assert.isTrue(await userData.whereOne(query));
-        assert.deepStrictEqual(userData.data, data.userId1.data);
+        expect(await userData.whereOne(query)).toBe(true);
+        expect(userData.data).toEqual(data.userId1.data);
 
         query = {
             userId: 'userId3',
             meta: 'user meta 1'
         };
-        assert.isTrue(await userData.whereOne(query));
-        assert.deepStrictEqual(userData.data, data.userId13.data);
+        expect(await userData.whereOne(query)).toBe(true);
+        expect(userData.data).toEqual(data.userId13.data);
 
         query = {
             userId: 'NotFound'
         };
-        assert.isFalse(await userData.whereOne(query));
+        expect(await userData.whereOne(query)).toBe(false);
     });
 
     it('Delete data', async () => {
         let query = '`userId`="userId1"';
         userData.userId = 'userId1';
-        assert.isTrue(await userData.remove());
+        expect(await userData.remove()).toBe(true);
 
-        assert.isFalse(await userData.whereOne(query));
+        expect(await userData.whereOne(query)).toBe(false);
     });
 
     it('Update data', async () => {
         let query = '`meta`="meta"';
-        assert.isFalse(await userData.whereOne(query));
+        expect(await userData.whereOne(query)).toBe(false);
         userData.userId = 'userId1';
         userData.meta = 'meta';
-        assert.isTrue(await userData.update());
+        expect(await userData.update()).toBe(true);
 
-        assert.isTrue(await userData.whereOne(query));
+        expect(await userData.whereOne(query)).toBe(true);
     });
 
     it('Save data', async () => {
         let query = '`meta`="meta"';
-        assert.isFalse(await userData.whereOne(query));
+        expect(await userData.whereOne(query)).toBe(false);
         userData.userId = 'userId5';
         userData.meta = 'meta';
         userData.data = {name: 'user 5'};
-        assert.isTrue(await userData.save());
+        expect(await userData.save()).toBe(true);
 
-        assert.isTrue(await userData.whereOne(query));
-        assert.isTrue(userData.userId === 'userId5');
-        assert.deepStrictEqual(userData.data, {name: 'user 5'});
+        expect(await userData.whereOne(query)).toBe(true);
+        expect(userData.userId === 'userId5').toBe(true);
+        expect(userData.data).toEqual({name: 'user 5'});
     });
+
+    it('Delete file db', () => {
+        expect(isFile(__dirname + '/' + FILE_NAME)).toBe(true);
+        unlink(__dirname + '/' + FILE_NAME);
+        expect(isFile(__dirname + '/' + FILE_NAME)).toBe(false);
+    })
 });
 
 describe('Db is MongoDb', () => {
@@ -180,8 +187,8 @@ describe('Db is MongoDb', () => {
                 usersData.type = UsersData.T_ALISA;
                 usersData.data = {};
                 usersData.meta = {};
-                assert.isTrue(await usersData.save());
-                assert.isTrue(await usersData.whereOne({userId: 'test'}));
+                expect(await usersData.save()).toBe(true);
+                expect(await usersData.whereOne({userId: 'test'})).toBe(true);
                 usersData.destroy();
             } else {
                 isConnected = false;
@@ -197,8 +204,8 @@ describe('Db is MongoDb', () => {
                 usersData.type = UsersData.T_ALISA;
                 usersData.data = 'data';
                 usersData.meta = {};
-                assert.isTrue(await usersData.save());
-                assert.isTrue(await usersData.whereOne({data: 'data'}));
+                expect(await usersData.save()).toBe(true);
+                expect(await usersData.whereOne({data: 'data'})).toBe(true);
                 usersData.destroy();
             } else {
                 isConnected = false;
@@ -214,8 +221,8 @@ describe('Db is MongoDb', () => {
                 usersData.type = UsersData.T_ALISA;
                 usersData.data = 'data';
                 usersData.meta = {};
-                assert.isTrue(await usersData.remove());
-                assert.isFalse(await usersData.whereOne({userId: 'test'}));
+                expect(await usersData.remove()).toBe(true);
+                expect(await usersData.whereOne({userId: 'test'})).toBe(false);
                 usersData.destroy();
             } else {
                 isConnected = false;

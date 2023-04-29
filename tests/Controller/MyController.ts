@@ -1,4 +1,4 @@
-import {BotController} from "../../src";
+import {BotController} from '../../src/controller';
 
 export class MyController extends BotController {
     constructor() {

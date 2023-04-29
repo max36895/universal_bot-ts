@@ -1,10 +1,9 @@
-import {TemplateSoundTypes} from "./TemplateSoundTypes";
-import {ISound} from "../interfaces/sound";
-import {Text} from "../../standard/Text";
-import {isFile} from "../../../utils";
-import {mmApp} from "../../../core/mmApp";
-import {TelegramRequest, TTelegramChatId, YandexSpeechKit} from "../../../api";
-import {SoundTokens} from "../../../models/SoundTokens";
+import {TemplateSoundTypes} from './TemplateSoundTypes';
+import {ISound} from '../interfaces';
+import {Text, isFile} from '../../../utils';
+import {mmApp} from '../../../mmApp';
+import {TelegramRequest, TTelegramChatId, YandexSpeechKit} from '../../../api';
+import {SoundTokens} from '../../../models/SoundTokens';
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в Телеграме.

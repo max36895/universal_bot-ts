@@ -1,6 +1,6 @@
-import {IButtonOptions, TButtonPayload} from "./interfaces/IButton";
-import {mmApp} from "../../core/mmApp";
-import {Text} from "../standard";
+import {IButtonOptions, TButtonPayload} from './interfaces';
+import {mmApp} from '../../mmApp';
+import {Text} from '../../utils/standard/Text';
 
 /**
  * @class Button
@@ -66,7 +66,7 @@ export class Button {
      * @param url
      * @private
      */
-    private _getUrlSeparator(url: string): string {
+    private static _getUrlSeparator(url: string): string {
         return url.includes('?') ? '&' : '?';
     }
 
@@ -86,10 +86,10 @@ export class Button {
             if (url && Text.isUrl(url)) {
                 if (mmApp.params.utm_text === null) {
                     if (!url.includes('utm_source')) {
-                        url += `${this._getUrlSeparator(url)}utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone`;
+                        url += `${Button._getUrlSeparator(url)}utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone`;
                     }
                 } else if (mmApp.params.utm_text) {
-                    url += this._getUrlSeparator(url) + mmApp.params.utm_text;
+                    url += Button._getUrlSeparator(url) + mmApp.params.utm_text;
                 }
             } else {
                 url = null;

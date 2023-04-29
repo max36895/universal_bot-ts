@@ -1,9 +1,9 @@
-import {DbControllerModel} from "./DbControllerModel";
-import {Sql} from "./Sql";
-import {mmApp} from "../../core/mmApp";
-import {IQueryData, QueryData} from "./QueryData";
-import {IModelRes} from "../interface/IModel";
-import {Text} from "../../components/standard/Text";
+import {DbControllerModel} from './DbControllerModel';
+import {Sql} from './Sql';
+import {mmApp} from '../../mmApp';
+import {IQueryData, QueryData} from './QueryData';
+import {IModelRes} from '../interface';
+import {Text} from '../../utils/standard/Text';
 
 /**
  * Контроллер, позволяющий работать с данными, хранящимися в базе данных. А именно поддерживает работу с MongoDb
@@ -202,11 +202,11 @@ export class DbControllerMongoDb extends DbControllerModel {
     /**
      * Выполнение запроса на поиск записей в источнике данных
      *
-     * @param {IQueryData} where Данные для поиска значения
+     * @param {IQueryData | null} where Данные для поиска значения
      * @param {boolean} isOne Вывести только 1 запись.
      * @return {Promise<IModelRes>}
      */
-    public async select(where: IQueryData, isOne: boolean = false): Promise<IModelRes> {
+    public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
         if (this._db) {
             return await this._db.query(async (client: any, db: any) => {
                 let res: IModelRes = {

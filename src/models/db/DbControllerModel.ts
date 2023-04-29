@@ -1,21 +1,13 @@
-import {IAppDB, mmApp} from "../../core/mmApp";
-import {IQueryData, QueryData} from "./QueryData";
-import {IModelRes, IModelRules} from "../interface/IModel";
-
-export type TKey = string | number | null;
-
-export interface IDbControllerResult {
-    [keyStr: string]: any;
-
-    [keyInt: number]: any;
-}
+import {IAppDB, mmApp} from '../../mmApp';
+import {IQueryData, QueryData} from './QueryData';
+import {IModelRes, IModelRules, IDbControllerModel, TKey, IDbControllerResult} from '../interface';
 
 /**
  * Абстрактный класс служащий прослойкой между логикой ядра и подключением к БД.
  * Необходим для корректной настройки контролера, отвечающего за сохранение пользовательских данных.
  * Все прикладные контролеры должны быть унаследованы от него.
  */
-export abstract class DbControllerModel {
+export abstract class DbControllerModel implements IDbControllerModel {
     /**
      * Название таблицы
      */
@@ -33,6 +25,7 @@ export abstract class DbControllerModel {
 
     /**
      * Название поля, которое является уникальным ключом. По умолчанию id
+     * @defaultValue id
      */
     protected _primaryKeyName: TKey;
 
@@ -106,6 +99,7 @@ export abstract class DbControllerModel {
      * @param {IQueryData} select Данные для поиска значения
      * @param {boolean} isOne Вывести только 1 запись.
      * @return {Promise<IModelRes>}
+     * @virtual
      */
     public abstract select(select: IQueryData | null, isOne: boolean): Promise<IModelRes>;
 
@@ -113,6 +107,7 @@ export abstract class DbControllerModel {
      * Выполнение запроса на добавление записи в источник данных
      *
      * @param {QueryData} insertData Данные для добавления записи
+     * @virtual
      */
     public abstract insert(insertData: QueryData): any;
 
@@ -120,6 +115,7 @@ export abstract class DbControllerModel {
      * Выполнение запроса на обновление записи в источнике данных
      *
      * @param {QueryData} updateData Данные для обновления записи
+     * @virtual
      */
     public abstract update(updateData: QueryData): any;
 
@@ -149,6 +145,7 @@ export abstract class DbControllerModel {
      * Выполнение запроса на удаление записи в источнике данных
      *
      * @param {QueryData} removeData Данные для удаления записи
+     * @virtual
      */
     public abstract remove(removeData: QueryData): any;
 
@@ -156,6 +153,7 @@ export abstract class DbControllerModel {
      * Выполнение произвольного запроса к источнику данных
      *
      * @param {Function} callback Запрос, который необходимо выполнить
+     * @virtual
      */
     public abstract query(callback: Function): any;
 
@@ -189,6 +187,7 @@ export abstract class DbControllerModel {
      * При сохранении данных в файл, всегда возвращается true.
      *
      * @return {Promise<boolean>}
+     * @virtual
      */
     public abstract isConnected(): Promise<boolean>;
 

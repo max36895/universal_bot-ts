@@ -1,6 +1,6 @@
-import {mmApp} from "../../core";
-import {DB} from "./DB";
-import {IModelRes} from "../interface/IModel";
+import {mmApp} from '../../mmApp';
+import {DB} from './DB';
+import {IModelRes} from '../interface';
 
 /**
  * Переменная с подключением к базе данных. Нужна для того, чтобы не было дополнительных подключений к базе.
@@ -57,7 +57,6 @@ export class Sql {
             try {
                 return this.connect();
             } catch (exception) {
-                console.warn(exception);
                 Sql._saveLog(`Ошибка при инициализации БД.\n${exception}`);
             }
         }
@@ -183,7 +182,9 @@ export class Sql {
         if (mmApp.saveLog('sql.log', errorMsg)) {
             return true;
         }
-        console.warn('Sql.connect(): Не удалось создать/открыть файл!');
+        if (mmApp.isDevMode) {
+            console.warn('Sql.connect(): Не удалось создать/открыть файл!');
+        }
         return false;
     }
 }

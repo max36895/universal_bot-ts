@@ -1,8 +1,8 @@
-import {TemplateSoundTypes} from "./TemplateSoundTypes";
-import {ISound} from "../interfaces/sound";
-import {Text} from "../../standard/Text";
-import {mmApp} from "../../../core/mmApp";
-import {ViberRequest} from "../../../api/ViberRequest";
+import {TemplateSoundTypes} from './TemplateSoundTypes';
+import {ISound} from '../interfaces';
+import {Text} from '../../../utils/standard/Text';
+import {mmApp} from '../../../mmApp';
+import {ViberRequest} from '../../../api/ViberRequest';
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в Viber.
