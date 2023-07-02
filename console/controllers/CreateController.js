@@ -103,6 +103,8 @@ class CreateController {
             '{{className}}',
             '__className__',
             '{{}}',
+            '{{hostname}}',
+            '{{port}}'
         ];
         const name = this.#name.substr(0, 1).toUpperCase() + this.#name.substr(1);
         const date = `${(new Date()).getDay()}.${(new Date()).getMonth()}.${(new Date()).getFullYear()}`;
@@ -111,7 +113,11 @@ class CreateController {
             date,
             time,
             this.#name,
-            name
+            name,
+            name,
+            '',
+            '"' + (this.params?.hostname || 'localhost') + '"',
+            this.params?.port || 3000
         ];
         fileName = this._replace(find, replace, fileName);
         const content = this._replace(find, replace, templateContent);
@@ -207,7 +213,7 @@ class CreateController {
                 let path = '';
                 paths.forEach((dir) => {
                     path += `${dir}/`;
-                    if (dir !== './' && p !== '../') {
+                    if (dir !== './' && path !== '../') {
                         if (!utils.is_dir(path)) {
                             fs.mkdirSync(path);
                         }

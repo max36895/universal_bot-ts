@@ -14,10 +14,8 @@ import { IncomingMessage, ServerResponse } from "http";
  * - dev Запуск в режиме тестирования, с использованием консоли, в качестве тестового окружения.
  * - dev-online Запуск в режиме тестирования, с использованием webhook, в качестве тестового окружения.
  * - prod Запуск в релизном режиме
- * - dev-online-old Запуск в режиме тестирования, с использованием webhook, в качестве тестового окружения в старом режиме.
- * - prod-old Запуск в релизном режиме в старом режиме
  */
-export type TMode = 'dev' | 'dev-online' | 'prod' | 'dev-online-old' | 'prod-old';
+export type TMode = 'dev' | 'dev-online' | 'prod';
 
 /**
  * Настройки приложения
@@ -71,22 +69,5 @@ export function run(config: IConfig, mode: TMode = 'prod', hostname: string = 'l
             bot.initTypeInGet();
             _initParam(bot, config);
             return bot.start(hostname, port);
-        case "dev-online-old":
-            bot = new Bot();
-            bot.initTypeInGet();
-            _initParam(bot, config);
-            mmApp.setDevMode(true);
-            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-                bot.startOld(req, res)
-            };
-            return module;
-        case "prod-old":
-            bot = new Bot();
-            bot.initTypeInGet();
-            _initParam(bot, config);
-            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-                bot.startOld(req, res)
-            };
-            return module;
     }
 }
