@@ -207,7 +207,7 @@ class CreateController {
                 let path = '';
                 paths.forEach((dir) => {
                     path += `${dir}/`;
-                    if (dir !== './' && p !== '../') {
+                    if (dir !== './' && path !== '../') {
                         if (!utils.is_dir(path)) {
                             fs.mkdirSync(path);
                         }
