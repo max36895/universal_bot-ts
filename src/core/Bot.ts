@@ -1,4 +1,4 @@
-import {TBotAuth, TBotContent} from './interfaces/IBot';
+import { TBotAuth, TBotContent } from './interfaces/IBot';
 import {
     IAppConfig,
     IAppParam,
@@ -12,9 +12,9 @@ import {
     T_VK,
     TAppType
 } from '../mmApp';
-import {BotController} from '../controller';
-import {TemplateTypeModel} from '../platforms/TemplateTypeModel';
-import {GET} from '../utils/standard/util';
+import { BotController } from '../controller';
+import { TemplateTypeModel } from '../platforms/TemplateTypeModel';
+import { GET } from '../utils/standard/util';
 import {
     Telegram,
     Viber,
@@ -25,8 +25,8 @@ import {
     IAlisaWebhookResponse,
     IMarusiaWebhookResponse
 } from '../platforms';
-import {UsersData} from '../models/UsersData';
-import {IncomingMessage, ServerResponse} from 'http';
+import { UsersData } from '../models/UsersData';
+import { IncomingMessage, ServerResponse, createServer, Server } from 'http';
 
 export type TRunResult = IAlisaWebhookResponse | IMarusiaWebhookResponse | string;
 
@@ -43,6 +43,7 @@ interface IBotBotClassAndType {
  * @class Bot
  */
 export class Bot {
+    serverInst: Server | undefined;
     /**
      * Полученный запрос. В основном JSON или строка.
      */
@@ -173,7 +174,7 @@ export class Bot {
                 }
                 break;
         }
-        return {botClass, type};
+        return { botClass, type };
     }
 
     /**
@@ -204,7 +205,7 @@ export class Bot {
             mmApp.saveLog('bot.log', errMsg);
             throw new Error(errMsg);
         }
-        const {botClass, type} = Bot._getBotClassAndType(userBotClass);
+        const { botClass, type } = Bot._getBotClassAndType(userBotClass);
 
         if (botClass) {
             if (this._botController.userToken === null) {
@@ -296,7 +297,8 @@ export class Bot {
     }
 
     /**
-     * Запуск приложения через micro
+     * Запуск приложения через micro. Не рекомендуется к использованию, и в ближайщих обновлениях будет удалено.
+     * Оставлено для совместимости.
      *
      * @param {"http".IncomingMessage} req Полученный запрос
      * @param {"http".ServerResponse} res Возврат запроса
@@ -304,8 +306,8 @@ export class Bot {
      * @return {Promise<void>}
      * @api
      */
-    public async start(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel | null = null) {
-        const {json, send} = await require('micro');
+    public async startOld(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel | null = null) {
+        const { json, send } = await require('micro');
         // Принимаем только POST-запросы:
         if (req.method !== "POST") {
             send(res, 400, 'Bad Request');
@@ -329,5 +331,67 @@ export class Bot {
             return;
         }
     }
-}
 
+    /**
+     * Запуск приложения через http
+     *
+     * @param {string} hostname Имя хоста, на котором будет запущено приложение
+     * @param {null} port Порт, на котором будет запущено приложение
+     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
+     * @return {void}
+     * @api
+     */
+    public start(hostname: string, port: number, userBotClass: TemplateTypeModel | null = null): void {
+        const send = (res: ServerResponse, statusCode: number, result: object | string) => {
+            res.statusCode = statusCode;
+            res.setHeader('Content-Type', typeof result === 'object' ? 'text/plain' : 'application/json');
+            res.end(result);
+        }
+
+        this.close();
+
+        this.serverInst = createServer((req: IncomingMessage, res: ServerResponse) => {
+            // Принимаем только POST-запросы:
+            if (req.method !== "POST") {
+                send(res, 400, 'Bad Request');
+                return;
+            }
+
+            let data: string = '';
+
+            req.on('data', (chunk: string) => {
+                data += chunk;
+            });
+
+            req.on('end', () => {
+                const query: TBotContent = JSON.parse(data);
+                if (query) {
+                    if (req.headers && req.headers.authorization) {
+                        this._auth = req.headers.authorization.replace('Bearer', '');
+                    }
+                    this.setContent(query);
+                    this.run(userBotClass).then((value) => {
+                        send(res, value === 'notFound' ? 404 : 200, value);
+                    }).catch(() => {
+                        send(res, 404, 'notFound');
+                    });
+                } else {
+                    send(res, 400, 'Bad Request');
+                }
+            });
+        });
+
+        this.serverInst.listen(port, hostname, () => {
+            console.log(`Server running at http://${hostname}:${port}/`);
+        });
+    }
+
+    /**
+     * Закрывает сервер
+     */
+    public close(): void {
+        if (this.serverInst) {
+            this.serverInst.close();
+        }
+    }
+}
