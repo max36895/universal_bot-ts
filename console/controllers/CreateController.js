@@ -116,8 +116,8 @@ class CreateController {
             name,
             name,
             '',
-            '"' + (this.params.hostname || 'localhost') + '"',
-            this.params.port || 3000
+            '"' + (this.params?.hostname || 'localhost') + '"',
+            this.params?.port || 3000
         ];
         fileName = this._replace(find, replace, fileName);
         const content = this._replace(find, replace, templateContent);
