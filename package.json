@@ -18,9 +18,9 @@
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
-    "watch": "shx rm -rf dist && tsc -watch",
-    "start": "shx rm -rf dist && tsc",
-    "build": "shx rm -rf dist && tsc --declaration",
+    "watch": "shx rm -rf ./dist && tsc -watch",
+    "start": "shx rm -rf ./dist && tsc",
+    "build": "shx rm -rf ./dist && tsc --declaration",
     "test": "jest",
     "bt": "npm run build && npm test",
     "create": "umbot",

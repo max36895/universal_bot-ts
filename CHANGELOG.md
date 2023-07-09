@@ -161,4 +161,4 @@
 
 [master]: https://github.com/max36895/universal_bot-ts/compare/1.1.1...master
 [dev]: https://github.com/max36895/universal_bot-ts/compare/master...dev
-[1.5.0]: https://github.com/max36895/universal_bot-ts/compare/1.1.1...1.5.0
+[1.5]: https://github.com/max36895/universal_bot-ts/compare/1.1.8...1.5
