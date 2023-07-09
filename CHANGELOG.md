@@ -2,11 +2,7 @@
 
 Все заметные изменения в umbot задокументированы в этом файле с использованием принципов [Keep a CHANGELOG](http://keepachangelog.com/).
 
-## [2.0.0] - 2023-07-02
-### Удалено
-* Удалена поддержка старого формата запуска приложения.
-
-## [1.5.0] - 2023-07-01
+## [1.5.0] - 2023-01-07
 ### Добавлено
 * В Bot добавлены метод startOld для поддержки старого запуска приложения через micro
 * В Bot добавлен метод close, для закрытия сервера
@@ -166,4 +162,3 @@
 [master]: https://github.com/max36895/universal_bot-ts/compare/1.1.1...master
 [dev]: https://github.com/max36895/universal_bot-ts/compare/master...dev
 [1.5]: https://github.com/max36895/universal_bot-ts/compare/1.1.8...1.5
-[2.0]: https://github.com/max36895/universal_bot-ts/compare/1.5...2.0

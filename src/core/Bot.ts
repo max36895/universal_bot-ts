@@ -297,6 +297,42 @@ export class Bot {
     }
 
     /**
+     * Запуск приложения через micro. Не рекомендуется к использованию, и в ближайщих обновлениях будет удалено.
+     * Оставлено для совместимости.
+     *
+     * @param {"http".IncomingMessage} req Полученный запрос
+     * @param {"http".ServerResponse} res Возврат запроса
+     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
+     * @return {Promise<void>}
+     * @api
+     */
+    public async startOld(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel | null = null) {
+        const { json, send } = await require('micro');
+        // Принимаем только POST-запросы:
+        if (req.method !== "POST") {
+            send(res, 400, 'Bad Request');
+            return;
+        }
+
+        const query = await json(req);
+        if (query) {
+            if (req.headers && req.headers.authorization) {
+                this._auth = req.headers.authorization.replace('Bearer', '');
+            }
+            this.setContent(query);
+            try {
+                const result = await this.run(userBotClass);
+                send(res, result === 'notFound' ? 404 : 200, result);
+            } catch (e) {
+                send(res, 404, 'notFound');
+            }
+        } else {
+            send(res, 400, 'Bad Request');
+            return;
+        }
+    }
+
+    /**
      * Запуск приложения через http
      *
      * @param {string} hostname Имя хоста, на котором будет запущено приложение
