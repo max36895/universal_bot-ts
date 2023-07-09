@@ -2,6 +2,15 @@
 
 Все заметные изменения в umbot задокументированы в этом файле с использованием принципов [Keep a CHANGELOG](http://keepachangelog.com/).
 
+## [1.5.0] - 2023-01-07
+### Добавлено
+* В Bot добавлены метод startOld для поддержки старого запуска приложения через micro
+* В Bot добавлен метод close, для закрытия сервера
+### Обновлено
+* Изменилась логика запуска приложения. См пример examples/skills/game и examples/skilld/gameOld
+* В Bot в методе start поменялись получаемые аргументы
+* Добавлены новые принимаемые значения в build.mode, позволяющие запустить приложение в старом формате(через micro)
+
 ## [1.1.8] - 2022-10-06
 ### Добавлено
 * Unit тесты на jest
@@ -152,3 +161,4 @@
 
 [master]: https://github.com/max36895/universal_bot-ts/compare/1.1.1...master
 [dev]: https://github.com/max36895/universal_bot-ts/compare/master...dev
+[1.5]: https://github.com/max36895/universal_bot-ts/compare/1.1.8...1.5
