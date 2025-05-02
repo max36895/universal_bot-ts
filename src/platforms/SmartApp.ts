@@ -15,24 +15,30 @@ import { Buttons } from '../components/button';
 import { IRequestSend, Request } from '../api';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp
+ * Класс для работы с платформой Сбер SmartApp
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате SmartApp
  * @class SmartApp
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class SmartApp extends TemplateTypeModel {
     /**
-     * Максимально время, за которое должен ответить навык.
+     * Максимальное время ответа навыка в миллисекундах
+     * @private
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
+
     /**
-     * Информация о сессии пользователя.
+     * Информация о сессии пользователя
+     * @protected
      */
     protected _session: ISberSmartAppSession | null = null;
 
     /**
-     * Получение данных, необходимых для построения ответа пользователю.
-     *
-     * @return {Promise<ISberSmartAppResponsePayload>}
+     * Формирует ответ для пользователя
+     * Собирает текст, TTS, карточки и кнопки в единый объект ответа
+     * @returns {Promise<ISberSmartAppResponsePayload>} Объект ответа для SmartApp
      * @private
      */
     protected async _getPayload(): Promise<ISberSmartAppResponsePayload> {
@@ -95,10 +101,17 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Инициализирует введенные пользователем данные
-     *
-     * @param content
+     * Инициализирует команду пользователя
+     * Обрабатывает различные типы сообщений и событий
+     * @param content Объект запроса от пользователя
      * @private
+     *
+     * Поддерживаемые типы сообщений:
+     * - MESSAGE_TO_SKILL: сообщение пользователя
+     * - CLOSE_APP: закрытие приложения
+     * - SERVER_ACTION: действие сервера
+     * - RUN_APP: запуск приложения
+     * - RATING_RESULT: результат оценки
      */
     private _initUserCommand(content: ISberSmartAppWebhookRequest): void {
         this.controller.requestObject = content;
@@ -142,11 +155,10 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {ISberSmartAppWebhookRequest|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой навыка
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
      */
     public async init(
@@ -201,6 +213,10 @@ export class SmartApp extends TemplateTypeModel {
         return false;
     }
 
+    /**
+     * Формирует ответ с оценкой навыка
+     * @returns {Promise<ISberSmartAppWebhookResponse>} Объект ответа для вебхука
+     */
     public async getRatingContext(): Promise<ISberSmartAppWebhookResponse> {
         return {
             messageName: 'CALL_RATING',
@@ -212,9 +228,9 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<ISberSmartAppWebhookResponse>}
+     * Формирует полный ответ для отправки пользователю
+     * Включает версию API, ответ навыка и данные сессии
+     * @returns {Promise<ISberSmartAppWebhookResponse>} Объект ответа для вебхука
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<ISberSmartAppWebhookResponse> {
@@ -239,6 +255,11 @@ export class SmartApp extends TemplateTypeModel {
         return result;
     }
 
+    /**
+     * Получает данные пользователя из хранилища
+     * @returns {Promise<unknown | string>} Данные пользователя или строка с ошибкой
+     * @protected
+     */
     protected async _getUserData(): Promise<unknown | string> {
         const request = new Request();
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
@@ -249,6 +270,12 @@ export class SmartApp extends TemplateTypeModel {
         return {};
     }
 
+    /**
+     * Сохраняет данные пользователя в хранилище
+     * @param data Данные для сохранения
+     * @returns {Promise<IRequestSend<unknown>>} Результат сохранения
+     * @protected
+     */
     protected async _setUserData(data: any): Promise<IRequestSend<unknown>> {
         const request = new Request();
         request.header = Request.HEADER_AP_JSON;
@@ -258,25 +285,24 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Сохранение данных в хранилище.
-     * @param data
-     * @return Promise<void>
+     * Сохраняет данные в локальное хранилище
+     * @param data Данные для сохранения
      */
     public async setLocalStorage(data: any): Promise<void> {
         await this._setUserData(data);
     }
 
     /**
-     * Получение данные из локального хранилища
-     * @return {Object | string}
+     * Получает данные из локального хранилища
+     * @returns {Promise<any | string>} Данные из хранилища или строка с ошибкой
      */
     public async getLocalStorage(): Promise<any | string> {
         return this._getUserData();
     }
 
     /**
-     * Проверка на использование локального хранилища
-     * @return {boolean}
+     * Проверяет, используется ли локальное хранилище
+     * @returns {boolean} true если используется локальное хранилище
      */
     public isLocalStorage(): boolean {
         return true;

@@ -16,32 +16,46 @@ import { mmApp } from '../mmApp';
 import { Text } from '../utils/standard/Text';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Маруси.
+ * Класс для работы с платформой Маруся
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате Маруси
  * @class Marusia
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Marusia extends TemplateTypeModel {
     /**
-     * Версия Маруси.
+     * Версия API Маруси
+     * @private
      */
     private readonly VERSION: string = '1.0';
+
     /**
-     * Максимально время, за которое должен ответить навык.
+     * Максимальное время ответа навыка в секундах
+     * @private
      */
     private readonly MAX_TIME_REQUEST: number = 2.8;
+
     /**
-     * Информация о сессии пользователя.
+     * Информация о сессии пользователя
+     * @protected
      */
     protected _session: IMarusiaSession | null = null;
+
     /**
-     * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
+     * Название хранилища данных
+     * Может быть одним из:
+     * - user_state_update: данные пользователя
+     * - session_state: данные сессии
+     * @protected
      */
     protected _stateName: 'user_state_update' | 'session_state' | null = null;
 
     /**
-     * Получение данных, необходимых для построения ответа пользователю.
-     *
-     * @return {Promise<IMarusiaResponse>}
+     * Формирует ответ для пользователя
+     * Собирает текст, TTS, карточки и кнопки в единый объект ответа
+     * @returns {Promise<IMarusiaResponse>} Объект ответа для Маруси
+     * @protected
      */
     protected async _getResponse(): Promise<IMarusiaResponse> {
         const response: IMarusiaResponse = {
@@ -64,9 +78,9 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Получение информации о сессии.
-     *
-     * @return IMarusiaSessionResponse
+     * Получает информацию о текущей сессии
+     * @returns {IMarusiaSessionResponse} Объект с данными сессии
+     * @protected
      */
     protected _getSession(): IMarusiaSessionResponse {
         return {
@@ -78,8 +92,8 @@ export class Marusia extends TemplateTypeModel {
 
     /**
      * Устанавливает состояние приложения
-     *
-     * @param state
+     * Определяет тип хранилища и сохраняет состояние в контроллере
+     * @param state Объект состояния из запроса
      * @private
      */
     private _setState(state: IMarusiaRequestState): void {
@@ -93,9 +107,9 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Инициализирует введенные пользователем данные
-     *
-     * @param request
+     * Инициализирует команду пользователя
+     * Обрабатывает различные типы запросов и сохраняет команду в контроллере
+     * @param request Объект запроса от пользователя
      * @private
      */
     private _initUserCommand(request: IMarusiaRequest): void {
@@ -118,11 +132,10 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IMarusiaWebhookRequest|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой навыка
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
      */
     public async init(
@@ -177,9 +190,9 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<IMarusiaWebhookResponse>}
+     * Формирует полный ответ для отправки пользователю
+     * Включает версию API, ответ навыка, данные сессии и состояние
+     * @returns {Promise<IMarusiaWebhookResponse>} Объект ответа для вебхука
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<IMarusiaWebhookResponse> {

@@ -7,87 +7,331 @@ import {
 } from '../../platforms/interfaces';
 
 /**
- * Интерфейс параметров изображения
+ * @interface IImageParams
+ * Интерфейс параметров изображения для настройки отображения в различных платформах.
+ *
+ * Особенности:
+ * - Поддерживает настройку стилей текста
+ * - Позволяет задавать цвета и отступы
+ * - Контролирует количество строк текста
+ * - Расширяется дополнительными параметрами
+ *
+ * @example
+ * ```typescript
+ * // Базовые параметры
+ * const params: IImageParams = {
+ *     titleTypeface: 'headline2',
+ *     titleText_color: 'default',
+ *     descTypeface: 'body3',
+ *     descText_color: 'secondary'
+ * };
+ *
+ * // Расширенные параметры
+ * const extendedParams: IImageParams = {
+ *     titleTypeface: 'headline2',
+ *     titleText_color: 'default',
+ *     titleMargins: { top: '4x', left: '8x', right: '8x' },
+ *     titleMax_lines: 2,
+ *     descTypeface: 'body3',
+ *     descText_color: 'secondary',
+ *     descMargins: { top: '2x', left: '8x', right: '8x' },
+ *     descMax_lines: 3,
+ *     customParam: 'value'
+ * };
+ * ```
  */
 export interface IImageParams {
     /**
-     * Стиль верхнего текста
+     * Стиль верхнего текста (заголовка).
+     * Определяет типографику для заголовка изображения.
+     *
+     * @type {TSberSmartAppTypeface}
+     * @example
+     * ```typescript
+     * titleTypeface: 'headline2' // Основной заголовок
+     * titleTypeface: 'title1'    // Крупный заголовок
+     * titleTypeface: 'body1'     // Обычный текст
+     * ```
      */
     titleTypeface?: TSberSmartAppTypeface;
+
     /**
-     * Цвет верхнего текста
+     * Цвет верхнего текста (заголовка).
+     * Определяет цветовое оформление заголовка.
+     *
+     * @type {TSberSmartAppTextColor}
+     * @example
+     * ```typescript
+     * titleText_color: 'default'   // Основной цвет
+     * titleText_color: 'secondary' // Вторичный цвет
+     * titleText_color: 'brand'     // Цвет бренда
+     * ```
      */
     titleText_color?: TSberSmartAppTextColor;
+
     /**
-     * Отступы верхнего текста
+     * Отступы для верхнего текста (заголовка).
+     * Определяет пространство вокруг заголовка.
+     *
+     * @type {ISberSmartAppCardPadding}
+     * @example
+     * ```typescript
+     * titleMargins: {
+     *     top: '4x',
+     *     left: '8x',
+     *     right: '8x'
+     * }
+     * ```
      */
     titleMargins?: ISberSmartAppCardPadding;
+
     /**
-     * Максимальное количество строк верхнего текста
+     * Максимальное количество строк для верхнего текста.
+     * Ограничивает высоту заголовка.
+     *
+     * @type {number}
+     * @example
+     * ```typescript
+     * titleMax_lines: 2 // Заголовок в две строки
+     * titleMax_lines: 1 // Однострочный заголовок
+     * ```
      */
     titleMax_lines?: number;
+
     /**
-     * Стиль нижнего текста
+     * Стиль нижнего текста (описания).
+     * Определяет типографику для описания изображения.
+     *
+     * @type {TSberSmartAppTypeface}
+     * @example
+     * ```typescript
+     * descTypeface: 'body3'    // Мелкий текст
+     * descTypeface: 'footnote1' // Сноска
+     * descTypeface: 'body1'    // Обычный текст
+     * ```
      */
     descTypeface?: TSberSmartAppTypeface;
+
     /**
-     * Цвет нижнего текста
+     * Цвет нижнего текста (описания).
+     * Определяет цветовое оформление описания.
+     *
+     * @type {TSberSmartAppTextColor}
+     * @example
+     * ```typescript
+     * descText_color: 'secondary' // Вторичный цвет
+     * descText_color: 'default'   // Основной цвет
+     * descText_color: 'brand'     // Цвет бренда
+     * ```
      */
     descText_color?: TSberSmartAppTextColor;
+
     /**
-     * Отступы нижнего текста
+     * Отступы для нижнего текста (описания).
+     * Определяет пространство вокруг описания.
+     *
+     * @type {ISberSmartAppCardPadding}
+     * @example
+     * ```typescript
+     * descMargins: {
+     *     top: '2x',
+     *     left: '8x',
+     *     right: '8x'
+     * }
+     * ```
      */
     descMargins?: ISberSmartAppCardPadding;
+
     /**
-     * Максимальное количество строк нижнего текста
+     * Максимальное количество строк для нижнего текста.
+     * Ограничивает высоту описания.
+     *
+     * @type {number}
+     * @example
+     * ```typescript
+     * descMax_lines: 3 // Описание в три строки
+     * descMax_lines: 2 // Описание в две строки
+     * ```
      */
     descMax_lines?: number;
 
     /**
-     * Дополнительные параметры изображения
+     * Дополнительные параметры изображения.
+     * Позволяет расширять интерфейс специфичными параметрами.
+     *
+     * @type {any}
+     * @example
+     * ```typescript
+     * // Добавление пользовательских параметров
+     * const params: IImageParams = {
+     *     titleTypeface: 'headline2',
+     *     customWidth: '100%',
+     *     customHeight: '200px',
+     *     customStyle: { borderRadius: '8px' }
+     * };
+     * ```
      */
     [name: string]: any;
 }
 
 /**
- * Класс отвечающий за обработку и корректное отображение изображения, в зависимости от типа приложения.
  * @class Image
+ * Класс для обработки и отображения изображений в различных платформах.
+ *
+ * Основные возможности:
+ * - Управление изображениями и их метаданными
+ * - Поддержка различных источников изображений (URL, файлы, токены)
+ * - Настройка отображения текста (заголовок и описание)
+ * - Добавление кнопок и действий
+ * - Гибкая настройка параметров отображения
+ *
+ * @example
+ * ```typescript
+ * // Создание изображения из URL
+ * const image = new Image();
+ * image.init(
+ *     'https://example.com/image.jpg',
+ *     'Заголовок изображения',
+ *     'Описание изображения',
+ *     { title: 'Нажми меня', url: 'https://example.com' }
+ * );
+ *
+ * // Создание изображения из файла
+ * const localImage = new Image();
+ * localImage.init(
+ *     '/path/to/image.jpg',
+ *     'Локальное изображение',
+ *     'Описание локального изображения'
+ * );
+ *
+ * // Создание изображения с токеном
+ * const tokenImage = new Image();
+ * tokenImage.isToken = true;
+ * tokenImage.init(
+ *     'image_token_123',
+ *     'Изображение по токену',
+ *     'Описание изображения по токену'
+ * );
+ * ```
  */
 export class Image {
     /**
-     * Кнопки, обрабатывающие действия на нажатие на изображение или кнопку (Зависит от типа приложения).
-     * @see Buttons Смотри тут
+     * Кнопки для обработки действий с изображением.
+     * Зависит от типа приложения и платформы.
+     *
+     * @type {Buttons}
+     * @see Buttons
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.button.addBtn('Нажми меня', 'https://example.com');
+     * image.button.addBtn('Другая кнопка', null, { action: 'custom' });
+     * ```
      */
     public button: Buttons;
+
     /**
      * Заголовок изображения.
+     * Отображается над изображением.
+     *
+     * @type {string}
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.title = 'Название товара';
+     * ```
      */
     public title: string;
+
     /**
      * Описание изображения.
+     * Отображается под изображением.
+     *
+     * @type {string}
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.desc = 'Подробное описание товара';
+     * ```
      */
     public desc: string;
+
     /**
      * Идентификатор изображения.
+     * Используется для платформ, поддерживающих токены.
+     *
+     * @type {string | null}
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.imageToken = 'image_token_123';
+     * ```
      */
     public imageToken: string | null;
+
     /**
-     * Расположение изображения в сети/директории.
+     * Путь к изображению.
+     * Может быть URL или путь к файлу.
+     *
+     * @type {string | null}
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.imageDir = 'https://example.com/image.jpg';
+     * // или
+     * image.imageDir = '/path/to/image.jpg';
+     * ```
      */
     public imageDir: string | null;
+
     /**
-     * True, если однозначно используется идентификатор/токен изображения. По умолчанию false.
-     * Стоит указывать true в том случае, если в метод `init` передается токен изображения
-     * @defaultValue false
+     * Флаг использования токена.
+     * Если true, то imageToken используется как идентификатор.
+     *
+     * @type {boolean}
+     * @default false
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.isToken = true;
+     * image.init('image_token_123', 'Заголовок', 'Описание');
+     * ```
      */
     public isToken: boolean;
+
     /**
      * Дополнительные параметры изображения.
+     * Настройки отображения для разных платформ.
+     *
+     * @type {IImageParams}
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * image.params = {
+     *     titleTypeface: 'headline2',
+     *     titleText_color: 'default',
+     *     descTypeface: 'body3',
+     *     descText_color: 'secondary'
+     * };
+     * ```
      */
     public params: IImageParams;
 
     /**
-     * Image constructor.
+     * Конструктор класса Image.
+     * Инициализирует все свойства значениями по умолчанию.
+     *
+     * @example
+     * ```typescript
+     * const image = new Image();
+     * // image.button = new Buttons()
+     * // image.title = ''
+     * // image.desc = ''
+     * // image.imageToken = null
+     * // image.imageDir = null
+     * // image.isToken = false
+     * // image.params = {}
+     * ```
      */
     public constructor() {
         this.button = new Buttons();
@@ -101,12 +345,53 @@ export class Image {
 
     /**
      * Инициализация изображения.
+     * Устанавливает основные параметры изображения и проверяет их корректность.
      *
-     * @param {string} image Путь до изображения в сети/папке. Либо идентификатор изображения.
-     * @param {string} title Заголовок изображения.
-     * @param {string} desc Описание изображения.
-     * @param {TButton} button Возможные кнопки для изображения.
-     * @return boolean
+     * Процесс работы:
+     * 1. Проверяет тип изображения (токен или путь):
+     *    - Если isToken=true, использует image как токен
+     *    - Иначе проверяет валидность URL или файла
+     * 2. Устанавливает заголовок и описание:
+     *    - Если заголовок пустой, возвращает false
+     *    - Если описание пустое, устанавливает пробел
+     * 3. Добавляет кнопки, если они есть:
+     *    - Поддерживает строковые кнопки
+     *    - Поддерживает объекты кнопок
+     *
+     * @param {string | null} image - Путь к изображению или токен
+     * @param {string} title - Заголовок изображения
+     * @param {string} [desc=' '] - Описание изображения
+     * @param {TButton | null} [button=null] - Кнопки для изображения
+     * @returns {boolean} true если инициализация успешна, false в противном случае
+     *
+     * @example
+     * ```typescript
+     * const image = new Image();
+     *
+     * // Инициализация с URL
+     * image.init(
+     *     'https://example.com/image.jpg',
+     *     'Заголовок',
+     *     'Описание',
+     *     { title: 'Кнопка', url: 'https://example.com' }
+     * );
+     *
+     * // Инициализация с токеном
+     * image.isToken = true;
+     * image.init(
+     *     'image_token_123',
+     *     'Заголовок',
+     *     'Описание'
+     * );
+     *
+     * // Инициализация с простой кнопкой
+     * image.init(
+     *     'https://example.com/image.jpg',
+     *     'Заголовок',
+     *     'Описание',
+     *     'Текст кнопки'
+     * );
+     * ```
      */
     public init(
         image: string | null,

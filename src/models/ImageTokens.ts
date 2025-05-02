@@ -11,66 +11,95 @@ import {
 import { Text } from '../utils/standard/Text';
 
 /**
- * Интерфейс для внутреннего состояния модели.
+ * Интерфейс для внутреннего состояния модели изображений.
+ * Определяет структуру данных для хранения информации об изображениях в базе данных.
  */
 export interface IImageModelState {
     /**
      * Идентификатор/токен изображения.
+     * Уникальный идентификатор, используемый для ссылки на изображение в API различных платформ.
+     * @example "photo123456789" для Telegram, "123456789" для VK
      */
     imageToken: string;
     /**
      * Расположение изображения (url/директория).
+     * Может быть URL-адресом изображения или путем к локальному файлу.
+     * @example "https://example.com/image.jpg" или "/path/to/local/image.jpg"
      */
     path: string;
     /**
      * Тип платформы.
+     * Определяет, для какой платформы предназначено изображение.
+     * @see ImageTokens.T_ALISA
+     * @see ImageTokens.T_VK
+     * @see ImageTokens.T_TELEGRAM
+     * @see ImageTokens.T_MARUSIA
      */
     type: string;
 }
 
 /**
- * Модель для взаимодействия со всеми изображениями.
+ * Модель для управления изображениями в различных платформах.
+ * Предоставляет единый интерфейс для работы с изображениями в Яндекс.Алисе, ВКонтакте, Telegram и Марусе.
+ *
  * @class ImageTokens
+ * @extends Model<IImageModelState>
+ *
+ * @example
+ * // Создание и загрузка изображения для Telegram
+ * const image = new ImageTokens();
+ * image.path = '/path/to/image.jpg';
+ * image.type = ImageTokens.T_TELEGRAM;
+ * image.caption = 'Описание изображения';
+ * const token = await image.getToken();
  */
 export class ImageTokens extends Model<IImageModelState> {
     /**
-     * Название таблицы для хранения данных
+     * Название таблицы для хранения данных об изображениях.
      * @private
      */
     private TABLE_NAME = 'ImageTokens';
+
     /**
-     * Тип платформы: Яндекс.Алиса
-     * @readonly
+     * Константы для определения типа платформы.
+     * Используются для указания, для какой платформы предназначено изображение.
      */
+    /** Тип платформы: Яндекс.Алиса */
     public static readonly T_ALISA = 0;
     /** Тип платформы: ВКонтакте */
     public static readonly T_VK = 1;
     /** Тип платформы: Telegram */
     public static readonly T_TELEGRAM = 2;
-    /**
-     * Тип платформы: Маруся
-     */
+    /** Тип платформы: Маруся */
     public static readonly T_MARUSIA = 3;
 
     /**
      * Идентификатор/токен изображения.
+     * Уникальный идентификатор, используемый для ссылки на изображение в API платформы.
      */
     public imageToken: string | null;
+
     /**
      * Расположение изображения (url/директория).
+     * Может быть URL-адресом изображения или путем к локальному файлу.
      */
     public path: string | null;
+
     /**
      * Тип приложения, для которого загружена картинка.
+     * Определяется одной из констант T_ALISA, T_VK, T_TELEGRAM или T_MARUSIA.
      */
     public type: number;
+
     /**
      * Описание изображения (Не обязательное поле).
+     * Используется как подпись к изображению в некоторых платформах.
      */
     public caption: string | null;
 
     /**
-     * ImageTokens constructor.
+     * Конструктор класса ImageTokens.
+     * Инициализирует все поля значениями по умолчанию.
      */
     public constructor() {
         super();
@@ -81,18 +110,18 @@ export class ImageTokens extends Model<IImageModelState> {
     }
 
     /**
-     * Название таблицы/файла с данными.
+     * Возвращает название таблицы/файла с данными.
      *
-     * @return string
+     * @return {string} Название таблицы для хранения данных об изображениях
      */
     public tableName(): string {
         return this.TABLE_NAME;
     }
 
     /**
-     * Основные правила для полей.
+     * Определяет правила валидации для полей модели.
      *
-     * @return IModelRules[]
+     * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return [
@@ -109,9 +138,10 @@ export class ImageTokens extends Model<IImageModelState> {
     }
 
     /**
-     * Название атрибутов таблицы.
+     * Возвращает метки атрибутов таблицы.
+     * Используется для отображения понятных названий полей.
      *
-     * @return {IImageModelState}
+     * @return {IImageModelState} Объект с метками атрибутов
      */
     public attributeLabels(): IImageModelState {
         return {
@@ -122,9 +152,21 @@ export class ImageTokens extends Model<IImageModelState> {
     }
 
     /**
-     * Получение идентификатора/токена изображения.
+     * Получает или создает токен изображения для указанной платформы.
+     * Метод автоматически определяет тип платформы и использует соответствующий API
+     * для загрузки и получения токена изображения.
      *
-     * @return {Promise<string>}
+     * @return {Promise<string>} Токен изображения или null в случае ошибки
+     *
+     * @example
+     * // Загрузка изображения для Telegram
+     * const image = new ImageTokens();
+     * image.path = '/path/to/image.jpg';
+     * image.type = ImageTokens.T_TELEGRAM;
+     * const token = await image.getToken();
+     * if (token) {
+     *     console.log('Изображение успешно загружено, токен:', token);
+     * }
      */
     public async getToken(): Promise<string | null> {
         const where = { path: this.path, type: this.type };

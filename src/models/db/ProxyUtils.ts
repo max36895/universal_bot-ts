@@ -5,7 +5,6 @@ interface ProxyOptions {
 /**
  * Утилита для создания прокси для классов
  * @param target - сам класс
- * @constructor
  */
 export function ProxyUtils<TTarget extends ProxyOptions>(target: TTarget): TTarget {
     return new Proxy(target, {

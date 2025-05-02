@@ -4,50 +4,185 @@ import { Text, isFile } from '../../../utils';
 import { SoundTokens } from '../../../models/SoundTokens';
 
 /**
- * Класс отвечающий за воспроизведение звуков в Алисе.
  * @class AlisaSound
+ * Класс для работы со звуками в платформе Алиса
+ *
+ * Предоставляет функциональность для:
+ * - Воспроизведения стандартных звуков Алисы
+ * - Применения звуковых эффектов к тексту
+ * - Преобразования текста в речь (TTS)
+ * - Управления паузами в речи
+ *
+ * Основные возможности:
+ * - Поддержка стандартных звуков Алисы (игры, природа, предметы, животные)
+ * - Применение звуковых эффектов (стена, хомяк, мегафон и др.)
+ * - Управление паузами в речи
+ * - Замена звуковых токенов в тексте
+ * - Поддержка пользовательских звуков
+ *
+ * @example
+ * ```typescript
+ * const alisaSound = new AlisaSound();
+ *
+ * // Воспроизведение стандартного звука
+ * const result = await alisaSound.getSounds([
+ *     {
+ *         key: '#game_win#',
+ *         sounds: [
+ *             '<speaker audio="alice-sounds-game-win-1.opus">',
+ *             '<speaker audio="alice-sounds-game-win-2.opus">',
+ *             '<speaker audio="alice-sounds-game-win-3.opus">'
+ *         ]
+ *     }
+ * ], 'Поздравляем с победой!');
+ * // result: '<speaker audio="alice-sounds-game-win-1.opus">Поздравляем с победой!</speaker>'
+ *
+ * // Применение звукового эффекта
+ * const effectText = `${alisaSound.S_EFFECT_MEGAPHONE}Внимание!${alisaSound.S_EFFECT_END}`;
+ * // effectText: '<speaker effect="megaphone">Внимание!</speaker>'
+ *
+ * // Добавление паузы
+ * const textWithPause = 'Привет' + AlisaSound.getPause(1000) + 'мир!';
+ * // textWithPause: 'Привет<speaker effect="silence" t="1s">мир!</speaker>'
+ *
+ * // Комбинирование эффектов и пауз
+ * const complexText = `${alisaSound.S_EFFECT_MEGAPHONE}Внимание!${alisaSound.S_EFFECT_END}` +
+ *     AlisaSound.getPause(1000) +
+ *     `${alisaSound.S_EFFECT_PITCH_DOWN}Важное сообщение${alisaSound.S_EFFECT_END}`;
+ * // complexText: '<speaker effect="megaphone">Внимание!</speaker><speaker effect="silence" t="1s"><speaker effect="pitch_down">Важное сообщение</speaker>'
+ * ```
  */
 export class AlisaSound implements TemplateSoundTypes {
     /**
-     * Использование стандартных звуков.
-     * True - используются стандартные звуки.
+     * Флаг использования стандартных звуков Алисы
+     *
+     * При значении true используются стандартные звуки Алисы,
+     * при false - только пользовательские звуки
+     *
+     * @default true
+     *
+     * @example
+     * ```typescript
+     * const alisaSound = new AlisaSound();
+     * alisaSound.isUsedStandardSound = false; // Отключение стандартных звуков
+     * ```
      */
     public isUsedStandardSound: boolean = true;
 
     /**
-     * Задает эффект за стеной для текста.
+     * Эффект "за стеной" для текста
+     *
+     * Применяет эффект звучания из-за стены к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_BEHIND_THE_WALL}Текст за стеной${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="behind_the_wall">Текст за стеной</speaker>'
+     * ```
      */
     public readonly S_EFFECT_BEHIND_THE_WALL = '<speaker effect="behind_the_wall">';
+
     /**
-     * Задает эффект хомяка для текста.
+     * Эффект "хомяк" для текста
+     *
+     * Применяет эффект голоса хомяка к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_HAMSTER}Пи-пи-пи${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="hamster">Пи-пи-пи</speaker>'
+     * ```
      */
     public readonly S_EFFECT_HAMSTER = '<speaker effect="hamster">';
+
     /**
-     * Задает эффект мегафона для текста.
+     * Эффект "мегафон" для текста
+     *
+     * Применяет эффект звучания через мегафон к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_MEGAPHONE}Внимание!${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="megaphone">Внимание!</speaker>'
+     * ```
      */
     public readonly S_EFFECT_MEGAPHONE = '<speaker effect="megaphone">';
+
     /**
-     * Задает эффект низкого тона для текста.
+     * Эффект "низкий тон" для текста
+     *
+     * Применяет эффект пониженного тона к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_PITCH_DOWN}Глубокий голос${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="pitch_down">Глубокий голос</speaker>'
+     * ```
      */
     public readonly S_EFFECT_PITCH_DOWN = '<speaker effect="pitch_down">';
+
     /**
-     * Задает эффект психодельского для текста.
+     * Эффект "психоделический" для текста
+     *
+     * Применяет психоделический эффект к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_PSYCHODELIC}Трип${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="psychodelic">Трип</speaker>'
+     * ```
      */
     public readonly S_EFFECT_PSYCHODELIC = '<speaker effect="psychodelic">';
+
     /**
-     * Задает эффект пульса для текста.
+     * Эффект "пульс" для текста
+     *
+     * Применяет эффект пульсации к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_PULSE}Пульсирующий текст${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="pulse">Пульсирующий текст</speaker>'
+     * ```
      */
     public readonly S_EFFECT_PULSE = '<speaker effect="pulse">';
+
     /**
-     * Задает эффект вокзала для текста.
+     * Эффект "вокзал" для текста
+     *
+     * Применяет эффект объявления на вокзале к тексту
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_TRAIN_ANNOUNCE}Поезд отправляется${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="train_announce">Поезд отправляется</speaker>'
+     * ```
      */
     public readonly S_EFFECT_TRAIN_ANNOUNCE = '<speaker effect="train_announce">';
+
     /**
-     * Заканчивает эффект.
+     * Маркер окончания эффекта
+     *
+     * Используется для завершения любого звукового эффекта
+     *
+     * @example
+     * ```typescript
+     * const text = `${alisaSound.S_EFFECT_MEGAPHONE}Текст с эффектом${alisaSound.S_EFFECT_END}`;
+     * // text: '<speaker effect="megaphone">Текст с эффектом</speaker>'
+     * ```
      */
     public readonly S_EFFECT_END = '<speaker effect="-">';
 
-    /** Стандартные звуки.
+    /**
+     * Массив стандартных звуков Алисы
+     *
+     * Содержит предопределенные звуки для различных категорий:
+     * - Игровые звуки (победа, поражение, монеты и др.)
+     * - Природные звуки (ветер, гром, дождь и др.)
+     * - Звуки предметов (телефон, дверь, колокол и др.)
+     * - Звуки животных
+     *
+     * @private
      */
     protected _standardSounds: ISound[] = [
         {
@@ -376,22 +511,50 @@ export class AlisaSound implements TemplateSoundTypes {
     public static readonly S_AUDIO_NATURE_STREAM = '#nature_stream#';
 
     /**
-     * Получение разметки для вставки паузы между словами.
+     * Создает паузу в речи указанной длительности
      *
-     * @param {number} milliseconds Пауза в миллисекундах.
-     * @return string
-     * @see (https://yandex.ru/dev/dialogs/alice/doc/speech-tuning-docpage/) Смотри тут
+     * @param {number} milliseconds - Длительность паузы в миллисекундах
+     * @returns {string} - Строка с паузой в формате Алисы
+     *
+     * @example
+     * ```typescript
+     * // Создание паузы в 1 секунду
+     * const text = 'Привет' + AlisaSound.getPause(1000) + 'мир!';
+     *
+     * // Создание паузы в 2.5 секунды
+     * const text = 'Первый' + AlisaSound.getPause(2500) + 'второй';
+     * ```
      */
     public static getPause(milliseconds: number): string {
         return `sil <[${milliseconds}]>`;
     }
 
     /**
-     * Получение корректно составленного текста, в котором все ключи заменены на соответствующие звуки.
+     * Обрабатывает звуки и текст для воспроизведения в Алисе
      *
-     * @param {ISound[]} sounds Пользовательские звуки.
-     * @param {string} text Исходный текст.
-     * @return {Promise<string>}
+     * @param {ISound[]} sounds - Массив звуков для обработки
+     * @param {string} text - Исходный текст для TTS
+     * @returns {Promise<string>} - Обработанный текст со звуками
+     *
+     * Правила обработки:
+     * - Если передан текст, он имеет приоритет над звуками
+     * - Если звуки не найдены, возвращается исходный текст
+     * - Стандартные звуки добавляются только если isUsedStandardSound = true
+     *
+     * @example
+     * ```typescript
+     * const alisaSound = new AlisaSound();
+     *
+     * // Воспроизведение стандартного звука с текстом
+     * const result = await alisaSound.getSounds([
+     *     { key: AlisaSound.S_AUDIO_GAME_WIN, sounds: [] }
+     * ], 'Поздравляем с победой!');
+     *
+     * // Воспроизведение пользовательского звука
+     * const result = await alisaSound.getSounds([
+     *     { key: 'custom', sounds: ['path/to/sound.opus'] }
+     * ], 'Текст с пользовательским звуком');
+     * ```
      */
     public async getSounds(sounds: ISound[], text: string): Promise<string> {
         if (this.isUsedStandardSound) {
@@ -426,22 +589,49 @@ export class AlisaSound implements TemplateSoundTypes {
     }
 
     /**
-     * Замена ключей в тексте на соответствующие им звуки.
+     * Заменяет звуковой токен в тексте на соответствующий звук
      *
-     * @param {string} key Ключ для поиска.
-     * @param {string|string[]} value Звук или массив звуков.
-     * @param {string} text Обрабатываемый текст.
-     * @return {string}
+     * @param {string} key - Ключ звука для замены
+     * @param {string | string[]} value - Значение или массив значений для замены
+     * @param {string} text - Исходный текст
+     * @returns {string} - Текст с замененными звуками
+     *
+     * @example
+     * ```typescript
+     * // Замена одиночного звука
+     * const text = AlisaSound.replaceSound(
+     *     '#game_win#',
+     *     '<speaker audio="alice-sounds-game-win-1.opus">',
+     *     'Поздравляем #game_win# с победой!'
+     * );
+     *
+     * // Замена на массив звуков
+     * const text = AlisaSound.replaceSound(
+     *     '#nature_rain#',
+     *     [
+     *         '<speaker audio="alice-sounds-nature-rain-1.opus">',
+     *         '<speaker audio="alice-sounds-nature-rain-2.opus">'
+     *     ],
+     *     'На улице #nature_rain# идет дождь'
+     * );
+     * ```
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
         return text.replace(key, Text.getText(value));
     }
 
     /**
-     * Удаление любых звуков и эффектов из текста.
+     * Удаляет все звуковые токены из текста
      *
-     * @param {string} text Обрабатываемый текст.
-     * @return string
+     * @param {string} text - Исходный текст
+     * @returns {string} - Текст без звуковых токенов
+     *
+     * @example
+     * ```typescript
+     * // Удаление звуковых токенов
+     * const text = AlisaSound.removeSound('Текст #game_win# без #nature_rain# звуков');
+     * // Результат: 'Текст без звуков'
+     * ```
      */
     public static removeSound(text: string): string {
         return text.replace(

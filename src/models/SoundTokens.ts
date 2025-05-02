@@ -11,70 +11,98 @@ import {
 import { Text } from '../utils/standard/Text';
 
 /**
- * Интерфейс для внутреннего состояния модели.
+ * Интерфейс для внутреннего состояния модели звуковых файлов.
+ * Определяет структуру данных для хранения информации о звуковых файлах в базе данных.
  */
 export interface ISoundModelState {
     /**
-     * Идентификатор звукового файла
+     * Идентификатор звукового файла.
+     * Уникальный идентификатор, используемый для ссылки на звуковой файл в API различных платформ.
+     * @example "doc123456789" для VK, "file_id_123456" для Telegram
      */
     soundToken: string;
     /**
-     * Путь к файлу
+     * Путь к файлу.
+     * Может быть URL-адресом звукового файла или путем к локальному файлу.
+     * @example "/path/to/audio.mp3" или "https://example.com/audio.mp3"
      */
     path: string;
     /**
-     * Тип платформы
+     * Тип платформы.
+     * Определяет, для какой платформы предназначен звуковой файл.
+     * @see SoundTokens.T_ALISA
+     * @see SoundTokens.T_VK
+     * @see SoundTokens.T_TELEGRAM
+     * @see SoundTokens.T_MARUSIA
      */
     type: string;
 }
 
 /**
- * Модель для взаимодействия со всеми звуками.
- * @class
+ * Модель для управления звуковыми файлами в различных платформах.
+ * Предоставляет единый интерфейс для работы со звуковыми файлами в Яндекс.Алисе, ВКонтакте, Telegram и Марусе.
+ *
+ * @class SoundTokens
+ * @extends Model<ISoundModelState>
+ *
+ * @example
+ * // Создание и загрузка звукового файла для Telegram
+ * const sound = new SoundTokens();
+ * sound.path = '/path/to/audio.mp3';
+ * sound.type = SoundTokens.T_TELEGRAM;
+ * const token = await sound.getToken();
+ * if (token) {
+ *     console.log('Звуковой файл успешно загружен, токен:', token);
+ * }
  */
 export class SoundTokens extends Model<ISoundModelState> {
+    /**
+     * Название таблицы для хранения данных о звуковых файлах.
+     * @private
+     */
     private readonly TABLE_NAME = 'SoundTokens';
 
     /**
-     * Тип платформы: Яндекс.Алиса
+     * Константы для определения типа платформы.
+     * Используются для указания, для какой платформы предназначен звуковой файл.
      */
+    /** Тип платформы: Яндекс.Алиса */
     public static readonly T_ALISA = 0;
-
-    /**
-     * Тип платформы: ВКонтакте
-     */
+    /** Тип платформы: ВКонтакте */
     public static readonly T_VK = 1;
-
-    /**
-     * Тип платформы: Telegram
-     */
+    /** Тип платформы: Telegram */
     public static readonly T_TELEGRAM = 2;
-
-    /**
-     * Тип платформы: Маруся
-     */
+    /** Тип платформы: Маруся */
     public static readonly T_MARUSIA = 3;
 
     /**
-     * Идентификатор/токен мелодии.
+     * Идентификатор/токен звукового файла.
+     * Уникальный идентификатор, используемый для ссылки на звуковой файл в API платформы.
      */
     public soundToken: string | null;
+
     /**
-     * Расположение звукового файла(url|/директория).
+     * Расположение звукового файла (url/директория).
+     * Может быть URL-адресом звукового файла или путем к локальному файлу.
      */
     public path: string | null;
+
     /**
-     * Тип приложения, для которого загружена мелодия.
+     * Тип приложения, для которого загружен звуковой файл.
+     * Определяется одной из констант T_ALISA, T_VK, T_TELEGRAM или T_MARUSIA.
      */
     public type: number;
+
     /**
-     * True если передается содержимое файла. По умолчанию: false.
+     * Флаг, указывающий, что передается содержимое файла.
+     * Если true, то path содержит содержимое файла, а не путь к нему.
      * @defaultValue false
      */
     public isAttachContent: boolean;
 
     /**
-     * SoundTokens constructor.
+     * Конструктор класса SoundTokens.
+     * Инициализирует все поля значениями по умолчанию.
      */
     public constructor() {
         super();
@@ -85,16 +113,18 @@ export class SoundTokens extends Model<ISoundModelState> {
     }
 
     /**
-     * Название таблицы/файла с данными.
-     * @returns {string} Название таблицы
+     * Возвращает название таблицы/файла с данными.
+     *
+     * @return {string} Название таблицы для хранения данных о звуковых файлах
      */
     public tableName(): string {
         return this.TABLE_NAME;
     }
 
     /**
-     * Основные правила для полей.
-     * @returns {IModelRules[]} Массив правил валидации для полей модели
+     * Определяет правила валидации для полей модели.
+     *
+     * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return [
@@ -111,8 +141,10 @@ export class SoundTokens extends Model<ISoundModelState> {
     }
 
     /**
-     * Название атрибутов таблицы.
-     * @returns {ISoundModelState} Объект с метками атрибутов
+     * Возвращает метки атрибутов таблицы.
+     * Используется для отображения понятных названий полей.
+     *
+     * @return {ISoundModelState} Объект с метками атрибутов
      */
     public attributeLabels(): ISoundModelState {
         return {
@@ -123,9 +155,21 @@ export class SoundTokens extends Model<ISoundModelState> {
     }
 
     /**
-     * Получение идентификатора/токена мелодии.
+     * Получает или создает токен звукового файла для указанной платформы.
+     * Метод автоматически определяет тип платформы и использует соответствующий API
+     * для загрузки и получения токена звукового файла.
      *
-     * @return {Promise<string|null>}
+     * @return {Promise<string>} Токен звукового файла или null в случае ошибки
+     *
+     * @example
+     * // Загрузка звукового файла для VK
+     * const sound = new SoundTokens();
+     * sound.path = '/path/to/voice.mp3';
+     * sound.type = SoundTokens.T_VK;
+     * const token = await sound.getToken();
+     * if (token) {
+     *     console.log('Звуковой файл успешно загружен, токен:', token);
+     * }
      */
     public async getToken(): Promise<string | null> {
         const where = {

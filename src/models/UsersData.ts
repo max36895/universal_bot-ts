@@ -3,34 +3,51 @@ import { IModelRes, IModelRules } from './interface';
 import { mmApp } from '../mmApp';
 
 /**
- * Внутреннее состояние модели пользовательских данных
+ * Интерфейс для внутреннего состояния модели пользовательских данных.
+ * Определяет структуру данных для хранения информации о пользователях в базе данных.
  */
 export interface IUserDataModelState {
     /**
-     * Идентификатор пользователя
+     * Идентификатор пользователя.
+     * Уникальный идентификатор пользователя в конкретной платформе.
+     * @example "123456789" для Telegram, "user_123456" для VK
      */
     userId: string;
     /**
-     * Метаданные пользователя в JSON
+     * Метаданные пользователя в JSON.
+     * Содержит дополнительную информацию о пользователе, такую как статистика использования,
+     * настройки, временные метки и т.д.
+     * @example { "lastVisit": "2024-03-20T12:00:00Z", "usageCount": 42 }
      */
     meta: string;
     /**
-     * Пользовательские данные в JSON
+     * Пользовательские данные в JSON.
+     * Содержит основное состояние пользователя, например, прогресс в игре,
+     * сохраненные настройки, историю действий и т.д.
+     * @example { "progress": 75, "settings": { "notifications": true } }
      */
     data: string;
     /**
-     * Тип платформы
+     * Тип платформы.
+     * Определяет, на какой платформе зарегистрирован пользователь.
+     * @see UsersData.T_ALISA
+     * @see UsersData.T_VK
+     * @see UsersData.T_TELEGRAM
+     * @see UsersData.T_VIBER
+     * @see UsersData.T_MARUSIA
+     * @see UsersData.T_SMART_APP
+     * @see UsersData.T_USER_APP
      */
     type: string;
 }
 
 /**
- * Модель для работы с пользовательскими данными
+ * Модель для работы с пользовательскими данными.
+ * Предоставляет единый интерфейс для работы с данными пользователей во всех поддерживаемых платформах.
  *
  * @class UsersData
  * @extends Model<IUserDataState>
  *
- * Класс предоставляет интерфейс для работы с пользовательскими данными во всех поддерживаемых платформах.
  * Основные возможности:
  * - Сохранение состояния пользователя между сессиями
  * - Хранение метаданных (например, статистика использования)
@@ -80,15 +97,16 @@ export interface IUserDataModelState {
  */
 export class UsersData extends Model<IUserDataModelState> {
     /**
-     * Название таблицы для хранения данных
+     * Название таблицы для хранения данных пользователей.
      * @readonly
      */
     public static readonly TABLE_NAME = 'UsersData';
 
     /**
-     * Тип платформы: Яндекс.Алиса
-     * @readonly
+     * Константы для определения типа платформы.
+     * Используются для указания, на какой платформе зарегистрирован пользователь.
      */
+    /** Тип платформы: Яндекс.Алиса */
     public static readonly T_ALISA = 0;
     /** Тип платформы: ВКонтакте */
     public static readonly T_VK = 1;
@@ -104,27 +122,39 @@ export class UsersData extends Model<IUserDataModelState> {
     public static readonly T_USER_APP = 512;
 
     /**
-     * Уникальный идентификатор пользователя
+     * Уникальный идентификатор пользователя.
+     * Может быть строкой или числом в зависимости от платформы.
+     * @example "123456789" для Telegram, 123456789 для VK
      */
     public userId: string | number | null;
 
     /**
-     * Метаданные пользователя
-     * @remarks Может содержать любые дополнительные данные о пользователе
+     * Метаданные пользователя.
+     * Может содержать любые дополнительные данные о пользователе, такие как:
+     * - Статистика использования
+     * - Временные метки
+     * - Настройки пользователя
+     * - Дополнительная информация
+     * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
     public meta: any;
 
     /**
-     * Основные данные пользователя
-     * @remarks Содержит основное состояние пользователя
+     * Основные данные пользователя.
+     * Содержит основное состояние пользователя, например:
+     * - Прогресс в игре
+     * - Сохраненные настройки
+     * - История действий
+     * - Другие пользовательские данные
+     * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
     public data: any;
 
     /**
-     * Тип платформы пользователя
+     * Тип платформы пользователя.
+     * Определяет платформу, с которой работает пользователь.
      * @see T_ALISA, T_VK, T_TELEGRAM и другие константы типов
-     * @remarks Определяет платформу, с которой работает пользователь.
-     * Возможные значения:
+     * @remarks Возможные значения:
      * - T_ALISA (0) - Яндекс.Алиса
      * - T_VK (1) - ВКонтакте
      * - T_TELEGRAM (2) - Telegram
@@ -136,12 +166,14 @@ export class UsersData extends Model<IUserDataModelState> {
     public type: number;
 
     /**
-     * Создает экземпляр модели пользовательских данных
+     * Создает экземпляр модели пользовательских данных.
+     * Инициализирует все поля значениями по умолчанию.
      *
      * @example
      * ```typescript
      * const userData = new UsersData();
      * userData.userId = 'user123';
+     * userData.type = UsersData.T_TELEGRAM;
      * ```
      */
     public constructor() {
@@ -153,16 +185,18 @@ export class UsersData extends Model<IUserDataModelState> {
     }
 
     /**
-     * Возвращает название таблицы/файла для хранения данных
-     * @returns {string} Название таблицы
+     * Возвращает название таблицы/файла для хранения данных.
+     *
+     * @return {string} Название таблицы для хранения данных пользователей
      */
     public tableName(): string {
         return UsersData.TABLE_NAME;
     }
 
     /**
-     * Определяет правила валидации полей
-     * @returns {IModelRules[]} Массив правил валидации
+     * Определяет правила валидации полей модели.
+     *
+     * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return [
@@ -183,8 +217,10 @@ export class UsersData extends Model<IUserDataModelState> {
     }
 
     /**
-     * Возвращает описания атрибутов модели
-     * @returns {IUserDataModelState} Описания атрибутов
+     * Возвращает описания атрибутов модели.
+     * Используется для отображения понятных названий полей.
+     *
+     * @return {IUserDataModelState} Описания атрибутов
      */
     public attributeLabels(): IUserDataModelState {
         return {
@@ -196,8 +232,9 @@ export class UsersData extends Model<IUserDataModelState> {
     }
 
     /**
-     * Ищет одну запись в хранилище по текущим параметрам
-     * @returns {Promise<boolean>} true, если запись найдена
+     * Ищет одну запись в хранилище по текущим параметрам.
+     *
+     * @return {Promise<boolean>} true, если запись найдена
      *
      * @example
      * ```typescript
@@ -205,6 +242,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * userData.userId = 'user123';
      * if (await userData.getOne()) {
      *   console.log('Пользователь найден:', userData.data);
+     * } else {
+     *   console.log('Пользователь не найден');
      * }
      * ```
      */
@@ -218,15 +257,16 @@ export class UsersData extends Model<IUserDataModelState> {
     }
 
     /**
-     * Валидирует значения перед сохранением
-     * @remarks Преобразует объекты meta и data в JSON при сохранении в БД
+     * Валидирует значения перед сохранением.
+     * Преобразует объекты meta и data в JSON при сохранении в БД.
      *
      * @throws {Error} Если данные не прошли валидацию
      *
      * @example
      * ```typescript
      * userData.meta = { lastVisit: new Date() };
-     * userData.validate(); // meta будет преобразован в JSON
+     * userData.data = { progress: 75 };
+     * userData.validate(); // meta и data будут преобразованы в JSON
      * ```
      */
     public validate(): void {
@@ -242,21 +282,25 @@ export class UsersData extends Model<IUserDataModelState> {
     }
 
     /**
-     * Инициализирует модель данными
+     * Инициализирует модель данными.
+     * Преобразует JSON строки meta и data в объекты при загрузке из БД.
+     *
      * @param {any} data - Данные для инициализации
      * @remarks
-     * - Преобразует JSON строки meta и data в объекты при загрузке из БД
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
      * - Парсинг происходит только если включено сохранение в БД (mmApp.isSaveDb === true)
      *
      * @example
      * ```typescript
+     * const userData = new UsersData();
      * userData.init({
      *   userId: 'user123',
-     *   meta: '{"lastVisit":"2024-01-01"}',
-     *   data: '{"visits":1}',
-     *   type: 0
+     *   meta: '{"lastVisit":"2024-03-20T12:00:00Z"}',
+     *   data: '{"progress":75}',
+     *   type: UsersData.T_TELEGRAM
      * });
+     * console.log(userData.meta.lastVisit); // Date object
+     * console.log(userData.data.progress); // 75
      * ```
      */
     public init(data: any): void {

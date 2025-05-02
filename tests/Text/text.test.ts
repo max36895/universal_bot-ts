@@ -1,20 +1,20 @@
-import {Text} from '../../src/utils/standard/Text';
+import { Text } from '../../src/utils/standard/Text';
 
 describe('Text', () => {
     it('Resize', () => {
-        expect('test te').toEqual( Text.resize('test te'));
-        expect('test te').toEqual( Text.resize('test te', 12));
-        expect('test te').toEqual( Text.resize('test te', 7));
-        expect('test...').toEqual( Text.resize('testing te', 7));
-        expect('...').toEqual( Text.resize('testing te', 3));
+        expect('test te').toEqual(Text.resize('test te'));
+        expect('test te').toEqual(Text.resize('test te', 12));
+        expect('test te').toEqual(Text.resize('test te', 7));
+        expect('test...').toEqual(Text.resize('testing te', 7));
+        expect('...').toEqual(Text.resize('testing te', 3));
     });
 
     it('Resize ellipsis', () => {
-        expect('tes').toEqual( Text.resize('testing te', 3, false));
-        expect('testing').toEqual( Text.resize('testing te', 7, false));
-        expect('testing te').toEqual( Text.resize('testing te', 20, false));
-        expect('test...').toEqual( Text.resize('testing te', 7, true));
-        expect('testing te').toEqual( Text.resize('testing te', 20, true));
+        expect('tes').toEqual(Text.resize('testing te', 3, false));
+        expect('testing').toEqual(Text.resize('testing te', 7, false));
+        expect('testing te').toEqual(Text.resize('testing te', 20, false));
+        expect('test...').toEqual(Text.resize('testing te', 7, true));
+        expect('testing te').toEqual(Text.resize('testing te', 20, true));
     });
 
     it('Is say true', () => {
@@ -66,17 +66,17 @@ describe('Text', () => {
     });
 
     it('Get ending', () => {
-        expect(Text.getEnding(1,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблоко');
-        expect(Text.getEnding(2,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
-        expect(Text.getEnding(3,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
-        expect(Text.getEnding(4,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
+        expect(Text.getEnding(1, ['яблоко', 'яблока', 'яблок'])).toEqual('яблоко');
+        expect(Text.getEnding(2, ['яблоко', 'яблока', 'яблок'])).toEqual('яблока');
+        expect(Text.getEnding(3, ['яблоко', 'яблока', 'яблок'])).toEqual('яблока');
+        expect(Text.getEnding(4, ['яблоко', 'яблока', 'яблок'])).toEqual('яблока');
 
         for (let i = 5; i < 21; i++) {
-            expect(Text.getEnding(i,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблок');
+            expect(Text.getEnding(i, ['яблоко', 'яблока', 'яблок'])).toEqual('яблок');
         }
 
-        expect(Text.getEnding(21,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблоко');
-        expect(Text.getEnding(22,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблока');
-        expect(Text.getEnding(29,['яблоко', 'яблока', 'яблок'])).toEqual( 'яблок');
+        expect(Text.getEnding(21, ['яблоко', 'яблока', 'яблок'])).toEqual('яблоко');
+        expect(Text.getEnding(22, ['яблоко', 'яблока', 'яблок'])).toEqual('яблока');
+        expect(Text.getEnding(29, ['яблоко', 'яблока', 'яблок'])).toEqual('яблок');
     });
 });

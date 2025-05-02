@@ -11,29 +11,29 @@ import {
 } from './interfaces';
 
 /**
- * Класс отвечающий за загрузку аудиофайлов в навык Алисы
- * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-sounds-upload-docpage/) Смотри тут
+ * Класс, отвечающий за загрузку аудиофайлов в навык Алисы
+ * @see https://yandex.ru/dev/dialogs/alice/doc/resource-sounds-upload-docpage/ Документация API Яндекс.Диалогов
  *
  * @class YandexSoundRequest
  */
 export class YandexSoundRequest extends YandexRequest {
     /**
-     * Адрес, на который будет отправляться запрос.
+     * Адрес, на который будет отправляться запрос
+     * @private
      */
     private readonly STANDARD_URL = 'https://dialogs.yandex.net/api/v1/';
     /**
-     * Идентификатор навыка, необходимый для корректного сохранения аудиофайлов (Обязательный параметр).
-     * @see YandexRequest Смотри тут
+     * Идентификатор навыка, необходимый для корректного сохранения аудиофайлов
+     * @see YandexRequest Базовый класс для работы с API Яндекса
      */
     public skillId: string | null;
 
     /**
-     * YandexSoundRequest constructor.
-     *
-     * @param {string} oauth Авторизационный токен для загрузки аудиофайлов.
-     * @param {string} skillId Идентификатор навыка.
-     * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документация.
-     * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
+     * Создает экземпляр класса для работы с аудиофайлами в навыке Алисы
+     * @param oauth Авторизационный токен для загрузки аудиофайлов
+     * @param skillId Идентификатор навыка
+     * @see https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/ Документация по загрузке ресурсов
+     * @see https://oauth.yandex.ru/verification_code Получение OAuth-токена
      */
     constructor(oauth: string | null = null, skillId: string | null = null) {
         super(oauth);
@@ -51,15 +51,11 @@ export class YandexSoundRequest extends YandexRequest {
     }
 
     /**
-     * Проверить занятое место.
-     *
-     * Для каждого аккаунта на Яндексе действует лимит на загрузку аудиофайлов — вы можете хранить на Диалогах не больше 1 ГБ файлов. Обратите внимание, лимит учитывает размер сжатых аудиофайлов, а не размер оригиналов. Диалоги конвертируют загруженные аудиофайлы в формат OPUS и обрезают их до 120 секунд — размер этих файлов и будет учитываться в лимите.
-     *
-     * @return Promise<IYandexCheckOutPlace>
-     * [
-     * - int total: Все доступное место.
-     * - int used: Занятое место.
-     * ]
+     * Проверка занятого места в хранилище аудиофайлов
+     * @returns {Promise<IYandexCheckOutPlace | null>} Информация о занятом месте:
+     * - total: общий доступный объем хранилища
+     * - used: использованный объем хранилища
+     * @remarks Для каждого аккаунта действует лимит в 1 ГБ. Учитывается размер сжатых файлов в формате OPUS
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = this.STANDARD_URL + 'status';
@@ -73,20 +69,16 @@ export class YandexSoundRequest extends YandexRequest {
     }
 
     /**
-     * Загрузить аудиофайл.
-     *
-     * @param {string} soundDir Расположение аудиофайла на сервере.
-     *
-     * @return Promise<IYandexRequestDownloadSound>
-     * [
-     *  - string id: Идентификатор аудиофайла.
-     *  - string skillId: Идентификатор навыка.
-     *  - int|null size: Размер файла.
-     *  - string originalName: Название загружаемого файла.
-     *  - string createdAt: Дата создания файла.
-     *  - bool isProcessed: Флаг готовности файла.
-     *  - error: Текст ошибки.
-     * ]
+     * Загрузка аудиофайла с сервера
+     * @param soundDir Путь к аудиофайлу на сервере
+     * @returns {Promise<IYandexRequestDownloadSound | null>} Информация о загруженном аудиофайле:
+     * - id: уникальный идентификатор файла
+     * - skillId: идентификатор навыка
+     * - size: размер файла в байтах
+     * - originalName: оригинальное имя файла
+     * - createdAt: дата и время загрузки
+     * - isProcessed: статус обработки файла
+     * - error: сообщение об ошибке (если есть)
      */
     public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound | null> {
         if (this.skillId) {
@@ -109,20 +101,8 @@ export class YandexSoundRequest extends YandexRequest {
     }
 
     /**
-     * Просмотр всех загруженных аудиофайлов.
-     *
-     * @return Promise<IYandexRequestDownloadSound[]>
-     * [
-     *  [
-     *      - string id: Идентификатор аудиофайла.
-     *      - string skillId: Идентификатор навыка.
-     *      - int|null size: Размер файла.
-     *      - string originalName: Название загружаемого файла.
-     *      - string createdAt: Дата создания файла.
-     *      - bool isProcessed: Флаг готовности файла.
-     *      - error: Текст ошибки.
-     *  ]
-     * ]
+     * Получение списка всех загруженных аудиофайлов
+     * @returns {Promise<IYandexRequestDownloadSound[] | null>} Массив с информацией о загруженных аудиофайлах
      */
     public async getLoadedSounds(): Promise<IYandexRequestDownloadSound[] | null> {
         if (this.skillId) {
@@ -136,12 +116,9 @@ export class YandexSoundRequest extends YandexRequest {
     }
 
     /**
-     * Удаление выбранного аудиофайла.
-     * В случае успеха вернет 'ok'.
-     *
-     * @param {string} soundId Идентификатор аудиофайла, который необходимо удалить.
-     *
-     * @return Promise<string>
+     * Удаление конкретного аудиофайла по его идентификатору
+     * @param soundId Идентификатор аудиофайла для удаления
+     * @returns {Promise<string | null>} 'ok' при успешном удалении, null при ошибке
      */
     public async deleteSound(soundId: string): Promise<string | null> {
         if (this.skillId) {
@@ -166,11 +143,9 @@ export class YandexSoundRequest extends YandexRequest {
     }
 
     /**
-     * Удаление всех аудиофайла.
-     * Если при удалении произошел сбой, то аудиофайл останется.
-     * Чтобы точно удалить все аудиофайлы лучше использовать грубое удаление.
-     *
-     * @return Promise<boolean>
+     * Удаление всех загруженных аудиофайлов
+     * @returns {Promise<boolean>} true если все файлы успешно удалены, false при ошибке
+     * @remarks Если при удалении произойдет ошибка, некоторые файлы могут остаться в хранилище
      */
     public async deleteSounds(): Promise<boolean> {
         if (this.skillId) {

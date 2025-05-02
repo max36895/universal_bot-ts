@@ -1,4 +1,4 @@
-import {Sound, mmApp, T_ALISA, AlisaSound} from '../../src';
+import { Sound, mmApp, T_ALISA, AlisaSound } from '../../src';
 
 describe('sound', () => {
     it('AlisaSound getPause', () => {
@@ -25,10 +25,8 @@ describe('sound', () => {
         sound.sounds = [
             {
                 key: '[{test}]',
-                sounds: [
-                    '<my_Sound>'
-                ]
-            }
+                sounds: ['<my_Sound>'],
+            },
         ];
         expect(await sound.getSounds('hello')).toEqual('hello');
         expect(await sound.getSounds('hello [{test}] listen')).toEqual('hello <my_Sound> listen');

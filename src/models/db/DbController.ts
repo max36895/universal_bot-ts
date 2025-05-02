@@ -1,3 +1,15 @@
+/**
+ * Модуль контроллера для работы с данными
+ *
+ * Предоставляет унифицированный интерфейс для:
+ * - Работы с различными источниками данных (MongoDB, файлы)
+ * - Выполнения CRUD операций
+ * - Валидации данных
+ * - Управления подключениями
+ *
+ * @module models/db/DbController
+ */
+
 import { DbControllerModel } from './DbControllerModel';
 import { mmApp } from '../../mmApp';
 import { IQueryData, QueryData } from './QueryData';
@@ -6,16 +18,45 @@ import { DbControllerFile } from './DbControllerFile';
 import { DbControllerMongoDb } from './DbControllerMongoDb';
 
 /**
- * Контроллер, позволяющий работать с данными.
- * В зависимости от конфигурации приложения, автоматически подключает нужный источник данных.
+ * Контроллер для работы с данными
+ * Автоматически выбирает подходящий источник данных на основе конфигурации приложения
+ *
+ * @example
+ * ```typescript
+ * // Создание контроллера
+ * const controller = new DbController();
+ *
+ * // Настройка правил и имени таблицы
+ * controller.setRules([
+ *   { name: ['username'], type: 'string', max: 50 }
+ * ]);
+ * controller.tableName = 'users';
+ *
+ * // Выполнение запросов
+ * const result = await controller.select({ username: 'John' });
+ * ```
  *
  * @class DbController
+ * @extends DbControllerModel
  * @see DbControllerFile
  * @see DbControllerMongoDb
  */
 export class DbController extends DbControllerModel {
+    /**
+     * Внутренний контроллер для работы с конкретным источником данных
+     * Может быть либо DbControllerFile, либо DbControllerMongoDb
+     */
     private _controller: DbControllerFile | DbControllerMongoDb;
 
+    /**
+     * Создает новый экземпляр контроллера
+     * Выбирает подходящий источник данных на основе конфигурации приложения
+     *
+     * @example
+     * ```typescript
+     * const controller = new DbController();
+     * ```
+     */
     constructor() {
         super();
         if (mmApp.isSaveDb) {
@@ -26,8 +67,17 @@ export class DbController extends DbControllerModel {
     }
 
     /**
-     * Устанавливает правила для модели
-     * @param rules
+     * Устанавливает правила валидации для модели
+     *
+     * @example
+     * ```typescript
+     * controller.setRules([
+     *   { name: ['username'], type: 'string', max: 50 },
+     *   { name: ['age'], type: 'integer' }
+     * ]);
+     * ```
+     *
+     * @param rules - Массив правил валидации
      */
     public setRules(rules: IModelRules[]): void {
         super.setRules(rules);
@@ -35,8 +85,14 @@ export class DbController extends DbControllerModel {
     }
 
     /**
-     * Устанавливает имя уникального ключа
-     * @param {string | number} primaryKey
+     * Устанавливает имя первичного ключа таблицы
+     *
+     * @example
+     * ```typescript
+     * controller.primaryKeyName = 'id';
+     * ```
+     *
+     * @param primaryKey - Имя первичного ключа
      */
     public set primaryKeyName(primaryKey: TKey) {
         this._primaryKeyName = primaryKey;
@@ -44,7 +100,14 @@ export class DbController extends DbControllerModel {
     }
 
     /**
-     * Возвращает имя уникального ключа
+     * Возвращает имя первичного ключа таблицы
+     *
+     * @example
+     * ```typescript
+     * const keyName = controller.primaryKeyName;
+     * ```
+     *
+     * @returns Имя первичного ключа
      */
     public get primaryKeyName(): TKey {
         return this._controller.primaryKeyName;
@@ -52,7 +115,13 @@ export class DbController extends DbControllerModel {
 
     /**
      * Устанавливает имя таблицы
-     * @param tableName
+     *
+     * @example
+     * ```typescript
+     * controller.tableName = 'users';
+     * ```
+     *
+     * @param tableName - Имя таблицы
      */
     public set tableName(tableName: string) {
         super.tableName = tableName;
@@ -61,134 +130,222 @@ export class DbController extends DbControllerModel {
 
     /**
      * Возвращает имя таблицы
+     *
+     * @example
+     * ```typescript
+     * const table = controller.tableName;
+     * ```
+     *
+     * @returns Имя таблицы
      */
     public get tableName(): string {
         return this._controller.tableName;
     }
 
     /**
-     * Выполнение запроса на сохранения записи.
-     * Обновление записи происходит в том случае, если запись присутствует в источнике данных.
-     * Иначе будет добавлена новая запись.
+     * Сохраняет запись в источник данных
+     * Если запись существует - обновляет, иначе создает новую
      *
-     * @param {QueryData} queryData Данные для сохранения записи
-     * @param {boolean} isNew Определяет необходимость добавления новой записи
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setData({ username: 'John', age: 25 });
+     * await controller.save(queryData);
+     * ```
+     *
+     * @param queryData - Данные для сохранения
+     * @param isNew - Флаг создания новой записи
+     * @returns Promise с результатом операции
      */
     public async save(queryData: QueryData, isNew: boolean = false): Promise<any> {
         return this._controller.save(queryData, isNew);
     }
 
     /**
-     * Наличие записи в таблице
+     * Проверяет наличие записи в таблице
      *
-     * @param {IQueryData} query Запрос
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const exists = await controller.isSelected({ id: 1 });
+     * if (exists) {
+     *   console.log('Record found');
+     * }
+     * ```
+     *
+     * @param query - Условия поиска
+     * @returns Promise<boolean> - true если запись найдена
      */
     public async isSelected(query: IQueryData | null): Promise<boolean> {
         return !!(await this._controller.selectOne(query))?.status;
     }
 
     /**
-     * Выполнение запроса на обновление записи в источнике данных
+     * Обновляет существующую запись в источнике данных
      *
-     * @param {QueryData} updateQuery Данные для обновления записи
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setQuery({ id: 1 });
+     * queryData.setData({ username: 'John' });
+     * await controller.update(queryData);
+     * ```
+     *
+     * @param updateQuery - Данные для обновления
+     * @returns Promise с результатом операции
      */
     public async update(updateQuery: QueryData): Promise<any> {
         return this._controller.update(updateQuery);
     }
 
     /**
-     * Выполнение запроса на добавление записи в источник данных
+     * Добавляет новую запись в источник данных
      *
-     * @param {QueryData} insertQuery Данные для добавления записи
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setData({ username: 'John', age: 25 });
+     * await controller.insert(queryData);
+     * ```
+     *
+     * @param insertQuery - Данные для добавления
+     * @returns Promise с результатом операции
      */
     public async insert(insertQuery: QueryData): Promise<any> {
         return this._controller.insert(insertQuery);
     }
 
     /**
-     * Выполнение запроса на удаление записи в источнике данных
+     * Удаляет запись из источника данных
      *
-     * @param {QueryData} removeQuery Данные для удаления записи
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setQuery({ id: 1 });
+     * await controller.remove(queryData);
+     * ```
+     *
+     * @param removeQuery - Данные для удаления
+     * @returns Promise<boolean> - true если удаление успешно
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
         return this._controller.remove(removeQuery);
     }
 
     /**
-     * Выполнение произвольного запроса к источнику данных
+     * Выполняет произвольный запрос к источнику данных
      *
-     * @param {Function} callback Запрос, который необходимо выполнить
-     * @return {Object|Object[]}
+     * @example
+     * ```typescript
+     * const result = await controller.query(async (client, db) => {
+     *   const collection = db.collection('users');
+     *   return await collection.aggregate([
+     *     { $match: { age: { $gt: 18 } } },
+     *     { $group: { _id: '$city', count: { $sum: 1 } } }
+     *   ]).toArray();
+     * });
+     * ```
+     *
+     * @param callback - Функция обратного вызова для выполнения запроса
+     * @returns Результат выполнения запроса
      */
     public query(callback: TQueryCb): any {
         return this._controller.query(callback);
     }
 
     /**
-     * Валидация значений полей для таблицы.
+     * Выполняет валидацию данных
      *
-     * @param {IQueryData} element
+     * @example
+     * ```typescript
+     * const validated = controller.validate({
+     *   username: 'John',
+     *   age: 25
+     * });
+     * ```
+     *
+     * @param element - Данные для валидации
+     * @returns Валидированные данные
      */
     public validate(element: IQueryData | null): IQueryData {
         return this._controller.validate(element);
     }
 
     /**
-     * Выполнение запроса на поиск записей в источнике данных
+     * Выполняет поиск записей в источнике данных
      *
-     * @param {IQueryData | null} where Данные для поиска значения
-     * @param {boolean} isOne Вывести только 1 запись.
-     * @return {Promise<IModelRes>}
+     * @example
+     * ```typescript
+     * // Поиск одной записи
+     * const one = await controller.select({ id: 1 }, true);
+     *
+     * // Поиск нескольких записей
+     * const many = await controller.select({ age: { $gt: 18 } });
+     * ```
+     *
+     * @param where - Условия поиска
+     * @param isOne - Флаг выборки одной записи
+     * @returns Promise с результатом запроса
      */
     public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
         return this._controller.select(where, isOne);
     }
 
     /**
-     * Приводит полученный результат к требуемому типу.
-     * В качестве результата должен вернуться объект вида:
-     * {
-     *    key: value
-     * }
-     * где key - порядковый номер поля(0, 1... 3), либо название поля. Рекомендуется использовать имя поля. Важно чтобы имя поля было указано в rules, имена не входящие в rules будут проигнорированы.
-     * value - значение поля.
+     * Преобразует результат запроса в требуемый формат
      *
-     * @param {IModelRes} res Результат выполнения запроса
-     * @return {IDbControllerResult}
+     * @example
+     * ```typescript
+     * const result = await controller.select({ id: 1 });
+     * const value = controller.getValue(result);
+     * console.log(value.username); // John
+     * ```
+     *
+     * @param res - Результат выполнения запроса
+     * @returns Объект с данными или null
      */
     public getValue(res: IModelRes): IDbControllerResult | null {
         return this._controller.getValue(res);
     }
 
     /**
-     * Удаление подключения к БД
+     * Закрывает соединение с источником данных
+     *
+     * @example
+     * ```typescript
+     * controller.destroy();
+     * ```
      */
     public destroy(): void {
         this._controller.destroy();
     }
 
     /**
-     * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
+     * Экранирует специальные символы в строке
      *
-     * @param {string | number} text Исходный текст.
-     * @return string
+     * @example
+     * ```typescript
+     * const safe = controller.escapeString("O'Connor");
+     * ```
+     *
+     * @param text - Текст для экранирования
+     * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
         return this._controller.escapeString(text);
     }
 
     /**
-     * Проверка подключения к источнику данных.
-     * При использовании БД, проверяется статус подключения.
-     * Если удалось подключиться, возвращается true, в противном случае false.
-     * При сохранении данных в файл, всегда возвращается true.
+     * Проверяет состояние подключения к источнику данных
      *
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const isConnected = await controller.isConnected();
+     * if (isConnected) {
+     *   // Выполнение операций с данными
+     * }
+     * ```
+     *
+     * @returns Promise<boolean> - true если подключение активно
      */
     public async isConnected(): Promise<boolean> {
         return this._controller.isConnected();

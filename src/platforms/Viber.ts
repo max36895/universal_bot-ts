@@ -7,18 +7,39 @@ import { IViberParams } from '../api/interfaces';
 import { Buttons, IViberButtonObject } from '../components/button';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Viber.
+ * Класс для работы с платформой Viber
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате Viber
  * @class Viber
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Viber extends TemplateTypeModel {
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IViberContent|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * Обрабатывает входящие сообщения и события от Viber
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой бота
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
+     *
+     * Поддерживаемые типы событий:
+     * - conversation_started: начало диалога
+     * - message: входящее сообщение
+     *
+     * Структура сообщения:
+     * - type: тип сообщения (text, picture, video, file, location, contact, sticker)
+     * - text: текст сообщения
+     * - media: URL медиафайла
+     * - location: координаты местоположения
+     * - contact: контактная информация
+     * - tracking_data: данные для отслеживания
+     * - file_name: имя файла
+     * - file_size: размер файла
+     * - duration: длительность видео
+     * - sticker_id: ID стикера
+     *
+     * @see https://developers.viber.com/docs/api/rest-bot-api/#receive-message-from-user Документация по сообщениям
      */
     public async init(query: string | IViberContent, controller: BotController): Promise<boolean> {
         if (query) {
@@ -97,9 +118,10 @@ export class Viber extends TemplateTypeModel {
     }
 
     /**
-     * Заполнение nlu.
-     *
-     * @param {string} userName Имя пользователя.
+     * Заполняет данные о пользователе в NLU
+     * Разбивает полное имя на компоненты (username, first_name, last_name)
+     * @param userName Полное имя пользователя
+     * @protected
      */
     protected setNlu(userName: string): void {
         const name = userName.split(' ');
@@ -112,9 +134,9 @@ export class Viber extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<string>}
+     * Формирует и отправляет ответ пользователю
+     * Отправляет текст, карточки и звуки через Viber API
+     * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {

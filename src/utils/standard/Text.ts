@@ -1,50 +1,122 @@
+/**
+ * Модуль для работы с текстом
+ *
+ * Предоставляет набор утилит для:
+ * - Обработки и форматирования текста
+ * - Поиска совпадений в тексте
+ * - Проверки схожести текстов
+ * - Работы с окончаниями слов
+ *
+ * @module utils/standard/Text
+ */
 import { rand, similarText } from './util';
 
 /**
  * Тип для поиска совпадений в тексте
+ * Может быть строкой или массивом строк
+ *
+ * @example
+ * ```typescript
+ * const pattern: TPattern = 'привет';
+ * const patterns: TPattern = ['привет', 'здравствуйте'];
+ * ```
  */
 export type TPattern = string | readonly string[];
 
 /**
- * Интерфейс для проверки схожести текста
- * @public
+ * Интерфейс результата проверки схожести текстов
+ *
+ * @example
+ * ```typescript
+ * const result: ITextSimilarity = {
+ *   status: true,
+ *   index: 0,
+ *   percent: 100,
+ *   text: 'привет'
+ * };
+ * ```
  */
 export interface ITextSimilarity {
     /**
      * Статус успешности сравнения текстов
+     * true - если процент схожести превышает пороговое значение
      */
     status: boolean;
+
     /**
      * Индекс совпавшего текста в массиве или null для строки
+     * Используется при сравнении с массивом текстов
      */
     index: number | null;
+
     /**
      * Процент схожести текстов (от 0 до 100)
+     * 100% означает полное совпадение
      */
     percent: number;
+
     /**
      * Совпавший текст или null, если совпадений нет
+     * Содержит оригинальный текст из массива сравнения
      */
     text?: string | null;
 }
 
 /**
  * Класс для работы с текстом и текстовыми операциями
- * @class Text
+ *
+ * @remarks
+ * Класс предоставляет статические методы для:
+ * - Обрезки текста
+ * - Проверки URL
+ * - Определения согласия/отрицания
+ * - Поиска совпадений
+ * - Работы с окончаниями слов
+ * - Проверки схожести текстов
+ *
+ * @example
+ * ```typescript
+ * // Обрезка текста
+ * Text.resize('Длинный текст', 5); // -> 'Длин...'
+ *
+ * // Проверка URL
+ * Text.isUrl('https://example.com'); // -> true
+ *
+ * // Определение согласия
+ * Text.isSayTrue('да, согласен'); // -> true
+ *
+ * // Поиск совпадений
+ * Text.isSayText(['привет', 'здравствуйте'], 'привет мир'); // -> true
+ *
+ * // Работа с окончаниями
+ * Text.getEnding(5, ['яблоко', 'яблока', 'яблок']); // -> 'яблок'
+ *
+ * // Проверка схожести
+ * Text.textSimilarity('привет', 'привт', 80); // -> { status: true, percent: 90, ... }
+ * ```
  */
 export class Text {
     /**
      * Кэш для скомпилированных регулярных выражений
+     * Улучшает производительность при повторном использовании шаблонов
+     *
      * @private
      */
     private static readonly regexCache = new Map<string, RegExp>();
 
     /**
      * Обрезает текст до указанной длины
+     *
      * @param {string | null} text - Исходный текст
-     * @param {number} size - Максимальная длина результата
-     * @param {boolean} isEllipsis - Добавлять ли многоточие в конце обрезанного текста
+     * @param {number} [size=950] - Максимальная длина результата
+     * @param {boolean} [isEllipsis=true] - Добавлять ли многоточие в конце
      * @returns {string} Обрезанный текст
+     *
+     * @example
+     * ```typescript
+     * Text.resize('Длинный текст', 5); // -> 'Длин...'
+     * Text.resize('Длинный текст', 5, false); // -> 'Длинн'
+     * ```
      */
     public static resize(
         text: string | null,
@@ -69,8 +141,15 @@ export class Text {
 
     /**
      * Проверяет, является ли строка URL-адресом
+     *
      * @param {string} link - Проверяемая строка
      * @returns {boolean} true, если строка является URL-адресом
+     *
+     * @example
+     * ```typescript
+     * Text.isUrl('https://example.com'); // -> true
+     * Text.isUrl('не url'); // -> false
+     * ```
      */
     public static isUrl(link: string): boolean {
         const URL_PATTERN = /((http|s:\/\/)[^( |\n)]+)/gimu;
@@ -79,8 +158,22 @@ export class Text {
 
     /**
      * Определяет наличие в тексте согласия пользователя
+     *
      * @param {string} text - Проверяемый текст
      * @returns {boolean} true, если найдено подтверждение
+     *
+     * @remarks
+     * Распознает следующие паттерны:
+     * - "да"
+     * - "конечно"
+     * - "согласен"/"согласна"
+     * - "подтверждаю"/"подтверждаю"
+     *
+     * @example
+     * ```typescript
+     * Text.isSayTrue('да, согласен'); // -> true
+     * Text.isSayTrue('нет, не согласен'); // -> false
+     * ```
      */
     public static isSayTrue(text: string): boolean {
         if (!text) {
@@ -99,8 +192,21 @@ export class Text {
 
     /**
      * Определяет наличие в тексте отрицания пользователя
+     *
      * @param {string} text - Проверяемый текст
      * @returns {boolean} true, если найдено отрицание
+     *
+     * @remarks
+     * Распознает следующие паттерны:
+     * - "нет"
+     * - "неа"
+     * - "не"
+     *
+     * @example
+     * ```typescript
+     * Text.isSayFalse('нет, не хочу'); // -> true
+     * Text.isSayFalse('да, хочу'); // -> false
+     * ```
      */
     public static isSayFalse(text: string): boolean {
         if (!text) {
@@ -118,9 +224,11 @@ export class Text {
 
     /**
      * Проверяет наличие совпадений в тексте по шаблонам
+     *
      * @param {TPattern} patterns - Шаблоны для поиска
      * @param {string} text - Проверяемый текст
      * @returns {boolean} true, если найдено совпадение с одним из шаблонов
+     *
      * @private
      */
     private static isSayPattern(patterns: TPattern, text: string): boolean {
@@ -137,10 +245,23 @@ export class Text {
 
     /**
      * Проверяет наличие совпадений в тексте
+     *
      * @param {TPattern} find - Искомый текст или массив текстов
      * @param {string} text - Исходный текст для поиска
-     * @param {boolean} isPattern - Использовать ли регулярные выражения
+     * @param {boolean} [isPattern=false] - Использовать ли регулярные выражения
      * @returns {boolean} true, если найдено совпадение
+     *
+     * @example
+     * ```typescript
+     * // Поиск подстроки
+     * Text.isSayText('привет', 'привет мир'); // -> true
+     *
+     * // Поиск одной из подстрок
+     * Text.isSayText(['привет', 'здравствуйте'], 'привет мир'); // -> true
+     *
+     * // Поиск по регулярному выражению
+     * Text.isSayText(['\\bпривет\\b', '\\bмир\\b'], 'привет мир', true); // -> true
+     * ```
      */
     public static isSayText(find: TPattern, text: string, isPattern: boolean = false): boolean {
         if (!text) {
@@ -157,8 +278,10 @@ export class Text {
 
     /**
      * Получает или создает регулярное выражение из кэша
+     *
      * @param {string} pattern - Шаблон регулярного выражения
      * @returns {RegExp} Скомпилированное регулярное выражение
+     *
      * @private
      */
     private static getCachedRegex(pattern: string): RegExp {
@@ -172,8 +295,15 @@ export class Text {
 
     /**
      * Возвращает случайную строку из массива или исходную строку
+     *
      * @param {TPattern} str - Строка или массив строк
      * @returns {string} Выбранная строка
+     *
+     * @example
+     * ```typescript
+     * Text.getText('привет'); // -> 'привет'
+     * Text.getText(['привет', 'здравствуйте']); // -> случайная строка из массива
+     * ```
      */
     public static getText(str: TPattern): string {
         return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
@@ -181,10 +311,22 @@ export class Text {
 
     /**
      * Возвращает правильное окончание слова в зависимости от числа
+     *
      * @param {number} num - Число для определения окончания
      * @param {readonly string[]} titles - Варианты окончаний ['один', 'два-четыре', 'пять-десять']
-     * @param {number | null} index - Принудительный индекс варианта окончания
+     * @param {number | null} [index=null] - Принудительный индекс варианта окончания
      * @returns {string | null} Выбранное окончание или null, если не найдено
+     *
+     * @example
+     * ```typescript
+     * const titles = ['яблоко', 'яблока', 'яблок'];
+     * Text.getEnding(1, titles); // -> 'яблоко'
+     * Text.getEnding(2, titles); // -> 'яблока'
+     * Text.getEnding(5, titles); // -> 'яблок'
+     *
+     * // Принудительный выбор формы
+     * Text.getEnding(5, titles, 0); // -> 'яблоко'
+     * ```
      */
     public static getEnding(
         num: number,
@@ -205,11 +347,32 @@ export class Text {
 
     /**
      * Проверяет схожесть текстов и возвращает результат сравнения
+     *
      * @param {string} origText - Оригинальный текст для сравнения
      * @param {TPattern} compareText - Текст или массив текстов для сравнения
-     * @param {number} threshold - Минимальный процент схожести для положительного результата
+     * @param {number} [threshold=80] - Минимальный процент схожести для положительного результата
      * @returns {ITextSimilarity} Результат сравнения текстов
-     * @public
+     *
+     * @example
+     * ```typescript
+     * // Сравнение с одним текстом
+     * Text.textSimilarity('привет', 'привт', 80);
+     * // -> {
+     * //   status: true,
+     * //   index: 0,
+     * //   percent: 90,
+     * //   text: 'привт'
+     * // }
+     *
+     * // Сравнение с массивом текстов
+     * Text.textSimilarity('привет', ['привт', 'здравствуйте'], 80);
+     * // -> {
+     * //   status: true,
+     * //   index: 0,
+     * //   percent: 90,
+     * //   text: 'привт'
+     * // }
+     * ```
      */
     public static textSimilarity(
         origText: string,
@@ -251,13 +414,6 @@ export class Text {
             }
         });
 
-        return maxSimilarity.status
-            ? maxSimilarity
-            : {
-                  status: false,
-                  index: null,
-                  percent: 0,
-                  text: null,
-              };
+        return maxSimilarity;
     }
 }

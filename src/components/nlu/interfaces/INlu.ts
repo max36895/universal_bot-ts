@@ -1,97 +1,256 @@
 import { IAlisaNlu } from '../../../platforms/interfaces';
 
 /**
- * Интерфейс результата поиска в nlu
+ * @interface INluResult
+ * Интерфейс результата поиска в NLU
+ *
+ * @template T - Тип возвращаемого результата (по умолчанию object)
+ *
+ * @example
+ * ```typescript
+ * // Пример успешного результата
+ * const successResult: INluResult<string> = {
+ *     status: true,
+ *     result: "найденное значение"
+ * };
+ *
+ * // Пример неудачного результата
+ * const failResult: INluResult<string> = {
+ *     status: false,
+ *     result: null
+ * };
+ * ```
  */
 export interface INluResult<T = object> {
     /**
-     * Статус. Если удалось найти значение, вернет true, иначе false
+     * Статус поиска. true если значение найдено, false если не найдено
      */
     status: boolean;
     /**
-     * Результат поиска
+     * Результат поиска. null если значение не найдено
      */
     result: T | null;
 }
 
 /**
- * Интерфейс результата поиска ФИО в nlu
+ * @interface INluFIO
+ * Интерфейс результата поиска ФИО в NLU
+ *
+ * @example
+ * ```typescript
+ * const fio: INluFIO = {
+ *     first_name: "Иван",
+ *     patronymic_name: "Иванович",
+ *     last_name: "Иванов"
+ * };
+ * ```
  */
 export interface INluFIO {
+    /**
+     * Имя
+     */
     first_name?: string;
+    /**
+     * Отчество
+     */
     patronymic_name?: string;
+    /**
+     * Фамилия
+     */
     last_name?: string;
 }
 
 /**
- * Интерфейс результата поиска геолокации в nlu
+ * @interface INluGeo
+ * Интерфейс результата поиска геолокации в NLU
+ *
+ * @example
+ * ```typescript
+ * const geo: INluGeo = {
+ *     country: "Россия",
+ *     city: "Москва",
+ *     street: "Ленина",
+ *     house_number: "10"
+ * };
+ * ```
  */
 export interface INluGeo {
+    /**
+     * Страна
+     */
     country?: string;
+    /**
+     * Город
+     */
     city?: string;
+    /**
+     * Улица
+     */
     street?: string;
+    /**
+     * Номер дома
+     */
     house_number?: string;
+    /**
+     * Аэропорт
+     */
     airport?: string;
 }
 
 /**
- * Интерфейс результата поиска даты и времени в nlu
+ * @interface INluDateTime
+ * Интерфейс результата поиска даты и времени в NLU
+ *
+ * @example
+ * ```typescript
+ * const dateTime: INluDateTime = {
+ *     year: 2024,
+ *     month: 3,
+ *     day: 15,
+ *     hour: 14,
+ *     minute: 30
+ * };
+ *
+ * // Относительная дата
+ * const relativeDateTime: INluDateTime = {
+ *     day: 1,
+ *     day_is_relative: true // "завтра"
+ * };
+ * ```
  */
 export interface INluDateTime {
+    /**
+     * Год
+     */
     year?: number;
+    /**
+     * Флаг относительности года
+     */
     year_is_relative?: boolean;
+    /**
+     * Месяц
+     */
     month?: number;
+    /**
+     * Флаг относительности месяца
+     */
     month_is_relative?: boolean;
+    /**
+     * День
+     */
     day?: number;
+    /**
+     * Флаг относительности дня
+     */
     day_is_relative?: boolean;
+    /**
+     * Час
+     */
     hour?: number;
+    /**
+     * Флаг относительности часа
+     */
     hour_is_relative?: boolean;
+    /**
+     * Минута
+     */
     minute?: number;
+    /**
+     * Флаг относительности минуты
+     */
     minute_is_relative?: boolean;
 }
 
 /**
- * Интерфейс результата поиска пользователя в nlu
+ * @interface INluThisUser
+ * Интерфейс результата поиска информации о пользователе в NLU
+ *
+ * @example
+ * ```typescript
+ * const user: INluThisUser = {
+ *     username: "ivan_ivanov",
+ *     first_name: "Иван",
+ *     last_name: "Иванов"
+ * };
+ * ```
  */
 export interface INluThisUser {
     /**
-     * Имя
+     * Имя пользователя
      */
     username: string | null;
     /**
-     * Фамилия
+     * Фамилия пользователя
      */
     first_name?: string | null;
     /**
-     * Отчество
+     * Отчество пользователя
      */
     last_name?: string | null;
 }
 
 /**
- * Интерфейс слота в nlu
+ * @interface INluSlot
+ * Интерфейс слота в NLU
+ *
+ * @example
+ * ```typescript
+ * const slot: INluSlot = {
+ *     type: "YANDEX.NUMBER",
+ *     value: 42
+ * };
+ * ```
  */
 export interface INluSlot {
     /**
-     * Тип значения
+     * Тип значения слота
      */
     type?: string;
 
     /**
-     * Значения
+     * Дополнительные свойства слота
      */
     [name: string]: any;
 }
 
 /**
- * Интерфейс интентов в nlu
+ * @interface INluIntents
+ * Интерфейс интентов в NLU
+ *
+ * @example
+ * ```typescript
+ * const intents: INluIntents = {
+ *     "YANDEX.CONFIRM": {
+ *         slots: []
+ *     },
+ *     "YANDEX.REJECT": {
+ *         slots: []
+ *     }
+ * };
+ * ```
  */
 export interface INluIntents {
+    /**
+     * Интенты по их именам
+     */
     [name: string]: INluIntent;
 }
 
 /**
- * Интерфейс интента в nlu
+ * @interface INluIntent
+ * Интерфейс интента в NLU
+ *
+ * @example
+ * ```typescript
+ * const intent: INluIntent = {
+ *     slots: [
+ *         {
+ *             type: "YANDEX.DATETIME",
+ *             value: { year: 2024 }
+ *         }
+ *     ]
+ * };
+ * ```
  */
 export interface INluIntent {
     /**
@@ -101,12 +260,33 @@ export interface INluIntent {
 }
 
 /**
- * Интерфейс nlu
+ * @interface INlu
+ * Основной интерфейс NLU
+ *
+ * @extends {IAlisaNlu}
+ *
+ * @example
+ * ```typescript
+ * const nlu: INlu = {
+ *     thisUser: {
+ *         username: "ivan_ivanov",
+ *         first_name: "Иван"
+ *     },
+ *     intents: {
+ *         "YANDEX.CONFIRM": {
+ *             slots: []
+ *         }
+ *     }
+ * };
+ * ```
  */
 export interface INlu extends IAlisaNlu {
     /**
      * Информация о пользователе
      */
     thisUser?: INluThisUser;
+    /**
+     * Интенты
+     */
     intents?: INluIntents;
 }

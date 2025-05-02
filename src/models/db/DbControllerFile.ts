@@ -1,3 +1,14 @@
+/**
+ * Модуль контроллера для работы с данными в файлах
+ *
+ * Предоставляет функциональность для:
+ * - Чтения и записи данных в JSON файлы
+ * - Кэширования данных для оптимизации производительности
+ * - Выполнения CRUD операций с файловыми данными
+ *
+ * @module models/db/DbControllerFile
+ */
+
 import { DbControllerModel } from './DbControllerModel';
 import { mmApp } from '../../mmApp';
 import { IQueryData, QueryData } from './QueryData';
@@ -5,37 +16,69 @@ import { fread, getFileInfo } from '../../utils/standard/util';
 import { IModelRes, TQueryCb } from '../interface';
 
 /**
- * Информация о файле
+ * Интерфейс для хранения информации о файле
+ *
+ * @interface IFileInfo
  */
 interface IFileInfo {
     /**
-     * Информация из файла
+     * Содержимое файла в виде строки
      */
     data: string;
+
     /**
-     * Версия файла. В качестве версии используется время последнего изменения файла.
+     * Версия файла
+     * Используется время последнего изменения файла в миллисекундах
      */
     version: number;
 }
 
 /**
- * Тип для кэширования данных, полученных из файла
+ * Тип для кэширования данных из файлов
+ * Ключ - путь к файлу, значение - информация о файле
+ *
+ * @type {Object.<string, IFileInfo>}
  */
 type IFileData = { [key: string]: IFileInfo };
 
 /**
- * Контроллер, позволяющий работать с данными, хранящимися в файле
+ * Контроллер для работы с данными, хранящимися в JSON файлах
+ * Реализует базовые операции CRUD для файлового хранилища
+ *
+ * @example
+ * ```typescript
+ * // Создание контроллера
+ * const controller = new DbControllerFile();
+ * controller.tableName = 'users';
+ *
+ * // Добавление записи
+ * const queryData = new QueryData();
+ * queryData.setData({ id: 1, name: 'John' });
+ * await controller.insert(queryData);
+ *
+ * // Поиск записей
+ * const result = await controller.select({ name: 'John' });
+ * ```
+ *
  * @class DbControllerFile
+ * @extends DbControllerModel
  */
 export class DbControllerFile extends DbControllerModel {
     /**
-     * Кэширование данных из файла
+     * Кэш для хранения данных из файлов
+     * Оптимизирует производительность при частом чтении
+     *
      * @protected
      */
     protected cachedFileData: IFileData = {};
 
     /**
-     * Уничтожение контроллера
+     * Уничтожает контроллер и очищает кэш
+     *
+     * @example
+     * ```typescript
+     * controller.destroy();
+     * ```
      */
     public destroy(): void {
         super.destroy();
@@ -43,10 +86,18 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Выполнение запроса на обновление записи в источнике данных
+     * Обновляет существующую запись в файле
      *
-     * @param {QueryData} updateQuery Данные для обновления записи
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setQuery({ id: 1 });
+     * queryData.setData({ name: 'John' });
+     * await controller.update(queryData);
+     * ```
+     *
+     * @param updateQuery - Данные для обновления
+     * @returns Promise с результатом операции
      */
     public async update(updateQuery: QueryData): Promise<any> {
         const update = updateQuery.getData();
@@ -66,10 +117,17 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Выполнение запроса на добавление записи в источник данных
+     * Добавляет новую запись в файл
      *
-     * @param {QueryData} insertQuery Данные для добавления записи
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setData({ id: 1, name: 'John' });
+     * await controller.insert(queryData);
+     * ```
+     *
+     * @param insertQuery - Данные для добавления
+     * @returns Promise с результатом операции
      */
     public async insert(insertQuery: QueryData): Promise<any> {
         const insert = insertQuery.getData();
@@ -86,10 +144,17 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Выполнение запроса на удаление записи в источнике данных
+     * Удаляет запись из файла
      *
-     * @param {QueryData} removeQuery Данные для удаления записи
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setQuery({ id: 1 });
+     * await controller.remove(queryData);
+     * ```
+     *
+     * @param removeQuery - Данные для удаления
+     * @returns Promise<boolean> - true если удаление успешно
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
         const remove = removeQuery.getQuery();
@@ -108,19 +173,30 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Выполнение произвольного запроса к источнику данных
+     * Выполняет произвольный запрос к файлу
+     * В текущей реализации всегда возвращает null
      *
-     * @param {Function} callback Запрос, который необходимо выполнить
-     * @return {Object|Object[]}
+     * @param callback - Функция обратного вызова
+     * @returns null
      */
     public query(callback: TQueryCb): null {
         return null;
     }
 
     /**
-     * Валидация значений полей для таблицы.
+     * Выполняет валидацию данных
+     * В текущей реализации просто возвращает исходные данные
      *
-     * @param {IQueryData} element
+     * @example
+     * ```typescript
+     * const validated = controller.validate({
+     *   id: 1,
+     *   name: 'John'
+     * });
+     * ```
+     *
+     * @param element - Данные для валидации
+     * @returns Валидированные данные
      */
     public validate(element: IQueryData | null): IQueryData {
         if (!element) {
@@ -130,11 +206,20 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Выполнение запроса на поиск записей в источнике данных
+     * Выполняет поиск записей в файле
      *
-     * @param {IQueryData | null} where Данные для поиска значения
-     * @param {boolean} isOne Вывести только 1 запись.
-     * @return {Promise<IModelRes>}
+     * @example
+     * ```typescript
+     * // Поиск одной записи
+     * const one = await controller.select({ id: 1 }, true);
+     *
+     * // Поиск нескольких записей
+     * const many = await controller.select({ name: 'John' });
+     * ```
+     *
+     * @param where - Условия поиска
+     * @param isOne - Флаг выборки одной записи
+     * @returns Promise с результатом запроса
      */
     public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
         let result = null;
@@ -184,9 +269,16 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
+     * Получает все данные из файла
+     * Использует кэширование для оптимизации производительности
      *
-     * @return {Object|Object[]}
+     * @example
+     * ```typescript
+     * const data = controller.getFileData();
+     * console.log(data); // { "1": { "id": 1, "name": "John" } }
+     * ```
+     *
+     * @returns Объект с данными из файла
      */
     public getFileData(): any {
         const path = mmApp.config.json;
@@ -209,22 +301,34 @@ export class DbControllerFile extends DbControllerModel {
     }
 
     /**
-     * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
+     * Экранирует специальные символы в строке
+     * В текущей реализации просто преобразует значение в строку
      *
-     * @param {string | number} text Исходный текст.
-     * @return string
+     * @example
+     * ```typescript
+     * const safe = controller.escapeString("O'Connor");
+     * ```
+     *
+     * @param text - Текст для экранирования
+     * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
         return text + '';
     }
 
     /**
-     * Проверка подключения к источнику данных.
-     * При использовании БД, проверяется статус подключения.
-     * Если удалось подключиться, возвращается true, в противном случае false.
-     * При сохранении данных в файл, всегда возвращается true.
+     * Проверяет состояние подключения к файлу
+     * В текущей реализации всегда возвращает true
      *
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const isConnected = await controller.isConnected();
+     * if (isConnected) {
+     *   // Выполнение операций с файлом
+     * }
+     * ```
+     *
+     * @returns Promise<boolean> - всегда true
      */
     public async isConnected(): Promise<boolean> {
         return true;

@@ -4,17 +4,62 @@ import { Text, isFile } from '../../../utils';
 import { SoundTokens } from '../../../models/SoundTokens';
 
 /**
- * Класс отвечающий за воспроизведение звуков в Марусе.
  * @class MarusiaSound
+ * Класс для работы со звуками в платформе Маруся
+ *
+ * Предоставляет функциональность для:
+ * - Воспроизведения стандартных звуков Маруси
+ * - Преобразования текста в речь (TTS)
+ * - Управления паузами в речи
+ * - Замены звуковых токенов в тексте
+ *
+ * Основные возможности:
+ * - Поддержка стандартных звуков Маруси (игры, природа, предметы, животные)
+ * - Управление паузами в речи
+ * - Замена звуковых токенов в тексте
+ * - Поддержка пользовательских звуков
+ *
+ * @example
+ * ```typescript
+ * const marusiaSound = new MarusiaSound();
+ *
+ * // Воспроизведение стандартного звука
+ * const result = await marusiaSound.getSounds([
+ *     { key: '#game_win#', sounds: [] }
+ * ], 'Поздравляем с победой!');
+ *
+ * // Добавление паузы
+ * const textWithPause = 'Привет' + MarusiaSound.getPause(1000) + 'мир!';
+ * // textWithPause: 'Привет<speaker effect="silence" t="1s">мир!</speaker>'
+ * ```
  */
 export class MarusiaSound implements TemplateSoundTypes {
     /**
-     * Использование стандартных звуков.
-     * True - используются стандартные звуки.
+     * Флаг использования стандартных звуков Маруси
+     *
+     * При значении true используются стандартные звуки Маруси,
+     * при false - только пользовательские звуки
+     *
+     * @default true
+     *
+     * @example
+     * ```typescript
+     * const marusiaSound = new MarusiaSound();
+     * marusiaSound.isUsedStandardSound = false; // Отключение стандартных звуков
+     * ```
      */
     public isUsedStandardSound: boolean = true;
 
-    /** Стандартные звуки.
+    /**
+     * Массив стандартных звуков Маруси
+     *
+     * Содержит предопределенные звуки для различных категорий:
+     * - Игровые звуки (победа, поражение, монеты и др.)
+     * - Природные звуки (ветер, гром, дождь и др.)
+     * - Звуки предметов (телефон, дверь, колокол и др.)
+     * - Звуки животных (кошка, собака, лошадь и др.)
+     *
+     * @private
      */
     protected _standardSounds: ISound[] = [
         {
@@ -304,11 +349,31 @@ export class MarusiaSound implements TemplateSoundTypes {
     public static readonly S_AUDIO_NATURE_STREAM = '#nature_stream#';
 
     /**
-     * Получение корректно составленного текста, в котором все ключи заменены на соответствующие звуки.
+     * Обрабатывает звуки и текст для воспроизведения в Марусе
      *
-     * @param {ISound[]} sounds Пользовательские звуки.
-     * @param {string} text Исходный текст.
-     * @return {Promise<string>}
+     * @param {ISound[]} sounds - Массив звуков для обработки
+     * @param {string} text - Исходный текст для TTS
+     * @returns {Promise<string>} - Обработанный текст со звуками
+     *
+     * Правила обработки:
+     * - Если передан текст, он имеет приоритет над звуками
+     * - Если звуки не найдены, возвращается исходный текст
+     * - Стандартные звуки добавляются только если isUsedStandardSound = true
+     *
+     * @example
+     * ```typescript
+     * const marusiaSound = new MarusiaSound();
+     *
+     * // Воспроизведение стандартного звука с текстом
+     * const result = await marusiaSound.getSounds([
+     *     { key: MarusiaSound.S_AUDIO_GAME_WIN, sounds: [] }
+     * ], 'Поздравляем с победой!');
+     *
+     * // Воспроизведение пользовательского звука
+     * const result = await marusiaSound.getSounds([
+     *     { key: 'custom', sounds: ['path/to/sound'] }
+     * ], 'Текст с пользовательским звуком');
+     * ```
      */
     public async getSounds(sounds: ISound[], text: string): Promise<string> {
         if (this.isUsedStandardSound) {
@@ -343,22 +408,49 @@ export class MarusiaSound implements TemplateSoundTypes {
     }
 
     /**
-     * Замена ключей в тексте на соответствующие им звуки.
+     * Заменяет звуковой токен в тексте на соответствующий звук
      *
-     * @param {string} key Ключ для поиска.
-     * @param {string|string[]} value Звук или массив звуков.
-     * @param {string} text Обрабатываемый текст.
-     * @return {string}
+     * @param {string} key - Ключ звука для замены
+     * @param {string | string[]} value - Значение или массив значений для замены
+     * @param {string} text - Исходный текст
+     * @returns {string} - Текст с замененными звуками
+     *
+     * @example
+     * ```typescript
+     * // Замена одиночного звука
+     * const text = MarusiaSound.replaceSound(
+     *     '#game_win#',
+     *     '<speaker audio="marusia-sounds/game-win-1">',
+     *     'Поздравляем #game_win# с победой!'
+     * );
+     *
+     * // Замена на массив звуков
+     * const text = MarusiaSound.replaceSound(
+     *     '#nature_rain#',
+     *     [
+     *         '<speaker audio="marusia-sounds/nature-rain-1">',
+     *         '<speaker audio="marusia-sounds/nature-rain-2">'
+     *     ],
+     *     'На улице #nature_rain# идет дождь'
+     * );
+     * ```
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
         return text.replace(key, Text.getText(value));
     }
 
     /**
-     * Удаление любых звуков и эффектов из текста.
+     * Удаляет все звуковые токены из текста
      *
-     * @param {string} text Обрабатываемый текст.
-     * @return string
+     * @param {string} text - Исходный текст
+     * @returns {string} - Текст без звуковых токенов
+     *
+     * @example
+     * ```typescript
+     * // Удаление звуковых токенов
+     * const text = MarusiaSound.removeSound('Текст #game_win# без #nature_rain# звуков');
+     * // Результат: 'Текст без звуков'
+     * ```
      */
     public static removeSound(text: string): string {
         return text.replace(

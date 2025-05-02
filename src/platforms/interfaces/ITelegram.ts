@@ -1,69 +1,133 @@
+/**
+ * Интерфейсы для работы с Telegram
+ * Определяют структуру данных для взаимодействия с Telegram Bot API
+ *
+ * Основные компоненты:
+ * - Сообщения (ITelegramMessage)
+ * - Отправители (ITelegramMessageFrom)
+ * - Чаты (ITelegramMessageChat)
+ * - Обновления (ITelegramContent)
+ *
+ * @module platforms/interfaces/ITelegram
+ */
+
+/**
+ * Информация об отправителе сообщения
+ */
 export interface ITelegramMessageFrom {
+    /** ID пользователя */
     id: number;
+    /** Является ли ботом */
     is_bot: boolean;
+    /** Имя */
     first_name?: string;
+    /** Фамилия */
     last_name?: string;
+    /** Имя пользователя */
     username?: string;
+    /** Код языка */
     language_code?: string;
 }
 
+/**
+ * Информация о чате
+ */
 export interface ITelegramMessageChat {
+    /** ID чата */
     id: number;
+    /** Имя */
     first_name?: string;
+    /** Фамилия */
     last_name?: string;
+    /** Имя пользователя */
     username?: string;
+    /** Тип чата */
     type?: string;
 }
 
+/**
+ * Сообщение Telegram
+ */
 export interface ITelegramMessage {
+    /** ID сообщения */
     message_id: number;
+    /** Информация об отправителе */
     from?: ITelegramMessageFrom;
+    /** Информация о чате */
     chat: ITelegramMessageChat;
+    /** Дата отправки */
     date?: number;
+    /** Текст сообщения */
     text: string;
 }
 
+/**
+ * Обновление от Telegram
+ * Содержит различные типы входящих данных
+ */
 export interface ITelegramContent {
+    /** ID обновления */
     update_id?: number;
+    /** Входящее сообщение */
     message: ITelegramMessage;
     /**
-     * Новое входящее сообщение любого вида-текст, фотография, наклейка и т.д. @see message Смотри тут
+     * Отредактированное сообщение
+     * Содержит новую версию сообщения после редактирования
+     * @see ITelegramMessage
      */
     edited_message?: any;
     /**
-     * Новая версия сообщения, которая известна боту и была отредактирована @see message Смотри тут
+     * Пост в канале
+     * Новое сообщение в канале (текст, фото, стикер и т.д.)
+     * @see ITelegramMessage
      */
     channel_post?: any;
     /**
-     * Новый входящий пост канала любого рода-текст, фото, наклейка и т.д. @see message Смотри тут
+     * Отредактированный пост в канале
+     * Новая версия поста после редактирования
+     * @see ITelegramMessage
      */
     edited_channel_post?: any;
     /**
-     * Новый входящий встроенный запрос. @see (https://core.telegram.org/bots/api#inlinequery) Смотри тут
+     * Встроенный запрос
+     * Новый запрос для inline-режима
+     * @see https://core.telegram.org/bots/api#inlinequery
      */
     inline_query?: any;
     /**
-     * Результат встроенного запроса, который был выбран пользователем и отправлен его партнеру по чату. Пожалуйста, ознакомьтесь с документацией telegram по сбору обратной связи для получения подробной информации о том, как включить эти обновления для бота. @see (https://core.telegram.org/bots/api#choseninlineresult) Смотри тут
+     * Результат встроенного запроса
+     * Выбранный пользователем результат inline-запроса
+     * @see https://core.telegram.org/bots/api#choseninlineresult
      */
     chosen_inline_result?: any;
     /**
-     * Новый входящий запрос обратного вызова. @see (https://core.telegram.org/bots/api#callbackquery) Смотри тут
+     * Запрос обратного вызова
+     * Новый запрос от inline-кнопки
+     * @see https://core.telegram.org/bots/api#callbackquery
      */
     callback_query?: any;
     /**
-     * Новый входящий запрос на доставку. Только для счетов-фактур с гибкой ценой. @see (https://core.telegram.org/bots/api#shippingquery) Смотри тут
+     * Запрос доставки
+     * Только для счетов с гибкой ценой
+     * @see https://core.telegram.org/bots/api#shippingquery
      */
     shipping_query?: any;
     /**
-     * Новый входящий запрос предварительной проверки. Содержит полную информацию о кассе. @see (https://core.telegram.org/bots/api#precheckoutquery) Смотри тут
+     * Запрос предварительной проверки
+     * Содержит информацию о платеже
+     * @see https://core.telegram.org/bots/api#precheckoutquery
      */
     pre_checkout_query?: any;
     /**
-     * Новое состояние опроса. Боты получают только обновления об остановленных опросах и опросах, которые отправляются ботом. @see (https://core.telegram.org/bots/api#poll) Смотри тут
+     * Обновление опроса
+     * Бот получает только обновления о своих опросах
+     * @see https://core.telegram.org/bots/api#poll
      */
     poll?: any;
     /**
-     * Пользователь изменил свой ответ в не анонимном опросе. Боты получают новые голоса только в опросах, которые были отправлены самим ботом. @see (https://core.telegram.org/bots/api#poll_answer) Смотри тут
+     * Ответ на опрос
+     * Обновление о новом голосе в неанонимном опросе
+     * @see https://core.telegram.org/bots/api#poll_answer
      */
     poll_answer?: any;
 }

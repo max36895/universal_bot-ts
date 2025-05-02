@@ -19,21 +19,21 @@ import {
 export class YandexImageRequest extends YandexRequest {
     /**
      * Адрес, на который будет отправляться запрос
+     * @private
      */
     private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
-     * Идентификатор навыка, необходимый для корректного сохранения изображения (Обязательный параметр)
-     * @see YandexRequest Смотри тут
+     * Идентификатор навыка, необходимый для корректного сохранения изображения
+     * @see YandexRequest Базовый класс для работы с API Яндекса
      */
     public skillId: string | null;
 
     /**
-     * YandexImageRequest constructor.
-     *
-     * @param {string} oauth Авторизационный токен для загрузки изображений.
-     * @param {string} skillId Идентификатор навыка.
-     * @see (https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/) - Документация.
-     * @see (https://oauth.yandex.ru/verification_code) - Получение токена.
+     * Создает экземпляр класса для работы с изображениями в навыке Алисы
+     * @param oauth Авторизационный токен для загрузки изображений
+     * @param skillId Идентификатор навыка
+     * @see https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/ Документация по загрузке ресурсов
+     * @see https://oauth.yandex.ru/verification_code Получение OAuth-токена
      */
     constructor(oauth: string | null = null, skillId: string | null = null) {
         super(oauth);
@@ -51,13 +51,10 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Проверка занятого места.
-     *
-     * @return Promise<IYandexCheckOutPlace>
-     * [
-     *  - int total: Все доступное место.
-     *  - int used: Занятое место.
-     * ]
+     * Проверка занятого места в хранилище изображений
+     * @returns {Promise<IYandexCheckOutPlace | null>} Информация о занятом месте:
+     * - total: общий доступный объем хранилища
+     * - used: использованный объем хранилища
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = this.STANDARD_URL + 'status';
@@ -70,16 +67,13 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Загрузка изображения из интернета.
-     *
-     * @param {string} imageUrl Адрес изображения из интернета.
-     * @return Promise<IYandexRequestDownloadImage>
-     * [
-     *  - string id: Идентификатор изображения.
-     *  - string origUrl: Адрес изображения.
-     *  - int size: Размер изображения.
-     *  - int createdAt: Дата загрузки.
-     * ]
+     * Загрузка изображения из интернета по URL
+     * @param imageUrl URL-адрес изображения в интернете
+     * @returns {Promise<IYandexRequestDownloadImage | null>} Информация о загруженном изображении:
+     * - id: уникальный идентификатор изображения
+     * - origUrl: оригинальный URL изображения
+     * - size: размер изображения в байтах
+     * - createdAt: дата и время загрузки
      */
     public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
@@ -101,16 +95,13 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Загрузка изображения из файла.
-     *
-     * @param {string} imageDir Путь к картинке, расположенной на сервере.
-     * @return Promise<IYandexRequestDownloadImage>
-     * [
-     *  - string id: Идентификатор изображения.
-     *  - string origUrl: Адрес изображения.
-     *  - int size: Размер изображения.
-     *  - int createdAt: Дата загрузки.
-     * ]
+     * Загрузка изображения из локального файла
+     * @param imageDir Путь к файлу изображения на сервере
+     * @returns {Promise<IYandexRequestDownloadImage | null>} Информация о загруженном изображении:
+     * - id: уникальный идентификатор изображения
+     * - origUrl: оригинальный URL изображения
+     * - size: размер изображения в байтах
+     * - createdAt: дата и время загрузки
      */
     public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
@@ -133,17 +124,8 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Просмотр всех загруженных изображений.
-     *
-     * @return Promise<IYandexRequestDownloadImage[]>
-     * [
-     *  [
-     *      - string id: Идентификатор изображения.
-     *      - string origUrl: Адрес изображения.
-     *      - int size: Размер изображения.
-     *      - int createdAt: Дата загрузки.
-     *  ]
-     * ]
+     * Получение списка всех загруженных изображений
+     * @returns {Promise<IYandexRequestDownloadImage[] | null>} Массив с информацией о загруженных изображениях
      */
     public async getLoadedImages(): Promise<IYandexRequestDownloadImage[] | null> {
         if (this.skillId) {
@@ -157,11 +139,9 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Удаление выбранного изображения.
-     * В случае успеха вернет 'ok'.
-     *
-     * @param {string} imageId Идентификатор изображения, которое необходимо удалить.
-     * @return Promise<string>
+     * Удаление конкретного изображения по его идентификатору
+     * @param imageId Идентификатор изображения для удаления
+     * @returns {Promise<string | null>} 'ok' при успешном удалении, null при ошибке
      */
     public async deleteImage(imageId: string): Promise<string | null> {
         if (this.skillId) {
@@ -186,11 +166,9 @@ export class YandexImageRequest extends YandexRequest {
     }
 
     /**
-     * Удаление всех изображений.
-     * Если при удалении произошел сбой, то изображение останется.
-     * Чтобы точно удалить все изображения лучше использовать грубое удаление.
-     *
-     * @return boolean
+     * Удаление всех загруженных изображений
+     * @returns {Promise<boolean>} true если все изображения успешно удалены, false при ошибке
+     * @remarks Если при удалении произойдет ошибка, некоторые изображения могут остаться в хранилище
      */
     public async deleteImages(): Promise<boolean> {
         if (this.skillId) {

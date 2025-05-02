@@ -1,3 +1,9 @@
+/**
+ * Модуль для тестирования бота
+ * Предоставляет инструменты для отладки и тестирования функциональности бота
+ *
+ * @module core/BotTest
+ */
 import { mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK } from '../mmApp';
 import { TemplateTypeModel } from '../platforms';
 import { stdin } from '../utils/standard/util';
@@ -11,54 +17,103 @@ import {
 import { Bot } from './Bot';
 import { IUserData } from './../controller/BotController';
 
+/**
+ * Функция для получения конфигурации пользовательского бота
+ *
+ * @callback TUserBotConfigCb
+ * @param {string} query - Пользовательский запрос
+ * @param {string} userId - Идентификатор пользователя
+ * @param {number} count - Номер сообщения в диалоге
+ * @returns {any} Конфигурация для пользовательского бота
+ */
 type TUserBotConfigCb = (query: string, userId: string, count: number) => any;
 
 /**
- * Параметры для теста.
+ * Параметры для тестирования бота
+ * Определяют поведение и отображение результатов тестирования
  */
 export interface IBotTestParams {
     /**
-     * Отображать полный ответ навыка.
+     * Отображать полный ответ навыка
+     * @defaultValue false
      */
     isShowResult?: boolean;
+
     /**
-     * Отображать данные из хранилища.
+     * Отображать данные из хранилища
+     * @defaultValue false
      */
     isShowStorage?: boolean;
+
     /**
-     * Отображать время выполнения запроса.
+     * Отображать время выполнения запроса
+     * @defaultValue true
      */
     isShowTime?: boolean;
+
     /**
-     * Пользовательский класс для обработки команд.
+     * Пользовательский класс для обработки команд
+     * Если не указан, используется стандартный обработчик
      */
     userBotClass?: TemplateTypeModel | null;
+
     /**
-     * Функция, возвращающая параметры пользовательского приложения.
-     * @param {string} query Пользовательский запрос.
-     * @param {number} count Номер сообщения.
-     * @param {object|string} state Данные из хранилища.
+     * Функция для получения конфигурации пользовательского бота
+     * Используется только для типа приложения T_USER_APP
+     *
+     * @param {string} query - Пользовательский запрос
+     * @param {string} userId - Идентификатор пользователя
+     * @param {number} count - Номер сообщения в диалоге
+     * @returns {any} Конфигурация для пользовательского бота
      */
     userBotConfig?: TUserBotConfigCb | null;
 }
 
 /**
- * Класс отвечающий за тестирование приложения.
- * В нем происходит инициализации параметров, выбор типа приложения, запуск логики и возврат корректного результата.
- * Рекомендуется использовать его, для проверки своего приложения. При выпуске в релиз, стоит заменить на Bot
- * @see bot
+ * Класс для тестирования бота
+ * Предоставляет интерактивный режим для отладки и тестирования функциональности
+ *
  * @class BotTest
+ * @extends Bot
+ *
+ * @example
+ * ```typescript
+ * const botTest = new BotTest();
+ * botTest.initConfig({
+ *   intents: [{
+ *     name: 'greeting',
+ *     slots: ['привет', 'здравствуйте']
+ *   }]
+ * });
+ * botTest.initBotController(new MyController());
+ *
+ * // Запуск тестирования
+ * await botTest.test({
+ *   isShowResult: true,
+ *   isShowStorage: true
+ * });
+ * ```
  */
 export class BotTest extends Bot {
     /**
-     * Тестирование приложения.
-     * Отображает только ответы навыка.
-     * Никакой прочей информации (изображения, звуки, кнопки и тд) не отображаются!
+     * Запускает интерактивное тестирование бота
+     * Позволяет вводить команды и получать ответы в консоли
      *
-     * Для корректной работы, внутри логики навыка не должно быть пользовательских вызовов к серверу бота.
+     * @param {IBotTestParams} [params] - Параметры тестирования
+     * @returns {Promise<void>}
      *
-     * @param {IBotTestParams} params Параметры для теста
-     * @return {Promise<void>}
+     * @example
+     * ```typescript
+     * // Базовое тестирование
+     * await botTest.test();
+     *
+     * // Расширенное тестирование с отображением всех данных
+     * await botTest.test({
+     *   isShowResult: true,
+     *   isShowStorage: true,
+     *   isShowTime: true
+     * });
+     * ```
      */
     public async test({
         isShowResult = false,
@@ -131,13 +186,16 @@ export class BotTest extends Bot {
     }
 
     /**
-     * Возвращаем корректную конфигурацию для конкретного типа приложения.
+     * Формирует конфигурацию для тестирования конкретной платформы
+     * Создает структуру данных, соответствующую формату выбранной платформы
      *
-     * @param {string} query Пользовательский запрос.
-     * @param {number} count Номер сообщения.
-     * @param {object | string} state Данные из хранилища.
-     * @param {Function} userBotConfig Функция, возвращающая параметры пользовательского приложения.
-     * @return any
+     * @param {string} query - Пользовательский запрос
+     * @param {number} count - Номер сообщения в диалоге
+     * @param {object|string} state - Данные из хранилища
+     * @param {TUserBotConfigCb} [userBotConfig] - Функция для пользовательской конфигурации
+     * @returns {any} Конфигурация для выбранной платформы
+     *
+     * @protected
      */
     protected getSkillContent(
         query: string,

@@ -15,68 +15,100 @@ import {
 } from './interfaces';
 
 /**
- * Класс для взаимодействия с API ВКонтакте.
- * Предоставляет методы для отправки сообщений, загрузки файлов и работы с другими функциями API.
- * 
- * Официальная документация VK API для ботов:
- * @see https://vk.com/dev/bots_docs
- * 
- * @class VkRequest
+ * Класс для взаимодействия с API ВКонтакте
+ * Предоставляет методы для отправки сообщений, загрузки файлов и работы с другими функциями API
+ * @see (https://vk.com/dev/bots_docs) Смотри тут
+ *
+ * @example
+ * ```typescript
+ * import { VkRequest } from './api/VkRequest';
+ *
+ * // Создание экземпляра
+ * const vk = new VkRequest();
+ * vk.initToken('your-vk-token');
+ *
+ * // Отправка простого сообщения
+ * await vk.messagesSend(12345, 'Привет!');
+ *
+ * // Отправка сообщения с клавиатурой
+ * const keyboard = {
+ *   one_time: true,
+ *   buttons: [[{
+ *     action: {
+ *       type: 'text',
+ *       label: 'Кнопка',
+ *       payload: '{"button": 1}'
+ *     },
+ *     color: 'primary'
+ *   }]]
+ * };
+ *
+ * await vk.messagesSend(12345, 'Выберите действие:', {
+ *   keyboard: JSON.stringify(keyboard)
+ * });
+ *
+ * // Загрузка и отправка фото
+ * const server = await vk.photosGetMessagesUploadServer(12345);
+ * if (server) {
+ *   const upload = await vk.upload(server.upload_url, 'path/to/photo.jpg');
+ *   if (upload) {
+ *     const photo = await vk.photosSaveMessagesPhoto(
+ *       upload.photo,
+ *       upload.server,
+ *       upload.hash
+ *     );
+ *     if (photo) {
+ *       await vk.messagesSend(12345, 'Фото:', {
+ *         attachments: [`photo${photo.owner_id}_${photo.id}`]
+ *       });
+ *     }
+ *   }
+ * }
+ * ```
  */
 export class VkRequest {
     /**
-     * Версия VK API по умолчанию 5.103
-     * @type {string}
-     * @readonly
+     * Версия VK API по умолчанию
      */
     protected readonly VK_API_VERSION = '5.103';
 
     /**
      * Базовый URL для всех методов VK API
-     * @type {string}
-     * @readonly
      */
     protected readonly VK_API_ENDPOINT = 'https://api.vk.com/method/';
 
     /**
      * Текущая используемая версия VK API
-     * @type {string}
      * @private
      */
     protected _vkApiVersion: string;
 
     /**
      * Экземпляр класса для выполнения HTTP-запросов
-     * @type {Request}
      * @private
      */
     protected _request: Request;
 
     /**
      * Текст последней возникшей ошибки
-     * @type {string | null}
      * @private
      */
     protected _error: string | null;
 
     /**
      * Токен доступа к VK API
-     * @type {string | null}
-     * @public
      */
     public token: string | null;
 
     /**
-     * Флаг, указывающий, передается ли содержимое файла напрямую
-     * @type {boolean}
-     * @public
-     * @default false
+     * Флаг для прямой передачи содержимого файла
+     * По умолчанию: false
      */
     public isAttachContent: boolean;
 
     /**
-     * Создает экземпляр класса VkRequest.
-     * Инициализирует параметры запросов и устанавливает токен из конфигурации приложения, если он доступен.
+     * Создает экземпляр класса для работы с API ВКонтакте
+     * Устанавливает токен из конфигурации приложения, если он доступен
      */
     public constructor() {
         this._request = new Request();
@@ -95,20 +127,17 @@ export class VkRequest {
     }
 
     /**
-     * Инициализирует токен доступа к VK API.
-     * 
-     * @param {string} token - Токен доступа к VK API
+     * Инициализирует токен доступа к VK API
+     * @param token Токен доступа к VK API
      */
     public initToken(token: string): void {
         this.token = token;
     }
 
     /**
-     * Выполняет вызов метода VK API.
-     * 
-     * @template T - Тип ответа, наследующий интерфейс IVkApi
-     * @param {string} method - Название метода VK API
-     * @returns {Promise<T | null>} Результат выполнения метода или null в случае ошибки
+     * Выполняет вызов метода VK API
+     * @param method Название метода VK API
+     * @returns Результат выполнения метода или null при ошибке
      */
     public async call<T extends IVkApi>(method: string): Promise<T | null> {
         if (this.token) {
@@ -133,26 +162,46 @@ export class VkRequest {
     }
 
     /**
-     * Загружает файл на сервера ВКонтакте.
-     * 
-     * @param {string} url - URL для загрузки файла
-     * @param {string} file - Путь к файлу или его содержимое (зависит от флага isAttachContent)
-     * @returns {Promise<IVkUploadFile | null>} Информация о загруженном файле или null в случае ошибки
-     * 
-     * Возвращает объект с одной из следующих структур:
-     * 1. Для фотографий:
+     * Загружает файл на сервера ВКонтакте
+     * @param url URL для загрузки файла
+     * @param file Путь к файлу или его содержимое
+     * @returns Информация о загруженном файле или null при ошибке
+     *
+     * @remarks
+     * Для фотографий возвращает:
+     * - photo: строка, содержащая информацию о фото
+     * - server: строка, идентификатор сервера
+     * - hash: строка, хеш загруженного файла
+     *
+     * Для документов возвращает:
+     * - file: строка, информация о загруженном файле
+     *
+     * @example
      * ```typescript
-     * {
-     *   photo: string[],
-     *   server: string,
-     *   hash: string
+     * // Загрузка фото
+     * const server = await vk.photosGetMessagesUploadServer(12345);
+     * if (server) {
+     *   const upload = await vk.upload(server.upload_url, 'photo.jpg');
+     *   if (upload) {
+     *     const photo = await vk.photosSaveMessagesPhoto(
+     *       upload.photo,
+     *       upload.server,
+     *       upload.hash
+     *     );
+     *   }
      * }
-     * ```
-     * 
-     * 2. Для других типов файлов:
-     * ```typescript
-     * {
-     *   file: string[]
+     *
+     * // Загрузка документа
+     * const server = await vk.docsGetMessagesUploadServer(12345, 'doc');
+     * if (server) {
+     *   const upload = await vk.upload(server.upload_url, 'document.pdf');
+     *   if (upload) {
+     *     const doc = await vk.docsSave(
+     *       upload.file,
+     *       'Документ',
+     *       'тег1,тег2'
+     *     );
+     *   }
      * }
      * ```
      */
@@ -174,19 +223,71 @@ export class VkRequest {
     }
 
     /**
-     * Отправляет сообщение пользователю или в чат.
-     * 
-     * @param {TVkPeerId} peerId - Идентификатор получателя:
-     *                             - Для пользователя: ID пользователя (например, "12345")
-     *                             - Для чата: 2000000000 + chat_id (например, "2000000001")
-     *                             - Для сообщества: -ID сообщества (например, "-12345")
-     * @param {string} message - Текст сообщения
-     * @param {IVkParams | null} params - Дополнительные параметры отправки:
-     *                                    - random_id: уникальный идентификатор для избежания повторной отправки
-     *                                    - attachment: медиавложения в формате "<тип><owner_id>_<media_id>"
-     *                                    - keyboard: клавиатура в JSON формате
-     *                                    - и другие параметры из документации VK API
-     * @returns {Promise<IVKSendMessage | null>} Информация об отправленном сообщении или null в случае ошибки
+     * Отправляет сообщение пользователю или в чат
+     * @param peerId Идентификатор получателя:
+     * - ID пользователя (например, "12345")
+     * - ID чата: 2000000000 + chat_id (например, для чата 1: 2000000001)
+     * - ID сообщества: -ID сообщества (например, "-123456789")
+     * @param message Текст сообщения
+     * @param params Дополнительные параметры:
+     * - random_id: уникальный ID для избежания повторов
+     * - attachment: медиавложения в формате "<type><owner_id>_<media_id>"
+     *   Примеры:
+     *   - Фото: "photo123456_789"
+     *   - Документ: "doc123456_789"
+     *   - Аудио: "audio123456_789"
+     *   - Видео: "video123456_789"
+     * - keyboard: клавиатура в JSON формате или строкой
+     * - template: шаблон карусели в JSON формате или строкой
+     *
+     * @example
+     * ```typescript
+     * // Простое сообщение
+     * await vk.messagesSend(12345, 'Привет!');
+     *
+     * // Сообщение с вложениями
+     * await vk.messagesSend(12345, 'Фото:', {
+     *   attachments: ['photo123_456', 'doc123_456']
+     * });
+     *
+     * // Сообщение с клавиатурой
+     * const keyboard = {
+     *   one_time: true,
+     *   buttons: [[{
+     *     action: {
+     *       type: 'text',
+     *       label: 'Кнопка',
+     *       payload: '{"button": 1}'
+     *     },
+     *     color: 'primary'
+     *   }]]
+     * };
+     * await vk.messagesSend(12345, 'Выберите:', {
+     *   keyboard: JSON.stringify(keyboard)
+     * });
+     *
+     * // Сообщение с каруселью
+     * const template = {
+     *   type: 'carousel',
+     *   elements: [{
+     *     title: 'Заголовок',
+     *     description: 'Описание',
+     *     photo_id: '-123456_789',
+     *     buttons: [{
+     *       action: {
+     *         type: 'text',
+     *         label: 'Кнопка',
+     *         payload: '{"button": 1}'
+     *       }
+     *     }]
+     *   }]
+     * };
+     * await vk.messagesSend(12345, '', {
+     *   template: JSON.stringify(template)
+     * });
+     * ```
+     *
+     * @returns Информация об отправленном сообщении или null при ошибке
      */
     public async messagesSend(
         peerId: TVkPeerId,
@@ -243,13 +344,10 @@ export class VkRequest {
     }
 
     /**
-     * Получает информацию о пользователе или списке пользователей.
-     * 
-     * @param {TVkPeerId | string[]} userId - ID пользователя или массив ID пользователей
-     * @param {IVkParamsUsersGet | null} params - Дополнительные параметры запроса:
-     *                                            - fields: список дополнительных полей
-     *                                            - name_case: падеж для склонения имени и фамилии
-     * @returns {Promise<IVkUsersGet | null>} Информация о пользователе(ях) или null в случае ошибки
+     * Получает информацию о пользователе или списке пользователей
+     * @param userId ID пользователя или массив ID
+     * @param params Дополнительные параметры запроса
+     * @returns Информация о пользователях или null при ошибке
      */
     public async usersGet(
         userId: TVkPeerId | string[],
@@ -267,10 +365,9 @@ export class VkRequest {
     }
 
     /**
-     * Получает адрес сервера для загрузки фотографий в сообщения.
-     * 
-     * @param {TVkPeerId} peerId - Идентификатор назначения (пользователь/чат/сообщество)
-     * @returns {Promise<IVkUploadServer | null>} URL и параметры для загрузки или null в случае ошибки
+     * Получает URL для загрузки фотографий в сообщения
+     * @param peerId ID получателя сообщения
+     * @returns Данные для загрузки или null при ошибке
      */
     public async photosGetMessagesUploadServer(peerId: TVkPeerId): Promise<IVkUploadServer | null> {
         this._request.post = { peer_id: peerId };
@@ -278,12 +375,11 @@ export class VkRequest {
     }
 
     /**
-     * Сохраняет фотографию после успешной загрузки.
-     * 
-     * @param {string} photo - Параметр photo, полученный после загрузки
-     * @param {string} server - ID сервера, полученный после загрузки
-     * @param {string} hash - Хэш, полученный после загрузки
-     * @returns {Promise<IVkPhotosSave | null>} Информация о сохраненной фотографии или null в случае ошибки
+     * Сохраняет загруженную фотографию в сообщениях
+     * @param photo Идентификатор фотографии
+     * @param server Идентификатор сервера
+     * @param hash Хэш-сумма фотографии
+     * @returns Информация о сохраненной фотографии или null при ошибке
      */
     public async photosSaveMessagesPhoto(
         photo: string,
@@ -299,11 +395,25 @@ export class VkRequest {
     }
 
     /**
-     * Получает адрес сервера для загрузки документов в сообщения.
-     * 
-     * @param {TVkPeerId} peerId - Идентификатор назначения (пользователь/чат/сообщество)
-     * @param {TVkDocType} type - Тип документа (doc, audio_message, graffiti)
-     * @returns {Promise<IVkUploadServer | null>} URL и параметры для загрузки или null в случае ошибки
+     * Получает URL для загрузки документов в сообщения
+     * @param peerId ID получателя сообщения
+     * @param type Тип документа:
+     * - 'doc': обычный документ (PDF, ZIP и т.д.)
+     * - 'audio_message': голосовое сообщение
+     * - 'graffiti': граффити
+     * @returns Данные для загрузки или null при ошибке
+     *
+     * @example
+     * ```typescript
+     * // Загрузка обычного документа
+     * const server = await vk.docsGetMessagesUploadServer(12345, 'doc');
+     *
+     * // Загрузка голосового сообщения
+     * const server = await vk.docsGetMessagesUploadServer(12345, 'audio_message');
+     *
+     * // Загрузка граффити
+     * const server = await vk.docsGetMessagesUploadServer(12345, 'graffiti');
+     * ```
      */
     public async docsGetMessagesUploadServer(
         peerId: TVkPeerId,
@@ -317,12 +427,11 @@ export class VkRequest {
     }
 
     /**
-     * Сохраняет документ после успешной загрузки.
-     * 
-     * @param {string} file - Параметр file, полученный после загрузки
-     * @param {string} title - Название документа
-     * @param {string | null} tags - Теги для поиска
-     * @returns {Promise<IVkDocSave | null>} Информация о сохраненном документе или null в случае ошибки
+     * Сохраняет загруженный документ
+     * @param file Идентификатор документа
+     * @param title Название документа
+     * @param tags Теги документа
+     * @returns Информация о сохраненном документе или null при ошибке
      */
     public async docsSave(
         file: string,
@@ -340,10 +449,9 @@ export class VkRequest {
     }
 
     /**
-     * Записывает информацию об ошибках в лог-файл VkApi.log.
-     * 
-     * @param {string} error - Текст ошибки для логирования
-     * @protected
+     * Записывает информацию об ошибках в лог-файл
+     * @param error Текст ошибки для логирования
+     * @private
      */
     protected _log(error: string = ''): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;

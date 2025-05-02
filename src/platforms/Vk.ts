@@ -7,18 +7,40 @@ import { IVkParams } from '../api/interfaces';
 import { Buttons } from '../components/button';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для ВКонтакте.
+ * Класс для работы с платформой ВКонтакте
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате ВКонтакте
  * @class Vk
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Vk extends TemplateTypeModel {
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IVkRequestContent|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * Обрабатывает входящие сообщения и события от ВКонтакте
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой бота
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
+     *
+     * Поддерживаемые типы событий:
+     * - confirmation: подтверждение сервера
+     * - message_new: новое сообщение
+     *
+     * Структура сообщения:
+     * - date: время отправки
+     * - from_id: ID отправителя
+     * - id: ID сообщения
+     * - out: исходящее сообщение
+     * - peer_id: ID получателя
+     * - text: текст сообщения
+     * - conversation_message_id: ID сообщения в беседе
+     * - fwd_messages: пересланные сообщения
+     * - important: важное сообщение
+     * - random_id: случайный ID
+     * - attachments: вложения
+     * - is_hidden: скрытое сообщение
+     * - payload: дополнительные данные
      */
     public async init(
         query: string | IVkRequestContent,
@@ -101,9 +123,9 @@ export class Vk extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<string>}
+     * Формирует и отправляет ответ пользователю
+     * Отправляет текст, карточки и звуки через VK API
+     * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {

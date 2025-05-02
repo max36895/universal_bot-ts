@@ -195,13 +195,9 @@ class MyController extends BotController {
 import { mmApp } from 'umbot';
 
 // Добавление простой команды
-mmApp.addCommand('greeting', ['привет', 'здравствуй'], (userCommand, botController) => {
-    if (botController) {
-        botController.text = 'Здравствуйте!';
-    }
-});
+mmApp.addCommand('greeting', ['привет', 'здравствуй']);
 
-// Добавление команды с регулярным выражением
+// Добавление команды с колбэком
 mmApp.addCommand(
     'numbers',
     ['\\b\\d{3}\\b'],
@@ -220,14 +216,19 @@ mmApp.addCommand(
 interface GameData extends IUserData {
     score: number;
     level: number;
+    example?: string;
+    result?: number | string;
+    isGame?: boolean;
 }
 
 class GameController extends BotController<GameData> {
     public action(intentName: string | null): void {
         // Инициализация данных при первом запуске
         if (!this.userData.score) {
-            this.userData.score = 0;
-            this.userData.level = 1;
+            this.userData = {
+                score: 0,
+                level: 1,
+            };
         }
 
         // Обработка команд
@@ -240,3 +241,85 @@ class GameController extends BotController<GameData> {
     }
 }
 ```
+
+### Работа с кнопками
+
+```typescript
+class ButtonController extends BotController {
+    public action(intentName: string | null): void {
+        switch (intentName) {
+            case 'showButtons':
+                // Добавление кнопок
+                this.buttons.addBtn('Помощь').addBtn('Назад').addBtn('Выход');
+                this.text = 'Выберите действие:';
+                break;
+        }
+    }
+}
+```
+
+### Работа с карточками
+
+````typescript
+class CardController extends BotController {
+    public action(intentName: string | null): void {
+        switch (intentName) {
+            case 'showCard':
+                // Создание карточки
+                this.card
+                    .addHeader('Заголовок карточки')
+                    .addImage('image_token', 'Описание изображения')
+                    .addFooter('Подвал карточки');
+                this.text = 'Вот ваша карточка:';
+                break;
+        }
+    }
+}
+
+### Работа с NLU
+
+```typescript
+class NluController extends BotController {
+    public action(intentName: string | null): void {
+        // Получение интента из NLU
+        const nluIntent = this.nlu.getIntent();
+        if (nluIntent) {
+            this.text = `Распознанный интент: ${nluIntent}`;
+        } else {
+            this.text = 'Не удалось распознать интент';
+        }
+    }
+}
+
+### Работа с авторизацией
+
+```typescript
+class AuthController extends BotController {
+    public action(intentName: string | null): void {
+        // Проверка авторизации
+        if (this.isAuth) {
+            this.text = 'Вы авторизованы';
+            this.userToken = this.userToken || 'default_token';
+        } else {
+            this.text = 'Требуется авторизация';
+            this.isAuth = true;
+        }
+    }
+}
+
+### Работа с оценкой
+
+```typescript
+class RatingController extends BotController {
+    public action(intentName: string | null): void {
+        // Проверка оценки
+        if (this.isSendRating) {
+            this.text = 'Спасибо за оценку!';
+            this.isSendRating = false;
+        } else {
+            this.text = 'Пожалуйста, оцените наш сервис';
+            this.isSendRating = true;
+        }
+    }
+}
+````

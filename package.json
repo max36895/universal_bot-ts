@@ -1,67 +1,68 @@
 {
-  "name": "umbot",
-  "description": "Universal bot(vk, telegram, viber) or skills for Yandex.Alisa, Маруся and sber",
-  "keywords": [
-    "vk",
-    "telegram",
-    "Alisa",
-    "Yandex",
-    "TS",
-    "Dialogs",
-    "api",
-    "viber",
-    "Маруся",
-    "Sber",
-    "bot"
-  ],
-  "author": "Maxim-M",
-  "license": "MIT",
-  "main": "dist/index.js",
-  "scripts": {
-    "watch": "shx rm -rf dist && tsc -watch",
-    "start": "shx rm -rf dist && tsc",
-    "build": "shx rm -rf dist && tsc --declaration",
-    "test": "jest",
-    "bt": "npm run build && npm test",
-    "create": "umbot",
-    "doc": "typedoc",
-    "deploy": "npm run build && npm publish",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
-  },
-  "bugs": {
-    "url": "https://github.com/max36895/universal_bot-ts/issues"
-  },
-  "engines": {
-    "node": ">=16"
-  },
-  "bin": {
-    "umbot": "cli/umbot.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/max36895/universal_bot-ts.git"
-  },
-  "devDependencies": {
-    "@types/jest": "^29.5.12",
-    "@types/micro": "~7.3.7",
-    "@types/node": "^16.11.18",
-    "@typescript-eslint/eslint-plugin": "^7.1.0",
-    "@typescript-eslint/parser": "^7.1.0",
-    "eslint": "^8.57.0",
-    "jest": "~29.7.0",
-    "prettier": "~3.2.5",
-    "shx": "~0.3.2",
-    "ts-jest": "~29.3.2",
-    "typedoc": "~0.28.2",
-    "typescript": "^5.4.5"
-  },
-  "peerDependencies": {
-    "micro": "^10.0.1",
-    "mongodb": "^6.15.0"
-  },
-  "files": [
-    "dist"
-  ],
-  "version": "1.2.0"
+    "name": "umbot",
+    "description": "Universal bot(vk, telegram, viber) or skills for Yandex.Alisa, Маруся and sber",
+    "keywords": [
+        "vk",
+        "telegram",
+        "Alisa",
+        "Yandex",
+        "TS",
+        "Dialogs",
+        "api",
+        "viber",
+        "Маруся",
+        "Sber",
+        "bot"
+    ],
+    "author": "Maxim-M",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "scripts": {
+        "watch": "shx rm -rf dist && tsc -watch",
+        "start": "shx rm -rf dist && tsc",
+        "build": "shx rm -rf dist && tsc --declaration",
+        "test": "jest",
+        "bt": "npm run build && npm test",
+        "create": "umbot",
+        "doc": "typedoc",
+        "deploy": "npm run build && npm publish",
+        "lint": "eslint . --ext .ts",
+        "lint:fix": "eslint . --ext .ts --fix",
+        "prettier": "prettier --write ."
+    },
+    "bugs": {
+        "url": "https://github.com/max36895/universal_bot-ts/issues"
+    },
+    "engines": {
+        "node": ">=16"
+    },
+    "bin": {
+        "umbot": "cli/umbot.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/max36895/universal_bot-ts.git"
+    },
+    "devDependencies": {
+        "@types/jest": "^29.5.12",
+        "@types/micro": "~7.3.7",
+        "@types/node": "^16.11.18",
+        "@typescript-eslint/eslint-plugin": "^7.1.0",
+        "@typescript-eslint/parser": "^7.1.0",
+        "eslint": "^8.57.0",
+        "jest": "~29.7.0",
+        "prettier": "~3.2.5",
+        "shx": "~0.3.2",
+        "ts-jest": "~29.3.2",
+        "typedoc": "~0.28.2",
+        "typescript": "^5.4.5"
+    },
+    "peerDependencies": {
+        "micro": "^10.0.1",
+        "mongodb": "^6.15.0"
+    },
+    "files": [
+        "dist"
+    ],
+    "version": "1.2.0"
 }

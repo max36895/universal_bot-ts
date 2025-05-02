@@ -1,37 +1,105 @@
+/**
+ * Модуль для работы с подключением к базе данных MongoDB
+ *
+ * Предоставляет функционал для:
+ * - Установки и управления соединением с MongoDB
+ * - Конфигурации параметров подключения
+ * - Обработки ошибок при работе с базой данных
+ *
+ * @module models/db/DB
+ */
+
 import { IAppDB, mmApp } from '../../mmApp';
 import { MongoClient, MongoClientOptions, ServerApiVersion } from 'mongodb';
 
 /**
- * Класс отвечающий за подключение и взаимодействие с Базой Данных
+ * Класс для управления подключением к базе данных MongoDB
+ *
+ * @example
+ * ```typescript
+ * const db = new DB();
+ *
+ * // Настройка параметров подключения
+ * db.params = {
+ *   host: 'mongodb://localhost:27017',
+ *   user: 'admin',
+ *   pass: 'password',
+ *   database: 'myapp'
+ * };
+ *
+ * // Подключение к базе данных
+ * const connected = await db.connect();
+ * if (connected) {
+ *   // Выполнение операций с базой данных
+ *   const isAlive = await db.isConnected();
+ *   console.log('Database connection is alive:', isAlive);
+ * }
+ *
+ * // Закрытие соединения
+ * await db.close();
+ * ```
+ *
  * @class DB
  */
 export class DB {
     /**
-     * Позволяет установить соединение с MongoDB.
-     * От него идет подключение к бд, и выполнение запросов.
+     * Клиент MongoDB для выполнения запросов
+     * Используется для установки соединения и выполнения операций с базой данных
+     *
+     * @example
+     * ```typescript
+     * if (db.sql) {
+     *   const collection = db.sql.db().collection('users');
+     *   const users = await collection.find({}).toArray();
+     * }
+     * ```
      */
     public sql: MongoClient | null;
+
     /**
-     * Подключение к базе данных
+     * Promise для отслеживания процесса подключения
+     * Позволяет дождаться завершения установки соединения
+     *
+     * @example
+     * ```typescript
+     * if (db.dbConnect) {
+     *   await db.dbConnect; // Ожидание завершения подключения
+     * }
+     * ```
      */
     public dbConnect: Promise<MongoClient> | null;
+
     /**
-     * Ошибки при выполнении запросов
+     * Массив ошибок, возникших при работе с базой данных
+     * Содержит сообщения об ошибках подключения и выполнения запросов
+     *
+     * @example
+     * ```typescript
+     * if (db.errors.length > 0) {
+     *   console.error('Database errors:', db.errors);
+     * }
+     * ```
      */
     public errors: string[];
+
     /**
-     * Параметры для конфигурации. имеют следующие поля:
-     * [
-     *  - string host:  Местоположение базы данных
-     *  - string user Имя пользователя
-     *  - string pass Пароль пользователя
-     *  - string database Название базы данных
-     * ]
+     * Параметры конфигурации подключения к базе данных
+     *
+     * @example
+     * ```typescript
+     * db.params = {
+     *   host: 'mongodb://localhost:27017', // Адрес сервера
+     *   user: 'admin',                     // Имя пользователя
+     *   pass: 'password',                  // Пароль
+     *   database: 'myapp'                  // Имя базы данных
+     * };
+     * ```
      */
     public params: IAppDB | null;
 
     /**
-     * DB constructor.
+     * Создает новый экземпляр класса DB
+     * Инициализирует все необходимые свойства
      */
     public constructor() {
         this.sql = null;
@@ -41,8 +109,20 @@ export class DB {
     }
 
     /**
-     * Проверка активности подключения к базе данных
-     * @returns Promise<boolean>
+     * Проверяет активность подключения к базе данных
+     * Выполняет ping-запрос к серверу для проверки соединения
+     *
+     * @example
+     * ```typescript
+     * const isAlive = await db.isConnected();
+     * if (isAlive) {
+     *   console.log('Database connection is active');
+     * } else {
+     *   console.error('Database connection is lost');
+     * }
+     * ```
+     *
+     * @returns Promise<boolean> - true если соединение активно, false в противном случае
      */
     public async isConnected(): Promise<boolean> {
         try {
@@ -59,9 +139,20 @@ export class DB {
     }
 
     /**
-     * Подключение к базе данных.
+     * Устанавливает соединение с базой данных MongoDB
+     * Настраивает параметры подключения и создает клиент
      *
-     * @return boolean
+     * @example
+     * ```typescript
+     * const connected = await db.connect();
+     * if (connected) {
+     *   console.log('Successfully connected to database');
+     * } else {
+     *   console.error('Failed to connect:', db.errors);
+     * }
+     * ```
+     *
+     * @returns Promise<boolean> - true если подключение успешно установлено, false в противном случае
      */
     public async connect(): Promise<boolean> {
         this.errors = [];
@@ -114,7 +205,14 @@ export class DB {
     }
 
     /**
-     * Закрытие подключения к базе данных.
+     * Закрывает активное соединение с базой данных
+     * Освобождает ресурсы и очищает состояние подключения
+     *
+     * @example
+     * ```typescript
+     * await db.close();
+     * console.log('Database connection closed');
+     * ```
      */
     public async close(): Promise<void> {
         if (this.sql) {
@@ -129,7 +227,13 @@ export class DB {
     }
 
     /**
-     * Закрываем подключение к БД
+     * Алиас для метода close()
+     * Используется для унификации интерфейса с другими компонентами
+     *
+     * @example
+     * ```typescript
+     * await db.destroy();
+     * ```
      */
     public async destroy(): Promise<void> {
         await this.close();

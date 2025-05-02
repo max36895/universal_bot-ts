@@ -7,6 +7,14 @@ import { VkButton } from './types/VkButton';
 import { ViberButton } from './types/ViberButton';
 import { SmartAppButton } from './types/SmartAppButton';
 
+/**
+ * Тип функции обратного вызова для обработки кнопок.
+ * @callback TButtonCb
+ * @param {string | null} button - Текст кнопки
+ * @param {string} [url] - URL для перехода
+ * @param {string} [TButtonPayload] - Дополнительные данные
+ * @param {IButtonOptions} [options] - Дополнительные параметры
+ */
 type TButtonCb = (
     button: string | null,
     url?: string,
@@ -15,8 +23,28 @@ type TButtonCb = (
 ) => void;
 
 /**
- * Класс, хранящий в себе все кнопки приложения, а также отвечающий за отображение кнопок, в зависимости от типа приложения.
  * @class Buttons
+ * Класс для управления коллекцией кнопок и их отображением на различных платформах.
+ *
+ * Класс предоставляет функциональность для:
+ * - Создания и управления коллекцией кнопок
+ * - Адаптации кнопок под различные платформы (Алиса, VK, Telegram, Viber, SmartApp)
+ * - Поддержки различных типов кнопок (интерактивные, ссылки)
+ *
+ * @example
+ * ```typescript
+ * // Создание коллекции кнопок
+ * const buttons = new Buttons();
+ *
+ * // Добавление интерактивной кнопки
+ * buttons.addBtn('Нажми меня', '', { action: 'custom_action' });
+ *
+ * // Добавление кнопки-ссылки с полным набором параметров
+ * buttons.addLink('Перейти на сайт', 'https://example.com', { source: 'button' }, { hide: true });
+ *
+ * // Получение кнопок для конкретной платформы
+ * const alisaButtons = buttons.getButtons(Buttons.T_ALISA_BUTTONS);
+ * ```
  */
 export class Buttons {
     /**
@@ -61,37 +89,36 @@ export class Buttons {
     public static readonly T_USER_APP_BUTTONS = 'user_app_btn';
 
     /**
-     * Массив с различными кнопками.
-     * @see Button Смотри тут
+     * Массив объектов Button, представляющих все кнопки в коллекции.
+     * @type {Button[]}
+     * @see Button
      */
     public buttons: Button[];
+
     /**
-     * Массив из кнопок вида кнопка.
-     *  - string Текст, отображаемый на кнопке.
-     *  or
-     *  - object
-     *      - string title    Текст, отображаемый на кнопке.
-     *      - string url      Ссылка, по которой перейдет пользователь после нажатия на кнопку.
-     *      - string payload  Дополнительные параметры, передаваемые при нажатии на кнопку.
+     * Массив интерактивных кнопок.
+     * Может содержать строки или объекты с параметрами кнопки.
+     * @type {TButton[]}
      */
     public btns: TButton[];
+
     /**
-     * Массив из кнопок вида ссылка.
-     *  - string Текст, отображаемый на кнопке.
-     *  or
-     *  - object
-     *      - string title    Текст, отображаемый на кнопке.
-     *      - string url      Ссылка, по которой перейдет пользователь после нажатия на кнопку.
-     *      - string payload  Дополнительные параметры, передаваемые при нажатии на кнопку.
+     * Массив кнопок-ссылок.
+     * Может содержать строки или объекты с параметрами кнопки.
+     * @type {TButton[]}
      */
     public links: TButton[];
+
     /**
-     * Тип кнопок(кнопка в Алисе, кнопка в карточке Алисы, кнопка в Vk, кнопка в Telegram и тд).
+     * Тип кнопок для текущей платформы.
+     * Определяет, как будут отображаться кнопки.
+     * @type {string}
      */
     public type: string;
 
     /**
-     * Buttons constructor.
+     * Создает новый экземпляр коллекции кнопок.
+     * Инициализирует все массивы и устанавливает тип кнопок по умолчанию для Алисы.
      */
     public constructor() {
         this.buttons = [];
@@ -101,7 +128,8 @@ export class Buttons {
     }
 
     /**
-     * Очистка массива кнопок.
+     * Очищает все массивы кнопок.
+     * @returns {void}
      */
     public clear(): void {
         this.buttons = [];
@@ -110,15 +138,15 @@ export class Buttons {
     }
 
     /**
-     * Добавление кнопки.
+     * Добавляет кнопку в коллекцию.
      *
-     * @param {string} title Текст в кнопке.
-     * @param {string} url Ссылка для перехода при нажатии на кнопку.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
-     * @param {boolean} hide Определяет отображение кнопки как сайджест.
-     * @param {IButtonOptions} options Дополнительные параметры кнопки
-     *
-     * @return Buttons
+     * @param {string} title - Текст кнопки
+     * @param {string} url - URL для перехода
+     * @param {TButtonPayload} payload - Дополнительные данные
+     * @param {boolean} hide - Тип отображения кнопки
+     * @param {IButtonOptions} options - Дополнительные параметры
+     * @returns {Buttons} this для цепочки вызовов
+     * @protected
      */
     protected _add(
         title: string | null,
@@ -144,13 +172,25 @@ export class Buttons {
     }
 
     /**
-     * Добавить кнопку типа `кнопка`.
+     * Добавляет интерактивную кнопку в коллекцию.
      *
-     * @param {string} title Текст в кнопке.
-     * @param {string} url Ссылка для перехода при нажатии на кнопку.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
-     * @param {IButtonOptions} options Дополнительные параметры кнопки
-     * @return Buttons
+     * @param {string} title - Текст кнопки
+     * @param {string} [url=''] - URL для перехода
+     * @param {TButtonPayload} [payload=''] - Дополнительные данные
+     * @param {IButtonOptions} [options={}] - Дополнительные параметры
+     * @returns {Buttons} this для цепочки вызовов
+     *
+     * @example
+     * ```typescript
+     * // Простая кнопка
+     * buttons.addBtn('Нажми меня');
+     *
+     * // Кнопка с URL и payload
+     * buttons.addBtn('Перейти', 'https://example.com', { action: 'navigate' });
+     *
+     * // Кнопка с дополнительными опциями
+     * buttons.addBtn('Скрытая кнопка', '', '', { hide: true });
+     * ```
      */
     public addBtn(
         title: string | null,
@@ -162,13 +202,25 @@ export class Buttons {
     }
 
     /**
-     * Добавить кнопку типа `сайджест`.
+     * Добавляет кнопку-ссылку в коллекцию.
      *
-     * @param {string} title Текст в кнопке.
-     * @param {string} url Ссылка для перехода при нажатии на кнопку.
-     * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
-     * @param {IButtonOptions} options Дополнительные параметры кнопки
-     * @return Buttons
+     * @param {string} title - Текст кнопки
+     * @param {string} [url=''] - URL для перехода
+     * @param {TButtonPayload} [payload=''] - Дополнительные данные
+     * @param {IButtonOptions} [options={}] - Дополнительные параметры
+     * @returns {Buttons} this для цепочки вызовов
+     *
+     * @example
+     * ```typescript
+     * // Простая ссылка
+     * buttons.addLink('Перейти на сайт', 'https://example.com');
+     *
+     * // Ссылка с payload
+     * buttons.addLink('Документация', 'https://docs.example.com', { section: 'api' });
+     *
+     * // Ссылка с опциями
+     * buttons.addLink('Скрытая ссылка', 'https://example.com', '', { hide: true });
+     * ```
      */
     public addLink(
         title: string | null,
@@ -180,9 +232,10 @@ export class Buttons {
     }
 
     /**
-     * Дополнительная функция для инициализации дополнительных кнопок
-     * @param buttons Массив кнопок
-     * @param callback Callback нужной функции, addBtn или addLink
+     * Обрабатывает массив кнопок и добавляет их в коллекцию через callback.
+     *
+     * @param {TButton[]} buttons - Массив кнопок для обработки
+     * @param {TButtonCb} callback - Функция для добавления кнопок
      * @private
      */
     protected _initProcessingBtn(buttons: TButton[], callback: TButtonCb): void {
@@ -205,8 +258,9 @@ export class Buttons {
     }
 
     /**
-     * Дополнительная обработка второстепенных кнопок.
-     * А именно обрабатываются массивы btns и links. После чего все значения записываются в buttons.
+     * Обрабатывает массивы btns и links, добавляя их в основной массив buttons.
+     * После обработки очищает массивы btns и links.
+     * @protected
      */
     protected _processing(): void {
         if (this.btns.length) {
@@ -220,11 +274,68 @@ export class Buttons {
     }
 
     /**
-     * Возвращает массив кнопок для ответа пользователю.
+     * Возвращает массив кнопок, адаптированный для указанной платформы.
      *
-     * @param {string} type Тип кнопки.
-     * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
-     * @return any
+     * @param {string} [type=null] - Тип кнопок (платформа). Если не указан, используется текущий тип.
+     *                               Доступные типы:
+     *                               - T_ALISA_BUTTONS: кнопки для Алисы
+     *                               - T_ALISA_CARD_BUTTON: кнопки для карточки Алисы
+     *                               - T_VK_BUTTONS: кнопки для VK
+     *                               - T_TELEGRAM_BUTTONS: кнопки для Telegram
+     *                               - T_VIBER_BUTTONS: кнопки для Viber
+     *                               - T_SMARTAPP_BUTTONS: кнопки для Сбер SmartApp
+     *                               - T_SMARTAPP_BUTTON_CARD: кнопки для карточки SmartApp
+     *                               - T_USER_APP_BUTTONS: кнопки для пользовательского приложения
+     * @param {TemplateButtonTypes} [userButton=null] - Пользовательский класс кнопок для T_USER_APP_BUTTONS
+     * @returns {T | null} Адаптированные кнопки для платформы или null, если тип не поддерживается
+     *
+     * @example
+     * ```typescript
+     * const buttons = new Buttons();
+     *
+     * // Добавление кнопок
+     * buttons.addBtn('Нажми меня', '', { action: 'test' });
+     * buttons.addLink('Сайт', 'https://example.com');
+     *
+     * // Получение кнопок для разных платформ
+     *
+     * // Алиса
+     * const alisaButtons = buttons.getButtons(Buttons.T_ALISA_BUTTONS);
+     * // alisaButtons: [
+     * //   { title: 'Нажми меня', payload: { action: 'test' }, hide: true },
+     * //   { title: 'Сайт', url: 'https://example.com', hide: false }
+     * // ]
+     *
+     * // VK
+     * const vkButtons = buttons.getButtons(Buttons.T_VK_BUTTONS);
+     * // vkButtons: {
+     * //   one_time: true,
+     * //   buttons: [
+     * //     { action: { type: 'text', label: 'Нажми меня', payload: { action: 'test' } } },
+     * //     { action: { type: 'link', label: 'Сайт', link: 'https://example.com' } }
+     * //   ]
+     * // }
+     *
+     * // Telegram
+     * const telegramButtons = buttons.getButtons(Buttons.T_TELEGRAM_BUTTONS);
+     * // telegramButtons: {
+     * //   inline_keyboard: [
+     * //     [{ text: 'Нажми меня', callback_data: { action: 'test' } }],
+     * //     [{ text: 'Сайт', url: 'https://example.com' }]
+     * //   ]
+     * // }
+     *
+     * // Viber
+     * const viberButtons = buttons.getButtons(Buttons.T_VIBER_BUTTONS);
+     * // viberButtons: {
+     * //   DefaultHeight: true,
+     * //   BgColor: '#FFFFFF',
+     * //   Buttons: [
+     * //     { Text: 'Нажми меня', ActionType: 'reply', ActionBody: { action: 'test' } },
+     * //     { Text: 'Сайт', ActionType: 'open-url', ActionBody: 'https://example.com' }
+     * //   ]
+     * // }
+     * ```
      */
     public getButtons<T = any>(
         type: string | null = null,
@@ -269,10 +380,11 @@ export class Buttons {
                 break;
 
             case Buttons.T_USER_APP_BUTTONS:
-                button = userButton;
+                if (userButton) {
+                    button = userButton;
+                }
                 break;
         }
-
         if (button) {
             button.buttons = this.buttons;
             return button.getButtons();
@@ -281,11 +393,17 @@ export class Buttons {
     }
 
     /**
-     * Возвращает json строку c кнопками.
+     * Возвращает JSON-представление кнопок для указанной платформы.
      *
-     * @param {string} type Тип приложения.
-     * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
-     * @return string|null
+     * @param {string} [type=null] - Тип кнопок (платформа)
+     * @param {TemplateButtonTypes} [userButton=null] - Пользовательский класс кнопок
+     * @returns {string | null} JSON-строка с кнопками
+     *
+     * @example
+     * ```typescript
+     * // Получение JSON для кнопок Алисы
+     * const alisaButtonsJson = buttons.getButtonJson(Buttons.T_ALISA_BUTTONS);
+     * ```
      */
     public getButtonJson(
         type: string | null = null,

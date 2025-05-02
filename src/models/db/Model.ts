@@ -1,3 +1,15 @@
+/**
+ * Модуль базовой модели для работы с данными
+ *
+ * Предоставляет абстрактный класс для:
+ * - Взаимодействия с базой данных
+ * - Валидации данных
+ * - Управления состоянием модели
+ * - Выполнения CRUD операций
+ *
+ * @module models/db/Model
+ */
+
 import { mmApp } from '../../mmApp';
 import {
     IModelRes,
@@ -12,55 +24,159 @@ import { DbController } from './DbController';
 import { ProxyUtils } from './ProxyUtils';
 
 /**
- * @class Model
+ * Абстрактный класс для создания моделей данных
+ * Предоставляет базовую функциональность для работы с данными в базе данных
  *
- * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
+ * @example
+ * ```typescript
+ * class UserModel extends Model<UserState> {
+ *   // Определение правил валидации
+ *   rules(): IModelRules[] {
+ *     return [
+ *       { name: ['username'], type: 'string', max: 50 },
+ *       { name: ['age'], type: 'integer' }
+ *     ];
+ *   }
+ *
+ *   // Определение меток атрибутов
+ *   attributeLabels(): UserState {
+ *     return {
+ *       id: 'ID',
+ *       username: 'Имя пользователя',
+ *       age: 'Возраст'
+ *     };
+ *   }
+ *
+ *   // Определение имени таблицы
+ *   tableName(): string {
+ *     return 'users';
+ *   }
+ * }
+ *
+ * // Использование модели
+ * const user = new UserModel();
+ * user.state.username = 'John';
+ * user.state.age = 25;
+ * await user.save();
+ * ```
+ *
+ * @template TState - Тип состояния модели
+ * @class Model
  */
 export abstract class Model<TState extends TStateData> {
     /**
-     * Модель для работы с БД
+     * Контроллер для работы с базой данных
+     * Используется для выполнения запросов и управления данными
+     *
+     * @example
+     * ```typescript
+     * // Получение данных через контроллер
+     * const result = await this.dbController.select(
+     *   { where: { id: 1 } },
+     *   true
+     * );
+     * ```
      */
     public dbController: IDbControllerModel | DbController;
+
     /**
-     * Поля запроса.
+     * Объект для хранения параметров запроса
+     * Содержит условия поиска и данные для обновления
+     *
+     * @example
+     * ```typescript
+     * // Установка параметров запроса
+     * this.queryData.setQuery({ id: 1 });
+     * this.queryData.setData({ name: 'John' });
+     * ```
      */
     public queryData: QueryData;
+
     /**
-     * Стартовое значение для индекса.
+     * Начальный индекс для итерации по данным
+     * Используется при инициализации модели из массива
      */
     public startIndex = 0;
+
     /**
-     * Состояние модели.
+     * Состояние модели
+     * Содержит текущие значения всех атрибутов
+     *
+     * @example
+     * ```typescript
+     * // Установка значений
+     * this.state.username = 'John';
+     * this.state.age = 25;
+     *
+     * // Получение значений
+     * console.log(this.state.username);
+     * ```
      */
     public state: Partial<TState> = {};
 
     /**
-     * Правила для обработки полей. Где 1 - Элемент это название поля, 2 - Элемент тип поля, max - Максимальная длина.
+     * Определяет правила валидации для полей модели
+     * Должен быть реализован в дочерних классах
      *
-     * @return IModelRules[]
+     * @example
+     * ```typescript
+     * rules(): IModelRules[] {
+     *   return [
+     *     { name: ['username'], type: 'string', max: 50 },
+     *     { name: ['age'], type: 'integer' }
+     *   ];
+     * }
+     * ```
+     *
+     * @returns Массив правил валидации
      * @virtual
      */
     public abstract rules(): IModelRules[];
 
     /**
-     * Массив с полями таблицы, где ключ это название поля, а значение краткое описание.
-     * Для уникального ключа использовать значение ID.
+     * Определяет метки атрибутов модели
+     * Должен быть реализован в дочерних классах
      *
-     * @return object
+     * @example
+     * ```typescript
+     * attributeLabels(): UserState {
+     *   return {
+     *     id: 'ID',
+     *     username: 'Имя пользователя',
+     *     age: 'Возраст'
+     *   };
+     * }
+     * ```
+     *
+     * @returns Объект с метками атрибутов
      * @virtual
      */
     public abstract attributeLabels(): TState;
 
     /**
-     * Название таблицы/файла с данными.
+     * Определяет имя таблицы в базе данных
+     * Должен быть реализован в дочерних классах
      *
-     * @return string
+     * @example
+     * ```typescript
+     * tableName(): string {
+     *   return 'users';
+     * }
+     * ```
+     *
+     * @returns Имя таблицы
      * @virtual
      */
     public abstract tableName(): string;
 
     /**
-     * Model constructor.
+     * Создает новый экземпляр модели
+     * Инициализирует контроллер базы данных и состояние модели
+     *
+     * @example
+     * ```typescript
+     * const user = new UserModel();
+     * ```
      */
     protected constructor() {
         if (mmApp.userDbController) {
@@ -79,36 +195,57 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Проверка подключения к источнику данных.
-     * При использовании БД, проверяется статус подключения.
-     * Если удалось подключиться, возвращается true, в противном случае false.
-     * При сохранении данных в файл, всегда возвращается true.
+     * Проверяет состояние подключения к базе данных
      *
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const isConnected = await model.isConnected();
+     * if (isConnected) {
+     *   // Выполнение операций с базой данных
+     * }
+     * ```
+     *
+     * @returns Promise<boolean> - true если подключение активно
      */
     public async isConnected(): Promise<boolean> {
         return await this.dbController.isConnected();
     }
 
     /**
-     * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
+     * Экранирует специальные символы в строке
      *
-     * @param {string | number} text Исходный текст.
-     * @return string
+     * @example
+     * ```typescript
+     * const safe = model.escapeString("O'Connor");
+     * ```
+     *
+     * @param text - Текст для экранирования
+     * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
         return this.dbController.escapeString(text);
     }
 
     /**
-     * Валидация значений полей для таблицы.
+     * Выполняет валидацию данных модели
+     * Может быть переопределен в дочерних классах
+     *
+     * @example
+     * ```typescript
+     * validate(): void {
+     *   if (!this.state.username) {
+     *     throw new Error('Username is required');
+     *   }
+     * }
+     * ```
      */
     public validate(): void {}
 
     /**
-     * Возвращаем название уникального ключа таблицы.
+     * Определяет имя первичного ключа таблицы
+     * Ищет поле с меткой 'id' или 'ID'
      *
-     * @return number|string
+     * @returns Имя первичного ключа или null
      */
     protected getId(): string | number | null {
         const labels = this.attributeLabels();
@@ -123,9 +260,18 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Инициализация данных для модели.
+     * Инициализирует модель данными
      *
-     * @param data Массив с данными.
+     * @example
+     * ```typescript
+     * model.init({
+     *   id: 1,
+     *   username: 'John',
+     *   age: 25
+     * });
+     * ```
+     *
+     * @param data - Данные для инициализации
      */
     public init(data: IDbControllerResult[] | IDbControllerResult | null): void {
         if (data === null) {
@@ -153,9 +299,17 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Выполнение запроса с поиском по уникальному ключу.
+     * Выполняет поиск записи по первичному ключу
      *
-     * @return {Promise<IModelRes>}
+     * @example
+     * ```typescript
+     * const result = await model.selectOne();
+     * if (result.status) {
+     *   model.init(result.data);
+     * }
+     * ```
+     *
+     * @returns Promise с результатом запроса
      */
     public async selectOne(): Promise<IModelRes> {
         const idName = this.dbController.primaryKeyName;
@@ -169,7 +323,10 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Инициализация параметров для запроса
+     * Инициализирует параметры запроса
+     * Подготавливает данные для сохранения или обновления
+     *
+     * @private
      */
     private _initData(): void {
         this.validate();
@@ -189,11 +346,18 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Сохранение значения в базу данных.
-     * Если значение уже есть в базе данных, то данные обновятся. Иначе добавляется новое значение.
+     * Сохраняет данные модели в базу данных
+     * Если запись существует - обновляет, иначе создает новую
      *
-     * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * model.state.name = 'John';
+     * await model.save(); // Обновление существующей записи
+     * await model.save(true); // Создание новой записи
+     * ```
+     *
+     * @param isNew - Флаг создания новой записи
+     * @returns Promise с результатом операции
      */
     public async save(isNew: boolean = false): Promise<any> {
         this._initData();
@@ -201,9 +365,15 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Обновление значения в таблице.
+     * Обновляет существующую запись в базе данных
      *
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * model.state.name = 'John';
+     * await model.update();
+     * ```
+     *
+     * @returns Promise с результатом операции
      */
     public async update(): Promise<any> {
         this._initData();
@@ -211,9 +381,15 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Добавление значения в таблицу.
+     * Добавляет новую запись в базу данных
      *
-     * @return {Promise<Object>}
+     * @example
+     * ```typescript
+     * model.state.name = 'John';
+     * await model.add();
+     * ```
+     *
+     * @returns Promise с результатом операции
      */
     public async add(): Promise<any> {
         this.validate();
@@ -227,9 +403,14 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Удаление значения из таблицы.
+     * Удаляет запись из базы данных
      *
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * await model.remove();
+     * ```
+     *
+     * @returns Promise<boolean> - true если удаление успешно
      */
     public async remove(): Promise<boolean> {
         this.validate();
@@ -244,11 +425,19 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Выполнение запроса к данным.
+     * Выполняет произвольный запрос к базе данных
      *
-     * @param where Запрос к таблице.
-     * @param {boolean} isOne Вывести только 1 результат. Используется только при поиске по файлу.
-     * @return {Promise<IModelRes>}
+     * @example
+     * ```typescript
+     * const result = await model.where(
+     *   { age: { $gt: 18 } },
+     *   false
+     * );
+     * ```
+     *
+     * @param where - Условия запроса
+     * @param isOne - Флаг выборки одной записи
+     * @returns Promise с результатом запроса
      */
     public async where(where: any = '1', isOne: boolean = false): Promise<IModelRes> {
         const select: IQueryData | null =
@@ -257,10 +446,18 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Выполнение запроса и инициализация переменных в случае успешного запроса.
+     * Выполняет запрос с выборкой одной записи
      *
-     * @param where Запрос к таблице.
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const found = await model.whereOne({ id: 1 });
+     * if (found) {
+     *   console.log('Record found');
+     * }
+     * ```
+     *
+     * @param where - Условия запроса
+     * @returns Promise<boolean> - true если запись найдена
      */
     public async whereOne(where: any = '1'): Promise<boolean> {
         const res = await this.where(where, true);
@@ -272,17 +469,33 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Выполнение произвольного запрос к базе данных.
+     * Выполняет произвольный запрос к базе данных
      *
-     * @param {Function} callback Непосредственно запрос к бд.
-     * @return {Object|Object[]}
+     * @example
+     * ```typescript
+     * const result = await model.query(async (client, db) => {
+     *   const collection = db.collection('users');
+     *   return await collection.aggregate([
+     *     { $match: { age: { $gt: 18 } } },
+     *     { $group: { _id: '$city', count: { $sum: 1 } } }
+     *   ]).toArray();
+     * });
+     * ```
+     *
+     * @param callback - Функция обратного вызова для выполнения запроса
+     * @returns Результат выполнения запроса
      */
     public query(callback: TQueryCb): any {
         return this.dbController.query(callback);
     }
 
     /**
-     * Удаление подключения к БД
+     * Закрывает соединение с базой данных
+     *
+     * @example
+     * ```typescript
+     * model.destroy();
+     * ```
      */
     public destroy(): void {
         this.dbController.destroy();

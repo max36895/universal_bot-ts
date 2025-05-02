@@ -1,41 +1,123 @@
+/**
+ * @packageDocumentation
+ * @module api
+ *
+ * Класс для работы с API Яндекса
+ *
+ * Предоставляет функциональность для:
+ * - Отправки HTTP-запросов к API Яндекса
+ * - Управления OAuth-авторизацией
+ * - Обработки ошибок и логирования
+ *
+ * Основные возможности:
+ * - Автоматическая авторизация запросов
+ * - Типизированные ответы от API
+ * - Логирование ошибок
+ * - Настраиваемые таймауты запросов
+ *
+ * @example
+ * ```typescript
+ * import { YandexRequest } from './api/YandexRequest';
+ *
+ * // Создание экземпляра с токеном
+ * const yandexApi = new YandexRequest('your-oauth-token');
+ *
+ * // Выполнение запроса с обработкой ошибок
+ * try {
+ *   const response = await yandexApi.call<MyApiResponse>('https://api.yandex.ru/endpoint');
+ *
+ *   if (response) {
+ *     console.log('Успешный ответ:', response);
+ *   } else {
+ *     console.error('Ошибка запроса:', yandexApi._error);
+ *   }
+ * } catch (error) {
+ *   console.error('Неожиданная ошибка:', error);
+ * }
+ *
+ * // Изменение токена во время работы
+ * yandexApi.setOAuth('new-token');
+ * ```
+ */
 import { Request } from './request/Request';
 import { mmApp } from '../mmApp';
 import { IRequestSend, IYandexApi } from './interfaces';
 
 /**
- * Класс, отвечающий за отправку запросов на сервера Яндекса.
- * Предоставляет базовый функционал для работы с API Яндекса.
- * 
  * @class YandexRequest
+ * Класс для работы с API Яндекса
+ *
+ * Предоставляет методы для отправки запросов к API Яндекса,
+ * управления авторизацией и обработки ошибок.
+ *
+ * @example
+ * ```typescript
+ * // Создание экземпляра
+ * const api = new YandexRequest('your-token');
+ *
+ * // Установка нового токена
+ * api.setOAuth('new-token');
+ *
+ * // Выполнение запроса
+ * const result = await api.call<ApiResponse>('https://api.yandex.ru/endpoint');
+ * if (result) {
+ *   // Обработка успешного ответа
+ *   console.log(result);
+ * } else {
+ *   // Обработка ошибки
+ *   console.error(api._error);
+ * }
+ * ```
  */
 export class YandexRequest {
     /**
-     * Экземпляр класса для отправки HTTP-запросов.
+     * Экземпляр класса для отправки HTTP-запросов
      * @private
-     * @type {Request}
      */
     protected _request: Request;
 
     /**
-     * Авторизационный OAuth-токен для доступа к API Яндекса.
+     * OAuth-токен для авторизации запросов
+     *
+     * Используется для авторизации запросов к API Яндекса.
      * Подробная информация о получении токена:
      * @see https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/#http-images-load__auth
      * @private
-     * @type {string | null | undefined}
      */
     protected _oauth: string | null | undefined;
 
     /**
-     * Текст последней возникшей ошибки при выполнении запроса.
+     * Текст последней ошибки
+     *
+     * Содержит информацию о последней возникшей ошибке
+     * при выполнении запроса к API.
      * @private
-     * @type {string | null}
      */
     protected _error: string | null;
 
     /**
-     * Создает экземпляр класса YandexRequest.
-     * 
-     * @param {string | null} oauth - OAuth-токен для авторизации запросов.
+     * Создает экземпляр класса YandexRequest
+     *
+     * Инициализирует класс с OAuth-токеном и настраивает
+     * параметры HTTP-запросов.
+     *
+     * @param {string | null} [oauth=null] - OAuth-токен для авторизации
+     *
+     * @remarks
+     * Если токен не указан, будет использован токен из mmApp.params.yandex_token.
+     * Если и там токена нет, запросы будут выполняться без авторизации.
+     *
+     * @example
+     * ```typescript
+     * // Создание с токеном
+     * const api = new YandexRequest('your-token');
+     *
+     * // Создание без токена (будет использован токен из mmApp.params)
+     * const api = new YandexRequest();
+     *
+     * // Создание без авторизации
+     * const api = new YandexRequest(null);
+     * ```
      */
     public constructor(oauth: string | null = null) {
         this.setOAuth(oauth || mmApp.params.yandex_token || null);
@@ -45,10 +127,32 @@ export class YandexRequest {
     }
 
     /**
-     * Устанавливает OAuth-токен для авторизации запросов.
-     * Обновляет заголовки запросов с новым токеном.
-     * 
-     * @param {string | null} oauth - OAuth-токен для авторизации.
+     * Устанавливает OAuth-токен для авторизации
+     *
+     * Обновляет токен авторизации и заголовки запросов.
+     * При установке токена автоматически добавляется заголовок
+     * 'Authorization: OAuth {token}' ко всем последующим запросам.
+     *
+     * @param {string | null} oauth - OAuth-токен для авторизации
+     *
+     * @remarks
+     * - Если передать null, авторизация будет отключена
+     * - Заголовок авторизации добавляется автоматически
+     * - Токен сохраняется для всех последующих запросов
+     *
+     * @example
+     * ```typescript
+     * const api = new YandexRequest();
+     *
+     * // Установка нового токена
+     * api.setOAuth('new-token');
+     * // Теперь все запросы будут с заголовком:
+     * // Authorization: OAuth new-token
+     *
+     * // Сброс токена
+     * api.setOAuth(null);
+     * // Запросы будут без авторизации
+     * ```
      */
     public setOAuth(oauth: string | null): void {
         this._oauth = oauth;
@@ -58,11 +162,45 @@ export class YandexRequest {
     }
 
     /**
-     * Выполняет HTTP-запрос к API Яндекса.
-     * 
+     * Выполняет HTTP-запрос к API Яндекса
+     *
+     * Отправляет запрос к указанному эндпоинту API и
+     * обрабатывает полученный ответ.
+     *
      * @template T - Тип ожидаемого ответа, наследующий интерфейс IYandexApi
-     * @param {string | null} url - URL-адрес эндпоинта API
+     * @param {string | null} [url=null] - URL-адрес эндпоинта API
      * @returns {Promise<T | null>} - Результат запроса или null в случае ошибки
+     *
+     * @throws {Error} Если произошла ошибка сети или сервера
+     *
+     * @example
+     * ```typescript
+     * interface MyApiResponse extends IYandexApi {
+     *   data: {
+     *     id: string;
+     *     name: string;
+     *   };
+     * }
+     *
+     * const api = new YandexRequest('token');
+     *
+     * try {
+     *   // Выполнение запроса
+     *   const response = await api.call<MyApiResponse>('https://api.yandex.ru/endpoint');
+     *
+     *   if (response) {
+     *     // Обработка успешного ответа
+     *     console.log('ID:', response.data.id);
+     *     console.log('Name:', response.data.name);
+     *   } else {
+     *     // Обработка ошибки API
+     *     console.error('Ошибка API:', api._error);
+     *   }
+     * } catch (error) {
+     *   // Обработка ошибок сети или сервера
+     *   console.error('Ошибка запроса:', error);
+     * }
+     * ```
      */
     public async call<T extends IYandexApi>(url: string | null = null): Promise<T | null> {
         const data: IRequestSend<T> = await this._request.send<T>(url);
@@ -77,9 +215,12 @@ export class YandexRequest {
     }
 
     /**
-     * Сохраняет информацию об ошибках в лог-файл.
-     * 
-     * @param {string} error - Текст ошибки для логирования
+     * Сохраняет информацию об ошибках в лог-файл
+     *
+     * Записывает детальную информацию об ошибке в файл логов,
+     * включая время возникновения, URL запроса и текст ошибки.
+     *
+     * @param {string} [error=''] - Текст ошибки для логирования
      * @private
      */
     protected _log(error: string = ''): void {

@@ -8,18 +8,35 @@ import { Buttons } from '../components/button';
 import { ITelegramCard } from '../components/card';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Телеграма.
+ * Класс для работы с платформой Telegram
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате Telegram
  * @class Telegram
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Telegram extends TemplateTypeModel {
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {ITelegramContent|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * Обрабатывает входящие сообщения и обновления от Telegram
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой бота
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
+     *
+     * Поддерживаемые типы обновлений:
+     * - message: новое входящее сообщение
+     * - edited_message: отредактированное сообщение
+     * - channel_post: новый пост в канале
+     * - edited_channel_post: отредактированный пост в канале
+     * - inline_query: встроенный запрос
+     * - callback_query: запрос обратного вызова
+     * - shipping_query: запрос на доставку
+     * - pre_checkout_query: запрос предварительной проверки
+     * - poll: состояние опроса
+     * - poll_answer: ответ в опросе
+     *
+     * @see https://core.telegram.org/bots/api#getting-updates Документация по обновлениям
      */
     public async init(
         query: string | ITelegramContent,
@@ -92,9 +109,9 @@ export class Telegram extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<string>}
+     * Формирует и отправляет ответ пользователю
+     * Отправляет текст, карточки, опросы и звуки через Telegram API
+     * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {

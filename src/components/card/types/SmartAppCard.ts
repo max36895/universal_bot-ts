@@ -8,17 +8,78 @@ import { Buttons } from '../../button';
 import { Image } from '../../image/Image';
 
 /**
- * Класс отвечающий за отображение карточки в Сбер SmartApp
  * @class SmartAppCard
+ * Класс для создания и отображения карточек в Сбер SmartApp.
+ * Наследуется от TemplateCardTypes и реализует специфичную для Сбер SmartApp логику.
+ *
+ * Основные возможности:
+ * - Создание карточек с изображениями и текстом
+ * - Поддержка различных типов ячеек (image_cell_view, text_cell_view, left_right_cell_view)
+ * - Настройка отступов и стилей текста
+ * - Добавление кнопок с действиями
+ *
+ * @example
+ * ```typescript
+ * const card = new SmartAppCard();
+ * card.title = 'Каталог товаров';
+ * card.images = [
+ *     new Image('product1.jpg', 'Товар 1', 'Описание 1'),
+ *     new Image('product2.jpg', 'Товар 2', 'Описание 2')
+ * ];
+ * const result = await card.getCard(false);
+ * ```
  */
 export class SmartAppCard extends TemplateCardTypes {
     /**
-     * Получение элементов для карточки
+     * Получает элементы для карточки Сбер SmartApp.
      *
-     * @param {Image} image Объект с картинкой
-     * @param {boolean} isOne Получить результат для 1 карточки
-     * @return {ISberSmartAppCardItem}
+     * Процесс работы:
+     * 1. Если isOne=true:
+     *    - Создает массив элементов для одной карточки
+     *    - Добавляет изображение, заголовок, описание и кнопку
+     * 2. Иначе:
+     *    - Создает элемент left_right_cell_view
+     *    - Добавляет иконку, заголовок, описание и кнопку
+     *
+     * @param {Image} image - Объект с изображением и данными
+     * @param {boolean} isOne - Флаг создания элементов для одной карточки
+     * @returns {ISberSmartAppCardItem | ISberSmartAppCardItem[]} Элементы карточки
      * @private
+     *
+     * @example
+     * ```typescript
+     * const image = new Image('product.jpg', 'Товар', 'Описание');
+     *
+     * // Получить элементы для одной карточки
+     * const singleCardItems = SmartAppCard._getCardItem(image, true);
+     * // singleCardItems = [
+     * //     {
+     * //         type: 'image_cell_view',
+     * //         content: { url: 'product.jpg' }
+     * //     },
+     * //     {
+     * //         type: 'text_cell_view',
+     * //         content: { text: 'Товар', typeface: 'title1' }
+     * //     },
+     * //     {
+     * //         type: 'text_cell_view',
+     * //         content: { text: 'Описание', typeface: 'footnote1' }
+     * //     }
+     * // ]
+     *
+     * // Получить элемент для списка
+     * const listCardItem = SmartAppCard._getCardItem(image, false);
+     * // listCardItem = {
+     * //     type: 'left_right_cell_view',
+     * //     left: {
+     * //         type: 'fast_answer_left_view',
+     * //         label: { text: 'Товар', typeface: 'headline2' },
+     * //         icon_and_value: {
+     * //             value: { text: 'Описание', typeface: 'body3' }
+     * //         }
+     * //     }
+     * // }
+     * ```
      */
     protected static _getCardItem(
         image: Image,
@@ -141,10 +202,55 @@ export class SmartAppCard extends TemplateCardTypes {
     }
 
     /**
-     * Получение карточки для отображения пользователю.
+     * Получает карточку для отображения в Сбер SmartApp.
      *
-     * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
-     * @return {Promise<ISberSmartAppItem>}
+     * Процесс работы:
+     * 1. Если isOne=true:
+     *    - Создает карточку типа list_card
+     *    - Добавляет элементы для одного изображения
+     * 2. Иначе:
+     *    - Создает карточку типа list_card
+     *    - Добавляет заголовок (если есть)
+     *    - Добавляет элементы для каждого изображения
+     *
+     * @param {boolean} isOne - Флаг отображения только одного элемента
+     * @returns {Promise<ISberSmartAppItem | null>} Карточка или null
+     *
+     * @example
+     * ```typescript
+     * const card = new SmartAppCard();
+     * card.title = 'Каталог товаров';
+     * card.images = [
+     *     new Image('product1.jpg', 'Товар 1', 'Описание 1'),
+     *     new Image('product2.jpg', 'Товар 2', 'Описание 2')
+     * ];
+     *
+     * // Получить одну карточку
+     * const singleCard = await card.getCard(true);
+     * // singleCard = {
+     * //     card: {
+     * //         type: 'list_card',
+     * //         cells: [
+     * //             { type: 'image_cell_view', content: { url: 'product1.jpg' } },
+     * //             { type: 'text_cell_view', content: { text: 'Товар 1' } },
+     * //             { type: 'text_cell_view', content: { text: 'Описание 1' } }
+     * //         ]
+     * //     }
+     * // }
+     *
+     * // Получить список
+     * const listCard = await card.getCard(false);
+     * // listCard = {
+     * //     card: {
+     * //         type: 'list_card',
+     * //         cells: [
+     * //             { type: 'text_cell_view', content: { text: 'Каталог товаров' } },
+     * //             { type: 'left_right_cell_view', left: { ... } },
+     * //             { type: 'left_right_cell_view', left: { ... } }
+     * //         ]
+     * //     }
+     * // }
+     * ```
      */
     public async getCard(isOne: boolean): Promise<ISberSmartAppItem | null> {
         const countImage = this.images.length;

@@ -15,36 +15,52 @@ import { mmApp } from '../mmApp';
 import { Text } from '../utils/standard/Text';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы
+ * Класс для работы с платформой Яндекс Алиса
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате Алисы
  * @class Alisa
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Alisa extends TemplateTypeModel {
     /**
-     * Версия Алисы.
+     * Версия API Алисы
+     * @private
      */
     private readonly VERSION: string = '1.0';
+
     /**
-     * Максимально время, за которое должен ответить навык.
+     * Максимальное время ответа навыка в миллисекундах
+     * @private
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
+
     /**
-     * Информация о сессии пользователя.
+     * Информация о сессии пользователя
+     * @protected
      */
     protected _session: IAlisaSession | undefined;
+
     /**
-     * Использование хранилища. True - используется, false - нет.
+     * Флаг использования хранилища данных
+     * @protected
      */
     protected _isState: boolean = false;
+
     /**
-     * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
+     * Название хранилища данных
+     * Может быть одним из:
+     * - user_state_update: данные пользователя
+     * - application_state: данные приложения
+     * - session_state: данные сессии
+     * @protected
      */
     protected _stateName: 'user_state_update' | 'application_state' | 'session_state' | null = null;
 
     /**
-     * Получение данных, необходимых для построения ответа пользователю.
-     *
-     * @return {Promise<IAlisaResponse>}
+     * Формирует ответ для пользователя
+     * Собирает текст, TTS, карточки и кнопки в единый объект ответа
+     * @returns {Promise<IAlisaResponse>} Объект ответа для Алисы
      * @private
      */
     protected async _getResponse(): Promise<IAlisaResponse> {
@@ -69,8 +85,8 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Устанавливает состояние приложения
-     *
-     * @param state
+     * Определяет тип хранилища и сохраняет состояние в контроллере
+     * @param state Объект состояния из запроса
      * @private
      */
     private _setState(state: IAlisaRequestState): void {
@@ -87,9 +103,9 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Инициализирует введенные пользователем данные
-     *
-     * @param request
+     * Инициализирует команду пользователя
+     * Обрабатывает различные типы запросов и сохраняет команду в контроллере
+     * @param request Объект запроса от пользователя
      * @private
      */
     private _initUserCommand(request: IAlisaRequest): void {
@@ -113,6 +129,7 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Устанавливает идентификатор пользователя
+     * Определяет ID пользователя из сессии или приложения
      * @private
      */
     private _setUserId(): void {
@@ -146,11 +163,10 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IAlisaWebhookRequest|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой навыка
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
      */
     public async init(
