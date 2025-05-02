@@ -1,4 +1,4 @@
-import {BotController} from '../controller';
+import { BotController } from '../controller';
 
 /**
  * @class TemplateTypeModel
@@ -30,8 +30,7 @@ export abstract class TemplateTypeModel {
     public sendInInit: any;
 
     constructor() {
-        // @ts-ignore
-        this.controller = null;
+        this.controller = {} as BotController;
         this.error = null;
         this._initProcessingTime();
         this.isUsedLocalStorage = false;
@@ -64,7 +63,6 @@ export abstract class TemplateTypeModel {
      * Получить время выполнения запроса.
      *
      * @return number
-     * @api
      */
     public getProcessingTime(): number {
         return Date.now() - (this.timeStart as number);
@@ -74,7 +72,6 @@ export abstract class TemplateTypeModel {
      * Получение текста с ошибкой при выполнении программы.
      *
      * @return string
-     * @api
      */
     public getError(): string | null {
         return this.error;
@@ -86,10 +83,9 @@ export abstract class TemplateTypeModel {
      * @param {Object} query Запрос пользователя.
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
-     * @api
      * @virtual
      */
-    public abstract init(query: any, controller: BotController): Promise<boolean>;
+    public abstract init(query: any, controller: BotController<any>): Promise<boolean>;
 
     /**
      * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
@@ -97,14 +93,14 @@ export abstract class TemplateTypeModel {
      * @return {Promise<Object|string>}
      * @virtual
      */
-    public abstract getContext(): Promise<Object | string>;
+    public abstract getContext(): Promise<object | string>;
 
     /**
      * Отправка ответа для выставления оценки приложения. Актуально для Сбер. Для остальных приложений вызовется getContext()
      *
      * @return {Promise<Object|string>}
      */
-    public getRatingContext(): Promise<Object | string> {
+    public getRatingContext(): Promise<object | string> {
         return this.getContext();
     }
 
@@ -114,7 +110,6 @@ export abstract class TemplateTypeModel {
      * тогда пользовательские данные не будут сохраняться в БД.
      *
      * @return boolean
-     * @api
      */
     public isLocalStorage(): boolean {
         return false;
@@ -124,7 +119,6 @@ export abstract class TemplateTypeModel {
      * Возвращаем данные из локального хранилища.
      *
      * @return Promise<object | string>
-     * @api
      */
     public getLocalStorage(): Promise<object | string | null> {
         return Promise.resolve(null);
@@ -135,8 +129,6 @@ export abstract class TemplateTypeModel {
      *
      * @param data сохраняемые данные
      * @return Promise<void>
-     * @api
      */
-    public async setLocalStorage(data: any): Promise<void> {
-    }
+    public async setLocalStorage(data: any): Promise<void> {}
 }

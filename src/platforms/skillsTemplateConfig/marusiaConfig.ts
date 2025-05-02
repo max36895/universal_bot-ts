@@ -1,4 +1,4 @@
-import {IMarusiaWebhookRequest} from '../interfaces';
+import { IMarusiaWebhookRequest } from '../interfaces';
 
 /**
  *
@@ -7,7 +7,12 @@ import {IMarusiaWebhookRequest} from '../interfaces';
  * @param count Номер сообщения
  * @param state Локальное хранилище
  */
-export default function (query: string, userId: string, count: number, state: object | string): IMarusiaWebhookRequest {
+export default function (
+    query: string,
+    userId: string,
+    count: number,
+    state: object | string,
+): IMarusiaWebhookRequest {
     return {
         meta: {
             locale: 'ru-Ru',
@@ -15,24 +20,24 @@ export default function (query: string, userId: string, count: number, state: ob
             client_id: 'local',
             interfaces: {
                 payments: null,
-                account_linking: null
-            }
+                account_linking: null,
+            },
         },
         session: {
             message_id: count,
             session_id: 'local',
             skill_id: 'local_test',
             user_id: userId,
-            'new': (count === 0)
+            new: count === 0,
         },
         request: {
             command: query.toLowerCase(),
             original_utterance: query,
-            type: 'SimpleUtterance'
+            type: 'SimpleUtterance',
         },
         state: {
             session: state,
         },
-        version: '1.0'
+        version: '1.0',
     };
 }

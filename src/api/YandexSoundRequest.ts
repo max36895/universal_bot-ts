@@ -1,13 +1,13 @@
-import {YandexRequest} from './YandexRequest';
-import {mmApp} from '../mmApp';
-import {Request} from './request/Request';
+import { YandexRequest } from './YandexRequest';
+import { mmApp } from '../mmApp';
+import { Request } from './request/Request';
 import {
     IYandexCheckOutPlace,
     IYandexRemoveRequest,
     IYandexRequestDownloadSound,
     IYandexRequestDownloadSoundRequest,
     IYandexRequestDownloadSoundsRequest,
-    IYandexSoundsCheckOutPlaceRequest
+    IYandexSoundsCheckOutPlaceRequest,
 } from './interfaces';
 
 /**
@@ -18,7 +18,7 @@ import {
  */
 export class YandexSoundRequest extends YandexRequest {
     /**
-     * @const string Адрес, на который будет отправляться запрос.
+     * Адрес, на который будет отправляться запрос.
      */
     private readonly STANDARD_URL = 'https://dialogs.yandex.net/api/v1/';
     /**
@@ -37,7 +37,7 @@ export class YandexSoundRequest extends YandexRequest {
      */
     constructor(oauth: string | null = null, skillId: string | null = null) {
         super(oauth);
-        this.skillId = skillId || (mmApp.params.app_id || null);
+        this.skillId = skillId || mmApp.params.app_id || null;
         this._request.url = this.STANDARD_URL;
     }
 
@@ -45,7 +45,6 @@ export class YandexSoundRequest extends YandexRequest {
      * Получение адреса для загрузки аудиофайлов.
      *
      * @return string
-     * @api
      */
     private _getSoundsUrl(): string {
         return `${this.STANDARD_URL}skills/${this.skillId}/sounds`;
@@ -61,7 +60,6 @@ export class YandexSoundRequest extends YandexRequest {
      * - int total: Все доступное место.
      * - int used: Занятое место.
      * ]
-     * @api
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = this.STANDARD_URL + 'status';
@@ -89,7 +87,6 @@ export class YandexSoundRequest extends YandexRequest {
      *  - bool isProcessed: Флаг готовности файла.
      *  - error: Текст ошибки.
      * ]
-     * @api
      */
     public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound | null> {
         if (this.skillId) {
@@ -100,7 +97,10 @@ export class YandexSoundRequest extends YandexRequest {
             if (query && query.sound.id !== 'undefined') {
                 return query.sound;
             } else {
-                this._log('YandexSoundRequest.downloadSoundFile() Error: Не удалось загрузить изображение по пути: ' + soundDir);
+                this._log(
+                    'YandexSoundRequest.downloadSoundFile() Error: Не удалось загрузить изображение по пути: ' +
+                        soundDir,
+                );
             }
         } else {
             this._log('YandexSoundRequest.downloadSoundFile() Error: Не выбран навык!');
@@ -123,7 +123,6 @@ export class YandexSoundRequest extends YandexRequest {
      *      - error: Текст ошибки.
      *  ]
      * ]
-     * @api
      */
     public async getLoadedSounds(): Promise<IYandexRequestDownloadSound[] | null> {
         if (this.skillId) {
@@ -143,7 +142,6 @@ export class YandexSoundRequest extends YandexRequest {
      * @param {string} soundId Идентификатор аудиофайла, который необходимо удалить.
      *
      * @return Promise<string>
-     * @api
      */
     public async deleteSound(soundId: string): Promise<string | null> {
         if (this.skillId) {
@@ -154,7 +152,9 @@ export class YandexSoundRequest extends YandexRequest {
                 if (query && typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
-                    this._log('YandexSoundRequest.deleteSound() Error: Не удалось удалить картинку!');
+                    this._log(
+                        'YandexSoundRequest.deleteSound() Error: Не удалось удалить картинку!',
+                    );
                 }
             } else {
                 this._log('YandexSoundRequest.deleteSound() Error: Не выбрано изображение!');
@@ -171,7 +171,6 @@ export class YandexSoundRequest extends YandexRequest {
      * Чтобы точно удалить все аудиофайлы лучше использовать грубое удаление.
      *
      * @return Promise<boolean>
-     * @api
      */
     public async deleteSounds(): Promise<boolean> {
         if (this.skillId) {
@@ -182,7 +181,9 @@ export class YandexSoundRequest extends YandexRequest {
                 });
                 return true;
             } else {
-                this._log('YandexSoundRequest.deleteSounds() Error: Не удалось получить загруженные звуки!');
+                this._log(
+                    'YandexSoundRequest.deleteSounds() Error: Не удалось получить загруженные звуки!',
+                );
             }
         } else {
             this._log('YandexSoundRequest.deleteSounds() Error: Не выбран навык!');

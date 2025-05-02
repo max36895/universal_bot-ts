@@ -28,6 +28,5 @@ if (argv[2]) {
         }
     }
 }
-console.log(param);
 consoleController.main(param);
 process.exitCode = 1;

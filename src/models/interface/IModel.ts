@@ -1,5 +1,11 @@
+/**
+ * Тип параметра
+ */
 export type TModelRulesType = 'text' | 'string' | 'integer' | 'date' | 'int' | 'bool';
 
+/**
+ * Интерфейс для описания правил проверки параметров
+ */
 export interface IModelRules {
     /**
      * Название поля
@@ -12,9 +18,12 @@ export interface IModelRules {
     /**
      * Максимальное значение. Актуально, если type=string
      */
-    max?: number
+    max?: number;
 }
 
+/**
+ * Интерфейс для описания модели
+ */
 export interface IModelRes {
     /**
      * Статус выполнения запроса
@@ -28,9 +37,4 @@ export interface IModelRes {
      * Полученный результат запроса
      */
     data?: any;
-}
-
-export interface ILabelAttr {
-    [name: string]: any;
-    [name: number]: any;
 }

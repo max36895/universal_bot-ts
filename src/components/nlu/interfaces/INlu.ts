@@ -1,5 +1,8 @@
-import {IAlisaNlu} from '../../../platforms/interfaces';
+import { IAlisaNlu } from '../../../platforms/interfaces';
 
+/**
+ * Интерфейс результата поиска в nlu
+ */
 export interface INluResult<T = object> {
     /**
      * Статус. Если удалось найти значение, вернет true, иначе false
@@ -11,12 +14,18 @@ export interface INluResult<T = object> {
     result: T | null;
 }
 
+/**
+ * Интерфейс результата поиска ФИО в nlu
+ */
 export interface INluFIO {
     first_name?: string;
     patronymic_name?: string;
     last_name?: string;
 }
 
+/**
+ * Интерфейс результата поиска геолокации в nlu
+ */
 export interface INluGeo {
     country?: string;
     city?: string;
@@ -25,6 +34,9 @@ export interface INluGeo {
     airport?: string;
 }
 
+/**
+ * Интерфейс результата поиска даты и времени в nlu
+ */
 export interface INluDateTime {
     year?: number;
     year_is_relative?: boolean;
@@ -38,6 +50,9 @@ export interface INluDateTime {
     minute_is_relative?: boolean;
 }
 
+/**
+ * Интерфейс результата поиска пользователя в nlu
+ */
 export interface INluThisUser {
     /**
      * Имя
@@ -53,6 +68,9 @@ export interface INluThisUser {
     last_name?: string | null;
 }
 
+/**
+ * Интерфейс слота в nlu
+ */
 export interface INluSlot {
     /**
      * Тип значения
@@ -65,17 +83,26 @@ export interface INluSlot {
     [name: string]: any;
 }
 
+/**
+ * Интерфейс интентов в nlu
+ */
 export interface INluIntents {
     [name: string]: INluIntent;
 }
 
+/**
+ * Интерфейс интента в nlu
+ */
 export interface INluIntent {
     /**
      * Слоты. В Алисе разработчик сам их задает
      */
-    slots: INluSlot[] | INluSlot
+    slots: INluSlot[] | INluSlot;
 }
 
+/**
+ * Интерфейс nlu
+ */
 export interface INlu extends IAlisaNlu {
     /**
      * Информация о пользователе

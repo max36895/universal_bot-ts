@@ -1,11 +1,20 @@
-import {TemplateSoundTypes} from './types/TemplateSoundTypes';
-import {mmApp, T_ALISA, T_MARUSIA, T_SMARTAPP, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from '../../mmApp';
-import {AlisaSound} from './types/AlisaSound';
-import {TelegramSound} from './types/TelegramSound';
-import {VkSound} from './types/VkSound';
-import {ViberSound} from './types/ViberSound';
-import {ISound} from './interfaces';
-import {MarusiaSound} from './types/MarusiaSound';
+import { TemplateSoundTypes } from './types/TemplateSoundTypes';
+import {
+    mmApp,
+    T_ALISA,
+    T_MARUSIA,
+    T_SMARTAPP,
+    T_TELEGRAM,
+    T_USER_APP,
+    T_VIBER,
+    T_VK,
+} from '../../mmApp';
+import { AlisaSound } from './types/AlisaSound';
+import { TelegramSound } from './types/TelegramSound';
+import { VkSound } from './types/VkSound';
+import { ViberSound } from './types/ViberSound';
+import { ISound } from './interfaces';
+import { MarusiaSound } from './types/MarusiaSound';
 
 /**
  * Класс отвечающий за обработку и корректное воспроизведение звуков, в зависимости от типа приложения.
@@ -37,9 +46,11 @@ export class Sound {
      * @param {string} text Исходный текст.
      * @param {TemplateSoundTypes} userSound Пользовательский класс для обработки звуков.
      * @return {Promise<Object|string>}
-     * @api
      */
-    public async getSounds(text: string | null, userSound: TemplateSoundTypes | null = null): Promise<any> {
+    public async getSounds(
+        text: string | null,
+        userSound: TemplateSoundTypes | null = null,
+    ): Promise<any> {
         if (!text) {
             return '';
         }

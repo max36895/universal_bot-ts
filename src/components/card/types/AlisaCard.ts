@@ -1,23 +1,35 @@
-import {TemplateCardTypes} from './TemplateCardTypes';
-import {Buttons} from '../../button';
+import { TemplateCardTypes } from './TemplateCardTypes';
+import { Buttons } from '../../button';
 import {
     IAlisaBigImage,
     IAlisaButtonCard,
     IAlisaImage,
     IAlisaImageGallery,
-    IAlisaItemsList
+    IAlisaItemsList,
 } from '../../../platforms/interfaces';
-import {Text} from '../../../utils/standard/Text';
-import {ImageTokens} from '../../../models/ImageTokens';
+import { Text } from '../../../utils/standard/Text';
+import { ImageTokens } from '../../../models/ImageTokens';
 
 /**
  * Класс отвечающий за отображение карточки в Алисе.
  * @class AlisaCard
  */
 export class AlisaCard extends TemplateCardTypes {
+    /**
+     * Определяет тип карточки, как картинку
+     */
     public static readonly ALISA_CARD_BIG_IMAGE = 'BigImage';
+    /**
+     * Определяет тип карточки, как список
+     */
     public static readonly ALISA_CARD_ITEMS_LIST = 'ItemsList';
+    /**
+     * Определяет максимальное количество изображений в списке
+     */
     public static readonly ALISA_MAX_IMAGES = 5;
+    /**
+     * Определяет максимальное количество изображений в галерее
+     */
     public static readonly ALISA_MAX_GALLERY_IMAGES = 7;
 
     /**
@@ -27,7 +39,9 @@ export class AlisaCard extends TemplateCardTypes {
      */
     protected async _getItem(): Promise<IAlisaImage[]> {
         const items: IAlisaImage[] = [];
-        const maxCount = this.isUsedGallery ? AlisaCard.ALISA_MAX_GALLERY_IMAGES : AlisaCard.ALISA_MAX_IMAGES;
+        const maxCount = this.isUsedGallery
+            ? AlisaCard.ALISA_MAX_GALLERY_IMAGES
+            : AlisaCard.ALISA_MAX_IMAGES;
         const images = this.images.slice(0, maxCount);
         for (const image of images) {
             let button: IAlisaButtonCard | null = null;
@@ -67,9 +81,10 @@ export class AlisaCard extends TemplateCardTypes {
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery>}
-     * @api
      */
-    public async getCard(isOne: boolean): Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null> {
+    public async getCard(
+        isOne: boolean,
+    ): Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null> {
         this.button.type = Buttons.T_ALISA_CARD_BUTTON;
         const countImage = this.images.length;
         if (countImage) {
@@ -83,7 +98,9 @@ export class AlisaCard extends TemplateCardTypes {
                     }
                 }
                 if (this.images[0].imageToken) {
-                    let button: IAlisaButtonCard | null = this.images[0].button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                    let button: IAlisaButtonCard | null = this.images[0].button.getButtons(
+                        Buttons.T_ALISA_CARD_BUTTON,
+                    );
                     if (!button?.text) {
                         button = this.button.getButtons();
                     }
@@ -91,7 +108,7 @@ export class AlisaCard extends TemplateCardTypes {
                         type: AlisaCard.ALISA_CARD_BIG_IMAGE,
                         image_id: this.images[0].imageToken,
                         title: Text.resize(this.images[0].title, 128),
-                        description: Text.resize(this.images[0].desc, 256)
+                        description: Text.resize(this.images[0].desc, 256),
                     };
                     if (button?.text) {
                         object.button = button;
@@ -101,7 +118,7 @@ export class AlisaCard extends TemplateCardTypes {
             } else {
                 if (this.isUsedGallery) {
                     const object: IAlisaImageGallery = {
-                        type: "ImageGallery"
+                        type: 'ImageGallery',
                     };
                     object.items = await this._getItem();
                     return object;
@@ -109,15 +126,17 @@ export class AlisaCard extends TemplateCardTypes {
                     const object: IAlisaItemsList = {
                         type: AlisaCard.ALISA_CARD_ITEMS_LIST,
                         header: {
-                            text: Text.resize(this.title || '', 64)
-                        }
+                            text: Text.resize(this.title || '', 64),
+                        },
                     };
                     object.items = await this._getItem();
-                    const btn: IAlisaButtonCard | null = this.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                    const btn: IAlisaButtonCard | null = this.button.getButtons(
+                        Buttons.T_ALISA_CARD_BUTTON,
+                    );
                     if (btn?.text) {
                         object.footer = {
                             text: btn.text,
-                            button: btn
+                            button: btn,
                         };
                     }
                     return object;

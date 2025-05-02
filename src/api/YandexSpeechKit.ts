@@ -1,5 +1,5 @@
-import {YandexRequest} from './YandexRequest';
-import {mmApp} from '../mmApp';
+import { YandexRequest } from './YandexRequest';
+import { mmApp } from '../mmApp';
 
 /**
  * Класс отвечающий за преобразование текста в аудио файл.
@@ -9,31 +9,91 @@ import {mmApp} from '../mmApp';
  */
 export class YandexSpeechKit extends YandexRequest {
     /**
-     * @const string Адрес, на который будет отправляться запрос
+     * Адрес, на который будет отправляться запрос
      */
-    public static readonly TTS_API_URL = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize';
+    public static readonly TTS_API_URL =
+        'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize';
 
+    /**
+     * Положительная интонация.
+     */
     public static readonly E_GOOD = 'good';
+    /**
+     * Отрицательная интонация.
+     */
     public static readonly E_EVIL = 'evil';
+    /**
+     * Нейтральная интонация.
+     */
     public static readonly E_NEUTRAL = 'neutral';
 
-    public static readonly V_OKSANA = 'oksana';//ru
-    public static readonly V_JANE = 'jane';//ru
-    public static readonly V_OMAZH = 'omazh';//ru
-    public static readonly V_ZAHAR = 'zahar';//ru
-    public static readonly V_ERMIL = 'ermil';//ru
-    public static readonly V_SILAERKAN = 'silaerkan';//tr
-    public static readonly V_ERKANYAVAS = 'erkanyavas';//tr
-    public static readonly V_ALYSS = 'alyss';//en
-    public static readonly V_NICK = 'nick';//en
-    public static readonly V_ALENA = 'alena';//ru
-    public static readonly V_FILIPP = 'filipp';//ru
+    /**
+     * Голос для синтеза речи Оксана(ru)
+     */
+    public static readonly V_OKSANA = 'oksana'; //ru
+    /**
+     * Голос для синтеза речи Джейн(ru)
+     */
+    public static readonly V_JANE = 'jane'; //ru
+    /**
+     * Голос для синтеза речи Омазж(ru)
+     */
+    public static readonly V_OMAZH = 'omazh'; //ru
+    /**
+     * Голос для синтеза речи Захар(ru)
+     */
+    public static readonly V_ZAHAR = 'zahar'; //ru
+    /**
+     * Голос для синтеза речи Ермил(ru)
+     */
+    public static readonly V_ERMIL = 'ermil'; //ru
+    /**
+     * Голос для синтеза речи Сильвер(tr)
+     */
+    public static readonly V_SILAERKAN = 'silaerkan'; //tr
+    /**
+     * Голос для синтеза речи Эркан(tr)
+     */
+    public static readonly V_ERKANYAVAS = 'erkanyavas'; //tr
+    /**
+     * Голос для синтеза речи Элис(en)
+     */
+    public static readonly V_ALYSS = 'alyss'; //en
+    /**
+     * Голос для синтеза речи Ник(en)
+     */
+    public static readonly V_NICK = 'nick'; //en
+    /**
+     * Голос для синтеза речи Алена(ru)
+     */
+    public static readonly V_ALENA = 'alena'; //ru
+    /**
+     * Голос для синтеза речи Филипп(ru)
+     */
+    public static readonly V_FILIPP = 'filipp'; //ru
 
+    /**
+     * Русский язык
+     */
     public static readonly L_RU = 'ru-RU';
+    /**
+     * Английский язык
+     */
     public static readonly L_EN = 'en_EN';
+    /**
+     * Турецкий язык
+     */
     public static readonly L_TR = 'tr-TR';
 
+    /**
+     * Формат файла lpcm.
+     * @see format
+     */
     public static readonly F_LPCM = 'lpcm';
+    /**
+     * Формат файла oggopus.
+     * @see format
+     */
     public static readonly F_OGGOPUS = 'oggopus';
 
     /**
@@ -83,7 +143,7 @@ export class YandexSpeechKit extends YandexRequest {
      * Дискретизация — 8, 16 или 48 кГц в зависимости от значения параметра sampleRateHertz.
      * Разрядность квантования — 16 бит.
      * Порядок байтов — обратный (little-endian).
-     * Аудиоданные хранятся как знаковые числа (signed integer).
+     * Аудио-данные хранятся как знаковые числа (signed integer).
      * oggopus (по умолчанию) — данные в аудиофайле кодируются с помощью аудиокодека OPUS и упаковываются в контейнер OGG (OggOpus).
      * @defaultValue oggopus
      */
@@ -98,7 +158,7 @@ export class YandexSpeechKit extends YandexRequest {
      */
     public sampleRateHertz: number | undefined;
     /**
-     * Идентификатор каталога, к которому у вас есть доступ. Требуется для авторизации с пользовательским аккаунтом (см. ресурс UserAccount ). Не используйте это поле, если вы делаете запрос от имени сервисного аккаунта.
+     * Идентификатор каталога, к которому у вас есть доступ. Требуется для авторизации с пользовательским аккаунтом (см. ресурс UserAccount). Не используйте это поле, если вы делаете запрос от имени сервисного аккаунта.
      * Максимальная длина строки в символах — 50.
      */
     public folderId: number | null;
@@ -114,7 +174,7 @@ export class YandexSpeechKit extends YandexRequest {
         this.speed = 1.0;
         this.format = YandexSpeechKit.F_OGGOPUS;
         this.folderId = null;
-        this.voice = 'oksana'
+        this.voice = 'oksana';
         if (oauth === null) {
             this.setOAuth(mmApp.params.yandex_speech_kit_token || null);
         }
@@ -123,14 +183,21 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Инициализация параметров для отправки запроса.
      */
-    protected _initPost() {
+    protected _initPost(): void {
         this._request.post = {
             text: this.text,
             lang: this.lang,
             voice: this.voice,
-            format: this.format
+            format: this.format,
         };
-        if ([YandexSpeechKit.V_SILAERKAN, YandexSpeechKit.V_ERKANYAVAS, YandexSpeechKit.V_ALYSS, YandexSpeechKit.V_NICK].indexOf(this.voice) === -1) {
+        if (
+            [
+                YandexSpeechKit.V_SILAERKAN,
+                YandexSpeechKit.V_ERKANYAVAS,
+                YandexSpeechKit.V_ALYSS,
+                YandexSpeechKit.V_NICK,
+            ].indexOf(this.voice) === -1
+        ) {
             this._request.post.emotion = this.emotion;
         }
         if (this.voice !== YandexSpeechKit.V_ALENA && this.voice !== YandexSpeechKit.V_FILIPP) {
@@ -155,7 +222,6 @@ export class YandexSpeechKit extends YandexRequest {
      * @param {string} text Текст для преобразования
      * @return Promise<any>
      * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
-     * @api
      */
     public getTts(text: string | null = null): Promise<any> {
         if (text) {

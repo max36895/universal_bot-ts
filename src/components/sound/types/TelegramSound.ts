@@ -1,9 +1,9 @@
-import {TemplateSoundTypes} from './TemplateSoundTypes';
-import {ISound} from '../interfaces';
-import {Text, isFile} from '../../../utils';
-import {mmApp} from '../../../mmApp';
-import {TelegramRequest, TTelegramChatId, YandexSpeechKit} from '../../../api';
-import {SoundTokens} from '../../../models/SoundTokens';
+import { TemplateSoundTypes } from './TemplateSoundTypes';
+import { ISound } from '../interfaces';
+import { Text, isFile } from '../../../utils';
+import { mmApp } from '../../../mmApp';
+import { TelegramRequest, TTelegramChatId, YandexSpeechKit } from '../../../api';
+import { SoundTokens } from '../../../models/SoundTokens';
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в Телеграме.
@@ -17,7 +17,6 @@ export class TelegramSound implements TemplateSoundTypes {
      * @param {ISound[]} sounds Массив звуков.
      * @param {string} text Исходный текст.
      * @return {Promise<string[]>}
-     * @api
      */
     public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];
@@ -33,7 +32,10 @@ export class TelegramSound implements TemplateSoundTypes {
                             sModel.path = sText;
                             sText = await sModel.getToken();
                         } else {
-                            await (new TelegramRequest()).sendAudio(mmApp.params.user_id as TTelegramChatId, sText);
+                            await new TelegramRequest().sendAudio(
+                                mmApp.params.user_id as TTelegramChatId,
+                                sText,
+                            );
                         }
 
                         if (sText) {
@@ -47,7 +49,10 @@ export class TelegramSound implements TemplateSoundTypes {
             const speechKit = new YandexSpeechKit();
             const content = await speechKit.getTts(text);
             if (content) {
-                await (new TelegramRequest()).sendAudio(mmApp.params.user_id as TTelegramChatId, content);
+                await new TelegramRequest().sendAudio(
+                    mmApp.params.user_id as TTelegramChatId,
+                    content,
+                );
             }
         }
         return data;

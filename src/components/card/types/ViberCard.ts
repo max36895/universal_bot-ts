@@ -1,9 +1,8 @@
-import {TemplateCardTypes} from './TemplateCardTypes';
-import {Buttons, IViberButton, IViberButtonObject} from '../../button';
-import {Image} from '../../image/Image';
+import { TemplateCardTypes } from './TemplateCardTypes';
+import { Buttons, IViberButton, IViberButtonObject } from '../../button';
+import { Image } from '../../image/Image';
 
-export interface IViberCard extends IViberButton {
-}
+export interface IViberCard extends IViberButton {}
 
 /**
  * Класс отвечающий за отображение карточки в Viber.
@@ -26,14 +25,16 @@ export class ViberCard extends TemplateCardTypes {
 
         let element: IViberCard = {
             Columns: countImage,
-            Rows: 6
+            Rows: 6,
         };
         if (image.imageToken) {
             element.Image = image.imageToken;
         }
-        const btn: IViberButtonObject | null = image.button.getButtons<IViberButtonObject>(Buttons.T_VIBER_BUTTONS);
+        const btn: IViberButtonObject | null = image.button.getButtons<IViberButtonObject>(
+            Buttons.T_VIBER_BUTTONS,
+        );
         if (btn && typeof btn.Buttons !== 'undefined') {
-            element = {...element, ...btn.Buttons[0]};
+            element = { ...element, ...btn.Buttons[0] };
             element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;
         }
         return element;
@@ -44,7 +45,6 @@ export class ViberCard extends TemplateCardTypes {
      *
      * @param  {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return {Promise<IViberCard[] | IViberCard>}
-     * @api
      */
     public async getCard(isOne: boolean): Promise<IViberCard[] | IViberCard> {
         const objects: IViberCard[] = [];
@@ -67,7 +67,7 @@ export class ViberCard extends TemplateCardTypes {
                     if (objects.length <= countImage) {
                         objects.push(ViberCard._getElement(image, countImage));
                     }
-                })
+                });
             }
         }
         return objects;

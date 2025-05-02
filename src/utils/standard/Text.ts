@@ -1,255 +1,263 @@
-import {rand, similarText} from './util';
+import { rand, similarText } from './util';
 
-export type TFind = string | string[];
+/**
+ * Тип для поиска совпадений в тексте
+ */
+export type TPattern = string | readonly string[];
 
+/**
+ * Интерфейс для проверки схожести текста
+ * @public
+ */
 export interface ITextSimilarity {
     /**
-     * Статус выполнения
+     * Статус успешности сравнения текстов
      */
     status: boolean;
     /**
-     * В каком тексте значение совпало, либо максимальное. При передаче строки вернет 0
+     * Индекс совпавшего текста в массиве или null для строки
      */
     index: number | null;
     /**
-     * На сколько процентов текста похожи
+     * Процент схожести текстов (от 0 до 100)
      */
     percent: number;
     /**
-     * Текст, который совпал
+     * Совпавший текст или null, если совпадений нет
      */
     text?: string | null;
 }
 
 /**
- * Вспомогательный класс, отвечающий за работу с текстом.
+ * Класс для работы с текстом и текстовыми операциями
  * @class Text
  */
 export class Text {
     /**
-     * Обрезает текст до необходимого количества символов.
-     *
-     * @param {string} text Исходный текст.
-     * @param {number} size Максимальный размер текста.
-     * @param {boolean} isEllipsis Если true, тогда в конце добавится троеточие. Иначе текст просто обрезается.
-     * @return string
-     * @api
+     * Кэш для скомпилированных регулярных выражений
+     * @private
      */
-    public static resize(text: string | null, size: number = 950, isEllipsis: boolean = true): string {
-        if (text !== null) {
-            if (text.length > size) {
-                if (isEllipsis) {
-                    size -= 3;
-                    if (size < 0) {
-                        size = 0;
-                    }
-                    text = (text.substring(0, size) + '...');
-                } else {
-                    text = text.substring(0, size);
-                }
-            }
+    private static readonly regexCache = new Map<string, RegExp>();
+
+    /**
+     * Обрезает текст до указанной длины
+     * @param {string | null} text - Исходный текст
+     * @param {number} size - Максимальная длина результата
+     * @param {boolean} isEllipsis - Добавлять ли многоточие в конце обрезанного текста
+     * @returns {string} Обрезанный текст
+     */
+    public static resize(
+        text: string | null,
+        size: number = 950,
+        isEllipsis: boolean = true,
+    ): string {
+        if (!text) {
+            return '';
+        }
+
+        if (text.length <= size) {
             return text;
         }
-        return '';
+
+        if (!isEllipsis) {
+            return text.substring(0, size);
+        }
+
+        const ellipsisSize = Math.max(0, size - 3);
+        return text.substring(0, ellipsisSize) + '...';
     }
 
     /**
-     * Определяет наличие ссылки в переданном тексте
-     *
-     * @param {string} link Проверяемая строка
-     * @return boolean
-     * @api
+     * Проверяет, является ли строка URL-адресом
+     * @param {string} link - Проверяемая строка
+     * @returns {boolean} true, если строка является URL-адресом
      */
     public static isUrl(link: string): boolean {
-        return !!link.match(/((http|s:\/\/)[^( |\n)]+)/umig);
+        const URL_PATTERN = /((http|s:\/\/)[^( |\n)]+)/gimu;
+        return URL_PATTERN.test(link);
     }
 
     /**
-     * Определяет наличие в тексте согласие пользователя
-     *
-     * @param {string} text Пользовательский текст.
-     * @return boolean
-     * @api
+     * Определяет наличие в тексте согласия пользователя
+     * @param {string} text - Проверяемый текст
+     * @returns {boolean} true, если найдено подтверждение
      */
     public static isSayTrue(text: string): boolean {
-        if (text) {
-            const confirmText = [
-                '(?:^|\\s)да(?:^|\\s|$)',
-                '(?:^|\\s)конечно(?:^|\\s|$)',
-                '(?:^|\\s)соглас[^s]+(?:^|\\s|$)',
-                '(?:^|\\s)подтвер[^s]+(?:^|\\s|$)',
-            ];
-            return Text.isSayText(confirmText, text, true);
+        if (!text) {
+            return false;
         }
-        return false;
+
+        const CONFIRM_PATTERNS: readonly string[] = [
+            '(?:^|\\s)да(?:^|\\s|$)',
+            '(?:^|\\s)конечно(?:^|\\s|$)',
+            '(?:^|\\s)соглас[^s]+(?:^|\\s|$)',
+            '(?:^|\\s)подтвер[^s]+(?:^|\\s|$)',
+        ];
+
+        return Text.isSayPattern(CONFIRM_PATTERNS, text);
     }
 
     /**
-     * Определяет наличие в тексте не согласие пользователя
-     *
-     * @param {string} text Пользовательский текст.
-     * @return boolean
-     * @api
+     * Определяет наличие в тексте отрицания пользователя
+     * @param {string} text - Проверяемый текст
+     * @returns {boolean} true, если найдено отрицание
      */
     public static isSayFalse(text: string): boolean {
-        if (text) {
-            const unconfirmText = [
-                '(?:^|\\s)нет(?:^|\\s|$)',
-                '(?:^|\\s)неа(?:^|\\s|$)',
-                '(?:^|\\s)не(?:^|\\s|$)',
-            ];
-            return Text.isSayText(unconfirmText, text, true);
+        if (!text) {
+            return false;
         }
-        return false;
+
+        const REJECT_PATTERNS: readonly string[] = [
+            '(?:^|\\s)нет(?:^|\\s|$)',
+            '(?:^|\\s)неа(?:^|\\s|$)',
+            '(?:^|\\s)не(?:^|\\s|$)',
+        ];
+
+        return Text.isSayPattern(REJECT_PATTERNS, text);
     }
 
     /**
-     * Определяет наличие в тексте определенного условия
-     *
-     * @param {TFind} find Текст который ищем.
-     * @param {string} text Исходный текст, в котором осуществляется поиск.
-     * @param {boolean} isPattern Определяет использование регулярного выражения
-     * @return boolean
-     * @api
+     * Проверяет наличие совпадений в тексте по шаблонам
+     * @param {TPattern} patterns - Шаблоны для поиска
+     * @param {string} text - Проверяемый текст
+     * @returns {boolean} true, если найдено совпадение с одним из шаблонов
+     * @private
      */
-    public static isSayText(find: TFind, text: string, isPattern: boolean = false): boolean {
-        if (text) {
-            let pattern: string = '';
-            if (typeof find === 'object') {
-                const result = find.some((value) => {
-                    if (isPattern) {
-                        if (pattern) {
-                            pattern += '|';
-                        }
-                        pattern += `(${value})`;
-                    } else {
-                        if (text.indexOf(value) !== -1) {
-                            return true;
-                        }
-                    }
-                });
-                if (!isPattern) {
-                    return result;
-                }
-            } else {
-                if (isPattern) {
-                    pattern = find;
-                } else {
-                    if (text.indexOf(find) !== -1) {
-                        return true;
-                    }
-                }
-            }
-            if (isPattern && pattern) {
-                return !!text.match((new RegExp(pattern, 'umig')));
-            }
+    private static isSayPattern(patterns: TPattern, text: string): boolean {
+        if (!text) {
+            return false;
         }
-        return false;
+
+        const pattern = Array.isArray(patterns)
+            ? `(${patterns.join(')|(')})`
+            : (patterns as string);
+        const cachedRegex = Text.getCachedRegex(pattern);
+        return !!text.match(cachedRegex);
     }
 
     /**
-     * Получение строки из массива строк. В случае если передана строка, то вернется исходное значение.
-     *
-     * @param {TFind} str Исходная строка или массив из строк.
-     * @return string
-     * @api
+     * Проверяет наличие совпадений в тексте
+     * @param {TPattern} find - Искомый текст или массив текстов
+     * @param {string} text - Исходный текст для поиска
+     * @param {boolean} isPattern - Использовать ли регулярные выражения
+     * @returns {boolean} true, если найдено совпадение
      */
-    public static getText(str: TFind): string {
-        if (typeof str !== 'string') {
-            return str[rand(0, str.length - 1)];
+    public static isSayText(find: TPattern, text: string, isPattern: boolean = false): boolean {
+        if (!text) {
+            return false;
         }
-        return str;
+
+        if (!isPattern) {
+            return Array.isArray(find)
+                ? find.some((value) => text.includes(value))
+                : text === find || text.includes(find as string);
+        }
+        return Text.isSayPattern(find, text);
     }
 
     /**
-     * Добавление нужного окончание в зависимости от переданного числа.
-     *
-     * @param {number} num - само число.
-     * @param {string[]} titles - массив из возможных вариантов. массив должен быть типа ['1 значение','2 значение','3 значение'].
-     * Где:
-     * 1 значение - это окончание, которое получится если последняя цифра числа 1
-     * 2 значение - это окончание, которое получится если последняя цифра числа от 2 до 4
-     * 3 значение - это окончание, если последняя цифра числа от 5 до 9 включая 0
-     * Пример:
-     * ['Яблоко','Яблока','Яблок']
-     * Результат:
-     * 1 Яблоко, 21 Яблоко, 3 Яблока, 9 Яблок
-     *
-     * @param {number} index Свое значение из массива. Если элемента в массиве с данным индексом нет, тогда параметр игнорируется.
-     *
-     * @return string
-     * @api
+     * Получает или создает регулярное выражение из кэша
+     * @param {string} pattern - Шаблон регулярного выражения
+     * @returns {RegExp} Скомпилированное регулярное выражение
+     * @private
      */
-    public static getEnding(num: number, titles: string[], index: number | null = null): string | null {
-        if (index !== null) {
-            if (typeof titles[index] !== 'undefined') {
-                return titles[index];
-            }
+    private static getCachedRegex(pattern: string): RegExp {
+        let regex = Text.regexCache.get(pattern);
+        if (!regex) {
+            regex = new RegExp(pattern, 'umig');
+            Text.regexCache.set(pattern, regex);
         }
-        if (num < 0) {
-            num *= -1;
+        return regex;
+    }
+
+    /**
+     * Возвращает случайную строку из массива или исходную строку
+     * @param {TPattern} str - Строка или массив строк
+     * @returns {string} Выбранная строка
+     */
+    public static getText(str: TPattern): string {
+        return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
+    }
+
+    /**
+     * Возвращает правильное окончание слова в зависимости от числа
+     * @param {number} num - Число для определения окончания
+     * @param {readonly string[]} titles - Варианты окончаний ['один', 'два-четыре', 'пять-десять']
+     * @param {number | null} index - Принудительный индекс варианта окончания
+     * @returns {string | null} Выбранное окончание или null, если не найдено
+     */
+    public static getEnding(
+        num: number,
+        titles: readonly string[],
+        index: number | null = null,
+    ): string | null {
+        if (index !== null && titles[index] !== undefined) {
+            return titles[index];
         }
+
+        const absNum = Math.abs(num);
         const cases = [2, 0, 1, 1, 1, 2];
-        return titles[(num % 100 > 4 && num % 100 < 20) ? 2 : cases[Math.min(num % 10, 5)]] || null;
+        const titleIndex =
+            absNum % 100 > 4 && absNum % 100 < 20 ? 2 : cases[Math.min(absNum % 10, 5)];
+
+        return titles[titleIndex] || null;
     }
 
     /**
-     * Проверяет тексты на сходство.
-     * В результате вернет статус схожести, а также текст и ключ в массиве.
-     *
-     * Если текста схожи, тогда status = true, и заполняются поля:
-     * index - Если был передан массив, тогда вернется его индекс.
-     * text - Текст, который оказался максимально схожим.
-     * percent - Процент схожести.
-     *
-     * @param {string} origText - оригинальный текст. С данным текстом будет производиться сравнение.
-     * @param {string} text - Текст для сравнения. можно передать массив из текстов для поиска.
-     * @param {number} percent - при какой процентной схожести считать, что текста одинаковые.
-     *
-     * @return ITextSimilarity [
-     *  - 'status' => bool, Статус выполнения
-     *  - 'index' => int|string, В каком тексте значение совпало, либо максимальное. При передаче строки вернет 0
-     *  - 'text' => string, Текст, который совпал
-     *  - 'percent' => int На сколько процентов текста похожи
-     * ]
-     * @api
+     * Проверяет схожесть текстов и возвращает результат сравнения
+     * @param {string} origText - Оригинальный текст для сравнения
+     * @param {TPattern} compareText - Текст или массив текстов для сравнения
+     * @param {number} threshold - Минимальный процент схожести для положительного результата
+     * @returns {ITextSimilarity} Результат сравнения текстов
+     * @public
      */
-    public static textSimilarity(origText: string, text: TFind, percent: number = 80): ITextSimilarity {
-        const data: ITextSimilarity = {
+    public static textSimilarity(
+        origText: string,
+        compareText: TPattern,
+        threshold: number = 80,
+    ): ITextSimilarity {
+        const texts = Array.isArray(compareText) ? compareText : [compareText];
+        const normalizedOrigText = origText.toLowerCase();
+
+        let maxSimilarity: ITextSimilarity = {
             percent: 0,
             index: null,
-            status: false
-        };
-        if (typeof text !== 'object') {
-            text = [text];
-        }
-        origText = origText.toLowerCase();
-        for (let i = 0; i < text.length; i++) {
-            text[i] = text[i].toLowerCase();
-            if (text[i] === origText) {
-                return {
-                    index: i,
-                    status: true,
-                    percent: 100,
-                    text: text[i]
-                }
-            }
-            let per: number = similarText(origText, text[i]);
-            if (data.percent < per) {
-                data.percent = per;
-                data.index = i;
-            }
-        }
-        if (data.percent >= percent) {
-            data.status = true;
-            data.text = text[data.index as number];
-            return data;
-        }
-        return {
             status: false,
-            index: null,
-            percent: 0,
-            text: null
+            text: null,
         };
+
+        // Check for exact matches first
+        const exactMatch = texts.findIndex((t) => t.toLowerCase() === normalizedOrigText);
+
+        if (exactMatch !== -1) {
+            return {
+                index: exactMatch,
+                status: true,
+                percent: 100,
+                text: texts[exactMatch],
+            };
+        }
+
+        // Find best similarity if no exact match
+        texts.forEach((currentText, index) => {
+            const similarity = similarText(normalizedOrigText, currentText.toLowerCase());
+            if (similarity > maxSimilarity.percent) {
+                maxSimilarity = {
+                    percent: similarity,
+                    index: index,
+                    status: similarity >= threshold,
+                    text: currentText,
+                };
+            }
+        });
+
+        return maxSimilarity.status
+            ? maxSimilarity
+            : {
+                  status: false,
+                  index: null,
+                  percent: 0,
+                  text: null,
+              };
     }
 }

@@ -1,5 +1,5 @@
-import {Image} from '../../image/Image';
-import {Buttons} from '../../button';
+import { Image } from '../../image/Image';
+import { Buttons } from '../../button';
 
 /**
  * @class TemplateCardTypes
@@ -30,7 +30,7 @@ export abstract class TemplateCardTypes {
 
     constructor() {
         this.title = null;
-        this.images = []
+        this.images = [];
         this.button = new Buttons();
     }
 

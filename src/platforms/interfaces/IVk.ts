@@ -11,14 +11,14 @@ export interface IVkMessage {
     random_id?: number;
     attachments?: any;
     is_hidden?: boolean;
-    payload?: any
+    payload?: any;
 }
 
 export interface IVkClientInfo {
     button_actions: string[];
     keyboard: boolean;
     inline_keyboard: boolean;
-    lang_id: number
+    lang_id: number;
 }
 
 export interface IVkRequestObject {
@@ -28,8 +28,8 @@ export interface IVkRequestObject {
 
 export interface IVkRequestContent {
     type: string;
-    object?: IVkRequestObject
+    object?: IVkRequestObject;
     group_id?: string;
     event_id?: string;
-    secret?: string
+    secret?: string;
 }

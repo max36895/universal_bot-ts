@@ -1,16 +1,18 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
+import { TemplateTypeModel } from './TemplateTypeModel';
 import {
     IAlisaBigImage,
     IAlisaButton,
-    IAlisaItemsList, IAlisaRequest, IAlisaRequestState,
+    IAlisaItemsList,
+    IAlisaRequest,
+    IAlisaRequestState,
     IAlisaResponse,
     IAlisaSession,
     IAlisaWebhookRequest,
-    IAlisaWebhookResponse
+    IAlisaWebhookResponse,
 } from './interfaces';
-import {BotController} from '../controller';
-import {mmApp} from '../mmApp';
-import {Text} from '../utils/standard/Text';
+import { BotController } from '../controller';
+import { mmApp } from '../mmApp';
+import { Text } from '../utils/standard/Text';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы
@@ -19,11 +21,11 @@ import {Text} from '../utils/standard/Text';
  */
 export class Alisa extends TemplateTypeModel {
     /**
-     * @const string Версия Алисы.
+     * Версия Алисы.
      */
     private readonly VERSION: string = '1.0';
     /**
-     * @const float Максимально время, за которое должен ответить навык.
+     * Максимально время, за которое должен ответить навык.
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
     /**
@@ -49,11 +51,13 @@ export class Alisa extends TemplateTypeModel {
         const response: IAlisaResponse = {
             text: Text.resize(this.controller.text, 1024),
             tts: Text.resize(this.controller.tts, 1024),
-            end_session: this.controller.isEnd
+            end_session: this.controller.isEnd,
         };
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
-                response.card = <IAlisaItemsList | IAlisaBigImage>(await this.controller.card.getCards());
+                response.card = <IAlisaItemsList | IAlisaBigImage>(
+                    await this.controller.card.getCards()
+                );
                 if (!response.card) {
                     response.card = undefined;
                 }
@@ -116,7 +120,10 @@ export class Alisa extends TemplateTypeModel {
             let userId: string | null = null;
             this._isState = false;
             if (mmApp.params.y_isAuthUser) {
-                if (typeof this._session.user !== 'undefined' && typeof this._session.user.user_id !== 'undefined') {
+                if (
+                    typeof this._session.user !== 'undefined' &&
+                    typeof this._session.user.user_id !== 'undefined'
+                ) {
                     userId = this._session.user.user_id;
                     this._isState = true;
                     this.controller.userToken = this._session.user.access_token || null;
@@ -124,7 +131,10 @@ export class Alisa extends TemplateTypeModel {
             }
 
             if (userId === null) {
-                if (typeof this._session.application !== 'undefined' && this._session.application.application_id !== 'undefined') {
+                if (
+                    typeof this._session.application !== 'undefined' &&
+                    this._session.application.application_id !== 'undefined'
+                ) {
                     userId = this._session.application.application_id;
                 } else {
                     userId = this._session.user_id as string;
@@ -142,23 +152,25 @@ export class Alisa extends TemplateTypeModel {
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
      */
-    public async init(query: string | IAlisaWebhookRequest, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | IAlisaWebhookRequest,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
             let content: IAlisaWebhookRequest;
             if (typeof query === 'string') {
                 content = <IAlisaWebhookRequest>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
 
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (content.account_linking_complete_event) {
                     this.controller.userEvents = {
                         auth: {
-                            status: true
-                        }
+                            status: true,
+                        },
                     };
                     return true;
                 }
@@ -182,8 +194,9 @@ export class Alisa extends TemplateTypeModel {
             }
 
             mmApp.params.app_id = this._session.skill_id;
-            this.controller.isScreen = typeof this.controller.userMeta.interfaces.screen !== 'undefined';
-            /**
+            this.controller.isScreen =
+                typeof this.controller.userMeta.interfaces.screen !== 'undefined';
+            /*
              * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
              * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут
              */
@@ -203,15 +216,13 @@ export class Alisa extends TemplateTypeModel {
      *
      * @return {Promise<IAlisaWebhookResponse>}
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<IAlisaWebhookResponse> {
         const result: IAlisaWebhookResponse = {
             version: this.VERSION,
         };
         if (this.controller.isAuth && this.controller.userToken === null) {
-            result.start_account_linking = function () {
-            };
+            result.start_account_linking = function (): void {};
         } else {
             await this._initTTS();
             result.response = await this._getResponse();

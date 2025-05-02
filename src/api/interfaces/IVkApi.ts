@@ -1,18 +1,56 @@
 export type TVkPeerId = string | number;
 export type TVkDocType = 'doc' | 'audio_message' | 'graffiti';
 
+/**
+ * Интерфейс для ответа от VK API.
+ * @interface
+ * @template T
+ */
 export interface IVkApi<T = {}> {
+    /**
+     * Ошибка, если таковая имеется.
+     * @type {string}
+     */
     error?: string;
+    /**
+     * Ответ от API.
+     * @type {T}
+     */
     response?: T;
 }
 
+/**
+ * Интерфейс для загрузки файла в VK.
+ * @interface
+ * @extends IVkApi
+ */
 export interface IVkUploadFile extends IVkApi {
+    /**
+     * Путь к файлу.
+     * @type {string}
+     */
     file: string;
+    /**
+     * Путь к фотографии.
+     * @type {string}
+     */
     photo: string;
+    /**
+     * Сервер.
+     * @type {string}
+     */
     server: string;
+    /**
+     * Хэш.
+     * @type {string}
+     */
     hash: string;
 }
 
+/**
+ * Интерфейс для параметров метода users.get в VK API.
+ * @interface
+ */
 export interface IVkParamsUsersGet {
     /**
      * User IDs or screen names ('screen_name'). By default, current user ID.
@@ -28,6 +66,10 @@ export interface IVkParamsUsersGet {
     name_case: string;
 }
 
+/**
+ * Интерфейс для параметров метода messages.send в VK API.
+ * @interface
+ */
 export interface IVkParams {
     /**
      * User ID (by default — current user).
@@ -90,6 +132,10 @@ export interface IVkParams {
     template?: any;
 }
 
+/**
+ * Интерфейс для идентификаторов пользователей.
+ * @interface
+ */
 export interface IVkUsersIds {
     /**
      * Идентификатор назначения
@@ -99,13 +145,31 @@ export interface IVkUsersIds {
      * Идентификатор сообщения
      */
     message_id?: number;
-    error?: any
+    /**
+     * Ошибка, если таковая имеется.
+     * @type {any}
+     */
+    error?: any;
 }
 
+/**
+ * Интерфейс для отправки сообщения в VK.
+ * @interface
+ * @extends IVkApi<number>
+ */
 export interface IVKSendMessage extends IVkApi<number> {
-    user_ids?: IVkUsersIds[]
+    /**
+     * Массив идентификаторов пользователей.
+     * @type {IVkUsersIds[]}
+     */
+    user_ids?: IVkUsersIds[];
 }
 
+/**
+ * Интерфейс для пользователя в VK.
+ * @interface
+ * @extends IVkApi
+ */
 export interface IVkUsersGet extends IVkApi {
     /**
      * Идентификатор пользователя
@@ -133,6 +197,11 @@ export interface IVkUsersGet extends IVkApi {
     can_access_closed: boolean;
 }
 
+/**
+ * Интерфейс для сервера загрузки фотографий в VK.
+ * @interface
+ * @extends IVkApi
+ */
 export interface IVkUploadServer extends IVkApi {
     /**
      * Адрес сервера для загрузки изображения
@@ -148,12 +217,25 @@ export interface IVkUploadServer extends IVkApi {
     group_id?: string;
 }
 
+/**
+ * Интерфейс для сохранения фотографии в VK.
+ * @interface
+ * @extends IVkApi
+ */
 export interface IVkPhotosSave extends IVkApi {
     /**
      * Идентификатор изображения
      */
     id: number;
+    /**
+     * Идентификатор изображения.
+     * @type {number}
+     */
     pid: number;
+    /**
+     * Идентификатор альбома.
+     * @type {number}
+     */
     aid: number;
     /**
      * Идентификатор пользователя, загрузившего изображение
@@ -185,6 +267,10 @@ export interface IVkPhotosSave extends IVkApi {
     src_xxbig: string;
 }
 
+/**
+ * Интерфейс для информации о документе в VK.
+ * @interface
+ */
 interface IVkDocInfo {
     /**
      * Идентификатор документа
@@ -196,6 +282,11 @@ interface IVkDocInfo {
     owner_id: number;
 }
 
+/**
+ * Интерфейс для граффити в VK.
+ * @interface
+ * @extends IVkDocInfo
+ */
 export interface IVkGraffiti extends IVkDocInfo {
     /**
      * Адрес документа, по которому его можно загрузить
@@ -230,10 +321,18 @@ export interface IVkAudioMessageInfo {
     link_mp3?: string;
 }
 
-export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {
+/**
+ * Интерфейс для аудио сообщения в VK.
+ * @interface
+ * @extends IVkDocInfo
+ */
+export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {}
 
-}
-
+/**
+ * Интерфейс для отображения документа в VK.
+ * @interface
+ * @extends IVkDocInfo
+ */
 export interface IVkPreview {
     /**
      * Массив копий изображения в разных размерах. Подробное описание структуры (https://vk.com/dev/objects/photo_sizes)
@@ -255,13 +354,18 @@ export interface IVkPreview {
          * Высота изображения в px
          */
         height: number;
-    }
+    };
     /**
-     * Данные об аудиосообщении
+     * Данные об аудио-сообщении
      */
-    audio_message?: IVkAudioMessageInfo
+    audio_message?: IVkAudioMessageInfo;
 }
 
+/**
+ * Интерфейс для документа в VK.
+ * @interface
+ * @extends IVkDocInfo
+ */
 export interface IVKDoc extends IVkDocInfo {
     /**
      * Адрес документа, по которому его можно загрузить
@@ -287,9 +391,17 @@ export interface IVKDoc extends IVkDocInfo {
      * Тип документа. (1 - текстовый документ; 2 - архивы; 3 - gif; 4 - изображения; 5 - аудио; 6 - видео; 7 - электронные книги; 8 - неизвестно)
      */
     type: number;
-    preview: IVkPreview
+    /**
+     * Данные о визуальном отображении документа
+     */
+    preview: IVkPreview;
 }
 
+/**
+ * Интерфейс для сохранения документа в VK.
+ * @interface
+ * @extends IVkDocInfo
+ */
 export interface IVkDocSave extends IVkDocInfo, IVkApi {
     /**
      * Тип загруженного документа

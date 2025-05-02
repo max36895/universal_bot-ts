@@ -1,5 +1,8 @@
-import {TButtonPayload} from '../../components/button/interfaces';
+import { TButtonPayload } from '../../components/button/interfaces';
 
+/**
+ * Интерфейс для именованных сущностей
+ */
 export interface IAlisaEntities {
     /**
      * Обозначение начала и конца именованной сущности в массиве слов. Нумерация слов в массиве начинается с 0.
@@ -13,7 +16,7 @@ export interface IAlisaEntities {
          * Первое слово после именованной сущности.
          */
         end: number;
-    }
+    };
     /**
      * Тип именованной сущности. Возможные значения:
      * YANDEX.DATETIME — дата и время, абсолютные или относительные.
@@ -29,6 +32,9 @@ export interface IAlisaEntities {
     value: object | number;
 }
 
+/**
+ * Интерфейс для nlu
+ */
 export interface IAlisaNlu {
     /**
      * Массив слов из произнесенной пользователем фразы.
@@ -41,16 +47,19 @@ export interface IAlisaNlu {
     intents?: object;
 }
 
+/**
+ * Интерфейс для session
+ */
 export interface IAlisaSession {
     /**
      * Признак новой сессии. Возможные значения:
      * true — пользователь начинает новый разговор с навыком;
      * false — запрос отправлен в рамках уже начатого разговора.
      */
-    'new': boolean;
+    new: boolean;
     /**
      * Идентификатор сообщения в рамках сессии, максимум 8 символов.
-     * Инкрементируется с каждым следующим запросом.
+     * Инкриминируется с каждым следующим запросом.
      */
     message_id: number;
     /**
@@ -78,10 +87,10 @@ export interface IAlisaSession {
         user_id: string;
         /**
          * Токен для OAuth-авторизации, который также передается в заголовке Authorization для навыков с настроенной связкой аккаунтов.
-         * Это JSON-свойство можно использовать, например, при реализации навыка в Yandex Cloud Functions (Диалоги вызывают функции с параметром integration=raw,который не позволяет получать заголовки клиентского запроса).
+         * Это JSON-свойство можно использовать, например, при реализации навыка в Yandex Cloud Functions (Диалоги вызывают функции с параметром integration=raw, который не позволяет получать заголовки клиентского запроса).
          */
-        access_token: string
-    }
+        access_token: string;
+    };
     /**
      * Данные о приложении, с помощью которого пользователь взаимодействует с навыком.
      */
@@ -92,15 +101,21 @@ export interface IAlisaSession {
          * Этот идентификатор уникален для пары «приложение — навык»: в разных навыках значение свойства application_id для одного и того же пользователя будет различаться.
          */
         application_id: string;
-    }
+    };
 }
 
+/**
+ * Интерфейс для state
+ */
 export interface IAlisaRequestState {
-    session?: Object | string;
-    user?: Object | string;
-    application?: Object | string;
+    session?: object | string;
+    user?: object | string;
+    application?: object | string;
 }
 
+/**
+ * Интерфейс для meta информации
+ */
 export interface IAlisaRequestMeta {
     /**
      * Язык в POSIX-формате, максимум 64 символа.
@@ -122,6 +137,9 @@ export interface IAlisaRequestMeta {
          * Пользователь может видеть ответ навыка на экране и открывать ссылки в браузере.
          */
         screen?: object;
+        /**
+         * Пользователь может делать покупки.
+         */
         payments?: object | null;
         /**
          * У пользователя есть возможность запросить связку аккаунтов.
@@ -130,6 +148,9 @@ export interface IAlisaRequestMeta {
     };
 }
 
+/**
+ * Интерфейс для данных из запроса
+ */
 export interface IAlisaRequest {
     /**
      * Служебное поле: запрос пользователя, преобразованный для внутренней обработки Алисы. В ходе преобразования текст, в частности, очищается от знаков препинания, а числительные преобразуются в числа.
@@ -145,7 +166,7 @@ export interface IAlisaRequest {
      * "SimpleUtterance" — голосовой ввод;
      * "ButtonPressed" — нажатие кнопки.
      */
-    type: 'SimpleUtterance' | 'ButtonPressed',
+    type: 'SimpleUtterance' | 'ButtonPressed';
     /**
      * Формальные характеристики реплики, которые удалось выделить Яндекс.Диалогам. Отсутствует, если ни одно из вложенных свойств не применимо.
      */
@@ -155,7 +176,7 @@ export interface IAlisaRequest {
          * Возможно только значение true. Если признак не применим, это свойство не включается в ответ.
          */
         dangerous_context?: boolean;
-    },
+    };
     /**
      * JSON, полученный с нажатой кнопкой от обработчика навыка (в ответе на предыдущий запрос), максимум 4096 байт.
      */
@@ -164,9 +185,12 @@ export interface IAlisaRequest {
      * Слова и именованные сущности, которые Диалоги извлекли из запроса пользователя.
      * Подробное описание поддерживаемых типов сущностей см. в разделе Именованные сущности в запросах.
      */
-    nlu?: IAlisaNlu
+    nlu?: IAlisaNlu;
 }
 
+/**
+ * Интерфейс для webhook запроса
+ */
 export interface IAlisaWebhookRequest {
     /**
      * Информация об устройстве, с помощью которого пользователь разговаривает с Алисой.
@@ -192,6 +216,9 @@ export interface IAlisaWebhookRequest {
     version: string;
 }
 
+/**
+ * Интерфейс для кнопок
+ */
 export interface IAlisaButton {
     /**
      * Текст кнопки, обязателен для каждой кнопки. Максимум 64 символа.
@@ -216,6 +243,9 @@ export interface IAlisaButton {
     hide?: boolean;
 }
 
+/**
+ * Интерфейс для кнопок в карточке
+ */
 export interface IAlisaButtonCard {
     /**
      * Текст, который будет отправлен навыку по нажатию на изображение в качестве команды пользователя. Максимум 64 символа.
@@ -233,6 +263,9 @@ export interface IAlisaButtonCard {
     url?: string;
 }
 
+/**
+ * Интерфейс для изображения
+ */
 export interface IAlisaImage {
     /**
      * Тип карточки. Поддерживаемые значения:
@@ -264,11 +297,23 @@ export interface IAlisaImage {
     button?: IAlisaButtonCard;
 }
 
+/**
+ * Интерфейс для большого изображения
+ */
 export interface IAlisaBigImage extends IAlisaImage {
+    /**
+     * Тип карточки
+     */
     type: 'BigImage';
 }
 
+/**
+ * Интерфейс для списка изображений
+ */
 export interface IAlisaItemsList {
+    /**
+     * Тип карточки
+     */
     type: 'ItemsList';
     /**
      * Заголовок списка изображений.
@@ -278,8 +323,8 @@ export interface IAlisaItemsList {
         /**
          * Текст заголовка, обязателен, если передается свойство header. Максимум 64 символа.
          */
-        text: string
-    }
+        text: string;
+    };
     /**
      * Набор изображений. Не меньше 1, не больше 5 для списка и не больше 7 для галереи.
      * Игнорируется для типа карточки BigImage.
@@ -294,11 +339,20 @@ export interface IAlisaItemsList {
          * Текст первой кнопки, обязательное свойство. Максимум 64 символа.
          */
         text: string;
+        /**
+         * Кнопка
+         */
         button?: IAlisaButtonCard;
-    }
+    };
 }
 
+/**
+ * Интерфейс для галереи изображений
+ */
 export interface IAlisaImageGallery {
+    /**
+     * Тип карточки
+     */
     type: 'ImageGallery';
     /**
      * Набор изображений. Не меньше 1, не больше 5 для списка и не больше 7 для галереи.
@@ -307,6 +361,9 @@ export interface IAlisaImageGallery {
     items?: IAlisaImage[];
 }
 
+/**
+ * Интерфейс с данными для ответа на запрос
+ */
 export interface IAlisaResponse {
     /**
      * Текст, который следует показать и сказать пользователю. Максимум 1024 символа. Не должен быть пустым.
@@ -339,12 +396,21 @@ export interface IAlisaResponse {
     end_session: boolean;
 }
 
+/**
+ * Интерфейс для ответа на запрос
+ */
 export interface IAlisaWebhookResponse {
     /**
      * Данные для ответа пользователю.
      */
     response?: IAlisaResponse;
+    /**
+     * Данные в сессии
+     */
     session_state?: object | string;
+    /**
+     * Данные в приложении
+     */
     application_state?: object | string;
     user_state_update?: object | string;
     /**

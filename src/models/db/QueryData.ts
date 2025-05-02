@@ -1,8 +1,11 @@
+/**
+ * Интерфейс, содержащий информацию о данных для запросов к базе данных
+ */
 export interface IQueryData {
     /**
      * key - название поля БД. В качестве значения выступает значение для данного поля.
      */
-    [key: string]: string | number | any
+    [key: string]: string | number | any;
 }
 
 /**
@@ -31,7 +34,7 @@ export class QueryData {
      */
     public static getQueryData(str: string): IQueryData | null {
         if (str) {
-            const datas = str.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gmi);
+            const datas = str.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gim);
             if (datas) {
                 const regData: IQueryData = {};
                 let data = datas.next();
@@ -61,7 +64,7 @@ export class QueryData {
      * Установка данных для получения запроса
      * @param {IQueryData} query
      */
-    public setQuery(query: IQueryData | null) {
+    public setQuery(query: IQueryData | null): void {
         this._query = query;
     }
 
@@ -77,7 +80,7 @@ export class QueryData {
      * Установить данные, которые будет добавлены/обновлены
      * @param {IQueryData} data
      */
-    public setData(data: IQueryData | null) {
+    public setData(data: IQueryData | null): void {
         this._data = data;
     }
 }

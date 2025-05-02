@@ -1,7 +1,7 @@
 import {Nlu, INlu} from '../../src';
 
 describe('Nlu test', () => {
-    let nlu: Nlu = new Nlu();
+    const nlu: Nlu = new Nlu();
 
     beforeEach(() => {
         const nluContent: INlu = {

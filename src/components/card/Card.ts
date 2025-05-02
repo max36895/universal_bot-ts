@@ -1,13 +1,22 @@
-import {Buttons, TButton} from '../button';
-import {Image} from '../image/Image';
-import {TemplateCardTypes} from './types/TemplateCardTypes';
-import {mmApp, T_ALISA, T_MARUSIA, T_SMARTAPP, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from '../../mmApp';
-import {AlisaCard} from './types/AlisaCard';
-import {TelegramCard} from './types/TelegramCard';
-import {VkCard} from './types/VkCard';
-import {ViberCard} from './types/ViberCard';
-import {MarusiaCard} from './types/MarusiaCard';
-import {SmartAppCard} from './types/SmartAppCard';
+import { Buttons, TButton, TButtonPayload } from '../button';
+import { Image } from '../image/Image';
+import { TemplateCardTypes } from './types/TemplateCardTypes';
+import {
+    mmApp,
+    T_ALISA,
+    T_MARUSIA,
+    T_SMARTAPP,
+    T_TELEGRAM,
+    T_USER_APP,
+    T_VIBER,
+    T_VK,
+} from '../../mmApp';
+import { AlisaCard } from './types/AlisaCard';
+import { TelegramCard } from './types/TelegramCard';
+import { VkCard } from './types/VkCard';
+import { ViberCard } from './types/ViberCard';
+import { MarusiaCard } from './types/MarusiaCard';
+import { SmartAppCard } from './types/SmartAppCard';
 
 /**
  * Класс отвечающий за отображение определенной карточки, в зависимости от типа приложения.
@@ -45,7 +54,7 @@ export class Card {
     public isUsedGallery: boolean = false;
 
     /**
-     * Произвольных шаблон, который отобразится вместо стандартного.
+     * Произвольный шаблон, который отобразится вместо стандартного.
      * Рекомендуется использовать для smartApp, так как для него существует множество вариация для отображения карточек + есть списки
      * При использовании переменной, Вы сами отвечаете за корректное отображение карточки.
      */
@@ -64,30 +73,88 @@ export class Card {
     }
 
     /**
-     * Очищает все элементы карточки.
-     * @api
+     * Устанавливает заголовок карточки.
+     * @param title
      */
-    public clear() {
+    public setTitle(title: string): Card {
+        this.title = title;
+        return this;
+    }
+
+    /**
+     * Устанавливает описание карточки.
+     * @param description
+     */
+    public setDescription(description: string): Card {
+        this.desc = description;
+        return this;
+    }
+
+    /**
+     * Добавляет кнопку в карточку.
+     * @param button
+     */
+    public addButton(button: TButton): Card {
+        if (typeof button === 'string') {
+            this.button.addBtn(button);
+        } else {
+            const title: string | null = button.title || button.text || null;
+            const url: string | null = button.url || null;
+            const payload: TButtonPayload = button.payload || null;
+            this.button.addBtn(title, url, payload);
+        }
+        return this;
+    }
+
+    /**
+     * Очищает все элементы карточки.
+     */
+    public clear(): void {
         this.images = [];
     }
 
     /**
-     * Вставляет элемент в каточку|список. В случае успеха вернет true.
+     * Вставляет элемент в карточку|список. В случае успеха вернет true.
      *
      * @param {string} image Идентификатор или расположение изображения.
      * @param {string} title Заголовок изображения.
      * @param {string} desc Описание изображения.
      * @param {TButton} button Кнопки, обрабатывающие команды при нажатии на элемент.
      * @return boolean
-     * @api
+     * @deprecated
      */
-    public add(image: string | null, title: string, desc: string = ' ', button: TButton | null = null): boolean {
+    public add(
+        image: string | null,
+        title: string,
+        desc: string = ' ',
+        button: TButton | null = null,
+    ): boolean {
+        const imageLength: number = this.images.length;
+        this.addImage(image, title, desc, button);
+        return imageLength < this.images.length;
+    }
+
+    /**
+     * Вставляет элемент в карточку|список. В случае успеха вернет true.
+     *
+     * @param {string} image Идентификатор или расположение изображения.
+     * @param {string} title Заголовок изображения.
+     * @param {string} desc Описание изображения.
+     * @param {TButton} button Кнопки, обрабатывающие команды при нажатии на элемент.
+     * @return Card
+     */
+    public addImage(
+        image: string | null,
+        title: string,
+        desc: string = ' ',
+        button: TButton | null = null,
+    ): Card {
         const img = new Image();
         if (img.init(image, title, desc, button)) {
             this.images.push(img);
-            return true;
         }
-        return false;
+
+        return this;
     }
 
     /**
@@ -95,7 +162,6 @@ export class Card {
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return {Promise<Object>}
-     * @api
      */
     public async getCards(userCard: TemplateCardTypes | null = null): Promise<any> {
         if (this.template) {
@@ -146,7 +212,6 @@ export class Card {
      *
      * @param {TemplateCardTypes} userCard Пользовательский класс для отображения каточки.
      * @return {Promise<string>}
-     * @api
      */
     public async getCardsJson(userCard: TemplateCardTypes | null = null): Promise<string> {
         return JSON.stringify(await this.getCards(userCard));

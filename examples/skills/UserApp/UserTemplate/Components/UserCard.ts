@@ -1,5 +1,5 @@
-import {TemplateCardTypes, Buttons} from '../../../../../src';
-import {UserButton} from './UserButton';
+import { TemplateCardTypes, Buttons } from '../../../../../src';
+import { UserButton } from './UserButton';
 
 export class UserCard extends TemplateCardTypes {
     /**
@@ -27,7 +27,10 @@ export class UserCard extends TemplateCardTypes {
                      * Заполняем object необходимыми данными
                      */
                     // Получаем возможные кнопки у карточки
-                    const btn = this.images[0].button.getButtons(Buttons.T_USER_APP_BUTTONS, userButton);
+                    const btn = this.images[0].button.getButtons(
+                        Buttons.T_USER_APP_BUTTONS,
+                        userButton,
+                    );
                     if (btn) {
                         // Добавляем кнопки к карточке
                         object = Object.assign({}, object, btn[0]);
@@ -51,7 +54,7 @@ export class UserCard extends TemplateCardTypes {
                         object = Object.assign({}, object, btn[0]);
                     }
                     object.push(element);
-                })
+                });
             }
         }
         return object;

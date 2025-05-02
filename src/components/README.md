@@ -1,104 +1,170 @@
-# Компоненты
-Компоненты необходимы для корректной работы движка, а также упрощают разработку. Разделяются на 2 категории:
-1. Системные компоненты, отвечающие за корректное отображение карточек, картинок, кнопок, а также воспроизведение звуков.
-2. Дополнительные компоненты, упрощающие работу с навигацией.
+# Компоненты umbot
 
-Не рекомендуется использовать в своем коде системные компоненты, не входящие в BotController.
+## Обзор
+
+Компоненты umbot разделяются на две основные категории:
+
+1. **Системные компоненты**
+
+    - Отвечают за корректное отображение UI элементов
+    - Управляют взаимодействием с пользователем
+    - Доступны через `BotController`
+
+2. **Дополнительные компоненты**
+    - Упрощают разработку
+    - Предоставляют дополнительный функционал
+    - Могут использоваться напрямую
+
+## Системные компоненты
+
+### Основные элементы
+
+| Компонент | Описание                               | Доступ через   |
+| --------- | -------------------------------------- | -------------- |
+| Кнопки    | Интерактивные элементы управления      | `this.buttons` |
+| Карточки  | Структурированное отображение контента | `this.card`    |
+| NLU       | Обработка естественного языка          | `this.nlu`     |
+| Звуки     | Управление аудио контентом             | `this.sound`   |
+
+⚠️ **Важно**: Рекомендуется использовать системные компоненты только через `BotController`, а не напрямую.
 
 ## Дополнительные компоненты
-Дополнительные компоненты позволяют разработчику быстрее и удобнее разрабатывать продукт. На данный момент, реализован компонент для работы с навигацией.
-
-Рассмотрим его подробнее.
 
 ### Navigation
-Класс отвечающий за корректную навигацию по элементам меню. Удобен в том случае, если в приложении есть карточки с большим количеством элементов и нужна возможность для навигации.
-Класс позволяет не только перемещаться по различным страницам, а также определяет на какой из элементов списка нажал пользователь.
+
+Компонент для удобной навигации по элементам меню и спискам.
+
+#### Основные возможности
+
+-   Постраничная навигация по элементам
+-   Отслеживание выбранных элементов
+-   Поддержка команд "Дальше" и "Назад"
+-   Работа с различными типами данных
+
 #### Примеры использования
-Стандартная навигация
+
+##### Базовая навигация
+
 ```typescript
-import {Navigation} from './standard/Navigation';
-const elements = [1,2,3,4,5,6,7,8,9,0]; // Массив с элементами
-const maxVisibleElements = 5; // Количество отображаемых элементов
-const nav = new Navigation(maxVisibleElements); // Подключаем класс с навигацией
-const showElements = nav.getPageElements(elements); // Получение отображаемых элементов
-console.log(showElements); // -> [1,2,3,4,5]
-```
-Навигация с отслеживанием команд "Дальше" или "Назад"
-```typescript
-import {Navigation} from './standard/Navigation';
-const elements = [1,2,3,4,5,6,7,8,9,0];
+import { Navigation } from 'umbot';
+
+const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 const maxVisibleElements = 5;
 const nav = new Navigation(maxVisibleElements);
+
+// Получение элементов текущей страницы
+const showElements = nav.getPageElements(elements);
+console.log(showElements); // -> [1,2,3,4,5]
+```
+
+##### Навигация с командами
+
+```typescript
+import { Navigation } from 'umbot';
+
+const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+const maxVisibleElements = 5;
+const nav = new Navigation(maxVisibleElements);
+
+// Первая страница
 let showElements = nav.getPageElements(elements, 'Спасибо');
 console.log(showElements); // -> [1,2,3,4,5]
+
+// Переход на следующую страницу
 showElements = nav.getPageElements(elements, 'Дальше');
 console.log(showElements); // -> [6,7,8,9,0]
+
+// Возврат на предыдущую страницу
 showElements = nav.getPageElements(elements, 'Назад');
 console.log(showElements); // -> [1,2,3,4,5]
 ```
-Навигация с отслеживанием текущей страницы пользователя
+
+##### Работа с текущей страницей
+
 ```typescript
-import {Navigation} from './standard/Navigation';
-const elements = [1,2,3,4,5,6,7,8,9,0];
+import { Navigation } from 'umbot';
+
+const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 const maxVisibleElements = 5;
 const nav = new Navigation(maxVisibleElements);
-nav.thisPage = 1; // Устанавливаем текущую страницу на 2.
+
+// Установка текущей страницы
+nav.thisPage = 1;
+
+// Попытка перейти дальше последней страницы
 let showElements = nav.getPageElements(elements, 'Дальше');
-console.log(nav.thisPage); // -> 1, так как мы не можем выйти за максимальное количество страниц
+console.log(nav.thisPage); // -> 1 (остаемся на последней странице)
+
+// Возврат на первую страницу
 showElements = nav.getPageElements(elements, 'Назад');
 console.log(nav.thisPage); // -> 0
 ```
-Выбор пользователем определенного элемента списка
+
+##### Работа со сложными объектами
+
 ```typescript
-import {Navigation} from './standard/Navigation';
-const elements = [1,2,3,4,5,6,7,8,9,0];
-const maxVisibleElements = 5;
-const nav = new Navigation(maxVisibleElements);
-nav.thisPage = 1;
-let selectedElement = nav.selectedElement(elements, '1');
-console.log(selectedElement); // -> 6
-nav.thisPage = 0;
-selectedElement = nav.selectedElement(elements, '1');
-console.log(selectedElement); // -> 1
-```
-Если передается массив массивов, то можно указать ключ для поиска.
-```typescript
-import {Navigation} from './standard/Navigation';
-const elements = [
+import { Navigation } from 'umbot';
+
+interface MenuItem {
+    title: string;
+    desc: string;
+}
+
+const elements: MenuItem[] = [
     {
         title: 'title 1',
-        desc: 'desc 1'
+        desc: 'desc 1',
     },
     {
         title: 'title 2',
-        desc: 'desc 2'
+        desc: 'desc 2',
     },
     {
         title: 'title 3',
-        desc: 'desc 3'
+        desc: 'desc 3',
     },
     {
         title: 'title 4',
-        desc: 'desc 4'
-    }
+        desc: 'desc 4',
+    },
 ];
+
 const maxVisibleElements = 2;
 const nav = new Navigation(maxVisibleElements);
 
+// Поиск элемента по значению поля
 let selectedElement = nav.selectedElement(elements, 'title 1', 'title');
 console.log(selectedElement); // -> {title: 'title 1', desc: 'desc 1'}
+
+// Поиск на другой странице
 nav.thisPage = 1;
-selectedElement = nav.selectedElement(elements, 'title 4', 'title', 1);
+selectedElement = nav.selectedElement(elements, 'title 4', 'title');
 console.log(selectedElement); // -> {title: 'title 4', desc: 'desc 4'}
 ```
 
-## Системные компоненты
-К системным компонентам относятся:
-- Кнопки
-- Карточки
-- Картинки
-- NLU
-- Звуки
+### Методы Navigation
 
-Компоненты необходимы для корректной работы движка. А именно отвечают за корректное отображение результатов.
-Все необходимые системные компоненты доступны в BotController.
+| Метод             | Описание                             | Параметры                                                                                      |
+| ----------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `getPageElements` | Получение элементов текущей страницы | `elements`: массив элементов<br>`command?`: команда навигации                                  |
+| `selectedElement` | Поиск выбранного элемента            | `elements`: массив элементов<br>`value`: искомое значение<br>`key?`: ключ для поиска в объекте |
+| `setPage`         | Установка текущей страницы           | `page`: номер страницы                                                                         |
+
+## Лучшие практики
+
+1. **Системные компоненты**:
+
+    - Всегда используйте через `BotController`
+    - Не модифицируйте напрямую
+    - Следите за актуальностью состояния
+
+2. **Navigation**:
+
+    - Инициализируйте с оптимальным размером страницы
+    - Проверяйте границы при навигации
+    - Используйте типизацию для сложных объектов
+
+3. **Общие рекомендации**:
+    - Документируйте кастомные компоненты
+    - Следите за обработкой ошибок
+    - Используйте TypeScript для лучшей поддержки

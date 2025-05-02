@@ -1,17 +1,19 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
+import { TemplateTypeModel } from './TemplateTypeModel';
 import {
     IMarusiaBigImage,
     IMarusiaButton,
-    IMarusiaItemsList, IMarusiaRequest, IMarusiaRequestState,
+    IMarusiaItemsList,
+    IMarusiaRequest,
+    IMarusiaRequestState,
     IMarusiaResponse,
     IMarusiaSession,
     IMarusiaSessionResponse,
     IMarusiaWebhookRequest,
-    IMarusiaWebhookResponse
+    IMarusiaWebhookResponse,
 } from './interfaces';
-import {BotController} from '../controller';
-import {mmApp} from '../mmApp';
-import {Text} from '../utils/standard/Text';
+import { BotController } from '../controller';
+import { mmApp } from '../mmApp';
+import { Text } from '../utils/standard/Text';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Маруси.
@@ -20,11 +22,11 @@ import {Text} from '../utils/standard/Text';
  */
 export class Marusia extends TemplateTypeModel {
     /**
-     * @const string Версия Маруси.
+     * Версия Маруси.
      */
     private readonly VERSION: string = '1.0';
     /**
-     * @const float Максимально время, за которое должен ответить навык.
+     * Максимально время, за которое должен ответить навык.
      */
     private readonly MAX_TIME_REQUEST: number = 2.8;
     /**
@@ -45,11 +47,13 @@ export class Marusia extends TemplateTypeModel {
         const response: IMarusiaResponse = {
             text: Text.resize(this.controller.text, 1024),
             tts: Text.resize(this.controller.tts, 1024),
-            end_session: this.controller.isEnd
+            end_session: this.controller.isEnd,
         };
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
-                response.card = <IMarusiaItemsList | IMarusiaBigImage>(await this.controller.card.getCards());
+                response.card = <IMarusiaItemsList | IMarusiaBigImage>(
+                    await this.controller.card.getCards()
+                );
                 if (!response.card) {
                     response.card = undefined;
                 }
@@ -68,7 +72,7 @@ export class Marusia extends TemplateTypeModel {
         return {
             session_id: (this._session as IMarusiaSession).session_id,
             message_id: (this._session as IMarusiaSession).message_id,
-            user_id: (this._session as IMarusiaSession).user_id as string
+            user_id: (this._session as IMarusiaSession).user_id as string,
         };
     }
 
@@ -120,22 +124,24 @@ export class Marusia extends TemplateTypeModel {
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
      */
-    public async init(query: string | IMarusiaWebhookRequest, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | IMarusiaWebhookRequest,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
             let content: IMarusiaWebhookRequest;
             if (typeof query === 'string') {
                 content = <IMarusiaWebhookRequest>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (typeof content.account_linking_complete_event !== 'undefined') {
                     this.controller.userEvents = {
                         auth: {
-                            status: true
-                        }
+                            status: true,
+                        },
                     };
                     return true;
                 }
@@ -161,7 +167,8 @@ export class Marusia extends TemplateTypeModel {
             this.controller.messageId = this._session.message_id;
 
             mmApp.params.app_id = this._session.skill_id;
-            this.controller.isScreen = typeof this.controller.userMeta.interfaces.screen !== 'undefined';
+            this.controller.isScreen =
+                typeof this.controller.userMeta.interfaces.screen !== 'undefined';
             return true;
         } else {
             this.error = 'Marusia:init(): Отправлен пустой запрос!';
@@ -174,7 +181,6 @@ export class Marusia extends TemplateTypeModel {
      *
      * @return {Promise<IMarusiaWebhookResponse>}
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<IMarusiaWebhookResponse> {
         const result: IMarusiaWebhookResponse = {

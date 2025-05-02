@@ -1,7 +1,7 @@
-import {TemplateButtonTypes} from './TemplateButtonTypes';
-import {IAlisaButton, IAlisaButtonCard} from '../../../platforms/interfaces';
-import {Text} from '../../../utils/standard/Text';
-import {Button} from '../Button';
+import { TemplateButtonTypes } from './TemplateButtonTypes';
+import { IAlisaButton, IAlisaButtonCard } from '../../../platforms/interfaces';
+import { Text } from '../../../utils/standard/Text';
+import { Button } from '../Button';
 
 /**
  * Класс отвечающий за отображение кнопок в Алисе
@@ -36,12 +36,12 @@ export class AlisaButton extends TemplateButtonTypes {
             let object: IAlisaButtonCard | IAlisaButton;
             if (this.isCard) {
                 object = <IAlisaButtonCard>{
-                    text: title
+                    text: title,
                 };
             } else {
                 object = <IAlisaButton>{
                     title,
-                    hide: button.hide
+                    hide: button.hide,
                 };
             }
             if (button.payload) {
@@ -64,7 +64,6 @@ export class AlisaButton extends TemplateButtonTypes {
      *  - string payload: Произвольные данные, которые будут отправлены при нажатии на кнопку.
      *  - string url: Ссылка по которой будет произведен переход после нажатия на кнопку.
      * ]
-     * @api
      */
     public getButtons(): IAlisaButton[] | IAlisaButtonCard | null {
         const objects: IAlisaButton[] = [];
@@ -78,7 +77,7 @@ export class AlisaButton extends TemplateButtonTypes {
                 if (object) {
                     objects.push(object);
                 }
-            })
+            });
         }
         return objects;
     }

@@ -1,29 +1,62 @@
-import {DbControllerModel} from './DbControllerModel';
-import {mmApp} from '../../mmApp';
-import {IQueryData, QueryData} from './QueryData';
-import {fread, isFile} from '../../utils/standard/util';
-import {IModelRes} from '../interface';
+import { DbControllerModel } from './DbControllerModel';
+import { mmApp } from '../../mmApp';
+import { IQueryData, QueryData } from './QueryData';
+import { fread, getFileInfo } from '../../utils/standard/util';
+import { IModelRes, TQueryCb } from '../interface';
+
+/**
+ * Информация о файле
+ */
+interface IFileInfo {
+    /**
+     * Информация из файла
+     */
+    data: string;
+    /**
+     * Версия файла. В качестве версии используется время последнего изменения файла.
+     */
+    version: number;
+}
+
+/**
+ * Тип для кэширования данных, полученных из файла
+ */
+type IFileData = { [key: string]: IFileInfo };
 
 /**
  * Контроллер, позволяющий работать с данными, хранящимися в файле
+ * @class DbControllerFile
  */
 export class DbControllerFile extends DbControllerModel {
+    /**
+     * Кэширование данных из файла
+     * @protected
+     */
+    protected cachedFileData: IFileData = {};
+
+    /**
+     * Уничтожение контроллера
+     */
+    public destroy(): void {
+        super.destroy();
+        this.cachedFileData = {};
+    }
+
     /**
      * Выполнение запроса на обновление записи в источнике данных
      *
      * @param {QueryData} updateQuery Данные для обновления записи
      * @return {Promise<Object>}
-     * @api
      */
     public async update(updateQuery: QueryData): Promise<any> {
-        let update = updateQuery.getData();
-        let select = updateQuery.getQuery();
+        const update = updateQuery.getData();
+        const select = updateQuery.getQuery();
         const data = this.getFileData();
         if (select) {
-            let idVal = select[this.primaryKeyName as string];
+            const idVal = select[this.primaryKeyName as string];
             if (idVal !== undefined) {
                 if (typeof data[idVal] !== 'undefined') {
-                    data[idVal] = {...data[idVal], ...update};
+                    data[idVal] = { ...data[idVal], ...update };
                     mmApp.saveJson(`${this.tableName}.json`, data);
                 }
                 return true;
@@ -37,7 +70,6 @@ export class DbControllerFile extends DbControllerModel {
      *
      * @param {QueryData} insertQuery Данные для добавления записи
      * @return {Promise<Object>}
-     * @api
      */
     public async insert(insertQuery: QueryData): Promise<any> {
         const insert = insertQuery.getData();
@@ -58,7 +90,6 @@ export class DbControllerFile extends DbControllerModel {
      *
      * @param {QueryData} removeQuery Данные для удаления записи
      * @return {Promise<boolean>}
-     * @api
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
         const remove = removeQuery.getQuery();
@@ -81,9 +112,8 @@ export class DbControllerFile extends DbControllerModel {
      *
      * @param {Function} callback Запрос, который необходимо выполнить
      * @return {Object|Object[]}
-     * @api
      */
-    public query(callback: Function): null {
+    public query(callback: TQueryCb): null {
         return null;
     }
 
@@ -91,7 +121,6 @@ export class DbControllerFile extends DbControllerModel {
      * Валидация значений полей для таблицы.
      *
      * @param {IQueryData} element
-     * @api
      */
     public validate(element: IQueryData | null): IQueryData {
         if (!element) {
@@ -129,7 +158,7 @@ export class DbControllerFile extends DbControllerModel {
                             result = content[key];
                             return {
                                 status: true,
-                                data: result
+                                data: result,
                             };
                         }
                         if (result === null) {
@@ -145,12 +174,12 @@ export class DbControllerFile extends DbControllerModel {
         if (result) {
             return {
                 status: true,
-                data: result
+                data: result,
             };
         }
         return {
             status: false,
-            error: 'Не удалось получить данные'
+            error: 'Не удалось получить данные',
         };
     }
 
@@ -158,14 +187,22 @@ export class DbControllerFile extends DbControllerModel {
      * Получение всех значений из файла. Актуально если глобальная константа mmApp.isSaveDb равна false.
      *
      * @return {Object|Object[]}
-     * @api
      */
     public getFileData(): any {
         const path = mmApp.config.json;
         const fileName = this.tableName;
         const file = `${path}/${fileName}.json`;
-        if (isFile(file)) {
-            return JSON.parse(fread(file));
+        const fileInfo = getFileInfo(file).data;
+        if (fileInfo && fileInfo.isFile()) {
+            const fileData =
+                this.cachedFileData[file] && this.cachedFileData[file].version > fileInfo.mtimeMs
+                    ? this.cachedFileData[file].data
+                    : (fread(file).data as string);
+            this.cachedFileData[file] = {
+                data: fileData,
+                version: fileInfo.mtimeMs,
+            };
+            return JSON.parse(fileData);
         } else {
             return {};
         }
@@ -176,7 +213,6 @@ export class DbControllerFile extends DbControllerModel {
      *
      * @param {string | number} text Исходный текст.
      * @return string
-     * @api
      */
     public escapeString(text: string | number): string {
         return text + '';

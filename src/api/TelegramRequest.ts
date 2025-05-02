@@ -1,7 +1,7 @@
-import {Request} from './request/Request';
-import {mmApp} from '../mmApp';
-import {ITelegramParams, ITelegramResult, TTelegramChatId} from './interfaces';
-import {isFile} from '../utils/standard/util';
+import { Request } from './request/Request';
+import { mmApp } from '../mmApp';
+import { ITelegramParams, ITelegramResult, TTelegramChatId } from './interfaces';
+import { isFile } from '../utils/standard/util';
 
 /**
  * Класс отвечающий за отправку запросов на telegram сервер.
@@ -13,7 +13,7 @@ import {isFile} from '../utils/standard/util';
  */
 export class TelegramRequest {
     /**
-     * @const string: Адрес, на который отправляться запрос.
+     * Адрес, на который отправляться запрос.
      */
     public readonly API_ENDPOINT = 'https://api.telegram.org/bot';
     /**
@@ -38,7 +38,7 @@ export class TelegramRequest {
         this._request.maxTimeQuery = 5500;
         this.token = null;
         this._error = null;
-        if (typeof mmApp.params.telegram_token !== "undefined") {
+        if (typeof mmApp.params.telegram_token !== 'undefined') {
             this.initToken(mmApp.params.telegram_token);
         }
     }
@@ -47,7 +47,6 @@ export class TelegramRequest {
      * Установить токен.
      *
      * @param {string} token Токен для загрузки данных на сервер.
-     * @api
      */
     public initToken(token: string | null): void {
         this.token = token;
@@ -82,9 +81,11 @@ export class TelegramRequest {
      * @param {string} method Отправляемый метод, что именно будет отправляться (Изображение, сообщение и тд).
      * @param {TTelegramChatId} userId Идентификатор пользователя/чата
      * @return {Promise<Object>}
-     * @api
      */
-    public async call(method: string, userId: TTelegramChatId | null = null): Promise<ITelegramResult | null> {
+    public async call(
+        method: string,
+        userId: TTelegramChatId | null = null,
+    ): Promise<ITelegramResult | null> {
         if (userId) {
             this._request.post.chat_id = userId;
         }
@@ -151,15 +152,18 @@ export class TelegramRequest {
      *  - 'error_code' => int
      *  - 'description' => string
      * ]
-     * @api
      */
-    public sendMessage(chatId: TTelegramChatId, message: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
+    public sendMessage(
+        chatId: TTelegramChatId,
+        message: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
         this._request.post = {
             chat_id: chatId,
-            text: message
+            text: message,
         };
         if (params) {
-            this._request.post = {...params, ...this._request.post};
+            this._request.post = { ...params, ...this._request.post };
         }
         return this.call('sendMessage');
     }
@@ -222,9 +226,13 @@ export class TelegramRequest {
      *      ]
      *  ]
      * ]
-     * @api
      */
-    public sendPoll(chatId: TTelegramChatId, question: string, options: string[], params: ITelegramParams | null = null): Promise<ITelegramResult | null> | null {
+    public sendPoll(
+        chatId: TTelegramChatId,
+        question: string,
+        options: string[],
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> | null {
         this._request.post = {
             chat_id: chatId,
             question,
@@ -243,7 +251,7 @@ export class TelegramRequest {
         }
         if (isSend) {
             if (params) {
-                this._request.post = {...params, ...this._request.post};
+                this._request.post = { ...params, ...this._request.post };
             }
             return this.call('sendPoll');
         } else {
@@ -290,7 +298,7 @@ export class TelegramRequest {
      *      - 'text' => string Текст отправленного сообщения
      *      - 'photo" =>[
      *          [
-     *              - 'file_id' => string Идентификатор изображения, который может быть использован для загрузки или повторного использования
+     *              - 'file_id' => string Идентификатор изображения, который может быть использован для загрузки или повторного использования.
      *              - 'file_unique_id' => string Уникальный идентификатор для этого изображения, который должен быть одинаковым с течением времени и для разных ботов. Нельзя использовать для загрузки или повторного использования файла.
      *              - 'file_size' => int Размер изображения
      *              - 'width' => int Ширина изображения
@@ -305,15 +313,19 @@ export class TelegramRequest {
      *  - 'error_code' => int
      *  - 'description' => string
      * ]
-     * @api
      */
-    public sendPhoto(userId: TTelegramChatId, file: string, desc: string | null = null, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
+    public sendPhoto(
+        userId: TTelegramChatId,
+        file: string,
+        desc: string | null = null,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
         this._initPostFile('photo', file);
         if (desc) {
             this._request.post.caption = desc;
         }
         if (params) {
-            this._request.post = {...params, ...this._request.post};
+            this._request.post = { ...params, ...this._request.post };
         }
         return this.call('sendPhoto', userId);
     }
@@ -376,12 +388,15 @@ export class TelegramRequest {
      *  - 'error_code' => int
      *  - 'description' => string
      * ]
-     * @api
      */
-    public sendDocument(userId: TTelegramChatId, file: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
+    public sendDocument(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
         this._initPostFile('document', file);
         if (params) {
-            this._request.post = {...params, ...this._request.post};
+            this._request.post = { ...params, ...this._request.post };
         }
         return this.call('sendDocument', userId);
     }
@@ -449,12 +464,15 @@ export class TelegramRequest {
      *  - 'error_code' => int
      *  - 'description' => string
      * ]
-     * @api
      */
-    public sendAudio(userId: TTelegramChatId, file: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
+    public sendAudio(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
         this._initPostFile('audio', file);
         if (params) {
-            this._request.post = {...params, ...this._request.post};
+            this._request.post = { ...params, ...this._request.post };
         }
         return this.call('sendAudio', userId);
     }
@@ -524,12 +542,15 @@ export class TelegramRequest {
      *  - 'error_code' => int
      *  - 'description' => string
      * ]
-     * @api
      */
-    public sendVideo(userId: TTelegramChatId, file: string, params: ITelegramParams | null = null): Promise<ITelegramResult | null> {
+    public sendVideo(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
         this._initPostFile('video', file);
         if (params) {
-            this._request.post = {...params, ...this._request.post};
+            this._request.post = { ...params, ...this._request.post };
         }
         return this.call('sendVideo', userId);
     }

@@ -1,7 +1,10 @@
-import {TemplateCardTypes} from './TemplateCardTypes';
-import {ImageTokens} from '../../../models/ImageTokens';
-import {Buttons, IVkButton} from '../../button';
+import { TemplateCardTypes } from './TemplateCardTypes';
+import { ImageTokens } from '../../../models/ImageTokens';
+import { Buttons, IVkButton } from '../../button';
 
+/**
+ * Интерфейс для элемента карточки.
+ */
 export interface IVkCardElement {
     /**
      * Заголовок
@@ -24,9 +27,12 @@ export interface IVkCardElement {
      */
     action?: {
         type: string;
-    }
+    };
 }
 
+/**
+ * Интерфейс для карточки.
+ */
 export interface IVkCard {
     /**
      * Тип карточки
@@ -35,7 +41,7 @@ export interface IVkCard {
     /**
      * Элементы карточки
      */
-    elements: IVkCardElement[]
+    elements: IVkCardElement[];
 }
 
 /**
@@ -48,7 +54,6 @@ export class VkCard extends TemplateCardTypes {
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return {Promise<IVkCard | string[]>}
-     * @api
      */
     public async getCard(isOne: boolean): Promise<IVkCard | string[]> {
         const object = [];
@@ -85,16 +90,16 @@ export class VkCard extends TemplateCardTypes {
                             const element: IVkCardElement = {
                                 title: image.title,
                                 description: image.desc,
-                                photo_id: image.imageToken.replace('photo', '')
+                                photo_id: image.imageToken.replace('photo', ''),
                             };
                             const button = image.button.getButtons(Buttons.T_VK_BUTTONS);
-                            /**
+                            /*
                              * У карточки в любом случае должна быть хоть одна кнопка.
                              * Максимальное количество кнопок 3
                              */
                             if (button.one_time) {
                                 element.buttons = button.buttons.splice(0, 3);
-                                element.action = {type: 'open_photo'};
+                                element.action = { type: 'open_photo' };
                                 elements.push(element);
                             }
                         }
@@ -103,7 +108,7 @@ export class VkCard extends TemplateCardTypes {
                 if (elements.length) {
                     return {
                         type: 'carousel',
-                        elements
+                        elements,
                     };
                 }
             }

@@ -1,6 +1,6 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
-import {BotController} from '../controller';
-import {mmApp} from '../mmApp';
+import { TemplateTypeModel } from './TemplateTypeModel';
+import { BotController } from '../controller';
+import { mmApp } from '../mmApp';
 import {
     ISberSmartAppItem,
     ISberSmartAppResponsePayload,
@@ -8,11 +8,11 @@ import {
     ISberSmartAppSuggestionButton,
     ISberSmartAppWebhookRequest,
     ISberSmartAppWebhookResponse,
-    TSberSmartAppEmotionId
+    TSberSmartAppEmotionId,
 } from './interfaces';
-import {Text} from '../utils/standard/Text';
-import {Buttons} from '../components/button';
-import {IRequestSend, Request} from '../api';
+import { Text } from '../utils/standard/Text';
+import { Buttons } from '../components/button';
+import { IRequestSend, Request } from '../api';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Сбер SmartApp
@@ -21,7 +21,7 @@ import {IRequestSend, Request} from '../api';
  */
 export class SmartApp extends TemplateTypeModel {
     /**
-     * @const float Максимально время, за которое должен ответить навык.
+     * Максимально время, за которое должен ответить навык.
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
     /**
@@ -43,12 +43,12 @@ export class SmartApp extends TemplateTypeModel {
             intent: this.controller.thisIntentName as string,
             projectName: (this._session as ISberSmartAppSession).projectName,
             auto_listening: !this.controller.isEnd,
-            finished: this.controller.isEnd
+            finished: this.controller.isEnd,
         };
 
         if (this.controller.emotion) {
             payload.emotion = {
-                emotionId: <TSberSmartAppEmotionId>this.controller.emotion
+                emotionId: <TSberSmartAppEmotionId>this.controller.emotion,
             };
         }
         if (this.controller.text) {
@@ -57,9 +57,9 @@ export class SmartApp extends TemplateTypeModel {
                     bubble: {
                         text: Text.resize(this.controller.text, 250),
                         markdown: true,
-                        expand_policy: 'auto_expand'
-                    }
-                }
+                        expand_policy: 'auto_expand',
+                    },
+                },
             ];
         }
         if (this.controller.tts) {
@@ -76,7 +76,9 @@ export class SmartApp extends TemplateTypeModel {
                 payload.items.push(cards);
             }
             payload.suggestions = {
-                buttons: this.controller.buttons.getButtons<ISberSmartAppSuggestionButton[]>(Buttons.T_SMARTAPP_BUTTONS)
+                buttons: this.controller.buttons.getButtons<ISberSmartAppSuggestionButton[]>(
+                    Buttons.T_SMARTAPP_BUTTONS,
+                ),
             };
         }
         if (this.controller.isEnd) {
@@ -85,8 +87,8 @@ export class SmartApp extends TemplateTypeModel {
             }
             payload.items.push({
                 command: {
-                    type: 'close_app'
-                }
+                    type: 'close_app',
+                },
             });
         }
         return payload;
@@ -112,7 +114,8 @@ export class SmartApp extends TemplateTypeModel {
             case 'RUN_APP':
                 this.controller.payload = content.payload?.server_action?.parameters;
                 if (typeof this.controller.payload === 'string') {
-                    this.controller.userCommand = this.controller.originalUserCommand = this.controller.payload;
+                    this.controller.userCommand = this.controller.originalUserCommand =
+                        this.controller.payload;
                 }
                 if (content.messageName === 'RUN_APP') {
                     this.controller.messageId = 0;
@@ -127,8 +130,8 @@ export class SmartApp extends TemplateTypeModel {
                 this.controller.userEvents = {
                     rating: {
                         status: content.payload.status_code?.code === 1,
-                        value: content.payload.rating?.estimation
-                    }
+                        value: content.payload.rating?.estimation,
+                    },
                 };
                 break;
         }
@@ -145,15 +148,17 @@ export class SmartApp extends TemplateTypeModel {
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
      */
-    public async init(query: string | ISberSmartAppWebhookRequest, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | ISberSmartAppWebhookRequest,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
             let content: ISberSmartAppWebhookRequest;
             if (typeof query === 'string') {
                 content = <ISberSmartAppWebhookRequest>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
 
             if (!this.controller) {
@@ -167,7 +172,7 @@ export class SmartApp extends TemplateTypeModel {
                 sessionId: content.sessionId,
                 messageId: content.messageId,
                 uuid: content.uuid,
-                projectName: content.payload.projectName
+                projectName: content.payload.projectName,
             };
 
             this.controller.oldIntentName = content.payload.intent;
@@ -176,7 +181,7 @@ export class SmartApp extends TemplateTypeModel {
             mmApp.params.user_id = this.controller.userId;
             const nlu = {
                 entities: content.payload.message.entities,
-                tokens: content.payload.message.tokenized_elements_list
+                tokens: content.payload.message.tokenized_elements_list,
             };
             this.controller.nlu.setNlu(nlu);
 
@@ -202,8 +207,8 @@ export class SmartApp extends TemplateTypeModel {
             sessionId: (this._session as ISberSmartAppSession).sessionId,
             messageId: (this._session as ISberSmartAppSession).messageId,
             uuid: (this._session as ISberSmartAppSession).uuid,
-            payload: {}
-        }
+            payload: {},
+        };
     }
 
     /**
@@ -211,17 +216,16 @@ export class SmartApp extends TemplateTypeModel {
      *
      * @return {Promise<ISberSmartAppWebhookResponse>}
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<ISberSmartAppWebhookResponse> {
         const result: ISberSmartAppWebhookResponse = {
             messageName: 'ANSWER_TO_USER',
             sessionId: (this._session as ISberSmartAppSession).sessionId,
             messageId: (this._session as ISberSmartAppSession).messageId,
-            uuid: (this._session as ISberSmartAppSession).uuid
+            uuid: (this._session as ISberSmartAppSession).uuid,
         };
 
-        if (this.controller.sound.sounds.length/* || this.controller.sound.isUsedStandardSound*/) {
+        if (this.controller.sound.sounds.length /* || this.controller.sound.isUsedStandardSound*/) {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
@@ -255,9 +259,8 @@ export class SmartApp extends TemplateTypeModel {
 
     /**
      * Сохранение данных в хранилище.
-     *
+     * @param data
      * @return Promise<void>
-     * @api
      */
     public async setLocalStorage(data: any): Promise<void> {
         await this._setUserData(data);

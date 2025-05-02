@@ -22,7 +22,7 @@ export interface IViberUser {
     /**
      * Максимальная версия Viber, которая поддерживается всеми устройствами пользователя
      */
-    api_version: number
+    api_version: number;
 }
 
 export interface IViberMessage {
@@ -50,7 +50,7 @@ export interface IViberMessage {
          * Координата lon
          */
         lon: number;
-    }
+    };
     /**
      * Имя пользователя контакта, phone_number - номер телефона контакта и avatar в качестве URL Аватара
      */
@@ -58,7 +58,7 @@ export interface IViberMessage {
         name: string;
         phone_number: string;
         avatar: string;
-    }
+    };
     /**
      * Отслеживание данных, отправленных вместе с последним сообщением пользователю
      */

@@ -11,7 +11,7 @@ exports.config = {
     intents: [
         {
             name: '',
-            slots: []
-        }
+            slots: [],
+        },
     ],
 };

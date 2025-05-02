@@ -1,6 +1,6 @@
-import {TemplateButtonTypes} from './TemplateButtonTypes';
-import {IVkButton, IVkButtonObject} from '../interfaces';
-import {Button} from '../Button';
+import { TemplateButtonTypes } from './TemplateButtonTypes';
+import { IVkButton, IVkButtonObject } from '../interfaces';
+import { Button } from '../Button';
 
 /**
  * Класс отвечающий за отображение кнопок в ВКонтакте
@@ -8,7 +8,7 @@ import {Button} from '../Button';
  */
 export class VkButton extends TemplateButtonTypes {
     /**
-     * @const string: Название для группы. Использовать следующим способом:
+     * Название для группы. Использовать следующим способом:
      * button.payload[VkButton.GROUP_NAME] = <Название_группы>
      * Используется для группировки кнопок
      */
@@ -18,7 +18,6 @@ export class VkButton extends TemplateButtonTypes {
      * Получение массива с кнопками для ответа пользователю.
      *
      * @return IVkButtonObject
-     * @api
      */
     public getButtons(): IVkButtonObject {
         const groups: number[] = [];
@@ -34,8 +33,8 @@ export class VkButton extends TemplateButtonTypes {
             }
             let object: IVkButton = {
                 action: {
-                    type: button.type
-                }
+                    type: button.type,
+                },
             };
             if (button.url) {
                 object.action.type = Button.VK_TYPE_LINK;
@@ -46,7 +45,7 @@ export class VkButton extends TemplateButtonTypes {
                 if (typeof button.payload === 'string') {
                     object.action.payload = button.payload;
                 } else {
-                    object.action.payload = {...button.payload};
+                    object.action.payload = { ...button.payload };
                 }
             }
 
@@ -56,7 +55,7 @@ export class VkButton extends TemplateButtonTypes {
             if (button.type === Button.VK_TYPE_PAY) {
                 object.hash = button.payload.hash || null;
             }
-            object = {...object, ...button.options};
+            object = { ...object, ...button.options };
             const groupOptions = button.options[VkButton.GROUP_NAME];
             if (typeof groupOptions !== 'undefined') {
                 if (typeof object[VkButton.GROUP_NAME] !== 'undefined') {
@@ -80,7 +79,7 @@ export class VkButton extends TemplateButtonTypes {
 
         return {
             one_time: !!buttons.length,
-            buttons: buttons
+            buttons: buttons,
         };
     }
 }

@@ -1,20 +1,38 @@
-import {mmApp} from '../../mmApp';
-import {IModelRes, IModelRules, ILabelAttr, IDbControllerModel, IDbControllerResult} from '../interface';
-import {IQueryData, QueryData} from './QueryData';
-import {DbController} from './DbController';
+import { mmApp } from '../../mmApp';
+import {
+    IModelRes,
+    IModelRules,
+    IDbControllerModel,
+    IDbControllerResult,
+    TStateData,
+    TQueryCb,
+} from '../interface';
+import { IQueryData, QueryData } from './QueryData';
+import { DbController } from './DbController';
+import { ProxyUtils } from './ProxyUtils';
 
 /**
  * @class Model
  *
  * Абстрактный класс для моделей. Все Модели, взаимодействующие с бд наследуют его.
  */
-export abstract class Model implements IDbControllerResult {
-    public dbController: IDbControllerModel;
+export abstract class Model<TState extends TStateData> {
+    /**
+     * Модель для работы с БД
+     */
+    public dbController: IDbControllerModel | DbController;
+    /**
+     * Поля запроса.
+     */
     public queryData: QueryData;
     /**
      * Стартовое значение для индекса.
      */
     public startIndex = 0;
+    /**
+     * Состояние модели.
+     */
+    public state: Partial<TState> = {};
 
     /**
      * Правила для обработки полей. Где 1 - Элемент это название поля, 2 - Элемент тип поля, max - Максимальная длина.
@@ -31,7 +49,7 @@ export abstract class Model implements IDbControllerResult {
      * @return object
      * @virtual
      */
-    public abstract attributeLabels(): ILabelAttr;
+    public abstract attributeLabels(): TState;
 
     /**
      * Название таблицы/файла с данными.
@@ -53,7 +71,11 @@ export abstract class Model implements IDbControllerResult {
         this.dbController.tableName = this.tableName();
         this.dbController.setRules(this.rules());
         this.dbController.primaryKeyName = this.getId();
-        this.queryData = new QueryData;
+        this.queryData = new QueryData();
+        Object.keys(this.attributeLabels()).forEach((key) => {
+            this.state[key as keyof TState] = undefined;
+        });
+        return ProxyUtils(this);
     }
 
     /**
@@ -73,7 +95,6 @@ export abstract class Model implements IDbControllerResult {
      *
      * @param {string | number} text Исходный текст.
      * @return string
-     * @api
      */
     public escapeString(text: string | number): string {
         return this.dbController.escapeString(text);
@@ -81,10 +102,8 @@ export abstract class Model implements IDbControllerResult {
 
     /**
      * Валидация значений полей для таблицы.
-     * @api
      */
-    public validate(): void {
-    }
+    public validate(): void {}
 
     /**
      * Возвращаем название уникального ключа таблицы.
@@ -94,13 +113,12 @@ export abstract class Model implements IDbControllerResult {
     protected getId(): string | number | null {
         const labels = this.attributeLabels();
         let key = null;
-        Object.keys(labels).forEach((index) => {
-            // @ts-ignore
+        for (const index in labels) {
             if (labels[index] === 'id' || labels[index] === 'ID') {
                 key = index;
                 return index;
             }
-        });
+        }
         return key;
     }
 
@@ -108,7 +126,6 @@ export abstract class Model implements IDbControllerResult {
      * Инициализация данных для модели.
      *
      * @param data Массив с данными.
-     * @api
      */
     public init(data: IDbControllerResult[] | IDbControllerResult | null): void {
         if (data === null) {
@@ -116,39 +133,37 @@ export abstract class Model implements IDbControllerResult {
         }
         let i = this.startIndex;
         const labels = this.attributeLabels();
-        Object.keys(labels).forEach((index) => {
+
+        for (const index in labels) {
             if (data) {
-                // @ts-ignore
-                if (typeof data[index] !== 'undefined') {
-                    // @ts-ignore
-                    this[index] = data[index];
+                if (typeof (data as IDbControllerResult)[index] !== 'undefined') {
+                    this.state[index as keyof TState] = (data as IDbControllerResult)[
+                        index
+                    ] as TState[keyof TState];
                 } else if (typeof data[i] !== 'undefined') {
-                    // @ts-ignore
-                    this[index] = data[i];
+                    this.state[index] = data[i] as TState[keyof TState];
                 } else {
-                    // @ts-ignore
-                    this[index] = '';
+                    this.state[index] = '' as TState[keyof TState];
                 }
             } else {
-                // @ts-ignore
-                this[index] = '';
+                this.state[index] = '' as TState[keyof TState];
             }
             i++;
-        })
+        }
     }
 
     /**
      * Выполнение запроса с поиском по уникальному ключу.
      *
      * @return {Promise<IModelRes>}
-     * @api
      */
     public async selectOne(): Promise<IModelRes> {
         const idName = this.dbController.primaryKeyName;
-        this.queryData.setQuery({
-            // @ts-ignore
-            [idName]: this[idName]
-        });
+        if (idName) {
+            this.queryData.setQuery({
+                [idName]: this.state[idName],
+            });
+        }
         this.queryData.setData(null);
         return await this.dbController.select(this.queryData.getQuery(), true);
     }
@@ -159,17 +174,17 @@ export abstract class Model implements IDbControllerResult {
     private _initData(): void {
         this.validate();
         const idName = this.dbController.primaryKeyName;
-        this.queryData.setQuery({
-            // @ts-ignore
-            [idName]: this[idName]
-        });
+        if (idName) {
+            this.queryData.setQuery({
+                [idName]: this.state[idName],
+            });
+        }
         const data: IQueryData = {};
-        Object.keys(this.attributeLabels()).forEach((index) => {
+        for (const index in this.attributeLabels()) {
             if (index !== idName) {
-                // @ts-ignore
-                data[index] = this[index];
+                data[index] = this.state[index];
             }
-        });
+        }
         this.queryData.setData(data);
     }
 
@@ -179,7 +194,6 @@ export abstract class Model implements IDbControllerResult {
      *
      * @param {boolean} isNew Добавить новую запись в базу данных без поиска по ключу.
      * @return {Promise<Object>}
-     * @api
      */
     public async save(isNew: boolean = false): Promise<any> {
         this._initData();
@@ -190,7 +204,6 @@ export abstract class Model implements IDbControllerResult {
      * Обновление значения в таблице.
      *
      * @return {Promise<Object>}
-     * @api
      */
     public async update(): Promise<any> {
         this._initData();
@@ -201,16 +214,14 @@ export abstract class Model implements IDbControllerResult {
      * Добавление значения в таблицу.
      *
      * @return {Promise<Object>}
-     * @api
      */
     public async add(): Promise<any> {
         this.validate();
         this.queryData.setQuery(null);
         const data: IQueryData = {};
-        Object.keys(this.attributeLabels()).forEach((index) => {
-            // @ts-ignore
-            data[index] = this[index];
-        });
+        for (const index in this.attributeLabels()) {
+            data[index] = this.state[index];
+        }
         this.queryData.setData(data);
         return await this.dbController.insert(this.queryData);
     }
@@ -219,15 +230,15 @@ export abstract class Model implements IDbControllerResult {
      * Удаление значения из таблицы.
      *
      * @return {Promise<boolean>}
-     * @api
      */
     public async remove(): Promise<boolean> {
         this.validate();
         const idName = this.dbController.primaryKeyName;
-        this.queryData.setQuery({
-            // @ts-ignore
-            [idName]: this[idName]
-        });
+        if (idName) {
+            this.queryData.setQuery({
+                [idName]: this.state[idName],
+            });
+        }
         this.queryData.setData(null);
         return await this.dbController.remove(this.queryData);
     }
@@ -238,15 +249,10 @@ export abstract class Model implements IDbControllerResult {
      * @param where Запрос к таблице.
      * @param {boolean} isOne Вывести только 1 результат. Используется только при поиске по файлу.
      * @return {Promise<IModelRes>}
-     * @api
      */
     public async where(where: any = '1', isOne: boolean = false): Promise<IModelRes> {
-        let select: IQueryData | null;
-        if (typeof where === 'string') {
-            select = QueryData.getQueryData(where);
-        } else {
-            select = where;
-        }
+        const select: IQueryData | null =
+            typeof where === 'string' ? QueryData.getQueryData(where) : where;
         return await this.dbController.select(select, isOne);
     }
 
@@ -255,7 +261,6 @@ export abstract class Model implements IDbControllerResult {
      *
      * @param where Запрос к таблице.
      * @return {Promise<boolean>}
-     * @api
      */
     public async whereOne(where: any = '1'): Promise<boolean> {
         const res = await this.where(where, true);
@@ -271,9 +276,8 @@ export abstract class Model implements IDbControllerResult {
      *
      * @param {Function} callback Непосредственно запрос к бд.
      * @return {Object|Object[]}
-     * @api
      */
-    public query(callback: Function): any {
+    public query(callback: TQueryCb): any {
         return this.dbController.query(callback);
     }
 

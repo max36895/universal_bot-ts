@@ -1,15 +1,15 @@
-import {Request} from './request/Request';
-import {mmApp} from '../mmApp';
+import { Request } from './request/Request';
+import { mmApp } from '../mmApp';
 import {
     IViberApi,
     IViberGetUserDetails,
     IViberParams,
     IViberRichMediaParams,
     IViberSender,
-    IViberWebhookParams
+    IViberWebhookParams,
 } from './interfaces';
-import {IViberButton} from '../components/button/interfaces';
-import {Text} from '../utils/standard/Text';
+import { IViberButton } from '../components/button/interfaces';
+import { Text } from '../utils/standard/Text';
 
 /**
  * Класс отвечающий за отправку запросов на viber сервер.
@@ -21,7 +21,7 @@ import {Text} from '../utils/standard/Text';
  */
 export class ViberRequest {
     /**
-     * @const string: Адрес, на который отправляться запрос.
+     * Адрес, на который отправляться запрос.
      */
     private readonly API_ENDPOINT = 'https://chatapi.viber.com/pa/';
 
@@ -56,7 +56,6 @@ export class ViberRequest {
      * Установить токен.
      *
      * @param {string} token Токен необходимый для отправки данных на сервер.
-     * @api
      */
     public initToken(token: string): void {
         this.token = token;
@@ -67,13 +66,12 @@ export class ViberRequest {
      *
      * @param {string} method Название метода.
      * @return Promise<any>
-     * @api
      */
     public async call<T extends IViberApi>(method: string): Promise<T | null> {
         if (this.token) {
             if (method) {
                 this._request.header = {
-                    'X-Viber-Auth-Token: ': this.token
+                    'X-Viber-Auth-Token: ': this.token,
                 };
                 this._request.post.min_api_version = mmApp.params.viber_api_version || 2;
                 const data = (await this._request.send<IViberApi>(this.API_ENDPOINT + method)).data;
@@ -85,7 +83,8 @@ export class ViberRequest {
                     if (data.status === 0) {
                         return data as T;
                     }
-                    const statusMessage = typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
+                    const statusMessage =
+                        typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
                     if (statusMessage !== 'ok') {
                         this._error = '';
                         this._log(data.status_message);
@@ -124,11 +123,10 @@ export class ViberRequest {
      *      - string device_type: Тип устройства пользователя.
      *  ]
      * ]
-     * @api
      */
     public getUserDetails(id: string): Promise<IViberGetUserDetails | null> {
         this._request.post = {
-            id
+            id,
         };
         return this.call<IViberGetUserDetails>('get_user_details');
     }
@@ -171,21 +169,25 @@ export class ViberRequest {
      *  - int sticker_id: Уникальный идентификатор стикера Viber. Актуально для type = sticker.
      * ]
      * @return Promise<any>
-     * @api
      */
-    public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams | null = null): Promise<IViberApi | null> {
+    public sendMessage(
+        receiver: string,
+        sender: IViberSender | string,
+        text: string,
+        params: IViberParams | null = null,
+    ): Promise<IViberApi | null> {
         this._request.post.receiver = receiver;
         if (typeof sender !== 'string') {
             this._request.post.sender = sender;
         } else {
             this._request.post.sender = {
-                name: sender
+                name: sender,
             };
         }
         this._request.post.text = text;
         this._request.post.type = 'text';
         if (params) {
-            this._request.post = {...this._request.post, ...params};
+            this._request.post = { ...this._request.post, ...params };
         }
         return this.call<IViberApi>('send_message');
     }
@@ -197,9 +199,11 @@ export class ViberRequest {
      * @param {string} url Адрес webhook`а.
      * @param {IViberWebhookParams} params Дополнительные параметры.
      * @return Promise<any>
-     * @api
      */
-    public setWebhook(url: string, params: IViberWebhookParams | null = null): Promise<IViberApi | null> {
+    public setWebhook(
+        url: string,
+        params: IViberWebhookParams | null = null,
+    ): Promise<IViberApi | null> {
         if (url) {
             this._request.post = {
                 url,
@@ -209,18 +213,18 @@ export class ViberRequest {
                     'failed',
                     'subscribed',
                     'unsubscribed',
-                    'conversation_started'
+                    'conversation_started',
                 ],
                 send_name: true,
-                send_photo: true
+                send_photo: true,
             };
         } else {
             this._request.post = {
-                url: ''
+                url: '',
             };
         }
         if (params) {
-            this._request.post = {...this._request.post, ...params};
+            this._request.post = { ...this._request.post, ...params };
         }
         return this.call<IViberApi>('set_webhook');
     }
@@ -234,9 +238,12 @@ export class ViberRequest {
      * @param {IViberRichMediaParams} params Дополнительные параметры.
      * @return Promise<any>
      * @see sendMessage() Смотри тут
-     * @api
      */
-    public richMedia(receiver: string, richMedia: IViberButton[], params: IViberRichMediaParams | null = null): Promise<IViberApi | null> {
+    public richMedia(
+        receiver: string,
+        richMedia: IViberButton[],
+        params: IViberRichMediaParams | null = null,
+    ): Promise<IViberApi | null> {
         this._request.post = {
             receiver,
             type: 'rich_media',
@@ -245,11 +252,11 @@ export class ViberRequest {
                 ButtonsGroupColumns: 6,
                 ButtonsGroupRows: richMedia.length,
                 BgColor: '#FFFFFF',
-                Buttons: richMedia
-            }
+                Buttons: richMedia,
+            },
         };
         if (params) {
-            this._request.post = {...this._request.post, ...params};
+            this._request.post = { ...this._request.post, ...params };
         }
         return this.call<IViberApi>('send_message');
     }
@@ -262,19 +269,22 @@ export class ViberRequest {
      * @param {IViberParams} params Дополнительные параметры.
      * @return Promise<any>
      * @see sendMessage() Смотри тут
-     * @api
      */
-    public sendFile(receiver: string, file: string, params: IViberParams | null = null): Promise<IViberApi | null> | null {
+    public sendFile(
+        receiver: string,
+        file: string,
+        params: IViberParams | null = null,
+    ): Promise<IViberApi | null> | null {
         this._request.post = {
-            receiver
+            receiver,
         };
-        if (Text.isSayText(['http:\/\/', 'https:\/\/'], file)) {
+        if (Text.isSayText(['http://', 'https://'], file)) {
             this._request.post.type = 'file';
             this._request.post.media = file;
             this._request.post.size = 10e4;
             this._request.post.file_name = Text.resize(file, 150);
             if (params) {
-                this._request.post = {...this._request.post, ...params};
+                this._request.post = { ...this._request.post, ...params };
             }
             return this.call<IViberApi>('send_message');
         }

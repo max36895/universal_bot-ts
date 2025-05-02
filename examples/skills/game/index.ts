@@ -1,8 +1,8 @@
-import {Bot} from '../../../src';
+import { Bot } from '../../../src';
 import skillGameConfig from '../../config/skillGameConfig';
 import skillGameParam from '../../config/skillGameParam';
-import {GameController} from './controller/GameController';
-import {IncomingMessage, ServerResponse} from 'http';
+import { GameController } from './controller/GameController';
+import { IncomingMessage, ServerResponse } from 'http';
 
 const bot = new Bot();
 bot.initConfig(skillGameConfig());
@@ -17,5 +17,5 @@ bot.initBotController(logic);
 // }
 // bot.test(params);
 module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-    bot.start(req, res)
+    bot.start(req, res);
 };

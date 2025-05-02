@@ -1,12 +1,13 @@
-import {ITextSimilarity, Text} from '../../utils/standard/Text';
+import { ITextSimilarity, Text } from '../../utils/standard/Text';
 
-interface IElementType {
-    [name: string]: string;
-}
-
-type TElementType = IElementType | number | string | any;
-
-export type TKeys = string | string[]
+/**
+ * Тип элементов, по которым будет происходить навигация
+ */
+export type TElementType = Record<string, string> | number | string | any;
+/**
+ * Тип ключей для поиска по объектам
+ */
+export type TKeys = string | string[];
 
 /**
  * Класс отвечающий за навигацию по элементам меню или списка.
@@ -14,7 +15,13 @@ export type TKeys = string | string[]
  * @class Navigation
  */
 export class Navigation<ElementType = TElementType> {
+    /**
+     * Список стандартных команд навигации вперед
+     */
     public STANDARD_NEXT_TEXT: string[] = ['дальше', 'вперед'];
+    /**
+     * Стандартные команды навигации назад
+     */
     public STANDARD_OLD_TEXT: string[] = ['назад'];
 
     /**
@@ -65,7 +72,6 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param {string} text Пользовательский запрос.
      * @return boolean
-     * @api
      */
     public isNext(text: string): boolean {
         let nextText: string[];
@@ -82,7 +88,6 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param {string} text Пользовательский запрос.
      * @return boolean
-     * @api
      */
     public isOld(text: string): boolean {
         let oldText: string[];
@@ -120,7 +125,7 @@ export class Navigation<ElementType = TElementType> {
      * @return boolean
      */
     public numberPage(text: string): boolean {
-        const data = text.match(/((-|)\d) страни/umi);
+        const data = text.match(/((-|)\d) страни/imu);
         if (data) {
             this.thisPage = +data[1] - 1;
             this._validatePage();
@@ -162,14 +167,16 @@ export class Navigation<ElementType = TElementType> {
     }
 
     /**
-     * Возвращает новый массив данных, с учетом текущей страницы пользователя пользователя.
+     * Возвращает новый массив данных, с учетом текущей страницы пользователя.
      *
      * @param {Object[]|string[]|number[]} elements Элемент для обработки.
      * @param {string} text Пользовательский запрос.
      * @return ElementType[]
-     * @api
      */
-    public getPageElements(elements: ElementType[] | null = null, text: string = ''): ElementType[] {
+    public getPageElements(
+        elements: ElementType[] | null = null,
+        text: string = '',
+    ): ElementType[] {
         const showElements: ElementType[] = [];
         if (elements) {
             this.elements = elements;
@@ -196,10 +203,13 @@ export class Navigation<ElementType = TElementType> {
      * @param {string[] | string} keys Поиск элемента по ключу массива. Если null, тогда подразумевается, что передан массив из строк.
      * @param {number} thisPage Текущая страница. Если в аргумент ничего не передано, то используется текущая страница
      * @return any
-     * @api
      */
-    public selectedElement(elements: ElementType[] | null = null, text: string = '',
-                           keys: TKeys | null = null, thisPage: number | null = null): ElementType | null {
+    public selectedElement(
+        elements: ElementType[] | null = null,
+        text: string = '',
+        keys: TKeys | null = null,
+        thisPage: number | null = null,
+    ): ElementType | null {
         if (thisPage !== null) {
             this.thisPage = thisPage;
         }
@@ -208,7 +218,7 @@ export class Navigation<ElementType = TElementType> {
         }
 
         let number: number | null = null;
-        const data = text.match(/(\d)/umi);
+        const data = text.match(/(\d)/imu);
         if (data) {
             number = +data[0][0];
         }
@@ -219,12 +229,12 @@ export class Navigation<ElementType = TElementType> {
         let maxPercent: number = 0;
         const end: number = start + this.maxVisibleElements;
 
-        const setMaxElement = (index: number, res: ITextSimilarity) => {
+        const setMaxElement = (index: number, res: ITextSimilarity): void => {
             if (res.status && res.percent > maxPercent) {
                 selectElement = this.elements[index];
                 maxPercent = res.percent;
             }
-        }
+        };
 
         for (let i = start; i < end; i++) {
             if (typeof this.elements[i] !== 'undefined') {
@@ -246,7 +256,7 @@ export class Navigation<ElementType = TElementType> {
                                     const r = Text.textSimilarity(value, text, 75);
                                     setMaxElement(i, r);
                                 }
-                            })
+                            });
                         } else {
                             const value = (this.elements[i] as any)[keys];
                             if (value) {
@@ -270,7 +280,6 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param {boolean} isNumber Использование числовой навигации. Если true, тогда будут отображаться кнопки с числовой навигацией.
      * @return string[]
-     * @api
      */
     public getPageNav(isNumber: boolean = false): string[] {
         const maxPage: number = this.getMaxPage();
@@ -280,7 +289,7 @@ export class Navigation<ElementType = TElementType> {
             if (this.thisPage) {
                 buttons.push('👈 Назад');
             }
-            if ((this.thisPage + 1) < maxPage) {
+            if (this.thisPage + 1 < maxPage) {
                 buttons.push('Дальше 👉');
             }
         } else {
@@ -318,13 +327,15 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает информацию о текущей позиции пользователя.
      *
      * @return string
-     * @api
      */
     public getPageInfo(): string {
-        if ((typeof this.elements[this.thisPage * this.maxVisibleElements] === 'undefined') || this.thisPage < 0) {
+        if (
+            typeof this.elements[this.thisPage * this.maxVisibleElements] === 'undefined' ||
+            this.thisPage < 0
+        ) {
             this.thisPage = 0;
         }
-        let pageInfo: string = (this.thisPage + 1) + ' страница из ';
+        let pageInfo: string = this.thisPage + 1 + ' страница из ';
         const maxPage: number = this.getMaxPage();
         if (maxPage > 1) {
             pageInfo += maxPage;
@@ -339,7 +350,6 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param elements Элемент для обработки.
      * @return number
-     * @api
      */
     public getMaxPage(elements: ElementType[] | null = null): number {
         if (elements) {

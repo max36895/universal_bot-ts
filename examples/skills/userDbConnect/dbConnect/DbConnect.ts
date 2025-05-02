@@ -1,9 +1,8 @@
-import {IDbControllerResult, IModelRes,} from '../../../../src/models';
-import {DbControllerModel, IQueryData, QueryData} from '../../../../src/models/db';
-import {Request} from '../../../../src/api';
+import { IDbControllerResult, IModelRes, TQueryCb } from '../../../../src/models';
+import { DbControllerModel, IQueryData, QueryData } from '../../../../src/models/db';
+import { Request } from '../../../../src/api';
 
 export default class DbConnect extends DbControllerModel {
-
     protected _query: Request;
 
     constructor() {
@@ -33,20 +32,20 @@ export default class DbConnect extends DbControllerModel {
         this._query.post = {
             type: 'insert',
             table: this.tableName,
-            data: insertData
+            data: insertData,
         };
         const res = this._query.send();
         return new Promise<IModelRes>((resolve) => {
-            res.then(res => {
+            res.then((res) => {
                 if (res.status) {
                     resolve({
                         status: true,
-                        data: res.data
+                        data: res.data,
                     });
                 } else {
                     resolve({
                         status: false,
-                        error: res.err
+                        error: res.err,
                     });
                 }
             });
@@ -65,24 +64,24 @@ export default class DbConnect extends DbControllerModel {
      *
      * @param callback
      */
-    query(callback: Function) {
+    query(callback: TQueryCb) {
         this._query.post = {
             type: 'query',
             table: this.tableName,
-            query: callback
+            query: callback,
         };
         const res = this._query.send();
         return new Promise<IModelRes>((resolve) => {
-            res.then(res => {
+            res.then((res) => {
                 if (res.status) {
                     resolve({
                         status: true,
-                        data: res.data
+                        data: res.data,
                     });
                 } else {
                     resolve({
                         status: false,
-                        error: res.err
+                        error: res.err,
                     });
                 }
             });
@@ -98,20 +97,20 @@ export default class DbConnect extends DbControllerModel {
         this._query.post = {
             type: 'delete',
             table: this.tableName,
-            data: removeData
+            data: removeData,
         };
         const res = this._query.send();
         return new Promise<IModelRes>((resolve) => {
-            res.then(res => {
+            res.then((res) => {
                 if (res.status) {
                     resolve({
                         status: true,
-                        data: res.data
+                        data: res.data,
                     });
                 } else {
                     resolve({
                         status: false,
-                        error: res.err
+                        error: res.err,
                     });
                 }
             });
@@ -129,20 +128,20 @@ export default class DbConnect extends DbControllerModel {
         this._query.post = {
             type: 'save',
             table: this.tableName,
-            data: saveData
+            data: saveData,
         };
         const res = this._query.send();
         return new Promise<IModelRes>((resolve) => {
-            res.then(res => {
+            res.then((res) => {
                 if (res.status) {
                     resolve({
                         status: true,
-                        data: res.data
+                        data: res.data,
                     });
                 } else {
                     resolve({
                         status: false,
-                        error: res.err
+                        error: res.err,
                     });
                 }
             });
@@ -158,11 +157,11 @@ export default class DbConnect extends DbControllerModel {
         this._query.post = {
             type: 'select',
             table: this.tableName,
-            select
+            select,
         };
         const res = this._query.send();
         return new Promise<IModelRes>((resolve) => {
-            res.then(res => {
+            res.then((res) => {
                 if (res.status) {
                     let data: any = res.data;
                     if (isOne) {
@@ -170,12 +169,12 @@ export default class DbConnect extends DbControllerModel {
                     }
                     resolve({
                         status: true,
-                        data
+                        data,
                     });
                 } else {
                     resolve({
                         status: false,
-                        error: res.err
+                        error: res.err,
                     });
                 }
             });
@@ -191,20 +190,20 @@ export default class DbConnect extends DbControllerModel {
         this._query.post = {
             type: 'update',
             table: this.tableName,
-            data: updateData
+            data: updateData,
         };
         const res = this._query.send();
         return new Promise<IModelRes>((resolve) => {
-            res.then(res => {
+            res.then((res) => {
                 if (res.status) {
                     resolve({
                         status: true,
-                        data: res.data
+                        data: res.data,
                     });
                 } else {
                     resolve({
                         status: false,
-                        error: res.err
+                        error: res.err,
                     });
                 }
             });

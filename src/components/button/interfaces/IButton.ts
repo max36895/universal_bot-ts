@@ -1,5 +1,8 @@
 export type TButtonPayload = any;
 
+/**
+ * Интерфейс для опций кнопки
+ */
 export interface IButtonOptions {
     /**
      * Задается в том случае, если нужно объединить кнопку в группу.
@@ -12,6 +15,9 @@ export interface IButtonOptions {
     [name: string]: any;
 }
 
+/**
+ * Интерфейс для кнопки
+ */
 export interface IButton {
     /**
      * Заголовок кнопки

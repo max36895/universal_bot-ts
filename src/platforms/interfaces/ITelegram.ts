@@ -59,7 +59,7 @@ export interface ITelegramContent {
      */
     pre_checkout_query?: any;
     /**
-     * Новое состояние опроса. Боты получают только обновления о остановленных опросах и опросах, которые отправляются ботом. @see (https://core.telegram.org/bots/api#poll) Смотри тут
+     * Новое состояние опроса. Боты получают только обновления об остановленных опросах и опросах, которые отправляются ботом. @see (https://core.telegram.org/bots/api#poll) Смотри тут
      */
     poll?: any;
     /**

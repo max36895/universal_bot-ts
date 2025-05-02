@@ -1,11 +1,11 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
-import {BotController} from '../controller';
-import {ITelegramContent} from './interfaces';
-import {mmApp} from '../mmApp';
-import {INluThisUser} from '../components/nlu';
-import {ITelegramParams, TelegramRequest} from '../api';
-import {Buttons} from '../components/button';
-import {ITelegramCard} from '../components/card';
+import { TemplateTypeModel } from './TemplateTypeModel';
+import { BotController } from '../controller';
+import { ITelegramContent } from './interfaces';
+import { mmApp } from '../mmApp';
+import { INluThisUser } from '../components/nlu';
+import { ITelegramParams, TelegramRequest } from '../api';
+import { Buttons } from '../components/button';
+import { ITelegramCard } from '../components/card';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Телеграма.
@@ -20,11 +20,13 @@ export class Telegram extends TemplateTypeModel {
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
      */
-    public async init(query: string | ITelegramContent, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | ITelegramContent,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
-            /**
+            /*
              * array content
              * @see (https://core.telegram.org/bots/api#getting-updates) Смотри тут
              *  - int update_id: Уникальный идентификатор обновления. Обновление идентификаторов начинается с определенного положительного числа и последовательно увеличивается. Этот идентификатор становится особенно удобным, если вы используете Webhooks, так как он позволяет игнорировать повторяющиеся обновления или восстанавливать правильную последовательность обновлений, если они выходят из строя. Если нет новых обновлений хотя бы в течение недели, то идентификатор следующего обновления будет выбран случайным образом, а не последовательно.
@@ -61,7 +63,7 @@ export class Telegram extends TemplateTypeModel {
             if (typeof query === 'string') {
                 content = <ITelegramContent>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
             if (!this.controller) {
                 this.controller = controller;
@@ -80,7 +82,7 @@ export class Telegram extends TemplateTypeModel {
                     first_name: content.message.chat.first_name || null,
                     last_name: content.message.chat.last_name || null,
                 };
-                this.controller.nlu.setNlu({thisUser});
+                this.controller.nlu.setNlu({ thisUser });
                 return true;
             }
         } else {
@@ -94,7 +96,6 @@ export class Telegram extends TemplateTypeModel {
      *
      * @return {Promise<string>}
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
@@ -106,12 +107,20 @@ export class Telegram extends TemplateTypeModel {
             }
             params.parse_mode = 'markdown';
 
-            await telegramApi.sendMessage(this.controller.userId as string, this.controller.text, params);
+            await telegramApi.sendMessage(
+                this.controller.userId as string,
+                this.controller.text,
+                params,
+            );
 
             if (this.controller.card.images.length) {
                 const res: ITelegramCard = await this.controller.card.getCards();
                 if (res) {
-                    await telegramApi.sendPoll(this.controller.userId as string, res.question, res.options);
+                    await telegramApi.sendPoll(
+                        this.controller.userId as string,
+                        res.question,
+                        res.options,
+                    );
                 }
             }
 

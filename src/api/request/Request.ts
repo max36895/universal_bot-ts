@@ -2,8 +2,8 @@
  * Модуль отвечающий за отправку запросов
  * @module
  */
-import {fread, httpBuildQuery, IGetParams, isFile} from '../../utils/standard/util';
-import {IRequestSend} from '../interfaces';
+import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
+import { IRequestSend } from '../interfaces';
 
 /**
  * Класс отвечающий за отправку curl запросов на необходимый url.
@@ -12,11 +12,19 @@ import {IRequestSend} from '../interfaces';
  * @class Request
  */
 export class Request {
-    public static readonly HEADER_FORM_DATA: Record<string, string> = {'Content-Type': 'multipart/form-data'};
-    public static readonly HEADER_RSS_XML: Record<string, string> = {'Content-Type': 'application/rss+xml'};
-    public static readonly HEADER_AP_JSON: Record<string, string> = {'Content-Type': 'application/json'};
-    public static readonly HEADER_AP_XML: Record<string, string> = {'Content-Type': 'application/xml'};
-    public static readonly HEADER_GZIP: Record<string, string> = {'Content-Encoding': 'gzip'};
+    public static readonly HEADER_FORM_DATA: Record<string, string> = {
+        'Content-Type': 'multipart/form-data',
+    };
+    public static readonly HEADER_RSS_XML: Record<string, string> = {
+        'Content-Type': 'application/rss+xml',
+    };
+    public static readonly HEADER_AP_JSON: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+    public static readonly HEADER_AP_XML: Record<string, string> = {
+        'Content-Type': 'application/xml',
+    };
+    public static readonly HEADER_GZIP: Record<string, string> = { 'Content-Encoding': 'gzip' };
 
     /**
      * Адрес, на который отправляется запрос.
@@ -99,7 +107,6 @@ export class Request {
      *  - bool status Статус выполнения запроса.
      *  - mixed data Данные полученные при выполнении запроса.
      * ]
-     * @api
      */
     public async send<T>(url: string | null = null): Promise<IRequestSend<T>> {
         if (url) {
@@ -107,11 +114,11 @@ export class Request {
         }
 
         this._error = null;
-        const data: any = await this._run();
+        const data = (await this._run()) as T;
         if (this._error) {
-            return {status: false, data: null, err: this._error};
+            return { status: false, data: null, err: this._error };
         }
-        return {status: true, data};
+        return { status: true, data };
     }
 
     /**
@@ -128,6 +135,13 @@ export class Request {
         return url;
     }
 
+    private _clearTimeout(): void {
+        if (this._setTimeOut) {
+            clearTimeout(this._setTimeOut);
+            this._setTimeOut = null;
+        }
+    }
+
     /**
      * Начинаем отправку fetch запроса.
      * В случае успеха возвращаем содержимое запроса, в противном случае null.
@@ -137,11 +151,10 @@ export class Request {
     private async _run<T>(): Promise<T | string | null> {
         if (this.url) {
             try {
+                // Если ранее был отправлен запрос, то ничто не сможет его отменить. Поэтому явно очищаем таймаут.
+                this._clearTimeout();
                 const response = await fetch(this._getUrl(), this._getOptions());
-                if (this._setTimeOut) {
-                    clearTimeout(this._setTimeOut);
-                    this._setTimeOut = null;
-                }
+                this._clearTimeout();
                 if (response.ok) {
                     if (this.isConvertJson) {
                         return await response.json();
@@ -169,7 +182,7 @@ export class Request {
         if (this.maxTimeQuery) {
             const controller = new AbortController();
             const signal: AbortSignal = controller.signal;
-            // @ts-ignore jest not build...
+            // @ts-ignore ругается при запуске тестов, как решить пока хз
             this._setTimeOut = setTimeout(() => controller.abort(), this.maxTimeQuery);
             options.signal = signal;
         }
@@ -184,7 +197,7 @@ export class Request {
             }
         }
         if (this.post) {
-            post = {...post, ...this.post};
+            post = { ...post, ...this.post };
         }
         if (post) {
             options.method = 'POST';
@@ -207,17 +220,19 @@ export class Request {
      * @param {string} fileName Имя файла
      */
     public static getAttachFile(filePath: string, fileName?: string): FormData | null {
-        if (!filePath && !fileName) {
+        if (!filePath && !fileName && !isFile(filePath)) {
             return null;
         }
         if (!fileName) {
             const match = filePath.match(/((\/|\\|^)(\w+)\.(\w{1,6})$)/);
-            fileName = (match ? match[0] : filePath);
+            fileName = match ? match[0] : filePath;
         }
         const form = new FormData();
-        const buffer = fread(filePath);
-        form.append("Content-Type", "application/octect-stream");
-        form.append(fileName, buffer);
+        const buffer = fread(filePath).data;
+        if (buffer) {
+            form.append('Content-Type', 'application/octect-stream');
+            form.append(fileName, buffer);
+        }
         return form;
     }
 
@@ -225,7 +240,6 @@ export class Request {
      * Возвращает текст с ошибкой, произошедшей при выполнении запроса.
      *
      * @return string
-     * @api
      */
     public getError(): string | null {
         return this._error;

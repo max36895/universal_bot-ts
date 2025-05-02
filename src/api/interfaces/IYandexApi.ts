@@ -1,116 +1,188 @@
+/**
+ * Базовый интерфейс для всех ответов Яндекс API.
+ * Содержит общие поля, присутствующие во всех ответах.
+ */
 export interface IYandexApi {
     /**
-     * Ошибка при выполнении действия
+     * Сообщение об ошибке, если запрос завершился неудачно
+     * @type {string}
      */
     error?: string;
 }
 
+/**
+ * Интерфейс ответа на запрос проверки места для изображений
+ * @extends IYandexApi
+ */
 export interface IYandexImagesCheckOutPlaceRequest extends IYandexApi {
     /**
-     * Данные с картинками
+     * Информация о квоте хранилища изображений
+     * @type {{ quota: IYandexCheckOutPlace }}
      */
     images: {
         quota: IYandexCheckOutPlace;
-    }
+    };
 }
 
+/**
+ * Интерфейс ответа на запрос проверки места для аудиофайлов
+ * @extends IYandexApi
+ */
 export interface IYandexSoundsCheckOutPlaceRequest extends IYandexApi {
     /**
-     * Данные с аудиофайлами
+     * Информация о квоте хранилища аудиофайлов
+     * @type {{ quota: IYandexCheckOutPlace }}
      */
     sounds: {
         quota: IYandexCheckOutPlace;
-    }
+    };
 }
 
+/**
+ * Интерфейс, описывающий информацию о квоте хранилища
+ */
 export interface IYandexCheckOutPlace {
     /**
-     * Все доступное место.
+     * Общий объем доступного места в байтах
+     * @type {number}
      */
     total: number;
+
     /**
-     * Занятое место.
+     * Объем использованного места в байтах
+     * @type {string}
      */
     used: string;
 }
 
+/**
+ * Интерфейс ответа на запрос загрузки одного изображения
+ * @extends IYandexApi
+ */
 export interface IYandexRequestDownloadImageRequest extends IYandexApi {
     /**
-     * Загруженная картинка
+     * Информация о загруженном изображении
+     * @type {IYandexRequestDownloadImage}
      */
     image: IYandexRequestDownloadImage;
 }
 
+/**
+ * Интерфейс ответа на запрос загрузки нескольких изображений
+ * @extends IYandexApi
+ */
 export interface IYandexRequestDownloadImagesRequest extends IYandexApi {
     /**
-     * Загруженные картинки
+     * Массив с информацией о загруженных изображениях
+     * @type {IYandexRequestDownloadImage[]}
      */
     images: IYandexRequestDownloadImage[];
 }
 
+/**
+ * Интерфейс, описывающий информацию о загруженном изображении
+ */
 export interface IYandexRequestDownloadImage {
     /**
-     * Ид загруженной изображения
+     * Уникальный идентификатор изображения в системе Яндекса
+     * @type {string}
      */
     id: string;
+
     /**
-     * Адрес изображения
+     * Оригинальный URL изображения
+     * @type {string}
      */
     origUrl: string;
+
     /**
-     * Размер изображения
+     * Размер изображения в байтах
+     * @type {number}
      */
     size: number;
+
     /**
-     * Дата загрузки изображения
+     * Timestamp создания изображения в формате Unix timestamp
+     * @type {number}
      */
     createdAt: number;
 }
 
+/**
+ * Интерфейс ответа на запрос загрузки одного аудиофайла
+ * @extends IYandexApi
+ */
 export interface IYandexRequestDownloadSoundRequest extends IYandexApi {
     /**
-     * Загруженный аудиофайл
+     * Информация о загруженном аудиофайле
+     * @type {IYandexRequestDownloadSound}
      */
     sound: IYandexRequestDownloadSound;
 }
 
+/**
+ * Интерфейс ответа на запрос загрузки нескольких аудиофайлов
+ * @extends IYandexApi
+ */
 export interface IYandexRequestDownloadSoundsRequest extends IYandexApi {
     /**
-     * Загруженные аудиофайлы
+     * Массив с информацией о загруженных аудиофайлах
+     * @type {IYandexRequestDownloadSound[]}
      */
     sounds: IYandexRequestDownloadSound[];
 }
 
+/**
+ * Интерфейс, описывающий информацию о загруженном аудиофайле
+ */
 export interface IYandexRequestDownloadSound {
     /**
-     * Ид загруженного аудиофайла
+     * Уникальный идентификатор аудиофайла в системе Яндекса
+     * @type {string}
      */
     id: string;
+
     /**
-     * Ид навыка, с которого произошла загрузка
+     * Идентификатор навыка, через который был загружен файл
+     * @type {string}
      */
     skillId: string;
+
     /**
-     * Размер аудио файла
+     * Размер аудиофайла в байтах
+     * @type {number}
      */
     size: number;
+
     /**
-     * Оригинальное название файла
+     * Оригинальное имя загруженного файла
+     * @type {string}
      */
     originalName: string;
+
     /**
-     * Дата загрузки файла
+     * Дата и время загрузки файла в ISO формате
+     * @type {string}
      */
     createdAt: string;
+
     /**
-     * Статус обработки файла. До тех пор, пока значение false, Алиса не сможет его воспроизвести
+     * Флаг завершения обработки файла
+     * @type {boolean}
+     * true - файл обработан и готов к использованию
+     * false - файл находится в процессе обработки
      */
     isProcessed: boolean;
 }
 
+/**
+ * Интерфейс ответа на запрос удаления ресурса
+ * @extends IYandexApi
+ */
 export interface IYandexRemoveRequest extends IYandexApi {
     /**
-     * Результат выполнения действия
+     * Результат выполнения операции удаления
+     * @type {string}
      */
     result?: string;
 }

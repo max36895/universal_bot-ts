@@ -1,7 +1,7 @@
-import {TemplateSoundTypes} from './TemplateSoundTypes';
-import {ISound} from '../interfaces';
-import {Text, isFile} from '../../../utils';
-import {SoundTokens} from '../../../models/SoundTokens';
+import { TemplateSoundTypes } from './TemplateSoundTypes';
+import { ISound } from '../interfaces';
+import { Text, isFile } from '../../../utils';
+import { SoundTokens } from '../../../models/SoundTokens';
 
 /**
  * Класс отвечающий за воспроизведение звуков в Алисе.
@@ -14,14 +14,38 @@ export class AlisaSound implements TemplateSoundTypes {
      */
     public isUsedStandardSound: boolean = true;
 
-    private readonly S_EFFECT_BEHIND_THE_WALL = '<speaker effect="behind_the_wall">';
-    private readonly S_EFFECT_HAMSTER = '<speaker effect="hamster">';
-    private readonly S_EFFECT_MEGAPHONE = '<speaker effect="megaphone">';
-    private readonly S_EFFECT_PITCH_DOWN = '<speaker effect="pitch_down">';
-    private readonly S_EFFECT_PSYCHODELIC = '<speaker effect="psychodelic">';
-    private readonly S_EFFECT_PULSE = '<speaker effect="pulse">';
-    private readonly S_EFFECT_TRAIN_ANNOUNCE = '<speaker effect="train_announce">';
-    private readonly S_EFFECT_END = '<speaker effect="-">';
+    /**
+     * Задает эффект за стеной для текста.
+     */
+    public readonly S_EFFECT_BEHIND_THE_WALL = '<speaker effect="behind_the_wall">';
+    /**
+     * Задает эффект хомяка для текста.
+     */
+    public readonly S_EFFECT_HAMSTER = '<speaker effect="hamster">';
+    /**
+     * Задает эффект мегафона для текста.
+     */
+    public readonly S_EFFECT_MEGAPHONE = '<speaker effect="megaphone">';
+    /**
+     * Задает эффект низкого тона для текста.
+     */
+    public readonly S_EFFECT_PITCH_DOWN = '<speaker effect="pitch_down">';
+    /**
+     * Задает эффект психодельского для текста.
+     */
+    public readonly S_EFFECT_PSYCHODELIC = '<speaker effect="psychodelic">';
+    /**
+     * Задает эффект пульса для текста.
+     */
+    public readonly S_EFFECT_PULSE = '<speaker effect="pulse">';
+    /**
+     * Задает эффект вокзала для текста.
+     */
+    public readonly S_EFFECT_TRAIN_ANNOUNCE = '<speaker effect="train_announce">';
+    /**
+     * Заканчивает эффект.
+     */
+    public readonly S_EFFECT_END = '<speaker effect="-">';
 
     /** Стандартные звуки.
      */
@@ -32,7 +56,7 @@ export class AlisaSound implements TemplateSoundTypes {
                 '<speaker audio="alice-sounds-game-win-1.opus">',
                 '<speaker audio="alice-sounds-game-win-2.opus">',
                 '<speaker audio="alice-sounds-game-win-3.opus">',
-            ]
+            ],
         },
         {
             key: '#game_loss#',
@@ -40,107 +64,97 @@ export class AlisaSound implements TemplateSoundTypes {
                 '<speaker audio="alice-sounds-game-loss-1.opus">',
                 '<speaker audio="alice-sounds-game-loss-2.opus">',
                 '<speaker audio="alice-sounds-game-loss-3.opus">',
-            ]
+            ],
         },
         {
             key: '#game_boot#',
-            sounds: [
-                '<speaker audio="alice-sounds-game-boot-1.opus">',
-            ]
+            sounds: ['<speaker audio="alice-sounds-game-boot-1.opus">'],
         },
         {
             key: '#game_coin#',
             sounds: [
                 '<speaker audio="alice-sounds-game-8-bit-coin-1.opus">',
                 '<speaker audio="alice-sounds-game-8-bit-coin-2.opus">',
-            ]
+            ],
         },
         {
             key: '#game_ping#',
-            sounds: [
-                '<speaker audio="alice-sounds-game-ping-1.opus">',
-            ]
+            sounds: ['<speaker audio="alice-sounds-game-ping-1.opus">'],
         },
         {
             key: '#game_fly#',
-            sounds: [
-                '<speaker audio="alice-sounds-game-8-bit-flyby-1.opus">',
-            ]
+            sounds: ['<speaker audio="alice-sounds-game-8-bit-flyby-1.opus">'],
         },
         {
             key: '#game_gun#',
-            sounds: [
-                '<speaker audio="alice-sounds-game-8-bit-machine-gun-1.opus">',
-            ]
+            sounds: ['<speaker audio="alice-sounds-game-8-bit-machine-gun-1.opus">'],
         },
         {
             key: '#game_phone#',
-            sounds: [
-                '<speaker audio="alice-sounds-game-8-bit-phone-1.opus">',
-            ]
+            sounds: ['<speaker audio="alice-sounds-game-8-bit-phone-1.opus">'],
         },
         {
             key: '#game_powerup#',
             sounds: [
                 '<speaker audio="alice-sounds-game-powerup-1.opus">',
                 '<speaker audio="alice-sounds-game-powerup-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_wind#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-wind-1.opus">',
                 '<speaker audio="alice-sounds-nature-wind-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_thunder#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-thunder-1.opus">',
                 '<speaker audio="alice-sounds-nature-thunder-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_jungle#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-jungle-1.opus">',
                 '<speaker audio="alice-sounds-nature-jungle-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_rain#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-rain-1.opus">',
                 '<speaker audio="alice-sounds-nature-rain-2.opus">',
-            ]
+            ],
         },
         {
             key: '##',
             sounds: [
                 '<speaker audio="alice-sounds-nature-forest-1.opus">',
                 '<speaker audio="alice-sounds-nature-forest-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_sea#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-sea-1.opus">',
                 '<speaker audio="alice-sounds-nature-sea-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_fire#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-fire-1.opus">',
                 '<speaker audio="alice-sounds-nature-fire-2.opus">',
-            ]
+            ],
         },
         {
             key: '#nature_stream#',
             sounds: [
                 '<speaker audio="alice-sounds-nature-stream-1.opus">',
                 '<speaker audio="alice-sounds-nature-stream-2.opus">',
-            ]
+            ],
         },
         {
             key: '#thing_chainsaw#',
@@ -180,7 +194,7 @@ export class AlisaSound implements TemplateSoundTypes {
                 '<speaker audio="alice-sounds-things-toilet-1.opus">',
                 '<speaker audio="alice-sounds-things-cuckoo-clock-2.opus">',
                 '<speaker audio="alice-sounds-things-cuckoo-clock-1.opus">',
-            ]
+            ],
         },
         {
             key: '#animals_all#',
@@ -219,7 +233,7 @@ export class AlisaSound implements TemplateSoundTypes {
                 '<speaker audio="alice-sounds-animals-dog-5.opus">',
                 '<speaker audio="alice-sounds-animals-owl-1.opus">',
                 '<speaker audio="alice-sounds-animals-owl-2.opus">',
-            ]
+            ],
         },
         {
             key: '#human_all#',
@@ -248,7 +262,7 @@ export class AlisaSound implements TemplateSoundTypes {
                 '<speaker audio="alice-sounds-human-sneeze-2.opus">',
                 '<speaker audio="alice-sounds-human-walking-room-1.opus">',
                 '<speaker audio="alice-sounds-human-walking-snow-1.opus">',
-            ]
+            ],
         },
         {
             key: '#music_all#',
@@ -287,27 +301,78 @@ export class AlisaSound implements TemplateSoundTypes {
                 '<speaker audio="alice-music-piano-d-1.opus">',
                 '<speaker audio="alice-music-piano-b-1.opus">',
                 '<speaker audio="alice-music-piano-g-1.opus">',
-            ]
-        }
+            ],
+        },
     ];
 
+    /**
+     * Воспроизвести звук загрузки
+     */
     public static readonly S_AUDIO_GAME_BOOT = '#game_boot#';
+    /**
+     * Воспроизвести звук получения очка
+     */
     public static readonly S_AUDIO_GAME_8_BIT_COIN = '#game_coin#';
+    /**
+     * Воспроизвести звук поражения
+     */
     public static readonly S_AUDIO_GAME_LOSS = '#game_loss#';
+    /**
+     * Воспроизвести звук ping
+     */
     public static readonly S_AUDIO_GAME_PING = '#game_ping#';
+    /**
+     * Воспроизвести звук победы
+     */
     public static readonly S_AUDIO_GAME_WIN = '#game_win#';
+    /**
+     * Воспроизвести звук полета
+     */
     public static readonly S_AUDIO_GAME_8_BIT_FLYBY = '#game_fly#';
+    /**
+     * Воспроизвести звук выстрела
+     */
     public static readonly S_AUDIO_GAME_8_BIT_MACHINE_GUN = '#game_gun#';
+    /**
+     * Воспроизвести звук звока телефона
+     */
     public static readonly S_AUDIO_GAME_8_BIT_PHONE = '#games_phone#';
+    /**
+     * Воспроизвести звук powerup
+     */
     public static readonly S_AUDIO_GAME_POWERUP = '#games_powerup#';
 
+    /**
+     * Воспроизвести звук ветра
+     */
     public static readonly S_AUDIO_NATURE_WIND = '#nature_wind#';
+    /**
+     * Воспроизвести звук молнии
+     */
     public static readonly S_AUDIO_NATURE_THUNDER = '#nature_thunder#';
+    /**
+     * Воспроизвести звук jungle
+     */
     public static readonly S_AUDIO_NATURE_JUNGLE = '#nature_jungle#';
+    /**
+     * Воспроизвести звук дождя
+     */
     public static readonly S_AUDIO_NATURE_RAIN = '#nature_rain#';
+    /**
+     * Воспроизвести звук леса
+     */
     public static readonly S_AUDIO_NATURE_FOREST = '#nature_forest#';
+    /**
+     * Воспроизвести звук моря
+     */
     public static readonly S_AUDIO_NATURE_SEA = '#nature_sea#';
+    /**
+     * Воспроизвести звук огня
+     */
     public static readonly S_AUDIO_NATURE_FIRE = '#nature_fire#';
+    /**
+     * Воспроизвести звук потока
+     */
     public static readonly S_AUDIO_NATURE_STREAM = '#nature_stream#';
 
     /**
@@ -316,7 +381,6 @@ export class AlisaSound implements TemplateSoundTypes {
      * @param {number} milliseconds Пауза в миллисекундах.
      * @return string
      * @see (https://yandex.ru/dev/dialogs/alice/doc/speech-tuning-docpage/) Смотри тут
-     * @api
      */
     public static getPause(milliseconds: number): string {
         return `sil <[${milliseconds}]>`;
@@ -328,7 +392,6 @@ export class AlisaSound implements TemplateSoundTypes {
      * @param {ISound[]} sounds Пользовательские звуки.
      * @param {string} text Исходный текст.
      * @return {Promise<string>}
-     * @api
      */
     public async getSounds(sounds: ISound[], text: string): Promise<string> {
         if (this.isUsedStandardSound) {
@@ -340,7 +403,7 @@ export class AlisaSound implements TemplateSoundTypes {
                 if (typeof sound === 'object') {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string = Text.getText(sound.sounds);
-                        /**
+                        /*
                          * Не стоит так делать, так как нужно время, пока Yandex обработает звуковую дорожку.
                          * Лучше загружать звуки через консоль администратора!
                          * @see (https://dialogs.yandex.ru/developer/skills/<skill_id>/resources/sounds) Смотри тут
@@ -369,7 +432,6 @@ export class AlisaSound implements TemplateSoundTypes {
      * @param {string|string[]} value Звук или массив звуков.
      * @param {string} text Обрабатываемый текст.
      * @return {string}
-     * @api
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
         return text.replace(key, Text.getText(value));
@@ -380,9 +442,11 @@ export class AlisaSound implements TemplateSoundTypes {
      *
      * @param {string} text Обрабатываемый текст.
      * @return string
-     * @api
      */
     public static removeSound(text: string): string {
-        return text.replace(/(<speaker audio="([^"]+)">)|(<speaker effect="([^"]+)">)|(sil <\[\d+]>)/img, '');
+        return text.replace(
+            /(<speaker audio="([^"]+)">)|(<speaker effect="([^"]+)">)|(sil <\[\d+]>)/gim,
+            '',
+        );
     }
 }

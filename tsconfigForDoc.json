@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es2020",
+    "target": "es2023",
     "lib": [
-      "es2020",
+      "es2023",
       "dom"
     ],
     "moduleResolution": "node",
@@ -64,11 +64,11 @@
     "src/modules/**/*",
     "src/utils/**/*",
     "src/*.ts",
-    "console/**/*"
+    "cli/**/*"
   ],
   "exclude": [
     "node_modules",
-    "console/template/**/*",
+    "cli/template/**/*",
     "tests/**/*"
   ]
 }

@@ -1,11 +1,14 @@
-import {TemplateButtonTypes} from './TemplateButtonTypes';
-import {TButtonPayload} from '../interfaces';
+import { TemplateButtonTypes } from './TemplateButtonTypes';
+import { TButtonPayload } from '../interfaces';
 
+/**
+ * Интерфейс описывающий объекты кнопок для отображения в теле сообщения в Телеграме.
+ */
 export interface ITelegramInlineKeyboard {
     /**
      * Текст внутри кнопки
      */
-    text: string | null,
+    text: string | null;
     /**
      * Ссылка по которой перейдёт пользователь после нажатия
      */
@@ -16,6 +19,9 @@ export interface ITelegramInlineKeyboard {
     callback_data?: TButtonPayload;
 }
 
+/**
+ * Интерфейс описывающий объекты кнопок для отображения в виде клавиатуры в Телеграме.
+ */
 export interface ITelegramKeyboard {
     /**
      * Кнопки в виде ссылки
@@ -40,7 +46,6 @@ export class TelegramButton extends TemplateButtonTypes {
      * Получение массива с кнопками для ответа пользователю.
      *
      * @return ITelegramKeyboard
-     * @api
      */
     public getButtons(): ITelegramKeyboard {
         let object: ITelegramKeyboard = {};
@@ -51,7 +56,7 @@ export class TelegramButton extends TemplateButtonTypes {
             if (button.url) {
                 const inline: ITelegramInlineKeyboard = {
                     text: button.title,
-                    url: button.url
+                    url: button.url,
                 };
                 if (button.payload) {
                     inline.callback_data = button.payload;
@@ -72,7 +77,7 @@ export class TelegramButton extends TemplateButtonTypes {
             }
         } else {
             // Удаляем клавиатуру из-за ненадобности
-            object = {remove_keyboard: true};
+            object = { remove_keyboard: true };
         }
         return object;
     }

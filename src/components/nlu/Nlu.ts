@@ -6,9 +6,9 @@ import {
     INluIntent,
     INluIntents,
     INluResult,
-    INluThisUser
+    INluThisUser,
 } from './interfaces/INlu';
-import {Text} from '../../utils/standard/Text';
+import { Text } from '../../utils/standard/Text';
 
 /**
  * Класс отвечающий за обработку естественной речи. Осуществляет поиск различных сущностей в тексте.
@@ -20,19 +20,40 @@ export class Nlu {
      */
     private _nlu: INlu;
     /**
-     * @const T_FIO В запросе пользователя присутствует имя.
+     * Кеш данных.
+     * @private
+     */
+    private _cachedData: Map<string, unknown[] | null> = new Map();
+
+    /**
+     * Регулярное выражение для поиска email.
+     * @private
+     */
+    private static readonly EMAIL_REGEX = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+    /**
+     * Регулярное выражение для поиска телефона.
+     * @private
+     */
+    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/gimu;
+    /**
+     * Регулярное выражение для поиска ссылок.
+     * @private
+     */
+    private static readonly LINK_REGEX = /((http|s:\/\/)[^( |\n)]+)/gimu;
+    /**
+     * В запросе пользователя присутствует имя.
      */
     public static readonly T_FIO = 'YANDEX.FIO';
     /**
-     * @const  T_GEO В запросе пользователя присутствуют координаты(Адрес, город и тд).
+     * В запросе пользователя присутствуют координаты(Адрес, город и тд).
      */
     public static readonly T_GEO = 'YANDEX.GEO';
     /**
-     * @const T_DATETIME В запросе пользователя присутствует дата.
+     * В запросе пользователя присутствует дата.
      */
     public static readonly T_DATETIME = 'YANDEX.DATETIME';
     /**
-     * @const T_NUMBER В запросе пользователя есть числа.
+     * В запросе пользователя есть числа.
      */
     public static readonly T_NUMBER = 'YANDEX.NUMBER';
 
@@ -41,19 +62,19 @@ export class Nlu {
      * Если в навыке есть хотя бы один интент, Яндекс.Диалоги дополнительно отправляют интенты, универсальные для большинства навыков
      */
     /**
-     * @const T_INTENT_CONFIRM: Согласие.
+     * Согласие.
      */
     public static readonly T_INTENT_CONFIRM = 'YANDEX.CONFIRM';
     /**
-     * @const T_INTENT_REJECT: Отказ.
+     * Отказ.
      */
     public static readonly T_INTENT_REJECT = 'YANDEX.REJECT';
     /**
-     * @const T_INTENT_HELP: Запрос подсказки.
+     * Запрос подсказки.
      */
     public static readonly T_INTENT_HELP = 'YANDEX.HELP';
     /**
-     * @const T_INTENT_REPEAT: Просьба повторить последний ответ навыка.
+     * Просьба повторить последний ответ навыка.
      */
     public static readonly T_INTENT_REPEAT = 'YANDEX.REPEAT';
 
@@ -80,10 +101,10 @@ export class Nlu {
      * Устанавливает данные
      *
      * @param {Object} nlu Значение для nlu. В случае с Алисой передается в запросе. Для других типов инициируется самостоятельно.
-     * @api
      */
     public setNlu(nlu: any): void {
         this._nlu = this._serializeNlu(nlu);
+        this._cachedData.clear();
     }
 
     /**
@@ -91,13 +112,15 @@ export class Nlu {
      *
      * @param {string} type Тип данных.
      * @return any|null
-     * @api
      */
     private _getData<T = object>(type: string): T[] | null {
+        if (this._cachedData.has(type)) {
+            return (this._cachedData.get(type) as T[]) || null;
+        }
         let data: (object | number)[] | null = null;
         if (this._nlu.entities) {
             this._nlu.entities.forEach((entity) => {
-                if ((typeof entity.type !== "undefined") && entity.type === type) {
+                if (typeof entity.type !== 'undefined' && entity.type === type) {
                     if (data === null) {
                         data = [];
                     }
@@ -105,6 +128,7 @@ export class Nlu {
                 }
             });
         }
+        this._cachedData.set(type, data);
         return data;
     }
 
@@ -119,7 +143,6 @@ export class Nlu {
      *      - string last_name: Фамилия пользователя.
      *  ]
      * ]
-     * @api
      */
     public getUserName(): INluThisUser | null {
         return this._nlu.thisUser || null;
@@ -139,14 +162,13 @@ export class Nlu {
      * ]
      *
      * @return INluResult<INluFIO[]>
-     * @api
      */
     public getFio(): INluResult<INluFIO[]> {
         const fio = this._getData<INluFIO>(Nlu.T_FIO);
         const status = !!fio;
         return {
             status,
-            result: fio
+            result: fio,
         };
     }
 
@@ -166,14 +188,13 @@ export class Nlu {
      * ]
      *
      * @return INluResult<INluGeo[]>
-     * @api
      */
     public getGeo(): INluResult<INluGeo[]> {
         const geo = this._getData<INluGeo>(Nlu.T_GEO);
         const status = !!geo;
         return {
             status,
-            result: geo
+            result: geo,
         };
     }
 
@@ -181,7 +202,7 @@ export class Nlu {
      * Получение даты и времени.
      *
      * 'status' == true, если значение найдено. Иначе значений найти не удалось.
-     * 'result' представляет из себя массив типа
+     * 'result' представляет собой массив типа
      * [
      *  [
      *      "year" : Точный год
@@ -198,14 +219,13 @@ export class Nlu {
      * ]
      *
      * @return INluResult<INluDateTime[]>
-     * @api
      */
     public getDateTime(): INluResult<INluDateTime[]> {
         const dateTime = this._getData<INluDateTime>(Nlu.T_DATETIME);
         const status = !!dateTime;
         return {
             status,
-            result: dateTime
+            result: dateTime,
         };
     }
 
@@ -213,20 +233,19 @@ export class Nlu {
      * Получение числа.
      *
      * 'status' == true, если значение найдено. Иначе значений найти не удалось.
-     * 'result' представляет из себя массив типа
+     * 'result' представляет собой массив типа
      * [
      *  Число
      * ]
      *
      * @return INluResult<number>
-     * @api
      */
     public getNumber(): INluResult<number[]> {
         const number = this._getData<number>(Nlu.T_NUMBER);
         const status = !!number;
         return {
             status,
-            result: number
+            result: number,
         };
     }
 
@@ -235,10 +254,9 @@ export class Nlu {
      *
      * @param {string} userCommand Фраза пользователя. Если нет совпадения по интенту, то поиск согласия идет по тексту.
      * @return boolean
-     * @api
      */
     public isIntentConfirm(userCommand: string = ''): boolean {
-        const result: boolean = (this.getIntent(Nlu.T_INTENT_CONFIRM) !== null);
+        const result: boolean = this.getIntent(Nlu.T_INTENT_CONFIRM) !== null;
         if (!result && userCommand) {
             return Text.isSayTrue(userCommand);
         }
@@ -250,10 +268,9 @@ export class Nlu {
      *
      * @param {string} userCommand Фраза пользователя. Если нет совпадения по интенту, то поиск несогласия идет по тексту.
      * @return boolean
-     * @api
      */
     public isIntentReject(userCommand: string = ''): boolean {
-        const result: boolean = (this.getIntent(Nlu.T_INTENT_REJECT) !== null);
+        const result: boolean = this.getIntent(Nlu.T_INTENT_REJECT) !== null;
         if (!result && userCommand) {
             return Text.isSayFalse(userCommand);
         }
@@ -264,27 +281,24 @@ export class Nlu {
      * Вернет true, если пользователь просит помощи.
      *
      * @return boolean
-     * @api
      */
     public isIntentHelp(): boolean {
-        return (this.getIntent(Nlu.T_INTENT_HELP) !== null);
+        return this.getIntent(Nlu.T_INTENT_HELP) !== null;
     }
 
     /**
      * Вернет true, если пользователь просит повторить последний ответ навыка.
      *
      * @return boolean
-     * @api
      */
     public isIntentRepeat(): boolean {
-        return (this.getIntent(Nlu.T_INTENT_REPEAT) !== null);
+        return this.getIntent(Nlu.T_INTENT_REPEAT) !== null;
     }
 
     /**
-     * Получение всех intents, как правило получены от Алисы. Все интенты сгенерированы в консоли разработчика.
+     * Получение всех intents, как правило, получены от Алисы. Все интенты сгенерированы в консоли разработчика.
      *
      * @return any|null
-     * @api
      */
     public getIntents(): INluIntents | null {
         return this._nlu.intents || null;
@@ -301,7 +315,6 @@ export class Nlu {
      *
      * @param {string} intentName Название intent`а
      * @return INluIntent|null
-     * @api
      */
     public getIntent(intentName: string): INluIntent | null {
         const intents: INluIntents | null = this.getIntents();
@@ -316,19 +329,18 @@ export class Nlu {
      *
      * @param {string} query Пользовательский запрос.
      * @return INluResult<string[]>
-     * @api
      */
     public static getLink(query: string): INluResult<string[]> {
-        const link = query.match(/((http|s:\/\/)[^( |\n)]+)/umig);
+        const link = query.match(this.LINK_REGEX);
         if (link) {
             return {
                 status: true,
-                result: link
+                result: link,
             };
         }
         return {
             status: false,
-            result: null
+            result: null,
         };
     }
 
@@ -337,19 +349,18 @@ export class Nlu {
      *
      * @param {string} query Пользовательский запрос.
      * @return INluResult<string[]>
-     * @api
      */
     public static getPhone(query: string): INluResult<string[]> {
-        const phone = query.match(/([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/umig);
+        const phone = query.match(this.PHONE_REGEX);
         if (phone) {
             return {
                 status: true,
-                result: phone
+                result: phone,
             };
         }
         return {
             status: false,
-            result: null
+            result: null,
         };
     }
 
@@ -358,20 +369,19 @@ export class Nlu {
      *
      * @param {string} query Пользовательский запрос.
      * @return INluResult<string[]>
-     * @api
      */
     public static getEMail(query: string): INluResult<string[]> {
         // можно использовать регулярку (\b\S+@\S+\.\S{2,6}\b), но она работает медленнее
-        const mail = query.match(/(\b[a-zA-Z]+@[a-zA-Z]+.[a-zA-Z]{2,6}\b)/umig);
+        const mail = query.match(this.EMAIL_REGEX);
         if (mail) {
             return {
                 status: true,
-                result: mail
+                result: mail,
             };
         }
         return {
             status: false,
-            result: null
+            result: null,
         };
     }
 }

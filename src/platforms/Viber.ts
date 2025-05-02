@@ -1,10 +1,10 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
-import {BotController} from '../controller';
-import {IViberContent} from './interfaces';
-import {mmApp} from '../mmApp';
-import {ViberRequest} from '../api/ViberRequest';
-import {IViberParams} from '../api/interfaces';
-import {Buttons, IViberButtonObject} from '../components/button';
+import { TemplateTypeModel } from './TemplateTypeModel';
+import { BotController } from '../controller';
+import { IViberContent } from './interfaces';
+import { mmApp } from '../mmApp';
+import { ViberRequest } from '../api/ViberRequest';
+import { IViberParams } from '../api/interfaces';
+import { Buttons, IViberButtonObject } from '../components/button';
 
 /**
  * Класс, отвечающий за корректную инициализацию и отправку ответа для Viber.
@@ -19,11 +19,10 @@ export class Viber extends TemplateTypeModel {
      * @param {BotController} controller Ссылка на класс с логикой навык/бота.
      * @return Promise<boolean>
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
      */
     public async init(query: string | IViberContent, controller: BotController): Promise<boolean> {
         if (query) {
-            /**
+            /*
              * array content
              * @see (https://developers.viber.com/docs/api/rest-bot-api/#receive-message-from-user) Смотри тут
              *  - string event: Callback type - какое событие вызвало обратный вызов
@@ -57,7 +56,7 @@ export class Viber extends TemplateTypeModel {
             if (typeof query === 'string') {
                 content = <IViberContent>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
             if (!this.controller) {
                 this.controller = controller;
@@ -109,7 +108,7 @@ export class Viber extends TemplateTypeModel {
             first_name: name[1] || null,
             last_name: name[2] || null,
         };
-        this.controller.nlu.setNlu({thisUser});
+        this.controller.nlu.setNlu({ thisUser });
     }
 
     /**
@@ -117,19 +116,25 @@ export class Viber extends TemplateTypeModel {
      *
      * @return {Promise<string>}
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
             const viberApi = new ViberRequest();
             const params: IViberParams = {};
-            const keyboard = this.controller.buttons.getButtons<IViberButtonObject>(Buttons.T_VIBER_BUTTONS);
+            const keyboard = this.controller.buttons.getButtons<IViberButtonObject>(
+                Buttons.T_VIBER_BUTTONS,
+            );
             if (keyboard) {
                 params.keyboard = keyboard;
                 params.keyboard.Type = 'keyboard';
             }
 
-            await viberApi.sendMessage(<string>this.controller.userId, mmApp.params.viber_sender as string, this.controller.text, params);
+            await viberApi.sendMessage(
+                <string>this.controller.userId,
+                mmApp.params.viber_sender as string,
+                this.controller.text,
+                params,
+            );
 
             if (this.controller.card.images.length) {
                 const res = await this.controller.card.getCards();

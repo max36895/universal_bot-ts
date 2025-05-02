@@ -1,6 +1,9 @@
 export type TTelegramQuestionType = 'quiz' | 'regular';
 export type TTelegramChatId = string | number;
 
+/**
+ * Telegram API
+ */
 export interface ITelegramParams {
     /**
      * Уникальный идентификатор целевого чата или имя пользователя целевого канала (в формате @channelusername).
@@ -113,6 +116,9 @@ export interface ITelegramParams {
     supports_streaming?: boolean;
 }
 
+/**
+ * Интерфейс с информацией о пользователе
+ */
 export interface ITelegramFrom {
     /**
      * Идентификатор отправителя
@@ -132,6 +138,9 @@ export interface ITelegramFrom {
     username: string;
 }
 
+/**
+ * Интерфейс с информацией о чате
+ */
 export interface ITelegramChat {
     /**
      * Идентификатор пользователя
@@ -155,6 +164,9 @@ export interface ITelegramChat {
     type: string;
 }
 
+/**
+ * Интерфейс с информацией о опросе
+ */
 export interface ITelegramPoll {
     /**
      * Уникальный идентификатор опроса
@@ -167,16 +179,18 @@ export interface ITelegramPoll {
     /**
      * Варианты ответов
      */
-    options: [{
-        /**
-         * Вариант ответа
-         */
-        text: string;
-        /**
-         * Количество проголосовавших
-         */
-        voter_count: number;
-    }];
+    options: [
+        {
+            /**
+             * Вариант ответа
+             */
+            text: string;
+            /**
+             * Количество проголосовавших
+             */
+            voter_count: number;
+        },
+    ];
     /**
      * Общее количество пользователей проголосовавших в опросе
      */
@@ -203,6 +217,9 @@ export interface ITelegramPoll {
     correct_option_id: number;
 }
 
+/**
+ * Интерфейс с информацией о файле
+ */
 interface IFileInfo {
     /**
      * Идентификатор файла, который может быть использован для загрузки или повторного использования
@@ -218,6 +235,9 @@ interface IFileInfo {
     file_size: number;
 }
 
+/**
+ * Интерфейс с информацией о фото
+ */
 export interface ITelegramPhoto extends IFileInfo {
     /**
      * Ширина изображения
@@ -229,6 +249,9 @@ export interface ITelegramPhoto extends IFileInfo {
     height: number;
 }
 
+/**
+ * Интерфейс с информацией о размере изображения
+ */
 export interface ITelegramThumb extends IFileInfo {
     /**
      * Ширина изображения
@@ -240,6 +263,9 @@ export interface ITelegramThumb extends IFileInfo {
     height?: number;
 }
 
+/**
+ * Интерфейс с информацией о документе
+ */
 export interface ITelegramDocument extends IFileInfo {
     /**
      * Оригинальное(исходное) имя файла
@@ -252,6 +278,9 @@ export interface ITelegramDocument extends IFileInfo {
     thumb: ITelegramThumb;
 }
 
+/**
+ * Интерфейс с информацией об аудио
+ */
 export interface ITelegramAudio extends IFileInfo {
     /**
      * Оригинальное(исходное) название аудио файла
@@ -272,6 +301,9 @@ export interface ITelegramAudio extends IFileInfo {
     thumb: ITelegramThumb;
 }
 
+/**
+ * Интерфейс с информацией о видео
+ */
 export interface ITelegramVideo extends ITelegramAudio {
     /**
      * Ширина видео
@@ -283,13 +315,16 @@ export interface ITelegramVideo extends ITelegramAudio {
     height: number;
 }
 
+/**
+ * Интерфейс с информацией о результате запроса к API Telegram
+ */
 export interface ITelegramResultContent {
     /**
      * Идентификатор сообщения
      */
     message_id: number;
     from: ITelegramFrom;
-    chat?: ITelegramChat
+    chat?: ITelegramChat;
     /**
      * Дата отправки сообщения в unix time
      */
@@ -305,6 +340,9 @@ export interface ITelegramResultContent {
     video?: ITelegramVideo;
 }
 
+/**
+ * Интерфейс с результатом запроса к API Telegram
+ */
 export interface ITelegramResult {
     /**
      * Статус отправки сообщения
@@ -320,4 +358,3 @@ export interface ITelegramResult {
      */
     description?: string;
 }
-

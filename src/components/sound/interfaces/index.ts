@@ -1,3 +1,6 @@
+/**
+ * Интерфейс для аудио-записей
+ */
 export interface ISound {
     /**
      * Ключ
@@ -6,5 +9,5 @@ export interface ISound {
     /**
      * Звуки, соответствующие ключу
      */
-    sounds: string[]
+    sounds: string[];
 }

@@ -1,11 +1,14 @@
-import {Buttons, TButton, TButtonPayload} from '../button';
-import {Text, isFile} from '../../utils';
+import { Buttons, TButton, TButtonPayload } from '../button';
+import { Text, isFile } from '../../utils';
 import {
     ISberSmartAppCardPadding,
     TSberSmartAppTextColor,
-    TSberSmartAppTypeface
+    TSberSmartAppTypeface,
 } from '../../platforms/interfaces';
 
+/**
+ * Интерфейс параметров изображения
+ */
 export interface IImageParams {
     /**
      * Стиль верхнего текста
@@ -104,9 +107,13 @@ export class Image {
      * @param {string} desc Описание изображения.
      * @param {TButton} button Возможные кнопки для изображения.
      * @return boolean
-     * @api
      */
-    public init(image: string | null, title: string, desc: string = ' ', button: TButton | null = null): boolean {
+    public init(
+        image: string | null,
+        title: string,
+        desc: string = ' ',
+        button: TButton | null = null,
+    ): boolean {
         if (this.isToken) {
             this.imageToken = image;
         } else {
@@ -127,9 +134,9 @@ export class Image {
                 if (typeof button === 'string') {
                     this.button.addBtn(button);
                 } else {
-                    const title: string | null = (button.title || button.text || null);
-                    const url: string | null = (button.url || null);
-                    const payload: TButtonPayload = (button.payload || null);
+                    const title: string | null = button.title || button.text || null;
+                    const url: string | null = button.url || null;
+                    const payload: TButtonPayload = button.payload || null;
                     this.button.addBtn(title, url, payload);
                 }
             }

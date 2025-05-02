@@ -1,4 +1,4 @@
-import {ISound} from '../interfaces';
+import { ISound } from '../interfaces';
 
 /**
  * @class TemplateSoundTypes

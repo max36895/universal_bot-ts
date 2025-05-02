@@ -1,4 +1,4 @@
-import {ITelegramContent} from '../interfaces';
+import { ITelegramContent } from '../interfaces';
 
 /**
  *
@@ -13,7 +13,7 @@ export default function (query: string, userId: string, count: number): ITelegra
                 id: +userId,
             },
             text: query,
-            message_id: count
-        }
+            message_id: count,
+        },
     };
 }

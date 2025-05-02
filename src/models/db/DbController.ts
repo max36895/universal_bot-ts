@@ -1,14 +1,15 @@
-import {DbControllerModel} from './DbControllerModel';
-import {mmApp} from '../../mmApp';
-import {IQueryData, QueryData} from './QueryData';
-import {IModelRes, IModelRules, IDbControllerResult, TKey} from '../interface';
-import {DbControllerFile} from './DbControllerFile';
-import {DbControllerMongoDb} from './DbControllerMongoDb';
+import { DbControllerModel } from './DbControllerModel';
+import { mmApp } from '../../mmApp';
+import { IQueryData, QueryData } from './QueryData';
+import { IModelRes, IModelRules, IDbControllerResult, TKey, TQueryCb } from '../interface';
+import { DbControllerFile } from './DbControllerFile';
+import { DbControllerMongoDb } from './DbControllerMongoDb';
 
 /**
  * Контроллер, позволяющий работать с данными.
  * В зависимости от конфигурации приложения, автоматически подключает нужный источник данных.
  *
+ * @class DbController
  * @see DbControllerFile
  * @see DbControllerMongoDb
  */
@@ -24,7 +25,11 @@ export class DbController extends DbControllerModel {
         }
     }
 
-    public setRules(rules: IModelRules[]) {
+    /**
+     * Устанавливает правила для модели
+     * @param rules
+     */
+    public setRules(rules: IModelRules[]): void {
         super.setRules(rules);
         this._controller.setRules(rules);
     }
@@ -69,10 +74,9 @@ export class DbController extends DbControllerModel {
      * @param {QueryData} queryData Данные для сохранения записи
      * @param {boolean} isNew Определяет необходимость добавления новой записи
      * @return {Promise<Object>}
-     * @api
      */
     public async save(queryData: QueryData, isNew: boolean = false): Promise<any> {
-        return this._controller?.save(queryData, isNew);
+        return this._controller.save(queryData, isNew);
     }
 
     /**
@@ -82,7 +86,7 @@ export class DbController extends DbControllerModel {
      * @return {Promise<boolean>}
      */
     public async isSelected(query: IQueryData | null): Promise<boolean> {
-        return !!(await this._controller.selectOne(query))?.status
+        return !!(await this._controller.selectOne(query))?.status;
     }
 
     /**
@@ -90,7 +94,6 @@ export class DbController extends DbControllerModel {
      *
      * @param {QueryData} updateQuery Данные для обновления записи
      * @return {Promise<Object>}
-     * @api
      */
     public async update(updateQuery: QueryData): Promise<any> {
         return this._controller.update(updateQuery);
@@ -101,7 +104,6 @@ export class DbController extends DbControllerModel {
      *
      * @param {QueryData} insertQuery Данные для добавления записи
      * @return {Promise<Object>}
-     * @api
      */
     public async insert(insertQuery: QueryData): Promise<any> {
         return this._controller.insert(insertQuery);
@@ -112,7 +114,6 @@ export class DbController extends DbControllerModel {
      *
      * @param {QueryData} removeQuery Данные для удаления записи
      * @return {Promise<boolean>}
-     * @api
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
         return this._controller.remove(removeQuery);
@@ -123,9 +124,8 @@ export class DbController extends DbControllerModel {
      *
      * @param {Function} callback Запрос, который необходимо выполнить
      * @return {Object|Object[]}
-     * @api
      */
-    public query(callback: Function): any {
+    public query(callback: TQueryCb): any {
         return this._controller.query(callback);
     }
 
@@ -133,7 +133,6 @@ export class DbController extends DbControllerModel {
      * Валидация значений полей для таблицы.
      *
      * @param {IQueryData} element
-     * @api
      */
     public validate(element: IQueryData | null): IQueryData {
         return this._controller.validate(element);
@@ -178,7 +177,6 @@ export class DbController extends DbControllerModel {
      *
      * @param {string | number} text Исходный текст.
      * @return string
-     * @api
      */
     public escapeString(text: string | number): string {
         return this._controller.escapeString(text);

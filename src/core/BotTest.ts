@@ -1,9 +1,21 @@
-import {mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK} from '../mmApp';
-import {TemplateTypeModel} from '../platforms';
-import {stdin} from '../utils/standard/util';
-import {alisaConfig, marusiaConfig, vkConfig, telegramConfig, viberConfig} from '../platforms/skillsTemplateConfig';
-import {Bot} from './Bot';
+import { mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK } from '../mmApp';
+import { TemplateTypeModel } from '../platforms';
+import { stdin } from '../utils/standard/util';
+import {
+    alisaConfig,
+    marusiaConfig,
+    vkConfig,
+    telegramConfig,
+    viberConfig,
+} from '../platforms/skillsTemplateConfig';
+import { Bot } from './Bot';
+import { IUserData } from './../controller/BotController';
 
+type TUserBotConfigCb = (query: string, userId: string, count: number) => any;
+
+/**
+ * Параметры для теста.
+ */
 export interface IBotTestParams {
     /**
      * Отображать полный ответ навыка.
@@ -20,14 +32,14 @@ export interface IBotTestParams {
     /**
      * Пользовательский класс для обработки команд.
      */
-    userBotClass?: TemplateTypeModel | null
+    userBotClass?: TemplateTypeModel | null;
     /**
      * Функция, возвращающая параметры пользовательского приложения.
      * @param {string} query Пользовательский запрос.
      * @param {number} count Номер сообщения.
      * @param {object|string} state Данные из хранилища.
      */
-    userBotConfig?: Function | null;
+    userBotConfig?: TUserBotConfigCb | null;
 }
 
 /**
@@ -47,21 +59,20 @@ export class BotTest extends Bot {
      *
      * @param {IBotTestParams} params Параметры для теста
      * @return {Promise<void>}
-     * @api
      */
     public async test({
-                          isShowResult = false,
-                          isShowStorage = false,
-                          isShowTime = true,
-                          userBotClass = null,
-                          userBotConfig = null
-                      }: IBotTestParams = {}): Promise<void> {
+        isShowResult = false,
+        isShowStorage = false,
+        isShowTime = true,
+        userBotClass = null,
+        userBotConfig = null,
+    }: IBotTestParams = {}): Promise<void> {
         let count: number = 0;
-        let state: string | object = {};
+        let state: string | IUserData = {};
         do {
             let query = '';
             if (count === 0) {
-                console.log("Для выхода введите exit\n");
+                console.log("Для выхода введите 'exit'\n");
                 query = 'Привет';
             } else {
                 query = await stdin();
@@ -70,7 +81,9 @@ export class BotTest extends Bot {
                 }
             }
             if (!this._content) {
-                this.setContent(JSON.stringify(this.getSkillContent(query, count, state, userBotConfig)));
+                this.setContent(
+                    JSON.stringify(this.getSkillContent(query, count, state, userBotConfig)),
+                );
             }
             const timeStart: number = Date.now();
             if (typeof this._content === 'string') {
@@ -82,7 +95,9 @@ export class BotTest extends Bot {
                 console.log(`Результат работы: > \n${JSON.stringify(result)}\n\n`);
             }
             if (isShowStorage) {
-                console.log(`Данные в хранилище > \n${JSON.stringify(this._botController.userData)}\n\n`);
+                console.log(
+                    `Данные в хранилище > \n${JSON.stringify(this._botController.userData)}\n\n`,
+                );
             }
 
             switch (mmApp.appType) {
@@ -102,7 +117,7 @@ export class BotTest extends Bot {
             console.log(`Бот: > ${result}\n`);
             if (isShowTime) {
                 const endTime: number = Date.now() - timeStart;
-                console.log(`Время выполнения: ${endTime}\n`)
+                console.log(`Время выполнения: ${endTime}\n`);
             }
             if (this._botController.isEnd) {
                 break;
@@ -110,9 +125,9 @@ export class BotTest extends Bot {
             console.log('Вы: > ');
             this._content = null;
             this._botController.text = this._botController.tts = '';
-            state = this._botController.userData;
+            state = this._botController.userData as IUserData;
             count++;
-        } while (1);
+        } while (true);
     }
 
     /**
@@ -124,7 +139,12 @@ export class BotTest extends Bot {
      * @param {Function} userBotConfig Функция, возвращающая параметры пользовательского приложения.
      * @return any
      */
-    protected getSkillContent(query: string, count: number, state: object | string, userBotConfig?: Function | null): any {
+    protected getSkillContent(
+        query: string,
+        count: number,
+        state: object | string,
+        userBotConfig?: TUserBotConfigCb | null,
+    ): any {
         /**
          * Все переменные используются внутри шаблонов
          */
@@ -164,4 +184,3 @@ export class BotTest extends Bot {
         return content;
     }
 }
-

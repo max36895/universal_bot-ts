@@ -11,10 +11,7 @@ exports.config = {
     intents: [
         {
             name: 'replay',
-            slots: [
-                'повтори',
-                'еще раз'
-            ]
-        }
-    ]
+            slots: ['повтори', 'еще раз'],
+        },
+    ],
 };

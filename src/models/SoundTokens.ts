@@ -1,19 +1,58 @@
-import {Model} from './db/Model';
-import {mmApp} from '../mmApp';
-import {IModelRules} from './interface';
-import {IYandexRequestDownloadSound, MarusiaRequest, TelegramRequest, VkRequest, YandexSoundRequest} from '../api';
-import {Text} from '../utils/standard/Text';
+import { Model } from './db/Model';
+import { mmApp } from '../mmApp';
+import { IModelRules } from './interface';
+import {
+    IYandexRequestDownloadSound,
+    MarusiaRequest,
+    TelegramRequest,
+    VkRequest,
+    YandexSoundRequest,
+} from '../api';
+import { Text } from '../utils/standard/Text';
 
 /**
- * @class SoundTokens
- *
- * Модель для взаимодействия со всеми звуками.
+ * Интерфейс для внутреннего состояния модели.
  */
-export class SoundTokens extends Model {
+export interface ISoundModelState {
+    /**
+     * Идентификатор звукового файла
+     */
+    soundToken: string;
+    /**
+     * Путь к файлу
+     */
+    path: string;
+    /**
+     * Тип платформы
+     */
+    type: string;
+}
+
+/**
+ * Модель для взаимодействия со всеми звуками.
+ * @class
+ */
+export class SoundTokens extends Model<ISoundModelState> {
     private readonly TABLE_NAME = 'SoundTokens';
+
+    /**
+     * Тип платформы: Яндекс.Алиса
+     */
     public static readonly T_ALISA = 0;
+
+    /**
+     * Тип платформы: ВКонтакте
+     */
     public static readonly T_VK = 1;
+
+    /**
+     * Тип платформы: Telegram
+     */
     public static readonly T_TELEGRAM = 2;
+
+    /**
+     * Тип платформы: Маруся
+     */
     public static readonly T_MARUSIA = 3;
 
     /**
@@ -47,9 +86,7 @@ export class SoundTokens extends Model {
 
     /**
      * Название таблицы/файла с данными.
-     *
-     * @return string
-     * @api
+     * @returns {string} Название таблицы
      */
     public tableName(): string {
         return this.TABLE_NAME;
@@ -57,59 +94,60 @@ export class SoundTokens extends Model {
 
     /**
      * Основные правила для полей.
-     *
-     * @return IModelRules[]
-     * @api
+     * @returns {IModelRules[]} Массив правил валидации для полей модели
      */
     public rules(): IModelRules[] {
         return [
             {
                 name: ['soundToken', 'path'],
                 type: 'string',
-                max: 150
+                max: 150,
             },
             {
                 name: ['type'],
                 type: 'integer',
-            }
+            },
         ];
     }
 
     /**
      * Название атрибутов таблицы.
-     *
-     * @return object
-     * @api
+     * @returns {ISoundModelState} Объект с метками атрибутов
      */
-    public attributeLabels(): object {
+    public attributeLabels(): ISoundModelState {
         return {
             soundToken: 'ID',
             path: 'Sound path',
-            type: 'Type'
+            type: 'Type',
         };
     }
 
     /**
      * Получение идентификатора/токена мелодии.
      *
-     * @return {Promise<string>}
-     * @api
+     * @return {Promise<string|null>}
      */
     public async getToken(): Promise<string | null> {
         const where = {
             path: this.path,
-            type: this.type
+            type: this.type,
         };
         switch (this.type) {
             case SoundTokens.T_ALISA:
                 if (await this.whereOne(where)) {
                     return this.soundToken;
                 } else {
-                    const yImage = new YandexSoundRequest(mmApp.params.yandex_token || null, mmApp.params.app_id || null);
+                    const yImage = new YandexSoundRequest(
+                        mmApp.params.yandex_token || null,
+                        mmApp.params.app_id || null,
+                    );
                     let res: IYandexRequestDownloadSound | null = null;
                     if (this.path) {
                         if (Text.isUrl(this.path)) {
-                            mmApp.saveLog('SoundTokens.log', 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!');
+                            mmApp.saveLog(
+                                'SoundTokens.log',
+                                'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!',
+                            );
                             return null;
                         } else {
                             res = await yImage.downloadSoundFile(this.path);
@@ -129,9 +167,15 @@ export class SoundTokens extends Model {
                     return this.soundToken;
                 } else if (this.path) {
                     const vkApi = new VkRequest();
-                    const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(mmApp.params.user_id as string, 'audio_message');
+                    const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
+                        mmApp.params.user_id as string,
+                        'audio_message',
+                    );
                     if (uploadServerResponse) {
-                        const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, this.path);
+                        const uploadResponse = await vkApi.upload(
+                            uploadServerResponse.upload_url,
+                            this.path,
+                        );
                         if (uploadResponse) {
                             const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
                             if (doc) {
@@ -145,13 +189,19 @@ export class SoundTokens extends Model {
                 }
                 break;
 
-            case SoundTokens.T_TELEGRAM:
+            case SoundTokens.T_TELEGRAM: {
                 const telegramApi = new TelegramRequest();
                 if (await this.whereOne(where)) {
-                    await telegramApi.sendAudio(mmApp.params.user_id as string, this.soundToken as string);
+                    await telegramApi.sendAudio(
+                        mmApp.params.user_id as string,
+                        this.soundToken as string,
+                    );
                     return this.soundToken;
                 } else if (this.path) {
-                    const sound = await telegramApi.sendAudio(mmApp.params.user_id as string, this.path);
+                    const sound = await telegramApi.sendAudio(
+                        mmApp.params.user_id as string,
+                        this.path,
+                    );
                     if (sound && sound.ok && sound.result.audio) {
                         if (typeof sound.result.audio.file_id !== 'undefined') {
                             this.soundToken = sound.result.audio.file_id;
@@ -162,6 +212,7 @@ export class SoundTokens extends Model {
                     }
                 }
                 break;
+            }
 
             case SoundTokens.T_MARUSIA:
                 if (await this.whereOne(where)) {
@@ -170,7 +221,10 @@ export class SoundTokens extends Model {
                     const marusiaApi = new MarusiaRequest();
                     const uploadServerResponse = await marusiaApi.marusiaGetAudioUploadLink();
                     if (uploadServerResponse) {
-                        const uploadResponse = await marusiaApi.upload(uploadServerResponse.audio_upload_link, this.path);
+                        const uploadResponse = await marusiaApi.upload(
+                            uploadServerResponse.audio_upload_link,
+                            this.path,
+                        );
                         if (uploadResponse) {
                             const doc = await marusiaApi.marusiaCreateAudio(uploadResponse);
                             if (doc) {

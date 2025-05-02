@@ -1,12 +1,12 @@
-import {TemplateCardTypes} from './TemplateCardTypes';
-import {Buttons} from '../../button';
-import {ImageTokens} from '../../../models/ImageTokens';
-import {Text} from '../../../utils/standard/Text';
+import { TemplateCardTypes } from './TemplateCardTypes';
+import { Buttons } from '../../button';
+import { ImageTokens } from '../../../models/ImageTokens';
+import { Text } from '../../../utils/standard/Text';
 import {
     IMarusiaBigImage,
     IMarusiaButtonCard,
     IMarusiaImage,
-    IMarusiaItemsList
+    IMarusiaItemsList,
 } from '../../../platforms/interfaces';
 
 /**
@@ -14,8 +14,17 @@ import {
  * @class MarusiaCard
  */
 export class MarusiaCard extends TemplateCardTypes {
+    /**
+     * Определяет тип карточки, как картинку
+     */
     public static readonly MARUSIA_CARD_BIG_IMAGE = 'BigImage';
+    /**
+     * Определяет тип карточки, как список
+     */
     public static readonly MARUSIA_CARD_ITEMS_LIST = 'ItemsList';
+    /**
+     * Определяет максимальное количество изображений в списке
+     */
     public static readonly MARUSIA_MAX_IMAGES = 5;
 
     /**
@@ -27,7 +36,9 @@ export class MarusiaCard extends TemplateCardTypes {
         const items: IMarusiaImage[] = [];
         const images = this.images.slice(0, MarusiaCard.MARUSIA_MAX_IMAGES);
         for (const image of images) {
-            let button: IMarusiaButtonCard | null = image.button.getButtons<IMarusiaButtonCard>(Buttons.T_ALISA_CARD_BUTTON);
+            let button: IMarusiaButtonCard | null = image.button.getButtons<IMarusiaButtonCard>(
+                Buttons.T_ALISA_CARD_BUTTON,
+            );
             if (!button?.text) {
                 button = null;
             }
@@ -59,7 +70,6 @@ export class MarusiaCard extends TemplateCardTypes {
      *
      * @param {boolean} isOne True, если в любом случае отобразить 1 элемент карточки
      * @return {Promise<IMarusiaBigImage | IMarusiaItemsList>}
-     * @api
      */
     public async getCard(isOne: boolean): Promise<IMarusiaBigImage | IMarusiaItemsList | null> {
         this.button.type = Buttons.T_ALISA_CARD_BUTTON;
@@ -75,7 +85,10 @@ export class MarusiaCard extends TemplateCardTypes {
                     }
                 }
                 if (this.images[0].imageToken) {
-                    let button: IMarusiaButtonCard | null = this.images[0].button.getButtons<IMarusiaButtonCard>(Buttons.T_ALISA_CARD_BUTTON);
+                    let button: IMarusiaButtonCard | null =
+                        this.images[0].button.getButtons<IMarusiaButtonCard>(
+                            Buttons.T_ALISA_CARD_BUTTON,
+                        );
                     if (!button?.text) {
                         button = this.button.getButtons<IMarusiaButtonCard>();
                     }
@@ -83,7 +96,7 @@ export class MarusiaCard extends TemplateCardTypes {
                         type: MarusiaCard.MARUSIA_CARD_BIG_IMAGE,
                         image_id: this.images[0].imageToken,
                         title: Text.resize(this.images[0].title, 128),
-                        description: Text.resize(this.images[0].desc, 256)
+                        description: Text.resize(this.images[0].desc, 256),
                     };
                     if (button?.text) {
                         object.button = button;
@@ -94,15 +107,17 @@ export class MarusiaCard extends TemplateCardTypes {
                 const object: IMarusiaItemsList = {
                     type: MarusiaCard.MARUSIA_CARD_ITEMS_LIST,
                     header: {
-                        text: Text.resize(this.title || '', 64)
-                    }
+                        text: Text.resize(this.title || '', 64),
+                    },
                 };
                 object.items = await this._getItem();
-                const btn: IMarusiaButtonCard | null = this.button.getButtons(Buttons.T_ALISA_CARD_BUTTON);
+                const btn: IMarusiaButtonCard | null = this.button.getButtons(
+                    Buttons.T_ALISA_CARD_BUTTON,
+                );
                 if (btn?.text) {
                     object.footer = {
                         text: btn.text,
-                        button: btn
+                        button: btn,
                     };
                 }
                 return object;

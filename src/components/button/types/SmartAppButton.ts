@@ -1,6 +1,9 @@
-import {TemplateButtonTypes} from './TemplateButtonTypes';
-import {Text} from '../../../utils/standard/Text';
-import {ISberSmartAppCardAction, ISberSmartAppSuggestionButton} from '../../../platforms/interfaces';
+import { TemplateButtonTypes } from './TemplateButtonTypes';
+import { Text } from '../../../utils/standard/Text';
+import {
+    ISberSmartAppCardAction,
+    ISberSmartAppSuggestionButton,
+} from '../../../platforms/interfaces';
 
 /**
  * Класс отвечающий за отображение кнопок в Сбер SmartApp
@@ -31,7 +34,6 @@ export class SmartAppButton extends TemplateButtonTypes {
      *  - string payload: Произвольные данные, которые будут отправлены при нажатии на кнопку.
      *  - string url: Ссылка по которой будет произведен переход после нажатия на кнопку.
      * ]
-     * @api
      */
     public getButtons(): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction {
         const objects: ISberSmartAppSuggestionButton[] = [];
@@ -41,14 +43,14 @@ export class SmartAppButton extends TemplateButtonTypes {
                 if (button.url) {
                     return {
                         deep_link: button.url,
-                        type: 'deep_link'
+                        type: 'deep_link',
                     };
                 } else {
                     const text = Text.resize(button.title || '', 64);
                     if (text) {
                         return {
                             text,
-                            type: 'text'
+                            type: 'text',
                         };
                     }
                 }
@@ -58,22 +60,22 @@ export class SmartAppButton extends TemplateButtonTypes {
                 const title = Text.resize(button.title || '', 64);
                 if (title) {
                     const object: ISberSmartAppSuggestionButton = {
-                        title
+                        title,
                     };
                     if (button.payload) {
                         object.action = {
                             server_action: button.payload,
-                            type: 'server_action'
+                            type: 'server_action',
                         };
                     } else {
                         object.action = {
                             text: title,
-                            type: 'text'
-                        }
+                            type: 'text',
+                        };
                     }
                     objects.push(object);
                 }
-            })
+            });
         }
         return objects;
     }

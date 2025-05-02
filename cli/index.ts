@@ -54,7 +54,7 @@
  * ```
  * @module
  */
-export * from './umbot'
-export * from './utils'
+export * from './umbot';
+export * from './utils';
 export * from './controllers/ConsoleController';
 export * from './controllers/CreateController';

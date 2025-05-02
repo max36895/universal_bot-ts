@@ -1,13 +1,13 @@
-import {YandexRequest} from './YandexRequest';
-import {mmApp} from '../mmApp';
-import {Request} from './request/Request';
+import { YandexRequest } from './YandexRequest';
+import { mmApp } from '../mmApp';
+import { Request } from './request/Request';
 import {
     IYandexCheckOutPlace,
     IYandexImagesCheckOutPlaceRequest,
     IYandexRemoveRequest,
     IYandexRequestDownloadImage,
     IYandexRequestDownloadImageRequest,
-    IYandexRequestDownloadImagesRequest
+    IYandexRequestDownloadImagesRequest,
 } from './interfaces';
 
 /**
@@ -18,7 +18,7 @@ import {
  */
 export class YandexImageRequest extends YandexRequest {
     /**
-     * @const string Адрес, на который будет отправляться запрос
+     * Адрес, на который будет отправляться запрос
      */
     private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
@@ -37,7 +37,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     constructor(oauth: string | null = null, skillId: string | null = null) {
         super(oauth);
-        this.skillId = skillId || (mmApp.params.app_id || null);
+        this.skillId = skillId || mmApp.params.app_id || null;
         this._request.url = this.STANDARD_URL;
     }
 
@@ -58,7 +58,6 @@ export class YandexImageRequest extends YandexRequest {
      *  - int total: Все доступное место.
      *  - int used: Занятое место.
      * ]
-     * @api
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = this.STANDARD_URL + 'status';
@@ -81,18 +80,19 @@ export class YandexImageRequest extends YandexRequest {
      *  - int size: Размер изображения.
      *  - int createdAt: Дата загрузки.
      * ]
-     * @api
      */
     public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
             this._request.url = this._getImagesUrl();
             this._request.header = Request.HEADER_AP_JSON;
-            this._request.post = {url: imageUrl};
+            this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
             if (query && typeof query.image.id !== 'undefined') {
                 return query.image;
             } else {
-                this._log('YandexImageRequest.downloadImageUrl() Error: Не удалось загрузить изображение с сайта!');
+                this._log(
+                    'YandexImageRequest.downloadImageUrl() Error: Не удалось загрузить изображение с сайта!',
+                );
             }
         } else {
             this._log('YandexImageRequest.downloadImageUrl() Error: Не выбран навык!');
@@ -111,7 +111,6 @@ export class YandexImageRequest extends YandexRequest {
      *  - int size: Размер изображения.
      *  - int createdAt: Дата загрузки.
      * ]
-     * @api
      */
     public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
@@ -122,7 +121,10 @@ export class YandexImageRequest extends YandexRequest {
             if (query && typeof query.image.id !== 'undefined') {
                 return query.image;
             } else {
-                this._log('YandexImageRequest.downloadImageFile() Error: Не удалось загрузить изображение по пути: ' + imageDir);
+                this._log(
+                    'YandexImageRequest.downloadImageFile() Error: Не удалось загрузить изображение по пути: ' +
+                        imageDir,
+                );
             }
         } else {
             this._log('YandexImageRequest.downloadImageFile() Error: Не выбран навык!');
@@ -142,7 +144,6 @@ export class YandexImageRequest extends YandexRequest {
      *      - int createdAt: Дата загрузки.
      *  ]
      * ]
-     * @api
      */
     public async getLoadedImages(): Promise<IYandexRequestDownloadImage[] | null> {
         if (this.skillId) {
@@ -161,7 +162,6 @@ export class YandexImageRequest extends YandexRequest {
      *
      * @param {string} imageId Идентификатор изображения, которое необходимо удалить.
      * @return Promise<string>
-     * @api
      */
     public async deleteImage(imageId: string): Promise<string | null> {
         if (this.skillId) {
@@ -172,7 +172,9 @@ export class YandexImageRequest extends YandexRequest {
                 if (query && typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
-                    this._log('YandexImageRequest.deleteImage() Error: Не удалось удалить картинку!');
+                    this._log(
+                        'YandexImageRequest.deleteImage() Error: Не удалось удалить картинку!',
+                    );
                 }
             } else {
                 this._log('YandexImageRequest.deleteImage() Error: Не выбрано изображение!');
@@ -189,19 +191,28 @@ export class YandexImageRequest extends YandexRequest {
      * Чтобы точно удалить все изображения лучше использовать грубое удаление.
      *
      * @return boolean
-     * @api
      */
     public async deleteImages(): Promise<boolean> {
         if (this.skillId) {
             const images = await this.getLoadedImages();
             if (images) {
-                images.forEach((image) => {
-                    this.deleteImage(image.id);
-                    // todo added timeout
-                });
-                return true;
+                const results = await Promise.allSettled(
+                    images.map(async (image) => {
+                        try {
+                            await this.deleteImage(image.id);
+                            return new Promise((resolve) => setTimeout(() => resolve(true), 100));
+                        } catch (e) {
+                            this._log(`Ошибка при удалении изображения ${image.id}: ${e}`);
+                            return false;
+                        }
+                    }),
+                );
+                // Если хотя бы одно изображение не удалено — вернуть false
+                return results.every((r) => r.status === 'fulfilled' && r.value === true);
             } else {
-                this._log('YandexImageRequest.deleteImages() Error: Не удалось получить загруженные звуки!');
+                this._log(
+                    'YandexImageRequest.deleteImages() Error: Не удалось получить загруженные звуки!',
+                );
             }
         } else {
             this._log('YandexImageRequest.deleteImages() Error: Не выбран навык!');

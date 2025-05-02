@@ -1,4 +1,4 @@
-import {TBotAuth, TBotContent} from './interfaces/IBot';
+import { TBotAuth, TBotContent } from './interfaces/IBot';
 import {
     IAppConfig,
     IAppParam,
@@ -10,11 +10,11 @@ import {
     T_USER_APP,
     T_VIBER,
     T_VK,
-    TAppType
+    TAppType,
 } from '../mmApp';
-import {BotController} from '../controller';
-import {TemplateTypeModel} from '../platforms/TemplateTypeModel';
-import {GET} from '../utils/standard/util';
+import { BotController, IUserData } from '../controller';
+import { TemplateTypeModel } from '../platforms/TemplateTypeModel';
+import { GET } from '../utils/standard/util';
 import {
     Telegram,
     Viber,
@@ -23,15 +23,21 @@ import {
     SmartApp,
     Alisa,
     IAlisaWebhookResponse,
-    IMarusiaWebhookResponse
+    IMarusiaWebhookResponse,
 } from '../platforms';
-import {UsersData} from '../models/UsersData';
-import {IncomingMessage, ServerResponse} from 'http';
+import { UsersData } from '../models/UsersData';
+import { IncomingMessage, ServerResponse } from 'http';
 
+/**
+ * Результат выполнения бота - ответ, который будет отправлен пользователю
+ */
 export type TRunResult = IAlisaWebhookResponse | IMarusiaWebhookResponse | string;
 
 export * from './interfaces/IBot';
 
+/**
+ * Внутренний интерфейс для хранения информации о классе бота и его типе
+ */
 interface IBotBotClassAndType {
     botClass: TemplateTypeModel | null;
     type: number | null;
@@ -40,31 +46,65 @@ interface IBotBotClassAndType {
 /**
  * Класс отвечающий за запуск приложения.
  * В нем происходит инициализации параметров, выбор типа приложения, запуск логики и возврат корректного результата.
+ *
  * @class Bot
+ * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
+ *
+ * @example
+ * Создание простого бота:
+ * ```typescript
+ * const bot = new Bot();
+ * bot.initConfig({
+ *   intents: [{
+ *     name: 'greeting',
+ *     slots: ['привет', 'здравствуйте']
+ *   }]
+ * });
+ * bot.initBotController(new MyController());
+ * ```
+ *
+ * @example
+ * Использование с базой данных:
+ * ```typescript
+ * const bot = new Bot();
+ * bot.initConfig({
+ *   db: {
+ *     host: 'localhost',
+ *     database: 'bot_db',
+ *     user: 'user',
+ *     pass: 'password'
+ *   }
+ * });
+ * ```
  */
-export class Bot {
+export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Полученный запрос. В основном JSON или строка.
+     * @protected
      */
     protected _content: TBotContent = null;
     /**
      * Контроллер с логикой приложения.
      * @see BotController Смотри тут
+     * @protected
      */
-    protected _botController: BotController;
+    protected _botController: BotController<TUserData>;
     /**
      * Авторизационный токен если есть (Актуально для Алисы). Передастся в том случае, если пользователь произвел авторизацию в навыке.
+     * @protected
      */
     protected _auth: TBotAuth;
 
     /**
      * Bot constructor.
-     * @param {TAppType} type
+     * @param {TAppType} type - Тип платформы (по умолчанию Алиса)
+     * @param {BotController} botController - Контроллер с логикой
+     *
+     * @throws {Error} Если не удалось инициализировать бота
      */
-    constructor(type?: TAppType) {
+    constructor(type?: TAppType, botController?: BotController<TUserData>) {
         this._auth = null;
-        // @ts-ignore
-        this._botController = null;
+        this._botController = botController as BotController<TUserData>;
         mmApp.appType = !type ? T_ALISA : type;
     }
 
@@ -72,18 +112,22 @@ export class Bot {
      * Инициализация типа бота через GET параметры.
      * Если присутствует get['type'], и он корректен (Равен одному из типов бота), тогда инициализация пройдет успешно.
      *
-     * @return boolean
-     * @api
+     * @returns {boolean} true если инициализация прошла успешно, false в противном случае
+     *
+     * @example
+     * ```typescript
+     * if (bot.initTypeInGet()) {
+     *   console.log('Тип бота успешно инициализирован');
+     * }
+     * ```
      */
     public initTypeInGet(): boolean {
         if (GET && GET.type) {
-            if ([T_TELEGRAM,
-                T_ALISA,
-                T_VIBER,
-                T_VK,
-                T_USER_APP,
-                T_MARUSIA,
-                T_SMARTAPP].indexOf(GET.type)) {
+            if (
+                [T_TELEGRAM, T_ALISA, T_VIBER, T_VK, T_USER_APP, T_MARUSIA, T_SMARTAPP].indexOf(
+                    GET.type,
+                )
+            ) {
                 mmApp.appType = GET.type;
                 return true;
             }
@@ -94,8 +138,18 @@ export class Bot {
     /**
      * Инициализация конфигурации приложения.
      *
-     * @param {IAppConfig} config Конфигурация приложения.
-     * @api
+     * @param {IAppConfig} config - Конфигурация приложения
+     *
+     * @example
+     * ```typescript
+     * bot.initConfig({
+     *   intents: [{
+     *     name: 'help',
+     *     slots: ['помощь', 'справка']
+     *   }],
+     *   isLocalStorage: true
+     * });
+     * ```
      */
     public initConfig(config: IAppConfig): void {
         if (config) {
@@ -107,7 +161,6 @@ export class Bot {
      * Инициализация параметров приложения.
      *
      * @param {IAppParam} params Параметры приложения.
-     * @api
      */
     public initParams(params: IAppParam): void {
         if (params) {
@@ -118,21 +171,42 @@ export class Bot {
     /**
      * Подключение логики приложения.
      *
-     * @param {BotController} fn Контроллер с логикой приложения.
-     * @api
+     * @param {BotController} fn - Контроллер с логикой приложения
+     *
+     * @example
+     * ```typescript
+     * class MyController extends BotController {
+     *   public action(intentName: string): void {
+     *     this.text = 'Привет!';
+     *   }
+     * }
+     * bot.initBotController(new MyController());
+     * ```
      */
-    public initBotController(fn: BotController): void {
+    public initBotController(fn: BotController<TUserData>): void {
         this._botController = fn;
     }
 
     /**
-     * Возвращаем корректно заполненный тип приложения, а также класс, отвечающий за возврат результата.
+     * Возвращает корректно заполненный тип приложения и класс для обработки команд
      *
-     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
-     * @return {IBotBotClassAndType}
-     * @private
+     * @param {TemplateTypeModel} userBotClass - Пользовательский класс для обработки команд
+     * @returns {IBotBotClassAndType} Объект с типом платформы и классом обработчика
+     * @throws {Error} Если не удалось определить тип приложения
+     *
+     * @remarks
+     * Метод определяет тип платформы на основе mmApp.appType и возвращает соответствующий класс:
+     * - T_ALISA → Alisa
+     * - T_VK → Vk
+     * - T_TELEGRAM → Telegram
+     * - T_VIBER → Viber
+     * - T_MARUSIA → Marusia
+     * - T_SMARTAPP → SmartApp
+     * - T_USER_APP → userBotClass (пользовательская реализация)
      */
-    protected static _getBotClassAndType(userBotClass: TemplateTypeModel | null = null): IBotBotClassAndType {
+    protected static _getBotClassAndType(
+        userBotClass: TemplateTypeModel | null = null,
+    ): IBotBotClassAndType {
         let botClass: TemplateTypeModel | null = null;
         let type: number | null = null;
         switch (mmApp.appType) {
@@ -173,38 +247,66 @@ export class Bot {
                 }
                 break;
         }
-        return {botClass, type};
+        return { botClass, type };
     }
 
     /**
-     * Устанавливает данные, полученные с сервера. Не рекомендуется записывать данные самостоятельно.
-     * Стоит использовать тогда, когда запуск осуществляется через свой webhook.
-     * При этом данные не валидируется, и разработчик сам отвечает за переданный контент.
+     * Устанавливает содержимое запроса для обработки ботом
      *
-     * @param {TBotContent} content Данные, полученные сервером.
+     * @param {TBotContent} content - Содержимое запроса (JSON или строка)
+     *
+     * @remarks
+     * Этот метод используется для установки входящего запроса,
+     * который будет обработан ботом. Содержимое может быть
+     * в формате JSON или строки, в зависимости от платформы.
+     *
+     * @example
+     * ```typescript
+     * bot.setContent(JSON.stringify({
+     *   request: {
+     *     command: 'привет',
+     *     type: 'SimpleUtterance'
+     *   },
+     *   session: {
+     *     user_id: 'user123'
+     *   }
+     * }));
+     * ```
      */
     public setContent(content: TBotContent): void {
         this._content = content;
     }
 
     /**
-     * Запуск приложения. В случае ошибки вернет исключение.
-     * Рекомендуется вызывать метод в том случае, когда используется свой сервер отличный от micro.
-     * При этому нужно самому заполнить данные в _content, а также обработать данные, переданные в заголовке.
+     * Запускает обработку запроса и возвращает ответ бота
      *
-     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
-     * @return {Promise<TRunResult>}
-     * @api
-     * @see start
-     * @see setContent
+     * @param {TemplateTypeModel | null} userBotClass - Пользовательский класс для обработки команд
+     * @returns {Promise<TRunResult>} Ответ бота в формате, соответствующем платформе
+     * @throws {Error} Если не удалось обработать запрос или инициализировать бота
+     *
+     * @remarks
+     * Метод выполняет следующие действия:
+     * 1. Определяет тип платформы и инициализирует соответствующий обработчик
+     * 2. Обрабатывает входящий запрос
+     * 3. Запускает пользовательскую логику через контроллер
+     * 4. Формирует ответ в формате, требуемом платформой
+     *
+     * @example
+     * ```typescript
+     * const bot = new Bot();
+     * bot.initBotController(new MyController());
+     * bot.setContent(requestData);
+     * const result = await bot.run();
+     * ```
      */
     public async run(userBotClass: TemplateTypeModel | null = null): Promise<TRunResult> {
         if (!this._botController) {
-            const errMsg = 'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController';
+            const errMsg =
+                'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController';
             mmApp.saveLog('bot.log', errMsg);
             throw new Error(errMsg);
         }
-        const {botClass, type} = Bot._getBotClassAndType(userBotClass);
+        const { botClass, type } = Bot._getBotClassAndType(userBotClass);
 
         if (botClass) {
             if (this._botController.userToken === null) {
@@ -215,44 +317,54 @@ export class Bot {
                     return await botClass.sendInInit;
                 }
                 const userData = new UsersData();
-                this._botController.userId = userData.escapeString(this._botController.userId as string | number);
+                userData.escapeString('');
+                this._botController.userId = userData.escapeString(
+                    this._botController.userId as string | number,
+                );
                 if (type) {
                     userData.type = type;
                 }
 
-                const isLocalStorage: boolean = !!(mmApp.config.isLocalStorage && botClass.isLocalStorage());
+                const isLocalStorage: boolean = !!(
+                    mmApp.config.isLocalStorage && botClass.isLocalStorage()
+                );
 
-                let isNew = true;
+                let isNewUser = true;
                 if (isLocalStorage) {
                     botClass.isUsedLocalStorage = isLocalStorage;
-                    this._botController.userData = await botClass.getLocalStorage();
+                    this._botController.userData = (await botClass.getLocalStorage()) as TUserData;
                 } else {
                     const query = {
-                        userId: userData.escapeString(this._botController.userId)
+                        userId: userData.escapeString(this._botController.userId),
                     };
                     if (this._auth) {
-                        query.userId = userData.escapeString(this._botController.userToken as string);
+                        query.userId = userData.escapeString(
+                            this._botController.userToken as string,
+                        );
                     }
 
                     if (await userData.whereOne(query)) {
                         this._botController.userData = userData.data;
-                        isNew = false;
+                        isNewUser = false;
                     } else {
-                        this._botController.userData = null;
+                        this._botController.userData = {} as TUserData;
                         userData.userId = this._botController.userId;
                         userData.meta = this._botController.userMeta;
                     }
                 }
-                if (!this._botController.oldIntentName
-                    && this._botController.userData && this._botController.userData.oldIntentName) {
+                if (
+                    !this._botController.oldIntentName &&
+                    this._botController.userData &&
+                    this._botController.userData.oldIntentName
+                ) {
                     this._botController.oldIntentName = this._botController.userData.oldIntentName;
                 }
 
                 this._botController.run();
-                if (this._botController.thisIntentName !== null) {
+                if (this._botController.thisIntentName !== null && this._botController.userData) {
                     this._botController.userData.oldIntentName = this._botController.thisIntentName;
                 } else {
-                    delete this._botController.userData.oldIntentName;
+                    delete this._botController.userData?.oldIntentName;
                 }
                 let content: any;
                 if (this._botController.isSendRating) {
@@ -263,16 +375,22 @@ export class Bot {
                 if (!isLocalStorage) {
                     userData.data = this._botController.userData;
 
-                    if (isNew) {
+                    if (isNewUser) {
                         userData.save(true).then((res) => {
                             if (!res) {
-                                mmApp.saveLog('bot.log', `Bot:run(): Не удалось сохранить данные для пользователя: ${this._botController.userId}.`)
+                                mmApp.saveLog(
+                                    'bot.log',
+                                    `Bot:run(): Не удалось сохранить данные для пользователя: ${this._botController.userId}.`,
+                                );
                             }
                         });
                     } else {
                         userData.update().then((res) => {
                             if (!res) {
-                                mmApp.saveLog('bot.log', `Bot:run(): Не удалось обновить данные для пользователя: ${this._botController.userId}.`)
+                                mmApp.saveLog(
+                                    'bot.log',
+                                    `Bot:run(): Не удалось обновить данные для пользователя: ${this._botController.userId}.`,
+                                );
                             }
                         });
                     }
@@ -290,24 +408,55 @@ export class Bot {
                 throw new Error(botClass.getError() || '');
             }
         } else {
-            mmApp.saveLog('bot.log', 'Не удалось определить тип приложения!');
-            throw new Error('Не удалось определить тип приложения!');
+            const msg = 'Не удалось определить тип приложения!';
+            mmApp.saveLog('bot.log', msg);
+            throw new Error(msg);
         }
     }
 
     /**
-     * Запуск приложения через micro
+     * Запускает обработку запроса и отправляет ответ.
+     * Это основной метод для интеграции бота с веб-сервером.
      *
-     * @param {"http".IncomingMessage} req Полученный запрос
-     * @param {"http".ServerResponse} res Возврат запроса
-     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
-     * @return {Promise<void>}
-     * @api
+     * @param {IncomingMessage} req - HTTP запрос от платформы
+     * @param {ServerResponse} res - HTTP ответ для платформы
+     * @param {TemplateTypeModel | null} userBotClass - Пользовательская реализация платформы (необязательно)
+     *
+     * @throws {Error} Если не удалось обработать запрос или отправить ответ
+     *
+     * @example
+     * Базовое использование с micro:
+     * ```typescript
+     * module.exports = async (req: IncomingMessage, res: ServerResponse) => {
+     *   const bot = new Bot();
+     *   bot.initBotController(new MyController());
+     *   await bot.start(req, res);
+     * };
+     * ```
+     *
+     * @example
+     * Использование с пользовательской платформой:
+     * ```typescript
+     * class CustomPlatform extends TemplateTypeModel {
+     *   // Реализация методов платформы
+     * }
+     *
+     * bot.start(req, res, new CustomPlatform());
+     * ```
+     *
+     * @remarks
+     * - Обрабатывает авторизацию для Яндекс.Алисы
+     * - Поддерживает все встроенные платформы без дополнительной настройки
+     * - Для пользовательских платформ требуется передать userBotClass
      */
-    public async start(req: IncomingMessage, res: ServerResponse, userBotClass: TemplateTypeModel | null = null) {
-        const {json, send} = await require('micro');
+    public async start(
+        req: IncomingMessage,
+        res: ServerResponse,
+        userBotClass: TemplateTypeModel | null = null,
+    ): Promise<void> {
+        const { json, send } = await require('micro');
         // Принимаем только POST-запросы:
-        if (req.method !== "POST") {
+        if (req.method !== 'POST') {
             send(res, 400, 'Bad Request');
             return;
         }
@@ -330,4 +479,3 @@ export class Bot {
         }
     }
 }
-

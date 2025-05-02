@@ -1,4 +1,4 @@
-import {IAppParam} from '../../src/mmApp';
+import { IAppParam } from '../../src/mmApp';
 
 export default function (): IAppParam {
     return {
@@ -6,31 +6,20 @@ export default function (): IAppParam {
         intents: [
             {
                 name: 'by',
-                slots: [
-                    'пока',
-                ]
+                slots: ['пока'],
             },
             {
                 name: 'bigImage',
-                slots: [
-                    'картинка',
-                    'изображен'
-                ]
+                slots: ['картинка', 'изображен'],
             },
             {
                 name: 'list',
-                slots: [
-                    'список',
-                    'галер'
-                ]
+                slots: ['список', 'галер'],
             },
             {
                 name: 'save',
-                slots: [
-                    'сохрани',
-                    'save'
-                ]
-            }
-        ]
+                slots: ['сохрани', 'save'],
+            },
+        ],
     };
 }

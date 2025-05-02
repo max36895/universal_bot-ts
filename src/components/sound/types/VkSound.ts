@@ -1,8 +1,8 @@
-import {ISound} from '../interfaces';
-import {TemplateSoundTypes} from './TemplateSoundTypes';
-import {Text, isFile} from '../../../utils';
-import {SoundTokens} from '../../../models/SoundTokens';
-import {YandexSpeechKit} from '../../../api/YandexSpeechKit';
+import { ISound } from '../interfaces';
+import { TemplateSoundTypes } from './TemplateSoundTypes';
+import { Text, isFile } from '../../../utils';
+import { SoundTokens } from '../../../models/SoundTokens';
+import { YandexSpeechKit } from '../../../api/YandexSpeechKit';
 
 /**
  * Класс отвечающий за отправку голосовых сообщений в ВКонтакте.
@@ -16,7 +16,6 @@ export class VkSound implements TemplateSoundTypes {
      * @param {ISound[]} sounds Массив звуков.
      * @param {string} text Исходный текст.
      * @return {Promise<string[]>}
-     * @api
      */
     public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];

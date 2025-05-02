@@ -1,5 +1,8 @@
-import {IViberButton, IViberButtonObject} from '../../components/button/interfaces';
+import { IViberButton, IViberButtonObject } from '../../components/button/interfaces';
 
+/**
+ * Интерфейс со статусом сообщения.
+ */
 export interface IViberApi {
     /**
      * Статус сообщения.
@@ -12,6 +15,9 @@ export interface IViberApi {
     status?: number;
 }
 
+/**
+ * Интерфейс с информацией о пользователе.
+ */
 export interface IViberUserInfo {
     /**
      * Уникальный идентификатор пользователя Viber.
@@ -59,6 +65,9 @@ export interface IViberUserInfo {
     device_type: string;
 }
 
+/**
+ * Интерфейс с информацией о отправителе.
+ */
 export interface IViberSender {
     /**
      * Имя отправителя для отображения (Максимум 28 символов).
@@ -70,6 +79,9 @@ export interface IViberSender {
     avatar: string;
 }
 
+/**
+ * Интерфейс с информацией о пользователе.
+ */
 export interface IViberGetUserDetails extends IViberApi {
     /**
      * Уникальный идентификатор сообщения.
@@ -78,6 +90,9 @@ export interface IViberGetUserDetails extends IViberApi {
     user: IViberUserInfo;
 }
 
+/**
+ * Интерфейс с параметрами вебхука.
+ */
 export interface IViberWebhookParams {
     url?: string;
     event_types?: string[];
@@ -85,6 +100,9 @@ export interface IViberWebhookParams {
     send_photo?: boolean;
 }
 
+/**
+ * Интерфейс с параметрами RichMedia.
+ */
 export interface IViberRichMediaParams {
     receiver?: string;
     type?: string;
@@ -94,9 +112,12 @@ export interface IViberRichMediaParams {
         ButtonsGroupRows: number;
         BgColor: string;
         Buttons: IViberButton[];
-    }
+    };
 }
 
+/**
+ * Интерфейс с параметрами отправки сообщения.
+ */
 export interface IViberParams {
     /**
      * Уникальный идентификатор пользователя Viber.
@@ -155,7 +176,7 @@ export interface IViberParams {
          * Номер телефона контактного лица.
          */
         phone_number: string;
-    }
+    };
     /**
      * Координаты местоположения. Актуально для type = location.
      */
@@ -168,10 +189,13 @@ export interface IViberParams {
          * Координата lon.
          */
         lon: string;
-    }
+    };
     /**
      * Уникальный идентификатор стикера Viber. Актуально для type = sticker.
      */
     sticker_id?: number;
+    /**
+     * Кнопки.
+     */
     keyboard?: IViberButtonObject;
 }

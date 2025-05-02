@@ -1,11 +1,19 @@
-import {IAppDB, mmApp} from '../../mmApp';
-import {IQueryData, QueryData} from './QueryData';
-import {IModelRes, IModelRules, IDbControllerModel, TKey, IDbControllerResult} from '../interface';
+import { IAppDB, mmApp } from '../../mmApp';
+import { IQueryData, QueryData } from './QueryData';
+import {
+    IModelRes,
+    IModelRules,
+    IDbControllerModel,
+    TKey,
+    IDbControllerResult,
+    TQueryCb,
+} from '../interface';
 
 /**
  * Абстрактный класс служащий прослойкой между логикой ядра и подключением к БД.
  * Необходим для корректной настройки контролера, отвечающего за сохранение пользовательских данных.
  * Все прикладные контролеры должны быть унаследованы от него.
+ * @class DbControllerModel
  */
 export abstract class DbControllerModel implements IDbControllerModel {
     /**
@@ -71,7 +79,7 @@ export abstract class DbControllerModel implements IDbControllerModel {
      * Устанавливает правила для полей
      * @param {IModelRules[]} rules
      */
-    public setRules(rules: IModelRules[]) {
+    public setRules(rules: IModelRules[]): void {
         this._rules = rules;
     }
 
@@ -129,17 +137,17 @@ export abstract class DbControllerModel implements IDbControllerModel {
      */
     public async save(saveData: QueryData, isNew: boolean): Promise<any> {
         if (isNew) {
-            saveData.setData({...saveData.getData(), ...saveData.getQuery()});
+            saveData.setData({ ...saveData.getData(), ...saveData.getQuery() });
             return await this.insert(saveData);
         }
         const select = await this.selectOne(saveData.getQuery());
         if (select?.status) {
             return await this.update(saveData);
         } else {
-            saveData.setData({...saveData.getData(), ...saveData.getQuery()});
+            saveData.setData({ ...saveData.getData(), ...saveData.getQuery() });
             return await this.insert(saveData);
         }
-    };
+    }
 
     /**
      * Выполнение запроса на удаление записи в источнике данных
@@ -155,7 +163,7 @@ export abstract class DbControllerModel implements IDbControllerModel {
      * @param {Function} callback Запрос, который необходимо выполнить
      * @virtual
      */
-    public abstract query(callback: Function): any;
+    public abstract query(callback: TQueryCb): any;
 
     /**
      * Выполнение запроса на поиск записи записей в источнике данных
@@ -168,7 +176,7 @@ export abstract class DbControllerModel implements IDbControllerModel {
             return this.select(query, true);
         }
         return null;
-    };
+    }
 
     /**
      * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
@@ -194,7 +202,5 @@ export abstract class DbControllerModel implements IDbControllerModel {
     /**
      * Удаление подключения к источнику данных
      */
-    public destroy(): void {
-
-    };
+    public destroy(): void {}
 }

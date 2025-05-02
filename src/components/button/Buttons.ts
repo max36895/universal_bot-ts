@@ -1,11 +1,18 @@
-import {Button} from './Button';
-import {IButton, IButtonOptions, TButton, TButtonPayload} from './interfaces';
-import {TemplateButtonTypes} from './types/TemplateButtonTypes';
-import {AlisaButton} from './types/AlisaButton';
-import {TelegramButton} from './types/TelegramButton';
-import {VkButton} from './types/VkButton';
-import {ViberButton} from './types/ViberButton';
-import {SmartAppButton} from './types/SmartAppButton';
+import { Button } from './Button';
+import { IButton, IButtonOptions, TButton, TButtonPayload } from './interfaces';
+import { TemplateButtonTypes } from './types/TemplateButtonTypes';
+import { AlisaButton } from './types/AlisaButton';
+import { TelegramButton } from './types/TelegramButton';
+import { VkButton } from './types/VkButton';
+import { ViberButton } from './types/ViberButton';
+import { SmartAppButton } from './types/SmartAppButton';
+
+type TButtonCb = (
+    button: string | null,
+    url?: string,
+    TButtonPayload?: string,
+    options?: IButtonOptions,
+) => void;
 
 /**
  * Класс, хранящий в себе все кнопки приложения, а также отвечающий за отображение кнопок, в зависимости от типа приложения.
@@ -65,7 +72,7 @@ export class Buttons {
      *  - object
      *      - string title    Текст, отображаемый на кнопке.
      *      - string url      Ссылка, по которой перейдет пользователь после нажатия на кнопку.
-     *      - string payload  Дополнительные параметры, передаваемые при нажатие на кнопку.
+     *      - string payload  Дополнительные параметры, передаваемые при нажатии на кнопку.
      */
     public btns: TButton[];
     /**
@@ -75,7 +82,7 @@ export class Buttons {
      *  - object
      *      - string title    Текст, отображаемый на кнопке.
      *      - string url      Ссылка, по которой перейдет пользователь после нажатия на кнопку.
-     *      - string payload  Дополнительные параметры, передаваемые при нажатие на кнопку.
+     *      - string payload  Дополнительные параметры, передаваемые при нажатии на кнопку.
      */
     public links: TButton[];
     /**
@@ -95,7 +102,6 @@ export class Buttons {
 
     /**
      * Очистка массива кнопок.
-     * @api
      */
     public clear(): void {
         this.buttons = [];
@@ -112,9 +118,15 @@ export class Buttons {
      * @param {boolean} hide Определяет отображение кнопки как сайджест.
      * @param {IButtonOptions} options Дополнительные параметры кнопки
      *
-     * @return boolean
+     * @return Buttons
      */
-    protected _add(title: string | null, url: string | null, payload: TButtonPayload, hide: boolean = false, options: IButtonOptions = {}): boolean {
+    protected _add(
+        title: string | null,
+        url: string | null,
+        payload: TButtonPayload,
+        hide: boolean = false,
+        options: IButtonOptions = {},
+    ): Buttons {
         let button: Button | null = new Button();
         if (hide === Button.B_LINK) {
             if (!button.initLink(title, url, payload, options)) {
@@ -127,9 +139,8 @@ export class Buttons {
         }
         if (button) {
             this.buttons.push(button);
-            return true;
         }
-        return false;
+        return this;
     }
 
     /**
@@ -139,10 +150,14 @@ export class Buttons {
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
      * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
      * @param {IButtonOptions} options Дополнительные параметры кнопки
-     * @return boolean
-     * @api
+     * @return Buttons
      */
-    public addBtn(title: string | null, url: string | null = '', payload: TButtonPayload = '', options: IButtonOptions = {}): boolean {
+    public addBtn(
+        title: string | null,
+        url: string | null = '',
+        payload: TButtonPayload = '',
+        options: IButtonOptions = {},
+    ): Buttons {
         return this._add(title, url, payload, Button.B_BTN, options);
     }
 
@@ -153,10 +168,14 @@ export class Buttons {
      * @param {string} url Ссылка для перехода при нажатии на кнопку.
      * @param {TButtonPayload} payload Произвольные данные, отправляемые при нажатии на кнопку.
      * @param {IButtonOptions} options Дополнительные параметры кнопки
-     * @return boolean
-     * @api
+     * @return Buttons
      */
-    public addLink(title: string, url: string = '', payload: TButtonPayload = '', options: IButtonOptions = {}): boolean {
+    public addLink(
+        title: string | null,
+        url: string = '',
+        payload: TButtonPayload = '',
+        options: IButtonOptions = {},
+    ): Buttons {
         return this._add(title, url, payload, Button.B_LINK, options);
     }
 
@@ -166,12 +185,16 @@ export class Buttons {
      * @param callback Callback нужной функции, addBtn или addLink
      * @private
      */
-    protected _initProcessingBtn(buttons: TButton[], callback: Function): void {
+    protected _initProcessingBtn(buttons: TButton[], callback: TButtonCb): void {
         if (typeof buttons === 'object') {
             buttons.forEach((button) => {
                 if (typeof button !== 'string') {
-                    callback(button.title || null, (<IButton>button).url || '',
-                        button.payload || null, button.options || {});
+                    callback(
+                        button.title || null,
+                        (<IButton>button).url || '',
+                        button.payload || null,
+                        button.options || {},
+                    );
                 } else {
                     callback(button);
                 }
@@ -202,9 +225,11 @@ export class Buttons {
      * @param {string} type Тип кнопки.
      * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
      * @return any
-     * @api
      */
-    public getButtons<T = any>(type: string | null = null, userButton: TemplateButtonTypes | null = null): T | null {
+    public getButtons<T = any>(
+        type: string | null = null,
+        userButton: TemplateButtonTypes | null = null,
+    ): T | null {
         this._processing();
         if (type === null) {
             type = this.type;
@@ -261,9 +286,11 @@ export class Buttons {
      * @param {string} type Тип приложения.
      * @param {TemplateButtonTypes} userButton Класс с пользовательскими кнопками.
      * @return string|null
-     * @api
      */
-    public getButtonJson(type: string | null = null, userButton: TemplateButtonTypes | null = null): string | null {
+    public getButtonJson(
+        type: string | null = null,
+        userButton: TemplateButtonTypes | null = null,
+    ): string | null {
         const btn: object[] | null = this.getButtons(type, userButton);
         if (btn && btn.length) {
             return JSON.stringify(btn);
