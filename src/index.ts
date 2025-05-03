@@ -1,7 +1,7 @@
 /**
  * @packageDocumentation
  * @module universal-bot
- * @version 1.2.0
+ * @version 2.0.0
  * @author Maxim-M <maximco36895@yandex.ru>
  *
  * Универсальный фреймворк для создания голосовых приложений и чат-ботов

@@ -3,7 +3,7 @@
 Все значимые изменения в проекте umbot документируются в этом файле.
 Формат основан на [Keep a CHANGELOG](http://keepachangelog.com/).
 
-## [1.2.0] - 2025-04-12
+## [2.0.0] - 2025-04-12
 
 ### Добавлено
 
@@ -186,8 +186,8 @@
 
 Создание бета-версии
 
-[master]: https://github.com/max36895/universal_bot-ts/compare/v1.2.0...master
-[1.2.0]: https://github.com/max36895/universal_bot-ts/compare/v1.1.8...v1.2.0
+[master]: https://github.com/max36895/universal_bot-ts/compare/v2.0.0...master
+[2.0.0]: https://github.com/max36895/universal_bot-ts/compare/v1.1.8...v1.2.0
 [1.1.8]: https://github.com/max36895/universal_bot-ts/compare/v1.1.6...v1.1.8
 [1.1.6]: https://github.com/max36895/universal_bot-ts/compare/v1.1.5...v1.1.6
 [1.1.5]: https://github.com/max36895/universal_bot-ts/compare/v1.1.4...v1.1.5
