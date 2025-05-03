@@ -23,9 +23,9 @@ import { Button } from '../Button';
  * alisaButton.isCard = false;
  * alisaButton.buttons = [
  *     // Создание кнопки-ссылки (сайджест)
- *     new Button().initLink('Перейти на сайт', 'https://example.com/1'),
+ *     new Button('Перейти на сайт', 'https://example.com/1'),
  *     // Создание интерактивной кнопки
- *     new Button().initBtn('Нажми меня', '', { action: 'action1' })
+ *     new Button('Нажми меня', '', { action: 'action1' })
  * ];
  * const buttons = alisaButton.getButtons();
  * // buttons: [
@@ -44,7 +44,7 @@ import { Button } from '../Button';
  * // Создание кнопки для карточки (возвращает один объект IAlisaButtonCard)
  * alisaButton.isCard = true;
  * alisaButton.buttons = [
- *     new Button().initLink('Подробнее', 'https://example.com/details', { action: 'details' })
+ *     new Button('Подробнее', 'https://example.com/details', { action: 'details' })
  * ];
  * const cardButton = alisaButton.getButtons();
  * // cardButton: {
@@ -57,9 +57,8 @@ import { Button } from '../Button';
 export class AlisaButton extends TemplateButtonTypes {
     /**
      * Флаг использования кнопок для карточки
-     *
-     *                             - true: возвращает одну кнопку для карточки (IAlisaButtonCard)
-     *                             - false: возвращает массив обычных кнопок (IAlisaButton[])
+     * - true: возвращает одну кнопку для карточки (IAlisaButtonCard)
+     * - false: возвращает массив обычных кнопок (IAlisaButton[])
      * @defaultValue false
      *
      * @example
@@ -175,9 +174,9 @@ export class AlisaButton extends TemplateButtonTypes {
      * alisaButton.isCard = false;
      * alisaButton.buttons = [
      *     // Создание кнопки-ссылки (сайджест)
-     *     new Button().initLink('Перейти на сайт', 'https://example.com/1'),
+     *     new Button('Перейти на сайт', 'https://example.com/1'),
      *     // Создание интерактивной кнопки
-     *     new Button().initBtn('Нажми меня', '', { action: 'action1' })
+     *     new Button('Нажми меня', '', { action: 'action1' })
      * ];
      * const buttons = alisaButton.getButtons();
      * // buttons: [
@@ -196,7 +195,7 @@ export class AlisaButton extends TemplateButtonTypes {
      * // Получение кнопки для карточки (один объект)
      * alisaButton.isCard = true;
      * alisaButton.buttons = [
-     *     new Button().initLink('Подробнее', 'https://example.com/details', { action: 'details' })
+     *     new Button('Подробнее', 'https://example.com/details', { action: 'details' })
      * ];
      * const cardButton = alisaButton.getButtons();
      * // cardButton: {

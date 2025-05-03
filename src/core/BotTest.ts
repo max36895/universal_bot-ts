@@ -26,7 +26,7 @@ import { IUserData } from './../controller/BotController';
  * @param {number} count - Номер сообщения в диалоге
  * @returns {any} Конфигурация для пользовательского бота
  */
-type TUserBotConfigCb = (query: string, userId: string, count: number) => any;
+export type TUserBotConfigCb = (query: string, userId: string, count: number) => any;
 
 /**
  * Параметры для тестирования бота

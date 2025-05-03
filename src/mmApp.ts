@@ -104,7 +104,6 @@ export interface IDir {
 }
 
 /**
- * @type {TAppType}
  * Типы поддерживаемых платформ
  *
  * Определяет все поддерживаемые платформы для бота:
@@ -374,7 +373,7 @@ export interface IAppParam {
      *
      * @remarks
      * Используется для авторизации запросов к Telegram Bot API.
-     * Получается у @BotFather при создании бота.
+     * Получается у BotFather при создании бота.
      */
     telegram_token?: string | null;
 
@@ -554,7 +553,6 @@ export interface ICommandParam {
 }
 
 /**
- * @type {ICommand}
  * Тип для хранения команд
  *
  * Объект, где ключи - имена команд, а значения - их параметры.

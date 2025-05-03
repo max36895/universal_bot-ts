@@ -10,7 +10,7 @@ import {
 /**
  * Класс для взаимодействия с API голосового помощника Маруся
  * Расширяет функционал VkRequest для работы со специфичными методами Маруси
- * @see (https://vk.com/dev/marusia_skill_docs10) Смотри тут
+ * @see (https://dev.vk.com/ru/marusia/api) Смотри тут
  *
  * @example
  * ```typescript

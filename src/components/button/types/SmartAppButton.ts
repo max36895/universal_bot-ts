@@ -53,9 +53,8 @@ import {
 export class SmartAppButton extends TemplateButtonTypes {
     /**
      * Флаг использования кнопок в карточке
-     *
-     *                              - true: кнопки для карточки (один из типов: text, deep_link)
-     *                              - false: кнопки-подсказки (массив кнопок с действиями)
+     * - true: кнопки для карточки (один из типов: text, deep_link)
+     * - false: кнопки-подсказки (массив кнопок с действиями)
      *
      * @defaultValue false
      *
@@ -108,8 +107,8 @@ export class SmartAppButton extends TemplateButtonTypes {
      * Получение кнопок в формате Сбер SmartApp
      *
      * @returns {ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction} - Объект с кнопками:
-     *                                                                        - Для обычных кнопок: массив кнопок-подсказок
-     *                                                                        - Для карточки: одна кнопка (text или deep_link)
+     *  - Для обычных кнопок: массив кнопок-подсказок
+     *  - Для карточки: одна кнопка (text или deep_link)
      *
      * Поддерживаемые типы кнопок:
      * - text: Текстовая кнопка

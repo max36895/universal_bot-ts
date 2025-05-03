@@ -1,6 +1,6 @@
 /**
  * Модуль контроллера - основной компонент для обработки бизнес-логики бота
- * 
+ *
  * @module controller/BotController
  */
 import { Buttons } from '../components/button';
@@ -20,13 +20,13 @@ import { Text } from '../utils/standard/Text';
 /**
  * Тип статуса операции
  * Определяет результат выполнения операции
- * 
+ *
  * @remarks
  * Возможные значения:
  * - true: операция выполнена успешно
  * - false: операция завершилась с ошибкой
  * - null: операция не выполнялась
- * 
+ *
  * @example
  * ```typescript
  * const status: TStatus = true; // операция успешна
@@ -39,12 +39,12 @@ export type TStatus = true | false | null;
 /**
  * Интерфейс для событий пользователя
  * Содержит информацию о различных действиях пользователя в приложении
- * 
+ *
  * @remarks
  * События включают:
  * - Авторизацию пользователя
  * - Оценку приложения
- * 
+ *
  * @example
  * ```typescript
  * const userEvent: IUserEvent = {
@@ -98,15 +98,15 @@ export interface IUserEvent {
 /**
  * Интерфейс для хранения пользовательских данных
  * Расширяемый интерфейс для хранения любых дополнительных данных
- * 
+ *
  * @remarks
  * Базовые поля:
  * - oldIntentName: название предыдущего интента
- * 
+ *
  * Дополнительные поля могут быть добавлены через:
  * 1. Расширение интерфейса (extends)
  * 2. Индексную сигнатуру [key: string]: unknown
- * 
+ *
  * @example
  * ```typescript
  * // Способ 1: Расширение интерфейса
@@ -117,12 +117,12 @@ export interface IUserEvent {
  *     theme: string;
  *   };
  * }
- * 
+ *
  * // Способ 2: Использование индексной сигнатуры
  * interface DynamicUserData extends IUserData {
  *   [key: string]: unknown;
  * }
- * 
+ *
  * const userData: MyUserData = {
  *   oldIntentName: 'greeting',
  *   name: 'John',
@@ -131,7 +131,7 @@ export interface IUserEvent {
  *     theme: 'dark'
  *   }
  * };
- * 
+ *
  * const dynamicData: DynamicUserData = {
  *   oldIntentName: 'greeting',
  *   customField1: 'value1',
@@ -146,7 +146,7 @@ export interface IUserData {
     /**
      * Название предыдущего интента
      * Используется для отслеживания контекста диалога
-     * 
+     *
      * @example
      * ```typescript
      * this.oldIntentName = 'greeting';
@@ -164,7 +164,7 @@ export interface IUserData {
 /**
  * Абстрактный класс контроллера бота
  * Предоставляет базовый функционал для обработки пользовательских запросов
- * 
+ *
  * @remarks
  * Основные возможности:
  * - Обработка пользовательских команд и интентов
@@ -172,7 +172,7 @@ export interface IUserData {
  * - Работа с UI компонентами (кнопки, карточки)
  * - Поддержка различных платформ (Алиса, Маруся, Telegram и др.)
  * - Управление пользовательскими данными
- * 
+ *
  * @example
  * ```typescript
  * // Определение пользовательских данных
@@ -184,7 +184,7 @@ export interface IUserData {
  *     theme: string;
  *   };
  * }
- * 
+ *
  * class MyController extends BotController<MyUserData> {
  *   public action(intentName: string | null): void {
  *     try {
@@ -192,19 +192,19 @@ export interface IUserData {
  *       if (intentName === WELCOME_INTENT_NAME) {
  *         // Текстовый ответ
  *         this.text = 'Привет! Чем могу помочь?';
- *         
+ *
  *         // Добавление кнопок
  *         this.buttons
  *           .addBtn('Помощь')
  *           .addBtn('Выход');
- *         
+ *
  *         // Добавление карточки
  *         this.card
  *           .setTitle('Добро пожаловать!')
  *           .setDescription('Выберите действие:')
  *           .addButton('Начать игру')
  *           .addButton('Настройки');
- *         
+ *
  *         // Установка пользовательских данных
  *         this.userData = {
  *           score: 0,
@@ -214,38 +214,38 @@ export interface IUserData {
  *             theme: 'light'
  *           }
  *         };
- *         
+ *
  *         // Добавление звука
  *         this.sound.add('welcome.mp3');
- *         
+ *
  *         return;
  *       }
- *       
+ *
  *       // Обработка команды помощи
  *       if (intentName === HELP_INTENT_NAME) {
  *         this.text = 'Я могу помочь вам с...';
  *         this.buttons.addBtn('Назад');
  *         return;
  *       }
- *       
+ *
  *       // Обработка NLU
  *       const nluResult = this.nlu.getIntent();
  *       if (nluResult) {
  *         // Обработка интента
  *         this.text = `Вы сказали: ${nluResult}`;
  *       }
- *       
+ *
  *       // Обработка пользовательских событий
  *       if (this.userEvents?.auth?.status) {
  *         this.text = 'Вы успешно авторизовались!';
  *       }
- *       
+ *
  *       // Обработка оценки
  *       if (this.userEvents?.rating?.status) {
  *         const rating = this.userEvents.rating.value;
  *         this.text = `Спасибо за оценку ${rating}!`;
  *       }
- *       
+ *
  *     } catch (error) {
  *       console.error('Error in action:', error);
  *       this.text = 'Произошла ошибка. Попробуйте позже.';
@@ -253,7 +253,7 @@ export interface IUserData {
  *   }
  * }
  * ```
- * 
+ *
  * @class BotController
  * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
  */
@@ -261,7 +261,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Компонент для отображения кнопок пользователю
      * Позволяет создавать интерактивные элементы управления
-     * 
+     *
      * @see Buttons
      * @example
      * ```typescript
@@ -275,7 +275,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Компонент для отображения карточек пользователю
      * Позволяет создавать визуальные элементы с изображениями и текстом
-     * 
+     *
      * @see Card
      * @example
      * ```typescript
@@ -290,7 +290,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Текст, отображаемый пользователю
      * Основной способ коммуникации с пользователем
-     * 
+     *
      * @example
      * ```typescript
      * this.text = 'Привет! Чем могу помочь?';
@@ -301,11 +301,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Текст для преобразования в речь
      * Используется для голосовых ассистентов
-     * 
+     *
      * @remarks
      * Для неголосовых платформ текст будет преобразован в речь
      * через Yandex SpeechKit и отправлен как аудио сообщение
-     * 
+     *
      * @example
      * ```typescript
      * this.tts = 'Привет! Я голосовой ассистент.';
@@ -316,7 +316,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Обработанный NLU (Natural Language Understanding)
      * Содержит результаты обработки естественного языка
-     * 
+     *
      * @see Nlu
      */
     public nlu: Nlu;
@@ -324,7 +324,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Компонент для работы со звуками
      * Позволяет добавлять звуковые эффекты и музыку
-     * 
+     *
      * @see Sound
      * @example
      * ```typescript
@@ -338,7 +338,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Идентификатор пользователя
      * Уникальный идентификатор для каждого пользователя
-     * 
+     *
      * @example
      * ```typescript
      * this.userId = 'user_123';
@@ -349,7 +349,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Пользовательский токен авторизации
      * Используется для авторизованных запросов (например, в Алисе)
-     * 
+     *
      * @example
      * ```typescript
      * this.userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
@@ -360,7 +360,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Метаданные пользователя
      * Дополнительная информация о пользователе
-     * 
+     *
      * @example
      * ```typescript
      * this.userMeta = {
@@ -374,7 +374,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * ID сообщения
      * Используется для определения начала нового диалога
-     * 
+     *
      * @example
      * ```typescript
      * this.messageId = 12345;
@@ -385,7 +385,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Запрос пользователя в нижнем регистре
      * Нормализованный текст запроса
-     * 
+     *
      * @example
      * ```typescript
      * this.userCommand = 'привет бот';
@@ -396,7 +396,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Оригинальный запрос пользователя
      * Текст запроса без изменений
-     * 
+     *
      * @example
      * ```typescript
      * this.originalUserCommand = 'Привет, бот!';
@@ -407,7 +407,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Дополнительные параметры запроса
      * Может содержать любые дополнительные данные
-     * 
+     *
      * @example
      * ```typescript
      * this.payload = {
@@ -421,10 +421,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Пользовательские данные
      * Хранятся в базе данных или файле
-     * 
+     *
      * @remarks
      * Тип хранения зависит от параметра mmApp.isSaveDb
-     * 
+     *
      * @example
      * ```typescript
      * this.userData = {
@@ -440,7 +440,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Флаг необходимости авторизации
      * Определяет, требуется ли авторизация пользователя
-     * 
+     *
      * @example
      * ```typescript
      * this.isAuth = true; // требуется авторизация
@@ -451,7 +451,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Статус пользовательских событий
      * Содержит информацию об авторизации и оценке
-     * 
+     *
      * @see IUserEvent
      * @example
      * ```typescript
@@ -466,7 +466,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Пользовательское локальное хранилище
      * Используется для Алисы, Маруси и Сбера
-     * 
+     *
      * @example
      * ```typescript
      * this.state = {
@@ -480,7 +480,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Флаг наличия экрана
      * Определяет, доступен ли экран пользователю
-     * 
+     *
      * @example
      * ```typescript
      * this.isScreen = true; // экран доступен
@@ -491,7 +491,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Флаг завершения сессии
      * Определяет, нужно ли завершить диалог
-     * 
+     *
      * @example
      * ```typescript
      * this.isEnd = true; // завершить диалог
@@ -502,10 +502,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Флаг необходимости отправки запроса к API
      * Используется для Vk и Telegram
-     * 
+     *
      * @remarks
      * Если true, все запросы уже отправлены в логике приложения
-     * 
+     *
      * @example
      * ```typescript
      * this.isSend = true; // запросы уже отправлены
@@ -516,7 +516,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Полученный запрос
      * Содержит оригинальный объект запроса
-     * 
+     *
      * @example
      * ```typescript
      * this.requestObject = {
@@ -530,7 +530,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Название текущего интента
      * Определяет текущее состояние диалога
-     * 
+     *
      * @example
      * ```typescript
      * this.thisIntentName = 'help';
@@ -541,7 +541,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Эмоция для голосового ответа
      * Используется для голосовых ассистентов
-     * 
+     *
      * @example
      * ```typescript
      * this.emotion = 'good';
@@ -552,13 +552,13 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Стиль обращения к пользователю
      * Определяет формальность общения
-     * 
+     *
      * @remarks
      * Возможные значения:
      * - 'official': официальное обращение
      * - 'no_official': неофициальное обращение
      * - null: стиль не определен
-     * 
+     *
      * @example
      * ```typescript
      * this.appeal = 'official'; // официальное обращение
@@ -569,18 +569,18 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Флаг отправки запроса на оценку
      * Определяет, нужно ли запросить оценку у пользователя
-     * 
+     *
      * @example
      * ```typescript
      * this.isSendRating = true; // запросить оценку
      * ```
      */
     public isSendRating: boolean;
-    
+
     /**
      * Название предыдущего интента
      * Используется для отслеживания контекста диалога
-     * 
+     *
      * @example
      * ```typescript
      * this.oldIntentName = 'greeting';
@@ -591,7 +591,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Создает новый экземпляр контроллера
      * Инициализирует все необходимые компоненты
-     * 
+     *
      * @protected
      */
     protected constructor() {
@@ -626,11 +626,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Возвращает список доступных интентов
      * Определяет все возможные команды и их обработчики
-     * 
+     *
      * @returns {IAppIntent[]} Массив интентов
-     * 
+     *
      * @protected
-     * 
+     *
      * @example
      * ```typescript
      * const intents = BotController._intents();
@@ -647,12 +647,12 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Определяет интент по тексту запроса
      * Сопоставляет текст с доступными интентами
-     * 
+     *
      * @param {string | null} text - Текст запроса
      * @returns {string | null} Название интента или null
-     * 
+     *
      * @protected
-     * 
+     *
      * @example
      * ```typescript
      * const intent = BotController._getIntent('привет');
@@ -675,11 +675,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Получает команду из запроса пользователя
      * Извлекает команду из текста запроса
-     * 
+     *
      * @returns {string | null} Команда или null
-     * 
+     *
      * @protected
-     * 
+     *
      * @example
      * ```typescript
      * const command = this._getCommand();
@@ -714,10 +714,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Абстрактный метод для обработки пользовательских команд и интентов
      * Должен быть реализован в дочерних классах
-     * 
+     *
      * @param {string | null} intentName - Название интента или команды
      * @param {boolean} [isCommand=false] - Флаг, указывающий что это команда
-     * 
+     *
      * @example
      * ```typescript
      * class MyController extends BotController {
@@ -737,7 +737,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Запускает обработку запроса
      * Определяет тип запроса и вызывает соответствующий обработчик
-     * 
+     *
      * @example
      * ```typescript
      * this.run();

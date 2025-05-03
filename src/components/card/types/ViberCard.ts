@@ -88,9 +88,9 @@ export interface IViberCard extends IViberButton {}
  * // Создание карточки с несколькими изображениями
  * const multipleCard = new ViberCard();
  * const images = [
- *     new Image().init('product1.jpg', 'Товар 1', 'Описание 1'),
- *     new Image().init('product2.jpg', 'Товар 2', 'Описание 2'),
- *     new Image().init('product3.jpg', 'Товар 3', 'Описание 3')
+ *     new Image('product1.jpg', 'Товар 1', 'Описание 1'),
+ *     new Image('product2.jpg', 'Товар 2', 'Описание 2'),
+ *     new Image('product3.jpg', 'Товар 3', 'Описание 3')
  * ];
  * multipleCard.images = images;
  * const result = await multipleCard.getCard(false);

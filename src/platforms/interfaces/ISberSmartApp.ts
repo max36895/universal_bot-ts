@@ -83,11 +83,26 @@ export interface ISberSmartAppDeviceInfo {
      */
     capabilities: {
         /** Наличие экрана */
-        screen: { available: boolean };
+        screen: {
+            /**
+             * Наличие экрана
+             */
+            available: boolean;
+        };
         /** Наличие микрофона */
-        mic: { available: boolean };
+        mic: {
+            /**
+             * Наличие микрофона
+             * */
+            available: boolean;
+        };
         /** Наличие динамиков */
-        speak: { available: boolean };
+        speak: {
+            /**
+             * Наличие динамиков
+             */
+            available: boolean;
+        };
     };
 
     /** Дополнительная информация об устройстве */
@@ -234,6 +249,9 @@ export interface ISberSmartAppMessageInfo {
      * Структурированные данные из текста
      */
     entities?: {
+        /**
+         * Сама сущность
+         */
         [key: string]: ISberSmartAppEntities;
     };
 
@@ -351,7 +369,13 @@ export interface ISberRating {
  * Содержит код и описание результата оценки
  */
 export interface ISberRatingStatusCode {
+    /**
+     * Код результата оценки
+     */
     code: 1 | 101 | 104;
+    /**
+     * Описание результата оценки
+     */
     description: 'SUCCESS' | 'SKIP BY USER' | 'FORBIDDEN';
 }
 
@@ -414,7 +438,20 @@ export interface ISberSmartAppRequestPayload {
     /**
      * Возможные стратегии смартапа.
      */
-    strategies: { happy_birthday: boolean; last_call: number; is_alice?: boolean };
+    strategies: {
+        /**
+         * День рождение
+         */
+        happy_birthday: boolean;
+        /**
+         * Последний звонок
+         */
+        last_call: number;
+        /**
+         * Больше нет
+         */
+        is_alice?: boolean;
+    };
     /**
      * Информация о запускаемом смартапе и параметрах его запуска.
      * Формируется бэкендом приложения.
@@ -616,7 +653,10 @@ export interface ISberSmartAppBubble {
      */
     expand_policy: TSberSmartAppExpandPolicy;
 }
-
+/**
+ * Размеры для отступов
+ * @enum {string}
+ */
 export type TSberSmartAppPadding =
     | '0x'
     | '1x'
@@ -676,6 +716,10 @@ export interface ISberSmartAppCardAction {
     deep_link?: string;
 }
 
+/**
+ * Стиль текста
+ * @enum {string}
+ */
 export type TSberSmartAppTypeface =
     | 'headline1'
     | 'headline2'
@@ -693,6 +737,10 @@ export type TSberSmartAppTypeface =
     | 'button1'
     | 'button2'
     | 'caption';
+/**
+ * Стиль текста
+ * @enum {string}
+ */
 export type TSberSmartAppTextColor =
     | 'default'
     | 'secondary'
@@ -857,21 +905,60 @@ export interface ISberSmartAppCardItem {
 
     /** Левая часть */
     left?: {
+        /**
+         * Тип ячейки
+         */
         type: string;
+        /**
+         * Иконка
+         */
         icon_vertical_gravity?: string;
+        /**
+         * Метка
+         */
         label?: ISberSmartAppCardText;
+        /**
+         * Иконка и значение
+         */
         icon_and_value: {
+            /**
+             * Иконка
+             */
             icon?: {
+                /**
+                 * Расположение иконки
+                 */
                 address?: {
+                    /**
+                     * Тип иконуи
+                     */
                     type: string;
+                    /**
+                     * Ссылка на иконку
+                     */
                     url: string;
                 };
+                /**
+                 * Размеры иконки
+                 */
                 size: {
+                    /**
+                     * Ширина иконки
+                     */
                     width: string;
+                    /**
+                     * Высота иконки
+                     */
                     height: string;
                 };
+                /**
+                 * Отступы
+                 */
                 margin?: ISberSmartAppCardPadding;
             };
+            /**
+             * Значение
+             */
             value?: ISberSmartAppCardText;
         };
     };

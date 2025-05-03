@@ -321,6 +321,11 @@ export class Image {
      * Конструктор класса Image.
      * Инициализирует все свойства значениями по умолчанию.
      *
+     * @param {string | null} image - Путь к изображению или токен
+     * @param {string} title - Заголовок изображения
+     * @param {string} [desc=' '] - Описание изображения
+     * @param {TButton | null} [button=null] - Кнопки для изображения
+     *
      * @example
      * ```typescript
      * const image = new Image();
@@ -333,14 +338,20 @@ export class Image {
      * // image.params = {}
      * ```
      */
-    public constructor() {
+    public constructor(
+        image: string | null = null,
+        title: string = '',
+        desc: string = ' ',
+        button: TButton | null = null,
+    ) {
         this.button = new Buttons();
-        this.title = '';
-        this.desc = '';
+        this.title = title;
+        this.desc = desc;
         this.imageToken = null;
         this.imageDir = null;
         this.isToken = false;
         this.params = {};
+        this.init(image, title, desc, button);
     }
 
     /**

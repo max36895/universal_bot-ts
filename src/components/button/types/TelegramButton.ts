@@ -124,9 +124,9 @@ export class TelegramButton extends TemplateButtonTypes {
      * Получение кнопок в формате Telegram
      *
      * @returns {ITelegramKeyboard} - Объект с кнопками в формате Telegram:
-     *                                - inline_keyboard: для кнопок в сообщении
-     *                                - keyboard: для reply-кнопок
-     *                                - remove_keyboard: для удаления клавиатуры
+     * - inline_keyboard: для кнопок в сообщении
+     * - keyboard: для reply-кнопок
+     * - remove_keyboard: для удаления клавиатуры
      *
      * Правила формирования кнопок:
      * - Если у кнопки есть URL, она становится inline-кнопкой

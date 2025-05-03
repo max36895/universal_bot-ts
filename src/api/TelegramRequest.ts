@@ -156,8 +156,8 @@ export class TelegramRequest {
      * @param message Текст сообщения
      * @param params Дополнительные параметры:
      * - parse_mode: формат текста
-     *   - Markdown: *жирный*, _курсив_, [ссылка](url), `код`, ```pre```
-     *   - HTML: <b>жирный</b>, <i>курсив</i>, <a href="url">ссылка</a>, <code>код</code>, <pre>pre</pre>
+     *   - Markdown: *жирный*, _курсив_, [ссылка](https://example.com), `код`, ```pre```
+     *   - HTML: <b>жирный</b>, <i>курсив</i>, <a href="https://example.com">ссылка</a>, <code>код</code>, <pre>pre</pre>
      * - disable_web_page_preview: отключить предпросмотр ссылок
      * - disable_notification: отключить уведомление
      * - reply_to_message_id: ID сообщения для ответа

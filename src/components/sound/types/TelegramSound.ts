@@ -38,8 +38,8 @@ export class TelegramSound implements TemplateSoundTypes {
      * Обрабатывает звуки и текст для отправки в Telegram
      *
      * @param {ISound[]} sounds - Массив звуков для обработки:
-     *                           - key: уникальный идентификатор звука
-     *                           - sounds: массив путей к звуковым файлам
+     * - key: уникальный идентификатор звука
+     * - sounds: массив путей к звуковым файлам
      * @param {string} [text=''] - Исходный текст для TTS (опционально)
      * @returns {Promise<string[]>} - Массив идентификаторов отправленных аудио
      *

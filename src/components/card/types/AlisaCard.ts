@@ -34,34 +34,20 @@ import { ImageTokens } from '../../../models/ImageTokens';
  * ```typescript
  * // Создание простой карточки
  * const card = new AlisaCard();
- * card.setTitle('Каталог товаров')
- *     .addImage('product1.jpg', 'Товар 1', 'Описание 1')
- *     .addImage('product2.jpg', 'Товар 2', 'Описание 2');
+ * card.images = [
+ *     new Image('product1.jpg', 'Товар 1', 'Описание 1'),
+ *     new Image('product2.jpg', 'Товар 2', 'Описание 2')
+ * ];
  * const result = await card.getCard(false);
  *
  * // Создание галереи (максимум 7 изображений)
  * const galleryCard = new AlisaCard();
  * galleryCard.isUsedGallery = true;
- * galleryCard.setTitle('Фотогалерея')
- *     .addImage('photo1.jpg', 'Фото 1')
- *     .addImage('photo2.jpg', 'Фото 2')
- *     .addImage('photo3.jpg', 'Фото 3')
- *     .addImage('photo4.jpg', 'Фото 4')
- *     .addImage('photo5.jpg', 'Фото 5')
- *     .addImage('photo6.jpg', 'Фото 6')
- *     .addImage('photo7.jpg', 'Фото 7');
+ * galleryCard.images = [
+ *     new Image('product1.jpg', 'Товар 1', 'Описание 1'),
+ *     new Image('product2.jpg', 'Товар 2', 'Описание 2')
+ * ];
  * const galleryResult = await galleryCard.getCard(false);
- *
- * // Создание карточки с кнопками
- * const cardWithButtons = new AlisaCard();
- * cardWithButtons.setTitle('Товар')
- *     .addImage('product.jpg', 'Название товара', 'Описание товара')
- *     .addButton({
- *         title: 'Купить',
- *         url: 'https://shop.com/product',
- *         payload: { action: 'buy', id: 123 }
- *     });
- * const buttonResult = await cardWithButtons.getCard(true);
  * ```
  */
 export class AlisaCard extends TemplateCardTypes {

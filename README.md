@@ -409,7 +409,7 @@ acme.sh --install-cert -d {{domain}} --key-file {{key file}} --fullchain-file {{
 ## Полезные ссылки
 
 -   [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
--   [Примеры проектов](./examples)
+-   [Примеры проектов](./examples/README.md)
 -   [Список изменений](./CHANGELOG.md)
 
 # Тестирование проекта

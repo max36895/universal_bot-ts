@@ -9,7 +9,7 @@ export type TTelegramQuestionType = 'quiz' | 'regular';
 /**
  * Тип идентификатора чата в Telegram
  * @typedef {(string | number)} TTelegramChatId
- * - string: для публичных каналов (@channelname)
+ * - string: для публичных каналов (channelname)
  * - number: для приватных чатов и групп
  */
 export type TTelegramChatId = string | number;
@@ -42,7 +42,7 @@ export interface ITelegramParams {
      * Уникальный идентификатор целевого чата или имя пользователя целевого канала
      * @type {TTelegramChatId}
      * - Для приватных чатов: числовой ID
-     * - Для каналов: @channelname
+     * - Для каналов: channelname
      */
     chat_id?: TTelegramChatId;
 

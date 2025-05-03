@@ -6,13 +6,13 @@ import { Buttons, IVkButton } from '../../button';
  * @interface IVkCardElement
  * Интерфейс для элемента карточки ВКонтакте.
  * Определяет структуру отдельного элемента в карусели или галерее.
- * 
+ *
  * Особенности:
  * - Поддерживает заголовок и описание
  * - Может содержать до 3 кнопок
  * - Поддерживает различные типы действий
  * - Требует ID фотографии из ВКонтакте
- * 
+ *
  * @example
  * ```typescript
  * // Создание элемента карточки с кнопками
@@ -26,7 +26,7 @@ import { Buttons, IVkButton } from '../../button';
  *     ],
  *     action: { type: 'open_photo' }
  * };
- * 
+ *
  * // Создание простого элемента карточки
  * const simpleElement: IVkCardElement = {
  *     title: 'Фотография',
@@ -39,12 +39,12 @@ export interface IVkCardElement {
     /**
      * Заголовок элемента карточки.
      * Отображается в верхней части элемента.
-     * 
+     *
      * Особенности:
      * - Рекомендуемая длина: до 80 символов
      * - Поддерживает эмодзи
      * - Отображается жирным шрифтом
-     * 
+     *
      * @type {string}
      * @example
      * ```typescript
@@ -57,12 +57,12 @@ export interface IVkCardElement {
     /**
      * Описание элемента карточки.
      * Отображается под заголовком.
-     * 
+     *
      * Особенности:
      * - Рекомендуемая длина: до 200 символов
      * - Поддерживает переносы строк
      * - Может содержать ссылки
-     * 
+     *
      * @type {string}
      * @example
      * ```typescript
@@ -75,12 +75,12 @@ export interface IVkCardElement {
     /**
      * Идентификатор изображения в ВКонтакте.
      * Формат: строка без префикса 'photo'.
-     * 
+     *
      * Особенности:
      * - Должен быть валидным ID фотографии
      * - Фотография должна быть загружена в ВКонтакте
      * - Поддерживает различные форматы изображений
-     * 
+     *
      * @type {string}
      * @example
      * ```typescript
@@ -93,12 +93,12 @@ export interface IVkCardElement {
     /**
      * Массив кнопок для элемента карточки.
      * Максимальное количество кнопок - 3.
-     * 
+     *
      * Особенности:
      * - Поддерживает различные типы кнопок
      * - Каждая кнопка может иметь свое действие
      * - Кнопки отображаются в нижней части карточки
-     * 
+     *
      * @type {IVkButton[]}
      * @example
      * ```typescript
@@ -108,7 +108,7 @@ export interface IVkCardElement {
      *     { action: { type: 'link', link: 'https://example.com' } },
      *     { action: { type: 'callback', label: 'Подробнее' } }
      * ]
-     * 
+     *
      * // Одна кнопка
      * buttons: [
      *     { action: { type: 'text', label: 'Подробнее' } }
@@ -119,23 +119,26 @@ export interface IVkCardElement {
 
     /**
      * Действие, происходящее при нажатии на элемент карточки.
-     * 
+     *
      * Особенности:
      * - Определяет поведение при клике на карточку
      * - Может открывать фотографию или выполнять другие действия
      * - Работает независимо от кнопок
-     * 
+     *
      * @type {{ type: string }}
      * @example
      * ```typescript
      * // Открыть фотографию
      * action: { type: 'open_photo' }
-     * 
+     *
      * // Выполнить действие
      * action: { type: 'callback' }
      * ```
      */
     action?: {
+        /**
+         * Тип действия.
+         */
         type: string;
     };
 }
@@ -144,13 +147,13 @@ export interface IVkCardElement {
  * @interface IVkCard
  * Интерфейс для карточки ВКонтакте.
  * Определяет структуру карточки, которая может быть каруселью или галереей.
- * 
+ *
  * Особенности:
  * - Поддерживает два типа карточек: карусель и галерея
  * - Может содержать множество элементов
  * - Элементы могут иметь кнопки и действия
  * - Поддерживает различные форматы изображений
- * 
+ *
  * @example
  * ```typescript
  * // Создание карусели с товарами
@@ -171,7 +174,7 @@ export interface IVkCardElement {
  *         }
  *     ]
  * };
- * 
+ *
  * // Создание галереи фотографий
  * const gallery: IVkCard = {
  *     type: 'gallery',
@@ -196,18 +199,18 @@ export interface IVkCard {
     /**
      * Тип карточки.
      * Может быть 'carousel' для карусели или 'gallery' для галереи.
-     * 
+     *
      * Особенности:
      * - Карусель: элементы можно листать горизонтально
      * - Галерея: элементы отображаются в сетке
      * - Тип определяет способ отображения элементов
-     * 
+     *
      * @type {string}
      * @example
      * ```typescript
      * // Карусель товаров
      * type: 'carousel'
-     * 
+     *
      * // Галерея фотографий
      * type: 'gallery'
      * ```
@@ -217,12 +220,12 @@ export interface IVkCard {
     /**
      * Массив элементов карточки.
      * Каждый элемент представляет собой отдельную карточку в карусели.
-     * 
+     *
      * Особенности:
      * - Может содержать множество элементов
      * - Каждый элемент имеет свои настройки
      * - Элементы отображаются в зависимости от типа карточки
-     * 
+     *
      * @type {IVkCardElement[]}
      * @example
      * ```typescript
@@ -231,7 +234,7 @@ export interface IVkCard {
      *     { title: 'Товар 1', description: 'Описание 1', photo_id: '123456789' },
      *     { title: 'Товар 2', description: 'Описание 2', photo_id: '987654321' }
      * ]
-     * 
+     *
      * // Элементы галереи
      * elements: [
      *     { title: 'Фото 1', description: 'Описание 1', photo_id: '123456789' },
@@ -246,7 +249,7 @@ export interface IVkCard {
  * @class VkCard
  * Класс для создания и отображения карточек в ВКонтакте.
  * Наследуется от TemplateCardTypes и реализует специфичную для ВКонтакте логику.
- * 
+ *
  * Основные возможности:
  * - Создание карусели с карточками
  * - Создание галереи изображений
@@ -255,7 +258,7 @@ export interface IVkCard {
  * - Поддержка различных типов действий
  * - Ограничение длины текста
  * - Форматирование описаний
- * 
+ *
  * @example
  * ```typescript
  * // Создание карусели с товарами
@@ -266,7 +269,7 @@ export interface IVkCard {
  *     new Image('product2.jpg', 'Товар 2', 'Описание 2')
  * ];
  * const carousel = await card.getCard(false);
- * 
+ *
  * // Создание галереи фотографий
  * const galleryCard = new VkCard();
  * galleryCard.isUsedGallery = true;
@@ -280,7 +283,7 @@ export interface IVkCard {
 export class VkCard extends TemplateCardTypes {
     /**
      * Получает карточку для отображения в ВКонтакте.
-     * 
+     *
      * Процесс работы:
      * 1. Проверяет количество изображений
      * 2. Если isOne=true или одно изображение:
@@ -291,10 +294,10 @@ export class VkCard extends TemplateCardTypes {
      *    - Загружает все изображения
      *    - Добавляет кнопки (до 3 на карточку)
      *    - Форматирует текст (заголовок и описание)
-     * 
+     *
      * @param {boolean} isOne - Флаг отображения только одного элемента
      * @returns {Promise<IVkCard | string[]>} Карточка или массив ID изображений
-     * 
+     *
      * @example
      * ```typescript
      * const card = new VkCard();
@@ -302,11 +305,11 @@ export class VkCard extends TemplateCardTypes {
      *     new Image('product1.jpg', 'Товар 1', 'Описание 1'),
      *     new Image('product2.jpg', 'Товар 2', 'Описание 2')
      * ];
-     * 
+     *
      * // Получить одну карточку
      * const singleCard = await card.getCard(true);
      * // singleCard = ['123456789']
-     * 
+     *
      * // Получить карусель
      * const carousel = await card.getCard(false);
      * // carousel = {
@@ -316,7 +319,7 @@ export class VkCard extends TemplateCardTypes {
      * //         { title: 'Товар 2', description: 'Описание 2', photo_id: '987654321' }
      * //     ]
      * // }
-     * 
+     *
      * // Получить галерею
      * card.isUsedGallery = true;
      * const gallery = await card.getCard(false);

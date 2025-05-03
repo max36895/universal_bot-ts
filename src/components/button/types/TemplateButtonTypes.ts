@@ -38,8 +38,6 @@ export abstract class TemplateButtonTypes {
     /**
      * Массив кнопок для отображения
      *
-     *                               о кнопках (заголовок, URL, действия и т.д.)
-     *
      * @example
      * ```typescript
      * const buttonHandler = new AlisaButton();
@@ -65,10 +63,10 @@ export abstract class TemplateButtonTypes {
      *
      * @abstract
      * @returns {any} - Кнопки в формате, специфичном для платформы:
-     *                  - Алиса/Маруся: массив объектов с title и url
-     *                  - Telegram: объект с inline_keyboard или keyboard
-     *                  - Viber: массив объектов с Text и ActionBody
-     *                  - VK: массив объектов с action и label
+     * - Алиса/Маруся: массив объектов с title и url
+     * - Telegram: объект с inline_keyboard или keyboard
+     * - Viber: массив объектов с Text и ActionBody
+     * - VK: массив объектов с action и label
      *
      * @example
      * ```typescript

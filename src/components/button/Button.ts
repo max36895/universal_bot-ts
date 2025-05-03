@@ -172,14 +172,26 @@ export class Button {
     /**
      * Создает новый экземпляр кнопки.
      * Инициализирует все поля значениями по умолчанию.
+     * @param {string} title Текст кнопки
+     * @param {string} url URL для перехода
+     * @param {TButtonPayload} payload Дополнительные данные
+     * @param {boolean} hide Тип отображения кнопки
+     * @param {IButtonOptions} options Дополнительные параметры
      */
-    public constructor() {
+    public constructor(
+        title: string | null = null,
+        url: string | null = null,
+        payload: TButtonPayload = [],
+        hide: boolean = Button.B_LINK,
+        options: IButtonOptions = {},
+    ) {
         this.type = null;
-        this.title = null;
-        this.url = null;
-        this.payload = [];
-        this.hide = Button.B_LINK;
-        this.options = {};
+        this.title = title;
+        this.url = url;
+        this.payload = payload;
+        this.hide = hide;
+        this.options = options;
+        this._init(title, url, payload, hide, options);
     }
 
     /**

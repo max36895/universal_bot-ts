@@ -20,7 +20,7 @@ import { IModelRes, TQueryCb } from '../interface';
  *
  * @interface IFileInfo
  */
-interface IFileInfo {
+export interface IFileInfo {
     /**
      * Содержимое файла в виде строки
      */
@@ -39,7 +39,7 @@ interface IFileInfo {
  *
  * @type {Object.<string, IFileInfo>}
  */
-type IFileData = { [key: string]: IFileInfo };
+export type IFileData = { [key: string]: IFileInfo };
 
 /**
  * Контроллер для работы с данными, хранящимися в JSON файлах

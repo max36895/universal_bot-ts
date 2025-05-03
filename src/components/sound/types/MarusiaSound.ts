@@ -27,10 +27,6 @@ import { SoundTokens } from '../../../models/SoundTokens';
  * const result = await marusiaSound.getSounds([
  *     { key: '#game_win#', sounds: [] }
  * ], 'Поздравляем с победой!');
- *
- * // Добавление паузы
- * const textWithPause = 'Привет' + MarusiaSound.getPause(1000) + 'мир!';
- * // textWithPause: 'Привет<speaker effect="silence" t="1s">мир!</speaker>'
  * ```
  */
 export class MarusiaSound implements TemplateSoundTypes {

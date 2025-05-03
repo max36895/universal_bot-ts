@@ -43,13 +43,13 @@ import { SoundTokens } from '../../../models/SoundTokens';
  *
  * // Добавление паузы
  * const textWithPause = 'Привет' + AlisaSound.getPause(1000) + 'мир!';
- * // textWithPause: 'Привет<speaker effect="silence" t="1s">мир!</speaker>'
+ * // textWithPause: 'Привет sil <[1000]>`мир!</speaker>'
  *
  * // Комбинирование эффектов и пауз
  * const complexText = `${alisaSound.S_EFFECT_MEGAPHONE}Внимание!${alisaSound.S_EFFECT_END}` +
  *     AlisaSound.getPause(1000) +
  *     `${alisaSound.S_EFFECT_PITCH_DOWN}Важное сообщение${alisaSound.S_EFFECT_END}`;
- * // complexText: '<speaker effect="megaphone">Внимание!</speaker><speaker effect="silence" t="1s"><speaker effect="pitch_down">Важное сообщение</speaker>'
+ * // complexText: '<speaker effect="megaphone">Внимание!</speaker>sil <[1000]>`<speaker effect="pitch_down">Важное сообщение</speaker>'
  * ```
  */
 export class AlisaSound implements TemplateSoundTypes {

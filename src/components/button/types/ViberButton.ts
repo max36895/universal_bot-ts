@@ -163,9 +163,9 @@ export class ViberButton extends TemplateButtonTypes {
      * Получение кнопок в формате Viber
      *
      * @returns {IViberButtonObject | null} - Объект с кнопками в формате Viber или null, если кнопок нет:
-     *                                        - DefaultHeight: флаг стандартной высоты
-     *                                        - BgColor: цвет фона
-     *                                        - Buttons: массив кнопок
+     * - DefaultHeight: флаг стандартной высоты
+     * - BgColor: цвет фона
+     * - Buttons: массив кнопок
      *
      * Поддерживаемые типы кнопок:
      * - reply: Кнопка-ответ

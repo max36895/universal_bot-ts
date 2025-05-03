@@ -108,7 +108,7 @@ export function similarText(first: string, second: string): number {
  * };
  * ```
  */
-interface FileOperationResult<T> {
+export interface FileOperationResult<T> {
     /**
      * Флаг успешности операции
      * true - операция выполнена успешно

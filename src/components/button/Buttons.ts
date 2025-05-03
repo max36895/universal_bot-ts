@@ -277,15 +277,15 @@ export class Buttons {
      * Возвращает массив кнопок, адаптированный для указанной платформы.
      *
      * @param {string} [type=null] - Тип кнопок (платформа). Если не указан, используется текущий тип.
-     *                               Доступные типы:
-     *                               - T_ALISA_BUTTONS: кнопки для Алисы
-     *                               - T_ALISA_CARD_BUTTON: кнопки для карточки Алисы
-     *                               - T_VK_BUTTONS: кнопки для VK
-     *                               - T_TELEGRAM_BUTTONS: кнопки для Telegram
-     *                               - T_VIBER_BUTTONS: кнопки для Viber
-     *                               - T_SMARTAPP_BUTTONS: кнопки для Сбер SmartApp
-     *                               - T_SMARTAPP_BUTTON_CARD: кнопки для карточки SmartApp
-     *                               - T_USER_APP_BUTTONS: кнопки для пользовательского приложения
+     * Доступные типы:
+     * - T_ALISA_BUTTONS: кнопки для Алисы
+     * - T_ALISA_CARD_BUTTON: кнопки для карточки Алисы
+     * - T_VK_BUTTONS: кнопки для VK
+     * - T_TELEGRAM_BUTTONS: кнопки для Telegram
+     * - T_VIBER_BUTTONS: кнопки для Viber
+     * - T_SMARTAPP_BUTTONS: кнопки для Сбер SmartApp
+     * - T_SMARTAPP_BUTTON_CARD: кнопки для карточки SmartApp
+     * - T_USER_APP_BUTTONS: кнопки для пользовательского приложения
      * @param {TemplateButtonTypes} [userButton=null] - Пользовательский класс кнопок для T_USER_APP_BUTTONS
      * @returns {T | null} Адаптированные кнопки для платформы или null, если тип не поддерживается
      *

@@ -50,6 +50,9 @@ export interface IYandexImagesCheckOutPlaceRequest extends IYandexApi {
      * @type {{ quota: IYandexCheckOutPlace }}
      */
     images: {
+        /**
+         * Информация о квоте хранилища изображений
+         */
         quota: IYandexCheckOutPlace;
     };
 }
@@ -76,6 +79,9 @@ export interface IYandexSoundsCheckOutPlaceRequest extends IYandexApi {
      * @type {{ quota: IYandexCheckOutPlace }}
      */
     sounds: {
+        /**
+         * Информация о квоте хранилища аудиофайлов
+         */
         quota: IYandexCheckOutPlace;
     };
 }

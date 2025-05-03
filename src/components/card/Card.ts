@@ -74,7 +74,7 @@ import { SmartAppCard } from './types/SmartAppCard';
  *
  * // Кастомные шаблоны для разных платформ
  *
- * // Алиса: BigImage
+ * // Кастомное переопределение ответа, на примере: Алиса - BigImage
  * const alisaCard = new Card();
  * alisaCard.template = {
  *     type: 'BigImage',
@@ -87,7 +87,7 @@ import { SmartAppCard } from './types/SmartAppCard';
  *     }
  * };
  *
- * // VK: Карусель
+ * // Кастомное переопределение ответа, на примере: VK - Карусель
  * const vkCard = new Card();
  * vkCard.template = {
  *     type: 'carousel',
@@ -105,7 +105,7 @@ import { SmartAppCard } from './types/SmartAppCard';
  *     }]
  * };
  *
- * // Telegram: HTML-разметка
+ * // Кастомное переопределение ответа, на примере: Telegram - HTML-разметка
  * const telegramCard = new Card();
  * telegramCard.template = {
  *     type: 'article',
@@ -119,7 +119,7 @@ import { SmartAppCard } from './types/SmartAppCard';
  *     }
  * };
  *
- * // Viber: Карусель
+ * // Кастомное переопределение ответа, на примере: Viber - Карусель
  * const viberCard = new Card();
  * viberCard.template = {
  *     type: 'carousel',
@@ -247,7 +247,7 @@ export class Card {
     }
 
     /**
-     * Устанавливает заголовок карточки.
+     * Устанавливает заголовок для карточки.
      * @param {string} title - Заголовок карточки
      * @returns {Card} this для цепочки вызовов
      * @example
@@ -261,7 +261,7 @@ export class Card {
     }
 
     /**
-     * Устанавливает описание карточки.
+     * Устанавливает описание для карточки.
      * @param {string} description - Описание карточки
      * @returns {Card} this для цепочки вызовов
      * @example
@@ -391,7 +391,7 @@ export class Card {
     }
 
     /**
-     * Получает карточку в формате текущей платформы.
+     * Получает карточку в формате для текущей платформы.
      * @param {TemplateCardTypes | null} [userCard=null] - Пользовательский шаблон карточки
      * @returns {Promise<any>} Карточка в формате текущей платформы
      *

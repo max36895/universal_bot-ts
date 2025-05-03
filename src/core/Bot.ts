@@ -46,7 +46,7 @@ export * from './interfaces/IBot';
  * Внутренний интерфейс для хранения информации о классе бота и его типе
  * Используется для определения подходящего обработчика запросов
  */
-interface IBotBotClassAndType {
+export interface IBotBotClassAndType {
     /** Класс для обработки запросов конкретной платформы */
     botClass: TemplateTypeModel | null;
     /** Тип платформы (T_ALISA, T_VK и т.д.) */
@@ -179,6 +179,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   }
      * });
      * ```
+     * @remarks
+     * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
+     * ```typescript
+     * bot.initConfig({
+     *     env: './.env', // путь до файла
+     * });
+     * ```
      */
     public initConfig(config: IAppConfig): void {
         if (config) {
@@ -198,6 +205,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   isDebug: true,
      *   isSaveLog: true,
      *   logPath: './logs'
+     * });
+     * ```
+     *
+     * @remarks
+     * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
+     * ```typescript
+     * bot.initConfig({
+     *     env: './.env', // путь до файла
      * });
      * ```
      */

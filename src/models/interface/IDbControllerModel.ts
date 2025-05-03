@@ -41,7 +41,13 @@ export type TKey = string | number | null;
  * @template TValue - Тип значения, хранимого в результате
  */
 export interface IDbControllerResult<TValue = unknown> {
+    /**
+     * Результат запроса, доступный по строковым ключам
+     */
     [keyStr: string]: TValue;
+    /**
+     * Результат запроса, доступный по числовым ключам
+     */
     [keyInt: number]: TValue;
 }
 

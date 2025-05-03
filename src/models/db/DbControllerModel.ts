@@ -56,7 +56,6 @@ import {
  * ```
  *
  * @class DbControllerModel
- * @implements IDbControllerModel
  */
 export abstract class DbControllerModel implements IDbControllerModel {
     /**
