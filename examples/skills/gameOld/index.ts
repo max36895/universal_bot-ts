@@ -17,5 +17,5 @@ bot.initBotController(logic);
 // }
 // bot.test(params);
 module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-    bot.start(req, res);
+    bot.startOld(req, res);
 };

@@ -19,8 +19,10 @@ import { IncomingMessage, ServerResponse } from 'http';
  *   Позволяет тестировать интеграции с внешними сервисами.
  * - prod: Запуск в релизном режиме для использования в продакшн среде.
  *   Все оптимизации включены, логирование минимально.
+ * - dev-online-old Запуск в режиме тестирования, с использованием webhook, в качестве тестового окружения в старом режиме.
+ * - prod-old Запуск в релизном режиме в старом режиме
  */
-export type TMode = 'dev' | 'dev-online' | 'prod';
+export type TMode = 'dev' | 'dev-online' | 'prod' | 'dev-online-old' | 'prod-old';
 
 /**
  * Настройки приложения
@@ -85,7 +87,12 @@ function _initParam(bot: Bot | BotTest, config: IConfig): void {
  * }, 'prod');
  * ```
  */
-export function run(config: IConfig, mode: TMode = 'prod'): unknown {
+export function run(
+    config: IConfig,
+    mode: TMode = 'prod',
+    hostname: string = 'localhost',
+    port: number = 3000,
+): unknown {
     let bot: BotTest | Bot;
     switch (mode) {
         case 'dev':
@@ -98,16 +105,27 @@ export function run(config: IConfig, mode: TMode = 'prod'): unknown {
             bot.initTypeInGet();
             _initParam(bot, config);
             mmApp.setDevMode(true);
-            module.exports = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-                bot.start(req, res);
-            };
-            return module;
+            return bot.start(hostname, port);
         case 'prod':
             bot = new Bot();
             bot.initTypeInGet();
             _initParam(bot, config);
-            module.exports = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-                bot.start(req, res);
+            return bot.start(hostname, port);
+        case 'dev-online-old':
+            bot = new Bot();
+            bot.initTypeInGet();
+            _initParam(bot, config);
+            mmApp.setDevMode(true);
+            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
+                bot.startOld(req, res);
+            };
+            return module;
+        case 'prod-old':
+            bot = new Bot();
+            bot.initTypeInGet();
+            _initParam(bot, config);
+            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
+                bot.startOld(req, res);
             };
             return module;
     }

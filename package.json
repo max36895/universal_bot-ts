@@ -24,7 +24,7 @@
         "test": "jest",
         "bt": "npm run build && npm test",
         "create": "umbot",
-        "doc": "typedoc",
+        "doc": "typedoc --excludePrivate --excludeExternals",
         "deploy": "npm run build && npm publish",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",

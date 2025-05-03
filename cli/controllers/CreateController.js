@@ -134,11 +134,29 @@ class CreateController {
      * @private
      */
     _generateFile(templateContent, fileName) {
-        const find = ['{{date}}', '{{time}}', '{{name}}', '{{className}}', '__className__', '{{}}'];
+        const find = [
+            '{{date}}',
+            '{{time}}',
+            '{{name}}',
+            '{{className}}',
+            '__className__',
+            '{{}}',
+            '{{hostname}}',
+            '{{port}}',
+        ];
         const name = this.#name.substr(0, 1).toUpperCase() + this.#name.substr(1);
         const date = `${new Date().getDay()}.${new Date().getMonth()}.${new Date().getFullYear()}`;
         const time = `${new Date().getHours()}:${new Date().getMinutes()}`;
-        const replace = [date, time, this.#name, name];
+        const replace = [
+            date,
+            time,
+            this.#name,
+            name,
+            name,
+            '',
+            '"' + (this.params?.hostname || 'localhost') + '"',
+            this.params?.port || 3000,
+        ];
         fileName = this._replace(find, replace, fileName);
         const content = this._replace(find, replace, templateContent);
         utils.fwrite(fileName, content);
@@ -251,8 +269,8 @@ class CreateController {
                 let path = '';
                 paths.forEach((dir) => {
                     path += `${dir}/`;
-                    if (dir !== './' && p !== '../') {
-                        if (!utils.isDir(path)) {
+                    if (dir !== './' && path !== '../') {
+                        if (!utils.is_dir(path)) {
                             fs.mkdirSync(path);
                         }
                     }

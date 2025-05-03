@@ -1,9 +1,3 @@
-/**
- * Модуль для работы с ботом
- * Содержит основной класс для инициализации и управления ботом
- *
- * @module core/Bot
- */
 import { TBotAuth, TBotContent } from './interfaces/IBot';
 import {
     IAppConfig,
@@ -32,7 +26,7 @@ import {
     IMarusiaWebhookResponse,
 } from '../platforms';
 import { UsersData } from '../models/UsersData';
-import { IncomingMessage, ServerResponse } from 'http';
+import { IncomingMessage, ServerResponse, createServer, Server } from 'http';
 
 /**
  * Результат выполнения бота - ответ, который будет отправлен пользователю
@@ -88,6 +82,7 @@ export interface IBotBotClassAndType {
  * ```
  */
 export class Bot<TUserData extends IUserData = IUserData> {
+    serverInst: Server | undefined;
     /**
      * Полученный запрос от пользователя
      * Может быть JSON-строкой, текстом или null
@@ -462,8 +457,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Запускает обработку HTTP-запроса
-     * Получает данные из запроса, обрабатывает их и отправляет ответ
+     * Запуск приложения через micro. Не рекомендуется к использованию, и в ближайщих обновлениях будет удалено.
+     * Оставлено для совместимости.
      *
      * @param {IncomingMessage} req - Входящий HTTP-запрос
      * @param {ServerResponse} res - HTTP-ответ
@@ -477,11 +472,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * });
      * ```
      */
-    public async start(
+    public async startOld(
         req: IncomingMessage,
         res: ServerResponse,
         userBotClass: TemplateTypeModel | null = null,
-    ): Promise<void> {
+    ) {
         const { json, send } = await require('micro');
         // Принимаем только POST-запросы:
         if (req.method !== 'POST') {
@@ -504,6 +499,78 @@ export class Bot<TUserData extends IUserData = IUserData> {
         } else {
             send(res, 400, 'Bad Request');
             return;
+        }
+    }
+
+    /**
+     * Запуск приложения через http
+     *
+     * @param {string} hostname Имя хоста, на котором будет запущено приложение
+     * @param {null} port Порт, на котором будет запущено приложение
+     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
+     * @return {void}
+     * @api
+     */
+    public start(
+        hostname: string,
+        port: number,
+        userBotClass: TemplateTypeModel | null = null,
+    ): void {
+        const send = (res: ServerResponse, statusCode: number, result: object | string) => {
+            res.statusCode = statusCode;
+            res.setHeader(
+                'Content-Type',
+                typeof result === 'object' ? 'text/plain' : 'application/json',
+            );
+            res.end(result);
+        };
+
+        this.close();
+
+        this.serverInst = createServer((req: IncomingMessage, res: ServerResponse) => {
+            // Принимаем только POST-запросы:
+            if (req.method !== 'POST') {
+                send(res, 400, 'Bad Request');
+                return;
+            }
+
+            let data: string = '';
+
+            req.on('data', (chunk: string) => {
+                data += chunk;
+            });
+
+            req.on('end', () => {
+                const query: TBotContent = JSON.parse(data);
+                if (query) {
+                    if (req.headers && req.headers.authorization) {
+                        this._auth = req.headers.authorization.replace('Bearer', '');
+                    }
+                    this.setContent(query);
+                    this.run(userBotClass)
+                        .then((value) => {
+                            send(res, value === 'notFound' ? 404 : 200, value);
+                        })
+                        .catch(() => {
+                            send(res, 404, 'notFound');
+                        });
+                } else {
+                    send(res, 400, 'Bad Request');
+                }
+            });
+        });
+
+        this.serverInst.listen(port, hostname, () => {
+            console.log(`Server running at http://${hostname}:${port}/`);
+        });
+    }
+
+    /**
+     * Закрывает сервер
+     */
+    public close(): void {
+        if (this.serverInst) {
+            this.serverInst.close();
         }
     }
 }
