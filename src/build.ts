@@ -2,7 +2,6 @@ import { BotTest, IBotTestParams } from './core/BotTest';
 import { IAppConfig, IAppParam, mmApp } from './mmApp';
 import { BotController } from './controller';
 import { Bot } from './core';
-import { IncomingMessage, ServerResponse } from 'http';
 
 /**
  * Набор методов, упрощающих запуск приложения
@@ -19,10 +18,8 @@ import { IncomingMessage, ServerResponse } from 'http';
  *   Позволяет тестировать интеграции с внешними сервисами.
  * - prod: Запуск в релизном режиме для использования в продакшн среде.
  *   Все оптимизации включены, логирование минимально.
- * - dev-online-old Запуск в режиме тестирования, с использованием webhook, в качестве тестового окружения в старом режиме.
- * - prod-old Запуск в релизном режиме в старом режиме
  */
-export type TMode = 'dev' | 'dev-online' | 'prod' | 'dev-online-old' | 'prod-old';
+export type TMode = 'dev' | 'dev-online' | 'prod';
 
 /**
  * Настройки приложения
@@ -111,22 +108,5 @@ export function run(
             bot.initTypeInGet();
             _initParam(bot, config);
             return bot.start(hostname, port);
-        case 'dev-online-old':
-            bot = new Bot();
-            bot.initTypeInGet();
-            _initParam(bot, config);
-            mmApp.setDevMode(true);
-            module.exports = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-                bot.startOld(req, res);
-            };
-            return module;
-        case 'prod-old':
-            bot = new Bot();
-            bot.initTypeInGet();
-            _initParam(bot, config);
-            module.exports = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-                bot.startOld(req, res);
-            };
-            return module;
     }
 }

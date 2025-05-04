@@ -556,52 +556,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Запускает HTTP-сервер для обработки запросов через micro. Не рекомендуется к использованию оставлено для совместимости.
-     * Рекомендуется использовать {@link start}
-     *
-     * @param {IncomingMessage} req - HTTP-запрос
-     * @param {ServerResponse} res - HTTP-ответ
-     * @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
-     *
-     * @example
-     * ```typescript
-     * // Использование с Express
-     * app.post('/webhook', async (req, res) => {
-     *   await bot.startOld(req, res);
-     * });
-     * ```
-     */
-    public async startOld(
-        req: IncomingMessage,
-        res: ServerResponse,
-        userBotClass: TemplateTypeModel | null = null,
-    ): Promise<void> {
-        const { json, send } = await require('micro');
-        // Принимаем только POST-запросы:
-        if (req.method !== 'POST') {
-            send(res, 400, 'Bad Request');
-            return;
-        }
-
-        const query = await json(req);
-        if (query) {
-            if (req.headers && req.headers.authorization) {
-                this._auth = req.headers.authorization.replace('Bearer', '');
-            }
-            this.setContent(query);
-            try {
-                const result = await this.run(userBotClass);
-                send(res, result === 'notFound' ? 404 : 200, result);
-            } catch (e) {
-                send(res, 404, 'notFound');
-            }
-        } else {
-            send(res, 400, 'Bad Request');
-            return;
-        }
-    }
-
-    /**
      * Запускает HTTP-сервер для обработки запросов
      * Создает сервер на указанном хосте и порту
      *

@@ -1,4 +1,4 @@
-import { IAppConfig } from '../../src/mmApp';
+import { IAppConfig } from 'umbot';
 
 export default function (): IAppConfig {
     return {
