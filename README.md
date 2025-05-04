@@ -142,11 +142,10 @@ npm install umbot
     "description": "Описание вашего проекта",
     "main": "index.js",
     "scripts": {
-        "start": "micro",
+        "start": "node ./dist/index.js",
         "build": "rm -rf dist/ && tsc"
     },
     "dependencies": {
-        "micro": "^9.3.4",
         "umbot": "*"
     }
 }
