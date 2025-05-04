@@ -7,7 +7,7 @@ import {
     ViberButton,
     IVkButtonObject,
     VkButton,
-    mmApp
+    mmApp,
 } from '../../src';
 
 const DEFAULT_URL = 'https://test.ru';
@@ -28,13 +28,17 @@ describe('Buttons test', () => {
         const button = new Button();
         mmApp.params.utm_text = null;
         button.initBtn('btn', 'https://google.com');
-        expect(button.url).toEqual('https://google.com?utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
+        expect(button.url).toEqual(
+            'https://google.com?utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
+        );
 
         button.initBtn('btn', 'https://google.com?utm_source=test');
         expect(button.url).toEqual('https://google.com?utm_source=test');
 
         button.initBtn('btn', 'https://google.com?data=test');
-        expect(button.url).toEqual('https://google.com?data=test&utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone');
+        expect(button.url).toEqual(
+            'https://google.com?data=test&utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
+        );
 
         mmApp.params.utm_text = 'my_utm_text';
         button.initBtn('btn', 'https://google.com');
@@ -45,31 +49,31 @@ describe('Buttons test', () => {
         const alisaButtons: IAlisaButton[] = [
             {
                 title: '1',
-                hide: true
+                hide: true,
             },
             {
                 title: '1',
                 hide: false,
-                url: DEFAULT_URL
+                url: DEFAULT_URL,
             },
             {
                 title: '2',
-                hide: true
+                hide: true,
             },
             {
                 title: '2',
                 hide: false,
-                url: DEFAULT_URL
+                url: DEFAULT_URL,
             },
             {
                 title: '3',
-                hide: true
+                hide: true,
             },
             {
                 title: '3',
                 hide: false,
-                url: DEFAULT_URL
-            }
+                url: DEFAULT_URL,
+            },
         ];
         expect(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS)).toEqual(alisaButtons);
 
@@ -77,34 +81,34 @@ describe('Buttons test', () => {
             {
                 title: 'btn',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
         defaultButtons.links = [
             {
                 title: 'link',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
 
         alisaButtons.push({
             title: 'btn',
             url: DEFAULT_URL,
             payload: 'test',
-            hide: true
+            hide: true,
         });
         alisaButtons.push({
             title: 'link',
             url: DEFAULT_URL,
             payload: 'test',
-            hide: false
+            hide: false,
         });
         expect(defaultButtons.getButtons(Buttons.T_ALISA_BUTTONS)).toEqual(alisaButtons);
     });
     it('Get buttons Alisa card', () => {
         expect(defaultButtons.getButtons(Buttons.T_ALISA_CARD_BUTTON)).toEqual({
-            text: '1'
+            text: '1',
         });
     });
 
@@ -115,43 +119,43 @@ describe('Buttons test', () => {
                 {
                     action: {
                         type: Button.VK_TYPE_TEXT,
-                        label: '1'
-                    }
+                        label: '1',
+                    },
                 },
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
                         link: DEFAULT_URL,
-                        label: '1'
-                    }
+                        label: '1',
+                    },
                 },
                 {
                     action: {
                         type: Button.VK_TYPE_TEXT,
-                        label: '2'
-                    }
+                        label: '2',
+                    },
                 },
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
                         link: DEFAULT_URL,
-                        label: '2'
-                    }
+                        label: '2',
+                    },
                 },
                 {
                     action: {
                         type: Button.VK_TYPE_TEXT,
-                        label: '3'
-                    }
+                        label: '3',
+                    },
                 },
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
                         link: DEFAULT_URL,
-                        label: '3'
-                    }
-                }
-            ]
+                        label: '3',
+                    },
+                },
+            ],
         };
         expect(defaultButtons.getButtons(Buttons.T_VK_BUTTONS)).toEqual(vkButtons);
 
@@ -159,37 +163,39 @@ describe('Buttons test', () => {
             {
                 title: 'btn',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
         defaultButtons.links = [
             {
                 title: 'link',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
         vkButtons.buttons.push({
             action: {
                 type: Button.VK_TYPE_LINK,
                 link: DEFAULT_URL,
                 label: 'btn',
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         });
         vkButtons.buttons.push({
             action: {
                 type: Button.VK_TYPE_LINK,
                 link: DEFAULT_URL,
                 label: 'link',
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         });
         expect(defaultButtons.getButtons(Buttons.T_VK_BUTTONS)).toEqual(vkButtons);
 
         defaultButtons.clear();
-        expect(defaultButtons.getButtons(Buttons.T_VK_BUTTONS)).toEqual({one_time: false, buttons: []});
-
+        expect(defaultButtons.getButtons(Buttons.T_VK_BUTTONS)).toEqual({
+            one_time: false,
+            buttons: [],
+        });
     });
     it('Get buttons Vk group', () => {
         const vkButtons: IVkButtonObject = {
@@ -200,31 +206,31 @@ describe('Buttons test', () => {
                         action: {
                             type: Button.VK_TYPE_TEXT,
                             label: '1',
-                            payload: '{}'
-                        }
+                            payload: '{}',
+                        },
                     },
                     {
                         action: {
                             type: Button.VK_TYPE_LINK,
                             link: DEFAULT_URL,
                             label: '1',
-                            payload: '{}'
-                        }
+                            payload: '{}',
+                        },
                     },
                     {
                         action: {
                             type: Button.VK_TYPE_TEXT,
                             label: '2',
-                            payload: '{}'
-                        }
+                            payload: '{}',
+                        },
                     },
                     {
                         action: {
                             type: Button.VK_TYPE_LINK,
                             link: DEFAULT_URL,
                             label: '2',
-                            payload: '{}'
-                        }
+                            payload: '{}',
+                        },
                     },
                 ],
                 [
@@ -232,26 +238,26 @@ describe('Buttons test', () => {
                         action: {
                             type: Button.VK_TYPE_TEXT,
                             label: '3',
-                            payload: '{}'
-                        }
+                            payload: '{}',
+                        },
                     },
                 ],
                 {
                     action: {
                         type: Button.VK_TYPE_LINK,
                         link: DEFAULT_URL,
-                        label: '3'
-                    }
-                }
-            ]
+                        label: '3',
+                    },
+                },
+            ],
         };
         defaultButtons.clear();
-        defaultButtons.addBtn('1', null, {}, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addLink('1', DEFAULT_URL, {}, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addBtn('2', null, {}, {[VkButton.GROUP_NAME]: 0});
-        defaultButtons.addLink('2', DEFAULT_URL, {}, {[VkButton.GROUP_NAME]: 0});
+        defaultButtons.addBtn('1', null, {}, { [VkButton.GROUP_NAME]: 0 });
+        defaultButtons.addLink('1', DEFAULT_URL, {}, { [VkButton.GROUP_NAME]: 0 });
+        defaultButtons.addBtn('2', null, {}, { [VkButton.GROUP_NAME]: 0 });
+        defaultButtons.addLink('2', DEFAULT_URL, {}, { [VkButton.GROUP_NAME]: 0 });
 
-        defaultButtons.addBtn('3', null, {}, {[VkButton.GROUP_NAME]: 1});
+        defaultButtons.addBtn('3', null, {}, { [VkButton.GROUP_NAME]: 1 });
         defaultButtons.addLink('3', DEFAULT_URL);
         expect(defaultButtons.getButtons(Buttons.T_VK_BUTTONS)).toEqual(vkButtons);
 
@@ -261,35 +267,33 @@ describe('Buttons test', () => {
                 url: DEFAULT_URL,
                 payload: {},
                 options: {
-                    [VkButton.GROUP_NAME]: 1
-                }
-            }
+                    [VkButton.GROUP_NAME]: 1,
+                },
+            },
         ];
         defaultButtons.links = [
             {
                 title: 'link',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
 
-        vkButtons.buttons[1].push(
-            {
-                action: {
-                    type: Button.VK_TYPE_LINK,
-                    link: DEFAULT_URL,
-                    label: 'btn',
-                    payload: '{}'
-                }
-            }
-        );
+        vkButtons.buttons[1].push({
+            action: {
+                type: Button.VK_TYPE_LINK,
+                link: DEFAULT_URL,
+                label: 'btn',
+                payload: '{}',
+            },
+        });
         vkButtons.buttons.push({
             action: {
                 type: Button.VK_TYPE_LINK,
                 link: DEFAULT_URL,
                 label: 'link',
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         });
         expect(defaultButtons.getButtons(Buttons.T_VK_BUTTONS)).toEqual(vkButtons);
     });
@@ -302,34 +306,34 @@ describe('Buttons test', () => {
                 {
                     Text: '1',
                     ActionType: ViberButton.T_REPLY,
-                    ActionBody: '1'
+                    ActionBody: '1',
                 },
                 {
                     Text: '1',
                     ActionType: ViberButton.T_OPEN_URL,
-                    ActionBody: DEFAULT_URL
+                    ActionBody: DEFAULT_URL,
                 },
                 {
                     Text: '2',
                     ActionType: ViberButton.T_REPLY,
-                    ActionBody: '2'
+                    ActionBody: '2',
                 },
                 {
                     Text: '2',
                     ActionType: ViberButton.T_OPEN_URL,
-                    ActionBody: DEFAULT_URL
+                    ActionBody: DEFAULT_URL,
                 },
                 {
                     Text: '3',
                     ActionType: ViberButton.T_REPLY,
-                    ActionBody: '3'
+                    ActionBody: '3',
                 },
                 {
                     Text: '3',
                     ActionType: ViberButton.T_OPEN_URL,
-                    ActionBody: DEFAULT_URL
+                    ActionBody: DEFAULT_URL,
                 },
-            ]
+            ],
         };
         expect(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS)).toEqual(viberButtons);
 
@@ -337,34 +341,32 @@ describe('Buttons test', () => {
             {
                 title: 'btn',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
         defaultButtons.links = [
             {
                 title: 'link',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
         viberButtons.Buttons.push({
             Text: 'btn',
             ActionType: ViberButton.T_OPEN_URL,
-            ActionBody: DEFAULT_URL
-        },);
+            ActionBody: DEFAULT_URL,
+        });
         viberButtons.Buttons.push({
             Text: 'link',
             ActionType: ViberButton.T_OPEN_URL,
-            ActionBody: DEFAULT_URL
-        },);
+            ActionBody: DEFAULT_URL,
+        });
         expect(defaultButtons.getButtons(Buttons.T_VIBER_BUTTONS)).toEqual(viberButtons);
     });
 
     it('Get buttons Telegram', () => {
         const telegramButtons: ITelegramKeyboard = {
-            keyboard: [
-                '1', '2', '3'
-            ]
+            keyboard: ['1', '2', '3'],
         };
 
         expect(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS)).toEqual(telegramButtons);
@@ -373,32 +375,34 @@ describe('Buttons test', () => {
             {
                 title: 'btn',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
         defaultButtons.links = [
             {
                 title: 'link',
                 url: DEFAULT_URL,
-                payload: 'test'
-            }
+                payload: 'test',
+            },
         ];
 
         telegramButtons.inline_keyboard = [];
         telegramButtons.inline_keyboard.push({
             text: 'btn',
             url: DEFAULT_URL,
-            callback_data: 'test'
+            callback_data: 'test',
         });
         telegramButtons.inline_keyboard.push({
             text: 'link',
             url: DEFAULT_URL,
-            callback_data: 'test'
+            callback_data: 'test',
         });
 
         expect(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS)).toEqual(telegramButtons);
 
         defaultButtons.clear();
-        expect(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS)).toEqual({remove_keyboard: true});
+        expect(defaultButtons.getButtons(Buttons.T_TELEGRAM_BUTTONS)).toEqual({
+            remove_keyboard: true,
+        });
     });
 });

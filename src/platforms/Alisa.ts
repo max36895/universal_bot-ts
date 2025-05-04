@@ -1,59 +1,79 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
+import { TemplateTypeModel } from './TemplateTypeModel';
 import {
     IAlisaBigImage,
     IAlisaButton,
-    IAlisaItemsList, IAlisaRequest, IAlisaRequestState,
+    IAlisaItemsList,
+    IAlisaRequest,
+    IAlisaRequestState,
     IAlisaResponse,
     IAlisaSession,
     IAlisaWebhookRequest,
-    IAlisaWebhookResponse
+    IAlisaWebhookResponse,
 } from './interfaces';
-import {BotController} from '../controller';
-import {mmApp} from '../mmApp';
-import {Text} from '../utils/standard/Text';
+import { BotController } from '../controller';
+import { mmApp } from '../mmApp';
+import { Text } from '../utils/standard/Text';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Алисы
+ * Класс для работы с платформой Яндекс Алиса
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате Алисы
  * @class Alisa
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Alisa extends TemplateTypeModel {
     /**
-     * @const string Версия Алисы.
+     * Версия API Алисы
+     * @private
      */
     private readonly VERSION: string = '1.0';
+
     /**
-     * @const float Максимально время, за которое должен ответить навык.
+     * Максимальное время ответа навыка в миллисекундах
+     * @private
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
+
     /**
-     * Информация о сессии пользователя.
+     * Информация о сессии пользователя
+     * @protected
      */
     protected _session: IAlisaSession | undefined;
+
     /**
-     * Использование хранилища. True - используется, false - нет.
+     * Флаг использования хранилища данных
+     * @protected
      */
     protected _isState: boolean = false;
+
     /**
-     * Название хранилища. Зависит от того, от куда берутся данные (локально, глобально).
+     * Название хранилища данных
+     * Может быть одним из:
+     * - user_state_update: данные пользователя
+     * - application_state: данные приложения
+     * - session_state: данные сессии
+     * @protected
      */
     protected _stateName: 'user_state_update' | 'application_state' | 'session_state' | null = null;
 
     /**
-     * Получение данных, необходимых для построения ответа пользователю.
-     *
-     * @return {Promise<IAlisaResponse>}
+     * Формирует ответ для пользователя
+     * Собирает текст, TTS, карточки и кнопки в единый объект ответа
+     * @returns {Promise<IAlisaResponse>} Объект ответа для Алисы
      * @private
      */
     protected async _getResponse(): Promise<IAlisaResponse> {
         const response: IAlisaResponse = {
             text: Text.resize(this.controller.text, 1024),
             tts: Text.resize(this.controller.tts, 1024),
-            end_session: this.controller.isEnd
+            end_session: this.controller.isEnd,
         };
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
-                response.card = <IAlisaItemsList | IAlisaBigImage>(await this.controller.card.getCards());
+                response.card = <IAlisaItemsList | IAlisaBigImage>(
+                    await this.controller.card.getCards()
+                );
                 if (!response.card) {
                     response.card = undefined;
                 }
@@ -65,8 +85,8 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Устанавливает состояние приложения
-     *
-     * @param state
+     * Определяет тип хранилища и сохраняет состояние в контроллере
+     * @param state Объект состояния из запроса
      * @private
      */
     private _setState(state: IAlisaRequestState): void {
@@ -83,9 +103,9 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Инициализирует введенные пользователем данные
-     *
-     * @param request
+     * Инициализирует команду пользователя
+     * Обрабатывает различные типы запросов и сохраняет команду в контроллере
+     * @param request Объект запроса от пользователя
      * @private
      */
     private _initUserCommand(request: IAlisaRequest): void {
@@ -109,6 +129,7 @@ export class Alisa extends TemplateTypeModel {
 
     /**
      * Устанавливает идентификатор пользователя
+     * Определяет ID пользователя из сессии или приложения
      * @private
      */
     private _setUserId(): void {
@@ -116,7 +137,10 @@ export class Alisa extends TemplateTypeModel {
             let userId: string | null = null;
             this._isState = false;
             if (mmApp.params.y_isAuthUser) {
-                if (typeof this._session.user !== 'undefined' && typeof this._session.user.user_id !== 'undefined') {
+                if (
+                    typeof this._session.user !== 'undefined' &&
+                    typeof this._session.user.user_id !== 'undefined'
+                ) {
                     userId = this._session.user.user_id;
                     this._isState = true;
                     this.controller.userToken = this._session.user.access_token || null;
@@ -124,7 +148,10 @@ export class Alisa extends TemplateTypeModel {
             }
 
             if (userId === null) {
-                if (typeof this._session.application !== 'undefined' && this._session.application.application_id !== 'undefined') {
+                if (
+                    typeof this._session.application !== 'undefined' &&
+                    this._session.application.application_id !== 'undefined'
+                ) {
                     userId = this._session.application.application_id;
                 } else {
                     userId = this._session.user_id as string;
@@ -136,29 +163,30 @@ export class Alisa extends TemplateTypeModel {
     }
 
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IAlisaWebhookRequest|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой навыка
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
      */
-    public async init(query: string | IAlisaWebhookRequest, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | IAlisaWebhookRequest,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
             let content: IAlisaWebhookRequest;
             if (typeof query === 'string') {
                 content = <IAlisaWebhookRequest>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
 
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (content.account_linking_complete_event) {
                     this.controller.userEvents = {
                         auth: {
-                            status: true
-                        }
+                            status: true,
+                        },
                     };
                     return true;
                 }
@@ -182,8 +210,9 @@ export class Alisa extends TemplateTypeModel {
             }
 
             mmApp.params.app_id = this._session.skill_id;
-            this.controller.isScreen = typeof this.controller.userMeta.interfaces.screen !== 'undefined';
-            /**
+            this.controller.isScreen =
+                typeof this.controller.userMeta.interfaces.screen !== 'undefined';
+            /*
              * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
              * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут
              */
@@ -203,15 +232,13 @@ export class Alisa extends TemplateTypeModel {
      *
      * @return {Promise<IAlisaWebhookResponse>}
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<IAlisaWebhookResponse> {
         const result: IAlisaWebhookResponse = {
             version: this.VERSION,
         };
         if (this.controller.isAuth && this.controller.userToken === null) {
-            result.start_account_linking = function () {
-            };
+            result.start_account_linking = function (): void {};
         } else {
             await this._initTTS();
             result.response = await this._getResponse();

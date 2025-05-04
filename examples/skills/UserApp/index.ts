@@ -1,8 +1,8 @@
-import {BotTest, IBotTestParams} from '../../../src/test';
+import { BotTest, IBotTestParams } from '../../../src/test';
 import skillStorageConfig from '../../config/skillStorageConfig';
 import skillDefaultParam from '../../config/skillDefaultParam';
-import {UserAppController} from './controller/UserAppController';
-import {UserApp} from './UserTemplate/Controller/UserApp';
+import { UserAppController } from './controller/UserAppController';
+import { UserApp } from './UserTemplate/Controller/UserApp';
 import userDataConfig from './UserTemplate/userDataConfig';
 
 const bot = new BotTest();
@@ -21,6 +21,6 @@ const params: IBotTestParams = {
     isShowStorage: false,
     isShowTime: true,
     userBotClass: userApp,
-    userBotConfig: userDataConfig
+    userBotConfig: userDataConfig,
 };
 bot.test(params);

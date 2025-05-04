@@ -1,16 +1,51 @@
-import {DbControllerModel} from './DbControllerModel';
-import {Sql} from './Sql';
-import {mmApp} from '../../mmApp';
-import {IQueryData, QueryData} from './QueryData';
-import {IModelRes} from '../interface';
-import {Text} from '../../utils/standard/Text';
+/**
+ * Модуль контроллера для работы с MongoDB
+ *
+ * Предоставляет функциональность для:
+ * - Подключения к MongoDB и управления соединением
+ * - Выполнения CRUD операций с данными
+ * - Валидации данных перед сохранением
+ * - Безопасного экранирования строк
+ *
+ * @module models/db/DbControllerMongoDb
+ */
+
+import { DbControllerModel } from './DbControllerModel';
+import { Sql } from './Sql';
+import { mmApp } from '../../mmApp';
+import { IQueryData, QueryData } from './QueryData';
+import { IModelRes, TQueryCb } from '../interface';
+import { Text } from '../../utils/standard/Text';
+import { Db, Document, Filter, OptionalId } from 'mongodb';
 
 /**
- * Контроллер, позволяющий работать с данными, хранящимися в базе данных. А именно поддерживает работу с MongoDb
+ * Контроллер для работы с данными в MongoDB
+ * Реализует базовые операции CRUD для MongoDB с поддержкой валидации и безопасности
+ *
+ * @example
+ * ```typescript
+ * // Создание контроллера
+ * const controller = new DbControllerMongoDb();
+ * controller.tableName = 'users';
+ *
+ * // Добавление записи
+ * const queryData = new QueryData();
+ * queryData.setData({ id: 1, name: 'John' });
+ * await controller.insert(queryData);
+ *
+ * // Поиск записей
+ * const result = await controller.select({ name: 'John' });
+ * ```
+ *
+ * @class DbControllerMongoDb
+ * @extends DbControllerModel
  */
 export class DbControllerMongoDb extends DbControllerModel {
     /**
-     * Подключение к базе данных.
+     * Подключение к базе данных MongoDB
+     * Инициализируется только если mmApp.isSaveDb равно true
+     *
+     * @private
      */
     private _db: Sql | null;
 
@@ -24,11 +59,18 @@ export class DbControllerMongoDb extends DbControllerModel {
     }
 
     /**
-     * Выполнение запроса на обновление записи в источнике данных
+     * Обновляет существующую запись в MongoDB
      *
-     * @param {QueryData} updateQuery Данные для обновления записи
-     * @return {Promise<Object>}
-     * @api
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setQuery({ id: 1 });
+     * queryData.setData({ name: 'John' });
+     * await controller.update(queryData);
+     * ```
+     *
+     * @param updateQuery - Данные для обновления
+     * @returns Promise с результатом операции
      */
     public async update(updateQuery: QueryData): Promise<any> {
         let update = updateQuery.getData();
@@ -37,119 +79,120 @@ export class DbControllerMongoDb extends DbControllerModel {
             update = this.validate(update);
             select = this.validate(select);
             if (this.primaryKeyName) {
-                return !!await this._db.query(async (client: any, db: any) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    const collection = db.collection(this.tableName);
-                    const result = new Promise((resolve) => {
-                        collection.updateOne(select, {$set: update}, (err: string, result: any) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res;
-                            }
-                            res = {
-                                status: true,
-                                data: result.modifiedCount
-                            };
-
-                            resolve(res);
-                            return res;
+                return !!(await this._db.query(async (client: any, db: Db) => {
+                    try {
+                        const collection = db.collection(this.tableName);
+                        const result = await collection.updateOne(select as Filter<Document>, {
+                            $set: update as Document,
                         });
-                    });
-                    return await result;
-                });
+                        return {
+                            status: true,
+                            data: result.modifiedCount,
+                        };
+                    } catch (err) {
+                        return {
+                            status: false,
+                            error: err instanceof Error ? err.message : 'Unknown error',
+                        };
+                    }
+                }));
             }
         }
         return null;
     }
 
     /**
-     * Выполнение запроса на добавление записи в источник данных
+     * Добавляет новую запись в MongoDB
      *
-     * @param {QueryData} insertQuery Данные для добавления записи
-     * @return {Promise<Object>}
-     * @api
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setData({ id: 1, name: 'John' });
+     * await controller.insert(queryData);
+     * ```
+     *
+     * @param insertQuery - Данные для добавления
+     * @returns Promise с результатом операции
      */
     public async insert(insertQuery: QueryData): Promise<any> {
         let insert = insertQuery.getData();
         if (this._db) {
             insert = this.validate(insert);
             if (this.primaryKeyName) {
-                return !!await this._db.query(async (client: any, db: any) => {
-                    let res: IModelRes = {
-                        status: false
-                    };
-                    const collection = db.collection(this.tableName);
-                    const result = new Promise((resolve) => {
-                        collection.insertOne(insert, (err: any, result: any) => {
-                            if (err) {
-                                res = {status: false, error: err};
-                                resolve(res);
-                                return res
-                            }
-                            res = {
-                                status: true,
-                                data: result.insertedId
-                            };
-                            resolve(res);
-                            return res;
-                        });
-                    });
-                    return await result;
-                });
+                return !!(await this._db.query(async (client: any, db: Db) => {
+                    try {
+                        const collection = db.collection(this.tableName);
+                        const result = await collection.insertOne(insert as OptionalId<Document>);
+                        return {
+                            status: true,
+                            data: result.insertedId,
+                        };
+                    } catch (err) {
+                        return {
+                            status: false,
+                            error: err instanceof Error ? err.message : 'Unknown error',
+                        };
+                    }
+                }));
             }
         }
         return null;
     }
 
     /**
-     * Выполнение запроса на удаление записи в источнике данных
+     * Удаляет запись из MongoDB
      *
-     * @param {QueryData} removeQuery Данные для удаления записи
-     * @return {Promise<boolean>}
-     * @api
+     * @example
+     * ```typescript
+     * const queryData = new QueryData();
+     * queryData.setQuery({ id: 1 });
+     * await controller.remove(queryData);
+     * ```
+     *
+     * @param removeQuery - Данные для удаления
+     * @returns Promise<boolean> - true если удаление успешно
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
         let remove = removeQuery.getQuery();
         if (this._db) {
             remove = this.validate(remove);
-            return !!await this._db.query(async (client: any, db: any) => {
-                let res: IModelRes = {
-                    status: false
-                };
-                const collection = db.collection(this.tableName);
-
-                const result = new Promise((resolve) => {
-                    collection.deleteOne(remove, (err: any, result: any) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            resolve(res);
-                            return res;
-                        }
-                        res = {
-                            status: true,
-                            data: result.deletedCount
-                        };
-                        resolve(res);
-                        return res;
-                    });
-                });
-                return await result;
-            });
+            return !!(await this._db.query(async (client: any, db: Db) => {
+                try {
+                    const collection = db.collection(this.tableName);
+                    const result = await collection.deleteOne(remove as Filter<Document>);
+                    return {
+                        status: true,
+                        data: result.deletedCount,
+                    };
+                } catch (err) {
+                    return {
+                        status: false,
+                        error: err instanceof Error ? err.message : 'Unknown error',
+                    };
+                }
+            }));
         }
         return false;
     }
 
     /**
-     * Выполнение произвольного запроса к источнику данных
+     * Выполняет произвольный запрос к MongoDB
      *
-     * @param {Function} callback Запрос, который необходимо выполнить
-     * @return {Object|Object[]}
-     * @api
+     * @example
+     * ```typescript
+     * const result = await controller.query(async (client, db) => {
+     *   const collection = db.collection('users');
+     *   return await collection.aggregate([
+     *     { $match: { age: { $gt: 18 } } },
+     *     { $group: { _id: '$city', count: { $sum: 1 } } }
+     *   ]).toArray();
+     * });
+     * ```
+     *
+     * @param callback - Функция обратного вызова с доступом к клиенту и базе данных
+     * @returns Результат выполнения запроса или null если нет подключения
      */
-    public query(callback: Function): any {
+    public query(callback: TQueryCb): any {
         if (this._db) {
             return this._db.query(callback);
         }
@@ -157,10 +200,21 @@ export class DbControllerMongoDb extends DbControllerModel {
     }
 
     /**
-     * Валидация значений полей для таблицы.
+     * Выполняет валидацию данных перед сохранением
+     * Проверяет типы данных и применяет правила валидации
      *
-     * @param {IQueryData} element
-     * @api
+     * @example
+     * ```typescript
+     * const validated = controller.validate({
+     *   id: 1,
+     *   name: 'John',
+     *   age: '25'
+     * });
+     * // Результат: { id: 1, name: 'John', age: 25 }
+     * ```
+     *
+     * @param element - Данные для валидации
+     * @returns Валидированные данные
      */
     public validate(element: IQueryData | null): IQueryData {
         if (!element) {
@@ -184,71 +238,74 @@ export class DbControllerMongoDb extends DbControllerModel {
                 rule.name.forEach((data) => {
                     if (type === 'string') {
                         if (typeof rule.max !== 'undefined') {
-                            // @ts-ignore
-                            element[data] = Text.resize(this[data], rule.max);
+                            element[data] = Text.resize(element[data] as string, rule.max);
                         }
-                        // @ts-ignore
-                        element[data] = this.escapeString(this[data]);
+                        element[data] = this.escapeString(element[data] as string);
                     } else {
-                        // @ts-ignore
-                        element[data] = +this[data];
+                        element[data] = +element[data];
                     }
-                })
-            })
+                });
+            });
         }
         return element;
     }
 
     /**
-     * Выполнение запроса на поиск записей в источнике данных
+     * Выполняет поиск записей в MongoDB
      *
-     * @param {IQueryData | null} where Данные для поиска значения
-     * @param {boolean} isOne Вывести только 1 запись.
-     * @return {Promise<IModelRes>}
+     * @example
+     * ```typescript
+     * // Поиск одной записи
+     * const one = await controller.select({ id: 1 }, true);
+     *
+     * // Поиск нескольких записей
+     * const many = await controller.select({ age: { $gt: 18 } });
+     * ```
+     *
+     * @param where - Условия поиска
+     * @param isOne - Флаг выборки одной записи
+     * @returns Promise с результатом запроса
      */
     public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
         if (this._db) {
-            return await this._db.query(async (client: any, db: any) => {
-                let res: IModelRes = {
-                    status: false
-                };
-                const collection = db.collection(this.tableName);
-                const result = new Promise((resolve) => {
-                    const callback = (err: any, results: any) => {
-                        if (err) {
-                            res = {status: false, error: err};
-                            resolve(res);
-                            return res;
-                        }
-                        res = {
-                            status: true,
-                            data: results
-                        };
-                        if (!results) {
-                            res.status = false;
-                        }
-                        resolve(res);
-                        return res;
-                    };
+            return await this._db.query(async (client: any, db: Db) => {
+                try {
+                    const collection = db.collection(this.tableName);
+                    let results;
                     if (isOne) {
-                        collection.findOne(where, callback);
+                        results = await collection.findOne((where as Filter<Document>) || {});
                     } else {
-                        collection.find(where).toArray(callback);
+                        results = await collection
+                            .find((where as Filter<Document>) || {})
+                            .toArray();
                     }
-                });
-                return await result;
+                    return {
+                        status: !!results,
+                        data: results,
+                    };
+                } catch (err) {
+                    return {
+                        status: false,
+                        error: err instanceof Error ? err.message : 'Unknown error',
+                    };
+                }
             });
         }
         return {
             status: false,
-            error: 'Не удалось получить данные'
+            error: 'Не удалось получить данные',
         };
     }
 
     /**
-     * Удаление подключения к БД
+     * Уничтожает подключение к MongoDB
+     *
+     * @example
+     * ```typescript
+     * controller.destroy();
+     * ```
      */
-    public destroy() {
+    public destroy(): void {
         if (this._db) {
             this._db.close();
             this._db = null;
@@ -256,11 +313,16 @@ export class DbControllerMongoDb extends DbControllerModel {
     }
 
     /**
-     * Декодирование текста(Текст становится приемлемым и безопасным для sql запроса).
+     * Экранирует специальные символы в строке
+     * Делает строку безопасной для использования в запросах
      *
-     * @param {string | number} text Исходный текст.
-     * @return string
-     * @api
+     * @example
+     * ```typescript
+     * const safe = controller.escapeString("O'Connor");
+     * ```
+     *
+     * @param text - Текст для экранирования
+     * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
         if (this._db) {
@@ -270,12 +332,17 @@ export class DbControllerMongoDb extends DbControllerModel {
     }
 
     /**
-     * Проверка подключения к источнику данных.
-     * При использовании БД, проверяется статус подключения.
-     * Если удалось подключиться, возвращается true, в противном случае false.
-     * При сохранении данных в файл, всегда возвращается true.
+     * Проверяет состояние подключения к MongoDB
      *
-     * @return {Promise<boolean>}
+     * @example
+     * ```typescript
+     * const isConnected = await controller.isConnected();
+     * if (isConnected) {
+     *   // Выполнение операций с базой данных
+     * }
+     * ```
+     *
+     * @returns Promise<boolean> - true если подключение активно
      */
     public async isConnected(): Promise<boolean> {
         if (this._db) {

@@ -1,22 +1,77 @@
-import {ISound} from '../interfaces';
-import {TemplateSoundTypes} from './TemplateSoundTypes';
-import {Text, isFile} from '../../../utils';
-import {SoundTokens} from '../../../models/SoundTokens';
-import {YandexSpeechKit} from '../../../api/YandexSpeechKit';
+import { ISound } from '../interfaces';
+import { TemplateSoundTypes } from './TemplateSoundTypes';
+import { Text, isFile } from '../../../utils';
+import { SoundTokens } from '../../../models/SoundTokens';
+import { YandexSpeechKit } from '../../../api/YandexSpeechKit';
 
 /**
- * Класс отвечающий за отправку голосовых сообщений в ВКонтакте.
  * @class VkSound
+ * Класс для работы со звуками в платформе ВКонтакте
+ *
+ * Предоставляет функциональность для:
+ * - Отправки аудиофайлов во ВКонтакте
+ * - Преобразования текста в речь (TTS) через Yandex SpeechKit
+ * - Отправки голосовых сообщений
+ *
+ * Основные возможности:
+ * - Поддержка различных форматов аудио (MP3, WAV, OGG)
+ * - Преобразование текста в речь через Yandex SpeechKit
+ * - Отправка аудиофайлов по URL или из локального хранилища
+ * - Поддержка голосовых сообщений
+ * - Создание токенов для аудиофайлов через SoundTokens
+ *
+ * @example
+ * ```typescript
+ * const vkSound = new VkSound();
+ *
+ * // Отправка аудиофайла
+ * const result = await vkSound.getSounds([
+ *     { key: 'music', sounds: ['path/to/music.mp3'] }
+ * ]);
+ *
+ * // Преобразование текста в речь и отправка
+ * const result = await vkSound.getSounds([], 'Привет, это голосовое сообщение!');
+ * ```
  */
 export class VkSound implements TemplateSoundTypes {
     /**
-     * Возвращаем массив с воспроизводимыми звуками.
-     * В случае если передается параметр text, то отправляется запрос в Yandex SpeechKit, для преобразования текста в голос.
+     * Обрабатывает звуки и текст для отправки во ВКонтакте
      *
-     * @param {ISound[]} sounds Массив звуков.
-     * @param {string} text Исходный текст.
-     * @return {Promise<string[]>}
-     * @api
+     * @param {ISound[]} sounds - Массив звуков для обработки:
+     * - key: уникальный идентификатор звука
+     * - sounds: массив путей к звуковым файлам
+     * @param {string} [text=''] - Исходный текст для TTS (опционально)
+     * @returns {Promise<string[]>} - Массив токенов для отправленных аудио
+     *
+     * Правила обработки:
+     * - Если передан текст, он преобразуется в речь через Yandex SpeechKit
+     * - Если переданы звуки, они отправляются как аудиофайлы
+     * - Поддерживаются локальные файлы и URL
+     * - Для всех аудио создаются токены через SoundTokens
+     * - Токены имеют тип T_VK
+     *
+     * @example
+     * ```typescript
+     * const vkSound = new VkSound();
+     *
+     * // Отправка аудиофайла по URL
+     * const result = await vkSound.getSounds([
+     *     { key: 'music', sounds: ['https://example.com/music.mp3'] }
+     * ]);
+     *
+     * // Отправка локального аудиофайла
+     * const result = await vkSound.getSounds([
+     *     { key: 'voice', sounds: ['/path/to/voice.ogg'] }
+     * ]);
+     *
+     * // Преобразование текста в речь
+     * const result = await vkSound.getSounds([], 'Привет, это голосовое сообщение!');
+     *
+     * // Комбинирование звуков и текста
+     * const result = await vkSound.getSounds([
+     *     { key: 'intro', sounds: ['/path/to/intro.mp3'] }
+     * ], 'А теперь послушайте сообщение');
+     * ```
      */
     public async getSounds(sounds: ISound[], text: string = ''): Promise<string[]> {
         const data: string[] = [];

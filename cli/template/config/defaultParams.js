@@ -9,6 +9,6 @@ exports.params = {
         host: '',
         user: '',
         pass: '',
-        database: ''
-    }
+        database: '',
+    },
 };

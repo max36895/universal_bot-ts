@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 const CreateController = require('./CreateController').create;
 
 const VERSION = '1.5.0';
@@ -7,8 +7,11 @@ const VERSION = '1.5.0';
  * Консольный скрипт, позволяющий создать пустой проект.
  * @param param
  */
-function main(param = {appName: null, command: null, mode: 'prod', hostname: 'localhost', port: 3000}) {
-    const infoText = "Доступные параметры:\n\ncreate (project name) - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.";
+function main(
+    param = { appName: null, command: null, mode: 'prod', hostname: 'localhost', port: 3000 },
+) {
+    const infoText =
+        'Доступные параметры:\n\ncreate (project name) - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.';
     if (param && param.command) {
         switch (param.command) {
             case 'create':

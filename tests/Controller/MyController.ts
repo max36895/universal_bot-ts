@@ -1,18 +1,22 @@
-import {BotController} from '../../src/controller';
+import { BotController } from '../../src/controller';
+import { IAppIntent } from '../../src';
 
 export class MyController extends BotController {
+    actionName: string;
+
     constructor() {
         super();
     }
 
-    action(intentName: string) {
+    action(intentName: string): void {
+        this.actionName = intentName;
     }
 
-    testIntent(text: string) {
+    testIntent(text: string): string {
         return BotController._getIntent(text);
     }
 
-    testIntents() {
+    testIntents(): IAppIntent[] {
         return BotController._intents();
     }
 }

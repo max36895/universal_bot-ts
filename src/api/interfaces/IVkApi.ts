@@ -1,333 +1,893 @@
+/**
+ * Тип идентификатора получателя в VK
+ * @typedef {(string | number)} TVkPeerId
+ * - string: для публичных страниц и групп
+ * - number: для пользователей и чатов
+ */
 export type TVkPeerId = string | number;
+
+/**
+ * Тип документа в VK
+ * @typedef {('doc' | 'audio_message' | 'graffiti')} TVkDocType
+ * - doc: обычный документ
+ * - audio_message: голосовое сообщение
+ * - graffiti: граффити
+ */
 export type TVkDocType = 'doc' | 'audio_message' | 'graffiti';
 
+/**
+ * Базовый интерфейс для ответов от VK API
+ *
+ * @example
+ * ```typescript
+ * // Успешный ответ
+ * const successResponse: IVkApi<{id: number}> = {
+ *   response: { id: 123456789 }
+ * };
+ *
+ * // Ответ с ошибкой
+ * const errorResponse: IVkApi = {
+ *   error: "Invalid request"
+ * };
+ * ```
+ */
 export interface IVkApi<T = {}> {
+    /**
+     * Ошибка, если таковая имеется
+     * @type {string}
+     */
     error?: string;
+
+    /**
+     * Ответ от API
+     * @type {T}
+     */
     response?: T;
 }
 
+/**
+ * Интерфейс для загрузки файла в VK
+ *
+ * @example
+ * ```typescript
+ * const uploadFile: IVkUploadFile = {
+ *   file: "/path/to/file.jpg",
+ *   photo: "photo123456789_987654321",
+ *   server: "123456",
+ *   hash: "abcdef123456789"
+ * };
+ * ```
+ */
 export interface IVkUploadFile extends IVkApi {
+    /**
+     * Путь к файлу
+     * @type {string}
+     */
     file: string;
+
+    /**
+     * Путь к фотографии
+     * @type {string}
+     */
     photo: string;
+
+    /**
+     * Сервер для загрузки
+     * @type {string}
+     */
     server: string;
+
+    /**
+     * Хэш для проверки загрузки
+     * @type {string}
+     */
     hash: string;
 }
 
+/**
+ * Интерфейс для параметров метода users.get в VK API
+ *
+ * @example
+ * ```typescript
+ * const params: IVkParamsUsersGet = {
+ *   user_ids: ["123456789", "durov"],
+ *   fields: ["photo_200", "status", "online"],
+ *   name_case: "nom"
+ * };
+ * ```
+ */
 export interface IVkParamsUsersGet {
     /**
-     * User IDs or screen names ('screen_name'). By default, current user ID.
+     * ID пользователей или короткие адреса
+     * @type {string[]}
+     * По умолчанию - ID текущего пользователя
      */
     user_ids: string[];
+
     /**
-     * Profile fields to return. Sample values: 'nickname', 'screen_name', 'sex', 'bdate' (birthdate), 'city', 'country', 'timezone', 'photo', 'photo_medium', 'photo_big', 'has_mobile', 'contacts', 'education', 'online', 'counters', 'relation', 'last_seen', 'activity', 'can_write_private_message', 'can_see_all_posts', 'can_post', 'universities'.
+     * Поля профиля для получения
+     * @type {string[]}
+     * Возможные значения: nickname, screen_name, sex, bdate, city, country, timezone, photo, photo_medium, photo_big, has_mobile, contacts, education, online, counters, relation, last_seen, activity, can_write_private_message, can_see_all_posts, can_post, universities
      */
     fields: string[];
+
     /**
-     * Case for declension of user name and surname: 'nom' — nominative (default), 'gen' — genitive , 'dat' — dative, 'acc' — accusative , 'ins' — instrumental , 'abl' — prepositional.
+     * Падеж для склонения имени и фамилии
+     * @type {string}
+     * nom - именительный (по умолчанию)
+     * gen - родительный
+     * dat - дательный
+     * acc - винительный
+     * ins - творительный
+     * abl - предложный
      */
     name_case: string;
 }
 
+/**
+ * Интерфейс для параметров метода messages.send в VK API
+ *
+ * @example
+ * ```typescript
+ * // Отправка текстового сообщения
+ * const textMessage: IVkParams = {
+ *   peer_id: 123456789,
+ *   message: "Hello, world!",
+ *   random_id: 123456789
+ * };
+ *
+ * // Отправка сообщения с вложениями
+ * const messageWithAttachments: IVkParams = {
+ *   peer_id: 123456789,
+ *   attachments: ["photo123456789_987654321", "doc123456789_987654321"],
+ *   random_id: 123456789
+ * };
+ *
+ * // Отправка сообщения с клавиатурой
+ * const messageWithKeyboard: IVkParams = {
+ *   peer_id: 123456789,
+ *   message: "Choose an option:",
+ *   keyboard: {
+ *     one_time: true,
+ *     buttons: [
+ *       [
+ *         {
+ *           action: {
+ *             type: "text",
+ *             label: "Button 1"
+ *           }
+ *         }
+ *       ]
+ *     ]
+ *   },
+ *   random_id: 123456789
+ * };
+ * ```
+ */
 export interface IVkParams {
     /**
-     * User ID (by default — current user).
+     * ID пользователя
+     * @type {number}
+     * По умолчанию - текущий пользователь
      */
     user_id?: number;
+
     /**
-     * Unique identifier to avoid resending the message.
+     * Уникальный идентификатор для избежания повторной отправки сообщения
+     * @type {number}
      */
     random_id?: number;
+
     /**
-     * Destination ID. "For user: 'User ID', e.g. '12345'. For chat: '2000000000' + 'chat_id', e.g. '2000000001'. For community: '- community ID', e.g. '-12345'. ".
+     * ID получателя
+     * @type {number}
+     * Для пользователя: ID пользователя
+     * Для чата: 2000000000 + ID чата
+     * Для сообщества: -ID сообщества
      */
     peer_id?: number;
+
     /**
-     * User's short address (for example, 'illarionov').
+     * Короткий адрес пользователя
+     * @type {string}
+     * Например, 'illarionov'
      */
     domain?: string;
+
     /**
-     * ID of conversation the message will relate to.
+     * ID беседы
+     * @type {number}
      */
     chat_id?: number;
+
     /**
-     * IDs of message recipients (if new conversation shall be started).
+     * ID получателей сообщения
+     * @type {number[]}
+     * Используется при создании новой беседы
      */
     user_ids?: number[];
+
     /**
-     * (Required if 'attachments' is not set.) Text of the message.
+     * Текст сообщения
+     * @type {string}
+     * Обязателен, если не указаны вложения
      */
     message?: string;
+
     /**
-     * Geographical latitude of a check-in, in degrees (from -90 to 90).
+     * Географическая широта
+     * @type {number}
+     * От -90 до 90 градусов
      */
     lat?: number;
+
     /**
-     * Geographical longitude of a check-in, in degrees (from -180 to 180).
+     * Географическая долгота
+     * @type {number}
+     * От -180 до 180 градусов
      */
     long?: number;
+
     /**
-     * (Required if 'message' is not set.) List of objects attached to the message, separated by commas, in the following format: "<owner_id>_<media_id>", '' — Type of media attachment: 'photo' — photo, 'video' — video, 'audio' — audio, 'doc' — document, 'wall' — wall post, '<owner_id>' — ID of the media attachment owner. '<media_id>' — media attachment ID. Example: "photo100172_166443618".
+     * Список вложений
+     * @type {string[]}
+     * Обязателен, если не указан текст сообщения
+     * Формат: "<owner_id>_<media_id>"
+     * Пример: "photo100172_166443618"
      */
     attachments?: string[];
-    reply_to?: number;
+
     /**
-     * ID of forwarded messages, separated with a comma. Listed messages of the sender will be shown in the message body at the recipient's. Example: "123,431,544".
+     * ID сообщения, на которое отвечаем
+     * @type {number}
+     */
+    reply_to?: number;
+
+    /**
+     * ID пересылаемых сообщений
+     * @type {number[]}
+     * Разделяются запятой
+     * Пример: "123,431,544"
      */
     forward_messages?: number[];
-    forward?: string;
+
     /**
-     * Sticker id.
+     * Параметры пересылки
+     * @type {string}
+     */
+    forward?: string;
+
+    /**
+     * ID стикера
+     * @type {number}
      */
     sticker_id?: number;
+
     /**
-     * Group ID (for group messages with group access token).
+     * ID группы
+     * @type {number}
+     * Для сообщений от имени группы
      */
     group_id?: number;
+
+    /**
+     * Клавиатура
+     * @type {string | object}
+     */
     keyboard?: string | object;
+
+    /**
+     * Полезная нагрузка
+     * @type {string}
+     */
     payload?: string;
+
+    /**
+     * Отключить разбор ссылок
+     * @type {boolean}
+     */
     dont_parse_links?: boolean;
+
+    /**
+     * Отключить упоминания
+     * @type {boolean}
+     */
     disable_mentions?: boolean;
+
+    /**
+     * Шаблон сообщения
+     * @type {any}
+     */
     template?: any;
 }
 
+/**
+ * Интерфейс для идентификаторов пользователей
+ *
+ * @example
+ * ```typescript
+ * const userIds: IVkUsersIds = {
+ *   peer_id: 123456789,
+ *   message_id: 987654321
+ * };
+ * ```
+ */
 export interface IVkUsersIds {
     /**
-     * Идентификатор назначения
+     * ID получателя
+     * @type {number}
      */
     peer_id?: number;
+
     /**
-     * Идентификатор сообщения
+     * ID сообщения
+     * @type {number}
      */
     message_id?: number;
-    error?: any
+
+    /**
+     * Ошибка, если таковая имеется
+     * @type {any}
+     */
+    error?: any;
 }
 
+/**
+ * Интерфейс для отправки сообщения в VK
+ *
+ * @example
+ * ```typescript
+ * const sendMessage: IVKSendMessage = {
+ *   response: 123456789,
+ *   user_ids: [
+ *     {
+ *       peer_id: 123456789,
+ *       message_id: 987654321
+ *     }
+ *   ]
+ * };
+ * ```
+ */
 export interface IVKSendMessage extends IVkApi<number> {
-    user_ids?: IVkUsersIds[]
+    /**
+     * Массив идентификаторов пользователей
+     * @type {IVkUsersIds[]}
+     */
+    user_ids?: IVkUsersIds[];
 }
 
+/**
+ * Интерфейс для информации о пользователе в VK
+ *
+ * @example
+ * ```typescript
+ * const user: IVkUsersGet = {
+ *   id: 123456789,
+ *   first_name: "John",
+ *   last_name: "Doe",
+ *   is_closed: false,
+ *   can_access_closed: true
+ * };
+ * ```
+ */
 export interface IVkUsersGet extends IVkApi {
     /**
-     * Идентификатор пользователя
+     * ID пользователя
+     * @type {number}
      */
     id: number;
+
     /**
      * Имя пользователя
+     * @type {string}
      */
     first_name: string;
+
     /**
      * Фамилия пользователя
+     * @type {string}
      */
     last_name: string;
+
     /**
+     * Статус страницы
+     * @type {string}
      * Возвращается, если страница удалена или заблокирована
      */
     deactivated?: string;
+
     /**
      * Скрыт ли профиль настройками приватности
+     * @type {boolean}
      */
     is_closed: boolean;
+
     /**
-     * Может ли текущий пользователь видеть профиль при is_closed = 1 (например, он есть в друзьях).
+     * Может ли текущий пользователь видеть профиль
+     * @type {boolean}
+     * Актуально при is_closed = 1
      */
     can_access_closed: boolean;
 }
 
+/**
+ * Интерфейс для сервера загрузки фотографий в VK
+ *
+ * @example
+ * ```typescript
+ * const uploadServer: IVkUploadServer = {
+ *   response: {
+ *     upload_url: "https://upload.vk.com/upload.php",
+ *     album_id: "123456789",
+ *     group_id: "987654321"
+ *   }
+ * };
+ * ```
+ */
 export interface IVkUploadServer extends IVkApi {
     /**
-     * Адрес сервера для загрузки изображения
+     * Адрес сервера для загрузки
+     * @type {string}
      */
     upload_url: string;
+
     /**
-     * Идентификатор альбома
+     * ID альбома
+     * @type {string}
      */
     album_id?: string;
+
     /**
-     * Идентификатор сообщества
+     * ID сообщества
+     * @type {string}
      */
     group_id?: string;
 }
 
+/**
+ * Интерфейс для сохранения фотографии в VK
+ *
+ * @example
+ * ```typescript
+ * const savedPhoto: IVkPhotosSave = {
+ *   response: [{
+ *     id: 123456789,
+ *     pid: 987654321,
+ *     aid: 123456,
+ *     owner_id: 123456789,
+ *     src: "https://vk.com/photo123456789_987654321",
+ *     src_big: "https://vk.com/photo123456789_987654321_big",
+ *     src_small: "https://vk.com/photo123456789_987654321_small",
+ *     created: 1234567890,
+ *     src_xbig: "https://vk.com/photo123456789_987654321_xbig",
+ *     src_xxbig: "https://vk.com/photo123456789_987654321_xxbig"
+ *   }]
+ * };
+ * ```
+ */
 export interface IVkPhotosSave extends IVkApi {
     /**
-     * Идентификатор изображения
+     * ID изображения
+     * @type {number}
      */
     id: number;
-    pid: number;
-    aid: number;
+
     /**
-     * Идентификатор пользователя, загрузившего изображение
+     * ID изображения
+     * @type {number}
+     */
+    pid: number;
+
+    /**
+     * ID альбома
+     * @type {number}
+     */
+    aid: number;
+
+    /**
+     * ID владельца изображения
+     * @type {number}
      */
     owner_id: number;
+
     /**
-     * Расположение изображения
+     * URL изображения
+     * @type {string}
      */
     src: string;
+
     /**
-     * Расположение большой версии изображения
+     * URL большой версии изображения
+     * @type {string}
      */
     src_big: string;
+
     /**
-     * Расположение маленькой версии изображения
+     * URL маленькой версии изображения
+     * @type {string}
      */
     src_small: string;
+
     /**
-     * Дата загрузки изображения в unix time
+     * Дата загрузки
+     * @type {number}
+     * Unix timestamp
      */
     created: number;
+
     /**
-     * Для изображений с большим разрешением
+     * URL очень большой версии изображения
+     * @type {string}
      */
     src_xbig: string;
+
     /**
-     * Для изображений с большим разрешением
+     * URL максимально большой версии изображения
+     * @type {string}
      */
     src_xxbig: string;
 }
 
+/**
+ * Базовый интерфейс для информации о документе
+ *
+ * @example
+ * ```typescript
+ * const docInfo: IVkDocInfo = {
+ *   id: 123456789,
+ *   owner_id: 987654321
+ * };
+ * ```
+ */
 interface IVkDocInfo {
     /**
-     * Идентификатор документа
+     * ID документа
+     * @type {number}
      */
     id: number;
+
     /**
-     * Идентификатор пользователя, загрузившего документ
+     * ID владельца документа
+     * @type {number}
      */
     owner_id: number;
 }
 
+/**
+ * Интерфейс для информации о граффити
+ *
+ * @example
+ * ```typescript
+ * const graffiti: IVkGraffiti = {
+ *   id: 123456789,
+ *   owner_id: 987654321,
+ *   url: "https://vk.com/doc123456789_987654321",
+ *   width: 800,
+ *   height: 600
+ * };
+ * ```
+ */
 export interface IVkGraffiti extends IVkDocInfo {
     /**
-     * Адрес документа, по которому его можно загрузить
+     * URL документа
+     * @type {string}
      */
     url: string;
+
     /**
-     * Ширина изображения в px
+     * Ширина изображения
+     * @type {number}
      */
     width: number;
+
     /**
-     * Высота изображения в px
+     * Высота изображения
+     * @type {number}
      */
     height: number;
 }
 
+/**
+ * Интерфейс для информации о голосовом сообщении
+ *
+ * @example
+ * ```typescript
+ * const audioMessage: IVkAudioMessageInfo = {
+ *   duration: 30,
+ *   waleform: [0, 1, 2, 3, 4, 5],
+ *   link_ogg: "https://vk.com/audio_message123456789_987654321.ogg",
+ *   link_mp3: "https://vk.com/audio_message123456789_987654321.mp3"
+ * };
+ * ```
+ */
 export interface IVkAudioMessageInfo {
     /**
-     * Длительность аудио сообщения в секундах
+     * Длительность в секундах
+     * @type {number}
      */
     duration: number;
+
     /**
-     * Массив значений для визуального отображения звука
+     * Массив значений для визуализации звука
+     * @type {number[]}
      */
     waleform: number[];
+
     /**
-     * .ogg файла
+     * URL .ogg файла
+     * @type {string}
      */
     link_ogg?: string;
+
     /**
-     * .mp3 файла
+     * URL .mp3 файла
+     * @type {string}
      */
     link_mp3?: string;
 }
 
-export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {
+/**
+ * Интерфейс для голосового сообщения
+ *
+ * @example
+ * ```typescript
+ * const audioMessage: IVkAudioMessage = {
+ *   id: 123456789,
+ *   owner_id: 987654321,
+ *   duration: 30,
+ *   waleform: [0, 1, 2, 3, 4, 5],
+ *   link_ogg: "https://vk.com/audio_message123456789_987654321.ogg",
+ *   link_mp3: "https://vk.com/audio_message123456789_987654321.mp3"
+ * };
+ * ```
+ */
+export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {}
 
-}
-
+/**
+ * Интерфейс для предпросмотра документа
+ *
+ * @example
+ * ```typescript
+ * const preview: IVkPreview = {
+ *   photo: [
+ *     "https://vk.com/photo123456789_987654321_s",
+ *     "https://vk.com/photo123456789_987654321_m",
+ *     "https://vk.com/photo123456789_987654321_x"
+ *   ],
+ *   graffiti: {
+ *     src: "https://vk.com/graffiti123456789_987654321",
+ *     width: 800,
+ *     height: 600
+ *   },
+ *   audio_message: {
+ *     duration: 30,
+ *     waleform: [0, 1, 2, 3, 4, 5],
+ *     link_ogg: "https://vk.com/audio_message123456789_987654321.ogg",
+ *     link_mp3: "https://vk.com/audio_message123456789_987654321.mp3"
+ *   }
+ * };
+ * ```
+ */
 export interface IVkPreview {
     /**
-     * Массив копий изображения в разных размерах. Подробное описание структуры (https://vk.com/dev/objects/photo_sizes)
+     * Массив копий изображения
+     * @type {string[]}
+     * Подробное описание структуры: https://vk.com/dev/objects/photo_sizes
      */
     photo?: string[];
+
     /**
      * Данные о граффити
+     * @type {Object}
      */
     graffiti?: {
         /**
-         * url Документа с граффити
+         * URL документа с граффити
+         * @type {string}
          */
         src: string;
+
         /**
-         * Ширина изображения в px
+         * Ширина изображения
+         * @type {number}
          */
         width: number;
+
         /**
-         * Высота изображения в px
+         * Высота изображения
+         * @type {number}
          */
         height: number;
-    }
+    };
+
     /**
-     * Данные об аудиосообщении
+     * Данные о голосовом сообщении
+     * @type {IVkAudioMessageInfo}
      */
-    audio_message?: IVkAudioMessageInfo
+    audio_message?: IVkAudioMessageInfo;
 }
 
+/**
+ * Интерфейс для документа
+ *
+ * @example
+ * ```typescript
+ * const doc: IVKDoc = {
+ *   id: 123456789,
+ *   owner_id: 987654321,
+ *   url: "https://vk.com/doc123456789_987654321",
+ *   title: "document.pdf",
+ *   size: 1024,
+ *   ext: "pdf",
+ *   date: 1234567890,
+ *   type: 1,
+ *   preview: {
+ *     photo: [
+ *       "https://vk.com/photo123456789_987654321_s",
+ *       "https://vk.com/photo123456789_987654321_m",
+ *       "https://vk.com/photo123456789_987654321_x"
+ *     ]
+ *   }
+ * };
+ * ```
+ */
 export interface IVKDoc extends IVkDocInfo {
     /**
-     * Адрес документа, по которому его можно загрузить
+     * URL документа
+     * @type {string}
      */
     url: string;
+
     /**
      * Название документа
+     * @type {string}
      */
     title: string;
+
     /**
-     * Размер документа в байтах
+     * Размер в байтах
+     * @type {number}
      */
     size: number;
+
     /**
-     * Расширение документа
+     * Расширение файла
+     * @type {string}
      */
     ext: string;
+
     /**
-     * Дата добавления в формате unix time
+     * Дата добавления
+     * @type {number}
+     * Unix timestamp
      */
     date: number;
+
     /**
-     * Тип документа. (1 - текстовый документ; 2 - архивы; 3 - gif; 4 - изображения; 5 - аудио; 6 - видео; 7 - электронные книги; 8 - неизвестно)
+     * Тип документа
+     * @type {number}
+     * 1 - текстовый документ
+     * 2 - архивы
+     * 3 - gif
+     * 4 - изображения
+     * 5 - аудио
+     * 6 - видео
+     * 7 - электронные книги
+     * 8 - неизвестно
      */
     type: number;
-    preview: IVkPreview
+
+    /**
+     * Данные для предпросмотра
+     * @type {IVkPreview}
+     */
+    preview: IVkPreview;
 }
 
+/**
+ * Интерфейс для сохранения документа
+ *
+ * @example
+ * ```typescript
+ * const savedDoc: IVkDocSave = {
+ *   response: {
+ *     type: "doc",
+ *     id: 123456789,
+ *     owner_id: 987654321,
+ *     url: "https://vk.com/doc123456789_987654321",
+ *     title: "document.pdf",
+ *     size: 1024,
+ *     ext: "pdf",
+ *     date: 1234567890,
+ *     type: 1,
+ *     preview: {
+ *       photo: [
+ *         "https://vk.com/photo123456789_987654321_s",
+ *         "https://vk.com/photo123456789_987654321_m",
+ *         "https://vk.com/photo123456789_987654321_x"
+ *       ]
+ *     }
+ *   }
+ * };
+ * ```
+ */
 export interface IVkDocSave extends IVkDocInfo, IVkApi {
     /**
-     * Тип загруженного документа
+     * Тип документа
+     * @type {TVkDocType}
      */
     type: TVkDocType;
-    graffiti?: IVkGraffiti;
-    audio_message?: IVkAudioMessage;
-    doc?: IVKDoc;
+
     /**
-     * Идентификатор документа
+     * Данные о граффити
+     * @type {IVkGraffiti}
+     */
+    graffiti?: IVkGraffiti;
+
+    /**
+     * Данные о голосовом сообщении
+     * @type {IVkAudioMessage}
+     */
+    audio_message?: IVkAudioMessage;
+
+    /**
+     * Данные о документе
+     * @type {IVKDoc}
+     */
+    doc?: IVKDoc;
+
+    /**
+     * ID документа
+     * @type {number}
      */
     id: number;
+
     /**
-     * Адрес документа, по которому его можно загрузить (Для граффити и документа)
+     * URL документа
+     * @type {string}
+     * Для граффити и документа
      */
     url: string;
+
     /**
-     * Ширина изображения в px (Для граффити)
+     * Ширина изображения
+     * @type {number}
+     * Для граффити
      */
     width?: number;
+
     /**
-     * Высота изображения в px (Для граффити)
+     * Высота изображения
+     * @type {number}
+     * Для граффити
      */
     height?: number;
+
     /**
-     * Длительность аудио сообщения в секундах(Для Голосового сообщения)
+     * Длительность в секундах
+     * @type {number}
+     * Для голосового сообщения
      */
     duration?: number;
+
     /**
-     * Массив значений для визуального отображения звука(Для Голосового сообщения)
+     * Массив значений для визуализации звука
+     * @type {number[]}
+     * Для голосового сообщения
      */
     waleform?: number[];
+
     /**
-     * .ogg файла(Для Голосового сообщения)
+     * URL .ogg файла
+     * @type {string}
+     * Для голосового сообщения
      */
     link_ogg?: string;
+
     /**
-     * .mp3 файла(Для Голосового сообщения)
+     * URL .mp3 файла
+     * @type {string}
+     * Для голосового сообщения
      */
     link_mp3?: string;
 }

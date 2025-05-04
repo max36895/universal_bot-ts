@@ -3,15 +3,15 @@
  * Date: {{date}}
  * Time: {{time}}
  */
-import {Bot, mmApp} from 'umbot';
+import { mmApp } from 'umbot';
+import { BotTest } from 'umbot/test';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
-import {__className__Controller} from './controller/__className__Controller';
+import { __className__Controller } from './controller/__className__Controller';
 
-const bot = new Bot();
-bot.initTypeInGet();
+const bot = new BotTest();
 bot.initConfig({{name}}Config);
 bot.initParams({{name}}Params);
-bot.initBotController((new __className__Controller()));
+bot.initBotController(new __className__Controller());
 mmApp.setDevMode(true);
-bot.start({{hostname}}, {{port}});
+bot.test();

@@ -11,9 +11,9 @@ import {
     T_ALISA,
     T_VIBER,
     T_VK,
-    ViberButton
+    ViberButton,
 } from '../../src';
-import {IAlisaImageGallery} from '../../src/platforms/interfaces/IAlisa';
+import { IAlisaImageGallery } from '../../src/platforms/interfaces/IAlisa';
 
 const URL = 'https://test.ru';
 
@@ -25,7 +25,7 @@ describe('Card test', () => {
         defaultCard.title = 'title';
         defaultCard.desc = 'desc';
         for (let i = 0; i < 3; i++) {
-            defaultCard.add('36895', `${i + 1}`, `запись: ${i + 1}`);
+            defaultCard.addImage('36895', `${i + 1}`, `запись: ${i + 1}`);
         }
     });
 
@@ -33,25 +33,25 @@ describe('Card test', () => {
         const alisaCard: IAlisaItemsList = {
             type: AlisaCard.ALISA_CARD_ITEMS_LIST,
             header: {
-                text: 'title'
+                text: 'title',
             },
             items: [
                 {
                     title: '1',
                     description: 'запись: 1',
-                    image_id: '36895'
+                    image_id: '36895',
                 },
                 {
                     title: '2',
                     description: 'запись: 2',
-                    image_id: '36895'
+                    image_id: '36895',
                 },
                 {
                     title: '3',
                     description: 'запись: 3',
-                    image_id: '36895'
+                    image_id: '36895',
                 },
-            ]
+            ],
         };
         mmApp.appType = T_ALISA;
         expect(await defaultCard.getCards()).toEqual(alisaCard);
@@ -61,8 +61,8 @@ describe('Card test', () => {
             text: '1',
             button: {
                 text: '1',
-                url: URL
-            }
+                url: URL,
+            },
         };
         expect(await defaultCard.getCards()).toEqual(alisaCard);
 
@@ -75,8 +75,8 @@ describe('Card test', () => {
             description: 'запись: 1',
             button: {
                 text: '1',
-                url: URL
-            }
+                url: URL,
+            },
         };
         expect(await defaultCard.getCards()).toEqual(alisaCardOne);
 
@@ -86,13 +86,16 @@ describe('Card test', () => {
 
         defaultCard.clear();
         defaultCard.isOne = false;
-        defaultCard.add('36895', 'Запись 1', 'Описание 1', 'Кнопка');
-        defaultCard.add('36895', 'Запись 2', 'Описание 2', {title: 'Кнопка', url: URL});
-        defaultCard.add('36895', 'Запись 3', 'Описание 3', {title: 'Кнопка', payload: {text: 'text'}});
+        defaultCard.addImage('36895', 'Запись 1', 'Описание 1', 'Кнопка');
+        defaultCard.addImage('36895', 'Запись 2', 'Описание 2', { title: 'Кнопка', url: URL });
+        defaultCard.addImage('36895', 'Запись 3', 'Описание 3', {
+            title: 'Кнопка',
+            payload: { text: 'text' },
+        });
         const alisaCardButton: IAlisaItemsList = {
             type: AlisaCard.ALISA_CARD_ITEMS_LIST,
             header: {
-                text: 'title'
+                text: 'title',
             },
             items: [
                 {
@@ -100,8 +103,8 @@ describe('Card test', () => {
                     description: 'Описание 1',
                     image_id: '36895',
                     button: {
-                        text: 'Кнопка'
-                    }
+                        text: 'Кнопка',
+                    },
                 },
                 {
                     title: 'Запись 2',
@@ -109,8 +112,8 @@ describe('Card test', () => {
                     image_id: '36895',
                     button: {
                         text: 'Кнопка',
-                        url: URL
-                    }
+                        url: URL,
+                    },
                 },
                 {
                     title: 'Запись 3',
@@ -119,11 +122,11 @@ describe('Card test', () => {
                     button: {
                         text: 'Кнопка',
                         payload: {
-                            text: 'text'
-                        }
-                    }
+                            text: 'text',
+                        },
+                    },
                 },
-            ]
+            ],
         };
         expect(await defaultCard.getCards()).toEqual(alisaCardButton);
     });
@@ -135,17 +138,17 @@ describe('Card test', () => {
             items: [
                 {
                     title: '1',
-                    image_id: '36895'
+                    image_id: '36895',
                 },
                 {
                     title: '2',
-                    image_id: '36895'
+                    image_id: '36895',
                 },
                 {
                     title: '3',
-                    image_id: '36895'
-                }
-            ]
+                    image_id: '36895',
+                },
+            ],
         };
         expect(await defaultCard.getCards()).toEqual(alisaGallery);
         defaultCard.isUsedGallery = false;
@@ -156,18 +159,18 @@ describe('Card test', () => {
             {
                 Columns: 3,
                 Rows: 6,
-                Image: '36895'
+                Image: '36895',
             },
             {
                 Columns: 3,
                 Rows: 6,
-                Image: '36895'
+                Image: '36895',
             },
             {
                 Columns: 3,
                 Rows: 6,
-                Image: '36895'
-            }
+                Image: '36895',
+            },
         ];
         mmApp.appType = T_VIBER;
         expect(await defaultCard.getCards()).toEqual(viberCard);
@@ -201,15 +204,15 @@ describe('Card test', () => {
                         {
                             action: {
                                 type: Button.VK_TYPE_TEXT,
-                                label: '1'
-                            }
-                        }
+                                label: '1',
+                            },
+                        },
                     ],
                     action: {
-                        type: 'open_photo'
-                    }
-                }
-            ]
+                        type: 'open_photo',
+                    },
+                },
+            ],
         };
         mmApp.appType = T_VK;
         expect(await defaultCard.getCards()).toEqual([]);
@@ -222,5 +225,5 @@ describe('Card test', () => {
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
         expect(await defaultCard.getCards()).toEqual(vkCard);
-    })
+    });
 });

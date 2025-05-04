@@ -1,4 +1,4 @@
-import {BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME} from 'umbot';
+import { BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';
 
 interface IGameControllerExample {
     example: string;
@@ -21,18 +21,18 @@ export class GameController extends BotController {
         if (rand(0, 1)) {
             return {
                 example: `${value1} + ${value2} = ?`,
-                result: value1 + value2
+                result: value1 + value2,
             };
         } else {
             if (value1 < value2) {
                 return {
                     example: `${value2} - ${value1} = ?`,
-                    result: value2 - value1
+                    result: value2 - value1,
                 };
             } else {
                 return {
                     example: `${value1} - ${value2} = ?`,
-                    result: value1 - value2
+                    result: value1 - value2,
                 };
             }
         }
@@ -41,13 +41,13 @@ export class GameController extends BotController {
     protected game(): void {
         if (this.userData.example) {
             if (this.userData.result == this.userCommand) {
-                this.text = "Молодец! Это правильный ответ! Сколько будет: \n";
+                this.text = 'Молодец! Это правильный ответ! Сколько будет: \n';
                 this.userData = this._getExample();
             } else {
-                this.text = "Не совсем... Давай ещё раз!\n";
+                this.text = 'Не совсем... Давай ещё раз!\n';
             }
         } else {
-            this.text = "Сколько будет: \n";
+            this.text = 'Сколько будет: \n';
             this.userData = this._getExample();
         }
         this.userData['isGame'] = true;
@@ -57,8 +57,8 @@ export class GameController extends BotController {
     public action(intentName: string): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
-                this.text = 'Привет! Давай поиграем в математику!' +
-                    'Чтобы начать игру скажи играть.';
+                this.text =
+                    'Привет! Давай поиграем в математику!' + 'Чтобы начать игру скажи играть.';
                 this.buttons.addBtn('Играть');
                 break;
 
@@ -86,9 +86,9 @@ export class GameController extends BotController {
                 break;
 
             default:
-                if (!(this.userData['isGame'])) {
-                    this.text = 'Извини, я тебя не понимаю...' +
-                        'Если хочешь поиграть, скажи играть';
+                if (!this.userData['isGame']) {
+                    this.text =
+                        'Извини, я тебя не понимаю...' + 'Если хочешь поиграть, скажи играть';
                     this.buttons.addBtn('Играть');
                 } else {
                     this.game();

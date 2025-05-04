@@ -1,139 +1,182 @@
 /**
- * Тип запроса
- * @variant MESSAGE_TO_SKILL — содержит сообщение для смартапа;
- * @varianr RATING_RESULT - содержит информацию об оценке
- * @variant SERVER_ACTION — сообщает смартапу о действиях пользователя на фронтенде;
- * @variant RUN_APP — сообщает о запуске смартапа;
- * @variant CLOSE_APP — сообщает о закрытии смартапа.
+ * Интерфейсы для работы с Sber Smart App
+ * Определяют структуру данных для взаимодействия с API Сбера
+ *
+ * Основные компоненты:
+ * - Запросы (ISberSmartAppWebhookRequest)
+ * - Ответы (ISberSmartAppWebhookResponse)
+ * - Сессии (ISberSmartAppSession)
+ * - Устройства (ISberSmartAppDeviceInfo)
+ * - Приложения (ISberSmartAppAppInfo)
+ * - Персонажи (ISberSmartAppCharacterInfo)
+ * - Сообщения (ISberSmartAppMessageInfo)
+ * - Карточки (ISberSmartAppCard)
+ * - Кнопки (ISberSmartAppSuggestionButton)
+ *
+ * @module platforms/interfaces/ISberSmartApp
  */
-export type TMessageName = 'MESSAGE_TO_SKILL' | 'RATING_RESULT' | 'SERVER_ACTION' | 'RUN_APP' | 'CLOSE_APP'
 
-export type TSberSmartAppType = 'DIALOG' | 'WEB_APP' | 'APK' | 'CHAT_APP';
+/**
+ * Типы сообщений для взаимодействия со смартапом
+ * @enum {string}
+ */
+export type TMessageName =
+    | 'MESSAGE_TO_SKILL' // Сообщение для смартапа
+    | 'RATING_RESULT' // Результат оценки
+    | 'SERVER_ACTION' // Действие на сервере
+    | 'RUN_APP' // Запуск приложения
+    | 'CLOSE_APP'; // Закрытие приложения
 
+/**
+ * Типы смартапов
+ * @enum {string}
+ */
+export type TSberSmartAppType =
+    | 'DIALOG' // Диалоговый интерфейс
+    | 'WEB_APP' // Веб-приложение
+    | 'APK' // Нативное приложение
+    | 'CHAT_APP'; // Чат-приложение
+
+/**
+ * Информация об устройстве пользователя
+ * Содержит данные о платформе, возможностях и функциональности устройства
+ */
 export interface ISberSmartAppDeviceInfo {
     /**
-     * Операционная система устройства.
-     * Возможные значения:
-     * ANDROID;
-     * IOS.
+     * Операционная система устройства
+     * @enum {string}
+     * - ANDROID - Android
+     * - IOS - iOS
      */
     platformType: string;
-    /**
-     * Версия операционной системы.
-     */
+
+    /** Версия операционной системы */
     platformVersion: string;
+
     /**
-     * Поверхность, от которой приходит вызов ассистента. Например, приложение Сбербанк Онлайн или SberBox.
-     * Возможные значения:
-     * SBOL — запрос пришел из приложения Сбербанк Онлайн;
-     * SUPER_APP — запрос приложения СБЕР Салют;
-     * SBERBOX — запрос пришел от устройства SberBox.
+     * Поверхность, от которой приходит вызов
+     * @enum {string}
+     * - SBOL - Сбербанк Онлайн
+     * - SUPER_APP - СБЕР Салют
+     * - SBERBOX - SberBox
      */
     surface: string;
-    /**
-     * Версия поверхности.
-     */
+
+    /** Версия поверхности */
     surfaceVersion: string;
-    /**
-     * Идентификатор устройства.
-     */
+
+    /** Идентификатор устройства */
     deviceId?: string;
+
     /**
-     * Описание функциональности устройства.
+     * Функциональность устройства
+     * Описывает поддерживаемые типы приложений
      */
     features: {
-        /**
-         * Типы смартапов, которые поддерживает устройство.
-         * Возможные значения:
-         * DIALOG;
-         * WEB_APP;
-         * APK;
-         * CHAT_APP.
-         */
-        appTypes: TSberSmartAppType[]
-    },
+        /** Поддерживаемые типы смартапов */
+        appTypes: TSberSmartAppType[];
+    };
+
     /**
-     * Описание возможностей устройства пользователя.
+     * Возможности устройства
+     * Описывает доступные компоненты
      */
     capabilities: {
-        /**
-         * Описание экрана устройства.
-         */
-        screen: { available: boolean },
-        /**
-         * Описание микрофона устройства.
-         */
-        mic: { available: boolean },
-        /**
-         * Описание динамиков устройства.
-         */
-        speak: { available: boolean }
-    },
-    /**
-     * Дополнительная информация об объекте или устройстве. В настоящий момент не используется.
-     */
+        /** Наличие экрана */
+        screen: {
+            /**
+             * Наличие экрана
+             */
+            available: boolean;
+        };
+        /** Наличие микрофона */
+        mic: {
+            /**
+             * Наличие микрофона
+             * */
+            available: boolean;
+        };
+        /** Наличие динамиков */
+        speak: {
+            /**
+             * Наличие динамиков
+             */
+            available: boolean;
+        };
+    };
+
+    /** Дополнительная информация об устройстве */
     additionalInfo: object;
 }
 
+/**
+ * Информация о смартапе
+ * Содержит идентификаторы и настройки приложения
+ */
 export interface ISberSmartAppAppInfo {
-    /**
-     * Идентификатор проекта в SmartApp Studio.
-     */
+    /** ID проекта в SmartApp Studio */
     projectId: string;
-    /**
-     * Идентификатор смартапа.
-     */
+
+    /** ID смартапа */
     applicationId: string;
-    /**
-     * Идентификатор опубликованной версии смартапа.
-     */
+
+    /** ID опубликованной версии */
     appversionId: string;
-    /**
-     * Ссылка на веб-приложение. Поле актуально для Canvas Apps.
-     */
+
+    /** URL веб-приложения (для Canvas Apps) */
     frontendEndpoint?: string;
+
     /**
-     * Тип смартапа.
-     * Обратите внимание, что ассистент перехватывает навигационные команды "вверх", "вниз", "влево" и "вправо" только в Canvas App (тип приложения WEB_APP). В этом случае команды обрабатываются на уровне фронтенда приложения. В остальных случаях, команды передаются в бекэнд активного приложения.
+     * Тип смартапа
+     * Определяет обработку навигационных команд
      */
-    frontendType?: TSberSmartAppType
-    /**
-     * Более читаемый аналог поля projectId. Не актуален для внешних приложений.
-     */
+    frontendType?: TSberSmartAppType;
+
+    /** Читаемый ID проекта */
     systemName?: string;
-    /**
-     * Объединённое значение полей projectId, applicationId и appversionId.
-     */
-    frontendStateId?: string
+
+    /** Объединенный ID проекта, приложения и версии */
+    frontendStateId?: string;
 }
 
+/**
+ * Информация о персонаже ассистента
+ * Содержит данные о выбранном персонаже и его характеристиках
+ */
 export interface ISberSmartAppCharacterInfo {
     /**
-     * Идентификатор персонажа, которого выбрал пользователь.
-     * Возможные значения:
-     * sber — персонаж мужского пола по имени Сбербанк. Обращается на "вы".
-     * athena — персонаж женского пола по имени Афина. Обращается на "вы".
-     * joy — персонаж женского пола по имени Джой.  Обращается на "ты".
-     * Учитывайте пол персонажа (поле gender) и форму обращения (поле appeal) при проектировании ответов.
+     * ID персонажа
+     * @enum {string}
+     * - sber - Сбербанк (мужской, на "вы")
+     * - athena - Афина (женский, на "вы")
+     * - joy - Джой (женский, на "ты")
      */
-    id: "sber" | "athena" | "joy";
+    id: 'sber' | 'athena' | 'joy';
+
+    /** Имя персонажа */
+    name: 'Сбер' | 'Афина' | 'Джой';
+
     /**
-     * Имя персонажа.
+     * Пол персонажа
+     * @enum {string}
+     * - male - мужской
+     * - female - женский
      */
-    name: "Сбер" | "Афина" | "Джой";
+    gender: 'male' | 'female';
+
     /**
-     * Пол персонажа. Учитывайте пол персонажа при проектировании ответов.
+     * Форма обращения
+     * @enum {string}
+     * - official - на "вы"
+     * - no_official - на "ты"
      */
-    gender: "male" | "female";
-    /**
-     * Форма обращения персонажа. Учитывайте форму обращения персонажа при проектировании ответов.
-     * Возможные значения:
-     * official — персонаж обращается на "вы".
-     * no_official — персонаж обращается на "ты".
-     */
-    appeal: "official" | "no_official";
+    appeal: 'official' | 'no_official';
 }
 
+/**
+ * Метаданные запроса
+ * Содержит информацию о времени и часовом поясе
+ */
 export interface ISberSmartAppMetaInfo {
     /**
      * Данные о текущем времени на устройстве пользователя.
@@ -151,84 +194,111 @@ export interface ISberSmartAppMetaInfo {
          * Unix-время в миллисекундах.
          */
         timestamp: number;
-    }
+    };
 }
 
+/**
+ * Сущности из сообщения пользователя
+ * Содержит извлеченные данные из текста
+ */
 export interface ISberSmartAppEntities {
     /**
-     *
+     * Значение сущности
      */
     value?: string | number;
     /**
-     *
+     * Сумма
      */
-    amount?: number,
+    amount?: number;
     /**
-     *
+     * Валюта
      */
-    currency?: string,
+    currency?: string;
     /**
-     *
+     * Число в виде прилагательного
      */
-    adjectival_number?: boolean
+    adjectival_number?: boolean;
 }
 
+/**
+ * Информация о сообщении пользователя
+ * Содержит текст и результаты его обработки
+ */
 export interface ISberSmartAppMessageInfo {
     /**
-     * Исходное сообщение пользователя: распознанный голос или введенный текст. В случае распознанного голоса предоставляется текст запроса без нормализации числительных и другого, соответственно, все числа, номера телефонов и тд представлены словами.
-     * Пример: "хочу заказать пиццу на девять вечера за пятьсот рублей".
+     * Исходный текст сообщения
+     * Распознанный голос или введенный текст
      */
-    original_text: string,
+    original_text: string;
+
     /**
-     * Нормализованный текст, который ввел пользователь. Можно использовать для снижения многообразия запросов, например, для аналитики.
-     * Пример: хотеть заказать пицца на TIME_TIME_TOKEN за MONEY_TOKEN .
+     * Нормализованный текст
+     * Очищен от знаков препинания
+     * Числа преобразованы в числовой формат
      */
-    normalized_text: string,
+    normalized_text: string;
+
     /**
-     * Отображаемый на экране текст запроса / нормализованный на этапе ASR запрос.
-     * Пример: "Хочу заказать пиццу на 9 вечера за 500 ₽".
+     * Текст для отображения
+     * Нормализованный текст с форматированием
      */
-    asr_normalized_message: string,
+    asr_normalized_message: string;
+
     /**
-     * Извлеченные из запроса сущности.
+     * Извлеченные сущности
+     * Структурированные данные из текста
      */
     entities?: {
-        [name: string]: ISberSmartAppEntities[]
-    },
+        /**
+         * Сама сущность
+         */
+        [key: string]: ISberSmartAppEntities;
+    };
+
     /**
-     * Список токенов в запросе пользователя. Содержит грамматический и синтаксический разбор, а также привязку к сущностям и их нормализованным значениям для каждого токена.
+     * Токены сообщения
+     * Грамматический и синтаксический разбор
      */
     tokenized_elements_list: any[];
 }
 
+/**
+ * Действие на сервере
+ * Описывает действие, которое обрабатывает бэкенд
+ */
 export interface ISberSmartAppServerAction {
     /**
-     * Действие, которое обрабатывает бэкенд смартапа.
-     * Значение по умолчанию:run_app.
+     * ID действия
      * @defaultValue run_app
      */
-    action_id: string,
+    action_id: string;
+
     /**
-     * Любые параметры, которые требуются для запуска смартапа. Параметры должны быть представлены в виде валидного JSON-объекта.
+     * Параметры действия
+     * JSON-объект с данными
      */
-    parameters: any
+    parameters: any;
 }
 
+/**
+ * Выбранный элемент
+ * Информация о выбранном пользователем элементе
+ */
 export interface ISberSmartAppSelectedItem {
-    /**
-     * Номер элемента из списка, начиная с 0.
-     */
+    /** Индекс элемента (с 0) */
     index: number;
-    /**
-     * Название элемента.
-     */
+
+    /** Название элемента */
     title: string;
-    /**
-     * Указывает выбор элемента по номеру.
-     */
-    is_query_by_number: boolean
+
+    /** Выбор по номеру */
+    is_query_by_number: boolean;
 }
 
+/**
+ * Аннотации сообщения
+ * Содержит результаты анализа текста и голоса
+ */
 export interface ISberSmartAppAnnotations {
     /**
      * Информация о прохождении цензуры.
@@ -240,13 +310,13 @@ export interface ISberSmartAppAnnotations {
          * obscene — наличие нецензурной лексики
          * model_response — вероятность негатива
          */
-        classes: ["politicians", "obscene", "model_response"],
+        classes: ['politicians', 'obscene', 'model_response'];
         /**
          * Коэффициенты подцензурных категорий. Сопоставляются по индексам, в соответствии со списком категорий censor_data.classes.
          * Для категорий politicians и obscene могут принимать только значения 0 и 1.
          */
-        probas: [number, number, number]
-    },
+        probas: [number, number, number];
+    };
     /**
      * Эмоциональная окраска текста пользователя.
      */
@@ -257,13 +327,13 @@ export interface ISberSmartAppAnnotations {
          * positive
          * neutral
          */
-        classes: ["negative", "speech", "neutral", "positive", "skip"],
+        classes: ['negative', 'speech', 'neutral', 'positive', 'skip'];
         /**
          * Коэффициенты той или иной эмоциональной характеристики текста пользователя в диапазоне от 0 до 1.
          * Коэффициенты сопоставляются по индексам с характеристиками, представленными в поле text_sentiment.classes.
          */
-        probas: [number, number, number, number, number]
-    },
+        probas: [number, number, number, number, number];
+    };
     /**
      * Эмоциональная окраска голоса пользователя.
      */
@@ -274,24 +344,45 @@ export interface ISberSmartAppAnnotations {
          * neutral
          * negative
          */
-        classes: ["positive", "neutral", "negative"],
+        classes: ['positive', 'neutral', 'negative'];
         /**
          * Коэффициенты той или иной эмоциональной характеристики реплики пользователя в диапазоне от 0 до 1.
          * Коэффициенты сопоставляются по индексам с характеристиками, представленными в поле asr_sentiment .classes.
          */
-        probas: [number, number, number]
-    }
+        probas: [number, number, number];
+    };
 }
 
+/**
+ * Оценка пользователя
+ * Содержит числовую оценку
+ */
 export interface ISberRating {
+    /**
+     * Оценка
+     */
     estimation: number;
 }
 
+/**
+ * Статус оценки
+ * Содержит код и описание результата оценки
+ */
 export interface ISberRatingStatusCode {
+    /**
+     * Код результата оценки
+     */
     code: 1 | 101 | 104;
-    description: 'SUCCESS' | 'SKIP BY USER' | 'FORBIDDEN'
+    /**
+     * Описание результата оценки
+     */
+    description: 'SUCCESS' | 'SKIP BY USER' | 'FORBIDDEN';
 }
 
+/**
+ * Полезная нагрузка запроса
+ * Содержит все данные, необходимые для обработки запроса
+ */
 export interface ISberSmartAppRequestPayload {
     /**
      * Информация об устройстве пользователя.
@@ -347,7 +438,20 @@ export interface ISberSmartAppRequestPayload {
     /**
      * Возможные стратегии смартапа.
      */
-    strategies: { happy_birthday: boolean, last_call: number, is_alice?: boolean };
+    strategies: {
+        /**
+         * День рождение
+         */
+        happy_birthday: boolean;
+        /**
+         * Последний звонок
+         */
+        last_call: number;
+        /**
+         * Больше нет
+         */
+        is_alice?: boolean;
+    };
     /**
      * Информация о запускаемом смартапе и параметрах его запуска.
      * Формируется бэкендом приложения.
@@ -366,9 +470,13 @@ export interface ISberSmartAppRequestPayload {
     /**
      * Статут оценки
      */
-    status_code: ISberRatingStatusCode
+    status_code: ISberRatingStatusCode;
 }
 
+/**
+ * Идентификатор пользователя
+ * Содержит уникальные идентификаторы для разных каналов
+ */
 export interface ISberSmartAppUuId {
     /**
      * Идентификатор канала коммуникации.
@@ -386,6 +494,10 @@ export interface ISberSmartAppUuId {
     userId: string;
 }
 
+/**
+ * Запрос вебхука
+ * Полный формат входящего запроса
+ */
 export interface ISberSmartAppWebhookRequest {
     /**
      * Тип запроса.
@@ -404,7 +516,7 @@ export interface ISberSmartAppWebhookRequest {
     /**
      * Составной идентификатор пользователя.
      */
-    uuid: ISberSmartAppUuId,
+    uuid: ISberSmartAppUuId;
     /**
      * Коллекция, в которой в зависимости от потребителя и messageName передается дополнительная информация.
      */
@@ -412,41 +524,42 @@ export interface ISberSmartAppWebhookRequest {
 }
 
 /**
- * @variant ANSWER_TO_USER — содержит ответ, который ассистент предоставит пользователю;
- * @variant CALL_RATING - содержит ответ, благодаря которому ассистент понимает что пользователь хочет поставить оценку;
- * @variant POLICY_RUN_APP — сообщает о вызове смартапа из другого приложения;
- * @variant NOTHING_FOUND — смартап не смог найти ответ. Может указывать на то, что приложение было запущено по ошибке;
- * @variant ERROR — возвращается, если смартап недоступен или вернул ошибку.
+ * Тип ответа сервера.
+ * @enum {string}
+ * ANSWER_TO_USER — содержит ответ, который ассистент предоставит пользователю
+ * CALL_RATING - содержит ответ, благодаря которому ассистент понимает что пользователь хочет поставить оценку
+ * POLICY_RUN_APP — сообщает о вызове смартапа из другого приложения
+ * NOTHING_FOUND — смартап не смог найти ответ. Может указывать на то, что приложение было запущено по ошибке
+ * ERROR — возвращается, если смартап недоступен или вернул ошибку
  */
-export type TSberResponseMessageName = 'ANSWER_TO_USER' | 'CALL_RATING' | 'POLICY_RUN_APP' | 'NOTHING_FOUND' | 'ERROR'
+export type TSberResponseMessageName =
+    | 'ANSWER_TO_USER'
+    | 'CALL_RATING'
+    | 'POLICY_RUN_APP'
+    | 'NOTHING_FOUND'
+    | 'ERROR';
 
 /**
  * Идентификатор эмоции, определяющий эмоцию персонажа.
- * @variant igrivost — анимация игривости, которую ассистент может испытывать в ответ на дружеские шутки и подколки пользователя;
- * @variant udovolstvie — анимация удовольствия;
- * @variant podavleniye_gneva — анимация подавляемого раздражения на отрицательно окрашенные реплики в адрес ассистента;
- * @variant smushchennaya_ulibka — анимация смущения, например, в ответ на похвалу;
- * @variant simpatiya — анимация симпатии в ответ на положительно окрашенные реплики;
- * @variant oups — анимация неловкости в ответ на лёгкое раздражение или неудобные вопросы пользователя. Например, при вопросе вида "Почему такие низкие ставки по вкладам?";
- * @variant laugh — анимация смеха над шуткой пользователя;
- * @variant ok_prinyato — анимация исполнения запроса;
- * @variant bespokoistvo — анимация беспокойства, например, при жалобе пользователя на самочувствие;
- * @variant predvkusheniye — анимация возбуждённого ожидания следующей реплики пользователя;
- * @variant vinovatiy — анимация вины, например, если в приложении произошла ошибка;
- * @variant zhdu_otvet — анимация ожидания реакции от пользователя, например, ответа на заданный вопрос;
- * @variant zadumalsa — анимация размышление над репликой пользователя, например, если её не удалось распознать;
- * @variant neznayu — анимация отсутствия ответа.
- * @variant nedoumenie — анимация сомнения, например, когда не удаётся точно распознать реплику.
- * @variant nedovolstvo — анимация негативной реакции в ответ на реплику
- * @variant nesoglasie — анимация несогласия с пользователем.
- * @variant pechal — анимация грусти и тоскливого настроения.
- * @variant radost — анимация радости или удовлетворения действиями или репликами пользователя.
- * @variant sochuvstvie — анимация сопереживания или выражения участия в проблемах пользователя.
- * @variant strakh — анимация испуга.
- * @variant zainteresovannost — анимация проявления интереса или любопытства по отношению к действиям или репликам пользователя.
+ * @enum {string}
+ * ok_prinyato — анимация исполнения запроса
+ * bespokoistvo — анимация беспокойства, например, при жалобе пользователя на самочувствие
+ * predvkusheniye — анимация возбуждённого ожидания следующей реплики пользователя
+ * vinovatiy — анимация вины, например, если в приложении произошла ошибка
+ * zhdu_otvet — анимация ожидания реакции от пользователя, например, ответа на заданный вопрос
+ * zadumalsa — анимация размышление над репликой пользователя, например, если её не удалось распознать
+ * neznayu — анимация отсутствия ответа
+ * nedoumenie — анимация сомнения, например, когда не удаётся точно распознать реплику
+ * nedovolstvo — анимация негативной реакции в ответ на реплику
+ * nesoglasie — анимация несогласия с пользователем
+ * pechal — анимация грусти и тоскливого настроения
+ * radost — анимация радости или удовлетворения действиями или репликами пользователя
+ * sochuvstvie — анимация сопереживания или выражения участия в проблемах пользователя
+ * strakh — анимация испуга
+ * zainteresovannost — анимация проявления интереса или любопытства по отношению к действиям или репликам пользователя
  */
 export type TSberSmartAppEmotionId =
-    'igrivost'
+    | 'igrivost'
     | 'udovolstvie'
     | 'podavleniye_gneva'
     | 'smushchennaya_ulibka'
@@ -469,102 +582,146 @@ export type TSberSmartAppEmotionId =
     | 'strakh'
     | 'zainteresovannost';
 
+/**
+ * Действие кнопки
+ * Описывает поведение при нажатии
+ */
 export interface ISberSmartAppSuggestionAction {
     /**
-     * Текст, который появится на экране. Передается, только в действии типа text.
+     * Текст кнопки
+     * Для type='text'
      */
     text?: string;
+
     /**
-     * Объект передаётся в сообщении SERVER_ACTION, после нажатия кнопки, тип действия которой задан как server_action.
+     * Данные для сервера
+     * Для type='server_action'
      */
     server_action?: any;
+
     /**
-     * Тип действия.
-     * Возможные значения:
-     * text — по нажатию на кнопку отображается текст, указанный в поле text.
-     * server_action — указывайте этот тип чтобы передать в бекэнд приложения сообщение SERVER_ACTION с необходимым объектом server_action.
+     * Тип действия
+     * @enum {string}
+     * - text - отображение текста
+     * - server_action - отправка данных на сервер
      */
     type: 'text' | 'server_action';
 }
 
+/**
+ * Кнопка предложения
+ * Определяет внешний вид и поведение кнопки
+ */
 export interface ISberSmartAppSuggestionButton {
-    /**
-     * Название кнопки, которое отображается в интерфейсе ассистента.
-     */
+    /** Текст кнопки */
     title: string;
-    /**
-     * Описывает действие, которое выполнится по нажатию кнопки.
-     */
+
+    /** Действие при нажатии */
     action?: ISberSmartAppSuggestionAction;
 }
 
 /**
  * Поведение шторки ассистента. Параметр актуален при работе с ассистентом на наших устройствах.
- * @variant auto_expand — шторка будет автоматически разворачиваться, если полученный текст не помещается в свёрнутой шторке;
- * @variant force_expand — шторка развернётся независимо от того, помещается полученный текст в свёрнутой шторке или нет;
- * @variant preserve_panel_state — сохраняет текущее состояние шторки независимо от длины текста.
- * @default auto_expand.
+ * @enum {string}
+ * auto_expand — шторка будет автоматически разворачиваться, если полученный текст не помещается в свёрнутой шторке
+ * force_expand — шторка развернётся независимо от того, помещается полученный текст в свёрнутой шторке или нет
+ * preserve_panel_state — сохраняет текущее состояние шторки независимо от длины текста
+ * @default auto_expand
  */
-export type TSberSmartAppExpandPolicy = 'auto_expand' | 'force_expand' | 'preserve_panel_state'
+export type TSberSmartAppExpandPolicy = 'auto_expand' | 'force_expand' | 'preserve_panel_state';
 
+/**
+ * Пузырь сообщения
+ * Текст для отображения ассистентом
+ */
 export interface ISberSmartAppBubble {
     /**
-     * Текст, который отобразит ассистент.
-     * Максимальная длина: не более 250 символов.
+     * Текст сообщения
+     * Максимум 250 символов
      */
     text: string;
+
     /**
-     * Указывает, что текст содержит маркдаун-разметку, которую необходимо обработать.
-     * Если поле отсутствует, применяется значение false и текст отображается в исходном виде.
+     * Поддержка markdown
+     * @defaultValue false
      */
     markdown?: boolean;
+
     /**
-     * Поведение шторки ассистента. Параметр актуален при работе с ассистентом на наших устройствах.
+     * Поведение шторки
+     * Для устройств с ассистентом
      */
     expand_policy: TSberSmartAppExpandPolicy;
 }
+/**
+ * Размеры для отступов
+ * @enum {string}
+ */
+export type TSberSmartAppPadding =
+    | '0x'
+    | '1x'
+    | '2x'
+    | '4x'
+    | '5x'
+    | '6x'
+    | '8x'
+    | '9x'
+    | '10x'
+    | '12x'
+    | '16x';
 
-export type TSberSmartAppPadding = '0x' | '1x' | '2x' | '4x' | '5x' | '6x' | '8x' | '9x' | '10x' | '12x' | '16x';
-
+/**
+ * Действие карточки
+ * Описывает поведение при взаимодействии
+ */
 export interface ISberSmartAppCardAction {
     /**
-     * Тип действия.
-     * Возможные значения:
-     * text — действие, которое обозначает отправку сообщения от имени пользователя в чат с ассистентом;
-     * send_contact_phone — действие, которое обозначает отправку номера телефона указанного контакта;
-     * deep_link — действие, которое обозначает обработку диплинка ассистентом или хост-приложением.
+     * Тип действия
+     * @enum {string}
+     * - text - отправка сообщения
+     * - send_contact_phone - отправка номера
+     * - deep_link - открытие ссылки
      */
     type: 'text' | 'send_contact_phone' | 'deep_link';
+
     /**
-     * Передаётся только в действиях с типом text.
-     * Текст сообщения от имени пользователя
+     * Текст сообщения
+     * Для type='text'
      */
     text?: string;
+
     /**
-     * Может передаваться только в действиях с типом text.
-     * Указывает, что сообщение нужно не только отобразить в чате с ассистентом, но и отправить в бэкенд.
+     * Отправка в бэкенд
+     * Для type='text'
      * @defaultValue true
      */
     should_send_to_backend?: boolean;
+
     /**
-     * Передаётся только в действиях с типом send_contact_phone.
-     * Идентификатор контакта.
+     * ID контакта
+     * Для type='send_contact_phone'
      */
     send_contact_phone?: number;
+
     /**
-     * Может передаваться только в действиях с типом send_contact_phone.
-     * Сообщение, которое может содержать подстроку [[placeholder]]. В [[placeholder]] необходимо подставлять номер телефона контакта, указанного в поле send_contact_phone.
+     * Шаблон сообщения
+     * Для type='send_contact_phone'
      */
-    template?: string
+    template?: string;
+
     /**
-     * Передаётся только в действиях с типом deep_link.
-     * Диплинк, который нужно открыть.
+     * Ссылка
+     * Для type='deep_link'
      */
     deep_link?: string;
 }
 
+/**
+ * Стиль текста
+ * @enum {string}
+ */
 export type TSberSmartAppTypeface =
-    'headline1'
+    | 'headline1'
     | 'headline2'
     | 'headline3'
     | 'title1'
@@ -580,8 +737,12 @@ export type TSberSmartAppTypeface =
     | 'button1'
     | 'button2'
     | 'caption';
+/**
+ * Стиль текста
+ * @enum {string}
+ */
 export type TSberSmartAppTextColor =
-    'default'
+    | 'default'
     | 'secondary'
     | 'tertiary'
     | 'inverse'
@@ -590,35 +751,38 @@ export type TSberSmartAppTextColor =
     | 'critical'
     | 'link';
 
+/**
+ * Текст карточки
+ * Описывает форматированный текст
+ */
 export interface ISberSmartAppCardText {
-    /**
-     * Текст, который необходимо отобразить. Минимальная длина текста 1 символ.
-     */
+    /** Текст для отображения */
     text: string;
-    /**
-     * Стиль текста
-     */
+
+    /** Стиль текста */
     typeface: TSberSmartAppTypeface;
-    /**
-     * Цвет текста.
-     */
+
+    /** Цвет текста */
     text_color: TSberSmartAppTextColor;
-    /**
-     * Отступы.
-     */
+
+    /** Отступы */
     margins?: ISberSmartAppCardPadding;
+
     /**
-     * Максимальное количество строк. По умолчанию 1.
-     * Значение 0 указывает на неограниченное количество строк.
+     * Максимум строк
+     * 0 - без ограничений
      * @defaultValue 1
      */
     max_lines?: number;
-    /**
-     * Массив объектов, описывающих действия.
-     */
+
+    /** Действия */
     actions?: ISberSmartAppCardAction;
 }
 
+/**
+ * Отступы карточки
+ * Определяет размеры отступов
+ */
 export interface ISberSmartAppCardPadding {
     /**
      * Размер отступа.
@@ -638,250 +802,341 @@ export interface ISberSmartAppCardPadding {
     bottom?: TSberSmartAppPadding;
 }
 
+/**
+ * Изображение карточки
+ * Описывает изображение и его параметры
+ */
 export interface ISberSmartAppCardImage {
-    /**
-     * Адрес изображения.
-     */
+    /** URL изображения */
     url?: string;
-    /**
-     * Хэш изображения.
-     */
+
+    /** Хэш изображения */
     hash?: string;
-    /**
-     * Заглушка, которая отображается, если изображения нет или оно невалидно.
-     */
+
+    /** Заглушка при ошибке */
     placeholder?: string;
+
     /**
-     * Режим растягивания содержимого.
+     * Режим масштабирования
+     * @enum {string}
      */
-    scale_mode?: 'scale_aspect_fill' | 'scale_aspect_fit' | 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right';
+    scale_mode?:
+        | 'scale_aspect_fill'
+        | 'scale_aspect_fit'
+        | 'center'
+        | 'top'
+        | 'bottom'
+        | 'left'
+        | 'right'
+        | 'top_left'
+        | 'top_right'
+        | 'bottom_left'
+        | 'bottom_right';
+
     /**
-     * Высота контейнера изображения, выраженная в независящих от платформы единицах.
-     * Поле игнорируется, если присутствует поле size.
+     * Высота контейнера
      * @defaultValue 192
      */
     height?: number;
-    /**
-     * Цвет фона.
-     */
-    placeholder_color?: 'solid_black' | 'solid_white' | 'solid_transparent' | 'solid_disabled' | 'solid_brand' | 'solid_warning' | 'solid_critical' | 'solid_action' | 'liquid_60' | 'liquid_50' | 'liquid_40' | 'liquid_30' | 'liquid_20' | 'liquid_10';
-    /**
-     * Массив объектов, описывающих действия.
-     */
+
+    /** Цвет фона */
+    placeholder_color?:
+        | 'solid_black'
+        | 'solid_white'
+        | 'solid_transparent'
+        | 'solid_disabled'
+        | 'solid_brand'
+        | 'solid_warning'
+        | 'solid_critical'
+        | 'solid_action'
+        | 'liquid_60'
+        | 'liquid_50'
+        | 'liquid_40'
+        | 'liquid_30'
+        | 'liquid_20'
+        | 'liquid_10';
+
+    /** Действия */
     actions?: ISberSmartAppCardAction[];
-    /**
-     * Размер изображения.
-     */
+
+    /** Размер изображения */
     size?: {
-        /**
-         * Ширина содержимого в терминах сеток.
-         */
+        /** Ширина в сетке */
         width: 'small' | 'medium' | 'large' | 'resizable';
-        /**
-         * Отношение высоты содержимого к ширине.
-         */
+        /** Соотношение сторон */
         aspect_ratio: number;
-    }
+    };
 }
 
+/**
+ * Элемент карточки
+ * Описывает ячейку в карточке
+ */
 export interface ISberSmartAppCardItem {
     /**
-     * Тип ячейки.
+     * Тип ячейки
+     * @enum {string}
      */
-    type: 'greeting_grid_item' | 'media_gallery_item' | 'gallery_more_button_item' | 'image_cell_view' | 'text_cell_view' | 'left_right_cell_view';
-    /**
-     * Параметры верхнего текста.
-     */
+    type:
+        | 'greeting_grid_item'
+        | 'media_gallery_item'
+        | 'gallery_more_button_item'
+        | 'image_cell_view'
+        | 'text_cell_view'
+        | 'left_right_cell_view';
+
+    /** Верхний текст */
     top_text?: ISberSmartAppCardText;
-    /**
-     * Параметры нижнего текста.
-     */
+
+    /** Нижний текст */
     bottom_text?: ISberSmartAppCardText;
-    /**
-     * Отступы.
-     */
+
+    /** Отступы */
     margins?: ISberSmartAppCardPadding;
-    /**
-     * Массив объектов, описывающих действия.
-     */
+
+    /** Действия */
     actions?: ISberSmartAppCardAction[];
-    /**
-     * Параметры изображения.
-     */
+
+    /** Изображение */
     image?: ISberSmartAppCardImage;
-    /**
-     * Отступы.
-     */
+
+    /** Отступы */
     paddings?: ISberSmartAppCardPadding;
 
+    /** Левая часть */
     left?: {
-        type: string,
-        icon_vertical_gravity?: string,
-        label?: ISberSmartAppCardText,
-        icon_and_value?: {
+        /**
+         * Тип ячейки
+         */
+        type: string;
+        /**
+         * Иконка
+         */
+        icon_vertical_gravity?: string;
+        /**
+         * Метка
+         */
+        label?: ISberSmartAppCardText;
+        /**
+         * Иконка и значение
+         */
+        icon_and_value: {
+            /**
+             * Иконка
+             */
             icon?: {
+                /**
+                 * Расположение иконки
+                 */
                 address?: {
-                    type: string,
-                    url: string
-                },
+                    /**
+                     * Тип иконуи
+                     */
+                    type: string;
+                    /**
+                     * Ссылка на иконку
+                     */
+                    url: string;
+                };
+                /**
+                 * Размеры иконки
+                 */
                 size: {
-                    width: string,
-                    height: string
-                },
-                margin?: ISberSmartAppCardPadding
-            }
-            value?: ISberSmartAppCardText
-        }
+                    /**
+                     * Ширина иконки
+                     */
+                    width: string;
+                    /**
+                     * Высота иконки
+                     */
+                    height: string;
+                };
+                /**
+                 * Отступы
+                 */
+                margin?: ISberSmartAppCardPadding;
+            };
+            /**
+             * Значение
+             */
+            value?: ISberSmartAppCardText;
+        };
     };
+
+    /** Правая часть */
     right?: any;
 
+    /** Содержимое */
     content?: ISberSmartAppCardImage | ISberSmartAppCardText;
 }
 
+/**
+ * Карточка
+ * Описывает структуру карточки
+ */
 export interface ISberSmartAppCard {
-    /**
-     * Описание отступов карточки.
-     */
+    /** Отступы */
     paddings?: ISberSmartAppCardPadding;
+
     /**
-     * Указывает что карточка может отображаться как отключённая.
+     * Возможность отключения
      * @defaultValue false
      */
     can_be_disabled?: boolean;
+
     /**
-     * Тип карточки, который определяет наличие различных полей в объекте card.
-     * Возможные значения:
-     * gallery_card — горизонтальная галерея;
-     * grid_card — карточка с сеткой ячеек.
-     * list_card - Вертикальная карточка
+     * Тип карточки
+     * @enum {string}
+     * - gallery_card - горизонтальная галерея
+     * - grid_card - сетка ячеек
+     * - list_card - вертикальный список
      */
-    type: 'gallery_card' | 'grid_card' | 'list_card'
+    type: 'gallery_card' | 'grid_card' | 'list_card';
+
     /**
-     * Количество столбцов. По умолчанию 1 столбец.
+     * Количество столбцов
      * @defaultValue 1
      */
     columns?: number;
-    /**
-     * Ширина контента в терминах сеток.
-     */
-    item_width?: 'small' | 'medium' | 'large' | 'resizable'
-    /**
-     * Ячейки карточки. Минимум 1 ячейка.
-     */
+
+    /** Ширина контента */
+    item_width?: 'small' | 'medium' | 'large' | 'resizable';
+
+    /** Ячейки карточки */
     items?: ISberSmartAppCardItem[];
+
+    /** Ячейки (альтернативное название) */
     cells?: ISberSmartAppCardItem[];
 }
 
+/**
+ * Элемент ответа
+ * Описывает компонент ответа
+ */
 export interface ISberSmartAppItem {
-    /**
-     * Карточка.
-     */
+    /** Карточка */
     card?: ISberSmartAppCard;
-    /**
-     * Текст.
-     */
+
+    /** Текст */
     bubble?: ISberSmartAppBubble;
-    /**
-     * Команда ассистенту.
-     */
-    command?: object
+
+    /** Команда */
+    command?: object;
 }
 
+/**
+ * Полезная нагрузка ответа
+ * Содержит данные для ответа пользователю
+ */
 export interface ISberSmartAppResponsePayload {
-    /**
-     * Текст, который ассистент озвучит пользователю.
-     */
+    /** Текст для озвучивания */
     pronounceText: string;
+
     /**
-     * Указывает, что в тексте, который необходимо озвучить (поле pronounceText).
-     * Поддерживаемые разметки;
-     * application/text;
-     * application/ssml.
+     * Тип текста
+     * Поддерживаемые разметки:
+     * - application/text
+     * - application/ssml
      */
     pronounceTextType: string;
-    /**
-     * Эмоция ассистента, которую он показывает с помощью анимации кнопки.
-     */
+
+    /** Эмоция ассистента */
     emotion?: {
-        /**
-         * Идентификатор эмоции, определяющий эмоцию персонажа.
-         */
+        /** ID эмоции */
         emotionId: TSberSmartAppEmotionId;
-    },
-    /**
-     * Список элементов интерфейса, которые необходимо показать пользователю.
-     */
+    };
+
+    /** Элементы интерфейса */
     items?: ISberSmartAppItem[];
+
     /**
-     * Предложения, которые смартап может сделать пользователю в зависимости от контекста диалога.
-     * Предложения могут быть представлены в виде кнопок и карточек.
-     * Важно! В интерфейсе SberBox предложения носят информационный характер. Оформляйте их в виде подсказок, а не кнопок.
+     * Предложения
+     * Кнопки и карточки для взаимодействия
      */
     suggestions?: {
-        /**
-         * Список кнопок с предложениями смартапа. Каждая кнопка представлена в виде отдельного объекта.
-         */
+        /** Кнопки */
         buttons: ISberSmartAppSuggestionButton[] | null;
-    }
-    /**
-     * Интент, который смартап получит в следующем ответе ассистента.
-     */
+    };
+
+    /** Интент для следующего ответа */
     intent: string;
-    /**
-     * Имя смартапа, которое задается при создании проекта и отображается в каталоге приложений.
-     */
+
+    /** Имя проекта */
     projectName: string;
-    /**
-     * Информация об устройстве пользователя.
-     */
+
+    /** Информация об устройстве */
     device: ISberSmartAppDeviceInfo;
-    /**
-     * Код ошибки.
-     */
+
+    /** Код ошибки */
     code?: number;
+
     /**
-     * Указывает, что ассистент должен слушать пользователя после выполнения действия.
+     * Автоматическое прослушивание
      * @defaultValue false
      */
     auto_listening?: boolean;
+
     /**
-     * Сообщает ассистенту о завершении работы смартапа. Ассистент интерпретирует отсутствие поля как false.
-     * Возможные значения:
-     * true — диалог завершён, следующее сообщение пользователя поступит в другое приложение;
-     * false — диалог продолжается, сообщения пользователя передаются в приложение.
+     * Завершение диалога
+     * true - диалог завершен
+     * false - диалог продолжается
      */
     finished?: boolean;
 }
 
+/**
+ * Ответ вебхука
+ * Полный формат ответа смартапа
+ */
 export interface ISberSmartAppWebhookResponse {
     /**
-     * Тип ответа. Определяет логику обработки.
+     * Тип ответа
+     * Определяет логику обработки
      */
     messageName?: TSberResponseMessageName;
+
     /**
-     * Идентификатор сессии, который обновляется каждый раз, когда в поле new_session приходит true.
-     * При использовании совместно с messageId помогает гарантировать уникальность сообщения. В том числе если пользователь взаимодействует с несколькими поверхностями.
+     * ID сессии
+     * Обновляется при new_session=true
      */
     sessionId: string;
+
     /**
-     * Идентификатор ответа смартапа. Должен быть таким же, как идентификатор запроса.
+     * ID ответа
+     * Должен совпадать с ID запроса
      */
     messageId: number;
-    /**
-     * Составной идентификатор пользователя.
-     */
+
+    /** ID пользователя */
     uuid: ISberSmartAppUuId;
+
     /**
-     * Объект с данными, которые зависят от типа сообщения.
+     * Данные ответа
+     * Зависят от типа сообщения
      */
     payload?: ISberSmartAppResponsePayload | object;
 }
 
+/**
+ * Сессия смартапа
+ * Содержит данные о текущей сессии
+ */
 export interface ISberSmartAppSession {
+    /** Информация об устройстве */
     device: ISberSmartAppDeviceInfo;
+
+    /** Метаданные */
     meta: ISberSmartAppMetaInfo;
+
+    /** ID сессии */
     sessionId: string;
+
+    /** ID сообщения */
     messageId: number;
+
+    /** ID пользователя */
     uuid: ISberSmartAppUuId;
+
+    /** Имя проекта */
     projectName: string;
 }
