@@ -116,7 +116,7 @@ export function run(
             bot.initTypeInGet();
             _initParam(bot, config);
             mmApp.setDevMode(true);
-            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
+            module.exports = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
                 bot.startOld(req, res);
             };
             return module;
@@ -124,7 +124,7 @@ export function run(
             bot = new Bot();
             bot.initTypeInGet();
             _initParam(bot, config);
-            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
+            module.exports = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
                 bot.startOld(req, res);
             };
             return module;

@@ -1,37 +1,28 @@
 {
-  "compilerOptions": {
-    "module": "CommonJS",
-    "target": "es2020",
-    "lib": [
-      "es2020",
-      "dom"
-    ],
-    "moduleResolution": "node",
-    "removeComments": true,
-    "sourceMap": false,
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "*": ["node_modules/*", "src/**/*"]
+    "compilerOptions": {
+        "module": "CommonJS",
+        "target": "es2020",
+        "lib": ["es2020", "dom"],
+        "moduleResolution": "node",
+        "removeComments": true,
+        "sourceMap": false,
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "outDir": "dist",
+        "baseUrl": ".",
+        "paths": {
+            "*": ["node_modules/*", "src/**/*"]
+        },
+        "types": ["node", "jest"],
+        "typeRoots": ["node_modules/@types"]
     },
-    "types": ["node", "jest"],
-    "typeRoots": [
-      "node_modules/@types"
-    ]
-  },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules"]
 }

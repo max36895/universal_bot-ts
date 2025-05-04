@@ -31,6 +31,32 @@ import { IncomingMessage, ServerResponse, createServer, Server } from 'http';
 /**
  * Результат выполнения бота - ответ, который будет отправлен пользователю
  * Может быть ответом для Алисы, Маруси или текстовым сообщением
+ *
+ * @typedef {IAlisaWebhookResponse | IMarusiaWebhookResponse | string} TRunResult
+ *
+ * @example
+ * ```typescript
+ * // Ответ для Алисы
+ * const alisaResponse: TRunResult = {
+ *   response: {
+ *     text: 'Привет!',
+ *     end_session: false
+ *   },
+ *   version: '1.0'
+ * };
+ *
+ * // Ответ для Маруси
+ * const marusiaResponse: TRunResult = {
+ *   response: {
+ *     text: 'Привет!',
+ *     end_session: false
+ *   },
+ *   version: '1.0'
+ * };
+ *
+ * // Простой текстовый ответ
+ * const textResponse: TRunResult = 'Привет!';
+ * ```
  */
 export type TRunResult = IAlisaWebhookResponse | IMarusiaWebhookResponse | string;
 
@@ -39,17 +65,34 @@ export * from './interfaces/IBot';
 /**
  * Внутренний интерфейс для хранения информации о классе бота и его типе
  * Используется для определения подходящего обработчика запросов
+ *
+ * @interface IBotBotClassAndType
+ *
+ * @example
+ * ```typescript
+ * const botInfo: IBotBotClassAndType = {
+ *   botClass: new Telegram(),
+ *   type: T_TELEGRAM
+ * };
+ * ```
  */
 export interface IBotBotClassAndType {
-    /** Класс для обработки запросов конкретной платформы */
+    /**
+     * Класс для обработки запросов конкретной платформы
+     * @type {TemplateTypeModel | null}
+     */
     botClass: TemplateTypeModel | null;
-    /** Тип платформы (T_ALISA, T_VK и т.д.) */
+    /**
+     * Тип платформы (T_ALISA, T_VK и т.д.)
+     * @type {number | null}
+     */
     type: number | null;
 }
 
 /**
  * Основной класс для работы с ботом
  * Отвечает за инициализацию, конфигурацию и запуск бота
+ * Поддерживает различные платформы: Алиса, Маруся, Telegram, VK, Viber и др.
  *
  * @class Bot
  * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
@@ -80,13 +123,27 @@ export interface IBotBotClassAndType {
  *   }
  * });
  * ```
+ *
+ * @example
+ * Создание бота для Telegram:
+ * ```typescript
+ * const bot = new Bot(T_TELEGRAM);
+ * bot.initConfig({
+ *   telegram: {
+ *     token: 'YOUR_BOT_TOKEN'
+ *   }
+ * });
+ * ```
  */
 export class Bot<TUserData extends IUserData = IUserData> {
+    /** Экземпляр HTTP-сервера */
     serverInst: Server | undefined;
+
     /**
      * Полученный запрос от пользователя
      * Может быть JSON-строкой, текстом или null
      * @protected
+     * @type {TBotContent}
      */
     protected _content: TBotContent = null;
 
@@ -95,6 +152,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Обрабатывает команды и формирует ответы
      * @see BotController
      * @protected
+     * @type {BotController<TUserData>}
      */
     protected _botController: BotController<TUserData>;
 
@@ -102,6 +160,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Авторизационный токен пользователя
      * Используется для авторизованных запросов (например, в Алисе)
      * @protected
+     * @type {TBotAuth}
      */
     protected _auth: TBotAuth;
 
@@ -117,6 +176,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```typescript
      * // Создание бота для Telegram
      * const bot = new Bot(T_TELEGRAM, new MyController());
+     *
+     * // Создание бота для VK
+     * const bot = new Bot(T_VK, new MyController());
+     *
+     * // Создание бота для Алисы
+     * const bot = new Bot(T_ALISA, new MyController());
      * ```
      */
     constructor(type?: TAppType, botController?: BotController<TUserData>) {
@@ -136,7 +201,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```typescript
      * // URL: https://bot.example.com?type=telegram
      * if (bot.initTypeInGet()) {
-     *   console.log('Тип бота успешно инициализирован');
+     *   console.log('Тип бота успешно инициализирован для Telegram');
+     * }
+     *
+     * // URL: https://bot.example.com?type=vk
+     * if (bot.initTypeInGet()) {
+     *   console.log('Тип бота успешно инициализирован для VK');
      * }
      * ```
      */
@@ -162,18 +232,33 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @example
      * ```typescript
+     * // Базовая конфигурация
      * bot.initConfig({
      *   intents: [{
      *     name: 'help',
      *     slots: ['помощь', 'справка']
      *   }],
-     *   isLocalStorage: true,
+     *   isLocalStorage: true
+     * });
+     *
+     * // Конфигурация с базой данных
+     * bot.initConfig({
      *   db: {
      *     host: 'localhost',
-     *     database: 'bot_db'
+     *     database: 'bot_db',
+     *     user: 'user',
+     *     pass: 'password'
+     *   }
+     * });
+     *
+     * // Конфигурация с Telegram
+     * bot.initConfig({
+     *   telegram: {
+     *     token: 'YOUR_BOT_TOKEN'
      *   }
      * });
      * ```
+     *
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
      * ```typescript
@@ -196,6 +281,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @example
      * ```typescript
+     * // Включение режима отладки
      * bot.initParams({
      *   isDebug: true,
      *   isSaveLog: true,
@@ -218,10 +304,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Подключает контроллер с бизнес-логикой приложения
-     * Контроллер должен содержать методы для обработки команд
+     * Инициализирует контроллер с бизнес-логикой бота
+     * Устанавливает контроллер, который будет обрабатывать команды и формировать ответы
      *
-     * @param {BotController} fn - Контроллер с логикой приложения
+     * @param {BotController<TUserData>} fn - Контроллер бота
      *
      * @example
      * ```typescript
@@ -237,17 +323,20 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *     }
      *   }
      * }
+     *
      * bot.initBotController(new MyController());
      * ```
      */
     public initBotController(fn: BotController<TUserData>): void {
-        this._botController = fn;
+        if (fn) {
+            this._botController = fn;
+        }
     }
 
     /**
      * Определяет тип платформы и возвращает соответствующий класс для обработки
      *
-     * @param {TemplateTypeModel} [userBotClass] - Пользовательский класс для обработки
+     * @param @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
      * @returns {IBotBotClassAndType} Объект с типом платформы и классом обработчика
      * @throws {Error} Если не удалось определить тип приложения
      *
@@ -268,6 +357,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     ): IBotBotClassAndType {
         let botClass: TemplateTypeModel | null = null;
         let type: number | null = null;
+
         switch (mmApp.appType) {
             case T_ALISA:
                 botClass = new Alisa();
@@ -310,17 +400,23 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Устанавливает содержимое запроса
+     * Устанавливает контент запроса
+     * Используется для передачи данных от пользователя в бота
      *
-     * @param {TBotContent} content - Содержимое запроса (JSON, текст или null)
+     * @param {TBotContent} content - Контент запроса
      *
      * @example
      * ```typescript
-     * // Установка JSON-запроса
-     * bot.setContent('{"command": "start"}');
+     * // Установка текстового сообщения
+     * bot.setContent('Привет!');
      *
-     * // Установка текстового запроса
-     * bot.setContent('Привет, бот!');
+     * // Установка JSON-данных
+     * bot.setContent({
+     *   request: {
+     *     command: 'привет',
+     *     original_utterance: 'Привет, бот!'
+     *   }
+     * });
      * ```
      */
     public setContent(content: TBotContent): void {
@@ -329,16 +425,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Запускает обработку запроса
-     * Определяет тип платформы, создает соответствующий обработчик
-     * и возвращает результат обработки
+     * Выполняет основную логику бота и возвращает результат
      *
-     * @param {TemplateTypeModel} [userBotClass] - Пользовательский класс для обработки
-     * @returns {Promise<TRunResult>} Результат обработки запроса
+     * @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
+     * @returns {Promise<TRunResult>} Результат выполнения бота
      *
      * @example
      * ```typescript
+     * // Обработка запроса
      * const result = await bot.run();
-     * console.log('Ответ бота:', result);
+     * console.log(result);
+     *
+     * // Обработка с пользовательским классом
+     * const result = await bot.run(new MyBotClass());
      * ```
      */
     public async run(userBotClass: TemplateTypeModel | null = null): Promise<TRunResult> {
@@ -457,18 +556,18 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Запуск приложения через micro. Не рекомендуется к использованию, и в ближайщих обновлениях будет удалено.
-     * Оставлено для совместимости.
+     * Запускает HTTP-сервер для обработки запросов через micro. Не рекомендуется к использованию оставлено для совместимости.
+     * Рекомендуется использовать {@link start}
      *
-     * @param {IncomingMessage} req - Входящий HTTP-запрос
+     * @param {IncomingMessage} req - HTTP-запрос
      * @param {ServerResponse} res - HTTP-ответ
-     * @param {TemplateTypeModel} [userBotClass] - Пользовательский класс для обработки
+     * @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
      *
      * @example
      * ```typescript
-     * // В Express.js
+     * // Использование с Express
      * app.post('/webhook', async (req, res) => {
-     *   await bot.start(req, res);
+     *   await bot.startOld(req, res);
      * });
      * ```
      */
@@ -476,7 +575,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         req: IncomingMessage,
         res: ServerResponse,
         userBotClass: TemplateTypeModel | null = null,
-    ) {
+    ): Promise<void> {
         const { json, send } = await require('micro');
         // Принимаем только POST-запросы:
         if (req.method !== 'POST') {
@@ -503,20 +602,28 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Запуск приложения через http
+     * Запускает HTTP-сервер для обработки запросов
+     * Создает сервер на указанном хосте и порту
      *
-     * @param {string} hostname Имя хоста, на котором будет запущено приложение
-     * @param {null} port Порт, на котором будет запущено приложение
-     * @param {TemplateTypeModel} userBotClass Пользовательский класс для обработки команд.
-     * @return {void}
-     * @api
+     * @param {string} hostname - Имя хоста
+     * @param {number} port - Порт
+     * @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
+     *
+     * @example
+     * ```typescript
+     * // Запуск сервера на localhost:3000
+     * bot.start('localhost', 3000);
+     *
+     * // Запуск с пользовательским классом
+     * bot.start('localhost', 3000, new MyBotClass());
+     * ```
      */
     public start(
         hostname: string,
         port: number,
         userBotClass: TemplateTypeModel | null = null,
     ): void {
-        const send = (res: ServerResponse, statusCode: number, result: object | string) => {
+        const send = (res: ServerResponse, statusCode: number, result: object | string): void => {
             res.statusCode = statusCode;
             res.setHeader(
                 'Content-Type',
@@ -527,7 +634,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
         this.close();
 
-        this.serverInst = createServer((req: IncomingMessage, res: ServerResponse) => {
+        this.serverInst = createServer((req: IncomingMessage, res: ServerResponse): void => {
             // Принимаем только POST-запросы:
             if (req.method !== 'POST') {
                 send(res, 400, 'Bad Request');
@@ -566,11 +673,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Закрывает сервер
+     * Закрывает HTTP-сервер
+     * Освобождает ресурсы и завершает работу сервера
+     *
+     * @example
+     * ```typescript
+     * // Закрытие сервера
+     * bot.close();
+     * ```
      */
     public close(): void {
         if (this.serverInst) {
             this.serverInst.close();
+            this.serverInst = undefined;
         }
     }
 }
