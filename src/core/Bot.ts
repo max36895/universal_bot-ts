@@ -619,8 +619,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```
      */
     public start(
-        hostname: string,
-        port: number,
+        hostname: string = 'localhost',
+        port: number = 3000,
         userBotClass: TemplateTypeModel | null = null,
     ): void {
         const send = (res: ServerResponse, statusCode: number, result: object | string): void => {

@@ -7,9 +7,10 @@
     "author": "Maxim-M",
     "license": "MIT",
     "version": "1.0.0",
-    "main": "./dist/skills/game/index.js",
+    "main": "./dist/index.js",
     "scripts": {
-        "start": "micro"
+        "start": "node ./dist/index.js",
+        "build": "tsc"
     },
     "repository": {
         "type": "git",
@@ -21,7 +22,6 @@
         "umbot": "*"
     },
     "dependencies": {
-        "@types/node": "^14.6.4",
-        "micro": "^9.3.4"
+        "@types/node": "^16.11.18"
     }
 }

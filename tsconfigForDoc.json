@@ -41,5 +41,5 @@
         "src/*.ts",
         "cli/**/*"
     ],
-    "exclude": ["node_modules", "cli/template/**/*", "tests/**/*"]
+    "exclude": ["node_modules", "cli/template/**/*", "tests/**/*", "examples/**/*"]
 }

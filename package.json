@@ -45,7 +45,6 @@
     },
     "devDependencies": {
         "@types/jest": "^29.5.12",
-        "@types/micro": "~7.3.7",
         "@types/node": "^16.11.18",
         "@typescript-eslint/eslint-plugin": "^7.1.0",
         "@typescript-eslint/parser": "^7.1.0",
@@ -58,7 +57,6 @@
         "typescript": "^5.4.5"
     },
     "peerDependencies": {
-        "micro": "^10.0.1",
         "mongodb": "^6.15.0"
     },
     "files": [

@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         "module": "CommonJS",
-        "target": "es2020",
-        "lib": ["es2020", "dom"],
+        "target": "es2023",
+        "lib": ["es2023", "dom"],
         "moduleResolution": "node",
         "removeComments": true,
         "sourceMap": false,
@@ -18,11 +18,11 @@
         "outDir": "dist",
         "baseUrl": ".",
         "paths": {
-            "*": ["node_modules/*", "src/**/*"]
+            "*": ["node_modules/*", "src/*"]
         },
         "types": ["node", "jest"],
         "typeRoots": ["node_modules/@types"]
     },
-    "include": ["src/**/*"],
+    "include": ["src/**/*", "src/index.ts"],
     "exclude": ["node_modules"]
 }
