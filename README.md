@@ -352,7 +352,7 @@ bot.initConfig({
 
 Пример содержимого .env файла:
 
-```env
+```text
 TELEGRAM_TOKEN=your-telegram-token
 VK_TOKEN=your-vk-token
 VIBER_TOKEN=your-viber-token

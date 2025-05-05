@@ -172,6 +172,7 @@ export class DbControllerFile extends DbControllerModel {
         return false;
     }
 
+    /* eslint-disable */
     /**
      * Выполняет произвольный запрос к файлу
      * В текущей реализации всегда возвращает null
@@ -182,6 +183,8 @@ export class DbControllerFile extends DbControllerModel {
     public query(callback: TQueryCb): null {
         return null;
     }
+
+    /* eslint-enable */
 
     /**
      * Выполняет валидацию данных

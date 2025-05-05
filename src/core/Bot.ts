@@ -137,7 +137,13 @@ export interface IBotBotClassAndType {
  */
 export class Bot<TUserData extends IUserData = IUserData> {
     /** Экземпляр HTTP-сервера */
-    serverInst: Server | undefined;
+    protected _serverInst: Server | undefined;
+
+    /**
+     * Модель с данными пользователя
+     * @private
+     */
+    private _userData: UsersData | undefined;
 
     /**
      * Полученный запрос от пользователя
@@ -336,7 +342,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Определяет тип платформы и возвращает соответствующий класс для обработки
      *
-     * @param @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
+     * @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
      * @returns {IBotBotClassAndType} Объект с типом платформы и классом обработчика
      * @throws {Error} Если не удалось определить тип приложения
      *
@@ -424,6 +430,18 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Возвращает модель с данными пользователя
+     * @private
+     */
+    private _getUserData(): UsersData {
+        if (this._userData) {
+            return this._userData;
+        }
+        this._userData = new UsersData();
+        return this._userData;
+    }
+
+    /**
      * Запускает обработку запроса
      * Выполняет основную логику бота и возвращает результат
      *
@@ -457,7 +475,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 if (botClass.sendInInit) {
                     return await botClass.sendInInit;
                 }
-                const userData = new UsersData();
+                const userData = this._getUserData();
                 userData.escapeString('');
                 this._botController.userId = userData.escapeString(
                     this._botController.userId as string | number,
@@ -556,7 +574,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Запускает HTTP-сервер для обработки запросов
+     * Запускает HTTP-сервер для обработки запросов.
      * Создает сервер на указанном хосте и порту
      *
      * @param {string} hostname - Имя хоста
@@ -576,59 +594,73 @@ export class Bot<TUserData extends IUserData = IUserData> {
         hostname: string = 'localhost',
         port: number = 3000,
         userBotClass: TemplateTypeModel | null = null,
-    ): void {
+    ): Server {
         const send = (res: ServerResponse, statusCode: number, result: object | string): void => {
             res.statusCode = statusCode;
             res.setHeader(
                 'Content-Type',
-                typeof result === 'object' ? 'text/plain' : 'application/json',
+                typeof result === 'object' ? 'application/json' : 'text/plain',
             );
-            res.end(result);
+            res.end(typeof result === 'string' ? result : JSON.stringify(result));
         };
 
         this.close();
 
-        this.serverInst = createServer((req: IncomingMessage, res: ServerResponse): void => {
-            // Принимаем только POST-запросы:
-            if (req.method !== 'POST') {
-                send(res, 400, 'Bad Request');
-                return;
-            }
-
-            let data: string = '';
-
-            req.on('data', (chunk: string) => {
-                data += chunk;
-            });
-
-            req.on('end', () => {
-                const query: TBotContent = JSON.parse(data);
-                if (query) {
-                    if (req.headers && req.headers.authorization) {
-                        this._auth = req.headers.authorization.replace('Bearer', '');
-                    }
-                    this.setContent(query);
-                    this.run(userBotClass)
-                        .then((value) => {
-                            send(res, value === 'notFound' ? 404 : 200, value);
-                        })
-                        .catch(() => {
-                            send(res, 404, 'notFound');
-                        });
-                } else {
+        this._serverInst = createServer(
+            async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+                // Принимаем только POST-запросы:
+                if (req.method !== 'POST') {
                     send(res, 400, 'Bad Request');
+                    return;
                 }
-            });
-        });
 
-        this.serverInst.listen(port, hostname, () => {
+                try {
+                    const data = await this.readRequestData(req);
+                    const query: TBotContent = JSON.parse(data);
+                    if (query) {
+                        if (req.headers && req.headers.authorization) {
+                            this._auth = req.headers.authorization.replace('Bearer', '');
+                        }
+                        this.setContent(query);
+                        const result = await this.run(userBotClass);
+                        send(res, result === 'notFound' ? 404 : 200, result);
+                    }
+                } catch (error) {
+                    if (error instanceof SyntaxError) {
+                        send(res, 400, 'Invalid JSON');
+                    } else {
+                        mmApp.saveLog('bot.log', `Bot:start(): Server error: ${error}`);
+                        send(res, 500, 'Internal Server Error');
+                    }
+                }
+            },
+        );
+
+        this._serverInst.listen(port, hostname, () => {
             console.log(`Server running at http://${hostname}:${port}/`);
+        });
+        return this._serverInst;
+    }
+
+    /**
+     * Обработка запросов webhook сервера
+     * @param req
+     * @private
+     */
+    private readRequestData(req: IncomingMessage): Promise<string> {
+        return new Promise((resolve, reject) => {
+            let data = '';
+            req.on('data', (chunk: Buffer) => {
+                data += chunk.toString();
+            });
+            req.on('end', () => resolve(data));
+            req.on('error', reject);
         });
     }
 
     /**
-     * Закрывает HTTP-сервер
-     * Освобождает ресурсы и завершает работу сервера
+     * Закрывает HTTP-сервер.
+     * Освобождает ресурсы и завершает работу сервера.
      *
      * @example
      * ```typescript
@@ -637,9 +669,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```
      */
     public close(): void {
-        if (this.serverInst) {
-            this.serverInst.close();
-            this.serverInst = undefined;
+        if (this._serverInst) {
+            this._serverInst.close();
+            this._serverInst = undefined;
         }
     }
 }

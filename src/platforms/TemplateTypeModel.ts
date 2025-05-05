@@ -133,9 +133,12 @@ export abstract class TemplateTypeModel {
         return Promise.resolve(null);
     }
 
+    /* eslint-disable */
     /**
      * Сохраняет данные в локальное хранилище
      * @param data Данные для сохранения
      */
     public async setLocalStorage(data: any): Promise<void> {}
+
+    /* eslint-enable */
 }

@@ -54,11 +54,31 @@ function fwrite(fileName, fileContent, mode = 'w') {
 
 /**
  * Методы для работы с файлами.
- * @type {{isFile: ((function(*): boolean)|*), fwrite: fwrite, fread: (function(*): string), isDir: ((function(*): boolean)|*)}}
  */
 exports.utils = {
+    /**
+     * Метода используется для проверки существования файла.
+     * @param file
+     * @returns {boolean}
+     */
     isFile,
+    /**
+     * Метода используется для проверки существования папки.
+     * @param file
+     * @returns {boolean}
+     */
     isDir,
+    /**
+     * Метода используется для чтения содержимого файла.
+     * @param fileName
+     * @returns {string}
+     */
     fread,
+    /**
+     * Метода используется для записи в файл.
+     * @param fileName
+     * @param fileContent
+     * @param mode
+     */
     fwrite,
 };
