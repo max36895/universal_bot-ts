@@ -4,11 +4,14 @@
  * Time: {{time}}
  */
 
-exports.params = {
-    db: {
-        host: '',
-        user: '',
-        pass: '',
-        database: '',
-    },
+exports.config = {
+    yandex_token: '',
+    welcome_text: '',
+    help_text: '',
+    intents: [
+        {
+            name: '',
+            slots: [],
+        },
+    ],
 };

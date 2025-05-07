@@ -28,9 +28,10 @@ umbot <команда> [параметры]
 
 ### Доступные команды
 
-| Команда  | Описание                | Параметры                                 |
-| -------- | ----------------------- | ----------------------------------------- |
-| `create` | Создание нового проекта | `<project-name>` или `<config-file.json>` |
+| Команда       | Описание                | Параметры                                 |
+| ------------- | ----------------------- | ----------------------------------------- |
+| `create`      | Создание нового проекта | `<project-name>` или `<config-file.json>` |
+| `generateEnv` | Сгенерировать файл .env | -                                         |
 
 ### Создание проекта
 
@@ -74,6 +75,8 @@ interface ProjectConfig {
     hostname?: string;
     // Порт на котором будет запущено приложение. По умолчанию 3000
     port?: string;
+    // Определяет нужно создавать .env файл или нет
+    isEnv?: boolean;
 }
 ```
 
@@ -85,20 +88,21 @@ interface ProjectConfig {
     "type": "quiz",
     "mode": "dev",
     "path": "./bots/quiz",
-    "config": [
-        {
-            "type": "mysql",
-            "host": "localhost",
-            "database": "quiz_db",
-            "user": "user",
-            "password": "password"
-        }
-    ],
     "params": {
+        "viber_token": "token"
+    },
+    "config": {
         "json": "./data",
         "error_log": "./logs",
-        "isLocalStorage": true
-    }
+        "isLocalStorage": true,
+        "db": {
+            "host": "",
+            "user": "",
+            "pass": "",
+            "database": ""
+        }
+    },
+    "isEnv": true
 }
 ```
 

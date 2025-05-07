@@ -261,10 +261,10 @@ bot.initConfig({
 ```text
 TELEGRAM_TOKEN=your-telegram-token
 VK_TOKEN=your-vk-token
+VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
 VIBER_TOKEN=your-viber-token
 YANDEX_TOKEN=your-alisa-token
 MARUSIA_TOKEN=your-marusia-token
-SMARTAPP_TOKEN=your-smartapp-token
 
 DB_HOST=localhost
 DB_USER=user

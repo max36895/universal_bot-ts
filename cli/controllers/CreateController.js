@@ -1,5 +1,6 @@
 'use strict';
 const fs = require('fs');
+const { exec } = require('child_process');
 const utils = require('../utils').utils;
 
 /**
@@ -61,13 +62,14 @@ class CreateController {
     _initParams(defaultParams) {
         let params;
         if (this.params && this.params.params) {
+            console.log(this.params.params, 'params');
             params = { ...defaultParams, ...this.params.params };
         } else {
             params = defaultParams;
         }
 
         let content = this._getHeaderContent();
-        content += "import { IAppParam } from 'umbot/mmApp';\n\n";
+        content += "import { IAppParam } from 'umbot';\n\n";
         content += 'export default function(): IAppParam {\n';
         content += '\treturn ';
         content += JSON.stringify(params, null, '\t');
@@ -90,8 +92,11 @@ class CreateController {
         } else {
             config = defaultConfig;
         }
+        if (this.params.isEnv) {
+            config.env = `./.env`;
+        }
         let content = this._getHeaderContent();
-        content += "import { IAppConfig } from 'umbot/mmApp';\n\n";
+        content += "import { IAppConfig } from 'umbot';\n\n";
         content += 'export default function (): IAppConfig {\n';
         content += '\treturn ';
         content += JSON.stringify(config, null, '\t');
@@ -173,8 +178,8 @@ class CreateController {
         console.log('Создается файл с конфигурацией приложения: ...');
         const configFile = `${this.#path}/config/{{name}}Config.ts`;
         let configContent;
-        if (utils.isFile(`${path}/config/${type}Config.js`)) {
-            const config = require(`${path}/config/${type}Config`);
+        if (utils.isFile(`${path}/config/defaultConfig.js`)) {
+            const config = require(`${path}/config/defaultConfig`);
             configContent = this._initConfig(config.config);
         } else {
             configContent = '';
@@ -188,12 +193,12 @@ class CreateController {
      * @param {string} path Путь к шаблонам
      * @private
      */
-    _getParamsFile(path) {
+    _getParamsFile(path, type) {
         console.log('Создается файл с параметрами приложения: ...');
         const paramsFile = `${this.#path}/config/{{name}}Params.ts`;
         let paramsContent;
-        if (utils.isFile(`${path}/config/defaultParams.js`)) {
-            const param = require(`${path}/config/defaultParams`);
+        if (utils.isFile(`${path}/config/${type}Params.js`)) {
+            const param = require(`${path}/config/${type}Params`);
             paramsContent = this._initParams(param.params);
         } else {
             paramsContent = '';
@@ -217,7 +222,7 @@ class CreateController {
             const typeToLower = type.toLowerCase();
 
             this._getConfigFile(standardPath, typeToLower);
-            this._getParamsFile(standardPath);
+            this._getParamsFile(standardPath, typeToLower);
 
             let controllerFile = `${this.#path}/controller`;
             if (!utils.isDir(controllerFile)) {
@@ -254,14 +259,37 @@ class CreateController {
     }
 
     /**
+     * Генерирует файл
+     * @param fileName
+     * @param content
+     */
+    generateFile(fileName, content) {
+        utils.fwrite(`${this.#path}/${fileName}`, content);
+        console.log('.env файл успешно создан!');
+    }
+
+    /**
+     * Форматирует проект через prettier
+     */
+    format() {
+        exec(`prettier.cmd --write ${this.#path}`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`exec error: ${error}`);
+                return;
+            }
+        });
+    }
+
+    /**
      * Инициализация параметров проекта
      * @param name Имя проекта
      * @param type Тип проекта
      * @public
      */
     init(name = null, type = CreateController.T_DEFAULT) {
-        if (name) {
-            this.#name = name;
+        const correctName = name.replace(/\W/g, '_');
+        if (correctName) {
+            this.#name = correctName;
             this.#path = '';
             if (this.params && this.params.path) {
                 this.#path = this.params.path;
@@ -270,13 +298,13 @@ class CreateController {
                 paths.forEach((dir) => {
                     path += `${dir}/`;
                     if (dir !== './' && path !== '../') {
-                        if (!utils.is_dir(path)) {
+                        if (!utils.isDir(path)) {
                             fs.mkdirSync(path);
                         }
                     }
                 });
             } else {
-                this.#path += name;
+                this.#path += correctName;
                 if (!utils.isDir(this.#path)) {
                     fs.mkdirSync(this.#path);
                 }
