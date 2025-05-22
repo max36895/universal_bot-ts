@@ -87,7 +87,7 @@ class CreateController {
      */
     _initConfig(defaultConfig) {
         let config;
-        if (this.params?.config) {
+        if (this.params.config) {
             config = { ...defaultConfig, ...this.params.config };
         } else {
             config = defaultConfig;
