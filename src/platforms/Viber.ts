@@ -102,7 +102,7 @@ export class Viber extends TemplateTypeModel {
                         this.controller.userId = content.sender.id;
                         mmApp.params.user_id = this.controller.userId;
                         this.controller.userCommand = content.message.text.toLowerCase().trim();
-                        this.controller.originalUserCommand = content.message.text || '';
+                        this.controller.originalUserCommand = content.message.text;
                         this.controller.messageId = content.message_token;
 
                         mmApp.params.viber_api_version = content.sender.api_version || 2;

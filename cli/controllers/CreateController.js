@@ -87,7 +87,7 @@ class CreateController {
      */
     _initConfig(defaultConfig) {
         let config;
-        if (this.params && this.params.config) {
+        if (this.params?.config) {
             config = { ...defaultConfig, ...this.params.config };
         } else {
             config = defaultConfig;
@@ -287,7 +287,7 @@ class CreateController {
      * @public
      */
     init(name = null, type = CreateController.T_DEFAULT) {
-        const correctName = name.replace(/\W/g, '_');
+        const correctName = name?.replace(/\W/g, '_');
         if (correctName) {
             this.#name = correctName;
             this.#path = '';

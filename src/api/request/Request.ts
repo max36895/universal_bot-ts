@@ -232,7 +232,7 @@ export class Request {
         try {
             const formData = new FormData();
             const fileResult = fread(filePath);
-            if (fileResult && fileResult.data) {
+            if (fileResult.data) {
                 const blob = new Blob([fileResult.data], { type: 'application/octet-stream' });
                 formData.append(fileName || 'file', blob);
                 return formData;

@@ -126,19 +126,17 @@ export class QueryData {
     public static getQueryData(str: string): IQueryData | null {
         if (str) {
             const datas = str.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gim);
-            if (datas) {
-                const regData: IQueryData = {};
-                let data = datas.next();
-                while (!data.done) {
-                    let val: string | number = data.value[3].replace(/"/g, '');
-                    if (!isNaN(+val)) {
-                        val = +val;
-                    }
-                    regData[data.value[2].replace(/`/g, '')] = val;
-                    data = datas.next();
+            const regData: IQueryData = {};
+            let data = datas.next();
+            while (!data.done) {
+                let val: string | number = data.value[3].replace(/"/g, '');
+                if (!isNaN(+val)) {
+                    val = +val;
                 }
-                return regData;
+                regData[data.value[2].replace(/`/g, '')] = val;
+                data = datas.next();
             }
+            return regData;
         }
         return null;
     }

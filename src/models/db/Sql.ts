@@ -280,7 +280,7 @@ export class Sql {
                 const client = await _vDB.dbConnect;
                 const db = client.db(_vDB.params?.database);
                 const data: IModelRes = await callback(client, db);
-                if (data && data.status) {
+                if (data?.status) {
                     return data.data;
                 }
                 Sql._saveLog(data.error + '');

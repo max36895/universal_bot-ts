@@ -249,14 +249,12 @@ export abstract class Model<TState extends TStateData> {
      */
     protected getId(): string | number | null {
         const labels = this.attributeLabels();
-        let key = null;
         for (const index in labels) {
             if (labels[index] === 'id' || labels[index] === 'ID') {
-                key = index;
                 return index;
             }
         }
-        return key;
+        return null;
     }
 
     /**
