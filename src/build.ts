@@ -1,8 +1,7 @@
-import { BotTest, IBotTestParams } from "./core/BotTest";
-import { IAppConfig, IAppParam, mmApp } from "./mmApp";
-import { BotController } from "./controller";
-import { Bot } from "./core";
-import { IncomingMessage, ServerResponse } from "http";
+import { BotTest, IBotTestParams } from './core/BotTest';
+import { IAppConfig, IAppParam, mmApp } from './mmApp';
+import { BotController } from './controller';
+import { Bot } from './core';
 
 /**
  * Набор методов, упрощающих запуск приложения
@@ -10,14 +9,17 @@ import { IncomingMessage, ServerResponse } from "http";
  */
 
 /**
- * Режим работы приложения. Принимает одно из 2 значений
- * - dev Запуск в режиме тестирования, с использованием консоли, в качестве тестового окружения.
- * - dev-online Запуск в режиме тестирования, с использованием webhook, в качестве тестового окружения.
- * - prod Запуск в релизном режиме
- * - dev-online-old Запуск в режиме тестирования, с использованием webhook, в качестве тестового окружения в старом режиме.
- * - prod-old Запуск в релизном режиме в старом режиме
+ * Режим работы приложения
+ * @remarks
+ * Определяет режим запуска и окружение приложения:
+ * - dev: Запуск в режиме тестирования с использованием консоли в качестве тестового окружения.
+ *   Удобно для локальной разработки и отладки.
+ * - dev-online: Запуск в режиме тестирования с использованием webhook.
+ *   Позволяет тестировать интеграции с внешними сервисами.
+ * - prod: Запуск в релизном режиме для использования в продакшн среде.
+ *   Все оптимизации включены, логирование минимально.
  */
-export type TMode = 'dev' | 'dev-online' | 'prod' | 'dev-online-old' | 'prod-old';
+export type TMode = 'dev' | 'dev-online' | 'prod';
 
 /**
  * Настройки приложения
@@ -41,6 +43,15 @@ export interface IConfig {
     testParams?: IBotTestParams;
 }
 
+/**
+ * Инициализирует основные параметры бота
+ * @param {Bot | BotTest} bot Экземпляр бота для инициализации
+ * @param {IConfig} config Конфигурация приложения
+ * @remarks
+ * Устанавливает конфигурацию, параметры и контроллер для бота.
+ * Этот метод должен вызываться перед запуском бота.
+ * @private
+ */
 function _initParam(bot: Bot | BotTest, config: IConfig): void {
     bot.initConfig(config.appConfig);
     bot.initParams(config.appParam);
@@ -51,42 +62,51 @@ function _initParam(bot: Bot | BotTest, config: IConfig): void {
  * Запуск приложения
  * @param {IConfig} config Конфигурация приложения
  * @param {TMode} mode Режим работы приложения
+ * @returns {unknown} В зависимости от режима:
+ * - dev: Возвращает результат выполнения тестов
+ * - dev-online/prod: Возвращает модуль с обработчиком webhook запросов
+ *
+ * @example
+ * ```typescript
+ * // Запуск в режиме разработки
+ * run({
+ *   appConfig: { ... },
+ *   appParam: { ... },
+ *   controller: new MyController(),
+ *   testParams: { ... }
+ * }, 'dev');
+ *
+ * // Запуск в продакшн режиме
+ * run({
+ *   appConfig: { ... },
+ *   appParam: { ... },
+ *   controller: new MyController()
+ * }, 'prod');
+ * ```
  */
-export function run(config: IConfig, mode: TMode = 'prod', hostname: string = 'localhost', port: number = 3000): unknown {
+export function run(
+    config: IConfig,
+    mode: TMode = 'prod',
+    hostname: string = 'localhost',
+    port: number = 3000,
+): unknown {
     let bot: BotTest | Bot;
     switch (mode) {
-        case "dev":
+        case 'dev':
             bot = new BotTest();
             _initParam(bot, config);
             mmApp.setDevMode(true);
             return (bot as BotTest).test(config.testParams);
-        case "dev-online":
+        case 'dev-online':
             bot = new Bot();
             bot.initTypeInGet();
             _initParam(bot, config);
             mmApp.setDevMode(true);
             return bot.start(hostname, port);
-        case "prod":
+        case 'prod':
             bot = new Bot();
             bot.initTypeInGet();
             _initParam(bot, config);
             return bot.start(hostname, port);
-        case "dev-online-old":
-            bot = new Bot();
-            bot.initTypeInGet();
-            _initParam(bot, config);
-            mmApp.setDevMode(true);
-            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-                bot.startOld(req, res)
-            };
-            return module;
-        case "prod-old":
-            bot = new Bot();
-            bot.initTypeInGet();
-            _initParam(bot, config);
-            module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-                bot.startOld(req, res)
-            };
-            return module;
     }
 }

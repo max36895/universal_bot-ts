@@ -1,5 +1,5 @@
-import {MyController} from './MyController';
-import {mmApp} from '../../src';
+import { MyController } from './MyController';
+import { mmApp } from '../../src';
 
 describe('Controller', () => {
     const uController = new MyController();
@@ -27,18 +27,13 @@ describe('Controller', () => {
         const intents = [
             {
                 name: 'start',
-                slots: [
-                    'start',
-                    'go'
-                ]
+                slots: ['start', 'go'],
             },
             {
                 name: 'by',
-                slots: [
-                    'by'
-                ],
-                is_pattern: true
-            }
+                slots: ['by'],
+                is_pattern: true,
+            },
         ];
         mmApp.params.intents = intents;
         expect(uController.testIntents()).toEqual(intents);
@@ -47,5 +42,49 @@ describe('Controller', () => {
         expect(uController.testIntent('go') === 'start').toBe(true);
         expect(uController.testIntent('by') === 'by').toBe(true);
         expect(uController.testIntent('bye') === 'by').toBe(true);
-    })
+    });
+
+    it('MyController addCommand minimum params', () => {
+        mmApp.params.intents = [];
+        mmApp.addCommand('test', ['start']);
+
+        uController.userCommand = 'start';
+        uController.run();
+        expect(uController.actionName).toEqual('test');
+
+        mmApp.removeCommand('test');
+    });
+
+    it('MyController addCommand cb used', () => {
+        mmApp.params.intents = [];
+        let isUsed = false;
+        mmApp.addCommand('cb', ['go'], () => {
+            isUsed = true;
+        });
+
+        uController.userCommand = 'go cb used';
+        uController.run();
+        expect(isUsed).toBe(true);
+        expect(uController.actionName).toEqual('cb');
+
+        isUsed = false;
+        mmApp.removeCommand('cb');
+        uController.userCommand = 'go cb removed command';
+        uController.run();
+        expect(isUsed).toBe(false);
+    });
+
+    it('MyController addCommand cb return string', () => {
+        mmApp.params.intents = [];
+        mmApp.addCommand('text', ['text'], () => {
+            return 'test';
+        });
+
+        uController.userCommand = 'text case';
+        uController.run();
+        expect(uController.text).toEqual('test');
+        expect(uController.actionName).toEqual('text');
+
+        mmApp.removeCommand('text');
+    });
 });

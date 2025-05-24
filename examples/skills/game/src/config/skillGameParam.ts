@@ -1,4 +1,4 @@
-import {IAppParam} from '../../src/mmApp';
+import { IAppParam } from 'umbot';
 
 export default function (): IAppParam {
     return {
@@ -6,24 +6,16 @@ export default function (): IAppParam {
         intents: [
             {
                 name: 'by',
-                slots: [
-                    'пока',
-                ]
+                slots: ['пока'],
             },
             {
                 name: 'replay',
-                slots: [
-                    'повтор',
-                    'еще раз'
-                ]
+                slots: ['повтор', 'еще раз'],
             },
             {
                 name: 'game',
-                slots: [
-                    'игра',
-                    'начать игру'
-                ]
-            }
-        ]
+                slots: ['игра', 'начать игру'],
+            },
+        ],
     };
 }

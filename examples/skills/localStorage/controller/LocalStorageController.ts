@@ -1,4 +1,4 @@
-import {HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController} from '../../../../src';
+import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from '../../../../src';
 
 /**
  * Пример, позволяющий сохранить данные в локальном хранилище.
@@ -26,14 +26,14 @@ export class LocalStorageController extends BotController {
             case 'bigImage':
                 this.text = '';
                 this.tts = 'Большая картинка';
-                this.card.add('565656/78878', 'Заголовок изображения', 'Описание изображения');
+                this.card.addImage('565656/78878', 'Заголовок изображения', 'Описание изображения');
                 break;
 
             case 'list':
                 this.tts = 'Галерея из нескольких изображений';
                 this.card.title = 'Галерея';
-                this.card.add('565656/78878', 'Элемент с картинкой"', 'Описание изображения');
-                this.card.add(null, 'Элемент без изображения', 'Описание изображения');
+                this.card.addImage('565656/78878', 'Элемент с картинкой"', 'Описание изображения');
+                this.card.addImage(null, 'Элемент без изображения', 'Описание изображения');
                 this.card.button.addBtn('Текст в footer');
                 break;
 
@@ -41,7 +41,7 @@ export class LocalStorageController extends BotController {
                 this.text = 'Сохранено!';
                 this.userData = {
                     userId: this.userId,
-                    saved: this.userCommand
+                    saved: this.userCommand,
                 };
                 break;
 

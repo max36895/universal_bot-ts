@@ -1,216 +1,663 @@
-import {Buttons} from '../components/button';
-import {Card} from '../components/card';
-import {Sound} from '../components/sound';
-import {Nlu} from '../components/nlu';
-import {HELP_INTENT_NAME, IAppIntent, mmApp, T_ALISA, T_MARUSIA, WELCOME_INTENT_NAME} from '../mmApp';
-import {Text} from '../utils/standard/Text';
+/**
+ * Модуль контроллера - основной компонент для обработки бизнес-логики бота
+ *
+ * @module controller/BotController
+ */
+import { Buttons } from '../components/button';
+import { Card } from '../components/card';
+import { Sound } from '../components/sound';
+import { Nlu } from '../components/nlu';
+import {
+    HELP_INTENT_NAME,
+    IAppIntent,
+    mmApp,
+    T_ALISA,
+    T_MARUSIA,
+    WELCOME_INTENT_NAME,
+} from '../mmApp';
+import { Text } from '../utils/standard/Text';
 
+/**
+ * Тип статуса операции
+ * Определяет результат выполнения операции
+ *
+ * @remarks
+ * Возможные значения:
+ * - true: операция выполнена успешно
+ * - false: операция завершилась с ошибкой
+ * - null: операция не выполнялась
+ *
+ * @example
+ * ```typescript
+ * const status: TStatus = true; // операция успешна
+ * const status: TStatus = false; // операция с ошибкой
+ * const status: TStatus = null; // операция не выполнялась
+ * ```
+ */
 export type TStatus = true | false | null;
 
 /**
- * Интерфейст для пользовательских событий
+ * Интерфейс для событий пользователя
+ * Содержит информацию о различных действиях пользователя в приложении
+ *
+ * @remarks
+ * События включают:
+ * - Авторизацию пользователя
+ * - Оценку приложения
+ *
+ * @example
+ * ```typescript
+ * const userEvent: IUserEvent = {
+ *   auth: {
+ *     status: true // пользователь успешно авторизовался
+ *   },
+ *   rating: {
+ *     status: true,
+ *     value: 5 // пользователь поставил оценку 5
+ *   }
+ * };
+ * ```
  */
 export interface IUserEvent {
     /**
-     * Информация об авторизации
+     * Информация об авторизации пользователя
+     * Содержит статус авторизации и дополнительные данные
      */
     auth?: {
         /**
-         * В случае успешной авторизации вернет true, в противном случае false.
+         * Статус авторизации
+         * @remarks
+         * - true: авторизация успешна
+         * - false: авторизация не удалась
+         * - null: авторизация не выполнялась
          */
         status: TStatus;
-    }
+    };
     /**
-     * Информации об выставлении оценки
+     * Информация об оценке приложения пользователем
+     * Содержит статус оценки и её значение
      */
     rating?: {
         /**
-         * Вернут true в том случае, если пользователь оценил приложение.
+         * Статус выставления оценки
+         * @remarks
+         * - true: оценка выставлена
+         * - false: пользователь отказался от оценки
+         * - null: оценка не запрашивалась
          */
         status: TStatus;
         /**
-         * Поставленная оценка
+         * Числовое значение выставленной оценки
+         * @remarks
+         * Обычно от 1 до 5
          */
         value?: number;
-    }
+    };
 }
 
 /**
- * Абстрактный класс, от которого наследуются все классы, обрабатывающие логику приложения.
- * @class BotController
+ * Интерфейс для хранения пользовательских данных
+ * Расширяемый интерфейс для хранения любых дополнительных данных
+ *
+ * @remarks
+ * Базовые поля:
+ * - oldIntentName: название предыдущего интента
+ *
+ * Дополнительные поля могут быть добавлены через:
+ * 1. Расширение интерфейса (extends)
+ * 2. Индексную сигнатуру [key: string]: unknown
+ *
+ * @example
+ * ```typescript
+ * // Способ 1: Расширение интерфейса
+ * interface MyUserData extends IUserData {
+ *   name: string;
+ *   preferences: {
+ *     language: string;
+ *     theme: string;
+ *   };
+ * }
+ *
+ * // Способ 2: Использование индексной сигнатуры
+ * interface DynamicUserData extends IUserData {
+ *   [key: string]: unknown;
+ * }
+ *
+ * const userData: MyUserData = {
+ *   oldIntentName: 'greeting',
+ *   name: 'John',
+ *   preferences: {
+ *     language: 'ru',
+ *     theme: 'dark'
+ *   }
+ * };
+ *
+ * const dynamicData: DynamicUserData = {
+ *   oldIntentName: 'greeting',
+ *   customField1: 'value1',
+ *   customField2: 42,
+ *   customObject: {
+ *     nested: true
+ *   }
+ * };
+ * ```
  */
-export abstract class BotController {
+export interface IUserData {
     /**
-     * Компонент, позволяющий отображать кнопки пользователю.
-     * @see Buttons Смотри тут
+     * Название предыдущего интента
+     * Используется для отслеживания контекста диалога
+     *
+     * @example
+     * ```typescript
+     * this.oldIntentName = 'greeting';
+     * ```
+     */
+    oldIntentName?: string;
+
+    /**
+     * Дополнительные пользовательские данные
+     * Может содержать любые поля, специфичные для приложения
+     */
+    [key: string]: unknown;
+}
+
+/**
+ * Абстрактный класс контроллера бота
+ * Предоставляет базовый функционал для обработки пользовательских запросов
+ *
+ * @remarks
+ * Основные возможности:
+ * - Обработка пользовательских команд и интентов
+ * - Управление состоянием диалога
+ * - Работа с UI компонентами (кнопки, карточки)
+ * - Поддержка различных платформ (Алиса, Маруся, Telegram и др.)
+ * - Управление пользовательскими данными
+ *
+ * @example
+ * ```typescript
+ * // Определение пользовательских данных
+ * interface MyUserData extends IUserData {
+ *   score: number;
+ *   level: number;
+ *   preferences: {
+ *     language: string;
+ *     theme: string;
+ *   };
+ * }
+ *
+ * class MyController extends BotController<MyUserData> {
+ *   public action(intentName: string | null): void {
+ *     try {
+ *       // Обработка приветствия
+ *       if (intentName === WELCOME_INTENT_NAME) {
+ *         // Текстовый ответ
+ *         this.text = 'Привет! Чем могу помочь?';
+ *
+ *         // Добавление кнопок
+ *         this.buttons
+ *           .addBtn('Помощь')
+ *           .addBtn('Выход');
+ *
+ *         // Добавление карточки
+ *         this.card
+ *           .setTitle('Добро пожаловать!')
+ *           .setDescription('Выберите действие:')
+ *           .addButton('Начать игру')
+ *           .addButton('Настройки');
+ *
+ *         // Установка пользовательских данных
+ *         this.userData = {
+ *           score: 0,
+ *           level: 1,
+ *           preferences: {
+ *             language: 'ru',
+ *             theme: 'light'
+ *           }
+ *         };
+ *
+ *         // Добавление звука
+ *         this.sound.add('welcome.mp3');
+ *
+ *         return;
+ *       }
+ *
+ *       // Обработка команды помощи
+ *       if (intentName === HELP_INTENT_NAME) {
+ *         this.text = 'Я могу помочь вам с...';
+ *         this.buttons.addBtn('Назад');
+ *         return;
+ *       }
+ *
+ *       // Обработка NLU
+ *       const nluResult = this.nlu.getIntent();
+ *       if (nluResult) {
+ *         // Обработка интента
+ *         this.text = `Вы сказали: ${nluResult}`;
+ *       }
+ *
+ *       // Обработка пользовательских событий
+ *       if (this.userEvents?.auth?.status) {
+ *         this.text = 'Вы успешно авторизовались!';
+ *       }
+ *
+ *       // Обработка оценки
+ *       if (this.userEvents?.rating?.status) {
+ *         const rating = this.userEvents.rating.value;
+ *         this.text = `Спасибо за оценку ${rating}!`;
+ *       }
+ *
+ *     } catch (error) {
+ *       console.error('Error in action:', error);
+ *       this.text = 'Произошла ошибка. Попробуйте позже.';
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * @class BotController
+ * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
+ */
+export abstract class BotController<TUserData extends IUserData = IUserData> {
+    /**
+     * Компонент для отображения кнопок пользователю
+     * Позволяет создавать интерактивные элементы управления
+     *
+     * @see Buttons
+     * @example
+     * ```typescript
+     * this.buttons
+     *   .addBtn('Помощь')
+     *   .addBtn('Выход');
+     * ```
      */
     public buttons: Buttons;
+
     /**
-     * Компонент, позволяющий отображать карточки пользователю.
-     * @see Card Смотри тут
+     * Компонент для отображения карточек пользователю
+     * Позволяет создавать визуальные элементы с изображениями и текстом
+     *
+     * @see Card
+     * @example
+     * ```typescript
+     * this.card
+     *   .addHeader('Заголовок')
+     *   .addImage('url/to/image.jpg')
+     *   .addFooter('Описание');
+     * ```
      */
     public card: Card;
+
     /**
-     * Текст, отображаемый пользователю.
+     * Текст, отображаемый пользователю
+     * Основной способ коммуникации с пользователем
+     *
+     * @example
+     * ```typescript
+     * this.text = 'Привет! Чем могу помочь?';
+     * ```
      */
     public text: string;
+
     /**
-     * Текст, воспроизводимый пользователю.
-     * !Важно, если переменная заполняется для типов приложения отличных от голосовых ассистентов, то отправляется запрос в yandex speechkit для преобразования текста в речь.
-     * Полученный звук отправляется пользователю как аудио сообщение.
+     * Текст для преобразования в речь
+     * Используется для голосовых ассистентов
+     *
+     * @remarks
+     * Для неголосовых платформ текст будет преобразован в речь
+     * через Yandex SpeechKit и отправлен как аудио сообщение
+     *
+     * @example
+     * ```typescript
+     * this.tts = 'Привет! Я голосовой ассистент.';
+     * ```
      */
     public tts: string | null;
+
     /**
-     * Обработанный nlu.
-     * @link [nlu](https://www.maxim-m.ru/glossary/nlu)
-     * @see Nlu Смотри тут
+     * Обработанный NLU (Natural Language Understanding)
+     * Содержит результаты обработки естественного языка
+     *
+     * @see Nlu
      */
     public nlu: Nlu;
+
     /**
-     * Звуки, присутствующие в приложении.
-     * @see Sound Смотри тут
+     * Компонент для работы со звуками
+     * Позволяет добавлять звуковые эффекты и музыку
+     *
+     * @see Sound
+     * @example
+     * ```typescript
+     * this.sound
+     *   .addSound('welcome.mp3')
+     *   .addBackground('music.mp3');
+     * ```
      */
     public sound: Sound;
+
     /**
-     * Идентификатор пользователя.
+     * Идентификатор пользователя
+     * Уникальный идентификатор для каждого пользователя
+     *
+     * @example
+     * ```typescript
+     * this.userId = 'user_123';
+     * ```
      */
     public userId: string | number | null;
+
     /**
-     * Пользовательский токен. Инициализируется когда пользователь авторизовался (Актуально для Алисы).
+     * Пользовательский токен авторизации
+     * Используется для авторизованных запросов (например, в Алисе)
+     *
+     * @example
+     * ```typescript
+     * this.userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+     * ```
      */
     public userToken: string | null;
+
     /**
-     * Meta данные пользователя.
+     * Метаданные пользователя
+     * Дополнительная информация о пользователе
+     *
+     * @example
+     * ```typescript
+     * this.userMeta = {
+     *   timezone: 'Europe/Moscow',
+     *   locale: 'ru-RU'
+     * };
+     * ```
      */
     public userMeta: any;
+
     /**
-     * Id сообщения(Порядковый номер сообщения), необходимый для определения начала нового диалога с приложением.
+     * ID сообщения
+     * Используется для определения начала нового диалога
+     *
+     * @example
+     * ```typescript
+     * this.messageId = 12345;
+     * ```
      */
     public messageId: number | string | null;
+
     /**
-     * Запрос пользователя в нижнем регистре.
+     * Запрос пользователя в нижнем регистре
+     * Нормализованный текст запроса
+     *
+     * @example
+     * ```typescript
+     * this.userCommand = 'привет бот';
+     * ```
      */
     public userCommand: string | null;
+
     /**
-     * Оригинальный запрос пользователя.
+     * Оригинальный запрос пользователя
+     * Текст запроса без изменений
+     *
+     * @example
+     * ```typescript
+     * this.originalUserCommand = 'Привет, бот!';
+     * ```
      */
     public originalUserCommand: string | null;
+
     /**
-     * Дополнительные параметры к запросу.
+     * Дополнительные параметры запроса
+     * Может содержать любые дополнительные данные
+     *
+     * @example
+     * ```typescript
+     * this.payload = {
+     *   source: 'mobile',
+     *   version: '1.0'
+     * };
+     * ```
      */
     public payload: object | string | null | undefined;
+
     /**
-     * Пользовательские данные, хранящиеся в приложении. (Данный хранятся в базе данных либо в файле, тип зависит от параметра mmApp.isSaveDb).
+     * Пользовательские данные
+     * Хранятся в базе данных или файле
+     *
+     * @remarks
+     * Тип хранения зависит от параметра mmApp.isSaveDb
+     *
+     * @example
+     * ```typescript
+     * this.userData = {
+     *   name: 'John',
+     *   preferences: {
+     *     language: 'ru'
+     *   }
+     * };
+     * ```
      */
-    public userData: any;
+    public userData: TUserData;
+
     /**
-     * Определяет необходимость запроса авторизации для пользователя (Актуально для Алисы).
+     * Флаг необходимости авторизации
+     * Определяет, требуется ли авторизация пользователя
+     *
+     * @example
+     * ```typescript
+     * this.isAuth = true; // требуется авторизация
+     * ```
      */
     public isAuth: boolean;
+
     /**
-     * Определяет статус пользовательских событий, таких как успешная авторизация, либо оценка приложения.
+     * Статус пользовательских событий
+     * Содержит информацию об авторизации и оценке
+     *
+     * @see IUserEvent
+     * @example
+     * ```typescript
+     * this.userEvents = {
+     *   auth: { status: true },
+     *   rating: { status: true, value: 5 }
+     * };
+     * ```
      */
     public userEvents: IUserEvent | null;
+
     /**
-     * Пользовательское локальное хранилище (Актуально для Алисы и Маруси и Сбера).
+     * Пользовательское локальное хранилище
+     * Используется для Алисы, Маруси и Сбера
+     *
+     * @example
+     * ```typescript
+     * this.state = {
+     *   lastIntent: 'greeting',
+     *   step: 1
+     * };
+     * ```
      */
     public state: object | string | null;
+
     /**
-     * Определяет наличие экрана.
+     * Флаг наличия экрана
+     * Определяет, доступен ли экран пользователю
+     *
+     * @example
+     * ```typescript
+     * this.isScreen = true; // экран доступен
+     * ```
      */
     public isScreen: boolean;
+
     /**
-     * Определяет состояние завершения сессии.
+     * Флаг завершения сессии
+     * Определяет, нужно ли завершить диалог
+     *
+     * @example
+     * ```typescript
+     * this.isEnd = true; // завершить диалог
+     * ```
      */
     public isEnd: boolean;
+
     /**
-     * Определяет необходимость отправки запроса к api сервиса. Актуально для Vk и Telegram. Используется в случае, когда все запросы были отправлены в логике приложения, и дополнительных запросов делать не нужно.
+     * Флаг необходимости отправки запроса к API
+     * Используется для Vk и Telegram
+     *
+     * @remarks
+     * Если true, все запросы уже отправлены в логике приложения
+     *
+     * @example
+     * ```typescript
+     * this.isSend = true; // запросы уже отправлены
+     * ```
      */
     public isSend: boolean;
+
     /**
-     * Полученный запрос.
+     * Полученный запрос
+     * Содержит оригинальный объект запроса
+     *
+     * @example
+     * ```typescript
+     * this.requestObject = {
+     *   command: 'start',
+     *   payload: { source: 'mobile' }
+     * };
+     * ```
      */
     public requestObject: object | string | null;
 
     /**
-     * Идентификатор предыдущего действия пользователя.
-     */
-    public oldIntentName: string | null;
-
-    /**
-     * Идентификатор текущего действия пользователя.
-     * В случае, когда не нужно сохранять идентификатор предыдущей команды, необходимо значение установить в null
+     * Название текущего интента
+     * Определяет текущее состояние диалога
+     *
+     * @example
+     * ```typescript
+     * this.thisIntentName = 'help';
+     * ```
      */
     public thisIntentName: string | null;
 
     /**
-     * Определяет эмоцию, с которой будет общаться приложение с пользователем. Актуально для Сбер.
+     * Эмоция для голосового ответа
+     * Используется для голосовых ассистентов
+     *
+     * @example
+     * ```typescript
+     * this.emotion = 'good';
+     * ```
      */
     public emotion: string | null;
 
     /**
-     * Определяет манеру общения с пользователем. Общаемся на "Вы" или на "ты".
+     * Стиль обращения к пользователю
+     * Определяет формальность общения
+     *
+     * @remarks
      * Возможные значения:
-     * "official" - Официальный тон общения(на Вы)
-     * "no_official" - Общаемся на ты
-     * null - можно использовать любой тон
-     * Актуально для Сбер
-     * @defaultValue null
+     * - 'official': официальное обращение
+     * - 'no_official': неофициальное обращение
+     * - null: стиль не определен
+     *
+     * @example
+     * ```typescript
+     * this.appeal = 'official'; // официальное обращение
+     * ```
      */
-    public appeal: "official" | "no_official" | null;
+    public appeal: 'official' | 'no_official' | null;
+
     /**
-     * Отправляет запрос на оценку приложения
-     * @defaultValue false
+     * Флаг отправки запроса на оценку
+     * Определяет, нужно ли запросить оценку у пользователя
+     *
+     * @example
+     * ```typescript
+     * this.isSendRating = true; // запросить оценку
+     * ```
      */
     public isSendRating: boolean;
 
+    /**
+     * Название предыдущего интента
+     * Используется для отслеживания контекста диалога
+     *
+     * @example
+     * ```typescript
+     * this.oldIntentName = 'greeting';
+     * ```
+     */
+    public oldIntentName: string | null;
+
+    /**
+     * Создает новый экземпляр контроллера
+     * Инициализирует все необходимые компоненты
+     *
+     * @protected
+     */
     protected constructor() {
         this.buttons = new Buttons();
         this.card = new Card();
-        this.nlu = new Nlu();
         this.sound = new Sound();
-
+        this.nlu = new Nlu();
         this.text = '';
         this.tts = null;
         this.userId = null;
         this.userToken = null;
         this.userMeta = null;
+        this.messageId = null;
         this.userCommand = null;
         this.originalUserCommand = null;
-        this.isScreen = true;
-        this.isEnd = false;
-        this.messageId = null;
-        this.userData = null;
-        this.state = null;
+        this.payload = null;
+        this.userData = {} as TUserData;
         this.isAuth = false;
-        this.isSend = true;
+        this.userEvents = null;
+        this.state = null;
+        this.isScreen = false;
+        this.isEnd = false;
+        this.isSend = false;
         this.requestObject = null;
         this.oldIntentName = null;
         this.thisIntentName = null;
         this.emotion = null;
         this.appeal = null;
-        this.payload = null;
         this.isSendRating = false;
-        this.userEvents = null;
     }
 
     /**
-     * Получение всех обрабатываемых команд приложения.
+     * Возвращает список доступных интентов
+     * Определяет все возможные команды и их обработчики
      *
-     * @return {IAppIntent[]}
-     * @private
+     * @returns {IAppIntent[]} Массив интентов
+     *
+     * @protected
+     *
+     * @example
+     * ```typescript
+     * const intents = BotController._intents();
+     * // [
+     * //   { name: 'greeting', slots: ['привет', 'здравствуйте'] },
+     * //   { name: 'help', slots: ['помощь', 'справка'] }
+     * // ]
+     * ```
      */
     protected static _intents(): IAppIntent[] {
         return mmApp.params.intents || [];
     }
 
     /**
-     * Поиск нужной команды в пользовательском запросе.
-     * В случае успеха вернет название действия.
+     * Определяет интент по тексту запроса
+     * Сопоставляет текст с доступными интентами
      *
-     * @param {string} text Текст, в котором происходит поиск вхождений.
-     * @return {string}
-     * @private
+     * @param {string | null} text - Текст запроса
+     * @returns {string | null} Название интента или null
+     *
+     * @protected
+     *
+     * @example
+     * ```typescript
+     * const intent = BotController._getIntent('привет');
+     * // 'greeting'
+     * ```
      */
     protected static _getIntent(text: string | null): string | null {
         if (!text) {
@@ -218,7 +665,7 @@ export abstract class BotController {
         }
         const intents: IAppIntent[] = BotController._intents();
         for (const intent of intents) {
-            if (Text.isSayText((intent.slots || []), text, (intent.is_pattern || false))) {
+            if (Text.isSayText(intent.slots || [], text, intent.is_pattern || false)) {
                 return intent.name;
             }
         }
@@ -226,42 +673,108 @@ export abstract class BotController {
     }
 
     /**
-     * Обработка пользовательских команд.
+     * Получает команду из запроса пользователя
+     * Извлекает команду из текста запроса
      *
-     * Если не удалось найти обрабатываемых команд в запросе, то в indentName придет null
-     * В таком случае стоит смотреть на предыдущую команду пользователя, либо вернуть текст помощи.
+     * @returns {string | null} Команда или null
      *
-     * @param {string} intentName Название действия.
-     * @virtual
+     * @protected
+     *
+     * @example
+     * ```typescript
+     * const command = this._getCommand();
+     * // 'start'
+     * ```
      */
-    public abstract action(intentName: string | null): void;
+    protected _getCommand(): string | null {
+        if (!this.userCommand) {
+            return null;
+        }
+        const commandKeys = Object.keys(mmApp.commands);
+        if (commandKeys.length) {
+            for (let i = 0; i < commandKeys.length; i++) {
+                if (
+                    Text.isSayText(
+                        mmApp.commands[commandKeys[i]].slots || [],
+                        this.userCommand,
+                        mmApp.commands[commandKeys[i]].isPattern || false,
+                    )
+                ) {
+                    const res = mmApp.commands[commandKeys[i]].cb?.(this.userCommand, this);
+                    if (res) {
+                        this.text = res;
+                    }
+                    return commandKeys[i];
+                }
+            }
+        }
+        return null;
+    }
 
     /**
-     * Запуск приложения.
-     * @api
+     * Абстрактный метод для обработки пользовательских команд и интентов
+     * Должен быть реализован в дочерних классах
+     *
+     * @param {string | null} intentName - Название интента или команды
+     * @param {boolean} [isCommand=false] - Флаг, указывающий что это команда
+     *
+     * @example
+     * ```typescript
+     * class MyController extends BotController {
+     *   public action(intentName: string | null): void {
+     *     if (intentName === 'greeting') {
+     *       this.text = 'Привет!';
+     *     } else if (intentName === 'help') {
+     *       this.text = 'Помощь:';
+     *       this.buttons.addBtn('Назад');
+     *     }
+     *   }
+     * }
+     * ```
+     */
+    abstract action(intentName: string | null, isCommand?: boolean): void;
+
+    /**
+     * Запускает обработку запроса
+     * Определяет тип запроса и вызывает соответствующий обработчик
+     *
+     * @example
+     * ```typescript
+     * this.run();
+     * // Обрабатывает запрос и формирует ответ
+     * ```
      */
     public run(): void {
-        let intent: string | null = BotController._getIntent(this.userCommand);
-        if (intent === null && this.originalUserCommand && this.userCommand !== this.originalUserCommand) {
-            intent = BotController._getIntent(this.originalUserCommand.toLowerCase());
-        }
-        if (intent === null && this.messageId === 0) {
-            intent = WELCOME_INTENT_NAME;
-        }
-        /**
-         * Для стандартных действий параметры заполняются автоматически. Есть возможность переопределить их в action() по названию действия
-         */
-        switch (intent) {
-            case WELCOME_INTENT_NAME:
-                this.text = Text.getText(mmApp.params.welcome_text || '');
-                break;
+        const commandResult = this._getCommand();
+        if (commandResult) {
+            this.action(commandResult, true);
+        } else {
+            let intent: string | null = BotController._getIntent(this.userCommand);
+            if (
+                intent === null &&
+                this.originalUserCommand &&
+                this.userCommand !== this.originalUserCommand
+            ) {
+                intent = BotController._getIntent(this.originalUserCommand.toLowerCase());
+            }
+            if (intent === null && this.messageId === 0) {
+                intent = WELCOME_INTENT_NAME;
+            }
+            /*
+             * Для стандартных действий параметры заполняются автоматически. Есть возможность переопределить их в action() по названию действия
+             */
+            switch (intent) {
+                case WELCOME_INTENT_NAME:
+                    this.text = Text.getText(mmApp.params.welcome_text || '');
+                    break;
 
-            case HELP_INTENT_NAME:
-                this.text = Text.getText(mmApp.params.help_text || '');
-                break;
-        }
+                case HELP_INTENT_NAME:
+                    this.text = Text.getText(mmApp.params.help_text || '');
+                    break;
+            }
 
-        this.action(intent as string);
+            this.action(intent as string);
+        }
         if (this.tts === null && (mmApp.appType === T_ALISA || mmApp.appType === T_MARUSIA)) {
             this.tts = this.text;
         }

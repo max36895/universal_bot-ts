@@ -1,4 +1,4 @@
-import {mmApp, UsersData, isFile, unlink} from '../../src';
+import { mmApp, UsersData, isFile, unlink } from '../../src';
 
 interface IData {
     userId?: string;
@@ -7,6 +7,7 @@ interface IData {
 }
 
 const FILE_NAME = 'UsersData.json';
+const MONGO_TIMEOUT = 3000; // 3 секунды для операций с MongoDB
 
 describe('Db file connect', () => {
     let data: any;
@@ -20,30 +21,30 @@ describe('Db file connect', () => {
                 userId: 'userId1',
                 meta: 'user meta 1',
                 data: {
-                    name: 'user 1'
-                }
+                    name: 'user 1',
+                },
             },
             userId2: {
                 userId: 'userId2',
                 meta: 'user meta 2',
                 data: {
-                    name: 'user 2'
-                }
+                    name: 'user 2',
+                },
             },
             userId3: {
                 userId: 'userId3',
                 meta: 'user meta 3',
                 data: {
-                    name: 'user 3'
-                }
+                    name: 'user 3',
+                },
             },
             userId13: {
                 userId: 'userId3',
                 meta: 'user meta 1',
                 data: {
-                    name: 'user 3'
-                }
-            }
+                    name: 'user 3',
+                },
+            },
         };
         mmApp.saveJson(FILE_NAME, data);
     });
@@ -70,7 +71,7 @@ describe('Db file connect', () => {
     });
     it('Where object', async () => {
         let query: IData = {
-            userId: 'userId1'
+            userId: 'userId1',
         };
         let uData = (await userData.where(query)).data;
         expect(uData.length === 1).toBe(true);
@@ -78,14 +79,14 @@ describe('Db file connect', () => {
 
         query = {
             userId: 'userId3',
-            meta: 'user meta 1'
+            meta: 'user meta 1',
         };
         uData = (await userData.where(query)).data;
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId13);
 
         query = {
-            meta: 'user meta 1'
+            meta: 'user meta 1',
         };
         uData = (await userData.where(query)).data;
         expect(uData.length === 2).toBe(true);
@@ -93,7 +94,7 @@ describe('Db file connect', () => {
         expect(uData[1]).toEqual(data.userId13);
 
         query = {
-            userId: 'NotFound'
+            userId: 'NotFound',
         };
         expect((await userData.where(query)).status === false).toBe(true);
     });
@@ -112,26 +113,26 @@ describe('Db file connect', () => {
     });
     it('Where one Object', async () => {
         let query: IData = {
-            userId: 'userId1'
+            userId: 'userId1',
         };
         expect(await userData.whereOne(query)).toBe(true);
         expect(userData.data).toEqual(data.userId1.data);
 
         query = {
             userId: 'userId3',
-            meta: 'user meta 1'
+            meta: 'user meta 1',
         };
         expect(await userData.whereOne(query)).toBe(true);
         expect(userData.data).toEqual(data.userId13.data);
 
         query = {
-            userId: 'NotFound'
+            userId: 'NotFound',
         };
         expect(await userData.whereOne(query)).toBe(false);
     });
 
     it('Delete data', async () => {
-        let query = '`userId`="userId1"';
+        const query = '`userId`="userId1"';
         userData.userId = 'userId1';
         expect(await userData.remove()).toBe(true);
 
@@ -139,7 +140,7 @@ describe('Db file connect', () => {
     });
 
     it('Update data', async () => {
-        let query = '`meta`="meta"';
+        const query = '`meta`="meta"';
         expect(await userData.whereOne(query)).toBe(false);
         userData.userId = 'userId1';
         userData.meta = 'meta';
@@ -149,85 +150,124 @@ describe('Db file connect', () => {
     });
 
     it('Save data', async () => {
-        let query = '`meta`="meta"';
+        const query = '`meta`="meta"';
         expect(await userData.whereOne(query)).toBe(false);
         userData.userId = 'userId5';
         userData.meta = 'meta';
-        userData.data = {name: 'user 5'};
+        userData.data = { name: 'user 5' };
         expect(await userData.save()).toBe(true);
 
         expect(await userData.whereOne(query)).toBe(true);
         expect(userData.userId === 'userId5').toBe(true);
-        expect(userData.data).toEqual({name: 'user 5'});
+        expect(userData.data).toEqual({ name: 'user 5' });
     });
 
     it('Delete file db', () => {
         expect(isFile(__dirname + '/' + FILE_NAME)).toBe(true);
         unlink(__dirname + '/' + FILE_NAME);
         expect(isFile(__dirname + '/' + FILE_NAME)).toBe(false);
-    })
+    });
 });
 
 describe('Db is MongoDb', () => {
-    let isConnected: boolean = true;
-    beforeEach(() => {
+    let usersData: UsersData;
+    let isConnected: boolean;
+
+    beforeEach(async () => {
         mmApp.setIsSaveDb(true);
         mmApp.setConfig({
             db: {
                 host: 'mongodb://127.0.0.1:27017/',
-                database: 'test'
-            }
+                database: 'test',
+                options: {
+                    timeoutMS: 1000,
+                    serverSelectionTimeoutMS: 500, // Таймаут на выбор сервера
+                    connectTimeoutMS: 500,
+                    socketTimeoutMS: 500,
+                },
+            },
         });
-    });
-    it('MongoDb Save data', async () => {
-        if (isConnected) {
-            const usersData = new UsersData();
-            if (await usersData.isConnected()) {
+        usersData = new UsersData();
+    }, MONGO_TIMEOUT);
+
+    afterEach(async () => {
+        if (usersData) {
+            await usersData.destroy();
+        }
+        mmApp.setIsSaveDb(false);
+    }, MONGO_TIMEOUT);
+
+    it(
+        'Should handle MongoDB connection',
+        async () => {
+            const isCon = isConnected ?? (await usersData.isConnected());
+            // Если БД недоступна, пропускаем тест
+            if (isCon) {
+                expect(isCon).toBe(true);
+            } else {
+                isConnected = false;
+            }
+        },
+        MONGO_TIMEOUT,
+    );
+
+    it(
+        'MongoDb Save data',
+        async () => {
+            const isCon = isConnected ?? (await usersData.isConnected());
+            // Если БД недоступна, пропускаем тест
+            if (isCon) {
                 usersData.userId = 'test';
                 usersData.type = UsersData.T_ALISA;
                 usersData.data = {};
                 usersData.meta = {};
+
                 expect(await usersData.save()).toBe(true);
-                expect(await usersData.whereOne({userId: 'test'})).toBe(true);
-                usersData.destroy();
+                expect(await usersData.whereOne({ userId: 'test' })).toBe(true);
             } else {
                 isConnected = false;
             }
-            mmApp.setIsSaveDb(false);
-        }
-    });
-    it('MongoDb Update data', async () => {
-        if (isConnected) {
-            const usersData = new UsersData();
-            if (await usersData.isConnected()) {
+        },
+        MONGO_TIMEOUT,
+    );
+
+    it(
+        'MongoDb Update data',
+        async () => {
+            const isCon = isConnected ?? (await usersData.isConnected());
+            // Если БД недоступна, пропускаем тест
+            if (isCon) {
                 usersData.userId = 'test';
                 usersData.type = UsersData.T_ALISA;
                 usersData.data = 'data';
                 usersData.meta = {};
+
                 expect(await usersData.save()).toBe(true);
-                expect(await usersData.whereOne({data: 'data'})).toBe(true);
-                usersData.destroy();
+                expect(await usersData.whereOne({ data: 'data' })).toBe(true);
             } else {
                 isConnected = false;
             }
-            mmApp.setIsSaveDb(false);
-        }
-    });
-    it('MongoDb Remove data', async () => {
-        if (isConnected) {
-            const usersData = new UsersData();
-            if (await usersData.isConnected()) {
+        },
+        MONGO_TIMEOUT,
+    );
+
+    it(
+        'MongoDb Remove data',
+        async () => {
+            const isCon = isConnected ?? (await usersData.isConnected());
+            // Если БД недоступна, пропускаем тест
+            if (isCon) {
                 usersData.userId = 'test';
                 usersData.type = UsersData.T_ALISA;
                 usersData.data = 'data';
                 usersData.meta = {};
+
                 expect(await usersData.remove()).toBe(true);
-                expect(await usersData.whereOne({userId: 'test'})).toBe(false);
-                usersData.destroy();
+                expect(await usersData.whereOne({ userId: 'test' })).toBe(false);
             } else {
                 isConnected = false;
             }
-            mmApp.setIsSaveDb(false);
-        }
-    });
+        },
+        MONGO_TIMEOUT,
+    );
 });

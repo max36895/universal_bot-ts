@@ -1,238 +1,622 @@
-import {fwrite, isDir, mkdir} from './utils/standard/util';
-import {IDbControllerModel} from './models/interface';
+/**
+ * Основной класс приложения для создания мультиплатформенных чат-ботов
+ * @packageDocumentation
+ * @module mmApp
+ *
+ * Основной класс приложения для создания мультиплатформенных чат-ботов
+ *
+ * Предоставляет функциональность для:
+ * - Управления конфигурацией приложения
+ * - Работы с базой данных
+ * - Обработки команд и интентов
+ * - Логирования и сохранения данных
+ *
+ * Основные возможности:
+ * - Поддержка множества платформ (Алиса, Маруся, Telegram, Viber, VK)
+ * - Гибкая система конфигурации
+ * - Управление командами и интентами
+ * - Работа с базой данных
+ * - Логирование и отладка
+ *
+ * @example
+ * ```typescript
+ * import { mmApp } from './mmApp';
+ *
+ * // Настройка конфигурации
+ * mmApp.setConfig({
+ *   error_log: './logs',
+ *   json: './data',
+ *   isLocalStorage: true,
+ *   // База данных опциональна
+ *   db: {
+ *     host: 'localhost',
+ *     database: 'bot_db',
+ *     user: 'admin',
+ *     pass: 'password'
+ *   }
+ * });
+ *
+ * // Настройка параметров
+ * mmApp.setParams({
+ *   telegram_token: 'your-token',
+ *   vk_token: 'your-token',
+ *   welcome_text: 'Привет! Чем могу помочь?',
+ *   help_text: 'Список доступных команд: ...',
+ *   intents: [
+ *     {
+ *       name: 'greeting',
+ *       slots: ['привет', 'здравствуй'],
+ *       is_pattern: false
+ *     },
+ *     {
+ *       name: 'numbers',
+ *       slots: ['\\b\\d{3}\\b'],
+ *       is_pattern: true // Явно указываем, что используем регулярное выражение
+ *     }
+ *   ]
+ * });
+ *
+ * // Добавление команды
+ * mmApp.addCommand('greeting', ['привет', 'здравствуй'], (text, controller) => {
+ *   controller.text = 'Привет! Рад вас видеть!';
+ * });
+ *
+ * // Добавление команды с регулярным выражением
+ * mmApp.addCommand('numbers', ['\\b\\d{3}\\b'], (text, controller) => {
+ *   controller.text = `Вы ввели число: ${text}`;
+ * }, true); // Явно указываем, что используем регулярное выражение
+ * ```
+ */
+import { fwrite, isDir, mkdir } from './utils/standard/util';
+import { IDbControllerModel } from './models/interface';
+import { BotController } from './controller';
+import { IEnvConfig, loadEnvFile } from './utils/EnvConfig';
 
+/**
+ * @interface IDir
+ * Интерфейс для работы с директориями
+ *
+ * Используется для указания пути к файлу и его имени
+ * при сохранении данных.
+ *
+ * @example
+ * ```typescript
+ * const dir: IDir = {
+ *   path: './data',
+ *   fileName: 'config.json'
+ * };
+ * ```
+ */
 export interface IDir {
+    /**
+     * Путь к директории
+     *
+     * Может быть абсолютным или относительным путем
+     * к директории, где будет сохранен файл.
+     */
     path: string;
+    /**
+     * Имя файла
+     *
+     * Имя файла, который будет создан в указанной директории.
+     */
     fileName: string;
 }
 
 /**
- * Типы приложений
+ * Типы поддерживаемых платформ
+ *
+ * Определяет все поддерживаемые платформы для бота:
+ * - alisa: Яндекс.Алиса
+ * - vk: ВКонтакте
+ * - telegram: Telegram
+ * - viber: Viber
+ * - marusia: Маруся
+ * - user_application: Пользовательское приложение
+ * - smart_app: Сбер SmartApp
  */
-export type TAppType = 'alisa' | 'vk' | 'telegram' | 'viber' | 'marusia' | 'user_application' | 'smart_app';
+export type TAppType =
+    | 'alisa' // Яндекс.Алиса
+    | 'vk' // ВКонтакте
+    | 'telegram' // Telegram
+    | 'viber' // Viber
+    | 'marusia' // Маруся
+    | 'user_application' // Пользовательское приложение
+    | 'smart_app'; // Сбер SmartApp
 
 /**
- * Используется Алиса
- * @type {string}
+ * Тип платформы: Яндекс.Алиса
  */
 export const T_ALISA: TAppType = 'alisa';
+
 /**
- * Используется vk бот
- * @type {string}
+ * Тип платформы: ВКонтакте
  */
 export const T_VK: TAppType = 'vk';
+
 /**
- * Используется telegram бот
- * @type {string}
+ * Тип платформы: Telegram
  */
 export const T_TELEGRAM: TAppType = 'telegram';
+
 /**
- * Используется viber бот
- * @type {string}
+ * Тип платформы: Viber
  */
 export const T_VIBER: TAppType = 'viber';
+
 /**
- * Используется Марус
- * @type {string}
+ * Тип платформы: Маруся
  */
 export const T_MARUSIA: TAppType = 'marusia';
+
 /**
- * Используется Сбер SmartApp
- * @type {string}
+ * Тип платформы: Сбер SmartApp
  */
 export const T_SMARTAPP: TAppType = 'smart_app';
+
 /**
- * Используется пользовательский тип приложения
- * @type {string}
+ * Тип платформы: Пользовательское приложение
  */
 export const T_USER_APP: TAppType = 'user_application';
 
 /**
- * Название интента для приветствия
- * @type {string}
+ * Идентификатор интента приветствия
  */
 export const WELCOME_INTENT_NAME = 'welcome';
+
 /**
- * Название интента для помощи
- * @type {string}
+ * Идентификатор интента помощи
  */
 export const HELP_INTENT_NAME = 'help';
 
 /**
- *  Параметры для подключения к Базе Данных
+ * @interface IAppDB
+ * Параметры подключения к базе данных
+ *
+ * Определяет параметры для подключения к базе данных,
+ * включая хост, учетные данные и дополнительные опции.
+ *
+ * @example
+ * ```typescript
+ * const dbConfig: IAppDB = {
+ *   host: 'localhost',
+ *   user: 'admin',
+ *   pass: 'password',
+ *   database: 'bot_db',
+ *   options: {
+ *     port: 3306,
+ *     charset: 'utf8mb4'
+ *   }
+ * };
+ * ```
  */
 export interface IAppDB {
     /**
-     * Адрес, по которому находится База Данных
+     * Адрес сервера базы данных
+     *
+     * Может быть указан как localhost или IP-адрес сервера.
      */
     host: string;
     /**
-     * Логин для подключения к БД
+     * Имя пользователя для подключения
      */
     user?: string;
     /**
-     * Пароль для подключения к БД
+     * Пароль для подключения
      */
     pass?: string;
     /**
-     * Название БД
+     * Название базы данных
      */
     database: string;
+    /**
+     * Дополнительные параметры подключения
+     *
+     * Могут включать специфичные для БД параметры,
+     * такие как порт, кодировка и т.д.
+     */
+    options?: Record<string, unknown>;
 }
 
+/**
+ * @interface IAppIntent
+ * Конфигурация интента (команды)
+ *
+ * Определяет структуру команды, включая ее имя,
+ * триггеры активации и флаг использования регулярных выражений.
+ *
+ * @example
+ * ```typescript
+ * // Простая команда
+ * const intent: IAppIntent = {
+ *   name: 'greeting',
+ *   slots: ['привет', 'здравствуй'],
+ *   is_pattern: false
+ * };
+ *
+ * // Команда с регулярным выражением
+ * const patternIntent: IAppIntent = {
+ *   name: 'numbers',
+ *   slots: ['\\b\\d{3}\\b'],
+ *   is_pattern: true
+ * };
+ * ```
+ */
 export interface IAppIntent {
     /**
-     * Название команды. Используется для идентификации команд.
+     * Уникальный идентификатор команды
      */
     name: string;
     /**
-     * Какие слова активируют команду. (Можно использовать регулярные выражения если установлено свойство is_pattern).
+     * Триггеры активации команды
+     *
+     * Массив слов или регулярных выражений для активации команды.
+     *
+     * @example
+     * ```typescript
+     * // Простые слова
+     * slots: ['привет', 'здравствуй']
+     *
+     * // Регулярное выражение для чисел
+     * slots: ['\\b\\d{3}\\b']
+     * ```
      */
     slots: string[];
     /**
-     * Использовать регулярное выражение или нет. По умолчанию false.
+     * Флаг использования регулярных выражений
+     *
+     * Если true, строки в slots интерпретируются как регулярные выражения.
+     *
      * @defaultValue false
      */
     is_pattern?: boolean;
 }
 
+/**
+ * @interface IAppConfig
+ * Основная конфигурация приложения
+ *
+ * Определяет основные настройки приложения, включая пути к директориям,
+ * конфигурацию базы данных и флаги режимов работы.
+ *
+ * @example
+ * ```typescript
+ * const config: IAppConfig = {
+ *   error_log: './logs',
+ *   json: './data',
+ *   db: {
+ *     host: 'localhost',
+ *     database: 'bot_db'
+ *   },
+ *   isLocalStorage: true,
+ *   env: '.env'
+ * };
+ * ```
+ */
 export interface IAppConfig {
     /**
-     * Директория, в которую будут записываться логи и ошибки выполнения.
+     * Путь к директории для логов ошибок
      */
     error_log?: string;
     /**
-     * Директория, в которую будут записываться json файлы.
+     * Путь к директории для JSON файлов
      */
     json?: string;
     /**
-     * Настройка подключения к базе данных. Актуально если isSaveDb = true.
+     * Конфигурация базы данных
      */
     db?: IAppDB;
     /**
-     * Использование локального хранилища вместо БД. Актуально для приложений, который поддерживают работу с ним. На данный момент, локальное хранилище есть у всех голосовых помощников.
-     * Важно! Чтобы опция работала, нужно поставить галку "Использовать хранилище данных в навыке" в кабинете разработчика.
+     * Флаг использования локального хранилища платформы
+     *
+     * Требует включения соответствующей опции в кабинете разработчика.
      */
     isLocalStorage?: boolean;
+    /**
+     * Путь к файлу с переменными окружения(.env)
+     */
+    env?: string;
 }
 
+/**
+ * @interface IAppParam
+ * Параметры приложения для различных платформ
+ *
+ * Содержит токены и настройки для работы с различными платформами,
+ * а также тексты приветствия и помощи.
+ *
+ * @example
+ * ```typescript
+ * const params: IAppParam = {
+ *   welcome_text: 'Привет! Чем могу помочь?',
+ *   help_text: 'Список доступных команд: ...',
+ *   intents: [
+ *     {
+ *       name: 'greeting',
+ *       slots: ['привет', 'здравствуй'],
+ *       is_pattern: false
+ *     }
+ *   ]
+ * };
+ * ```
+ */
 export interface IAppParam {
     /**
-     * Viber токен для отправки сообщений, загрузки изображений и звуков.
+     * Токен Viber для API
+     *
+     * @remarks
+     * Используется для авторизации запросов к Viber API.
+     * Получается в личном кабинете разработчика Viber.
      */
     viber_token?: string | null;
+
     /**
-     * Имя пользователя, от которого будет отправляться сообщение.
+     * Имя отправителя в Viber
+     *
+     * @remarks
+     * Имя, которое будет отображаться в сообщениях от бота.
+     * Должно быть предварительно зарегистрировано в Viber.
      */
     viber_sender?: string | null;
+
     /**
-     * Версия api для Viber
+     * Версия Viber API
+     *
+     * @remarks
+     * Определяет версию API для работы с Viber.
+     * Рекомендуется использовать последнюю стабильную версию.
      */
     viber_api_version?: number | null;
+
     /**
-     * Telegram токен для отправки сообщений, загрузки изображений и звуков.
+     * Токен Telegram для API
+     *
+     * @remarks
+     * Используется для авторизации запросов к Telegram Bot API.
+     * Получается у BotFather при создании бота.
      */
     telegram_token?: string | null;
+
     /**
-     * Версия Vk api. По умолчанию используется v5.103.
-     * @defaultValue v5.103
+     * Версия VK API
+     *
+     * @remarks
+     * Определяет версию API для работы с ВКонтакте.
+     * По умолчанию используется v5.103
      */
     vk_api_version?: string | null;
+
     /**
-     * Код для проверки корректности Vk бота. Необходим для подтверждения бота.
+     * Токен подтверждения для VK
+     *
+     * @remarks
+     * Используется для подтверждения вебхуков в VK.
+     * Генерируется при создании группы и настройке Callback API.
      */
     vk_confirmation_token?: string | null;
+
     /**
-     * Vk Токен для отправки сообщений, загрузки изображений и звуков.
+     * Токен VK для API
+     *
+     * @remarks
+     * Используется для авторизации запросов к VK API.
+     * Получается при создании Standalone-приложения в VK.
      */
     vk_token?: string | null;
+
     /**
-     * Маруся Токен для загрузки изображений и звуков в навыке.
+     * Токен Маруси для загрузки медиа
+     *
+     * @remarks
+     * Используется для загрузки медиафайлов в Маруси.
+     * Получается в личном кабинете разработчика Маруси.
      */
     marusia_token?: string | null;
+
     /**
-     * Яндекс Токен для загрузки изображений и звуков в навыке.
+     * Токен Яндекс.Алисы для API
+     *
+     * @remarks
+     * Используется для авторизации запросов к API Яндекс.Алисы.
+     * Получается в личном кабинете разработчика Яндекс.Алисы.
      */
     yandex_token?: string | null;
+
     /**
-     * Токен для отправки запросов в Yandex speech kit.
+     * Токен Yandex SpeechKit
+     *
+     * @remarks
+     * Используется для преобразования текста в речь.
+     * Получается в личном кабинете Yandex Cloud.
      */
     yandex_speech_kit_token?: string | null;
+
     /**
-     * Актуально для Алисы!
-     * Использовать в качестве идентификатора пользователя Id в поле session.user.
-     * Если true, то для всех пользователей, которые авторизованы в Яндекс будет использоваться один токен, а не разный.
+     * Флаг использования ID авторизованного пользователя Яндекса
+     *
+     * Актуально только для Алисы.
      */
     y_isAuthUser?: boolean;
+
     /**
-     * Идентификатор приложения. Заполняется автоматически.
+     * Идентификатор приложения
+     *
+     * Заполняется автоматически.
      */
     app_id?: string | null;
+
     /**
-     *Идентификатор пользователя. Заполняется автоматически.
+     * Идентификатор пользователя
+     *
+     * Заполняется автоматически.
      */
     user_id?: string | number | null;
+
     /**
-     * Текст, или массив из текста для приветствия.
+     * Текст приветствия
+     *
+     * Может быть строкой или массивом вариантов.
      */
     welcome_text?: string | string[];
+
     /**
-     * Текст, или массив из текста для  помощи.
+     * Текст помощи
+     *
+     * Может быть строкой или массивом вариантов.
      */
     help_text?: string | string[];
+
     /**
-     * Обрабатываемые команды.
+     * Массив интентов (команд) приложения
      *
-     * @demo Пример intent с регулярным выражением:
-     * ```json
-     *  [
-     *      -'name' : 'regex',
-     *      -'slots' : [
-     *          -'\b{_value_}\b', // Поиск точного совпадения. Например, если _value_ = 'привет', поиск будет осуществляться по точному совпадению. Слово "приветствую" в данном случае не будет считаться как точка срабатывания
-     *          -'\b{_value_}[^\s]+\b', // Поиск по точному началу. При данной опции слово "приветствую" станет точкой срабатывания
-     *          -'(\b{_value_}(|[^\s]+)\b)', // Поиск по точному началу или точному совпадению.
-     *          -'\b(\d{3})\b', // Поиск всех чисел от 100 до 999.
-     *          -'{_value_} \d {_value_}', // Поиск по определенному условию. Например регулярное "завтра в \d концерт", тогда точкой срабатывания станет пользовательский текст, в котором есть вхождение что и в регулярном выражении, где "\d" это любое число.
-     *          -'{_value_}', // Поиск любого похожего текста. Похоже на includes()
-     *          -'...' // Поддерживаются любые регулярные выражения. Перед использованием стоит убедиться в их корректности на сайте: (https://regex101.com/)
-     *      ],
-     *      -'is_pattern' : true
-     *  ]
-     *  ```
+     * @remarks
+     * При использовании регулярных выражений в slots:
+     * - Убедитесь, что выражение безопасно и не может вызвать ReDoS
+     * - Используйте ограниченные квантификаторы (например, {1,5} вместо *)
+     * - Избегайте сложных вложенных групп
+     * - Тестируйте выражения на различных входных данных
+     *
+     * @example
+     * ```typescript
+     * intents: [
+     *   {
+     *     name: 'greeting',
+     *     slots: [
+     *       '\\b{_value_}\\b',      // Точное совпадение слова
+     *       '\\b{_value_}[^\\s]+\\b', // Начало слова (например, "привет" найдет "приветствие")
+     *       '(\\b{_value_}(|[^\\s]+)\\b)', // Точное совпадение или начало слова
+     *       '\\b(\\d{3})\\b',       // Числа от 100 до 999
+     *       '{_value_} \\d {_value_}', // Шаблон с числом между словами
+     *       '{_value_}'             // Любое вхождение слова
+     *     ],
+     *     is_pattern: true
+     *   }
+     * ]
+     * ```
+     *
+     * Где {_value_} - это плейсхолдер, который будет заменен на конкретное значение
+     * при обработке команды. Например, если {_value_} = "привет", то регулярное
+     * выражение '\\b{_value_}\\b' будет искать точное совпадение слова "привет".
      */
     intents: IAppIntent[] | null;
+
     /**
-     * Текст для UTM метки.
+     * UTM-метка для ссылок
+     *
      * @defaultValue utm_source=Yandex_Alisa&utm_medium=cpc&utm_campaign=phone
      */
     utm_text?: string | null;
 }
 
 /**
- * Статический класс, хранящий состояние и параметры приложения.
+ * @interface ICommandParam
+ * Параметры команды
+ *
+ * Определяет структуру команды, включая триггеры активации,
+ * флаг использования регулярных выражений и функцию-обработчик.
+ *
+ * @example
+ * ```typescript
+ * const command: ICommandParam = {
+ *   slots: ['привет', 'здравствуй'],
+ *   isPattern: false,
+ *   cb: (text, controller) => {
+ *     controller.text = 'Привет! Рад вас видеть!';
+ *   }
+ * };
+ * ```
+ */
+export interface ICommandParam {
+    /**
+     * Триггеры активации команды
+     *
+     * Массив слов или регулярных выражений для активации команды.
+     */
+    slots: string[];
+    /**
+     * Флаг использования регулярных выражений
+     *
+     * Если true, строки в slots интерпретируются как регулярные выражения.
+     */
+    isPattern?: boolean;
+    /**
+     * Функция-обработчик команды
+     *
+     * @param {string} userCommand - Текст команды пользователя
+     * @param {BotController} [botController] - Контроллер бота для управления ответом
+     * @returns {void | string} - Строка ответа или void
+     *
+     * Если функция возвращает строку, она автоматически
+     * устанавливается как ответ бота.
+     */
+    cb?: (userCommand: string, botController?: BotController) => void | string;
+}
+
+/**
+ * Тип для хранения команд
+ *
+ * Объект, где ключи - имена команд, а значения - их параметры.
+ */
+export type ICommand = Record<string, ICommandParam>;
+
+/**
  * @class mmApp
+ * Основной класс приложения
+ *
+ * Предоставляет статические методы и свойства для управления
+ * конфигурацией, командами и состоянием приложения.
+ *
+ * @example
+ * ```typescript
+ * // Настройка режима разработки
+ * mmApp.setDevMode(true);
+ *
+ * // Добавление команды
+ * mmApp.addCommand('greeting', ['привет'], (text, controller) => {
+ *   controller.text = 'Привет!';
+ * });
+ *
+ * // Сохранение данных
+ * mmApp.saveData({
+ *   path: './data',
+ *   fileName: 'config.json'
+ * }, JSON.stringify(config));
+ * ```
  */
 export class mmApp {
-    private static _isDevMode: boolean;
     /**
-     * Использование стороннего контроллера для подключения к БД.
-     * Класс должен быть унаследован от DbControllerModel. Стоит применять в том случае, если используется другая СУБД.
-     * Если опция не передается, то используется стандартное подключение MongoDb.
+     * Переменные окружения
+     * @private
+     */
+    private static _envVars: IEnvConfig;
+
+    /**
+     * Флаг режима разработки
+     * @private
+     */
+    private static _isDevMode: boolean;
+
+    /**
+     * Пользовательский контроллер базы данных
+     * @remarks Используется для подключения альтернативных СУБД вместо MongoDB
      * @see DbControllerModel
      */
     public static userDbController: IDbControllerModel;
+
     /**
-     * Куда сохраняются пользовательские данные. Если false, то данные сохраняются в файл, иначе в бд. По умолчанию false.
+     * Флаг сохранения данных в базу данных
+     *
      * @defaultValue false
      */
     public static isSaveDb: boolean = false;
 
     /**
-     * Тип приложения. (Алиса, бот vk|telegram).
+     * Тип платформы приложения
      */
     public static appType: TAppType | null;
+
     /**
-     * Основная конфигурация приложения.
+     * Конфигурация приложения
      */
     public static config: IAppConfig = {
         error_log: '/../../logs',
@@ -241,12 +625,13 @@ export class mmApp {
             host: '',
             user: '',
             pass: '',
-            database: ''
+            database: '',
         },
-        isLocalStorage: false
+        isLocalStorage: false,
     };
+
     /**
-     * Основные параметры приложения.
+     * Параметры приложения
      */
     public static params: IAppParam = {
         viber_token: null,
@@ -266,25 +651,25 @@ export class mmApp {
         intents: [
             {
                 name: WELCOME_INTENT_NAME,
-                slots: [
-                    'привет',
-                    'здравст'
-                ]
+                slots: ['привет', 'здравст'],
             },
             {
                 name: HELP_INTENT_NAME,
-                slots: [
-                    'помощ',
-                    'что ты умеешь'
-                ]
+                slots: ['помощ', 'что ты умеешь'],
             },
         ],
-        utm_text: null
+        utm_text: null,
     };
 
     /**
-     * Установить dev режим работы приложения. При его активации, в консоли будут отображаться все ошибки и предупреждения.
-     * @param isDevMode
+     * Добавленные команды для обработки
+     */
+    public static commands: ICommand = {};
+
+    /**
+     * Устанавливает режим разработки
+     * @param {boolean} isDevMode - Флаг включения режима разработки
+     * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
      */
     public static setDevMode(isDevMode: boolean = false): void {
         mmApp._isDevMode = isDevMode;
@@ -292,19 +677,17 @@ export class mmApp {
 
     /**
      * Возвращает текущий режим работы приложения
-     * @defaultValue false
+     * @returns {boolean} true, если включен режим разработки
      */
     public static get isDevMode(): boolean {
         return mmApp._isDevMode;
     }
 
     /**
-     * Объединение 2 массивов.
-     *
-     * @param {object[]} array1 Массив с котором необходимо объединить значение.
-     * @param {object[]} array2 Массив для объединения.
-     * @return object
-     * @api
+     * Объединяет два массива объектов
+     * @param {object[]} array1 - Основной массив
+     * @param {object[]} array2 - Массив для объединения
+     * @returns {object} Объединенный массив
      */
     public static arrayMerge(array1: object[], array2?: object[]): object {
         if (array2) {
@@ -314,39 +697,174 @@ export class mmApp {
     }
 
     /**
-     * Инициализация конфигурации приложения.
-     *
-     * @param {IAppConfig} config Пользовательская конфигурация.
-     * @api
+     * Установка всех токенов из переменных окружения или параметров
+     * @private
+     */
+    private static _setTokens(): void {
+        const envVars = mmApp._getEnvVars();
+        if (envVars) {
+            mmApp.params = {
+                ...mmApp.params,
+                viber_token: envVars.VIBER_TOKEN || mmApp.params.viber_token,
+                telegram_token: envVars.TELEGRAM_TOKEN || mmApp.params.telegram_token,
+                vk_token: envVars.VK_TOKEN || mmApp.params.vk_token,
+                vk_confirmation_token:
+                    envVars.VK_CONFIRMATION_TOKEN || mmApp.params.vk_confirmation_token,
+                marusia_token: envVars.MARUSIA_TOKEN || mmApp.params.marusia_token,
+                yandex_token: envVars.YANDEX_TOKEN || mmApp.params.yandex_token,
+            };
+        }
+    }
+
+    /**
+     * Возвращает объект с настройками окружения
+     * @param {string|undefined} envPath - Путь к файлу окружения
+     * @private
+     */
+    private static _getEnvVars(
+        envPath: string | undefined = mmApp.config?.env,
+    ): IEnvConfig | undefined {
+        if (mmApp._envVars) {
+            return mmApp._envVars;
+        }
+        if (envPath) {
+            mmApp._envVars = loadEnvFile(envPath);
+        }
+        return mmApp._envVars;
+    }
+
+    /**
+     * Устанавливает конфигурацию приложения
+     * @param {IAppConfig} config - Пользовательская конфигурация
      */
     public static setConfig(config: IAppConfig): void {
-        this.config = {...this.config, ...config};
+        this.config = { ...this.config, ...config };
+        if (config.env) {
+            const envVars = mmApp._getEnvVars(config.env);
+            if (envVars) {
+                // Пишем в конфиг для подключения к БД, только если есть настройки для подключения
+                if (this.config.db || envVars.DB_HOST || envVars.DB_NAME) {
+                    mmApp.config.db = {
+                        ...mmApp.config.db,
+                        host: (envVars.DB_HOST || mmApp.config.db?.host) as string,
+                        user: envVars.DB_USER || mmApp.config.db?.user,
+                        pass: envVars.DB_PASSWORD || mmApp.config.db?.pass,
+                        database: (envVars.DB_NAME || mmApp.config.db?.database) as string,
+                    };
+                }
+
+                this._setTokens();
+            }
+        }
     }
 
     /**
-     * Инициализация параметров приложения.
-     *
-     * @param {IAppParam} params Пользовательские параметры.
-     * @api
+     * Устанавливает параметры приложения
+     * @param {IAppParam} params - Пользовательские параметры
      */
     public static setParams(params: IAppParam): void {
-        this.params = {...this.params, ...params};
+        this.params = { ...this.params, ...params };
+        mmApp._setTokens();
     }
 
     /**
-     * Переопределения места, для хранения данных пользователя.
+     * Добавляет команду для обработки пользовательских запросов
      *
-     * @param {boolean} isSaveDb Если true, то данные сохраняются в БД, иначе в файл.
+     * @param {string} commandName - Уникальный идентификатор команды
+     * @param {string[]} slots - Триггеры для активации команды
+     * @param {ICommandParam['cb']} cb - Функция-обработчик команды
+     * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
+     *
+     * @example
+     * Простая команда со словами:
+     * ```typescript
+     * mmApp.addCommand(
+     *   'greeting',
+     *   ['привет', 'здравствуй'],
+     *   (cmd, ctrl) => {
+     *     if (ctrl) ctrl.text = 'Здравствуйте!';
+     *   }
+     * );
+     * ```
+     *
+     * @example
+     * Команда с регулярными выражениями:
+     * ```typescript
+     * // Обработка чисел от 1 до 999
+     * mmApp.addCommand(
+     *   'number',
+     *   ['\\b([1-9]|[1-9][0-9]|[1-9][0-9][0-9])\\b'],
+     *   (cmd, ctrl) => {
+     *     if (ctrl) ctrl.text = `Вы ввели число: ${cmd}`;
+     *   },
+     *   true  // включаем поддержку регулярных выражений
+     * );
+     * ```
+     *
+     * @example
+     * Команда с доступом к состоянию:
+     * ```typescript
+     * mmApp.addCommand(
+     *   'stats',
+     *   ['статистика'],
+     *   async (cmd, ctrl) => {
+     *     if (ctrl) {
+     *       // Доступ к пользовательским данным
+     *       const visits = ctrl.userData?.visits || 0;
+     *       ctrl.text = `Вы использовали бота ${visits} раз`;
+     *
+     *       // Доступ к кнопкам и другим UI элементам
+     *       ctrl.buttons
+     *         .addBtn('Сбросить статистику')
+     *         .addBtn('Закрыть');
+     *     }
+     *   }
+     * );
+     * ```
+     *
+     * @remarks
+     * - Команды обрабатываются в порядке добавления
+     * - При isPattern=true используются регулярные выражения JavaScript
+     * - В callback доступен весь функционал BotController
+     * - Можно использовать async функции в callback
+     */
+    public static addCommand(
+        commandName: string,
+        slots: string[],
+        cb?: ICommandParam['cb'],
+        isPattern: boolean = false,
+    ): void {
+        this.commands[commandName] = {
+            slots,
+            isPattern,
+            cb,
+        };
+    }
+
+    /**
+     * Удаляет команду
+     * @param commandName - Имя команды
+     */
+    public static removeCommand(commandName: string): void {
+        if (this.commands[commandName]) {
+            delete this.commands[commandName];
+        }
+    }
+
+    /**
+     * Устанавливает способ хранения пользовательских данных
+     * @param {boolean} isSaveDb - true для сохранения в БД, false для сохранения в файл
      */
     public static setIsSaveDb(isSaveDb: boolean = false): void {
         this.isSaveDb = isSaveDb;
     }
 
     /**
-     * Сохранение данных в файл. В случае если директории не существует, попытается ее создать.
-     * @param {IDir} dir Объект с путем и названием файла
-     * @param {string} data Сохраняемые данные
-     * @param {string} mode Режим записи
+     * Сохраняет данные в файл
+     * @param {IDir} dir - Объект с путем и названием файла
+     * @param {string} data - Сохраняемые данные
+     * @param {string} mode - Режим записи
+     * @returns {boolean} true в случае успешного сохранения
      */
     public static saveData(dir: IDir, data: string, mode?: string): boolean {
         if (!isDir(dir.path)) {
@@ -357,33 +875,29 @@ export class mmApp {
     }
 
     /**
-     * Сохранение данных в json файл.
-     *
-     * @param {string} fileName Название файла.
-     * @param {Object|Object[]} data Сохраняемые данные.
-     * @return boolean
-     * @api
+     * Сохраняет данные в JSON файл
+     * @param {string} fileName - Имя файла
+     * @param {any} data - Данные для сохранения
+     * @returns {boolean} true в случае успешного сохранения
      */
     public static saveJson(fileName: string, data: any): boolean {
         const dir: IDir = {
             path: mmApp.config.json || __dirname + '/../../json',
-            fileName: fileName.replace(/`/g, '')
+            fileName: fileName.replace(/`/g, ''),
         };
         return this.saveData(dir, JSON.stringify(data));
     }
 
     /**
-     * Сохранение логов.
-     *
-     * @param {string} fileName Название файла.
-     * @param {string} errorText Текст ошибки.
-     * @return boolean
-     * @api
+     * Сохраняет лог ошибки
+     * @param {string} fileName - Имя файла лога
+     * @param {string} errorText - Текст ошибки
+     * @returns {boolean} true в случае успешного сохранения
      */
     public static saveLog(fileName: string, errorText: string | null = ''): boolean {
         const dir: IDir = {
             path: mmApp.config.error_log || __dirname + '/../../logs',
-            fileName
+            fileName,
         };
         const msg = `[${Date()}]: ${errorText}\n`;
         if (mmApp._isDevMode) {

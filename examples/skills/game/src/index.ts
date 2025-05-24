@@ -1,7 +1,7 @@
-import {Bot} from 'umbot';
+import { Bot } from 'umbot';
 import skillGameConfig from './config/skillGameConfig';
 import skillGameParam from './config/skillGameParam';
-import {GameController} from './controller/GameController';
+import { GameController } from './controller/GameController';
 
 const bot = new Bot();
 bot.initConfig(skillGameConfig());

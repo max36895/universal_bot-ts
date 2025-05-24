@@ -1,29 +1,53 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
-import {BotController} from '../controller';
-import {IVkRequestContent, IVkRequestObject} from './interfaces';
-import {mmApp} from '../mmApp';
-import {VkRequest} from '../api/VkRequest';
-import {IVkParams} from '../api/interfaces';
-import {Buttons} from '../components/button';
+import { TemplateTypeModel } from './TemplateTypeModel';
+import { BotController } from '../controller';
+import { IVkRequestContent, IVkRequestObject } from './interfaces';
+import { mmApp } from '../mmApp';
+import { VkRequest } from '../api/VkRequest';
+import { IVkParams } from '../api/interfaces';
+import { Buttons } from '../components/button';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для ВКонтакте.
+ * Класс для работы с платформой ВКонтакте
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате ВКонтакте
  * @class Vk
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Vk extends TemplateTypeModel {
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IVkRequestContent|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * Обрабатывает входящие сообщения и события от ВКонтакте
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой бота
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
+     *
+     * Поддерживаемые типы событий:
+     * - confirmation: подтверждение сервера
+     * - message_new: новое сообщение
+     *
+     * Структура сообщения:
+     * - date: время отправки
+     * - from_id: ID отправителя
+     * - id: ID сообщения
+     * - out: исходящее сообщение
+     * - peer_id: ID получателя
+     * - text: текст сообщения
+     * - conversation_message_id: ID сообщения в беседе
+     * - fwd_messages: пересланные сообщения
+     * - important: важное сообщение
+     * - random_id: случайный ID
+     * - attachments: вложения
+     * - is_hidden: скрытое сообщение
+     * - payload: дополнительные данные
      */
-    public async init(query: string | IVkRequestContent, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | IVkRequestContent,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
-            /**
+            /*
              * array content
              *  - string type:
              *  - array object:
@@ -54,7 +78,7 @@ export class Vk extends TemplateTypeModel {
             if (typeof query === 'string') {
                 content = <IVkRequestContent>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
             if (!this.controller) {
                 this.controller = controller;
@@ -74,14 +98,14 @@ export class Vk extends TemplateTypeModel {
                         this.controller.originalUserCommand = object.message.text.trim();
                         this.controller.messageId = object.message.id;
                         this.controller.payload = object.message.payload || null;
-                        const user = await (new VkRequest()).usersGet(this.controller.userId);
+                        const user = await new VkRequest().usersGet(this.controller.userId);
                         if (user) {
                             const thisUser = {
                                 username: null,
                                 first_name: user.first_name || null,
-                                last_name: user.last_name || null
+                                last_name: user.last_name || null,
                             };
-                            this.controller.nlu.setNlu({thisUser});
+                            this.controller.nlu.setNlu({ thisUser });
                         }
                         return true;
                     }
@@ -99,11 +123,10 @@ export class Vk extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<string>}
+     * Формирует и отправляет ответ пользователю
+     * Отправляет текст, карточки и звуки через VK API
+     * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
@@ -122,10 +145,14 @@ export class Vk extends TemplateTypeModel {
             }
             if (this.controller.sound.sounds.length) {
                 const attach = await this.controller.sound.getSounds(this.controller.tts);
-                params.attachments = {...attach, ...params.attachments};
+                params.attachments = { ...attach, ...params.attachments };
             }
             const vkApi = new VkRequest();
-            await vkApi.messagesSend(this.controller.userId as string, this.controller.text, params);
+            await vkApi.messagesSend(
+                this.controller.userId as string,
+                this.controller.text,
+                params,
+            );
         }
         return 'ok';
     }

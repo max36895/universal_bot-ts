@@ -1,4 +1,4 @@
-import {TemplateSoundTypes, ISound, YandexSpeechKit, Text} from '../../../../../src';
+import { TemplateSoundTypes, ISound, YandexSpeechKit, Text } from '../../../../../src';
 
 export class UserSound implements TemplateSoundTypes {
     /**
@@ -20,7 +20,7 @@ export class UserSound implements TemplateSoundTypes {
                         return Text.getText(sound.sounds);
                     }
                 }
-            })
+            });
         }
         /*
          * если есть необходимость для прочтения текста
@@ -30,9 +30,9 @@ export class UserSound implements TemplateSoundTypes {
             const content = await speechKit.getTts(text);
             if (content) {
                 /*
-                * Сохраняем данные в массив, либо отправляем данные через запрос.
+                 * Сохраняем данные в массив, либо отправляем данные через запрос.
                  * п.с. В content находится содержимое файла!
-                */
+                 */
             }
         }
         return null;

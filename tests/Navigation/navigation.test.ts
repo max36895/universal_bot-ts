@@ -1,7 +1,7 @@
-import {Navigation} from '../../src';
+import { Navigation } from '../../src';
 
 describe('Navigation tests', () => {
-    let navigation: Navigation<number | { id: number, title: string }>;
+    let navigation: Navigation<number | { id: number; title: string }>;
     let elements: any = null;
 
     beforeEach(() => {
@@ -61,19 +61,19 @@ describe('Navigation tests', () => {
         for (let i = 0; i < 10; i++) {
             elements.push({
                 id: i + 1,
-                title: `привет${i}`
-            })
+                title: `привет${i}`,
+            });
         }
         elements[3].title = 'приветствую тебя мир';
 
         selectedElement = navigation.selectedElement(elements, '2');
-        expect(selectedElement).toEqual({id: 2, title: 'привет1'});
+        expect(selectedElement).toEqual({ id: 2, title: 'привет1' });
 
         selectedElement = navigation.selectedElement(elements, 'приветствую тебя мир', ['title']);
-        expect(selectedElement).toEqual({id: 4, title: 'приветствую тебя мир'});
+        expect(selectedElement).toEqual({ id: 4, title: 'приветствую тебя мир' });
 
         selectedElement = navigation.selectedElement(elements, 'привет', ['title'], 1);
-        expect(selectedElement).toEqual({id: 6, title: 'привет5'});
+        expect(selectedElement).toEqual({ id: 6, title: 'привет5' });
 
         selectedElement = navigation.selectedElement(elements, 'пока', ['title'], 1);
         expect(selectedElement).toEqual(null);
@@ -115,5 +115,5 @@ describe('Navigation tests', () => {
         expect(navigation.getPageNav(true)).toEqual(['1 ...', '7', '8', '[9]', '10']);
         navigation.thisPage = 9;
         expect(navigation.getPageNav(true)).toEqual(['1 ...', '8', '9', '[10]']);
-    })
+    });
 });

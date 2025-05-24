@@ -3,7 +3,7 @@
  * Date: {{date}}
  * Time: {{time}}
  */
-import {BotController} from 'umbot';
+import { BotController } from 'umbot';
 
 export class __className__Controller extends BotController {
     /**

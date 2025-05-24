@@ -1,30 +1,49 @@
-import {TemplateTypeModel} from './TemplateTypeModel';
-import {BotController} from '../controller';
-import {ITelegramContent} from './interfaces';
-import {mmApp} from '../mmApp';
-import {INluThisUser} from '../components/nlu';
-import {ITelegramParams, TelegramRequest} from '../api';
-import {Buttons} from '../components/button';
-import {ITelegramCard} from '../components/card';
+import { TemplateTypeModel } from './TemplateTypeModel';
+import { BotController } from '../controller';
+import { ITelegramContent } from './interfaces';
+import { mmApp } from '../mmApp';
+import { INluThisUser } from '../components/nlu';
+import { ITelegramParams, TelegramRequest } from '../api';
+import { Buttons } from '../components/button';
+import { ITelegramCard } from '../components/card';
 
 /**
- * Класс, отвечающий за корректную инициализацию и отправку ответа для Телеграма.
+ * Класс для работы с платформой Telegram
+ * Отвечает за инициализацию и обработку запросов от пользователя,
+ * а также формирование ответов в формате Telegram
  * @class Telegram
+ * @extends TemplateTypeModel
  * @see TemplateTypeModel Смотри тут
  */
 export class Telegram extends TemplateTypeModel {
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {ITelegramContent|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
+     * Инициализирует основные параметры для работы с запросом
+     * Обрабатывает входящие сообщения и обновления от Telegram
+     * @param query Запрос пользователя в формате строки или объекта
+     * @param controller Контроллер с логикой бота
+     * @returns {Promise<boolean>} true при успешной инициализации, false при ошибке
      * @see TemplateTypeModel.init() Смотри тут
-     * @api
+     *
+     * Поддерживаемые типы обновлений:
+     * - message: новое входящее сообщение
+     * - edited_message: отредактированное сообщение
+     * - channel_post: новый пост в канале
+     * - edited_channel_post: отредактированный пост в канале
+     * - inline_query: встроенный запрос
+     * - callback_query: запрос обратного вызова
+     * - shipping_query: запрос на доставку
+     * - pre_checkout_query: запрос предварительной проверки
+     * - poll: состояние опроса
+     * - poll_answer: ответ в опросе
+     *
+     * @see https://core.telegram.org/bots/api#getting-updates Документация по обновлениям
      */
-    public async init(query: string | ITelegramContent, controller: BotController): Promise<boolean> {
+    public async init(
+        query: string | ITelegramContent,
+        controller: BotController,
+    ): Promise<boolean> {
         if (query) {
-            /**
+            /*
              * array content
              * @see (https://core.telegram.org/bots/api#getting-updates) Смотри тут
              *  - int update_id: Уникальный идентификатор обновления. Обновление идентификаторов начинается с определенного положительного числа и последовательно увеличивается. Этот идентификатор становится особенно удобным, если вы используете Webhooks, так как он позволяет игнорировать повторяющиеся обновления или восстанавливать правильную последовательность обновлений, если они выходят из строя. Если нет новых обновлений хотя бы в течение недели, то идентификатор следующего обновления будет выбран случайным образом, а не последовательно.
@@ -61,7 +80,7 @@ export class Telegram extends TemplateTypeModel {
             if (typeof query === 'string') {
                 content = <ITelegramContent>JSON.parse(query);
             } else {
-                content = {...query};
+                content = { ...query };
             }
             if (!this.controller) {
                 this.controller = controller;
@@ -80,7 +99,7 @@ export class Telegram extends TemplateTypeModel {
                     first_name: content.message.chat.first_name || null,
                     last_name: content.message.chat.last_name || null,
                 };
-                this.controller.nlu.setNlu({thisUser});
+                this.controller.nlu.setNlu({ thisUser });
                 return true;
             }
         } else {
@@ -90,11 +109,10 @@ export class Telegram extends TemplateTypeModel {
     }
 
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<string>}
+     * Формирует и отправляет ответ пользователю
+     * Отправляет текст, карточки, опросы и звуки через Telegram API
+     * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут
-     * @api
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
@@ -106,12 +124,20 @@ export class Telegram extends TemplateTypeModel {
             }
             params.parse_mode = 'markdown';
 
-            await telegramApi.sendMessage(this.controller.userId as string, this.controller.text, params);
+            await telegramApi.sendMessage(
+                this.controller.userId as string,
+                this.controller.text,
+                params,
+            );
 
             if (this.controller.card.images.length) {
                 const res: ITelegramCard = await this.controller.card.getCards();
                 if (res) {
-                    await telegramApi.sendPoll(this.controller.userId as string, res.question, res.options);
+                    await telegramApi.sendPoll(
+                        this.controller.userId as string,
+                        res.question,
+                        res.options,
+                    );
                 }
             }
 

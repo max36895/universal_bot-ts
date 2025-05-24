@@ -1,4 +1,4 @@
-import {TemplateButtonTypes} from '../../../../../src';
+import { TemplateButtonTypes } from '../../../../../src';
 
 export class UserButton extends TemplateButtonTypes {
     /**
@@ -12,6 +12,9 @@ export class UserButton extends TemplateButtonTypes {
             /*
              * Заполняем массив object нужными данными
              */
+            if (button.payload) {
+                // Обработка если есть payload
+            }
         });
         return objects;
     }

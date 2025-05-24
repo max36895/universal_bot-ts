@@ -1,12 +1,12 @@
-import {TemplateTypeModel, BotController, mmApp, Buttons} from '../../../../../src';
-import {UserButton} from '../Components/UserButton';
-import {UserCard} from '../Components/UserCard';
-import {UserSound} from '../Components/UserSound';
+import { TemplateTypeModel, BotController, mmApp, Buttons } from '../../../../../src';
+import { UserButton } from '../Components/UserButton';
+import { UserCard } from '../Components/UserCard';
+import { UserSound } from '../Components/UserSound';
 
 interface IUserApp {
     userId: string;
     data: {
-        text: string
+        text: string;
     };
 }
 
@@ -25,7 +25,7 @@ export class UserApp extends TemplateTypeModel {
             if (typeof query === 'string') {
                 content = <IUserApp>JSON.parse(query);
             } else {
-                content = {...query}
+                content = { ...query };
             }
             this.controller = controller;
             this.controller.requestObject = content;
@@ -56,23 +56,34 @@ export class UserApp extends TemplateTypeModel {
             /**
              * Отправляем ответ в нужном формате
              */
-            const buttonClass = new UserButton();// Класс отвечающий за отображение кнопок. Должен быть унаследован от TemplateButtonTypes
+            const buttonClass = new UserButton(); // Класс отвечающий за отображение кнопок. Должен быть унаследован от TemplateButtonTypes
             /*
              * Получение кнопок
              */
-            const buttons = this.controller.buttons.getButtons(Buttons.T_USER_APP_BUTTONS, buttonClass);
+            const buttons = this.controller.buttons.getButtons(
+                Buttons.T_USER_APP_BUTTONS,
+                buttonClass,
+            );
 
-            const cardClass = new UserCard();// Класс отвечающий за отображение карточек. Должен быть унаследован от TemplateCardTypes
+            const cardClass = new UserCard(); // Класс отвечающий за отображение карточек. Должен быть унаследован от TemplateCardTypes
             /*
              * Получить информацию о карточке
              */
             const cards = await this.controller.card.getCards(cardClass);
 
-            const soundClass = new UserSound();// Класс отвечающий за отображение звуков. Должен быть унаследован от TemplateSoundTypes
+            const soundClass = new UserSound(); // Класс отвечающий за отображение звуков. Должен быть унаследован от TemplateSoundTypes
             /*
              * Получить все звуки
              */
             const sounds = await this.controller.sound.getSounds('', soundClass);
+            fetch('https://localhost:8080', {
+                method: 'POST',
+                body: JSON.stringify({
+                    cards,
+                    sounds,
+                    buttons,
+                }),
+            });
         }
         return 'ok';
     }

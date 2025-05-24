@@ -1,20 +1,32 @@
 {
-  "entryPoints": [
-    "src/build.ts",
-    "src/test.ts",
-    "src/mmApp.ts",
-    "src/api",
-    "src/components",
-    "src/controller",
-    "src/core",
-    "src/platforms",
-    "src/models",
-    "src/models/db",
-    "src/utils",
-    "console"
-  ],
-  "readme": "README.md",
-  "name": "u_bot",
-  "out": "./docs/",
-  "tsconfig": "tsconfigForDoc.json"
+    "entryPoints": [
+        "src/build.ts",
+        "src/test.ts",
+        "src/mmApp.ts",
+        "src/api",
+        "src/components",
+        "src/controller",
+        "src/core",
+        "src/platforms",
+        "src/models",
+        "src/models/db",
+        "src/utils",
+        "cli"
+    ],
+    "readme": "README.md",
+    "name": "umbot",
+    "out": "./docs/",
+    "tsconfig": "tsconfigForDoc.json",
+    "excludePrivate": true,
+    "excludeExternals": true,
+    "excludeInternal": true,
+    "theme": "default",
+    "includeVersion": true,
+    "categorizeByGroup": true,
+    "searchInComments": true,
+    "sort": ["source-order"],
+    "validation": {
+        "invalidLink": true,
+        "notDocumented": true
+    }
 }

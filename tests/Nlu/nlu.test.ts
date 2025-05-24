@@ -1,77 +1,77 @@
-import {Nlu, INlu} from '../../src';
+import { Nlu, INlu } from '../../src';
 
 describe('Nlu test', () => {
-    let nlu: Nlu = new Nlu();
+    const nlu: Nlu = new Nlu();
 
     beforeEach(() => {
         const nluContent: INlu = {
             thisUser: {
                 username: 'name',
                 first_name: 'fn',
-                last_name: 'ln'
+                last_name: 'ln',
             },
             entities: [
                 {
                     type: Nlu.T_GEO,
                     tokens: {
                         start: 0,
-                        end: 1
+                        end: 1,
                     },
                     value: {
-                        city: "city"
-                    }
+                        city: 'city',
+                    },
                 },
                 {
                     type: Nlu.T_NUMBER,
                     tokens: {
                         start: 0,
-                        end: 1
+                        end: 1,
                     },
-                    value: 512
+                    value: 512,
                 },
                 {
                     type: Nlu.T_FIO,
                     tokens: {
                         start: 0,
-                        end: 1
+                        end: 1,
                     },
                     value: {
-                        first_name: "fn"
-                    }
+                        first_name: 'fn',
+                    },
                 },
                 {
                     type: Nlu.T_DATETIME,
                     tokens: {
                         start: 0,
-                        end: 1
+                        end: 1,
                     },
                     value: {
-                        year: 2020
-                    }
+                        year: 2020,
+                    },
                 },
             ],
             intents: {
                 custom: {
                     slots: {
                         name: {
-                            type: "YANDEX.STRING",
+                            type: 'YANDEX.STRING',
                             tokens: {
                                 start: 1,
-                                end: 2
+                                end: 2,
                             },
-                            value: "test"
+                            value: 'test',
                         },
                         action: {
-                            type: "YANDEX.STRING",
+                            type: 'YANDEX.STRING',
                             tokens: {
                                 start: 2,
-                                end: 4
+                                end: 4,
                             },
-                            value: "спит"
-                        }
-                    }
-                }
-            }
+                            value: 'спит',
+                        },
+                    },
+                },
+            },
         };
         nlu.setNlu(nluContent);
     });
@@ -104,23 +104,23 @@ describe('Nlu test', () => {
         expect(nlu.getUserName()).toEqual({
             username: 'name',
             first_name: 'fn',
-            last_name: 'ln'
+            last_name: 'ln',
         });
     });
 
     it('Get fio', () => {
         expect(nlu.getFio().status).toBe(true);
-        expect(nlu.getFio().result).toEqual([{first_name: 'fn'}]);
+        expect(nlu.getFio().result).toEqual([{ first_name: 'fn' }]);
     });
 
     it('Get geo', () => {
         expect(nlu.getGeo().status).toBe(true);
-        expect(nlu.getGeo().result).toEqual([{city: 'city'}]);
+        expect(nlu.getGeo().result).toEqual([{ city: 'city' }]);
     });
 
     it('Get date time', () => {
         expect(nlu.getDateTime().status).toBe(true);
-        expect(nlu.getDateTime().result).toEqual([{year: 2020}]);
+        expect(nlu.getDateTime().result).toEqual([{ year: 2020 }]);
     });
 
     it('Get number', () => {
@@ -132,22 +132,22 @@ describe('Nlu test', () => {
         expect(nlu.getIntent('custom')).toEqual({
             slots: {
                 name: {
-                    type: "YANDEX.STRING",
+                    type: 'YANDEX.STRING',
                     tokens: {
                         start: 1,
-                        end: 2
+                        end: 2,
                     },
-                    value: "test"
+                    value: 'test',
                 },
                 action: {
-                    type: "YANDEX.STRING",
+                    type: 'YANDEX.STRING',
                     tokens: {
                         start: 2,
-                        end: 4
+                        end: 4,
                     },
-                    value: "спит"
-                }
-            }
+                    value: 'спит',
+                },
+            },
         });
         expect(nlu.getIntent('test') === null).toBe(true);
     });

@@ -1,4 +1,4 @@
-import {IViberContent} from '../interfaces';
+import { IViberContent } from '../interfaces';
 
 /**
  *
@@ -10,14 +10,13 @@ export default function (query: string, userId: string): IViberContent {
         event: 'message',
         message: {
             text: query,
-            type: 'text'
+            type: 'text',
         },
         message_token: Date.now(),
         sender: {
             id: userId,
             name: 'local_name',
-            api_version: 8
-        }
+            api_version: 8,
+        },
     };
 }
-

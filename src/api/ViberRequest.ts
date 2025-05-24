@@ -1,47 +1,48 @@
-import {Request} from './request/Request';
-import {mmApp} from '../mmApp';
+import { Request } from './request/Request';
+import { mmApp } from '../mmApp';
 import {
     IViberApi,
     IViberGetUserDetails,
     IViberParams,
     IViberRichMediaParams,
     IViberSender,
-    IViberWebhookParams
+    IViberWebhookParams,
 } from './interfaces';
-import {IViberButton} from '../components/button/interfaces';
-import {Text} from '../utils/standard/Text';
+import { IViberButton } from '../components/button/interfaces';
+import { Text } from '../utils/standard/Text';
 
 /**
- * Класс отвечающий за отправку запросов на viber сервер.
- *
- * Документация по viber api.
+ * Класс для взаимодействия с API Viber
+ * Предоставляет методы для отправки сообщений, файлов и других типов контента
  * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
- *
- * @class ViberRequest
  */
 export class ViberRequest {
     /**
-     * @const string: Адрес, на который отправляться запрос.
+     * Базовый URL для всех методов Viber API
+     * @private
      */
     private readonly API_ENDPOINT = 'https://chatapi.viber.com/pa/';
 
     /**
-     * Отправка запросов.
-     * @see Request Смотри тут
+     * Экземпляр класса для выполнения HTTP-запросов
+     * @private
      */
     protected _request: Request;
+
     /**
-     * Ошибки при выполнении.
+     * Текст последней возникшей ошибки
+     * @private
      */
     protected _error: string | null;
 
     /**
-     * Авторизационный токен бота, необходимый для отправки данных.
+     * Токен доступа к Viber API
      */
     public token: string | null;
 
     /**
-     * ViberRequest constructor.
+     * Создает экземпляр класса для работы с API Viber
+     * Устанавливает токен из конфигурации приложения, если он доступен
      */
     public constructor() {
         this._request = new Request();
@@ -53,27 +54,23 @@ export class ViberRequest {
     }
 
     /**
-     * Установить токен.
-     *
-     * @param {string} token Токен необходимый для отправки данных на сервер.
-     * @api
+     * Инициализирует токен доступа к Viber API
+     * @param token Токен для доступа к API
      */
     public initToken(token: string): void {
         this.token = token;
     }
 
     /**
-     * Отвечает за отправку запросов на viber сервер.
-     *
-     * @param {string} method Название метода.
-     * @return Promise<any>
-     * @api
+     * Отправляет запрос к Viber API
+     * @param method Название метода API
+     * @returns Результат выполнения метода или null при ошибке
      */
     public async call<T extends IViberApi>(method: string): Promise<T | null> {
         if (this.token) {
             if (method) {
                 this._request.header = {
-                    'X-Viber-Auth-Token: ': this.token
+                    'X-Viber-Auth-Token: ': this.token,
                 };
                 this._request.post.min_api_version = mmApp.params.viber_api_version || 2;
                 const data = (await this._request.send<IViberApi>(this.API_ENDPOINT + method)).data;
@@ -85,7 +82,8 @@ export class ViberRequest {
                     if (data.status === 0) {
                         return data as T;
                     }
-                    const statusMessage = typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
+                    const statusMessage =
+                        typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
                     if (statusMessage !== 'ok') {
                         this._error = '';
                         this._log(data.status_message);
@@ -99,107 +97,88 @@ export class ViberRequest {
     }
 
     /**
-     * Запрос будет получать сведения о конкретном пользователе Viber на основе его уникального идентификатора.
-     * Этот запрос может быть отправлен дважды в течение 12 часов для каждого идентификатора пользователя.
-     * @see (https://developers.viber.com/docs/api/rest-bot-api/#get-user-details) Смотри тут
+     * Получает информацию о пользователе Viber
+     * Запрос можно отправлять не более 2 раз в течение 12 часов для каждого пользователя
+     * @param id Уникальный идентификатор пользователя
+     * @returns Информация о пользователе или null при ошибке
      *
-     * @param {string} id Уникальный идентификатор пользователя.
-     * @return Promise<IViberGetUserDetails>
-     * [
-     *  - int status: Результат действия.
-     *  - string status_message: Статус сообщения.
-     *  - int message_token: Уникальный идентификатор сообщения.
-     *  - array user: Информация о пользователе.
-     *  [
-     *      - string id: Уникальный идентификатор пользователя Viber.
-     *      - string name: Имя пользователя Viber.
-     *      - string avatar: URL-адрес аватара пользователя.
-     *      - string country: Код страны пользователя.
-     *      - string language: Язык телефона пользователя. Будет возвращен в соответствии с языком устройства.
-     *      - string primary_device_os: Тип операционной системы и версия основного устройства пользователя.
-     *      - int api_version: Версия Viber, установленная на основном устройстве пользователя.
-     *      - string viber_version: Версия Viber, установленная на основном устройстве пользователя.
-     *      - int mcc: Мобильный код страны.
-     *      - int mnc: Код мобильной сети.
-     *      - string device_type: Тип устройства пользователя.
-     *  ]
-     * ]
-     * @api
+     * Возвращаемые данные:
+     * - id: уникальный идентификатор
+     * - name: имя пользователя
+     * - avatar: URL аватара
+     * - country: код страны
+     * - language: язык устройства
+     * - primary_device_os: ОС устройства
+     * - api_version: версия API
+     * - viber_version: версия Viber
+     * - mcc: код страны
+     * - mnc: код сети
+     * - device_type: тип устройства
      */
     public getUserDetails(id: string): Promise<IViberGetUserDetails | null> {
         this._request.post = {
-            id
+            id,
         };
         return this.call<IViberGetUserDetails>('get_user_details');
     }
 
     /**
-     * Отправка сообщения пользователю.
-     * Отправка сообщения пользователю будет возможна только после того, как пользователь подпишется на бота, отправив ему сообщение.
-     * @see (https://developers.viber.com/docs/api/rest-bot-api/#send-message) Смотри тут
-     *
-     * @param {string} receiver Уникальный идентификатор пользователя Viber.
-     * @param {IViberSender} sender Отправитель:
-     * [
-     *  - string name: Имя отправителя для отображения (Максимум 28 символов).
-     *  - string avatar: URL-адрес Аватара отправителя (Размер аватара должен быть не более 100 Кб. Рекомендуется 720x720).
-     * ]
-     * @param {string} text Текст сообщения.
-     * @param {IViberParams} params Дополнительные параметры:
-     * [
-     *  - string receiver: Уникальный идентификатор пользователя Viber.
-     *  - string type: Тип сообщения. (Доступные типы сообщений: text, picture, video, file, location, contact, sticker, carousel content и url).
-     *  - string sender Отправитель.
-     *  - string tracking_data: Разрешить учетной записи отслеживать сообщения и ответы пользователя. Отправлено tracking_data значение будет передано обратно с ответом пользователя.
-     *  - string min_api_version: Минимальная версия API, необходимая клиентам для этого сообщения (по умолчанию 1).
-     *  - string text Текст сообщения. (Обязательный параметр).
-     *  - string media: Url адрес отправляемого контента. Актуально при отправке файлов.
-     *  - string thumbnail: URL-адрес изображения уменьшенного размера. Актуально при отправке файлов.
-     *  - int size: Размер файла в байтах.
-     *  - int duration: Продолжительность видео или аудио в секундах. Будет отображаться на приемнике.
-     *  - string file_name: Имя файла. Актуально для type = file.
-     *  - array contact: Контакты пользователя. Актуально для type = contact.
-     *  [
-     *      - string name: Имя контактного лица.
-     *      - string phone_number: Номер телефона контактного лица.
-     *  ]
-     *  - array location: Координаты местоположения. Актуально для type = location.
-     *  [
-     *      - string lat: Координата lat.
-     *      - string lon: Координата lon.
-     *  ]
-     *  - int sticker_id: Уникальный идентификатор стикера Viber. Актуально для type = sticker.
-     * ]
-     * @return Promise<any>
-     * @api
+     * Отправляет сообщение пользователю
+     * Сообщение можно отправить только после того, как пользователь подпишется на бота
+     * @param receiver ID пользователя Viber
+     * @param sender Информация об отправителе:
+     * - name: имя (до 28 символов)
+     * - avatar: URL аватара (до 100 Кб, 720x720)
+     * @param text Текст сообщения
+     * @param params Дополнительные параметры:
+     * - type: тип сообщения (text, picture, video, file, location, contact, sticker, carousel, url)
+     * - tracking_data: данные для отслеживания
+     * - min_api_version: минимальная версия API
+     * - media: URL контента
+     * - thumbnail: URL превью
+     * - size: размер файла
+     * - duration: длительность видео/аудио
+     * - file_name: имя файла
+     * - contact: контактная информация
+     * - location: координаты
+     * - sticker_id: ID стикера
+     * @returns Результат отправки или null при ошибке
      */
-    public sendMessage(receiver: string, sender: IViberSender | string, text: string, params: IViberParams | null = null): Promise<IViberApi | null> {
+    public sendMessage(
+        receiver: string,
+        sender: IViberSender | string,
+        text: string,
+        params: IViberParams | null = null,
+    ): Promise<IViberApi | null> {
         this._request.post.receiver = receiver;
         if (typeof sender !== 'string') {
             this._request.post.sender = sender;
         } else {
             this._request.post.sender = {
-                name: sender
+                name: sender,
             };
         }
         this._request.post.text = text;
         this._request.post.type = 'text';
         if (params) {
-            this._request.post = {...this._request.post, ...params};
+            this._request.post = { ...this._request.post, ...params };
         }
         return this.call<IViberApi>('send_message');
     }
 
     /**
-     * Установка webhook для vider.
-     * @see (https://developers.viber.com/docs/api/rest-bot-api/#webhooks) Смотри тут
-     *
-     * @param {string} url Адрес webhook`а.
-     * @param {IViberWebhookParams} params Дополнительные параметры.
-     * @return Promise<any>
-     * @api
+     * Устанавливает webhook для получения событий
+     * @param url URL для получения событий
+     * @param params Дополнительные параметры:
+     * - event_types: типы событий
+     * - send_name: отправлять имя
+     * - send_photo: отправлять фото
+     * @returns Результат установки или null при ошибке
      */
-    public setWebhook(url: string, params: IViberWebhookParams | null = null): Promise<IViberApi | null> {
+    public setWebhook(
+        url: string,
+        params: IViberWebhookParams | null = null,
+    ): Promise<IViberApi | null> {
         if (url) {
             this._request.post = {
                 url,
@@ -209,34 +188,37 @@ export class ViberRequest {
                     'failed',
                     'subscribed',
                     'unsubscribed',
-                    'conversation_started'
+                    'conversation_started',
                 ],
                 send_name: true,
-                send_photo: true
+                send_photo: true,
             };
         } else {
             this._request.post = {
-                url: ''
+                url: '',
             };
         }
         if (params) {
-            this._request.post = {...this._request.post, ...params};
+            this._request.post = { ...this._request.post, ...params };
         }
         return this.call<IViberApi>('set_webhook');
     }
 
     /**
-     * Отправка карточки пользователю.
-     * @see (https://developers.viber.com/docs/api/rest-bot-api/#message-types) Смотри тут
-     *
-     * @param {string} receiver Уникальный идентификатор пользователя Viber.
-     * @param {IViberButton} richMedia Отображаемые данные. Параметр 'Buttons'.
-     * @param {IViberRichMediaParams} params Дополнительные параметры.
-     * @return Promise<any>
-     * @see sendMessage() Смотри тут
-     * @api
+     * Отправляет карточку с кнопками
+     * @param receiver ID пользователя Viber
+     * @param richMedia Массив кнопок для отображения
+     * @param params Дополнительные параметры:
+     * - tracking_data: данные для отслеживания
+     * - min_api_version: минимальная версия API
+     * - alt_text: альтернативный текст
+     * @returns Результат отправки или null при ошибке
      */
-    public richMedia(receiver: string, richMedia: IViberButton[], params: IViberRichMediaParams | null = null): Promise<IViberApi | null> {
+    public richMedia(
+        receiver: string,
+        richMedia: IViberButton[],
+        params: IViberRichMediaParams | null = null,
+    ): Promise<IViberApi | null> {
         this._request.post = {
             receiver,
             type: 'rich_media',
@@ -245,36 +227,41 @@ export class ViberRequest {
                 ButtonsGroupColumns: 6,
                 ButtonsGroupRows: richMedia.length,
                 BgColor: '#FFFFFF',
-                Buttons: richMedia
-            }
+                Buttons: richMedia,
+            },
         };
         if (params) {
-            this._request.post = {...this._request.post, ...params};
+            this._request.post = { ...this._request.post, ...params };
         }
         return this.call<IViberApi>('send_message');
     }
 
     /**
-     * Отправить файл на сервер.
-     *
-     * @param {string} receiver Уникальный идентификатор пользователя Viber.
-     * @param {string} file Ссылка на файл.
-     * @param {IViberParams} params Дополнительные параметры.
-     * @return Promise<any>
-     * @see sendMessage() Смотри тут
-     * @api
+     * Отправляет файл
+     * @param receiver ID пользователя Viber
+     * @param file Путь к файлу или его содержимое
+     * @param params Дополнительные параметры:
+     * - tracking_data: данные для отслеживания
+     * - min_api_version: минимальная версия API
+     * - file_name: имя файла
+     * - size: размер файла
+     * @returns Результат отправки или null при ошибке
      */
-    public sendFile(receiver: string, file: string, params: IViberParams | null = null): Promise<IViberApi | null> | null {
+    public sendFile(
+        receiver: string,
+        file: string,
+        params: IViberParams | null = null,
+    ): Promise<IViberApi | null> | null {
         this._request.post = {
-            receiver
+            receiver,
         };
-        if (Text.isSayText(['http:\/\/', 'https:\/\/'], file)) {
+        if (Text.isSayText(['http://', 'https://'], file)) {
             this._request.post.type = 'file';
             this._request.post.media = file;
             this._request.post.size = 10e4;
             this._request.post.file_name = Text.resize(file, 150);
             if (params) {
-                this._request.post = {...this._request.post, ...params};
+                this._request.post = { ...this._request.post, ...params };
             }
             return this.call<IViberApi>('send_message');
         }
@@ -282,9 +269,9 @@ export class ViberRequest {
     }
 
     /**
-     * Запись логов.
-     *
-     * @param {string} error Текст ошибки.
+     * Записывает информацию об ошибках в лог-файл
+     * @param error Текст ошибки для логирования
+     * @private
      */
     protected _log(error: string = ''): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;

@@ -1,195 +1,402 @@
 /**
- * Вспомогательные утилиты
- * @package Documentation
- * @module utils
+ * Модуль вспомогательных утилит
+ *
+ * Предоставляет набор утилит для:
+ * - Работы с файловой системой
+ * - Обработки текста
+ * - Работы с HTTP-параметрами
+ * - Взаимодействия с консолью
+ *
+ * @module utils/standard/util
  */
-import * as fs from 'fs'
+import * as fs from 'fs';
 import * as readline from 'readline';
 
+/**
+ * Интерфейс для GET-параметров
+ *
+ * @example
+ * ```typescript
+ * const params: IGetParams = {
+ *   name: 'John',
+ *   age: '25'
+ * };
+ * ```
+ */
 export interface IGetParams {
     [key: string]: string;
 }
 
 /**
- * Получение случайного числа из диапазона
- * @param {number} min Минимальное значение
- * @param {number} max Максимальное значение
- * @return {number}
+ * Возвращает случайное число из заданного диапазона
+ *
+ * @param {number} min - Минимальное значение диапазона (включительно)
+ * @param {number} max - Максимальное значение диапазона (включительно)
+ * @returns {number} Случайное целое число из диапазона [min, max]
+ *
+ * @example
+ * ```typescript
+ * rand(1, 10); // -> случайное число от 1 до 10
+ * rand(0, 1); // -> 0 или 1
+ * ```
  */
 export function rand(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
 /**
- * Проверяем схожесть текста
- * @param {string} first Текст который проверяем
- * @param {string} second Текст с которым сравниваем
- * @param {number} percent
- * @return {number}
+ * Вычисляет процент схожести двух текстов
+ * Использует алгоритм LCS (Longest Common Subsequence)
+ *
+ * @param {string} first - Первый текст для сравнения
+ * @param {string} second - Второй текст для сравнения
+ * @returns {number} Процент схожести от 0 до 100
+ *
+ * @example
+ * ```typescript
+ * similarText('привет', 'привт'); // -> ~90
+ * similarText('hello', 'world'); // -> ~20
+ * similarText('same', 'same'); // -> 100
+ * ```
  */
-export function similarText(first: string, second: string, percent: number = 0): number {
-    if (first === null || second === null) {
+export function similarText(first: string, second: string): number {
+    if (first === second || (first.length === 0 && second.length === 0)) {
+        return 100;
+    }
+    if (first.length === 0 || second.length === 0) {
         return 0;
     }
 
-    let posFirst: number = 0;
-    let posSecond: number = 0;
-    let max: number = 0;
-    let firstLength: number = first.length;
-    let secondLength: number = second.length;
-    let sum: number;
+    // Helper function to calculate LCS length using dynamic programming
+    const lcsLength = (shorter: string, longer: string): number => {
+        const dp = new Int32Array(longer.length + 1);
 
-    for (let firstIndex = 0; firstIndex < firstLength; firstIndex++) {
-        for (let secondIndex = 0; secondIndex < secondLength; secondIndex++) {
-            let len: number;
-            for (len = 0;
-                 (firstIndex + len < firstLength) && (secondIndex + len < secondLength)
-                 && (first.charAt(firstIndex + len) === second.charAt(secondIndex + len));
-                 len++) {
-            }
-            if (len > max) {
-                max = len;
-                posFirst = firstIndex;
-                posSecond = secondIndex;
+        for (let i = 0; i < shorter.length; i++) {
+            let prevDiag = 0;
+            for (let j = 0; j < longer.length; j++) {
+                const current = dp[j + 1];
+                dp[j + 1] = shorter[i] === longer[j] ? prevDiag + 1 : Math.max(dp[j + 1], dp[j]);
+                prevDiag = current;
             }
         }
-    }
 
-    sum = max;
+        return dp[longer.length];
+    };
 
-    if (sum) {
-        if (posFirst && posSecond) {
-            sum += similarText(first.substring(0, posFirst), second.substring(0, posSecond));
-        }
+    // Ensure shorter string is first for optimization
+    const [a, b] = first.length <= second.length ? [first, second] : [second, first];
+    const totalLength = first.length + second.length;
 
-        if ((posFirst + max < firstLength) && (posSecond + max < secondLength)) {
-            const firstStart = posFirst + max;
-            const firstEnd = firstStart + (firstLength - posFirst - max);
-            const secondStart = posSecond + max;
-            const secondEnd = secondStart + (secondLength - posSecond - max);
-            sum += similarText(
-                first.substring(firstStart, firstEnd),
-                second.substring(secondStart, secondEnd)
-            );
-        }
-    }
-    percent = (sum * 200) / (firstLength + secondLength);
-    return percent;
+    return (lcsLength(a, b) * 200) / totalLength;
 }
 
 /**
- * Проверяем существование файла
- * @param {string} file Файл, который необходимо проверить
- * @return {boolean}
+ * Результат выполнения операции с файлом
+ *
+ * @template T - Тип данных, возвращаемых при успешной операции
+ *
+ * @example
+ * ```typescript
+ * const result: FileOperationResult<string> = {
+ *   success: true,
+ *   data: 'file content'
+ * };
+ *
+ * const error: FileOperationResult<void> = {
+ *   success: false,
+ *   error: new Error('File not found')
+ * };
+ * ```
+ */
+export interface FileOperationResult<T> {
+    /**
+     * Флаг успешности операции
+     * true - операция выполнена успешно
+     * false - произошла ошибка
+     */
+    success: boolean;
+
+    /**
+     * Данные, полученные в результате операции
+     * Присутствует только при success = true
+     */
+    data?: T;
+
+    /**
+     * Ошибка, возникшая при выполнении операции
+     * Присутствует только при success = false
+     */
+    error?: Error;
+}
+
+/**
+ * Проверяет существование файла
+ *
+ * @param {string} file - Путь к проверяемому файлу
+ * @returns {boolean} true, если файл существует и это файл, иначе false
+ *
+ * @example
+ * ```typescript
+ * isFile('path/to/file.txt'); // -> true
+ * isFile('path/to/directory'); // -> false
+ * isFile('nonexistent.txt'); // -> false
+ * ```
  */
 export function isFile(file: string): boolean {
+    const fileInfo = getFileInfo(file);
+    return (fileInfo.success && fileInfo.data?.isFile()) || false;
+}
+
+/**
+ * Возвращает информацию о файле
+ *
+ * @param {string} fileName - Путь к файлу
+ * @returns {FileOperationResult<fs.Stats>} Результат операции с информацией о файле
+ *
+ * @example
+ * ```typescript
+ * const result = getFileInfo('file.txt');
+ * if (result.success) {
+ *   console.log(result.data.size); // размер файла
+ *   console.log(result.data.mtime); // время последнего изменения
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
+ */
+export function getFileInfo(fileName: string): FileOperationResult<fs.Stats> {
     try {
-        const stat: fs.Stats = fs.lstatSync(file);
-        return stat.isFile();
-    } catch (e) {
+        const stats = fs.lstatSync(fileName);
+        return { success: true, data: stats };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Unknown error'),
+        };
+    }
+}
+
+/**
+ * Читает содержимое файла
+ *
+ * @param {string} fileName - Путь к файлу
+ * @returns {FileOperationResult<string>} Результат операции с содержимым файла
+ *
+ * @example
+ * ```typescript
+ * const result = fread('file.txt');
+ * if (result.success) {
+ *   console.log(result.data); // содержимое файла
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
+ */
+export function fread(fileName: string): FileOperationResult<string> {
+    try {
+        const content = fs.readFileSync(fileName, 'utf-8');
+        return { success: true, data: content };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to read file'),
+        };
+    }
+}
+
+/**
+ * Записывает данные в файл
+ *
+ * @param {string} fileName - Путь к файлу
+ * @param {string} fileContent - Содержимое для записи
+ * @param {'w' | 'a'} [mode='w'] - Режим записи:
+ *   - 'w' - перезапись файла
+ *   - 'a' - добавление в конец файла
+ * @returns {FileOperationResult<void>} Результат операции записи
+ *
+ * @example
+ * ```typescript
+ * // Перезапись файла
+ * fwrite('file.txt', 'new content');
+ *
+ * // Добавление в конец файла
+ * fwrite('file.txt', 'additional content', 'a');
+ * ```
+ */
+export function fwrite(
+    fileName: string,
+    fileContent: string,
+    mode: 'w' | 'a' | string = 'w',
+): FileOperationResult<void> {
+    try {
+        if (mode === 'w') {
+            fs.writeFileSync(fileName, fileContent);
+        } else {
+            fs.appendFileSync(fileName, fileContent);
+        }
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to write file'),
+        };
+    }
+}
+
+/**
+ * Удаляет файл
+ *
+ * @param {string} fileName - Путь к файлу
+ * @returns {FileOperationResult<void>} Результат операции удаления
+ *
+ * @example
+ * ```typescript
+ * const result = unlink('file.txt');
+ * if (result.success) {
+ *   console.log('File deleted successfully');
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
+ */
+export function unlink(fileName: string): FileOperationResult<void> {
+    try {
+        fs.unlinkSync(fileName);
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to delete file'),
+        };
+    }
+}
+
+/**
+ * Проверяет существование директории
+ *
+ * @param {string} path - Путь к директории
+ * @returns {boolean} true, если директория существует, иначе false
+ *
+ * @example
+ * ```typescript
+ * isDir('path/to/directory'); // -> true
+ * isDir('nonexistent/dir'); // -> false
+ * ```
+ */
+export function isDir(path: string): boolean {
+    try {
+        return fs.existsSync(path);
+    } catch {
         return false;
     }
 }
 
 /**
- * Читаем содержимое файла
- * @param {string} fileName Файл, содержимое которого нужно получить.
- * @return {string}
+ * Создает директорию
+ *
+ * @param {string} path - Путь к создаваемой директории
+ * @param {fs.Mode} [mask='0774'] - Маска прав доступа
+ * @returns {FileOperationResult<void>} Результат операции создания директории
+ *
+ * @example
+ * ```typescript
+ * const result = mkdir('new/directory');
+ * if (result.success) {
+ *   console.log('Directory created successfully');
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
  */
-export function fread(fileName: string): string {
-    return fs.readFileSync(fileName, 'utf-8');
-}
-
-/**
- * Записываем данные в файл
- * @param {string} fileName Файл, в который необходимо записать данные.
- * @param {string} fileContent Данные, записываемые в файл.
- * @param {string} mode Режим записи.
- */
-export function fwrite(fileName: string, fileContent: string, mode: string = 'w'): void {
-    if (mode === 'w') {
-        fs.writeFileSync(fileName, fileContent);
-    } else {
-        fs.appendFileSync(fileName, fileContent);
+export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult<void> {
+    try {
+        fs.mkdirSync(path, mask);
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to create directory'),
+        };
     }
 }
 
 /**
- * Удаление файла
- * @param {string} fileName Файл, который необходимо удалить
- */
-export function unlink(fileName: string): void {
-    fs.unlinkSync(fileName);
-}
-
-/**
- * Проверка на существование директории
- * @param {string} path Проверяемая директория
- * @return {boolean}
- */
-export function isDir(path: string): boolean {
-    return fs.existsSync(path);
-}
-
-/**
- * Создание директории
- * @param {string} path Директория, которую необходимо создать.
- * @param {"fs".Mode} mask Маска для создания директории.
- */
-export function mkdir(path: string, mask: fs.Mode = '0774'): void {
-    fs.mkdirSync(path, mask);
-}
-
-/**
- * Получение Get объекта
- * @param {IGetParams} formData
- * @param {string} separator
- * @return {string}
+ * Преобразует объект параметров в URL-строку запроса
+ *
+ * @param {IGetParams} formData - Объект с параметрами
+ * @param {string} [separator='&'] - Разделитель параметров
+ * @returns {string} URL-строка запроса
+ *
+ * @example
+ * ```typescript
+ * const params = {
+ *   name: 'John Doe',
+ *   age: '25'
+ * };
+ *
+ * httpBuildQuery(params);
+ * // -> 'name=John+Doe&age=25'
+ *
+ * httpBuildQuery(params, ';');
+ * // -> 'name=John+Doe;age=25'
+ * ```
  */
 export function httpBuildQuery(formData: IGetParams, separator: string = '&'): string {
-    let key: string;
-    const query: string[] = [];
-    for (key in formData) {
-        if (formData.hasOwnProperty(key)) {
-            key = encodeURI(key);
-            const val: string = encodeURI((formData[key] + '')).replace(/%20/g, '+');
-            query.push(`${key}=${val}`);
-        }
-    }
-    return query.join(separator);
+    return Object.entries(formData)
+        .map(([key, value]) => {
+            const encodedKey = encodeURI(key);
+            const encodedValue = encodeURI(String(value)).replace(/%20/g, '+');
+            return `${encodedKey}=${encodedValue}`;
+        })
+        .join(separator);
 }
-
-let GET: any = {};
-if (typeof window !== 'undefined') {
-    GET = window
-        .location
-        .search
-        .replace('?', '')
-        .split('&')
-        .reduce(
-            function (p: any, e) {
-                const a = e.split('=');
-                p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
-                return p;
-            },
-            {}
-        );
-}
-export {GET}
 
 /**
- * Чтение введенных данных в консоль
- * @return {Promise<string>}
+ * Объект с GET-параметрами текущего URL
+ * Доступен только в браузере
+ *
+ * @example
+ * ```typescript
+ * // URL: http://example.com?name=John&age=25
+ * console.log(GET.name); // -> 'John'
+ * console.log(GET.age); // -> '25'
+ * ```
+ */
+let GET: any = {};
+if (typeof window !== 'undefined') {
+    GET = window.location.search
+        .replace('?', '')
+        .split('&')
+        .reduce(function (p: any, e) {
+            const a = e.split('=');
+            p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
+            return p;
+        }, {});
+}
+export { GET };
+
+/**
+ * Читает введенные данные из консоли
+ *
+ * @returns {Promise<string>} Промис с введенной строкой
+ *
+ * @example
+ * ```typescript
+ * // В консоли:
+ * // > Enter your name: John
+ * const name = await stdin(); // -> 'John'
+ * ```
  */
 export function stdin(): Promise<string> {
     const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
     });
+
     return new Promise((resolve) => {
-        rl.on('line', (input) => {
-            resolve(input);
+        rl.once('line', (input) => {
             rl.close();
+            resolve(input);
         });
     });
 }

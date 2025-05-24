@@ -1,4 +1,4 @@
-import {IVkRequestContent} from '../interfaces';
+import { IVkRequestContent } from '../interfaces';
 
 /**
  *
@@ -13,8 +13,8 @@ export default function (query: string, userId: string, count: number): IVkReque
             message: {
                 from_id: +userId,
                 text: query,
-                id: count
-            }
-        }
+                id: count,
+            },
+        },
     };
 }
