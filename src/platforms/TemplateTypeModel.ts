@@ -45,7 +45,8 @@ export abstract class TemplateTypeModel {
      * Инициализирует базовые параметры и время начала обработки
      */
     constructor() {
-        this.controller = {} as BotController;
+        // @ts-ignore
+        this.controller = undefined;
         this.error = null;
         this._initProcessingTime();
         this.isUsedLocalStorage = false;
