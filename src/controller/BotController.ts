@@ -623,6 +623,35 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         this.isSendRating = false;
     }
 
+    public clearStoreData(): void {
+        this.buttons.clear();
+        this.card.clear();
+        this.sound.sounds = [];
+        this.nlu.setNlu({});
+        this.text = '';
+        this.tts = null;
+        this.userId = null;
+        this.userToken = null;
+        this.userMeta = null;
+        this.messageId = null;
+        this.userCommand = null;
+        this.originalUserCommand = null;
+        this.payload = null;
+        this.userData = {} as TUserData;
+        this.isAuth = false;
+        this.userEvents = null;
+        this.state = null;
+        this.isScreen = false;
+        this.isEnd = false;
+        this.isSend = false;
+        this.requestObject = null;
+        this.oldIntentName = null;
+        this.thisIntentName = null;
+        this.emotion = null;
+        this.appeal = null;
+        this.isSendRating = false;
+    }
+
     /**
      * Возвращает список доступных интентов
      * Определяет все возможные команды и их обработчики

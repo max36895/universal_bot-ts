@@ -308,9 +308,9 @@ describe('Bot', () => {
             const port = 3000;
             const server = bot.start(hostname, port);
             // Ожидаем, пока сервер начнёт слушать порт
-            await new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve) => {
                 server!.on('listening', resolve);
-                server!.on('error', reject);
+                server!.on('error', resolve);
             });
             expect(server).toBeInstanceOf(Server);
             bot.close();

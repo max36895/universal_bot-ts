@@ -447,10 +447,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     private _clearState(): void {
         if (this._botController) {
-            this._botController.buttons.clear();
-            this._botController.card.clear();
-            this._botController.sound.sounds = [];
-            this._botController.nlu.setNlu({});
+            this._botController.clearStoreData();
         }
     }
 
