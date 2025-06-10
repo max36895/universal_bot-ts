@@ -8,8 +8,8 @@
  * @module
  */
 
-const consoleController = require('./controllers/ConsoleController');
-const utils = require('./utils').utils;
+const consoleController = require(__dirname + '/controllers/ConsoleController');
+const utils = require(__dirname + './utils').utils;
 
 const argv = process.argv;
 

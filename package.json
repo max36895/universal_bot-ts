@@ -17,6 +17,14 @@
     "author": "Maxim-M",
     "license": "MIT",
     "main": "dist/index.js",
+    "exports": {
+        ".": {
+            "default": "./dist/index.js"
+        },
+        "./test": {
+            "default": "./dist/test.js"
+        }
+    },
     "scripts": {
         "watch": "shx rm -rf dist && tsc -watch",
         "start": "shx rm -rf dist && tsc",
@@ -62,5 +70,5 @@
     "files": [
         "dist"
     ],
-    "version": "2.0.4"
+    "version": "2.0.6"
 }

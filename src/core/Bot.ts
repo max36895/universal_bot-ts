@@ -442,6 +442,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Очищает состояние пользователя
+     * @private
+     */
+    private _clearState(): void {
+        if (this._botController) {
+            this._botController.buttons.clear();
+            this._botController.card.clear();
+            this._botController.sound.sounds = [];
+            this._botController.nlu.setNlu({});
+        }
+    }
+
+    /**
      * Запускает обработку запроса
      * Выполняет основную логику бота и возвращает результат
      *
@@ -561,6 +574,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     mmApp.saveLog('bot.log', botClass.getError());
                 }
                 userData.destroy();
+                this._clearState();
                 return content;
             } else {
                 mmApp.saveLog('bot.log', botClass.getError());
@@ -627,6 +641,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     }
                 } catch (error) {
                     if (error instanceof SyntaxError) {
+                        mmApp.saveLog('bot.log', `Bot:start(): Syntax Error: ${error}`);
                         send(res, 400, 'Invalid JSON');
                     } else {
                         mmApp.saveLog('bot.log', `Bot:start(): Server error: ${error}`);
@@ -637,7 +652,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         );
 
         this._serverInst.listen(port, hostname, () => {
-            console.log(`Server running at http://${hostname}:${port}/`);
+            console.log(`Server running at //${hostname}:${port}/`);
         });
         return this._serverInst;
     }

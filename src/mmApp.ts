@@ -526,7 +526,7 @@ export interface IAppParam {
  * };
  * ```
  */
-export interface ICommandParam {
+export interface ICommandParam<TBotController extends BotController = BotController> {
     /**
      * Триггеры активации команды
      *
@@ -549,7 +549,7 @@ export interface ICommandParam {
      * Если функция возвращает строку, она автоматически
      * устанавливается как ответ бота.
      */
-    cb?: (userCommand: string, botController?: BotController) => void | string;
+    cb?: (userCommand: string, botController: TBotController) => void | string;
 }
 
 /**
@@ -557,7 +557,7 @@ export interface ICommandParam {
  *
  * Объект, где ключи - имена команд, а значения - их параметры.
  */
-export type ICommand = Record<string, ICommandParam>;
+export type ICommand = Record<string, ICommandParam<any>>;
 
 /**
  * @class mmApp
@@ -828,10 +828,10 @@ export class mmApp {
      * - В callback доступен весь функционал BotController
      * - Можно использовать async функции в callback
      */
-    public static addCommand(
+    public static addCommand<TBotController extends BotController = BotController>(
         commandName: string,
         slots: string[],
-        cb?: ICommandParam['cb'],
+        cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
         this.commands[commandName] = {
