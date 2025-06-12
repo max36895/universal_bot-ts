@@ -296,7 +296,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.text = 'Привет! Чем могу помочь?';
      * ```
      */
-    public text: string;
+    public text: string = '';
 
     /**
      * Текст для преобразования в речь
@@ -311,7 +311,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.tts = 'Привет! Я голосовой ассистент.';
      * ```
      */
-    public tts: string | null;
+    public tts: string | null = null;
 
     /**
      * Обработанный NLU (Natural Language Understanding)
@@ -344,7 +344,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.userId = 'user_123';
      * ```
      */
-    public userId: string | number | null;
+    public userId: string | number | null = null;
 
     /**
      * Пользовательский токен авторизации
@@ -355,7 +355,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
      * ```
      */
-    public userToken: string | null;
+    public userToken: string | null = null;
 
     /**
      * Метаданные пользователя
@@ -369,7 +369,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * };
      * ```
      */
-    public userMeta: any;
+    public userMeta: any = null;
 
     /**
      * ID сообщения
@@ -380,7 +380,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.messageId = 12345;
      * ```
      */
-    public messageId: number | string | null;
+    public messageId: number | string | null = null;
 
     /**
      * Запрос пользователя в нижнем регистре
@@ -391,7 +391,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.userCommand = 'привет бот';
      * ```
      */
-    public userCommand: string | null;
+    public userCommand: string | null = null;
 
     /**
      * Оригинальный запрос пользователя
@@ -402,7 +402,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.originalUserCommand = 'Привет, бот!';
      * ```
      */
-    public originalUserCommand: string | null;
+    public originalUserCommand: string | null = null;
 
     /**
      * Дополнительные параметры запроса
@@ -416,7 +416,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * };
      * ```
      */
-    public payload: object | string | null | undefined;
+    public payload: object | string | null | undefined = null;
 
     /**
      * Пользовательские данные
@@ -435,7 +435,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * };
      * ```
      */
-    public userData: TUserData;
+    public userData: TUserData = {} as TUserData;
 
     /**
      * Флаг необходимости авторизации
@@ -446,7 +446,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.isAuth = true; // требуется авторизация
      * ```
      */
-    public isAuth: boolean;
+    public isAuth: boolean = false;
 
     /**
      * Статус пользовательских событий
@@ -461,7 +461,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * };
      * ```
      */
-    public userEvents: IUserEvent | null;
+    public userEvents: IUserEvent | null = null;
 
     /**
      * Пользовательское локальное хранилище
@@ -475,7 +475,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * };
      * ```
      */
-    public state: object | string | null;
+    public state: object | string | null = null;
 
     /**
      * Флаг наличия экрана
@@ -486,7 +486,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.isScreen = true; // экран доступен
      * ```
      */
-    public isScreen: boolean;
+    public isScreen: boolean = false;
 
     /**
      * Флаг завершения сессии
@@ -497,7 +497,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.isEnd = true; // завершить диалог
      * ```
      */
-    public isEnd: boolean;
+    public isEnd: boolean = false;
 
     /**
      * Флаг необходимости отправки запроса к API
@@ -511,7 +511,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.isSend = true; // запросы уже отправлены
      * ```
      */
-    public isSend: boolean;
+    public isSend: boolean = false;
 
     /**
      * Полученный запрос
@@ -525,7 +525,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * };
      * ```
      */
-    public requestObject: object | string | null;
+    public requestObject: object | string | null = null;
 
     /**
      * Название текущего интента
@@ -536,7 +536,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.thisIntentName = 'help';
      * ```
      */
-    public thisIntentName: string | null;
+    public thisIntentName: string | null = null;
 
     /**
      * Эмоция для голосового ответа
@@ -547,7 +547,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.emotion = 'good';
      * ```
      */
-    public emotion: string | null;
+    public emotion: string | null = null;
 
     /**
      * Стиль обращения к пользователю
@@ -564,7 +564,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.appeal = 'official'; // официальное обращение
      * ```
      */
-    public appeal: 'official' | 'no_official' | null;
+    public appeal: 'official' | 'no_official' | null = null;
 
     /**
      * Флаг отправки запроса на оценку
@@ -575,7 +575,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.isSendRating = true; // запросить оценку
      * ```
      */
-    public isSendRating: boolean;
+    public isSendRating: boolean = false;
 
     /**
      * Название предыдущего интента
@@ -586,7 +586,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * this.oldIntentName = 'greeting';
      * ```
      */
-    public oldIntentName: string | null;
+    public oldIntentName: string | null = null;
 
     /**
      * Создает новый экземпляр контроллера
@@ -599,34 +599,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         this.card = new Card();
         this.sound = new Sound();
         this.nlu = new Nlu();
-        this.text = '';
-        this.tts = null;
-        this.userId = null;
-        this.userToken = null;
-        this.userMeta = null;
-        this.messageId = null;
-        this.userCommand = null;
-        this.originalUserCommand = null;
-        this.payload = null;
-        this.userData = {} as TUserData;
-        this.isAuth = false;
-        this.userEvents = null;
-        this.state = null;
-        this.isScreen = false;
-        this.isEnd = false;
-        this.isSend = false;
-        this.requestObject = null;
-        this.oldIntentName = null;
-        this.thisIntentName = null;
-        this.emotion = null;
-        this.appeal = null;
-        this.isSendRating = false;
     }
 
     public clearStoreData(): void {
         this.buttons.clear();
         this.card.clear();
-        this.sound.sounds = [];
         this.nlu.setNlu({});
         this.text = '';
         this.tts = null;
