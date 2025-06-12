@@ -66,10 +66,7 @@ bot.initParams({
 const controller = new MyController();
 bot.initBotController(controller);
 
-// Экспортируем обработчик
-export default async (req, res) => {
-    bot.start(req, res);
-};
+bot.start('localhost', 3000);
 ```
 
 ## Основные концепции
