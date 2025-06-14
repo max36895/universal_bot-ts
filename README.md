@@ -423,11 +423,12 @@ acme.sh --install-cert -d {{domain}} --key-file {{key file}} --fullchain-file {{
 С той лишь разницей, что нужно использовать класс `BotTest` вместо `Bot`.
 
 ```typescript
-import { BotTest } from "umbot/dist/test";
+import { BotTest } from 'umbot/dist/test';
 
 const bot = new BotTest();
 bot.test();
 ```
+
 Запуск будет выглядеть следующим образом:
 
 ```bash

@@ -17,6 +17,7 @@ import {
     T_SMARTAPP,
     T_USER_APP,
     TemplateTypeModel,
+    IAlisaWebhookResponse,
 } from '../../src';
 import { Server } from 'http';
 
@@ -26,15 +27,24 @@ class TestBotController extends BotController {
     }
 
     action(intentName: string | null, isCommand?: boolean) {
+        if (isCommand) {
+            this.userData.cool = true;
+            return;
+        }
         if (intentName === 'btn') {
             this.buttons.addBtn('1');
             this.tts = 'btn';
         } else if (intentName === 'card') {
             this.card.addImage('', 'Header');
             this.tts = 'card';
+        } else if (intentName === 'setStore') {
+            this.store = {
+                data: 'test',
+            };
+            return;
         }
         this.text = 'test';
-        return 'test';
+        //return 'test';
     }
 }
 
@@ -225,6 +235,51 @@ describe('Bot', () => {
             botClass.init = jest.fn().mockResolvedValue(false);
             botClass.getError = jest.fn().mockReturnValue(error);
             await expect(bot.run(botClass)).rejects.toThrow(error);
+        });
+
+        it('added user command', async () => {
+            bot.initBotController(botController);
+            mmApp.appType = T_USER_APP;
+            const botClass = new Alisa();
+            jest.spyOn(botClass, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(botClass, 'getError').mockReturnValue(null);
+
+            jest.spyOn(usersData, 'whereOne').mockResolvedValue(Promise.resolve(true));
+            jest.spyOn(usersData, 'save').mockResolvedValue(Promise.resolve(true));
+            jest.spyOn(usersData, 'update').mockResolvedValue(Promise.resolve(true));
+            mmApp.addCommand('cool', ['cool'], (_, botC) => {
+                botC.text = 'cool';
+                botC.userData.cool = true;
+            });
+
+            bot.setContent(getContent('cool', 2));
+            let res = (await bot.run(botClass)) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            // Убеждаемся что пользовательские данные скинулись, так как они хранятся в сессии.
+            expect(botController.userData.cool).toBe(undefined);
+
+            mmApp.removeCommand('cool');
+            res = (await bot.run(botClass)) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('test');
+        });
+
+        it('local store', async () => {
+            bot.initBotController(botController);
+            mmApp.appType = T_USER_APP;
+            const botClass = new Alisa();
+            mmApp.setParams({
+                intents: [{ name: 'setStore', slots: ['сохранить'] }],
+            });
+            mmApp.setConfig({ isLocalStorage: true });
+            jest.spyOn(botClass, 'getError').mockReturnValue(null);
+
+            jest.spyOn(usersData, 'whereOne').mockResolvedValue(Promise.resolve(true));
+            jest.spyOn(usersData, 'save').mockResolvedValue(Promise.resolve(true));
+            jest.spyOn(usersData, 'update').mockResolvedValue(Promise.resolve(true));
+
+            bot.setContent(getContent('сохранить', 2));
+            const res = (await bot.run(botClass)) as IAlisaWebhookResponse;
+            expect(res.session_state).toEqual({ data: 'test' });
         });
 
         it('skill started', async () => {

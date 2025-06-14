@@ -259,6 +259,11 @@ export interface IUserData {
  */
 export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
+     * Локальное хранилище с данными. Используется в случаях, когда нужно сохранить данные пользователя, но userData приложением не поддерживается.
+     * В случае если данные хранятся в usetData и store, пользователю вернятеся информация из userData.
+     */
+    public store: Record<string, unknown> | undefined;
+    /**
      * Компонент для отображения кнопок пользователю
      * Позволяет создавать интерактивные элементы управления
      *
@@ -601,6 +606,9 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         this.nlu = new Nlu();
     }
 
+    /**
+     * Очищает все временные данные необходимы для отправки ответа.
+     */
     public clearStoreData(): void {
         this.buttons.clear();
         this.card.clear();
