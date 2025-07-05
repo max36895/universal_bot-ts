@@ -18,14 +18,15 @@ let BASE_DURATION = 3;
 // Вычисляем базовое время обработки в зависимости от системы пользователя
 (function initBasePer() {
     const start = performance.now();
-    let count = 0;
-    const arr = [];
+    let count = 2;
+    const arr: number[] = [];
     // выполняем относительно простые вычисления
     for (let i = 0; i < 55e4; i++) {
-        arr.push(count);
+        arr.push(count + 1);
         count *= count;
     }
-    BASE_DURATION = performance.now() - start + 1;
+    count += arr[0] / 2;
+    BASE_DURATION = performance.now() - start + count;
 })();
 
 class TestBotController extends BotController {
