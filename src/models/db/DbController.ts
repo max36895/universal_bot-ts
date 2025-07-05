@@ -43,7 +43,7 @@ import { DbControllerMongoDb } from './DbControllerMongoDb';
  */
 export class DbController extends DbControllerModel {
     /**
-     * Внутренний контроллер для работы с конкретным источником данных
+     * Внутренний контроллер для работы с конкретным источником данных.
      * Может быть либо DbControllerFile, либо DbControllerMongoDb
      */
     private _controller: DbControllerFile | DbControllerMongoDb;

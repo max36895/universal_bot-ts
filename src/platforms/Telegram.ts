@@ -8,7 +8,7 @@ import { Buttons } from '../components/button';
 import { ITelegramCard } from '../components/card';
 
 /**
- * Класс для работы с платформой Telegram
+ * Класс для работы с платформой Telegram.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате Telegram
  * @class Telegram
@@ -17,7 +17,7 @@ import { ITelegramCard } from '../components/card';
  */
 export class Telegram extends TemplateTypeModel {
     /**
-     * Инициализирует основные параметры для работы с запросом
+     * Инициализирует основные параметры для работы с запросом.
      * Обрабатывает входящие сообщения и обновления от Telegram
      * @param query Запрос пользователя в формате строки или объекта
      * @param controller Контроллер с логикой бота
@@ -109,7 +109,7 @@ export class Telegram extends TemplateTypeModel {
     }
 
     /**
-     * Формирует и отправляет ответ пользователю
+     * Формирует и отправляет ответ пользователю.
      * Отправляет текст, карточки, опросы и звуки через Telegram API
      * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут

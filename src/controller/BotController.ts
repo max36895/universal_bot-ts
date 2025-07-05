@@ -60,7 +60,7 @@ export type TStatus = true | false | null;
  */
 export interface IUserEvent {
     /**
-     * Информация об авторизации пользователя
+     * Информация об авторизации пользователя.
      * Содержит статус авторизации и дополнительные данные
      */
     auth?: {
@@ -74,7 +74,7 @@ export interface IUserEvent {
         status: TStatus;
     };
     /**
-     * Информация об оценке приложения пользователем
+     * Информация об оценке приложения пользователем.
      * Содержит статус оценки и её значение
      */
     rating?: {
@@ -144,7 +144,7 @@ export interface IUserEvent {
  */
 export interface IUserData {
     /**
-     * Название предыдущего интента
+     * Название предыдущего интента.
      * Используется для отслеживания контекста диалога
      *
      * @example
@@ -155,7 +155,7 @@ export interface IUserData {
     oldIntentName?: string;
 
     /**
-     * Дополнительные пользовательские данные
+     * Дополнительные пользовательские данные.
      * Может содержать любые поля, специфичные для приложения
      */
     [key: string]: unknown;
@@ -200,10 +200,8 @@ export interface IUserData {
  *
  *         // Добавление карточки
  *         this.card
- *           .setTitle('Добро пожаловать!')
- *           .setDescription('Выберите действие:')
+ *           .addImage('xxx', 'Добро пожаловать!', 'Выберите действие:')
  *           .addButton('Начать игру')
- *           .addButton('Настройки');
  *
  *         // Установка пользовательских данных
  *         this.userData = {
@@ -247,7 +245,7 @@ export interface IUserData {
  *       }
  *
  *     } catch (error) {
- *       console.error('Error in action:', error);
+ *       // Обработка ошибки
  *       this.text = 'Произошла ошибка. Попробуйте позже.';
  *     }
  *   }
@@ -259,7 +257,7 @@ export interface IUserData {
  */
 export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
-     * Компонент для отображения кнопок пользователю
+     * Компонент для отображения кнопок пользователю.
      * Позволяет создавать интерактивные элементы управления
      *
      * @see Buttons
@@ -280,9 +278,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * @example
      * ```typescript
      * this.card
-     *   .addHeader('Заголовок')
-     *   .addImage('url/to/image.jpg')
-     *   .addFooter('Описание');
+     *   .addImage('url/to/image.jpg', 'Заголовок', 'Описание')
      * ```
      */
     public card: Card;
@@ -299,7 +295,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public text: string = '';
 
     /**
-     * Текст для преобразования в речь
+     * Текст для преобразования в речь.
      * Используется для голосовых ассистентов
      *
      * @remarks
@@ -322,16 +318,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public nlu: Nlu;
 
     /**
-     * Компонент для работы со звуками
+     * Компонент для работы со звуками.
      * Позволяет добавлять звуковые эффекты и музыку
      *
      * @see Sound
-     * @example
-     * ```typescript
-     * this.sound
-     *   .addSound('welcome.mp3')
-     *   .addBackground('music.mp3');
-     * ```
      */
     public sound: Sound;
 
@@ -528,7 +518,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public requestObject: object | string | null = null;
 
     /**
-     * Название текущего интента
+     * Название текущего интента.
      * Определяет текущее состояние диалога
      *
      * @example
@@ -578,7 +568,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public isSendRating: boolean = false;
 
     /**
-     * Название предыдущего интента
+     * Название предыдущего интента.
      * Используется для отслеживания контекста диалога
      *
      * @example
@@ -589,7 +579,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public oldIntentName: string | null = null;
 
     /**
-     * Создает новый экземпляр контроллера
+     * Создает новый экземпляр контроллера.
      * Инициализирует все необходимые компоненты
      *
      * @protected
@@ -630,7 +620,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Возвращает список доступных интентов
+     * Возвращает список доступных интентов.
      * Определяет все возможные команды и их обработчики
      *
      * @returns {IAppIntent[]} Массив интентов
@@ -651,7 +641,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Определяет интент по тексту запроса
+     * Определяет интент по тексту запроса.
      * Сопоставляет текст с доступными интентами
      *
      * @param {string | null} text - Текст запроса
@@ -696,29 +686,23 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (!this.userCommand) {
             return null;
         }
-        const commandKeys = Object.keys(mmApp.commands);
-        if (commandKeys.length) {
-            for (let i = 0; i < commandKeys.length; i++) {
-                if (
-                    Text.isSayText(
-                        mmApp.commands[commandKeys[i]].slots || [],
-                        this.userCommand,
-                        mmApp.commands[commandKeys[i]].isPattern || false,
-                    )
-                ) {
-                    const res = mmApp.commands[commandKeys[i]].cb?.(this.userCommand, this);
-                    if (res) {
-                        this.text = res;
-                    }
-                    return commandKeys[i];
+        for (const [commandName, command] of mmApp.commands) {
+            if (
+                command &&
+                Text.isSayText(command.slots || [], this.userCommand, command.isPattern || false)
+            ) {
+                const res = command.cb?.(this.userCommand, this);
+                if (res) {
+                    this.text = res;
                 }
+                return commandName;
             }
         }
         return null;
     }
 
     /**
-     * Абстрактный метод для обработки пользовательских команд и интентов
+     * Абстрактный метод для обработки пользовательских команд и интентов.
      * Должен быть реализован в дочерних классах
      *
      * @param {string | null} intentName - Название интента или команды
@@ -741,7 +725,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     abstract action(intentName: string | null, isCommand?: boolean): void;
 
     /**
-     * Запускает обработку запроса
+     * Запускает обработку запроса.
      * Определяет тип запроса и вызывает соответствующий обработчик
      *
      * @example

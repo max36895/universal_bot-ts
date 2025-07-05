@@ -62,6 +62,8 @@ function _initParam(bot: Bot | BotTest, config: IConfig): void {
  * Запуск приложения
  * @param {IConfig} config Конфигурация приложения
  * @param {TMode} mode Режим работы приложения
+ * @param {String} hostname Hostname на котором будет запущено приложение
+ * @param {String} port Порт на котором будет запущено приложение
  * @returns {unknown} В зависимости от режима:
  * - dev: Возвращает результат выполнения тестов
  * - dev-online/prod: Возвращает модуль с обработчиком webhook запросов

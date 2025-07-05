@@ -1,5 +1,5 @@
 /**
- * Модуль для отправки HTTP-запросов
+ * Модуль для отправки HTTP-запросов.
  * Предоставляет функционал для работы с различными типами запросов и ответов
  *
  * @module api/request/Request
@@ -8,7 +8,7 @@ import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
 
 /**
- * Класс для отправки HTTP-запросов
+ * Класс для отправки HTTP-запросов.
  * Поддерживает различные типы запросов, заголовки и отправку файлов
  *
  * @class Request
@@ -87,7 +87,7 @@ export class Request {
     private _setTimeOut: NodeJS.Timeout | null;
 
     /**
-     * Создает новый экземпляр Request
+     * Создает новый экземпляр Request.
      * Инициализирует все поля значениями по умолчанию
      */
     public constructor() {

@@ -38,7 +38,7 @@ export type TSberSmartAppType =
     | 'CHAT_APP'; // Чат-приложение
 
 /**
- * Информация об устройстве пользователя
+ * Информация об устройстве пользователя.
  * Содержит данные о платформе, возможностях и функциональности устройства
  */
 export interface ISberSmartAppDeviceInfo {
@@ -69,7 +69,7 @@ export interface ISberSmartAppDeviceInfo {
     deviceId?: string;
 
     /**
-     * Функциональность устройства
+     * Функциональность устройства.
      * Описывает поддерживаемые типы приложений
      */
     features: {
@@ -78,7 +78,7 @@ export interface ISberSmartAppDeviceInfo {
     };
 
     /**
-     * Возможности устройства
+     * Возможности устройства.
      * Описывает доступные компоненты
      */
     capabilities: {
@@ -110,7 +110,7 @@ export interface ISberSmartAppDeviceInfo {
 }
 
 /**
- * Информация о смартапе
+ * Информация о смартапе.
  * Содержит идентификаторы и настройки приложения
  */
 export interface ISberSmartAppAppInfo {
@@ -127,7 +127,7 @@ export interface ISberSmartAppAppInfo {
     frontendEndpoint?: string;
 
     /**
-     * Тип смартапа
+     * Тип смартапа.
      * Определяет обработку навигационных команд
      */
     frontendType?: TSberSmartAppType;
@@ -140,7 +140,7 @@ export interface ISberSmartAppAppInfo {
 }
 
 /**
- * Информация о персонаже ассистента
+ * Информация о персонаже ассистента.
  * Содержит данные о выбранном персонаже и его характеристиках
  */
 export interface ISberSmartAppCharacterInfo {
@@ -174,7 +174,7 @@ export interface ISberSmartAppCharacterInfo {
 }
 
 /**
- * Метаданные запроса
+ * Метаданные запроса.
  * Содержит информацию о времени и часовом поясе
  */
 export interface ISberSmartAppMetaInfo {
@@ -198,7 +198,7 @@ export interface ISberSmartAppMetaInfo {
 }
 
 /**
- * Сущности из сообщения пользователя
+ * Сущности из сообщения пользователя.
  * Содержит извлеченные данные из текста
  */
 export interface ISberSmartAppEntities {
@@ -221,7 +221,7 @@ export interface ISberSmartAppEntities {
 }
 
 /**
- * Информация о сообщении пользователя
+ * Информация о сообщении пользователя.
  * Содержит текст и результаты его обработки
  */
 export interface ISberSmartAppMessageInfo {
@@ -263,7 +263,7 @@ export interface ISberSmartAppMessageInfo {
 }
 
 /**
- * Действие на сервере
+ * Действие на сервере.
  * Описывает действие, которое обрабатывает бэкенд
  */
 export interface ISberSmartAppServerAction {
@@ -296,7 +296,7 @@ export interface ISberSmartAppSelectedItem {
 }
 
 /**
- * Аннотации сообщения
+ * Аннотации сообщения.
  * Содержит результаты анализа текста и голоса
  */
 export interface ISberSmartAppAnnotations {
@@ -354,7 +354,7 @@ export interface ISberSmartAppAnnotations {
 }
 
 /**
- * Оценка пользователя
+ * Оценка пользователя.
  * Содержит числовую оценку
  */
 export interface ISberRating {
@@ -365,7 +365,7 @@ export interface ISberRating {
 }
 
 /**
- * Статус оценки
+ * Статус оценки.
  * Содержит код и описание результата оценки
  */
 export interface ISberRatingStatusCode {
@@ -380,7 +380,7 @@ export interface ISberRatingStatusCode {
 }
 
 /**
- * Полезная нагрузка запроса
+ * Полезная нагрузка запроса.
  * Содержит все данные, необходимые для обработки запроса
  */
 export interface ISberSmartAppRequestPayload {
@@ -474,7 +474,7 @@ export interface ISberSmartAppRequestPayload {
 }
 
 /**
- * Идентификатор пользователя
+ * Идентификатор пользователя.
  * Содержит уникальные идентификаторы для разных каналов
  */
 export interface ISberSmartAppUuId {
@@ -526,10 +526,10 @@ export interface ISberSmartAppWebhookRequest {
 /**
  * Тип ответа сервера.
  * @enum {string}
- * ANSWER_TO_USER — содержит ответ, который ассистент предоставит пользователю
- * CALL_RATING - содержит ответ, благодаря которому ассистент понимает что пользователь хочет поставить оценку
- * POLICY_RUN_APP — сообщает о вызове смартапа из другого приложения
- * NOTHING_FOUND — смартап не смог найти ответ. Может указывать на то, что приложение было запущено по ошибке
+ * ANSWER_TO_USER — содержит ответ, который ассистент предоставит пользователю.
+ * CALL_RATING - содержит ответ, благодаря которому ассистент понимает что пользователь хочет поставить оценку.
+ * POLICY_RUN_APP — сообщает о вызове смартапа из другого приложения.
+ * NOTHING_FOUND — смартап не смог найти ответ. Может указывать на то, что приложение было запущено по ошибке.
  * ERROR — возвращается, если смартап недоступен или вернул ошибку
  */
 export type TSberResponseMessageName =
@@ -583,7 +583,7 @@ export type TSberSmartAppEmotionId =
     | 'zainteresovannost';
 
 /**
- * Действие кнопки
+ * Действие кнопки.
  * Описывает поведение при нажатии
  */
 export interface ISberSmartAppSuggestionAction {
@@ -609,7 +609,7 @@ export interface ISberSmartAppSuggestionAction {
 }
 
 /**
- * Кнопка предложения
+ * Кнопка предложения.
  * Определяет внешний вид и поведение кнопки
  */
 export interface ISberSmartAppSuggestionButton {
@@ -671,7 +671,7 @@ export type TSberSmartAppPadding =
     | '16x';
 
 /**
- * Действие карточки
+ * Действие карточки.
  * Описывает поведение при взаимодействии
  */
 export interface ISberSmartAppCardAction {
@@ -752,7 +752,7 @@ export type TSberSmartAppTextColor =
     | 'link';
 
 /**
- * Текст карточки
+ * Текст карточки.
  * Описывает форматированный текст
  */
 export interface ISberSmartAppCardText {
@@ -780,7 +780,7 @@ export interface ISberSmartAppCardText {
 }
 
 /**
- * Отступы карточки
+ * Отступы карточки.
  * Определяет размеры отступов
  */
 export interface ISberSmartAppCardPadding {
@@ -803,7 +803,7 @@ export interface ISberSmartAppCardPadding {
 }
 
 /**
- * Изображение карточки
+ * Изображение карточки.
  * Описывает изображение и его параметры
  */
 export interface ISberSmartAppCardImage {
@@ -869,7 +869,7 @@ export interface ISberSmartAppCardImage {
 }
 
 /**
- * Элемент карточки
+ * Элемент карточки.
  * Описывает ячейку в карточке
  */
 export interface ISberSmartAppCardItem {
@@ -1010,7 +1010,7 @@ export interface ISberSmartAppCard {
 }
 
 /**
- * Элемент ответа
+ * Элемент ответа.
  * Описывает компонент ответа
  */
 export interface ISberSmartAppItem {
@@ -1025,7 +1025,7 @@ export interface ISberSmartAppItem {
 }
 
 /**
- * Полезная нагрузка ответа
+ * Полезная нагрузка ответа.
  * Содержит данные для ответа пользователю
  */
 export interface ISberSmartAppResponsePayload {
@@ -1090,7 +1090,7 @@ export interface ISberSmartAppResponsePayload {
  */
 export interface ISberSmartAppWebhookResponse {
     /**
-     * Тип ответа
+     * Тип ответа.
      * Определяет логику обработки
      */
     messageName?: TSberResponseMessageName;
@@ -1111,14 +1111,14 @@ export interface ISberSmartAppWebhookResponse {
     uuid: ISberSmartAppUuId;
 
     /**
-     * Данные ответа
+     * Данные ответа.
      * Зависят от типа сообщения
      */
     payload?: ISberSmartAppResponsePayload | object;
 }
 
 /**
- * Сессия смартапа
+ * Сессия смартапа.
  * Содержит данные о текущей сессии
  */
 export interface ISberSmartAppSession {

@@ -27,7 +27,7 @@ export interface IFileInfo {
     data: string;
 
     /**
-     * Версия файла
+     * Версия файла.
      * Используется время последнего изменения файла в миллисекундах
      */
     version: number;
@@ -65,7 +65,7 @@ export type IFileData = { [key: string]: IFileInfo };
  */
 export class DbControllerFile extends DbControllerModel {
     /**
-     * Кэш для хранения данных из файлов
+     * Кэш для хранения данных из файлов.
      * Оптимизирует производительность при частом чтении
      *
      * @protected

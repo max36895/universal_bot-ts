@@ -62,7 +62,7 @@ export interface ITelegramMessage {
 }
 
 /**
- * Обновление от Telegram
+ * Обновление от Telegram.
  * Содержит различные типы входящих данных
  */
 export interface ITelegramContent {
@@ -71,7 +71,7 @@ export interface ITelegramContent {
     /** Входящее сообщение */
     message: ITelegramMessage;
     /**
-     * Отредактированное сообщение
+     * Отредактированное сообщение.
      * Содержит новую версию сообщения после редактирования
      * @see ITelegramMessage
      */
@@ -113,7 +113,7 @@ export interface ITelegramContent {
      */
     shipping_query?: any;
     /**
-     * Запрос предварительной проверки
+     * Запрос предварительной проверки.
      * Содержит информацию о платеже
      * @see https://core.telegram.org/bots/api#precheckoutquery
      */

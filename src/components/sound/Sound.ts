@@ -61,60 +61,16 @@ import { MarusiaSound } from './types/MarusiaSound';
  * // Создание экземпляра
  * const sound = new Sound();
  *
- * // Использование стандартных звуков Алисы
+ * // Использование своих звуков
  * sound.sounds = [
  *     // Звук колокольчика
  *     {
- *         type: 'audio',
- *         speaker: 'alice-sounds-game-win-1'
+ *         key: '#myKey#',
+ *         sounds: ['<speaker audio="alice-xxx">']
  *     },
- *     // Синтез речи с эмоциями
- *     {
- *         type: 'tts',
- *         text: '<speaker effect="pitch_down">Привет!</speaker>'
- *     }
  * ];
- *
- * // Использование стандартных звуков Маруси
- * sound.sounds = [
- *     // Звук успеха
- *     {
- *         type: 'audio',
- *         speaker: 'marusia-sounds-success-1'
- *     },
- *     // Синтез речи с паузами
- *     {
- *         type: 'tts',
- *         text: 'Привет! <break time="2s"/> Как дела?'
- *     }
- * ];
- *
- * // Комбинирование разных типов звуков
- * sound.sounds = [
- *     // Аудиофайл
- *     {
- *         type: 'audio',
- *         url: 'https://example.com/music.mp3'
- *     },
- *     // Синтез речи
- *     {
- *         type: 'tts',
- *         text: 'Это фоновая музыка'
- *     },
- *     // Голосовое сообщение для Telegram
- *     {
- *         type: 'voice',
- *         file_id: 'AwADBAADbXXX'
- *     },
- *     // Аудиосообщение для VK
- *     {
- *         type: 'audio_message',
- *         audio_id: '123456_789012'
- *     }
- * ];
- *
  * // Получение текста со звуками
- * const result = await sound.getSounds('Текст сообщения');
+ * const result = await sound.getSounds('Текст сообщения #myKey#');
  * ```
  */
 export class Sound {
@@ -123,80 +79,6 @@ export class Sound {
      * Каждый элемент массива представляет собой объект с параметрами звука.
      *
      * @type {ISound[]}
-     *
-     * Поддерживаемые типы звуков:
-     *
-     * 1. Аудиофайл:
-     * ```typescript
-     * {
-     *     type: 'audio',
-     *     url: string    // URL аудиофайла
-     * }
-     * ```
-     *
-     * 2. Стандартный звук (Алиса/Маруся):
-     * ```typescript
-     * {
-     *     type: 'audio',
-     *     speaker: string  // ID стандартного звука
-     * }
-     * ```
-     *
-     * 3. Синтез речи:
-     * ```typescript
-     * {
-     *     type: 'tts',
-     *     text: string   // Текст для синтеза
-     * }
-     * ```
-     *
-     * 4. Голосовое сообщение Telegram:
-     * ```typescript
-     * {
-     *     type: 'voice',
-     *     file_id: string  // ID файла в Telegram
-     * }
-     * ```
-     *
-     * 5. Аудиосообщение VK:
-     * ```typescript
-     * {
-     *     type: 'audio_message',
-     *     audio_id: string  // ID аудио в VK
-     * }
-     * ```
-     *
-     * @example
-     * ```typescript
-     * // Стандартные звуки Алисы
-     * sound.sounds = [
-     *     { type: 'audio', speaker: 'alice-sounds-game-win-1' },  // Победа
-     *     { type: 'audio', speaker: 'alice-sounds-game-loss-1' }, // Проигрыш
-     *     { type: 'audio', speaker: 'alice-sounds-game-8-bit-1' } // 8-бит
-     * ];
-     *
-     * // Стандартные звуки Маруси
-     * sound.sounds = [
-     *     { type: 'audio', speaker: 'marusia-sounds-game-win-1' },  // Победа
-     *     { type: 'audio', speaker: 'marusia-sounds-game-loss-1' }, // Проигрыш
-     *     { type: 'audio', speaker: 'marusia-sounds-game-8-bit-1' } // 8-бит
-     * ];
-     *
-     * // Синтез речи с SSML
-     * sound.sounds = [
-     *     {
-     *         type: 'tts',
-     *         text: `
-     *             <speak>
-     *                 <break time="1s"/>
-     *                 <emphasis level="strong">Важный текст</emphasis>
-     *                 <prosody rate="slow">Медленный текст</prosody>
-     *                 <audio src="https://example.com/sound.mp3"/>
-     *             </speak>
-     *         `
-     *     }
-     * ];
-     * ```
      */
     public sounds: ISound[];
 
@@ -243,68 +125,18 @@ export class Sound {
      * 3. Создает соответствующий обработчик звуков
      * 4. Применяет звуки к тексту
      *
-     * Поддерживаемые платформы:
-     *
-     * Алиса:
-     * - Возвращает текст в формате SSML
-     * - Поддерживает стандартные звуки через <speaker audio="...">
-     * - Поддерживает эффекты синтеза речи
-     *
-     * Маруся:
-     * - Возвращает текст в формате SSML
-     * - Поддерживает стандартные звуки через <speaker audio="...">
-     * - Поддерживает эффекты синтеза речи
-     *
-     * VK:
-     * - Возвращает объект с текстом и attachment для аудио
-     * - Поддерживает аудиосообщения и обычные аудиофайлы
-     *
-     * Telegram:
-     * - Возвращает массив сообщений с текстом и аудио
-     * - Поддерживает голосовые сообщения и аудиофайлы
-     *
-     * Viber:
-     * - Возвращает массив сообщений с текстом и аудио
-     * - Поддерживает только аудиофайлы
-     *
      * @param {string | null} text - Исходный текст для обработки
      * @param {TemplateSoundTypes | null} [userSound=null] - Пользовательский класс для обработки звуков
      * @returns {Promise<any>} Текст с встроенными звуками или исходный текст
      *
      * @example
      * ```typescript
-     * // Алиса: SSML с эффектами
      * const sound = new Sound();
      * sound.sounds = [
-     *     { type: 'audio', speaker: 'alice-sounds-game-win-1' },
-     *     { type: 'tts', text: '<speaker effect="pitch_down">Победа!</speaker>' }
+     *     { key: 'mySound', sounds: ['my_sound'] },
      * ];
-     * const result = await sound.getSounds('Поздравляю!');
-     * // <speak>
-     * //   <speaker audio="alice-sounds-game-win-1"/>
-     * //   <speaker effect="pitch_down">Победа!</speaker>
-     * //   Поздравляю!
-     * // </speak>
-     *
-     * // VK: Аудиосообщение с текстом
-     * sound.sounds = [
-     *     { type: 'audio_message', audio_id: '123456_789012' }
-     * ];
-     * const result = await sound.getSounds('Слушайте!');
-     * // {
-     * //   message: 'Слушайте!',
-     * //   attachment: 'audio_message123456_789012'
-     * // }
-     *
-     * // Telegram: Голосовое сообщение
-     * sound.sounds = [
-     *     { type: 'voice', file_id: 'AwADBAADbXXX' }
-     * ];
-     * const result = await sound.getSounds('Внимание!');
-     * // [
-     * //   { type: 'voice', voice: 'AwADBAADbXXX' },
-     * //   { type: 'text', text: 'Внимание!' }
-     * // ]
+     * const result = await sound.getSounds('mySound');
+     * // my_sound
      * ```
      */
     public async getSounds(

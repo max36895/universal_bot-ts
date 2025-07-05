@@ -44,7 +44,7 @@ export interface ITextSimilarity {
     status: boolean;
 
     /**
-     * Индекс совпавшего текста в массиве или null для строки
+     * Индекс совпавшего текста в массиве или null для строки.
      * Используется при сравнении с массивом текстов
      */
     index: number | null;
@@ -56,7 +56,7 @@ export interface ITextSimilarity {
     percent: number;
 
     /**
-     * Совпавший текст или null, если совпадений нет
+     * Совпавший текст или null, если совпадений нет.
      * Содержит оригинальный текст из массива сравнения
      */
     text?: string | null;
@@ -97,7 +97,7 @@ export interface ITextSimilarity {
  */
 export class Text {
     /**
-     * Кэш для скомпилированных регулярных выражений
+     * Кэш для скомпилированных регулярных выражений.
      * Улучшает производительность при повторном использовании шаблонов
      *
      * @private
@@ -291,6 +291,14 @@ export class Text {
             Text.regexCache.set(pattern, regex);
         }
         return regex;
+    }
+
+    /**
+     * Очищает кэш регулярных выражений.
+     * Стоит вызывать только в крайних случаях
+     */
+    public static clearCache() {
+        Text.regexCache.clear();
     }
 
     /**

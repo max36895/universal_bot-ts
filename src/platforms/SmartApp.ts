@@ -15,7 +15,7 @@ import { Buttons } from '../components/button';
 import { IRequestSend, Request } from '../api';
 
 /**
- * Класс для работы с платформой Сбер SmartApp
+ * Класс для работы с платформой Сбер SmartApp.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате SmartApp
  * @class SmartApp
@@ -36,7 +36,7 @@ export class SmartApp extends TemplateTypeModel {
     protected _session: ISberSmartAppSession | null = null;
 
     /**
-     * Формирует ответ для пользователя
+     * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
      * @returns {Promise<ISberSmartAppResponsePayload>} Объект ответа для SmartApp
      * @private
@@ -101,7 +101,7 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Инициализирует команду пользователя
+     * Инициализирует команду пользователя.
      * Обрабатывает различные типы сообщений и событий
      * @param content Объект запроса от пользователя
      * @private
@@ -228,7 +228,7 @@ export class SmartApp extends TemplateTypeModel {
     }
 
     /**
-     * Формирует полный ответ для отправки пользователю
+     * Формирует полный ответ для отправки пользователю.
      * Включает версию API, ответ навыка и данные сессии
      * @returns {Promise<ISberSmartAppWebhookResponse>} Объект ответа для вебхука
      * @see TemplateTypeModel.getContext() Смотри тут

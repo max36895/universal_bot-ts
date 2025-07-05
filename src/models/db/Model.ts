@@ -93,7 +93,7 @@ export abstract class Model<TState extends TStateData> {
     public queryData: QueryData;
 
     /**
-     * Начальный индекс для итерации по данным
+     * Начальный индекс для итерации по данным.
      * Используется при инициализации модели из массива
      */
     public startIndex = 0;
@@ -242,7 +242,7 @@ export abstract class Model<TState extends TStateData> {
     public validate(): void {}
 
     /**
-     * Определяет имя первичного ключа таблицы
+     * Определяет имя первичного ключа таблицы.
      * Ищет поле с меткой 'id' или 'ID'
      *
      * @returns Имя первичного ключа или null
@@ -321,7 +321,7 @@ export abstract class Model<TState extends TStateData> {
     }
 
     /**
-     * Инициализирует параметры запроса
+     * Инициализирует параметры запроса.
      * Подготавливает данные для сохранения или обновления
      *
      * @private

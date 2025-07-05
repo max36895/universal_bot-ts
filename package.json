@@ -29,7 +29,7 @@
         "watch": "shx rm -rf dist && tsc -watch",
         "start": "shx rm -rf dist && tsc",
         "build": "shx rm -rf dist && tsc --declaration",
-        "test": "jest",
+        "test": "jest --node-options=--expose-gc",
         "bt": "npm run build && npm test",
         "create": "umbot",
         "doc": "typedoc --excludePrivate --excludeExternals",

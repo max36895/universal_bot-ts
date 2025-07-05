@@ -553,13 +553,6 @@ export interface ICommandParam<TBotController extends BotController = BotControl
 }
 
 /**
- * Тип для хранения команд
- *
- * Объект, где ключи - имена команд, а значения - их параметры.
- */
-export type ICommand = Record<string, ICommandParam<any>>;
-
-/**
  * @class mmApp
  * Основной класс приложения
  *
@@ -664,7 +657,7 @@ export class mmApp {
     /**
      * Добавленные команды для обработки
      */
-    public static commands: ICommand = {};
+    public static commands: Map<string, ICommandParam<any>> = new Map();
 
     /**
      * Устанавливает режим разработки
@@ -834,11 +827,11 @@ export class mmApp {
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
-        this.commands[commandName] = {
+        this.commands.set(commandName, {
             slots,
             isPattern,
             cb,
-        };
+        });
     }
 
     /**
@@ -846,9 +839,19 @@ export class mmApp {
      * @param commandName - Имя команды
      */
     public static removeCommand(commandName: string): void {
-        if (this.commands[commandName]) {
-            delete this.commands[commandName];
+        if (this.commands.has(commandName)) {
+            this.commands.delete(commandName);
+            if (this.commands.size === 0) {
+                this.commands.clear();
+            }
         }
+    }
+
+    /**
+     * Удаляет все команды
+     */
+    public static clearCommands(): void {
+        this.commands.clear();
     }
 
     /**

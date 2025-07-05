@@ -29,7 +29,7 @@ export interface IViberUser {
 }
 
 /**
- * Сообщение Viber
+ * Сообщение Viber.
  * Поддерживает различные типы контента: текст, медиа, местоположение, контакты
  */
 export interface IViberMessage {
@@ -54,7 +54,7 @@ export interface IViberMessage {
         lon: number;
     };
     /**
-     * Информация о контакте
+     * Информация о контакте.
      * Используется при type='contact'
      */
     contact?: {
@@ -73,12 +73,12 @@ export interface IViberMessage {
      */
     file_name?: string;
     /**
-     * Размер файла в байтах
+     * Размер файла в байтах.
      * Используется при type='file'
      */
     file_size?: number;
     /**
-     * Длительность видео в секундах
+     * Длительность видео в секундах.
      * Используется при type='video'
      */
     duration?: number;
@@ -90,7 +90,7 @@ export interface IViberMessage {
 }
 
 /**
- * Обновление от Viber
+ * Обновление от Viber.
  * Содержит информацию о событии и связанных данных
  */
 export interface IViberContent {
