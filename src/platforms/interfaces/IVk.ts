@@ -1,5 +1,5 @@
 /**
- * Интерфейсы для работы с VK
+ * Интерфейсы для работы с VK.
  * Определяют структуру данных для взаимодействия с VK Bot API
  *
  * Основные компоненты:
@@ -12,7 +12,7 @@
  */
 
 /**
- * Сообщение VK
+ * Сообщение VK.
  * Содержит информацию о входящем или исходящем сообщении
  */
 export interface IVkMessage {
@@ -49,7 +49,7 @@ export interface IVkMessage {
 }
 
 /**
- * Информация о клиенте
+ * Информация о клиенте.
  * Содержит данные о возможностях клиента
  */
 export interface IVkClientInfo {
@@ -64,7 +64,7 @@ export interface IVkClientInfo {
 }
 
 /**
- * Объект запроса VK
+ * Объект запроса VK.
  * Содержит информацию о сообщении и клиенте
  */
 export interface IVkRequestObject {
@@ -75,7 +75,7 @@ export interface IVkRequestObject {
 }
 
 /**
- * Обновление от VK
+ * Обновление от VK.
  * Содержит информацию о типе события и связанных данных
  */
 export interface IVkRequestContent {

@@ -15,15 +15,16 @@
 import { mmApp, Bot, T_ALISA } from 'umbot';
 
 const bot = new Bot(T_ALISA);
-bot.setParams({
+bot.initParams({
+    // Параметры платформы
+    welcome_text: 'Привет!', // Текст приветствия
+    help_text: 'Я умею...', // Текст помощи
+});
+bot.initConfig({
     // Общие параметры
     json: './data', // Директория для JSON данных
     error_log: './logs', // Директория для логов
     isLocalStorage: true, // Использование локального хранилища
-
-    // Параметры платформы
-    welcome_text: 'Привет!', // Текст приветствия
-    help_text: 'Я умею...', // Текст помощи
 });
 
 bot.initTypeInGet(); // Установка типа платформы из get параметра запроса
@@ -148,7 +149,6 @@ class TelegramController extends BotController {
 
 ```typescript
 mmApp.setParams({
-    appType: 'vk',
     vk_token: 'YOUR_GROUP_TOKEN',
     vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
     vk_api_version: 'v5.131',

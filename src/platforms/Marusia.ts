@@ -16,7 +16,7 @@ import { mmApp } from '../mmApp';
 import { Text } from '../utils/standard/Text';
 
 /**
- * Класс для работы с платформой Маруся
+ * Класс для работы с платформой Маруся.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате Маруси
  * @class Marusia
@@ -52,7 +52,7 @@ export class Marusia extends TemplateTypeModel {
     protected _stateName: 'user_state_update' | 'session_state' | null = null;
 
     /**
-     * Формирует ответ для пользователя
+     * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
      * @returns {Promise<IMarusiaResponse>} Объект ответа для Маруси
      * @protected
@@ -91,7 +91,7 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Устанавливает состояние приложения
+     * Устанавливает состояние приложения.
      * Определяет тип хранилища и сохраняет состояние в контроллере
      * @param state Объект состояния из запроса
      * @private
@@ -107,7 +107,7 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Инициализирует команду пользователя
+     * Инициализирует команду пользователя.
      * Обрабатывает различные типы запросов и сохраняет команду в контроллере
      * @param request Объект запроса от пользователя
      * @private
@@ -190,7 +190,7 @@ export class Marusia extends TemplateTypeModel {
     }
 
     /**
-     * Формирует полный ответ для отправки пользователю
+     * Формирует полный ответ для отправки пользователю.
      * Включает версию API, ответ навыка, данные сессии и состояние
      * @returns {Promise<IMarusiaWebhookResponse>} Объект ответа для вебхука
      * @see TemplateTypeModel.getContext() Смотри тут

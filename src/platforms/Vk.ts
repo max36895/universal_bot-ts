@@ -7,7 +7,7 @@ import { IVkParams } from '../api/interfaces';
 import { Buttons } from '../components/button';
 
 /**
- * Класс для работы с платформой ВКонтакте
+ * Класс для работы с платформой ВКонтакте.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате ВКонтакте
  * @class Vk
@@ -123,7 +123,7 @@ export class Vk extends TemplateTypeModel {
     }
 
     /**
-     * Формирует и отправляет ответ пользователю
+     * Формирует и отправляет ответ пользователю.
      * Отправляет текст, карточки и звуки через VK API
      * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут

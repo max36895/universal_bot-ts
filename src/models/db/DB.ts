@@ -70,7 +70,7 @@ export class DB {
     public dbConnect: Promise<MongoClient> | null;
 
     /**
-     * Массив ошибок, возникших при работе с базой данных
+     * Массив ошибок, возникших при работе с базой данных.
      * Содержит сообщения об ошибках подключения и выполнения запросов
      *
      * @example
@@ -98,7 +98,7 @@ export class DB {
     public params: IAppDB | null;
 
     /**
-     * Создает новый экземпляр класса DB
+     * Создает новый экземпляр класса DB.
      * Инициализирует все необходимые свойства
      */
     public constructor() {
@@ -157,7 +157,7 @@ export class DB {
     public async connect(): Promise<boolean> {
         this.errors = [];
         if (this.params) {
-            this.close();
+            await this.close();
             try {
                 const options: MongoClientOptions = {
                     timeoutMS: 3000,
@@ -227,7 +227,7 @@ export class DB {
     }
 
     /**
-     * Алиас для метода close()
+     * Алиас для метода close().
      * Используется для унификации интерфейса с другими компонентами
      *
      * @example

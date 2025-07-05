@@ -1,5 +1,5 @@
 /**
- * Интерфейсы для работы с Яндекс Марусей
+ * Интерфейсы для работы с Марусей.
  * Определяют структуру данных для взаимодействия с API Маруси
  *
  * Основные компоненты:
@@ -15,7 +15,7 @@
 import { TButtonPayload } from '../../components/button/interfaces';
 
 /**
- * Интерфейс для именованных сущностей в запросе
+ * Интерфейс для именованных сущностей в запросе.
  * Используется для извлечения структурированных данных из текста пользователя
  */
 export interface IMarusiaEntities {
@@ -41,14 +41,14 @@ export interface IMarusiaEntities {
     type: string;
 
     /**
-     * Значение сущности
+     * Значение сущности.
      * Формат зависит от типа сущности
      */
     value: object;
 }
 
 /**
- * Интерфейс для обработки естественного языка (NLU)
+ * Интерфейс для обработки естественного языка (NLU).
  * Содержит результаты анализа текста пользователя
  */
 export interface IMarusiaNlu {
@@ -61,7 +61,7 @@ export interface IMarusiaNlu {
 }
 
 /**
- * Интерфейс для данных сессии
+ * Интерфейс для данных сессии.
  * Содержит информацию о текущем диалоге с пользователем
  */
 export interface IMarusiaSession {
@@ -100,8 +100,8 @@ export interface IMarusiaSession {
 }
 
 /**
- * Интерфейс для состояния приложения
- * Определяет где хранятся данные:
+ * Интерфейс для состояния приложения.
+ * Определяет, где хранятся данные:
  * - session: данные сессии
  * - user: данные пользователя
  */
@@ -113,7 +113,7 @@ export interface IMarusiaRequestState {
 }
 
 /**
- * Интерфейс для метаданных запроса
+ * Интерфейс для метаданных запроса.
  * Содержит информацию об устройстве и окружении
  */
 export interface IMarusiaRequestMeta {
@@ -138,7 +138,7 @@ export interface IMarusiaRequestMeta {
 }
 
 /**
- * Интерфейс для данных запроса
+ * Интерфейс для данных запроса.
  * Содержит информацию о сообщении пользователя
  */
 export interface IMarusiaRequest {
@@ -187,7 +187,7 @@ export interface IMarusiaRequest {
 }
 
 /**
- * Интерфейс для вебхук-запроса
+ * Интерфейс для вебхук-запроса.
  * Полный формат входящего запроса от Маруси
  */
 export interface IMarusiaWebhookRequest {
@@ -206,7 +206,7 @@ export interface IMarusiaWebhookRequest {
 }
 
 /**
- * Интерфейс для кнопки
+ * Интерфейс для кнопки.
  * Определяет внешний вид и поведение кнопки
  */
 export interface IMarusiaButton {
@@ -237,7 +237,7 @@ export interface IMarusiaButton {
 }
 
 /**
- * Интерфейс для кнопки на карточке
+ * Интерфейс для кнопки на карточке.
  * Определяет поведение при нажатии на изображение
  */
 export interface IMarusiaButtonCard {
@@ -261,7 +261,7 @@ export interface IMarusiaButtonCard {
 }
 
 /**
- * Базовый интерфейс для изображения
+ * Базовый интерфейс для изображения.
  * Определяет общие свойства для всех типов карточек
  */
 export interface IMarusiaImage {
@@ -293,14 +293,14 @@ export interface IMarusiaImage {
     description?: string;
 
     /**
-     * Свойства при нажатии
+     * Свойства при нажатии.
      * Игнорируется для ItemsList
      */
     button?: IMarusiaButtonCard;
 }
 
 /**
- * Интерфейс для большого изображения
+ * Интерфейс для большого изображения.
  * Одно изображение с заголовком и описанием
  */
 export interface IMarusiaBigImage extends IMarusiaImage {
@@ -342,7 +342,7 @@ export interface IMarusiaItemsList {
 }
 
 /**
- * Интерфейс для ответа навыка
+ * Интерфейс для ответа навыка.
  * Определяет формат ответа пользователю
  */
 export interface IMarusiaResponse {
@@ -361,7 +361,7 @@ export interface IMarusiaResponse {
     tts?: string;
 
     /**
-     * Карточка с изображением
+     * Карточка с изображением.
      * Отображается вместо текста
      */
     card?: IMarusiaBigImage | IMarusiaItemsList;
@@ -381,7 +381,7 @@ export interface IMarusiaResponse {
 }
 
 /**
- * Интерфейс для данных сессии в ответе
+ * Интерфейс для данных сессии в ответе.
  * Содержит информацию о текущей сессии
  */
 export interface IMarusiaSessionResponse {

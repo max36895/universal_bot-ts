@@ -59,19 +59,19 @@ import {
  */
 export abstract class DbControllerModel implements IDbControllerModel {
     /**
-     * Имя таблицы в базе данных
+     * Имя таблицы в базе данных.
      * Используется для выполнения запросов
      */
     protected _tableName: string;
 
     /**
-     * Правила валидации для полей таблицы
+     * Правила валидации для полей таблицы.
      * Определяют типы и ограничения для каждого поля
      */
     protected _rules: IModelRules[];
 
     /**
-     * Конфигурация подключения к базе данных
+     * Конфигурация подключения к базе данных.
      * Содержит параметры для установки соединения
      */
     protected _connectConfig: IAppDB | undefined;

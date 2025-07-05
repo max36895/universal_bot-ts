@@ -1,5 +1,5 @@
 /**
- * Интерфейсы для работы с Яндекс Алисой
+ * Интерфейсы для работы с Яндекс Алисой.
  * Определяют структуру данных для взаимодействия с API Алисы
  *
  * Основные компоненты:
@@ -15,7 +15,7 @@
 import { TButtonPayload } from '../../components/button/interfaces';
 
 /**
- * Интерфейс для именованных сущностей в запросе
+ * Интерфейс для именованных сущностей в запросе.
  * Используется для извлечения структурированных данных из текста пользователя
  */
 export interface IAlisaEntities {
@@ -76,7 +76,7 @@ export interface IAlisaNlu {
     /** Массив найденных именованных сущностей */
     entities?: IAlisaEntities[];
     /**
-     * Распознанные намерения пользователя
+     * Распознанные намерения пользователя.
      * Каждый интент содержит слоты с параметрами
      *
      * @example
@@ -101,7 +101,7 @@ export interface IAlisaNlu {
 }
 
 /**
- * Интерфейс для данных сессии
+ * Интерфейс для данных сессии.
  * Содержит информацию о текущем диалоге с пользователем
  */
 export interface IAlisaSession {
@@ -139,7 +139,7 @@ export interface IAlisaSession {
     user_id?: string;
 
     /**
-     * Данные авторизованного пользователя
+     * Данные авторизованного пользователя.
      * Присутствует только если пользователь авторизован
      */
     user?: {
@@ -150,7 +150,7 @@ export interface IAlisaSession {
         user_id: string;
 
         /**
-         * OAuth токен для авторизации
+         * OAuth токен для авторизации.
          * Используется для связки аккаунтов
          */
         access_token: string;
@@ -170,7 +170,7 @@ export interface IAlisaSession {
 }
 
 /**
- * Интерфейс для состояния приложения
+ * Интерфейс для состояния приложения.
  * Определяет где хранятся данные:
  * - session: данные сессии
  * - user: данные пользователя
@@ -192,7 +192,7 @@ export interface IAlisaRequestState {
 }
 
 /**
- * Интерфейс для метаданных запроса
+ * Интерфейс для метаданных запроса.
  * Содержит информацию об устройстве и окружении
  */
 export interface IAlisaRequestMeta {
@@ -217,7 +217,7 @@ export interface IAlisaRequestMeta {
 }
 
 /**
- * Интерфейс для данных запроса
+ * Интерфейс для данных запроса.
  * Содержит информацию о сообщении пользователя
  */
 export interface IAlisaRequest {
@@ -283,7 +283,7 @@ export interface IAlisaRequest {
 }
 
 /**
- * Интерфейс для вебхук-запроса
+ * Интерфейс для вебхук-запроса.
  * Полный формат входящего запроса от Алисы
  */
 export interface IAlisaWebhookRequest {
@@ -302,7 +302,7 @@ export interface IAlisaWebhookRequest {
 }
 
 /**
- * Интерфейс для кнопки
+ * Интерфейс для кнопки.
  * Определяет внешний вид и поведение кнопки
  */
 export interface IAlisaButton {
@@ -333,7 +333,7 @@ export interface IAlisaButton {
 }
 
 /**
- * Интерфейс для кнопки на карточке
+ * Интерфейс для кнопки на карточке.
  * Определяет поведение при нажатии на изображение
  */
 export interface IAlisaButtonCard {
@@ -357,7 +357,7 @@ export interface IAlisaButtonCard {
 }
 
 /**
- * Базовый интерфейс для изображения
+ * Базовый интерфейс для изображения.
  * Определяет общие свойства для всех типов карточек
  */
 export interface IAlisaImage {
@@ -390,7 +390,7 @@ export interface IAlisaImage {
     description?: string;
 
     /**
-     * Свойства при нажатии
+     * Свойства при нажатии.
      * Игнорируется для ItemsList и ImageGallery
      */
     button?: IAlisaButtonCard;
@@ -454,7 +454,7 @@ export interface IAlisaImageGallery {
 }
 
 /**
- * Интерфейс для ответа навыка
+ * Интерфейс для ответа навыка.
  * Определяет формат ответа пользователю
  */
 export interface IAlisaResponse {
@@ -554,7 +554,7 @@ export interface IAlisaResponse {
 }
 
 /**
- * Интерфейс для вебхук-ответа
+ * Интерфейс для вебхук-ответа.
  * Полный формат исходящего ответа для Алисы
  */
 export interface IAlisaWebhookResponse {

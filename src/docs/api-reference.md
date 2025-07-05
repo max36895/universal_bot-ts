@@ -260,7 +260,7 @@ class ButtonController extends BotController {
 
 ### Работа с карточками
 
-````typescript
+```typescript
 class CardController extends BotController {
     public action(intentName: string | null): void {
         switch (intentName) {
@@ -275,6 +275,7 @@ class CardController extends BotController {
         }
     }
 }
+```
 
 ### Работа с NLU
 
@@ -290,6 +291,7 @@ class NluController extends BotController {
         }
     }
 }
+```
 
 ### Работа с авторизацией
 
@@ -306,6 +308,7 @@ class AuthController extends BotController {
         }
     }
 }
+```
 
 ### Работа с оценкой
 
@@ -322,4 +325,4 @@ class RatingController extends BotController {
         }
     }
 }
-````
+```

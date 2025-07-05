@@ -1,5 +1,5 @@
-import { Buttons, TButton, TButtonPayload } from '../button';
-import { Image } from '../image/Image';
+import { Buttons, TButton } from '../button';
+import { Image, initButton } from '../image/Image';
 import { TemplateCardTypes } from './types/TemplateCardTypes';
 import {
     mmApp,
@@ -292,14 +292,7 @@ export class Card {
      * ```
      */
     public addButton(button: TButton): Card {
-        if (typeof button === 'string') {
-            this.button.addBtn(button);
-        } else {
-            const title: string | null = button.title || button.text || null;
-            const url: string | null = button.url || null;
-            const payload: TButtonPayload = button.payload || null;
-            this.button.addBtn(title, url, payload);
-        }
+        initButton(button, this.button);
         return this;
     }
 
@@ -313,6 +306,8 @@ export class Card {
      */
     public clear(): void {
         this.images = [];
+        this.isOne = false;
+        this.isUsedGallery = false;
     }
 
     /**
@@ -379,7 +374,7 @@ export class Card {
      */
     public addImage(
         image: string | null,
-        title: string,
+        title: string = ' ',
         desc: string = ' ',
         button: TButton | null = null,
     ): Card {
@@ -388,6 +383,25 @@ export class Card {
             this.images.push(img);
         }
         return this;
+    }
+
+    /**
+     * Добавляет одно изображение в виде карточки. Внутри себя выставляет isOne в true
+     * @param {string} image - Идентификатор или URL изображения
+     * @param {string} title - Заголовок изображения
+     * @param {string} [desc=' '] - Описание изображения
+     * @param {TButton} [button=null] - Кнопки для элемента
+     * @returns {Card} this для цепочки вызовов
+     */
+    public addOneImage(
+        image: string | null,
+        title: string = ' ',
+        desc: string = ' ',
+        button: TButton | null = null,
+    ): Card {
+        this.isOne = true;
+        this.images = [];
+        return this.addImage(image, title, desc, button);
     }
 
     /**

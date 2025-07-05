@@ -174,6 +174,17 @@ export interface IImageParams {
     [name: string]: any;
 }
 
+export function initButton(button: TButton, buttonInst: Buttons) {
+    if (typeof button === 'string') {
+        buttonInst.addBtn(button);
+    } else {
+        const title: string | null = button.title || button.text || null;
+        const url: string | null = button.url || null;
+        const payload: TButtonPayload = button.payload || null;
+        buttonInst.addBtn(title, url, payload);
+    }
+}
+
 /**
  * @class Image
  * Класс для обработки и отображения изображений в различных платформах.
@@ -427,14 +438,7 @@ export class Image {
             }
             this.desc = desc;
             if (button) {
-                if (typeof button === 'string') {
-                    this.button.addBtn(button);
-                } else {
-                    const title: string | null = button.title || button.text || null;
-                    const url: string | null = button.url || null;
-                    const payload: TButtonPayload = button.payload || null;
-                    this.button.addBtn(title, url, payload);
-                }
+                initButton(button, this.button);
             }
             return true;
         }

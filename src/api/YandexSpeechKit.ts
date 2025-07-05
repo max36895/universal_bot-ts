@@ -186,7 +186,7 @@ export class YandexSpeechKit extends YandexRequest {
     public sampleRateHertz: number | undefined;
 
     /**
-     * Идентификатор каталога для авторизации
+     * Идентификатор каталога для авторизации.
      * Требуется только для пользовательского аккаунта
      * Максимум 50 символов
      */

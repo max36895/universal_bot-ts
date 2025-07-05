@@ -101,7 +101,7 @@ export interface IBotBotClassAndType {
  * Создание простого бота:
  * ```typescript
  * const bot = new Bot();
- * bot.initConfig({
+ * bot.initParam({
  *   intents: [{
  *     name: 'greeting',
  *     slots: ['привет', 'здравствуйте']
@@ -128,10 +128,8 @@ export interface IBotBotClassAndType {
  * Создание бота для Telegram:
  * ```typescript
  * const bot = new Bot(T_TELEGRAM);
- * bot.initConfig({
- *   telegram: {
- *     token: 'YOUR_BOT_TOKEN'
- *   }
+ * bot.initParam({
+ *   telegram_token: 'YOUR_BOT_TOKEN'
  * });
  * ```
  */
@@ -146,7 +144,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     private _userData: UsersData | undefined;
 
     /**
-     * Полученный запрос от пользователя
+     * Полученный запрос от пользователя.
      * Может быть JSON-строкой, текстом или null
      * @protected
      * @type {TBotContent}
@@ -154,7 +152,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     protected _content: TBotContent = null;
 
     /**
-     * Контроллер с бизнес-логикой приложения
+     * Контроллер с бизнес-логикой приложения.
      * Обрабатывает команды и формирует ответы
      * @see BotController
      * @protected
@@ -163,7 +161,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     protected _botController: BotController<TUserData>;
 
     /**
-     * Авторизационный токен пользователя
+     * Авторизационный токен пользователя.
      * Используется для авторизованных запросов (например, в Алисе)
      * @protected
      * @type {TBotAuth}
