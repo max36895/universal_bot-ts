@@ -89,10 +89,7 @@ bot.initParams({
 const logic = new EchoController();
 bot.initBotController(logic);
 
-// Экспорт обработчика для serverless
-module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-    bot.start(req, res);
-};
+bot.start('localhost', 3000);
 ```
 
 #### Логика приложения (EchoController.ts)
@@ -232,10 +229,7 @@ bot.initParams({
 const controller = new MyController();
 bot.initBotController(controller);
 
-// Экспорт обработчика для serverless
-module.exports = async (req: IncomingMessage, res: ServerResponse) => {
-    bot.start(req, res);
-};
+bot.start('localhost', 3000);
 ```
 
 ##### Работа с кнопками
@@ -429,11 +423,12 @@ acme.sh --install-cert -d {{domain}} --key-file {{key file}} --fullchain-file {{
 С той лишь разницей, что нужно использовать класс `BotTest` вместо `Bot`.
 
 ```typescript
-import { BotTest } from "umbot/dist/test";
+import { BotTest } from 'umbot/dist/test';
 
 const bot = new BotTest();
 bot.test();
 ```
+
 Запуск будет выглядеть следующим образом:
 
 ```bash
