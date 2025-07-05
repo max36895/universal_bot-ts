@@ -537,6 +537,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 if (this._botController.isSendRating) {
                     content = await botClass.getRatingContext();
                 } else {
+                    if (
+                        this._botController.store &&
+                        JSON.stringify(this._botController.userData) === '{}'
+                    ) {
+                        this._botController.userData = this._botController.store as TUserData;
+                    }
                     content = await botClass.getContext();
                 }
                 if (!isLocalStorage) {
