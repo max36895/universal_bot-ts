@@ -9,7 +9,8 @@
     },
     "env": {
         "node": true,
-        "jest": true
+        "jest": true,
+        "es2023": true
     },
     "rules": {
         "@typescript-eslint/explicit-function-return-type": "warn",

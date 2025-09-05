@@ -417,7 +417,7 @@ export interface IVkUsersGet extends IVkApi {
  * ```typescript
  * const uploadServer: IVkUploadServer = {
  *   response: {
- *     upload_url: "https://upload.vk.com/upload.php",
+ *     upload_url: "https://upload.vk.ru/upload.php",
  *     album_id: "123456789",
  *     group_id: "987654321"
  *   }
@@ -455,12 +455,12 @@ export interface IVkUploadServer extends IVkApi {
  *     pid: 987654321,
  *     aid: 123456,
  *     owner_id: 123456789,
- *     src: "https://vk.com/photo123456789_987654321",
- *     src_big: "https://vk.com/photo123456789_987654321_big",
- *     src_small: "https://vk.com/photo123456789_987654321_small",
+ *     src: "https://vk.ru/photo123456789_987654321",
+ *     src_big: "https://vk.ru/photo123456789_987654321_big",
+ *     src_small: "https://vk.ru/photo123456789_987654321_small",
  *     created: 1234567890,
- *     src_xbig: "https://vk.com/photo123456789_987654321_xbig",
- *     src_xxbig: "https://vk.com/photo123456789_987654321_xxbig"
+ *     src_xbig: "https://vk.ru/photo123456789_987654321_xbig",
+ *     src_xxbig: "https://vk.ru/photo123456789_987654321_xxbig"
  *   }]
  * };
  * ```
@@ -561,7 +561,7 @@ interface IVkDocInfo {
  * const graffiti: IVkGraffiti = {
  *   id: 123456789,
  *   owner_id: 987654321,
- *   url: "https://vk.com/doc123456789_987654321",
+ *   url: "https://vk.ru/doc123456789_987654321",
  *   width: 800,
  *   height: 600
  * };
@@ -595,8 +595,8 @@ export interface IVkGraffiti extends IVkDocInfo {
  * const audioMessage: IVkAudioMessageInfo = {
  *   duration: 30,
  *   waleform: [0, 1, 2, 3, 4, 5],
- *   link_ogg: "https://vk.com/audio_message123456789_987654321.ogg",
- *   link_mp3: "https://vk.com/audio_message123456789_987654321.mp3"
+ *   link_ogg: "https://vk.ru/audio_message123456789_987654321.ogg",
+ *   link_mp3: "https://vk.ru/audio_message123456789_987654321.mp3"
  * };
  * ```
  */
@@ -636,8 +636,8 @@ export interface IVkAudioMessageInfo {
  *   owner_id: 987654321,
  *   duration: 30,
  *   waleform: [0, 1, 2, 3, 4, 5],
- *   link_ogg: "https://vk.com/audio_message123456789_987654321.ogg",
- *   link_mp3: "https://vk.com/audio_message123456789_987654321.mp3"
+ *   link_ogg: "https://vk.ru/audio_message123456789_987654321.ogg",
+ *   link_mp3: "https://vk.ru/audio_message123456789_987654321.mp3"
  * };
  * ```
  */
@@ -650,20 +650,20 @@ export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {}
  * ```typescript
  * const preview: IVkPreview = {
  *   photo: [
- *     "https://vk.com/photo123456789_987654321_s",
- *     "https://vk.com/photo123456789_987654321_m",
- *     "https://vk.com/photo123456789_987654321_x"
+ *     "https://vk.ru/photo123456789_987654321_s",
+ *     "https://vk.ru/photo123456789_987654321_m",
+ *     "https://vk.ru/photo123456789_987654321_x"
  *   ],
  *   graffiti: {
- *     src: "https://vk.com/graffiti123456789_987654321",
+ *     src: "https://vk.ru/graffiti123456789_987654321",
  *     width: 800,
  *     height: 600
  *   },
  *   audio_message: {
  *     duration: 30,
  *     waleform: [0, 1, 2, 3, 4, 5],
- *     link_ogg: "https://vk.com/audio_message123456789_987654321.ogg",
- *     link_mp3: "https://vk.com/audio_message123456789_987654321.mp3"
+ *     link_ogg: "https://vk.ru/audio_message123456789_987654321.ogg",
+ *     link_mp3: "https://vk.ru/audio_message123456789_987654321.mp3"
  *   }
  * };
  * ```
@@ -672,7 +672,7 @@ export interface IVkPreview {
     /**
      * Массив копий изображения
      * @type {string[]}
-     * Подробное описание структуры: https://vk.com/dev/objects/photo_sizes
+     * Подробное описание структуры: https://vk.ru/dev/objects/photo_sizes
      */
     photo?: string[];
 
@@ -715,7 +715,7 @@ export interface IVkPreview {
  * const doc: IVKDoc = {
  *   id: 123456789,
  *   owner_id: 987654321,
- *   url: "https://vk.com/doc123456789_987654321",
+ *   url: "https://vk.ru/doc123456789_987654321",
  *   title: "document.pdf",
  *   size: 1024,
  *   ext: "pdf",
@@ -723,9 +723,9 @@ export interface IVkPreview {
  *   type: 1,
  *   preview: {
  *     photo: [
- *       "https://vk.com/photo123456789_987654321_s",
- *       "https://vk.com/photo123456789_987654321_m",
- *       "https://vk.com/photo123456789_987654321_x"
+ *       "https://vk.ru/photo123456789_987654321_s",
+ *       "https://vk.ru/photo123456789_987654321_m",
+ *       "https://vk.ru/photo123456789_987654321_x"
  *     ]
  *   }
  * };
@@ -794,7 +794,7 @@ export interface IVKDoc extends IVkDocInfo {
  *     type: "doc",
  *     id: 123456789,
  *     owner_id: 987654321,
- *     url: "https://vk.com/doc123456789_987654321",
+ *     url: "https://vk.ru/doc123456789_987654321",
  *     title: "document.pdf",
  *     size: 1024,
  *     ext: "pdf",
@@ -802,9 +802,9 @@ export interface IVKDoc extends IVkDocInfo {
  *     type: 1,
  *     preview: {
  *       photo: [
- *         "https://vk.com/photo123456789_987654321_s",
- *         "https://vk.com/photo123456789_987654321_m",
- *         "https://vk.com/photo123456789_987654321_x"
+ *         "https://vk.ru/photo123456789_987654321_s",
+ *         "https://vk.ru/photo123456789_987654321_m",
+ *         "https://vk.ru/photo123456789_987654321_x"
  *       ]
  *     }
  *   }

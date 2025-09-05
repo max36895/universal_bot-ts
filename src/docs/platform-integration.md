@@ -171,7 +171,7 @@ class VKController extends BotController {
             this.text = 'Привет! Я бот ВКонтакте';
 
             // Добавление клавиатуры
-            this.buttons.addBtn('Меню').addBtn('Помощь').addBtn('О нас', 'https://vk.com/group');
+            this.buttons.addBtn('Меню').addBtn('Помощь').addBtn('О нас', 'https://vk.ru/group');
 
             // Отправка карусели
             this.card

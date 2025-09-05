@@ -384,7 +384,7 @@ export class MarusiaSound implements TemplateSoundTypes {
                         /*
                          * Не стоит так делать, так как нужно время, пока Vk обработает звуковую дорожку.
                          * Лучше загружать звуки через консоль администратора!
-                         * @see (https://vk.com/dev/marusia_skill_docs10) Смотри тут
+                         * @see (https://vk.ru/dev/marusia_skill_docs10) Смотри тут
                          */
                         if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens();

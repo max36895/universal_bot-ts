@@ -17,7 +17,7 @@ import {
 /**
  * Класс для взаимодействия с API ВКонтакте
  * Предоставляет методы для отправки сообщений, загрузки файлов и работы с другими функциями API
- * @see (https://vk.com/dev/bots_docs) Смотри тут
+ * @see (https://vk.ru/dev/bots_docs) Смотри тут
  *
  * @example
  * ```typescript
@@ -75,7 +75,7 @@ export class VkRequest {
     /**
      * Базовый URL для всех методов VK API
      */
-    protected readonly VK_API_ENDPOINT = 'https://api.vk.com/method/';
+    protected readonly VK_API_ENDPOINT = 'https://api.vk.ru/method/';
 
     /**
      * Текущая используемая версия VK API
