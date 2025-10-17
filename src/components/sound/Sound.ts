@@ -201,7 +201,7 @@ export class Sound {
         if (sound) {
             const res = await sound.getSounds(this.sounds, text);
             if (res) {
-                return res.replace(/((?:^|\s)#\w+#(?:^|\s|$))/g, '');
+                return res.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '');
             }
             return res;
         }

@@ -10,7 +10,6 @@ import {
     T_SMARTAPP,
     TemplateTypeModel,
     AlisaSound,
-    Text,
     Viber,
     SmartApp,
     Telegram,

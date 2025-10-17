@@ -189,13 +189,13 @@ export class BotTest extends Bot {
             }
             if (this._botController.isEnd) {
                 isEnd = true;
-                break;
+            } else {
+                console.log('Вы: > ');
+                this._content = null;
+                this._botController.text = this._botController.tts = '';
+                state = this._botController.userData as IUserData;
+                count++;
             }
-            console.log('Вы: > ');
-            this._content = null;
-            this._botController.text = this._botController.tts = '';
-            state = this._botController.userData as IUserData;
-            count++;
         } while (!isEnd);
     }
 
