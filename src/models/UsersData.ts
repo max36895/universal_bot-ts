@@ -1,6 +1,6 @@
 import { Model } from './db/Model';
 import { IModelRes, IModelRules } from './interface';
-import { mmApp } from '../mmApp';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Интерфейс для внутреннего состояния модели пользовательских данных.
@@ -36,6 +36,7 @@ export interface IUserDataModelState {
      * @see UsersData.T_VIBER
      * @see UsersData.T_MARUSIA
      * @see UsersData.T_SMART_APP
+     * @see UsersData.T_MAX_APP
      * @see UsersData.T_USER_APP
      */
     type: string;
@@ -89,8 +90,8 @@ export interface IUserDataModelState {
  * // Для Telegram
  * userData.type = UsersData.T_TELEGRAM;
  *
- * // Автоматическое определение типа из mmApp
- * userData.type = mmApp.appType === 'alisa'
+ * // Автоматическое определение типа из appContext
+ * userData.type = this.AppContext.appType === 'alisa'
  *   ? UsersData.T_ALISA
  *   : UsersData.T_TELEGRAM;
  * ```
@@ -118,6 +119,10 @@ export class UsersData extends Model<IUserDataModelState> {
     public static readonly T_MARUSIA = 4;
     /** Тип платформы: Сбер SmartApp */
     public static readonly T_SMART_APP = 5;
+    /**
+     * Тип платформы: Max
+     * */
+    public static readonly T_MAX_APP = 6;
     /** Тип платформы: Пользовательское приложение */
     public static readonly T_USER_APP = 512;
 
@@ -161,6 +166,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * - T_VIBER (3) - Viber
      * - T_MARUSIA (4) - Маруся
      * - T_SMART_APP (5) - Сбер SmartApp
+     * - T_MAX_APP (6) - Max
      * - T_USER_APP (512) - Пользовательское приложение
      */
     public type: number;
@@ -176,8 +182,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * userData.type = UsersData.T_TELEGRAM;
      * ```
      */
-    public constructor() {
-        super();
+    public constructor(appContext: AppContext) {
+        super(appContext);
         this.userId = null;
         this.meta = null;
         this.data = null;
@@ -270,7 +276,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * ```
      */
     public validate(): void {
-        if (mmApp.isSaveDb) {
+        if (this._appContext?.isSaveDb) {
             if (typeof this.meta !== 'string') {
                 this.meta = JSON.stringify(this.meta);
             }
@@ -288,7 +294,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @param {any} data - Данные для инициализации
      * @remarks
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
-     * - Парсинг происходит только если включено сохранение в БД (mmApp.isSaveDb === true)
+     * - Парсинг происходит только если включено сохранение в БД (appContext.isSaveDb === true)
      *
      * @example
      * ```typescript
@@ -305,7 +311,7 @@ export class UsersData extends Model<IUserDataModelState> {
      */
     public init(data: any): void {
         super.init(data);
-        if (mmApp.isSaveDb) {
+        if (this._appContext?.isSaveDb) {
             if (typeof this.meta === 'string') {
                 this.meta = JSON.parse(this.meta);
             }
@@ -313,7 +319,7 @@ export class UsersData extends Model<IUserDataModelState> {
                 try {
                     this.data = JSON.parse(this.data);
                 } catch (e) {
-                    mmApp.saveLog('userData.log', `Ошибка при парсинге данных: ${e}`);
+                    this._appContext?.saveLog('userData.log', `Ошибка при парсинге данных: ${e}`);
                 }
             }
         }

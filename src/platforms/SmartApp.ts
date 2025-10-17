@@ -1,6 +1,5 @@
 import { TemplateTypeModel } from './TemplateTypeModel';
 import { BotController } from '../controller';
-import { mmApp } from '../mmApp';
 import {
     ISberSmartAppItem,
     ISberSmartAppResponsePayload,
@@ -190,7 +189,7 @@ export class SmartApp extends TemplateTypeModel {
             this.controller.oldIntentName = content.payload.intent;
             this.controller.appeal = content.payload.character.appeal;
             this.controller.userId = content.uuid.userId;
-            mmApp.params.user_id = this.controller.userId;
+            this.appContext.platformParams.user_id = this.controller.userId;
             const nlu = {
                 entities: content.payload.message.entities,
                 tokens: content.payload.message.tokenized_elements_list,
@@ -199,7 +198,7 @@ export class SmartApp extends TemplateTypeModel {
 
             this.controller.userMeta = content.payload.meta || {};
 
-            mmApp.params.app_id = content.payload.app_info.applicationId;
+            this.appContext.platformParams.app_id = content.payload.app_info.applicationId;
             if (content.payload.device.capabilities && content.payload.device.capabilities.screen) {
                 this.controller.isScreen = content.payload.device.capabilities.screen.available;
             } else {
@@ -261,7 +260,7 @@ export class SmartApp extends TemplateTypeModel {
      * @protected
      */
     protected async _getUserData(): Promise<unknown | string> {
-        const request = new Request();
+        const request = new Request(this.appContext);
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
         const result = await request.send();
         if (result.status && result.data) {
@@ -277,7 +276,7 @@ export class SmartApp extends TemplateTypeModel {
      * @protected
      */
     protected async _setUserData(data: any): Promise<IRequestSend<unknown>> {
-        const request = new Request();
+        const request = new Request(this.appContext);
         request.header = Request.HEADER_AP_JSON;
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${this.controller.userId}`;
         request.post = data;

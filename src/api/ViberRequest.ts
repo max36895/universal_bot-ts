@@ -1,5 +1,4 @@
 import { Request } from './request/Request';
-import { mmApp } from '../mmApp';
 import {
     IViberApi,
     IViberGetUserDetails,
@@ -10,6 +9,7 @@ import {
 } from './interfaces';
 import { IViberButton } from '../components/button/interfaces';
 import { Text } from '../utils/standard/Text';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Класс для взаимодействия с API Viber
@@ -41,16 +41,23 @@ export class ViberRequest {
     public token: string | null;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Создает экземпляр класса для работы с API Viber
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
-    public constructor() {
-        this._request = new Request();
+    public constructor(appContext: AppContext) {
+        this._request = new Request(appContext);
         this.token = null;
         this._error = null;
-        if (mmApp.params.viber_token) {
-            this.initToken(mmApp.params.viber_token);
+        this._appContext = appContext;
+        if (appContext.platformParams.viber_token) {
+            this.initToken(appContext.platformParams.viber_token);
         }
+        this._request.post = {};
     }
 
     /**
@@ -70,9 +77,10 @@ export class ViberRequest {
         if (this.token) {
             if (method) {
                 this._request.header = {
-                    'X-Viber-Auth-Token: ': this.token,
+                    'X-Viber-Auth-Token': this.token,
                 };
-                this._request.post.min_api_version = mmApp.params.viber_api_version || 2;
+                this._request.post.min_api_version =
+                    this._appContext.platformParams.viber_api_version || 2;
                 const data = (await this._request.send<IViberApi>(this.API_ENDPOINT + method)).data;
                 if (data) {
                     if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
@@ -275,6 +283,6 @@ export class ViberRequest {
      */
     protected _log(error: string = ''): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        mmApp.saveLog('viberApi.log', error);
+        this._appContext.saveLog('viberApi.log', error);
     }
 }

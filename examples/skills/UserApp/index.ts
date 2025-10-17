@@ -6,12 +6,12 @@ import { UserApp } from './UserTemplate/Controller/UserApp';
 import userDataConfig from './UserTemplate/userDataConfig';
 
 const bot = new BotTest();
-bot.initConfig(skillStorageConfig());
-bot.initParams(skillDefaultParam());
+bot.initAppConfig(skillStorageConfig());
+bot.initPlatformParams(skillDefaultParam());
 const logic = new UserAppController();
 bot.initBotController(logic);
 
-const userApp = new UserApp();
+const userApp = new UserApp(bot.getAppContext());
 //bot.run(userApp);
 /**
  * Отображаем ответ навыка и хранилище в консоли.

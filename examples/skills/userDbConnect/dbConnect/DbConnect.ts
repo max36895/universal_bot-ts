@@ -28,7 +28,7 @@ export default class DbConnect extends DbControllerModel {
      *
      * @param insertData
      */
-    insert(insertData: QueryData) {
+    insert(insertData: QueryData): Promise<IModelRes> {
         this._query.post = {
             type: 'insert',
             table: this.tableName,
@@ -64,7 +64,7 @@ export default class DbConnect extends DbControllerModel {
      *
      * @param callback
      */
-    query(callback: TQueryCb) {
+    query(callback: TQueryCb): Promise<IModelRes> {
         this._query.post = {
             type: 'query',
             table: this.tableName,
@@ -93,7 +93,7 @@ export default class DbConnect extends DbControllerModel {
      *
      * @param removeData
      */
-    remove(removeData: QueryData) {
+    remove(removeData: QueryData): Promise<IModelRes> {
         this._query.post = {
             type: 'delete',
             table: this.tableName,
@@ -122,9 +122,8 @@ export default class DbConnect extends DbControllerModel {
      * Тут суть в том, что если данных для обновления нет, то будет добавлена новая запись.
      *
      * @param saveData
-     * @param isNew
      */
-    save(saveData: QueryData, isNew: boolean) {
+    save(saveData: QueryData): Promise<IModelRes> {
         this._query.post = {
             type: 'save',
             table: this.tableName,
@@ -186,7 +185,7 @@ export default class DbConnect extends DbControllerModel {
      *
      * @param updateData
      */
-    update(updateData: QueryData) {
+    update(updateData: QueryData): Promise<IModelRes> {
         this._query.post = {
             type: 'update',
             table: this.tableName,

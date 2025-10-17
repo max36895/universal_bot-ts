@@ -2,7 +2,7 @@ import { BotController } from '../../src/controller';
 import { IAppIntent } from '../../src';
 
 export class MyController extends BotController {
-    actionName: string;
+    actionName?: string;
 
     constructor() {
         super();
@@ -12,11 +12,11 @@ export class MyController extends BotController {
         this.actionName = intentName;
     }
 
-    testIntent(text: string): string {
-        return BotController._getIntent(text);
+    testIntent(text: string): string | null {
+        return this._getIntent(text);
     }
 
     testIntents(): IAppIntent[] {
-        return BotController._intents();
+        return this._intents();
     }
 }

@@ -1,7 +1,6 @@
 import { TemplateTypeModel } from './TemplateTypeModel';
 import { BotController } from '../controller';
 import { ITelegramContent } from './interfaces';
-import { mmApp } from '../mmApp';
 import { INluThisUser } from '../components/nlu';
 import { ITelegramParams, TelegramRequest } from '../api';
 import { Buttons } from '../components/button';
@@ -89,7 +88,7 @@ export class Telegram extends TemplateTypeModel {
 
             if (typeof content.message !== 'undefined') {
                 this.controller.userId = content.message.chat.id;
-                mmApp.params.user_id = this.controller.userId;
+                this.appContext.platformParams.user_id = this.controller.userId;
                 this.controller.userCommand = content.message.text.toLowerCase().trim();
                 this.controller.originalUserCommand = content.message.text;
                 this.controller.messageId = content.message.message_id;
@@ -116,7 +115,7 @@ export class Telegram extends TemplateTypeModel {
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
-            const telegramApi = new TelegramRequest();
+            const telegramApi = new TelegramRequest(this.appContext);
             const params: ITelegramParams = {};
             const keyboard = this.controller.buttons.getButtonJson(Buttons.T_TELEGRAM_BUTTONS);
             if (keyboard) {

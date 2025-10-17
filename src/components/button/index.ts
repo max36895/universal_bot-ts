@@ -10,6 +10,7 @@ export * from './types/TelegramButton';
 export * from './types/TemplateButtonTypes';
 export * from './types/ViberButton';
 export * from './types/VkButton';
+export * from './types/MaxButton';
 
 export * from './Button';
 export * from './Buttons';

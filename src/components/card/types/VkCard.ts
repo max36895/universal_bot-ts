@@ -339,7 +339,7 @@ export class VkCard extends TemplateCardTypes {
             if (countImage === 1 || isOne) {
                 if (!this.images[0].imageToken) {
                     if (this.images[0].imageDir) {
-                        const mImage = new ImageTokens();
+                        const mImage = new ImageTokens(this._appContext);
                         mImage.type = ImageTokens.T_VK;
                         mImage.path = this.images[0].imageDir;
                         this.images[0].imageToken = await mImage.getToken();
@@ -354,7 +354,7 @@ export class VkCard extends TemplateCardTypes {
                     const image = this.images[i];
                     if (!image.imageToken) {
                         if (image.imageDir) {
-                            const mImage = new ImageTokens();
+                            const mImage = new ImageTokens(this._appContext);
                             mImage.type = ImageTokens.T_VK;
                             mImage.path = image.imageDir;
                             image.imageToken = await mImage.getToken();
@@ -362,7 +362,17 @@ export class VkCard extends TemplateCardTypes {
                     }
                     if (image.imageToken) {
                         if (this.isUsedGallery) {
-                            object.push(image.imageToken);
+                            const element: IVkCardElement = {
+                                title: image.title,
+                                description: image.desc,
+                                photo_id: image.imageToken.replace('photo', ''),
+                            };
+                            const button = image.button.getButtons(Buttons.T_VK_BUTTONS);
+                            if (button?.buttons?.length) {
+                                element.buttons = button.buttons.slice(0, 3);
+                            }
+                            elements.push(element);
+                            //object.push(image.imageToken);
                         } else {
                             const element: IVkCardElement = {
                                 title: image.title,

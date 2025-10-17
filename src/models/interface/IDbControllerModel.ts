@@ -13,6 +13,7 @@
 import { IModelRes, IModelRules } from './IModel';
 import { IQueryData, QueryData } from '../db/QueryData';
 import { Db, MongoClient } from 'mongodb';
+import { AppContext } from '../../core';
 
 /**
  * Тип ключа для идентификации записей в базе данных
@@ -45,6 +46,7 @@ export interface IDbControllerResult<TValue = unknown> {
      * Результат запроса, доступный по строковым ключам
      */
     [keyStr: string]: TValue;
+
     /**
      * Результат запроса, доступный по числовым ключам
      */
@@ -126,6 +128,12 @@ export interface IDbControllerModel {
      * ```
      */
     primaryKeyName: TKey;
+
+    /**
+     * Устанавливает контекст приложения
+     * @param appContext
+     */
+    setAppContext(appContext: AppContext): void;
 
     /**
      * Устанавливает правила валидации для модели

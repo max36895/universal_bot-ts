@@ -1,4 +1,4 @@
-import { TemplateTypeModel, BotController, mmApp, Buttons } from '../../../../../src';
+import { TemplateTypeModel, BotController, Buttons } from '../../../../../src';
 import { UserButton } from '../Components/UserButton';
 import { UserCard } from '../Components/UserCard';
 import { UserSound } from '../Components/UserSound';
@@ -36,7 +36,7 @@ export class UserApp extends TemplateTypeModel {
             this.controller.originalUserCommand = content.data.text;
 
             this.controller.userId = 'Идентификатор пользователя. Берется из content';
-            mmApp.params.user_id = this.controller.userId;
+            this.appContext.platformParams.user_id = this.controller.userId;
             return true;
         } else {
             this.error = 'UserApp:init(): Отправлен пустой запрос!';
@@ -65,13 +65,13 @@ export class UserApp extends TemplateTypeModel {
                 buttonClass,
             );
 
-            const cardClass = new UserCard(); // Класс отвечающий за отображение карточек. Должен быть унаследован от TemplateCardTypes
+            const cardClass = new UserCard(this.appContext); // Класс отвечающий за отображение карточек. Должен быть унаследован от TemplateCardTypes
             /*
              * Получить информацию о карточке
              */
             const cards = await this.controller.card.getCards(cardClass);
 
-            const soundClass = new UserSound(); // Класс отвечающий за отображение звуков. Должен быть унаследован от TemplateSoundTypes
+            const soundClass = new UserSound(this.appContext); // Класс отвечающий за отображение звуков. Должен быть унаследован от TemplateSoundTypes
             /*
              * Получить все звуки
              */

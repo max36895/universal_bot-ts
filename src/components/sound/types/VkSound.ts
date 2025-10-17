@@ -1,6 +1,6 @@
 import { ISound } from '../interfaces';
 import { TemplateSoundTypes } from './TemplateSoundTypes';
-import { Text, isFile } from '../../../utils';
+import { Text, isFile, unlink } from '../../../utils';
 import { SoundTokens } from '../../../models/SoundTokens';
 import { YandexSpeechKit } from '../../../api/YandexSpeechKit';
 
@@ -33,7 +33,7 @@ import { YandexSpeechKit } from '../../../api/YandexSpeechKit';
  * const result = await vkSound.getSounds([], 'Привет, это голосовое сообщение!');
  * ```
  */
-export class VkSound implements TemplateSoundTypes {
+export class VkSound extends TemplateSoundTypes {
     /**
      * Обрабатывает звуки и текст для отправки во ВКонтакте
      *
@@ -82,7 +82,7 @@ export class VkSound implements TemplateSoundTypes {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string | null = Text.getText(sound.sounds);
                         if (isFile(sText) || Text.isUrl(sText)) {
-                            const sModel = new SoundTokens();
+                            const sModel = new SoundTokens(this._appContext);
                             sModel.type = SoundTokens.T_VK;
                             sModel.path = sText;
                             sText = await sModel.getToken();
@@ -96,15 +96,16 @@ export class VkSound implements TemplateSoundTypes {
             }
         }
         if (text) {
-            const speechKit = new YandexSpeechKit();
+            const speechKit = new YandexSpeechKit(null, this._appContext);
             const content = await speechKit.getTts(text);
             let sText = null;
             if (content) {
-                const sModel = new SoundTokens();
+                const sModel = new SoundTokens(this._appContext);
                 sModel.type = SoundTokens.T_VK;
                 sModel.isAttachContent = true;
-                sModel.path = content;
+                sModel.path = content.fileName;
                 sText = await sModel.getToken();
+                unlink(content.fileName);
             }
             if (sText) {
                 data.push(sText);

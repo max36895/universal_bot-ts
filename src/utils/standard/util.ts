@@ -11,6 +11,7 @@
  */
 import * as fs from 'fs';
 import * as readline from 'readline';
+import { IDir } from '../../core/AppContext';
 
 /**
  * Интерфейс для GET-параметров
@@ -88,6 +89,19 @@ export function similarText(first: string, second: string): number {
     const totalLength = first.length + second.length;
 
     return (lcsLength(a, b) * 200) / totalLength;
+}
+
+/**
+ * Объединяет два массива объектов
+ * @param {object[]} array1 - Основной массив
+ * @param {object[]} array2 - Массив для объединения
+ * @returns {object} Объединенный массив
+ */
+export function arrayMerge(array1: object[], array2?: object[]): object {
+    if (array2) {
+        return [...array1, ...array2];
+    }
+    return array1;
 }
 
 /**
@@ -208,7 +222,7 @@ export function fread(fileName: string): FileOperationResult<string> {
  * Записывает данные в файл
  *
  * @param {string} fileName - Путь к файлу
- * @param {string} fileContent - Содержимое для записи
+ * @param {string | Buffer} fileContent - Содержимое для записи
  * @param {'w' | 'a'} [mode='w'] - Режим записи:
  *   - 'w' - перезапись файла
  *   - 'a' - добавление в конец файла
@@ -225,7 +239,7 @@ export function fread(fileName: string): FileOperationResult<string> {
  */
 export function fwrite(
     fileName: string,
-    fileContent: string,
+    fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): FileOperationResult<void> {
     try {
@@ -318,6 +332,21 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult
             error: error instanceof Error ? error : new Error('Failed to create directory'),
         };
     }
+}
+
+/**
+ * Сохраняет данные в файл
+ * @param {IDir} dir - Объект с путем и названием файла
+ * @param {string} data - Сохраняемые данные
+ * @param {string} mode - Режим записи
+ * @returns {boolean} true в случае успешного сохранения
+ */
+export function saveData(dir: IDir, data: string, mode?: string): boolean {
+    if (!isDir(dir.path)) {
+        mkdir(dir.path);
+    }
+    fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+    return true;
 }
 
 /**

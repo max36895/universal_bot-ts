@@ -50,6 +50,11 @@ export interface IMarusiaApiSavePicture extends IVkApi {
 }
 
 /**
+ * Интерфейс для удаления данных из Маруси
+ */
+export type IMarusiaApiRemove = IVkApi<number>;
+
+/**
  * Интерфейс для получения ссылки для загрузки аудио
  * Используется при загрузке аудиофайлов в Марусе
  *

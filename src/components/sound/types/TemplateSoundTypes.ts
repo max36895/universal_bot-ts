@@ -1,8 +1,8 @@
 import { ISound } from '../interfaces';
+import { AppContext } from '../../../core/AppContext';
 
 /**
- * @interface TemplateSoundTypes
- * Шаблонный интерфейс для обработки звуков в различных платформах
+ * Абстрактный класс для обработки звуков в различных платформах
  *
  * Предоставляет унифицированный интерфейс для работы со звуками в разных платформах:
  * - Алиса: преобразование текста в речь (TTS) и воспроизведение звуков
@@ -44,7 +44,16 @@ import { ISound } from '../interfaces';
  * ], 'Привет!');
  * ```
  */
-export interface TemplateSoundTypes {
+export abstract class TemplateSoundTypes {
+    /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    constructor(appContext: AppContext) {
+        this._appContext = appContext;
+    }
+
     /**
      * Получение звуков для воспроизведения или отправки
      *
@@ -97,5 +106,5 @@ export interface TemplateSoundTypes {
      * // vkResult: { voice: 'vk_sounds/voice.ogg' }
      * ```
      */
-    getSounds(sounds: ISound[], text?: string): Promise<any>;
+    public abstract getSounds(sounds: ISound[], text?: string): Promise<any>;
 }

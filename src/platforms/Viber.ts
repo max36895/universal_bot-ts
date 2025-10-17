@@ -1,7 +1,6 @@
 import { TemplateTypeModel } from './TemplateTypeModel';
 import { BotController } from '../controller';
 import { IViberContent } from './interfaces';
-import { mmApp } from '../mmApp';
 import { ViberRequest } from '../api/ViberRequest';
 import { IViberParams } from '../api/interfaces';
 import { Buttons, IViberButtonObject } from '../components/button';
@@ -93,19 +92,21 @@ export class Viber extends TemplateTypeModel {
                             this.controller.userCommand = '';
                             this.controller.messageId = 0;
 
-                            mmApp.params.viber_api_version = content.user.api_version || 2;
+                            this.appContext.platformParams.viber_api_version =
+                                content.user.api_version || 2;
                             this.setNlu(content.sender.name || '');
                         }
                         return true;
 
                     case 'message':
                         this.controller.userId = content.sender.id;
-                        mmApp.params.user_id = this.controller.userId;
+                        this.appContext.platformParams.user_id = this.controller.userId;
                         this.controller.userCommand = content.message.text.toLowerCase().trim();
                         this.controller.originalUserCommand = content.message.text;
                         this.controller.messageId = content.message_token;
 
-                        mmApp.params.viber_api_version = content.sender.api_version || 2;
+                        this.appContext.platformParams.viber_api_version =
+                            content.sender.api_version || 2;
 
                         this.setNlu(content.sender.name || '');
                         return true;
@@ -141,7 +142,7 @@ export class Viber extends TemplateTypeModel {
      */
     public async getContext(): Promise<string> {
         if (this.controller.isSend) {
-            const viberApi = new ViberRequest();
+            const viberApi = new ViberRequest(this.appContext);
             const params: IViberParams = {};
             const keyboard = this.controller.buttons.getButtons<IViberButtonObject>(
                 Buttons.T_VIBER_BUTTONS,
@@ -153,7 +154,7 @@ export class Viber extends TemplateTypeModel {
 
             await viberApi.sendMessage(
                 <string>this.controller.userId,
-                mmApp.params.viber_sender as string,
+                this.appContext.platformParams.viber_sender as string,
                 this.controller.text,
                 params,
             );

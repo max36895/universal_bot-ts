@@ -1,17 +1,5 @@
 import { TBotAuth, TBotContent } from './interfaces/IBot';
-import {
-    IAppConfig,
-    IAppParam,
-    mmApp,
-    T_ALISA,
-    T_MARUSIA,
-    T_SMARTAPP,
-    T_TELEGRAM,
-    T_USER_APP,
-    T_VIBER,
-    T_VK,
-    TAppType,
-} from '../mmApp';
+import { mmApp } from '../mmApp';
 import { BotController, IUserData } from '../controller';
 import { TemplateTypeModel } from '../platforms/TemplateTypeModel';
 import { GET } from '../utils/standard/util';
@@ -21,12 +9,30 @@ import {
     Marusia,
     Vk,
     SmartApp,
+    MaxApp,
     Alisa,
     IAlisaWebhookResponse,
     IMarusiaWebhookResponse,
 } from '../platforms';
 import { UsersData } from '../models/UsersData';
 import { IncomingMessage, ServerResponse, createServer, Server } from 'http';
+import {
+    AppContext,
+    IAppConfig,
+    IAppParam,
+    T_ALISA,
+    T_MARUSIA,
+    T_MAXAPP,
+    T_SMARTAPP,
+    T_TELEGRAM,
+    T_USER_APP,
+    T_VIBER,
+    T_VK,
+    TAppType,
+    ICommandParam,
+    ILogger,
+} from './AppContext';
+import { IDbControllerModel } from '../models';
 
 /**
  * Результат выполнения бота - ответ, который будет отправлен пользователю
@@ -152,6 +158,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
     protected _content: TBotContent = null;
 
     /**
+     * Контекст приложения
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Контроллер с бизнес-логикой приложения.
      * Обрабатывает команды и формирует ответы
      * @see BotController
@@ -173,6 +184,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @param {TAppType} [type] - Тип платформы (по умолчанию Алиса)
      * @param {BotController} [botController] - Контроллер с логикой
+     * @param {Boolean} [useGlobalState] - Определяет нужно ли использовать глобальное состояние(mmApp). Не рекомендуется использовать.
      *
      * @throws {Error} Если не удалось инициализировать бота
      *
@@ -188,10 +200,144 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * const bot = new Bot(T_ALISA, new MyController());
      * ```
      */
-    constructor(type?: TAppType, botController?: BotController<TUserData>) {
+    constructor(
+        type?: TAppType,
+        botController?: BotController<TUserData>,
+        useGlobalState: boolean = false,
+    ) {
         this._auth = null;
         this._botController = botController as BotController<TUserData>;
-        mmApp.appType = !type ? T_ALISA : type;
+        this._appContext = new AppContext();
+        this._appContext.appType = !type ? T_ALISA : type;
+        // todo оставлено для совместимости с предыдущими версиями. Удалить в будущем
+        if (useGlobalState) {
+            mmApp.appType = !type ? T_ALISA : type;
+            this._appContext = mmApp;
+        }
+        if (this._botController) {
+            this._botController.setAppContext(this._appContext);
+        }
+    }
+
+    /**
+     * Устанавливает тип платформы
+     * @param appType
+     */
+    public set appType(appType: TAppType) {
+        this._appContext.appType = appType;
+    }
+
+    /**
+     * Возвращает тип платформы
+     */
+    public get appType(): TAppType | null {
+        return this._appContext.appType;
+    }
+
+    /**
+     * Позволяет установить свою реализацию для логирования
+     * @param logger
+     */
+    public setLogger(logger: ILogger | null): void {
+        this._appContext.setLogger(logger);
+    }
+
+    /**
+     * Добавляет команду для обработки пользовательских запросов
+     *
+     * @param {string} commandName - Уникальный идентификатор команды
+     * @param {string[]} slots - Триггеры для активации команды
+     * @param {ICommandParam['cb']} cb - Функция-обработчик команды
+     * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
+     *
+     * @example
+     * Простая команда со словами:
+     * ```typescript
+     * appContext.addCommand(
+     *   'greeting',
+     *   ['привет', 'здравствуй'],
+     *   (cmd, ctrl) => {
+     *     if (ctrl) ctrl.text = 'Здравствуйте!';
+     *   }
+     * );
+     * ```
+     *
+     * @example
+     * Команда с регулярными выражениями:
+     * ```typescript
+     * // Обработка чисел от 1 до 999
+     * bot.addCommand(
+     *   'number',
+     *   ['\\b([1-9]|[1-9][0-9]|[1-9][0-9][0-9])\\b'],
+     *   (cmd, ctrl) => {
+     *     if (ctrl) ctrl.text = `Вы ввели число: ${cmd}`;
+     *   },
+     *   true  // включаем поддержку регулярных выражений
+     * );
+     * ```
+     *
+     * @example
+     * Команда с доступом к состоянию:
+     * ```typescript
+     * bot.addCommand(
+     *   'stats',
+     *   ['статистика'],
+     *   async (cmd, ctrl) => {
+     *     if (ctrl) {
+     *       // Доступ к пользовательским данным
+     *       const visits = ctrl.userData?.visits || 0;
+     *       ctrl.text = `Вы использовали бота ${visits} раз`;
+     *
+     *       // Доступ к кнопкам и другим UI элементам
+     *       ctrl.buttons
+     *         .addBtn('Сбросить статистику')
+     *         .addBtn('Закрыть');
+     *     }
+     *   }
+     * );
+     * ```
+     *
+     * @remarks
+     * - Команды обрабатываются в порядке добавления
+     * - При isPattern=true используются регулярные выражения JavaScript
+     * - В callback доступен весь функционал BotController
+     * - Можно использовать async функции в callback
+     */
+    public addCommand<TBotController extends BotController = BotController>(
+        commandName: string,
+        slots: string[],
+        cb?: ICommandParam<TBotController>['cb'],
+        isPattern: boolean = false,
+    ): Bot {
+        this._appContext.addCommand(commandName, slots, cb, isPattern);
+        return this;
+    }
+
+    /**
+     * Удаляет команду
+     * @param commandName - Имя команды
+     */
+    public removeCommand(commandName: string): Bot {
+        this._appContext.removeCommand(commandName);
+        return this;
+    }
+
+    /**
+     * Удаляет все команды
+     */
+    public clearCommands(): Bot {
+        this._appContext.clearCommands();
+        return this;
+    }
+
+    /**
+     * Устанавливает режим разработки
+     * @param {boolean} isDevMode - Флаг включения режима разработки
+     * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
+     */
+    public setDevMode(isDevMode: boolean): Bot {
+        this._appContext.setDevMode(isDevMode);
+        return this;
     }
 
     /**
@@ -217,15 +363,33 @@ export class Bot<TUserData extends IUserData = IUserData> {
     public initTypeInGet(): boolean {
         if (GET && GET.type) {
             if (
-                [T_TELEGRAM, T_ALISA, T_VIBER, T_VK, T_USER_APP, T_MARUSIA, T_SMARTAPP].indexOf(
-                    GET.type,
-                )
+                [
+                    T_TELEGRAM,
+                    T_ALISA,
+                    T_VIBER,
+                    T_VK,
+                    T_USER_APP,
+                    T_MARUSIA,
+                    T_MAXAPP,
+                    T_SMARTAPP,
+                ].indexOf(GET.type)
             ) {
-                mmApp.appType = GET.type;
+                this._appContext.appType = GET.type;
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Инициализирует конфигурацию приложения
+     *
+     * @param {IAppConfig} config - Конфигурация приложения
+     * @deprecated
+     * @see initAppConfig
+     */
+    public initConfig(config: IAppConfig): void {
+        this.initAppConfig(config);
     }
 
     /**
@@ -236,17 +400,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @example
      * ```typescript
-     * // Базовая конфигурация
-     * bot.initConfig({
-     *   intents: [{
-     *     name: 'help',
-     *     slots: ['помощь', 'справка']
-     *   }],
-     *   isLocalStorage: true
-     * });
-     *
      * // Конфигурация с базой данных
-     * bot.initConfig({
+     * bot.initAppConfig({
      *   db: {
      *     host: 'localhost',
      *     database: 'bot_db',
@@ -255,43 +410,55 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   }
      * });
      *
-     * // Конфигурация с Telegram
-     * bot.initConfig({
-     *   telegram: {
-     *     token: 'YOUR_BOT_TOKEN'
-     *   }
-     * });
-     * ```
      *
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
      * ```typescript
-     * bot.initConfig({
+     * bot.initAppConfig({
      *     env: './.env', // путь до файла
      * });
      * ```
      */
-    public initConfig(config: IAppConfig): void {
+    public initAppConfig(config: IAppConfig): Bot {
         if (config) {
-            mmApp.setConfig(config);
+            this._appContext.setAppConfig(config);
         }
+        return this;
+    }
+
+    /**
+     * Возвращает контекст приложения
+     */
+    public getAppContext(): AppContext {
+        return this._appContext;
     }
 
     /**
      * Инициализирует параметры приложения
-     * Устанавливает дополнительные параметры для работы бота
      *
      * @param {IAppParam} params - Параметры приложения
+     * @deprecated
+     * @see initPlatformParams
+     */
+    public initParams(params: IAppParam): void {
+        this.initPlatformParams(params);
+    }
+
+    /**
+     * Инициализирует параметры для платформ
+     * Устанавливает дополнительные параметры для работы бота
+     *
+     * @param {IAppParam} params - Параметры платформы
      *
      * @example
      * ```typescript
-     * // Включение режима отладки
-     * bot.initParams({
-     *   isDebug: true,
-     *   isSaveLog: true,
-     *   logPath: './logs'
+     * // Базовая настройка
+     * bot.initPlatformParams({
+     *   intents: [{
+     *     name: 'help',
+     *     slots: ['помощь', 'справка']
+     *   }],
      * });
-     * ```
      *
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
@@ -301,10 +468,23 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * });
      * ```
      */
-    public initParams(params: IAppParam): void {
+    public initPlatformParams(params: IAppParam): Bot {
         if (params) {
-            mmApp.setParams(params);
+            this._appContext.setPlatformParams(params);
         }
+        return this;
+    }
+
+    /**
+     * Устанавливает контроллер с базой данных
+     * @param dbController
+     */
+    public setUserDbController(dbController: IDbControllerModel | undefined): Bot {
+        this._appContext.userDbController = dbController;
+        if (this._appContext.userDbController) {
+            this._appContext.userDbController.setAppContext(this._appContext);
+        }
+        return this;
     }
 
     /**
@@ -334,6 +514,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     public initBotController(fn: BotController<TUserData>): void {
         if (fn) {
             this._botController = fn;
+            this._botController.setAppContext(this._appContext);
         }
     }
 
@@ -345,9 +526,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @throws {Error} Если не удалось определить тип приложения
      *
      * @remarks
-     * Метод определяет тип платформы на основе mmApp.appType и возвращает соответствующий класс:
+     * Метод определяет тип платформы на основе _appContext.appType и возвращает соответствующий класс:
      * - T_ALISA → Alisa
      * - T_VK → Vk
+     * - T_Max → Max
      * - T_TELEGRAM → Telegram
      * - T_VIBER → Viber
      * - T_MARUSIA → Marusia
@@ -356,41 +538,46 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @protected
      */
-    protected static _getBotClassAndType(
+    protected _getBotClassAndType(
         userBotClass: TemplateTypeModel | null = null,
     ): IBotBotClassAndType {
         let botClass: TemplateTypeModel | null = null;
         let type: number | null = null;
 
-        switch (mmApp.appType) {
+        switch (this._appContext.appType) {
             case T_ALISA:
-                botClass = new Alisa();
+                botClass = new Alisa(this._appContext);
                 type = UsersData.T_ALISA;
                 break;
 
             case T_VK:
-                botClass = new Vk();
+                botClass = new Vk(this._appContext);
                 type = UsersData.T_VK;
                 break;
 
             case T_TELEGRAM:
-                botClass = new Telegram();
+                botClass = new Telegram(this._appContext);
                 type = UsersData.T_TELEGRAM;
                 break;
 
             case T_VIBER:
-                botClass = new Viber();
+                botClass = new Viber(this._appContext);
                 type = UsersData.T_VIBER;
                 break;
 
             case T_MARUSIA:
-                botClass = new Marusia();
+                botClass = new Marusia(this._appContext);
                 type = UsersData.T_MARUSIA;
                 break;
 
             case T_SMARTAPP:
-                botClass = new SmartApp();
+                botClass = new SmartApp(this._appContext);
                 type = UsersData.T_SMART_APP;
+                break;
+
+            case T_MAXAPP:
+                botClass = new MaxApp(this._appContext);
+                type = UsersData.T_MAX_APP;
                 break;
 
             case T_USER_APP:
@@ -435,7 +622,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (this._userData) {
             return this._userData;
         }
-        this._userData = new UsersData();
+        this._userData = new UsersData(this._appContext);
         return this._userData;
     }
 
@@ -443,7 +630,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Очищает состояние пользователя
      * @private
      */
-    private _clearState(): void {
+    protected _clearState(): void {
         if (this._botController) {
             this._botController.clearStoreData();
         }
@@ -470,10 +657,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (!this._botController) {
             const errMsg =
                 'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController';
-            mmApp.saveLog('bot.log', errMsg);
+            this._appContext.saveLog('bot.log', errMsg);
             throw new Error(errMsg);
         }
-        const { botClass, type } = Bot._getBotClassAndType(userBotClass);
+        const { botClass, type } = this._getBotClassAndType(userBotClass);
 
         if (botClass) {
             if (this._botController.userToken === null) {
@@ -493,7 +680,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 }
 
                 const isLocalStorage: boolean = !!(
-                    mmApp.config.isLocalStorage && botClass.isLocalStorage()
+                    this._appContext.appConfig.isLocalStorage && botClass.isLocalStorage()
                 );
 
                 let isNewUser = true;
@@ -551,7 +738,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     if (isNewUser) {
                         userData.save(true).then((res) => {
                             if (!res) {
-                                mmApp.saveLog(
+                                this._appContext.saveLog(
                                     'bot.log',
                                     `Bot:run(): Не удалось сохранить данные для пользователя: ${this._botController.userId}.`,
                                 );
@@ -560,7 +747,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     } else {
                         userData.update().then((res) => {
                             if (!res) {
-                                mmApp.saveLog(
+                                this._appContext.saveLog(
                                     'bot.log',
                                     `Bot:run(): Не удалось обновить данные для пользователя: ${this._botController.userId}.`,
                                 );
@@ -572,18 +759,18 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 }
 
                 if (botClass.getError()) {
-                    mmApp.saveLog('bot.log', botClass.getError());
+                    this._appContext.saveLog('bot.log', botClass.getError());
                 }
                 userData.destroy();
                 this._clearState();
                 return content;
             } else {
-                mmApp.saveLog('bot.log', botClass.getError());
+                this._appContext.saveLog('bot.log', botClass.getError());
                 throw new Error(botClass.getError() || '');
             }
         } else {
             const msg = 'Не удалось определить тип приложения!';
-            mmApp.saveLog('bot.log', msg);
+            this._appContext.saveLog('bot.log', msg);
             throw new Error(msg);
         }
     }
@@ -642,10 +829,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     }
                 } catch (error) {
                     if (error instanceof SyntaxError) {
-                        mmApp.saveLog('bot.log', `Bot:start(): Syntax Error: ${error}`);
+                        this._appContext.saveLog('bot.log', `Bot:start(): Syntax Error: ${error}`);
                         send(res, 400, 'Invalid JSON');
                     } else {
-                        mmApp.saveLog('bot.log', `Bot:start(): Server error: ${error}`);
+                        this._appContext.saveLog('bot.log', `Bot:start(): Server error: ${error}`);
                         send(res, 500, 'Internal Server Error');
                     }
                 }

@@ -1,7 +1,6 @@
 import { BotTest, IBotTestParams } from './core/BotTest';
-import { IAppConfig, IAppParam, mmApp } from './mmApp';
 import { BotController } from './controller';
-import { Bot } from './core';
+import { Bot, IAppConfig, IAppParam } from './core';
 
 /**
  * Набор методов, упрощающих запуск приложения
@@ -53,8 +52,8 @@ export interface IConfig {
  * @private
  */
 function _initParam(bot: Bot | BotTest, config: IConfig): void {
-    bot.initConfig(config.appConfig);
-    bot.initParams(config.appParam);
+    bot.initAppConfig(config.appConfig);
+    bot.initPlatformParams(config.appParam);
     bot.initBotController(config.controller);
 }
 
@@ -97,13 +96,13 @@ export function run(
         case 'dev':
             bot = new BotTest();
             _initParam(bot, config);
-            mmApp.setDevMode(true);
+            bot.setDevMode(true);
             return (bot as BotTest).test(config.testParams);
         case 'dev-online':
             bot = new Bot();
             bot.initTypeInGet();
             _initParam(bot, config);
-            mmApp.setDevMode(true);
+            bot.setDevMode(true);
             return bot.start(hostname, port);
         case 'prod':
             bot = new Bot();

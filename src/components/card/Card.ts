@@ -1,22 +1,25 @@
 import { Buttons, TButton } from '../button';
 import { Image, initButton } from '../image/Image';
 import { TemplateCardTypes } from './types/TemplateCardTypes';
-import {
-    mmApp,
-    T_ALISA,
-    T_MARUSIA,
-    T_SMARTAPP,
-    T_TELEGRAM,
-    T_USER_APP,
-    T_VIBER,
-    T_VK,
-} from '../../mmApp';
+
 import { AlisaCard } from './types/AlisaCard';
 import { TelegramCard } from './types/TelegramCard';
 import { VkCard } from './types/VkCard';
 import { ViberCard } from './types/ViberCard';
 import { MarusiaCard } from './types/MarusiaCard';
 import { SmartAppCard } from './types/SmartAppCard';
+import { MaxAppCard } from './types/MaxAppCard';
+import {
+    AppContext,
+    T_ALISA,
+    T_MARUSIA,
+    T_MAXAPP,
+    T_SMARTAPP,
+    T_TELEGRAM,
+    T_USER_APP,
+    T_VIBER,
+    T_VK,
+} from '../../core/AppContext';
 
 /**
  * @class Card
@@ -230,6 +233,11 @@ export class Card {
     public template: any = null;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Создает новый экземпляр карточки.
      * Инициализирует все поля значениями по умолчанию.
      * @example
@@ -237,13 +245,24 @@ export class Card {
      * const card = new Card();
      * ```
      */
-    public constructor() {
+    public constructor(appContext: AppContext) {
         this.isOne = false;
-        this.button = new Buttons();
+        this.button = new Buttons(appContext);
         this.images = [];
         this.title = null;
         this.desc = null;
+        this._appContext = appContext;
         this.clear();
+    }
+
+    /**
+     * Устанавливает контекст приложения.
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext): Card {
+        this._appContext = appContext;
+        this.button.setAppContext(appContext);
+        return this;
     }
 
     /**
@@ -378,7 +397,7 @@ export class Card {
         desc: string = ' ',
         button: TButton | null = null,
     ): Card {
-        const img = new Image();
+        const img = new Image(this._appContext);
         if (img.init(image, title, desc, button)) {
             this.images.push(img);
         }
@@ -488,24 +507,27 @@ export class Card {
             return this.template;
         }
         let card = null;
-        switch (mmApp.appType) {
+        switch (this._appContext.appType) {
             case T_ALISA:
-                card = new AlisaCard();
+                card = new AlisaCard(this._appContext);
                 break;
             case T_VK:
-                card = new VkCard();
+                card = new VkCard(this._appContext);
                 break;
             case T_TELEGRAM:
-                card = new TelegramCard();
+                card = new TelegramCard(this._appContext);
                 break;
             case T_VIBER:
-                card = new ViberCard();
+                card = new ViberCard(this._appContext);
                 break;
             case T_MARUSIA:
-                card = new MarusiaCard();
+                card = new MarusiaCard(this._appContext);
                 break;
             case T_SMARTAPP:
-                card = new SmartAppCard();
+                card = new SmartAppCard(this._appContext);
+                break;
+            case T_MAXAPP:
+                card = new MaxAppCard(this._appContext);
                 break;
             case T_USER_APP:
                 card = userCard;

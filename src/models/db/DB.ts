@@ -9,8 +9,8 @@
  * @module models/db/DB
  */
 
-import { IAppDB, mmApp } from '../../mmApp';
 import { MongoClient, MongoClientOptions, ServerApiVersion } from 'mongodb';
+import { AppContext, IAppDB } from '../../core/AppContext';
 
 /**
  * Класс для управления подключением к базе данных MongoDB
@@ -98,14 +98,21 @@ export class DB {
     public params: IAppDB | null;
 
     /**
+     * Контекст приложения
+     * @protected
+     */
+    protected appContext: AppContext | undefined;
+
+    /**
      * Создает новый экземпляр класса DB.
      * Инициализирует все необходимые свойства
      */
-    public constructor() {
+    public constructor(appContext?: AppContext) {
         this.sql = null;
         this.errors = [];
         this.params = null;
         this.dbConnect = null;
+        this.appContext = appContext;
     }
 
     /**
@@ -165,12 +172,12 @@ export class DB {
                     connectTimeoutMS: 2000,
                     socketTimeoutMS: 2000,
                     maxPoolSize: 1,
-                    ...mmApp.config.db?.options,
+                    ...this.appContext?.appConfig.db?.options,
                     serverApi: {
                         version: ServerApiVersion.v1,
                         strict: true,
                         deprecationErrors: true,
-                        ...(mmApp.config.db?.options?.serverApi as object),
+                        ...(this.appContext?.appConfig.db?.options?.serverApi as object),
                     },
                 };
 
@@ -182,13 +189,25 @@ export class DB {
                 }
 
                 this.sql = new MongoClient(this.params.host, options);
-                this.dbConnect = this.sql.connect();
-                await this.dbConnect;
 
-                // Проверяем подключение сразу после установки
-                const isConnected = await this.isConnected();
-                if (!isConnected) {
-                    throw new Error('Failed to verify database connection');
+                const connect = async (): Promise<boolean> => {
+                    if (!this.sql) {
+                        return false;
+                    }
+                    this.dbConnect = this.sql.connect();
+                    await this.dbConnect;
+
+                    // Проверяем подключение сразу после установки
+                    return await this.isConnected();
+                };
+
+                if (!(await connect())) {
+                    await new Promise((resolve) => {
+                        setTimeout(resolve, 2000);
+                    });
+                    if (!(await connect())) {
+                        throw new Error('Failed to verify database connection');
+                    }
                 }
 
                 return true;

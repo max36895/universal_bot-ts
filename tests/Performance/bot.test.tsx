@@ -1,19 +1,11 @@
-import {
-    Bot,
-    BotController,
-    mmApp,
-    Alisa,
-    T_ALISA,
-    TemplateTypeModel,
-    AlisaSound,
-    Text,
-} from '../../src';
+import { Bot, BotController, Alisa, T_ALISA, AlisaSound, Text } from '../../src';
 import { performance } from 'perf_hooks';
 
 // Базовое потребление памяти не должно превышать 500кб
-const BASE_MEMORY_USED = 500;
+// const BASE_MEMORY_USED = 500;
+const BASE_MEMORY_USED = 400;
 // Базовое время обработки не должно превышать 17мс
-let BASE_DURATION = 3;
+let BASE_DURATION = 10;
 
 // Вычисляем базовое время обработки в зависимости от системы пользователя
 (function initBasePer() {
@@ -26,6 +18,7 @@ let BASE_DURATION = 3;
         count *= count;
     }
     count += arr[0] / 2;
+    count = Math.min(arr[0] - Math.random(), arr[0] - Math.random(), count);
     BASE_DURATION = performance.now() - start + count;
 })();
 
@@ -67,8 +60,8 @@ class TestBotController extends BotController {
 }
 
 class TestBot extends Bot {
-    static getBotClassAndType(val: TemplateTypeModel | null = null) {
-        return super._getBotClassAndType(val);
+    public get appContext() {
+        return this._appContext;
     }
 }
 
@@ -117,6 +110,7 @@ async function getPerformance(
         const beforeMemory = process.memoryUsage().heapUsed;
         const start = performance.now();
         await fn();
+        Text.clearCache();
         const duration = performance.now() - start;
         const afterMemory = process.memoryUsage().heapUsed;
         const memoryUsed = (afterMemory - beforeMemory) / 1024;
@@ -138,6 +132,8 @@ describe('umbot', () => {
     });
 
     afterEach(() => {
+        botController.clearStoreData();
+        bot.clearCommands();
         jest.resetAllMocks();
     });
     describe('run performance', () => {
@@ -146,12 +142,12 @@ describe('umbot', () => {
             it(`Простое текстовое отображение. Длина запроса от пользователя ${i * 2}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(botController);
-                    mmApp.appType = T_ALISA;
-                    const botClass = new Alisa();
-                    mmApp.setParams({
+                    bot.appType = T_ALISA;
+                    const botClass = new Alisa(bot.appContext);
+                    bot.initPlatformParams({
                         intents: [],
                     });
-                    mmApp.setConfig({ isLocalStorage: true });
+                    bot.initAppConfig({ isLocalStorage: true });
 
                     bot.setContent(getContent('0'.repeat(i * 2)));
                     await bot.run(botClass);
@@ -162,12 +158,12 @@ describe('umbot', () => {
             it(`Простое текстовое отображение c кнопкой. Длина запроса от пользователя ${i * 3}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(botController);
-                    mmApp.appType = T_ALISA;
-                    const botClass = new Alisa();
-                    mmApp.setParams({
+                    bot.appType = T_ALISA;
+                    const botClass = new Alisa(bot.appContext);
+                    bot.initPlatformParams({
                         intents: [{ name: 'btn', slots: ['кнопка'] }],
                     });
-                    mmApp.setConfig({ isLocalStorage: true });
+                    bot.initAppConfig({ isLocalStorage: true });
 
                     bot.setContent(getContent('0'.repeat(i) + ` кнопка ${''.repeat(i * 2)}`));
                     await bot.run(botClass);
@@ -178,12 +174,12 @@ describe('umbot', () => {
         it(`Отображение карточки с 1 изображением.`, async () => {
             await getPerformance(async () => {
                 bot.initBotController(botController);
-                mmApp.appType = T_ALISA;
-                const botClass = new Alisa();
-                mmApp.setParams({
+                bot.appType = T_ALISA;
+                const botClass = new Alisa(bot.appContext);
+                bot.initPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
                 });
-                mmApp.setConfig({ isLocalStorage: true });
+                bot.initAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -192,12 +188,12 @@ describe('umbot', () => {
         it(`Отображение карточки с 1 изображением и кнопкой`, async () => {
             await getPerformance(async () => {
                 bot.initBotController(botController);
-                mmApp.appType = T_ALISA;
-                const botClass = new Alisa();
-                mmApp.setParams({
+                bot.appType = T_ALISA;
+                const botClass = new Alisa(bot.appContext);
+                bot.initPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка_с_кнопкой'] }],
                 });
-                mmApp.setConfig({ isLocalStorage: true });
+                bot.initAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -206,12 +202,12 @@ describe('umbot', () => {
         it(`Отображение галереи из 1 изображения.`, async () => {
             await getPerformance(async () => {
                 bot.initBotController(botController);
-                mmApp.appType = T_ALISA;
-                const botClass = new Alisa();
-                mmApp.setParams({
+                bot.appType = T_ALISA;
+                const botClass = new Alisa(bot.appContext);
+                bot.initPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
                 });
-                mmApp.setConfig({ isLocalStorage: true });
+                bot.initAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -220,12 +216,12 @@ describe('umbot', () => {
         it(`Отображение галереи из 5 изображений.`, async () => {
             await getPerformance(async () => {
                 bot.initBotController(botController);
-                mmApp.appType = T_ALISA;
-                const botClass = new Alisa();
-                mmApp.setParams({
+                bot.appType = T_ALISA;
+                const botClass = new Alisa(bot.appContext);
+                bot.initPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
                 });
-                mmApp.setConfig({ isLocalStorage: true });
+                bot.initAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -237,19 +233,19 @@ describe('umbot', () => {
             it(`Обработка звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(botController);
-                    mmApp.appType = T_ALISA;
-                    const botClass = new Alisa();
-                    mmApp.setParams({
+                    bot.appType = T_ALISA;
+                    const botClass = new Alisa(bot.appContext);
+                    bot.initPlatformParams({
                         intents: [],
                     });
-                    mmApp.setConfig({ isLocalStorage: true });
-                    mmApp.addCommand('sound', ['звук'], () => {
+                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.addCommand('sound', ['звук'], () => {
                         botController.tts = ` ${AlisaSound.S_AUDIO_GAME_WIN} `.repeat(i);
                     });
 
                     bot.setContent(getContent('звук'));
                     await bot.run(botClass);
-                    mmApp.removeCommand('sound');
+                    bot.removeCommand('sound');
                 });
             });
         }
@@ -257,12 +253,12 @@ describe('umbot', () => {
             it(`Обработка своих звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(botController);
-                    mmApp.appType = T_ALISA;
-                    const botClass = new Alisa();
-                    mmApp.setParams({
+                    bot.appType = T_ALISA;
+                    const botClass = new Alisa(bot.appContext);
+                    bot.initPlatformParams({
                         intents: [],
                     });
-                    mmApp.setConfig({ isLocalStorage: true });
+                    bot.initAppConfig({ isLocalStorage: true });
                     botController.sound.sounds = [];
                     for (let j = 1; j < 15; j++) {
                         botController.sound.sounds.push({
@@ -271,7 +267,7 @@ describe('umbot', () => {
                         });
                     }
                     botController.sound.isUsedStandardSound = true;
-                    mmApp.addCommand('sound', ['звук'], () => {
+                    bot.addCommand('sound', ['звук'], () => {
                         botController.tts = ``;
                         for (let j = 1; j < i; j++) {
                             botController.tts += `$s_${j} `;
@@ -280,7 +276,7 @@ describe('umbot', () => {
 
                     bot.setContent(getContent('звук'));
                     await bot.run(botClass);
-                    mmApp.removeCommand('sound');
+                    bot.removeCommand('sound');
                 });
             });
         }
@@ -291,8 +287,8 @@ describe('umbot', () => {
                 await getPerformance(
                     async () => {
                         bot.initBotController(botController);
-                        mmApp.appType = T_ALISA;
-                        const botClass = new Alisa();
+                        bot.appType = T_ALISA;
+                        const botClass = new Alisa(bot.appContext);
                         const intents = [];
                         for (let j = 0; j < i * 100; j++) {
                             intents.push({
@@ -300,16 +296,16 @@ describe('umbot', () => {
                                 slots: [`команда${j}`],
                             });
                         }
-                        mmApp.setParams({
+                        bot.initPlatformParams({
                             intents,
                         });
-                        mmApp.setConfig({ isLocalStorage: true });
+                        bot.initAppConfig({ isLocalStorage: true });
 
                         bot.setContent(getContent(`команда${i / 2}`));
                         await bot.run(botClass);
                     },
                     BASE_DURATION,
-                    BASE_MEMORY_USED + i * 10,
+                    BASE_MEMORY_USED + i * 3,
                 );
             });
         }
@@ -319,24 +315,23 @@ describe('umbot', () => {
                 await getPerformance(
                     async () => {
                         bot.initBotController(botController);
-                        mmApp.appType = T_ALISA;
-                        const botClass = new Alisa();
-                        mmApp.setParams({
+                        bot.appType = T_ALISA;
+                        const botClass = new Alisa(bot.appContext);
+                        bot.initPlatformParams({
                             intents: [],
                         });
-                        mmApp.setConfig({ isLocalStorage: true });
+                        bot.initAppConfig({ isLocalStorage: true });
                         for (let j = 0; j < i * 100; j++) {
-                            mmApp.addCommand(`cmd_${j}`, [`команда${j}`], () => {
+                            bot.addCommand(`cmd_${j}`, [`команда${j}`], () => {
                                 botController.text = `cmd_${j}`;
                             });
                         }
 
                         bot.setContent(getContent(`команда${i / 2}`));
                         await bot.run(botClass);
-                        mmApp.clearCommands();
                     },
                     BASE_DURATION,
-                    i * 10 + BASE_MEMORY_USED,
+                    BASE_MEMORY_USED + 10 + i * 10,
                 );
             });
         }

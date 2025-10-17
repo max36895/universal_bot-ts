@@ -31,7 +31,7 @@ export type TVkDocType = 'doc' | 'audio_message' | 'graffiti';
  * };
  * ```
  */
-export interface IVkApi<T = {}> {
+export interface IVkApi<T = Record<string, unknown> | unknown> {
     /**
      * Ошибка, если таковая имеется
      * @type {string}

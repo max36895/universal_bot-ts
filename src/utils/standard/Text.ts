@@ -62,6 +62,8 @@ export interface ITextSimilarity {
     text?: string | null;
 }
 
+const MAX_CACHE_SIZE = 3000;
+
 /**
  * Класс для работы с текстом и текстовыми операциями
  *
@@ -264,16 +266,23 @@ export class Text {
      * ```
      */
     public static isSayText(find: TPattern, text: string, isPattern: boolean = false): boolean {
-        if (!text) {
-            return false;
+        if (!text) return false;
+
+        if (isPattern) {
+            return Text.isSayPattern(find, text);
         }
 
-        if (!isPattern) {
-            return Array.isArray(find)
-                ? find.some((value) => text.includes(value))
-                : text === find || text.includes(find as string);
+        if (typeof find === 'string') {
+            return text === find || text.includes(find);
         }
-        return Text.isSayPattern(find, text);
+
+        // Оптимизированный вариант для массива: early return + includes
+        for (const value of find) {
+            if (text.includes(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -287,6 +296,9 @@ export class Text {
     private static getCachedRegex(pattern: string): RegExp {
         let regex = Text.regexCache.get(pattern);
         if (!regex) {
+            if (Text.regexCache.size >= MAX_CACHE_SIZE) {
+                Text.regexCache.clear();
+            }
             regex = new RegExp(pattern, 'umig');
             Text.regexCache.set(pattern, regex);
         }
@@ -297,7 +309,7 @@ export class Text {
      * Очищает кэш регулярных выражений.
      * Стоит вызывать только в крайних случаях
      */
-    public static clearCache() {
+    public static clearCache(): void {
         Text.regexCache.clear();
     }
 
@@ -315,6 +327,17 @@ export class Text {
      */
     public static getText(str: TPattern): string {
         return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
+    }
+
+    /**
+     * Заменяет ключ в тексте на значение
+     * @param {string} key - Ключ для замены
+     * @param {string | string[]} value - Значение для замены
+     * @param {string} text - Исходный текст
+     */
+    public static textReplace(key: string, value: string | string[], text: string): string {
+        const correctKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return text.replace(new RegExp(correctKey, 'g'), () => Text.getText(value));
     }
 
     /**

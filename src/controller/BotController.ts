@@ -7,15 +7,15 @@ import { Buttons } from '../components/button';
 import { Card } from '../components/card';
 import { Sound } from '../components/sound';
 import { Nlu } from '../components/nlu';
+import { Text } from '../utils/standard/Text';
 import {
+    AppContext,
     HELP_INTENT_NAME,
     IAppIntent,
-    mmApp,
     T_ALISA,
     T_MARUSIA,
     WELCOME_INTENT_NAME,
-} from '../mmApp';
-import { Text } from '../utils/standard/Text';
+} from '../core/AppContext';
 
 /**
  * Тип статуса операции
@@ -418,7 +418,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Хранятся в базе данных или файле
      *
      * @remarks
-     * Тип хранения зависит от параметра mmApp.isSaveDb
+     * Тип хранения зависит от параметра appContext.isSaveDb
      *
      * @example
      * ```typescript
@@ -584,16 +584,33 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public oldIntentName: string | null = null;
 
     /**
+     * Контекст приложения
+     */
+    public appContext: AppContext | undefined;
+
+    /**
      * Создает новый экземпляр контроллера.
      * Инициализирует все необходимые компоненты
      *
      * @protected
      */
     protected constructor() {
-        this.buttons = new Buttons();
-        this.card = new Card();
-        this.sound = new Sound();
+        this.buttons = new Buttons(this.appContext as AppContext);
+        this.card = new Card(this.appContext as AppContext);
+        this.sound = new Sound(this.appContext as AppContext);
         this.nlu = new Nlu();
+    }
+
+    /**
+     * Устанавливает контекст приложения
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext | undefined): BotController {
+        this.appContext = appContext;
+        this.buttons.setAppContext(appContext as AppContext);
+        this.card.setAppContext(appContext as AppContext);
+        this.sound.setAppContext(appContext as AppContext);
+        return this;
     }
 
     /**
@@ -644,8 +661,8 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * // ]
      * ```
      */
-    protected static _intents(): IAppIntent[] {
-        return mmApp.params.intents || [];
+    protected _intents(): IAppIntent[] {
+        return this.appContext?.platformParams.intents || [];
     }
 
     /**
@@ -663,11 +680,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * // 'greeting'
      * ```
      */
-    protected static _getIntent(text: string | null): string | null {
+    protected _getIntent(text: string | null): string | null {
         if (!text) {
             return null;
         }
-        const intents: IAppIntent[] = BotController._intents();
+        const intents: IAppIntent[] = this._intents();
         for (const intent of intents) {
             if (Text.isSayText(intent.slots || [], text, intent.is_pattern || false)) {
                 return intent.name;
@@ -691,10 +708,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * ```
      */
     protected _getCommand(): string | null {
-        if (!this.userCommand) {
+        if (!this.userCommand || !this.appContext?.commands) {
             return null;
         }
-        for (const [commandName, command] of mmApp.commands) {
+        for (const [commandName, command] of this.appContext.commands) {
             if (
                 command &&
                 Text.isSayText(command.slots || [], this.userCommand, command.isPattern || false)
@@ -747,13 +764,13 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (commandResult) {
             this.action(commandResult, true);
         } else {
-            let intent: string | null = BotController._getIntent(this.userCommand);
+            let intent: string | null = this._getIntent(this.userCommand);
             if (
                 intent === null &&
                 this.originalUserCommand &&
                 this.userCommand !== this.originalUserCommand
             ) {
-                intent = BotController._getIntent(this.originalUserCommand.toLowerCase());
+                intent = this._getIntent(this.originalUserCommand.toLowerCase());
             }
             if (intent === null && this.messageId === 0) {
                 intent = WELCOME_INTENT_NAME;
@@ -763,17 +780,20 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
              */
             switch (intent) {
                 case WELCOME_INTENT_NAME:
-                    this.text = Text.getText(mmApp.params.welcome_text || '');
+                    this.text = Text.getText(this.appContext?.platformParams.welcome_text || '');
                     break;
 
                 case HELP_INTENT_NAME:
-                    this.text = Text.getText(mmApp.params.help_text || '');
+                    this.text = Text.getText(this.appContext?.platformParams.help_text || '');
                     break;
             }
 
             this.action(intent as string);
         }
-        if (this.tts === null && (mmApp.appType === T_ALISA || mmApp.appType === T_MARUSIA)) {
+        if (
+            this.tts === null &&
+            (this.appContext?.appType === T_ALISA || this.appContext?.appType === T_MARUSIA)
+        ) {
             this.tts = this.text;
         }
     }

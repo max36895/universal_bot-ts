@@ -41,5 +41,6 @@ export * from './types/TelegramCard';
 export * from './types/TemplateCardTypes';
 export * from './types/ViberCard';
 export * from './types/VkCard';
+export * from './types/MaxAppCard';
 
 export * from './Card';

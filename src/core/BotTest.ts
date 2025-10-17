@@ -4,7 +4,6 @@
  *
  * @module core/BotTest
  */
-import { mmApp, T_ALISA, T_MARUSIA, T_TELEGRAM, T_USER_APP, T_VIBER, T_VK } from '../mmApp';
 import { TemplateTypeModel } from '../platforms';
 import { stdin } from '../utils/standard/util';
 import {
@@ -13,8 +12,20 @@ import {
     vkConfig,
     telegramConfig,
     viberConfig,
+    maxAppConfig,
+    smartAppConfig,
 } from '../platforms/skillsTemplateConfig';
 import { Bot } from './Bot';
+import {
+    T_ALISA,
+    T_MARUSIA,
+    T_TELEGRAM,
+    T_USER_APP,
+    T_VIBER,
+    T_VK,
+    T_MAXAPP,
+    T_SMARTAPP,
+} from './AppContext';
 import { IUserData } from './../controller/BotController';
 
 /**
@@ -124,6 +135,7 @@ export class BotTest extends Bot {
     }: IBotTestParams = {}): Promise<void> {
         let count: number = 0;
         let state: string | IUserData = {};
+        let isEnd = false;
         do {
             let query = '';
             if (count === 0) {
@@ -132,6 +144,7 @@ export class BotTest extends Bot {
             } else {
                 query = await stdin();
                 if (query === 'exit') {
+                    isEnd = true;
                     break;
                 }
             }
@@ -155,7 +168,7 @@ export class BotTest extends Bot {
                 );
             }
 
-            switch (mmApp.appType) {
+            switch (this.appType) {
                 case T_ALISA:
                     if (result.response.text) {
                         result = result.response.text;
@@ -175,6 +188,7 @@ export class BotTest extends Bot {
                 console.log(`Время выполнения: ${endTime}\n`);
             }
             if (this._botController.isEnd) {
+                isEnd = true;
                 break;
             }
             console.log('Вы: > ');
@@ -182,7 +196,7 @@ export class BotTest extends Bot {
             this._botController.text = this._botController.tts = '';
             state = this._botController.userData as IUserData;
             count++;
-        } while (true);
+        } while (!isEnd);
     }
 
     /**
@@ -208,7 +222,7 @@ export class BotTest extends Bot {
          */
         let content: object = {};
         const userId: string = 'user_local_test';
-        switch (mmApp.appType) {
+        switch (this.appType) {
             case T_ALISA:
                 content = alisaConfig(query, userId, count, state);
                 break;
@@ -230,6 +244,16 @@ export class BotTest extends Bot {
             case T_VIBER:
                 this._botController.isSend = false;
                 content = viberConfig(query, userId);
+                break;
+
+            case T_MAXAPP:
+                this._botController.isSend = false;
+                content = maxAppConfig(query, userId, count);
+                break;
+
+            case T_SMARTAPP:
+                this._botController.isSend = false;
+                content = smartAppConfig(query, userId, count);
                 break;
 
             case T_USER_APP:

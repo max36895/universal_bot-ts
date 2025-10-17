@@ -1,11 +1,12 @@
-import { mmApp } from '../mmApp';
 import { VkRequest } from './VkRequest';
 import {
     IMarusiaApiAudioUpdateLink,
     IMarusiaApiCreateAudio,
     IMarusiaApiPictureUpdateLink,
+    IMarusiaApiRemove,
     IMarusiaApiSavePicture,
 } from './interfaces';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Класс для взаимодействия с API голосового помощника Маруся
@@ -61,10 +62,10 @@ export class MarusiaRequest extends VkRequest {
     /**
      * Создает экземпляр класса для работы с API Маруси
      */
-    public constructor() {
-        super();
-        if (mmApp.params.marusia_token) {
-            this.initToken(mmApp.params.marusia_token);
+    public constructor(appContext: AppContext) {
+        super(appContext);
+        if (appContext.platformParams.marusia_token) {
+            this.initToken(appContext.platformParams.marusia_token);
         }
     }
 
@@ -138,6 +139,19 @@ export class MarusiaRequest extends VkRequest {
             hash,
         };
         return await this.call<IMarusiaApiSavePicture>('marusia.savePicture');
+    }
+
+    /**
+     * Удаляет загруженное изображение в библиотеке Маруси
+     * @param id Идентификатор загруженного изображения
+     *
+     * @returns {Promise<IMarusiaApiRemove | null>} Результат удаления или null при ошибке
+     */
+    public async marusiaDeletePicture(id: string): Promise<IMarusiaApiRemove | null> {
+        this._request.post = {
+            id,
+        };
+        return await this.call<IMarusiaApiRemove>('marusia.deletePicture');
     }
 
     /**
@@ -232,12 +246,25 @@ export class MarusiaRequest extends VkRequest {
     }
 
     /**
+     * Удаляет загруженный аудиофайл в библиотеке Маруси
+     * @param id Идентификатор загруженного аудиофайла
+     *
+     * @returns {Promise<IMarusiaApiRemove | null>} Результат удаления или null при ошибке
+     */
+    public async marusiaDeleteAudio(id: string): Promise<IMarusiaApiRemove | null> {
+        this._request.post = {
+            id,
+        };
+        return await this.call<IMarusiaApiRemove>('marusia.deleteAudio');
+    }
+
+    /**
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      * @private
      */
     protected _log(error: string): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        mmApp.saveLog('MarusiaApi.log', error);
+        this._appContext.saveLog('MarusiaApi.log', error);
     }
 }

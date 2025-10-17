@@ -5,6 +5,7 @@ import {
     TSberSmartAppTextColor,
     TSberSmartAppTypeface,
 } from '../../platforms/interfaces';
+import { AppContext } from '../../core/AppContext';
 
 /**
  * @interface IImageParams
@@ -174,7 +175,12 @@ export interface IImageParams {
     [name: string]: any;
 }
 
-export function initButton(button: TButton, buttonInst: Buttons) {
+/**
+ * Инициализация кнопки.
+ * @param button
+ * @param buttonInst
+ */
+export function initButton(button: TButton, buttonInst: Buttons): void {
     if (typeof button === 'string') {
         buttonInst.addBtn(button);
     } else {
@@ -332,6 +338,7 @@ export class Image {
      * Конструктор класса Image.
      * Инициализирует все свойства значениями по умолчанию.
      *
+     * @param {AppContext} appContext - Контекст приложения
      * @param {string | null} image - Путь к изображению или токен
      * @param {string} title - Заголовок изображения
      * @param {string} [desc=' '] - Описание изображения
@@ -350,12 +357,13 @@ export class Image {
      * ```
      */
     public constructor(
+        appContext: AppContext,
         image: string | null = null,
         title: string = '',
         desc: string = ' ',
         button: TButton | null = null,
     ) {
-        this.button = new Buttons();
+        this.button = new Buttons(appContext);
         this.title = title;
         this.desc = desc;
         this.imageToken = null;

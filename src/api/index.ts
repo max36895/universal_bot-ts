@@ -22,3 +22,4 @@ export * from './YandexImageRequest';
 export * from './YandexRequest';
 export * from './YandexSoundRequest';
 export * from './YandexSpeechKit';
+export * from './MaxRequest';

@@ -12,11 +12,11 @@
 
 import { DbControllerModel } from './DbControllerModel';
 import { Sql } from './Sql';
-import { mmApp } from '../../mmApp';
 import { IQueryData, QueryData } from './QueryData';
 import { IModelRes, TQueryCb } from '../interface';
 import { Text } from '../../utils/standard/Text';
 import { Db, Document, Filter, OptionalId } from 'mongodb';
+import { AppContext } from '../../core/AppContext';
 
 /**
  * Контроллер для работы с данными в MongoDB
@@ -43,15 +43,15 @@ import { Db, Document, Filter, OptionalId } from 'mongodb';
 export class DbControllerMongoDb extends DbControllerModel {
     /**
      * Подключение к базе данных MongoDB
-     * Инициализируется только если mmApp.isSaveDb равно true
+     * Инициализируется только если appContext.isSaveDb равно true
      *
      * @private
      */
     private _db: Sql | null;
 
-    constructor() {
-        super();
-        if (mmApp.isSaveDb) {
+    constructor(appContext: AppContext) {
+        super(appContext);
+        if (appContext?.isSaveDb) {
             this._db = new Sql();
         } else {
             this._db = null;

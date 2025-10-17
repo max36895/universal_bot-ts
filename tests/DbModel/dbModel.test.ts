@@ -1,4 +1,4 @@
-import { mmApp, UsersData, isFile, unlink } from '../../src';
+import { AppContext, UsersData, isFile, unlink } from '../../src';
 
 interface IData {
     userId?: string;
@@ -8,14 +8,15 @@ interface IData {
 
 const FILE_NAME = 'UsersData.json';
 const MONGO_TIMEOUT = 3000; // 3 секунды для операций с MongoDB
+const appContext = new AppContext();
 
 describe('Db file connect', () => {
     let data: any;
-    const userData = new UsersData();
+    const userData = new UsersData(appContext);
 
     beforeEach(() => {
-        mmApp.params.utm_text = '';
-        mmApp.config.json = __dirname;
+        appContext.platformParams.utm_text = '';
+        appContext.appConfig.json = __dirname;
         data = {
             userId1: {
                 userId: 'userId1',
@@ -46,7 +47,7 @@ describe('Db file connect', () => {
                 },
             },
         };
-        mmApp.saveJson(FILE_NAME, data);
+        appContext.saveJson(FILE_NAME, data);
     });
 
     it('Where string', async () => {
@@ -174,8 +175,8 @@ describe('Db is MongoDb', () => {
     let isConnected: boolean;
 
     beforeEach(async () => {
-        mmApp.setIsSaveDb(true);
-        mmApp.setConfig({
+        appContext.setIsSaveDb(true);
+        appContext.setAppConfig({
             db: {
                 host: 'mongodb://127.0.0.1:27017/',
                 database: 'test',
@@ -187,14 +188,14 @@ describe('Db is MongoDb', () => {
                 },
             },
         });
-        usersData = new UsersData();
+        usersData = new UsersData(appContext);
     }, MONGO_TIMEOUT);
 
     afterEach(async () => {
         if (usersData) {
             await usersData.destroy();
         }
-        mmApp.setIsSaveDb(false);
+        appContext.setIsSaveDb(false);
     }, MONGO_TIMEOUT);
 
     it(

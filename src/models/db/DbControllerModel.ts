@@ -1,16 +1,3 @@
-/**
- * Модуль базового контроллера для работы с данными
- *
- * Предоставляет абстрактный класс для:
- * - Управления подключением к базе данных
- * - Выполнения CRUD операций
- * - Валидации данных
- * - Конфигурации моделей
- *
- * @module models/db/DbControllerModel
- */
-
-import { IAppDB, mmApp } from '../../mmApp';
 import { IQueryData, QueryData } from './QueryData';
 import {
     IModelRes,
@@ -20,6 +7,7 @@ import {
     IDbControllerResult,
     TQueryCb,
 } from '../interface';
+import { AppContext, IAppDB } from '../../core/AppContext';
 
 /**
  * Абстрактный класс для создания контроллеров баз данных
@@ -85,6 +73,11 @@ export abstract class DbControllerModel implements IDbControllerModel {
     protected _primaryKeyName: TKey;
 
     /**
+     * Контекст приложения
+     */
+    protected _appContext: AppContext | undefined;
+
+    /**
      * Создает новый экземпляр контроллера
      * Инициализирует базовые параметры
      *
@@ -93,11 +86,20 @@ export abstract class DbControllerModel implements IDbControllerModel {
      * const controller = new CustomDbController();
      * ```
      */
-    protected constructor() {
+    protected constructor(appContext?: AppContext) {
         this._tableName = '';
         this._primaryKeyName = 'id';
         this._rules = [];
-        this._connectConfig = mmApp.config.db;
+        this._connectConfig = appContext?.appConfig.db;
+        this._appContext = appContext;
+    }
+
+    /**
+     * Устанавливает контекст приложения
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext): void {
+        this._appContext = appContext;
     }
 
     /**

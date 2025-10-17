@@ -466,11 +466,11 @@ export interface ISberSmartAppRequestPayload {
     /**
      * Результат оценки пользователя
      */
-    rating: ISberRating;
+    rating?: ISberRating;
     /**
      * Статут оценки
      */
-    status_code: ISberRatingStatusCode;
+    status_code?: ISberRatingStatusCode;
 }
 
 /**

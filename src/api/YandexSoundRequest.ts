@@ -1,5 +1,4 @@
 import { YandexRequest } from './YandexRequest';
-import { mmApp } from '../mmApp';
 import { Request } from './request/Request';
 import {
     IYandexCheckOutPlace,
@@ -9,6 +8,7 @@ import {
     IYandexRequestDownloadSoundsRequest,
     IYandexSoundsCheckOutPlaceRequest,
 } from './interfaces';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Класс, отвечающий за загрузку аудиофайлов в навык Алисы
@@ -32,12 +32,17 @@ export class YandexSoundRequest extends YandexRequest {
      * Создает экземпляр класса для работы с аудиофайлами в навыке Алисы
      * @param oauth Авторизационный токен для загрузки аудиофайлов
      * @param skillId Идентификатор навыка
+     * @param appContext Контекст приложения
      * @see https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/ Документация по загрузке ресурсов
      * @see https://oauth.yandex.ru/verification_code Получение OAuth-токена
      */
-    constructor(oauth: string | null = null, skillId: string | null = null) {
-        super(oauth);
-        this.skillId = skillId || mmApp.params.app_id || null;
+    constructor(
+        oauth: string | null = null,
+        skillId: string | null = null,
+        appContext: AppContext,
+    ) {
+        super(oauth, appContext);
+        this.skillId = skillId || appContext.platformParams.app_id || null;
         this._request.url = this.STANDARD_URL;
     }
 
@@ -86,7 +91,7 @@ export class YandexSoundRequest extends YandexRequest {
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
             const query = await this.call<IYandexRequestDownloadSoundRequest>();
-            if (query && query.sound.id !== 'undefined') {
+            if (query && typeof query.sound.id !== 'undefined') {
                 return query.sound;
             } else {
                 this._log(

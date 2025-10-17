@@ -1,7 +1,7 @@
 import { Request } from './request/Request';
-import { mmApp } from '../mmApp';
 import { ITelegramParams, ITelegramResult, TTelegramChatId } from './interfaces';
 import { isFile } from '../utils/standard/util';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Класс для взаимодействия с API Telegram
@@ -74,16 +74,22 @@ export class TelegramRequest {
     public token: string | null;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Создает экземпляр класса для работы с API Telegram
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
-    public constructor() {
-        this._request = new Request();
+    public constructor(appContext: AppContext) {
+        this._request = new Request(appContext);
         this._request.maxTimeQuery = 5500;
         this.token = null;
         this._error = null;
-        if (typeof mmApp.params.telegram_token !== 'undefined') {
-            this.initToken(mmApp.params.telegram_token);
+        this._appContext = appContext;
+        if (typeof appContext.platformParams.telegram_token !== 'undefined') {
+            this.initToken(appContext.platformParams.telegram_token);
         }
     }
 
@@ -101,7 +107,7 @@ export class TelegramRequest {
      * @private
      */
     protected _getUrl(): string {
-        return `${this.API_ENDPOINT}${mmApp.params.telegram_token}/`;
+        return `${this.API_ENDPOINT}${this._appContext.platformParams.telegram_token}/`;
     }
 
     /**
@@ -111,8 +117,11 @@ export class TelegramRequest {
      * @private
      */
     protected _initPostFile(type: string, file: string): void {
+        if (!this._request.post) {
+            this._request.post = {};
+        }
         if (isFile(file)) {
-            this._request.post[type] = Request.getAttachFile(file);
+            this._request.post[type] = this._request.getAttachFile(file);
         } else {
             this._request.post[type] = file;
         }
@@ -148,6 +157,25 @@ export class TelegramRequest {
             this._log('Не указан telegram токен!');
         }
         return null;
+    }
+
+    /**
+     * Санитизировать текст сообщения
+     * @param text
+     * @param parseMode
+     * @private
+     */
+    private sanitizeTelegramMessage(text: string, parseMode?: string): string {
+        if (parseMode === 'HTML') {
+            // Экранирование HTML сущностей
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        return text;
     }
 
     /**
@@ -211,9 +239,10 @@ export class TelegramRequest {
         message: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
+        const safeMessage = this.sanitizeTelegramMessage(message, params?.parse_mode);
         this._request.post = {
             chat_id: chatId,
-            text: message,
+            text: safeMessage,
         };
         if (params) {
             this._request.post = { ...params, ...this._request.post };
@@ -415,6 +444,6 @@ export class TelegramRequest {
      */
     protected _log(error: string = ''): void {
         error = `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        mmApp.saveLog('telegramApi.log', error);
+        this._appContext.saveLog('telegramApi.log', error);
     }
 }

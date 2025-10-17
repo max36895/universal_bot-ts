@@ -6,6 +6,7 @@
  */
 import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
+import { AppContext, THttpClient } from '../../core';
 
 /**
  * Класс для отправки HTTP-запросов.
@@ -85,12 +86,21 @@ export class Request {
 
     /** Таймер для отмены запроса */
     private _setTimeOut: NodeJS.Timeout | null;
+    /**
+     * Понимает что возвращается бинарный ответ
+     */
+    public isBinaryResponse: boolean = false;
+
+    /**
+     * Контекст приложения
+     */
+    private _appContext?: AppContext;
 
     /**
      * Создает новый экземпляр Request.
      * Инициализирует все поля значениями по умолчанию
      */
-    public constructor() {
+    public constructor(appContext: AppContext) {
         this.url = null;
         this.get = null;
         this.post = null;
@@ -103,6 +113,8 @@ export class Request {
         this.isConvertJson = true;
         this._error = null;
         this._setTimeOut = null;
+        this.isBinaryResponse = false;
+        this._appContext = appContext;
     }
 
     /**
@@ -150,6 +162,16 @@ export class Request {
     }
 
     /**
+     * Возвращает функцию для отправки запроса
+     */
+    private _getHttpClient(): THttpClient {
+        if (this._appContext?.httpClient) {
+            return this._appContext?.httpClient;
+        }
+        return fetch;
+    }
+
+    /**
      * Выполняет HTTP-запрос
      *
      * @returns {Promise<T|string|null>} Ответ сервера или null в случае ошибки
@@ -159,17 +181,20 @@ export class Request {
         if (this.url) {
             try {
                 this._clearTimeout();
-                const response = await fetch(this._getUrl(), this._getOptions());
+                const response = await this._getHttpClient()(this._getUrl(), this._getOptions());
                 this._clearTimeout();
                 if (response.ok) {
                     if (this.isConvertJson) {
                         return await response.json();
                     }
+                    if (this.isBinaryResponse) {
+                        return (await response.arrayBuffer()) as T;
+                    }
                     return await response.text();
                 }
                 this._error = 'Не удалось получить данные с ' + this.url;
             } catch (e) {
-                this._error = (e as DOMException).message;
+                this._error = e instanceof Error ? e.message : String(e);
             }
         } else {
             this._error = 'Не указан url!';
@@ -178,7 +203,7 @@ export class Request {
     }
 
     /**
-     * Формирует параметры для fetch запроса
+     * Формирует параметры для http запроса
      *
      * @returns {RequestInit|undefined} Параметры запроса
      * @private
@@ -193,21 +218,31 @@ export class Request {
             options.signal = signal;
         }
 
-        let post: object | null = null;
+        let post: BodyInit | null = null;
         if (this.attach) {
             if (isFile(this.attach)) {
-                post = Request.getAttachFile(this.attach, this.attachName);
+                const formData = this.getAttachFile(this.attach, this.attachName);
+                if (!formData) {
+                    this._error = `Не удалось прочитать файл: ${this.attach}`;
+                    return;
+                }
+                // Добавляем дополнительные поля из this.post в FormData
+                if (this.post && typeof this.post === 'object') {
+                    for (const [key, value] of Object.entries(this.post)) {
+                        formData.append(key, String(value));
+                    }
+                }
+                post = formData;
             } else {
                 this._error = `Не удалось найти файл: ${this.attach}`;
                 return;
             }
-        }
-        if (this.post) {
-            post = { ...post, ...this.post };
+        } else if (this.post) {
+            post = JSON.stringify(this.post);
         }
 
         if (post) {
-            options.body = JSON.stringify(post);
+            options.body = post;
         }
 
         if (this.header) {
@@ -228,7 +263,7 @@ export class Request {
      * @param {string} [fileName] - Имя файла
      * @returns {FormData|null} FormData с файлом или null в случае ошибки
      */
-    public static getAttachFile(filePath: string, fileName?: string): FormData | null {
+    public getAttachFile(filePath: string, fileName?: string): FormData | null {
         try {
             const formData = new FormData();
             const fileResult = fread(filePath);
@@ -238,7 +273,12 @@ export class Request {
                 return formData;
             }
         } catch (e) {
-            console.error('Ошибка при чтении файла:', e);
+            if (this._appContext?.logError) {
+                this._appContext?.logError(
+                    'Ошибка при чтении файла:',
+                    e as Record<string, unknown>,
+                );
+            }
         }
         return null;
     }

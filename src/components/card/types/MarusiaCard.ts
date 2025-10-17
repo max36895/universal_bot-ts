@@ -111,7 +111,7 @@ export class MarusiaCard extends TemplateCardTypes {
             }
             if (!image.imageToken) {
                 if (image.imageDir) {
-                    const mImage = new ImageTokens();
+                    const mImage = new ImageTokens(this._appContext);
                     mImage.type = ImageTokens.T_MARUSIA;
                     mImage.path = image.imageDir;
                     image.imageToken = await mImage.getToken();
@@ -184,7 +184,7 @@ export class MarusiaCard extends TemplateCardTypes {
             if (isOne) {
                 if (!this.images[0].imageToken) {
                     if (this.images[0].imageDir) {
-                        const mImage = new ImageTokens();
+                        const mImage = new ImageTokens(this._appContext);
                         mImage.type = ImageTokens.T_MARUSIA;
                         mImage.path = this.images[0].imageDir;
                         this.images[0].imageToken = await mImage.getToken();

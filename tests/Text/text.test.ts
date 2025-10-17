@@ -17,6 +17,24 @@ describe('Text', () => {
         expect('testing te').toEqual(Text.resize('testing te', 20, true));
     });
 
+    it('isUrl', () => {
+        const url = [
+            'https://google.com',
+            'http://google.com',
+            'https://google.com/',
+            'http://google.com/',
+            'https://google.com/path',
+            'http://google.com/path',
+        ];
+        const notUrl = ['google.com', 'test', 'text.my', 'test@tel.com'];
+        url.forEach((item) => {
+            expect(Text.isUrl(item)).toBe(true);
+        });
+        notUrl.forEach((item) => {
+            expect(Text.isUrl(item)).toBe(false);
+        });
+    });
+
     it('Is say true', () => {
         expect(Text.isSayTrue('конечно да')).toBe(true);
         expect(Text.isSayTrue('наверное да')).toBe(true);
@@ -78,5 +96,50 @@ describe('Text', () => {
         expect(Text.getEnding(21, ['яблоко', 'яблока', 'яблок'])).toEqual('яблоко');
         expect(Text.getEnding(22, ['яблоко', 'яблока', 'яблок'])).toEqual('яблока');
         expect(Text.getEnding(29, ['яблоко', 'яблока', 'яблок'])).toEqual('яблок');
+    });
+
+    it('textSimilarity', () => {
+        expect(Text.textSimilarity('test', 'test', 80)).toEqual({
+            percent: 100,
+            index: 0,
+            status: true,
+            text: 'test',
+        });
+        expect(Text.textSimilarity('test', 'test1', 80)).toEqual({
+            percent: 88.88888888888889,
+            index: 0,
+            status: true,
+            text: 'test1',
+        });
+        expect(Text.textSimilarity('test', 'test12', 80)).toEqual({
+            percent: 80,
+            index: 0,
+            status: true,
+            text: 'test12',
+        });
+        expect(Text.textSimilarity('test', 'test123', 80)).toEqual({
+            percent: 72.72727272727273,
+            index: 0,
+            status: false,
+            text: 'test123',
+        });
+        expect(Text.textSimilarity('test', 'e', 80)).toEqual({
+            percent: 40,
+            index: 0,
+            status: false,
+            text: 'e',
+        });
+        expect(Text.textSimilarity('test', 't', 80)).toEqual({
+            percent: 40,
+            index: 0,
+            status: false,
+            text: 't',
+        });
+        expect(Text.textSimilarity('test', 'jump123', 80)).toEqual({
+            percent: 0,
+            index: null,
+            status: false,
+            text: null,
+        });
     });
 });

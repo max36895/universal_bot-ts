@@ -11,7 +11,6 @@ import {
     IAlisaWebhookResponse,
 } from './interfaces';
 import { BotController } from '../controller';
-import { mmApp } from '../mmApp';
 import { Text } from '../utils/standard/Text';
 
 /**
@@ -136,7 +135,7 @@ export class Alisa extends TemplateTypeModel {
         if (this._session) {
             let userId: string | null = null;
             this._isState = false;
-            if (mmApp.params.y_isAuthUser) {
+            if (this.appContext.platformParams.y_isAuthUser) {
                 if (
                     typeof this._session.user !== 'undefined' &&
                     typeof this._session.user.user_id !== 'undefined'
@@ -158,7 +157,7 @@ export class Alisa extends TemplateTypeModel {
                 }
             }
 
-            mmApp.params.user_id = this.controller.userId = userId;
+            this.appContext.platformParams.user_id = this.controller.userId = userId;
         }
     }
 
@@ -209,7 +208,7 @@ export class Alisa extends TemplateTypeModel {
                 this._setState(content.state);
             }
 
-            mmApp.params.app_id = this._session.skill_id;
+            this.appContext.platformParams.app_id = this._session.skill_id;
             this.controller.isScreen =
                 typeof this.controller.userMeta.interfaces.screen !== 'undefined';
             /*

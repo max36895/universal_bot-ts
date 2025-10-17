@@ -1,5 +1,4 @@
 import { YandexRequest } from './YandexRequest';
-import { mmApp } from '../mmApp';
 import { Request } from './request/Request';
 import {
     IYandexCheckOutPlace,
@@ -9,6 +8,7 @@ import {
     IYandexRequestDownloadImageRequest,
     IYandexRequestDownloadImagesRequest,
 } from './interfaces';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Класс отвечающий за загрузку изображений в навык Алисы.
@@ -32,12 +32,17 @@ export class YandexImageRequest extends YandexRequest {
      * Создает экземпляр класса для работы с изображениями в навыке Алисы
      * @param oauth Авторизационный токен для загрузки изображений
      * @param skillId Идентификатор навыка
+     * @param appContext Контекст приложения
      * @see https://tech.yandex.ru/dialogs/alice/doc/resource-upload-docpage/ Документация по загрузке ресурсов
      * @see https://oauth.yandex.ru/verification_code Получение OAuth-токена
      */
-    constructor(oauth: string | null = null, skillId: string | null = null) {
-        super(oauth);
-        this.skillId = skillId || mmApp.params.app_id || null;
+    constructor(
+        oauth: string | null = null,
+        skillId: string | null = null,
+        appContext: AppContext,
+    ) {
+        super(oauth, appContext);
+        this.skillId = skillId || appContext.platformParams.app_id || null;
         this._request.url = this.STANDARD_URL;
     }
 
@@ -178,7 +183,9 @@ export class YandexImageRequest extends YandexRequest {
                     images.map(async (image) => {
                         try {
                             await this.deleteImage(image.id);
-                            return new Promise((resolve) => setTimeout(() => resolve(true), 100));
+                            // Добавить задержку между запросами
+                            await new Promise((resolve) => setTimeout(resolve, 200));
+                            return true;
                         } catch (e) {
                             this._log(`Ошибка при удалении изображения ${image.id}: ${e}`);
                             return false;
