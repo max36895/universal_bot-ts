@@ -6,14 +6,7 @@ const globals = require('globals');
 
 module.exports = [
     {
-        ignores: [
-            'node_modules/**',
-            'dist/**',
-            'coverage/**',
-            'doc/**',
-            'examples/**',
-            // добавьте сюда всё из вашего .eslintignore
-        ],
+        ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'doc/**', 'examples/**'],
     },
     {
         files: ['**/*.ts'],
