@@ -44,7 +44,7 @@ import { Image } from '../../image/Image';
  * };
  * ```
  */
-export interface IViberCard extends IViberButton {}
+export type IViberCard = IViberButton;
 
 /**
  * @class ViberCard

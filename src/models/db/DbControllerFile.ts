@@ -10,7 +10,6 @@
  */
 
 import { DbControllerModel } from './DbControllerModel';
-import { mmApp } from '../../mmApp';
 import { IQueryData, QueryData } from './QueryData';
 import { fread, getFileInfo } from '../../utils/standard/util';
 import { IModelRes, TQueryCb } from '../interface';
@@ -108,7 +107,7 @@ export class DbControllerFile extends DbControllerModel {
             if (idVal !== undefined) {
                 if (typeof data[idVal] !== 'undefined') {
                     data[idVal] = { ...data[idVal], ...update };
-                    mmApp.saveJson(`${this.tableName}.json`, data);
+                    this._appContext?.saveJson(`${this.tableName}.json`, data);
                 }
                 return true;
             }
@@ -136,7 +135,7 @@ export class DbControllerFile extends DbControllerModel {
             const idVal = insert[this.primaryKeyName as string];
             if (idVal) {
                 data[idVal] = insert;
-                mmApp.saveJson(`${this.tableName}.json`, data);
+                this._appContext?.saveJson(`${this.tableName}.json`, data);
                 return true;
             }
         }
@@ -164,7 +163,7 @@ export class DbControllerFile extends DbControllerModel {
             if (idVal !== undefined) {
                 if (typeof data[idVal] !== 'undefined') {
                     delete data[idVal];
-                    mmApp.saveJson(`${this.tableName}.json`, data);
+                    this._appContext?.saveJson(`${this.tableName}.json`, data);
                 }
                 return true;
             }
@@ -284,7 +283,7 @@ export class DbControllerFile extends DbControllerModel {
      * @returns Объект с данными из файла
      */
     public getFileData(): any {
-        const path = mmApp.config.json;
+        const path = this._appContext?.appConfig.json;
         const fileName = this.tableName;
         const file = `${path}/${fileName}.json`;
         const fileInfo = getFileInfo(file).data;

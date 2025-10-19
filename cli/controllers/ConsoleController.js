@@ -2,7 +2,7 @@
 const CreateController = require(__dirname + '/CreateController').create;
 const utils = require(__dirname + '/../utils').utils;
 
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 
 /**
  * Консольный скрипт, позволяющий создать пустой проект.
@@ -38,6 +38,7 @@ VK_CONFIRMATION_TOKEN=${create.params?.params?.vk_confirmation_token}
 VIBER_TOKEN=${create.params?.params?.viber_token}
 YANDEX_TOKEN=${create.params?.params?.yandex_token}
 MARUSIA_TOKEN=${create.params?.params?.marusia_token}
+MAX_TOKEN=${create.params?.params?.max_token}
 
 DB_HOST=${create.params?.config?.db?.host}
 DB_USER=${create.params?.config?.db?.user}
@@ -51,6 +52,7 @@ DB_NAME=${create.params?.config?.db?.database}`;
                     delete create.params?.params?.viber_token;
                     delete create.params?.params?.yandex_token;
                     delete create.params?.params?.marusia_token;
+                    delete create.params?.params?.max_token;
                 }
                 create.init(param.appName, type);
                 if (envContent) {
@@ -74,6 +76,7 @@ VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
 VIBER_TOKEN=your-viber-token
 YANDEX_TOKEN=your-alisa-token
 MARUSIA_TOKEN=your-marusia-token
+MAX_TOKEN=your-max-token
 
 DB_HOST=localhost
 DB_USER=user

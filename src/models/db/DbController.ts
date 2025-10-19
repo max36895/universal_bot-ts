@@ -11,11 +11,11 @@
  */
 
 import { DbControllerModel } from './DbControllerModel';
-import { mmApp } from '../../mmApp';
 import { IQueryData, QueryData } from './QueryData';
 import { IModelRes, IModelRules, IDbControllerResult, TKey, TQueryCb } from '../interface';
 import { DbControllerFile } from './DbControllerFile';
 import { DbControllerMongoDb } from './DbControllerMongoDb';
+import { AppContext } from '../../core/AppContext';
 
 /**
  * Контроллер для работы с данными
@@ -57,12 +57,12 @@ export class DbController extends DbControllerModel {
      * const controller = new DbController();
      * ```
      */
-    constructor() {
-        super();
-        if (mmApp.isSaveDb) {
-            this._controller = new DbControllerMongoDb();
+    constructor(appContext?: AppContext) {
+        super(appContext);
+        if (appContext?.isSaveDb) {
+            this._controller = new DbControllerMongoDb(appContext);
         } else {
-            this._controller = new DbControllerFile();
+            this._controller = new DbControllerFile(appContext);
         }
     }
 

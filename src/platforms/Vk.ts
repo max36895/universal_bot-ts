@@ -1,7 +1,6 @@
 import { TemplateTypeModel } from './TemplateTypeModel';
 import { BotController } from '../controller';
 import { IVkRequestContent, IVkRequestObject } from './interfaces';
-import { mmApp } from '../mmApp';
 import { VkRequest } from '../api/VkRequest';
 import { IVkParams } from '../api/interfaces';
 import { Buttons } from '../components/button';
@@ -86,19 +85,21 @@ export class Vk extends TemplateTypeModel {
             this.controller.requestObject = content;
             switch (content.type || null) {
                 case 'confirmation':
-                    this.sendInInit = mmApp.params.vk_confirmation_token;
+                    this.sendInInit = this.appContext.platformParams.vk_confirmation_token;
                     return true;
 
                 case 'message_new':
                     if (typeof content.object !== 'undefined') {
                         const object: IVkRequestObject = content.object;
                         this.controller.userId = object.message.from_id;
-                        mmApp.params.user_id = this.controller.userId;
+                        this.appContext.platformParams.user_id = this.controller.userId;
                         this.controller.userCommand = object.message.text.toLowerCase().trim();
                         this.controller.originalUserCommand = object.message.text.trim();
                         this.controller.messageId = object.message.id;
                         this.controller.payload = object.message.payload || null;
-                        const user = await new VkRequest().usersGet(this.controller.userId);
+                        const user = await new VkRequest(this.appContext).usersGet(
+                            this.controller.userId,
+                        );
                         if (user) {
                             const thisUser = {
                                 username: null,
@@ -147,7 +148,7 @@ export class Vk extends TemplateTypeModel {
                 const attach = await this.controller.sound.getSounds(this.controller.tts);
                 params.attachments = { ...attach, ...params.attachments };
             }
-            const vkApi = new VkRequest();
+            const vkApi = new VkRequest(this.appContext);
             await vkApi.messagesSend(
                 this.controller.userId as string,
                 this.controller.text,

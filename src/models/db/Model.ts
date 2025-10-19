@@ -10,7 +10,6 @@
  * @module models/db/Model
  */
 
-import { mmApp } from '../../mmApp';
 import {
     IModelRes,
     IModelRules,
@@ -22,6 +21,7 @@ import {
 import { IQueryData, QueryData } from './QueryData';
 import { DbController } from './DbController';
 import { ProxyUtils } from './ProxyUtils';
+import { AppContext } from '../../core/AppContext';
 
 /**
  * Абстрактный класс для создания моделей данных
@@ -115,6 +115,11 @@ export abstract class Model<TState extends TStateData> {
     public state: Partial<TState> = {};
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Определяет правила валидации для полей модели
      * Должен быть реализован в дочерних классах
      *
@@ -178,11 +183,12 @@ export abstract class Model<TState extends TStateData> {
      * const user = new UserModel();
      * ```
      */
-    protected constructor() {
-        if (mmApp.userDbController) {
-            this.dbController = mmApp.userDbController;
+    protected constructor(appContext: AppContext) {
+        this._appContext = appContext;
+        if (appContext?.userDbController) {
+            this.dbController = appContext.userDbController;
         } else {
-            this.dbController = new DbController();
+            this.dbController = new DbController(appContext);
         }
         this.dbController.tableName = this.tableName();
         this.dbController.setRules(this.rules());
@@ -424,14 +430,6 @@ export abstract class Model<TState extends TStateData> {
 
     /**
      * Выполняет произвольный запрос к базе данных
-     *
-     * @example
-     * ```typescript
-     * const result = await model.where(
-     *   { age: { $gt: 18 } },
-     *   false
-     * );
-     * ```
      *
      * @param where - Условия запроса
      * @param isOne - Флаг выборки одной записи

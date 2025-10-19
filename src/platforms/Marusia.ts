@@ -12,7 +12,6 @@ import {
     IMarusiaWebhookResponse,
 } from './interfaces';
 import { BotController } from '../controller';
-import { mmApp } from '../mmApp';
 import { Text } from '../utils/standard/Text';
 
 /**
@@ -173,13 +172,13 @@ export class Marusia extends TemplateTypeModel {
             this._session = content.session;
 
             this.controller.userId = this._session.user_id as string;
-            mmApp.params.user_id = this.controller.userId;
+            this.appContext.platformParams.user_id = this.controller.userId;
             this.controller.nlu.setNlu(content.request.nlu || null);
 
             this.controller.userMeta = content.meta || [];
             this.controller.messageId = this._session.message_id;
 
-            mmApp.params.app_id = this._session.skill_id;
+            this.appContext.platformParams.app_id = this._session.skill_id;
             this.controller.isScreen =
                 typeof this.controller.userMeta.interfaces.screen !== 'undefined';
             return true;

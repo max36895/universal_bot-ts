@@ -5,23 +5,27 @@ import {
     Card,
     IAlisaBigImage,
     IAlisaItemsList,
+    IMaxCard,
     IViberCard,
     IVkCard,
-    mmApp,
     T_ALISA,
+    T_MAXAPP,
     T_VIBER,
     T_VK,
     ViberButton,
+    AppContext,
 } from '../../src';
 import { IAlisaImageGallery } from '../../src/platforms/interfaces/IAlisa';
 
 const URL = 'https://test.ru';
 
+let appContext: AppContext;
 describe('Card test', () => {
     let defaultCard: Card;
     beforeEach(() => {
-        mmApp.params.utm_text = '';
-        defaultCard = new Card();
+        appContext = new AppContext();
+        appContext.platformParams.utm_text = '';
+        defaultCard = new Card(appContext);
         defaultCard.title = 'title';
         defaultCard.desc = 'desc';
         for (let i = 0; i < 3; i++) {
@@ -53,7 +57,7 @@ describe('Card test', () => {
                 },
             ],
         };
-        mmApp.appType = T_ALISA;
+        appContext.appType = T_ALISA;
         expect(await defaultCard.getCards()).toEqual(alisaCard);
 
         defaultCard.button.addBtn('1', URL);
@@ -80,7 +84,7 @@ describe('Card test', () => {
         };
         expect(await defaultCard.getCards()).toEqual(alisaCardOne);
 
-        defaultCard.button = new Buttons();
+        defaultCard.button = new Buttons(appContext);
         delete alisaCardOne.button;
         expect(await defaultCard.getCards()).toEqual(alisaCardOne);
 
@@ -133,6 +137,7 @@ describe('Card test', () => {
 
     it('Get Alisa gallery', async () => {
         defaultCard.isUsedGallery = true;
+        appContext.appType = T_ALISA;
         const alisaGallery: IAlisaImageGallery = {
             type: 'ImageGallery',
             items: [
@@ -172,7 +177,7 @@ describe('Card test', () => {
                 Image: '36895',
             },
         ];
-        mmApp.appType = T_VIBER;
+        appContext.appType = T_VIBER;
         expect(await defaultCard.getCards()).toEqual(viberCard);
 
         defaultCard.isOne = true;
@@ -182,7 +187,7 @@ describe('Card test', () => {
         viberCard[0].Text = '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>';
         viberCard[0].ActionType = ViberButton.T_REPLY;
         viberCard[0].ActionBody = '1';
-        const buttons = new Buttons();
+        const buttons = new Buttons(appContext);
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
         expect(await defaultCard.getCards()).toEqual(viberCard[0]);
@@ -214,16 +219,35 @@ describe('Card test', () => {
                 },
             ],
         };
-        mmApp.appType = T_VK;
+        appContext.appType = T_VK;
         expect(await defaultCard.getCards()).toEqual([]);
 
         defaultCard.isOne = true;
         expect(await defaultCard.getCards()).toEqual(['36895']);
 
         defaultCard.isOne = false;
-        const buttons = new Buttons();
+        const buttons = new Buttons(appContext);
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
         expect(await defaultCard.getCards()).toEqual(vkCard);
+    });
+
+    it('Get MAX card', async () => {
+        const maxCard: IMaxCard = {
+            type: 'image',
+            payload: {
+                token: '36895',
+            },
+        };
+        appContext.appType = T_MAXAPP;
+        defaultCard.isOne = true;
+        expect(await defaultCard.getCards()).toEqual(maxCard);
+
+        defaultCard.isOne = false;
+        delete maxCard.payload.token;
+        maxCard.payload.photos = ['36895', '36895', '36895'];
+        expect(await defaultCard.getCards()).toEqual(maxCard);
+        defaultCard.clear();
+        expect(await defaultCard.getCards()).toEqual([]);
     });
 });

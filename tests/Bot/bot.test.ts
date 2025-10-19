@@ -1,7 +1,6 @@
 import {
     Bot,
     BotController,
-    mmApp,
     UsersData,
     Telegram,
     Alisa,
@@ -9,6 +8,7 @@ import {
     Vk,
     SmartApp,
     Viber,
+    MaxApp,
     T_ALISA,
     T_TELEGRAM,
     T_MARUSIA,
@@ -18,15 +18,18 @@ import {
     T_USER_APP,
     TemplateTypeModel,
     IAlisaWebhookResponse,
+    T_MAXAPP,
+    IBotBotClassAndType,
 } from '../../src';
 import { Server } from 'http';
+import { AppContext } from '../../src/core/AppContext';
 
 class TestBotController extends BotController {
     constructor() {
         super();
     }
 
-    action(intentName: string | null, isCommand?: boolean) {
+    action(intentName: string | null, isCommand?: boolean): void {
         if (isCommand) {
             this.userData.cool = true;
             return;
@@ -49,12 +52,16 @@ class TestBotController extends BotController {
 }
 
 class TestBot extends Bot {
-    static getBotClassAndType(val: TemplateTypeModel | null = null) {
+    getBotClassAndType(val: TemplateTypeModel | null = null): IBotBotClassAndType {
         return super._getBotClassAndType(val);
+    }
+
+    public get appContext(): AppContext {
+        return this._appContext;
     }
 }
 
-function getContent(query: string, count = 0) {
+function getContent(query: string, count = 0): string {
     return JSON.stringify({
         meta: {
             locale: 'ru-Ru',
@@ -93,10 +100,10 @@ describe('Bot', () => {
     let vk: Vk;
 
     beforeEach(() => {
-        botController = new TestBotController();
-        usersData = new UsersData();
-        vk = new Vk();
         bot = new TestBot();
+        botController = new TestBotController();
+        usersData = new UsersData(bot.appContext);
+        vk = new Vk(bot.appContext);
     });
 
     afterEach(() => {
@@ -106,8 +113,8 @@ describe('Bot', () => {
     describe('initParams', () => {
         it('should set config if config is provided', () => {
             const params = { intents: [{ name: 'greeting', slots: ['привет', 'здравствуйте'] }] };
-            bot.initParams(params);
-            expect(mmApp.params).toEqual({
+            bot.initPlatformParams(params);
+            expect(bot.appContext.platformParams).toEqual({
                 ...params,
                 marusia_token: null,
                 telegram_token: null,
@@ -119,6 +126,7 @@ describe('Bot', () => {
                 vk_api_version: null,
                 vk_confirmation_token: null,
                 vk_token: null,
+                max_token: null,
                 welcome_text: 'Текст приветствия',
                 y_isAuthUser: false,
                 yandex_token: null,
@@ -128,11 +136,11 @@ describe('Bot', () => {
         });
     });
 
-    describe('initConfig', () => {
+    describe('initAppConfig', () => {
         it('should set params if params are provided', () => {
             const config = { isLocalStorage: true, error_log: './logs' };
-            bot.initConfig(config);
-            expect(mmApp.config).toEqual({
+            bot.initAppConfig(config);
+            expect(bot.appContext.appConfig).toEqual({
                 ...config,
                 json: '/../../json',
                 db: {
@@ -147,50 +155,57 @@ describe('Bot', () => {
 
     describe('_getBotClassAndType', () => {
         it('should return correct botClass and type for T_ALISA', () => {
-            mmApp.appType = T_ALISA;
-            const result = TestBot.getBotClassAndType();
+            bot.appType = T_ALISA;
+            const result = bot.getBotClassAndType();
             expect(result.botClass).toBeInstanceOf(Alisa);
             expect(result.type).toBe(UsersData.T_ALISA);
         });
 
         it('should return correct botClass and type for T_VK', () => {
-            mmApp.appType = T_VK;
-            const result = TestBot.getBotClassAndType();
+            bot.appType = T_VK;
+            const result = bot.getBotClassAndType();
             expect(result.botClass).toBeInstanceOf(Vk);
             expect(result.type).toBe(UsersData.T_VK);
         });
 
         it('should return correct botClass and type for T_TELEGRAM', () => {
-            mmApp.appType = T_TELEGRAM;
-            const result = TestBot.getBotClassAndType();
+            bot.appType = T_TELEGRAM;
+            const result = bot.getBotClassAndType();
             expect(result.botClass).toBeInstanceOf(Telegram);
             expect(result.type).toBe(UsersData.T_TELEGRAM);
         });
 
         it('should return correct botClass and type for T_VIBER', () => {
-            mmApp.appType = T_VIBER;
-            const result = TestBot.getBotClassAndType();
+            bot.appType = T_VIBER;
+            const result = bot.getBotClassAndType();
             expect(result.botClass).toBeInstanceOf(Viber);
             expect(result.type).toBe(UsersData.T_VIBER);
         });
 
         it('should return correct botClass and type for T_MARUSIA', () => {
-            mmApp.appType = T_MARUSIA;
-            const result = TestBot.getBotClassAndType();
+            bot.appType = T_MARUSIA;
+            const result = bot.getBotClassAndType();
             expect(result.botClass).toBeInstanceOf(Marusia);
             expect(result.type).toBe(UsersData.T_MARUSIA);
         });
 
         it('should return correct botClass and type for T_SMARTAPP', () => {
-            mmApp.appType = T_SMARTAPP;
-            const result = TestBot.getBotClassAndType();
+            bot.appType = T_SMARTAPP;
+            const result = bot.getBotClassAndType();
             expect(result.botClass).toBeInstanceOf(SmartApp);
             expect(result.type).toBe(UsersData.T_SMART_APP);
         });
 
+        it('should return correct botClass and type for T_MAX', () => {
+            bot.appType = T_MAXAPP;
+            const result = bot.getBotClassAndType();
+            expect(result.botClass).toBeInstanceOf(MaxApp);
+            expect(result.type).toBe(UsersData.T_MAX_APP);
+        });
+
         it('should return correct botClass and type for T_USER_APP', () => {
-            mmApp.appType = T_USER_APP;
-            const result = TestBot.getBotClassAndType(vk);
+            bot.appType = T_USER_APP;
+            const result = bot.getBotClassAndType(vk);
             expect(result.botClass).toBe(vk);
             expect(result.type).toBe(UsersData.T_USER_APP);
         });
@@ -205,8 +220,8 @@ describe('Bot', () => {
 
         it('should return result if botClass is set and init is successful', async () => {
             bot.initBotController(botController);
-            mmApp.appType = T_USER_APP;
-            const botClass = new Alisa();
+            bot.appType = T_USER_APP;
+            const botClass = new Alisa(bot.appContext);
             const result = {
                 version: '1.0',
                 response: {
@@ -229,8 +244,8 @@ describe('Bot', () => {
 
         it('should throw error if botClass is set and init is unsuccessful', async () => {
             bot.initBotController(botController);
-            mmApp.appType = T_USER_APP;
-            const botClass = new Alisa();
+            bot.appType = T_USER_APP;
+            const botClass = new Alisa(bot.appContext);
             const error = 'Alisa:init(): Отправлен пустой запрос!';
             botClass.init = jest.fn().mockResolvedValue(false);
             botClass.getError = jest.fn().mockReturnValue(error);
@@ -239,15 +254,15 @@ describe('Bot', () => {
 
         it('added user command', async () => {
             bot.initBotController(botController);
-            mmApp.appType = T_USER_APP;
-            const botClass = new Alisa();
+            bot.appType = T_USER_APP;
+            const botClass = new Alisa(bot.appContext);
             jest.spyOn(botClass, 'setLocalStorage').mockResolvedValue(undefined);
             jest.spyOn(botClass, 'getError').mockReturnValue(null);
 
             jest.spyOn(usersData, 'whereOne').mockResolvedValue(Promise.resolve(true));
             jest.spyOn(usersData, 'save').mockResolvedValue(Promise.resolve(true));
             jest.spyOn(usersData, 'update').mockResolvedValue(Promise.resolve(true));
-            mmApp.addCommand('cool', ['cool'], (_, botC) => {
+            bot.addCommand('cool', ['cool'], (_, botC) => {
                 botC.text = 'cool';
                 botC.userData.cool = true;
             });
@@ -258,19 +273,19 @@ describe('Bot', () => {
             // Убеждаемся что пользовательские данные скинулись, так как они хранятся в сессии.
             expect(botController.userData.cool).toBe(undefined);
 
-            mmApp.removeCommand('cool');
+            bot.removeCommand('cool');
             res = (await bot.run(botClass)) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('test');
         });
 
         it('local store', async () => {
             bot.initBotController(botController);
-            mmApp.appType = T_USER_APP;
-            const botClass = new Alisa();
-            mmApp.setParams({
+            bot.appType = T_USER_APP;
+            const botClass = new Alisa(bot.appContext);
+            bot.initPlatformParams({
                 intents: [{ name: 'setStore', slots: ['сохранить'] }],
             });
-            mmApp.setConfig({ isLocalStorage: true });
+            bot.initAppConfig({ isLocalStorage: true });
             jest.spyOn(botClass, 'getError').mockReturnValue(null);
 
             jest.spyOn(usersData, 'whereOne').mockResolvedValue(Promise.resolve(true));
@@ -284,15 +299,15 @@ describe('Bot', () => {
 
         it('skill started', async () => {
             bot.initBotController(botController);
-            mmApp.appType = T_ALISA;
-            const botClass = new Alisa();
-            mmApp.setParams({
+            bot.appType = T_ALISA;
+            const botClass = new Alisa(bot.appContext);
+            bot.initPlatformParams({
                 intents: [
                     { name: 'btn', slots: ['кнопка'] },
                     { name: 'card', slots: ['карточка'] },
                 ],
             });
-            mmApp.setConfig({ isLocalStorage: true });
+            bot.initAppConfig({ isLocalStorage: true });
 
             bot.setContent(getContent('Привет'));
             expect(await bot.run(botClass)).toEqual({
@@ -305,7 +320,7 @@ describe('Bot', () => {
                 session_state: {},
                 version: '1.0',
             });
-            mmApp.setConfig({ isLocalStorage: false });
+            bot.initAppConfig({ isLocalStorage: false });
 
             bot.setContent(getContent('Привет'));
             expect(await bot.run(botClass)).toEqual({

@@ -1,7 +1,6 @@
 import { TemplateSoundTypes } from './TemplateSoundTypes';
 import { ISound } from '../interfaces';
-import { Text, isFile } from '../../../utils';
-import { mmApp } from '../../../mmApp';
+import { Text, isFile, unlink } from '../../../utils';
 import { TelegramRequest, TTelegramChatId, YandexSpeechKit } from '../../../api';
 import { SoundTokens } from '../../../models/SoundTokens';
 
@@ -33,7 +32,7 @@ import { SoundTokens } from '../../../models/SoundTokens';
  * const result = await telegramSound.getSounds([], 'Привет, это голосовое сообщение!');
  * ```
  */
-export class TelegramSound implements TemplateSoundTypes {
+export class TelegramSound extends TemplateSoundTypes {
     /**
      * Обрабатывает звуки и текст для отправки в Telegram
      *
@@ -81,13 +80,13 @@ export class TelegramSound implements TemplateSoundTypes {
                     if (sound.sounds && sound.key) {
                         let sText: string | null = Text.getText(sound.sounds);
                         if (isFile(sText) || Text.isUrl(sText)) {
-                            const sModel = new SoundTokens();
+                            const sModel = new SoundTokens(this._appContext);
                             sModel.type = SoundTokens.T_TELEGRAM;
                             sModel.path = sText;
                             sText = await sModel.getToken();
                         } else {
-                            await new TelegramRequest().sendAudio(
-                                mmApp.params.user_id as TTelegramChatId,
+                            await new TelegramRequest(this._appContext).sendAudio(
+                                this._appContext.platformParams.user_id as TTelegramChatId,
                                 sText,
                             );
                         }
@@ -100,13 +99,14 @@ export class TelegramSound implements TemplateSoundTypes {
             }
         }
         if (text) {
-            const speechKit = new YandexSpeechKit();
+            const speechKit = new YandexSpeechKit(null, this._appContext);
             const content = await speechKit.getTts(text);
             if (content) {
-                await new TelegramRequest().sendAudio(
-                    mmApp.params.user_id as TTelegramChatId,
-                    content,
+                await new TelegramRequest(this._appContext).sendAudio(
+                    this._appContext.platformParams.user_id as TTelegramChatId,
+                    content.fileName,
                 );
+                unlink(content.fileName);
             }
         }
         return data;

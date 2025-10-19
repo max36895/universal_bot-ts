@@ -4,23 +4,23 @@
 
 ### Требования к серверу
 
--   HTTPS с валидным SSL-сертификатом
--   Стабильное время ответа (рекомендуется < 3 секунд)
--   Поддержка webhook URL
--   Node.js 16+ и TypeScript 5+
+- HTTPS с валидным SSL-сертификатом
+- Стабильное время ответа (рекомендуется < 3 секунд)
+- Поддержка webhook URL
+- Node.js 16+ и TypeScript 5+
 
 ### Базовая настройка
 
 ```typescript
-import { mmApp, Bot, T_ALISA } from 'umbot';
+import { Bot, T_ALISA } from 'umbot';
 
 const bot = new Bot(T_ALISA);
-bot.initParams({
+bot.initPlatformParams({
     // Параметры платформы
     welcome_text: 'Привет!', // Текст приветствия
     help_text: 'Я умею...', // Текст помощи
 });
-bot.initConfig({
+bot.initAppConfig({
     // Общие параметры
     json: './data', // Директория для JSON данных
     error_log: './logs', // Директория для логов
@@ -34,9 +34,9 @@ bot.initTypeInGet(); // Установка типа платформы из get 
 
 ### Требования
 
--   Аккаунт разработчика в [Яндекс.Диалоги](https://dialogs.yandex.ru/developer)
--   HTTPS endpoint для webhook
--   Время ответа < 3 секунд
+- Аккаунт разработчика в [Яндекс.Диалоги](https://dialogs.yandex.ru/developer)
+- HTTPS endpoint для webhook
+- Время ответа < 3 секунд
 
 ### Настройка
 
@@ -45,7 +45,7 @@ bot.initTypeInGet(); // Установка типа платформы из get 
 3. Настройте параметры в коде:
 
 ```typescript
-mmApp.setParams({
+bot.setPlatformParams({
     yandex_token: 'YOUR_OAUTH_TOKEN',
     y_isAuthUser: true, // Для работы с авторизацией
 });
@@ -53,10 +53,10 @@ mmApp.setParams({
 
 ### Особенности
 
--   Поддержка авторизации пользователей
--   Локальное хранилище данных
--   Встроенная система озвучки текста
--   Поддержка карточек и галерей
+- Поддержка авторизации пользователей
+- Локальное хранилище данных
+- Встроенная система озвучки текста
+- Поддержка карточек и галерей
 
 ### Пример контроллера
 
@@ -89,9 +89,9 @@ class AlisaController extends BotController {
 
 ### Требования
 
--   Бот, созданный через [@BotFather](https://t.me/botfather)
--   HTTPS webhook URL
--   Поддержка Telegram Bot API
+- Бот, созданный через [@BotFather](https://t.me/botfather)
+- HTTPS webhook URL
+- Поддержка Telegram Bot API
 
 ### Настройка
 
@@ -100,17 +100,17 @@ class AlisaController extends BotController {
 3. Настройте параметры в коде:
 
 ```typescript
-mmApp.setParams({
+bot.setPlatformParams({
     telegram_token: 'YOUR_BOT_TOKEN',
 });
 ```
 
 ### Особенности
 
--   Богатый набор UI элементов
--   Поддержка файлов и медиа
--   Inline кнопки и клавиатура
--   Групповые чаты
+- Богатый набор UI элементов
+- Поддержка файлов и медиа
+- Inline кнопки и клавиатура
+- Групповые чаты
 
 ### Пример контроллера
 
@@ -136,9 +136,9 @@ class TelegramController extends BotController {
 
 ### Требования
 
--   Группа ВКонтакте
--   Права администратора группы
--   Включенные сообщения сообщества
+- Группа ВКонтакте
+- Права администратора группы
+- Включенные сообщения сообщества
 
 ### Настройка
 
@@ -148,7 +148,7 @@ class TelegramController extends BotController {
 4. Настройте параметры в коде:
 
 ```typescript
-mmApp.setParams({
+bot.setPlatformParams({
     vk_token: 'YOUR_GROUP_TOKEN',
     vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
     vk_api_version: 'v5.131',
@@ -157,10 +157,10 @@ mmApp.setParams({
 
 ### Особенности
 
--   Поддержка карусели сообщений
--   Клавиатура сообщений
--   Работа с вложениями
--   Интеграция с VK API
+- Поддержка карусели сообщений
+- Клавиатура сообщений
+- Работа с вложениями
+- Интеграция с VK API
 
 ### Пример контроллера
 
@@ -186,9 +186,9 @@ class VKController extends BotController {
 
 ### Требования
 
--   Аккаунт разработчика VK
--   HTTPS endpoint
--   Поддержка протокола Маруси
+- Аккаунт разработчика VK
+- HTTPS endpoint
+- Поддержка протокола Маруси
 
 ### Настройка
 
@@ -197,7 +197,7 @@ class VKController extends BotController {
 3. Настройте параметры:
 
 ```typescript
-mmApp.setParams({
+bot.setPlatformParams({
     marusia_token: 'YOUR_TOKEN',
     isLocalStorage: true,
 });
@@ -205,10 +205,10 @@ mmApp.setParams({
 
 ### Особенности
 
--   Поддержка голосового ввода/вывода
--   Локальное хранилище
--   Карточки и галереи
--   Интеграция с VK Mini Apps
+- Поддержка голосового ввода/вывода
+- Локальное хранилище
+- Карточки и галереи
+- Интеграция с VK Mini Apps
 
 ### Пример контроллера
 
@@ -233,9 +233,9 @@ class MarusiaController extends BotController {
 
 ### Требования
 
--   Аккаунт разработчика Сбера
--   HTTPS endpoint
--   Поддержка SmartApp протокола
+- Аккаунт разработчика Сбера
+- HTTPS endpoint
+- Поддержка SmartApp протокола
 
 ### Настройка
 
@@ -243,17 +243,17 @@ class MarusiaController extends BotController {
 2. Настройте параметры:
 
 ```typescript
-mmApp.setParams({
+bot.setPlatformParams({
     isLocalStorage: true,
 });
 ```
 
 ### Особенности
 
--   Поддержка Canvas App
--   Встроенные сценарии
--   Богатый UI
--   Интеграция с экосистемой Сбера
+- Поддержка Canvas App
+- Встроенные сценарии
+- Богатый UI
+- Интеграция с экосистемой Сбера
 
 ### Пример контроллера
 
@@ -277,9 +277,9 @@ class SmartAppController extends BotController {
 
 ### Требования
 
--   Аккаунт Viber для бизнеса
--   HTTPS webhook
--   Public Account
+- Аккаунт Viber для бизнеса
+- HTTPS webhook
+- Public Account
 
 ### Настройка
 
@@ -288,7 +288,7 @@ class SmartAppController extends BotController {
 3. Настройте параметры:
 
 ```typescript
-mmApp.setParams({
+bot.setPlatformParams({
     viber_token: 'YOUR_TOKEN',
     viber_sender: 'Bot Name',
     viber_api_version: 1,
@@ -297,10 +297,10 @@ mmApp.setParams({
 
 ### Особенности
 
--   Rich Media Messages
--   Клавиатура сообщений
--   Поддержка различных типов контента
--   Tracking Events
+- Rich Media Messages
+- Клавиатура сообщений
+- Поддержка различных типов контента
+- Tracking Events
 
 ### Пример контроллера
 
@@ -377,7 +377,7 @@ class CustomPlatformAdapter extends TemplateTypeModel {
         // Заполняем контроллер пришедшими данными
         const object = content.object;
         this.controller.userId = object.userIf;
-        mmApp.params.user_id = this.controller.userId;
+        this._appConfig.platformParams.user_id = this.controller.userId;
         this.controller.userCommand = object.text.toLowerCase().trim();
         this.controller.originalUserCommand = object.text.trim();
         this.controller.messageId = object.message.id;
@@ -392,20 +392,20 @@ class CustomPlatformAdapter extends TemplateTypeModel {
 
 ### Безопасность
 
--   Храните токены в переменных окружения
--   Используйте HTTPS
--   Проверяйте подпись запросов
--   Валидируйте входящие данные
+- Храните токены в переменных окружения
+- Используйте HTTPS
+- Проверяйте подпись запросов
+- Валидируйте входящие данные
 
 ### Производительность
 
--   Оптимизируйте размер ответов
--   Используйте кэширование
--   Следите за временем ответа
+- Оптимизируйте размер ответов
+- Используйте кэширование
+- Следите за временем ответа
 
 ### Разработка
 
--   Используйте TypeScript
--   Следуйте принципам SOLID
--   Пишите тесты
--   Ведите документацию
+- Используйте TypeScript
+- Следуйте принципам SOLID
+- Пишите тесты
+- Ведите документацию

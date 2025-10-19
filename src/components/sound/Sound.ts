@@ -1,6 +1,12 @@
 import { TemplateSoundTypes } from './types/TemplateSoundTypes';
+import { AlisaSound } from './types/AlisaSound';
+import { TelegramSound } from './types/TelegramSound';
+import { VkSound } from './types/VkSound';
+import { ViberSound } from './types/ViberSound';
+import { ISound } from './interfaces';
+import { MarusiaSound } from './types/MarusiaSound';
 import {
-    mmApp,
+    AppContext,
     T_ALISA,
     T_MARUSIA,
     T_SMARTAPP,
@@ -8,13 +14,8 @@ import {
     T_USER_APP,
     T_VIBER,
     T_VK,
-} from '../../mmApp';
-import { AlisaSound } from './types/AlisaSound';
-import { TelegramSound } from './types/TelegramSound';
-import { VkSound } from './types/VkSound';
-import { ViberSound } from './types/ViberSound';
-import { ISound } from './interfaces';
-import { MarusiaSound } from './types/MarusiaSound';
+    T_MAXAPP,
+} from '../../core/AppContext';
 
 /**
  * @class Sound
@@ -101,6 +102,11 @@ export class Sound {
     public isUsedStandardSound: boolean;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Конструктор класса Sound.
      * Инициализирует пустой массив звуков и включает использование стандартных звуков.
      *
@@ -111,9 +117,19 @@ export class Sound {
      * // sound.isUsedStandardSound = true
      * ```
      */
-    public constructor() {
+    public constructor(appContext: AppContext) {
         this.sounds = [];
         this.isUsedStandardSound = true;
+        this._appContext = appContext;
+    }
+
+    /**
+     * Устанавливает контекст приложения
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext): Sound {
+        this._appContext = appContext;
+        return this;
     }
 
     /**
@@ -147,30 +163,34 @@ export class Sound {
             return '';
         }
         let sound: any = null;
-        switch (mmApp.appType) {
+        switch (this._appContext.appType) {
             case T_ALISA:
-                sound = new AlisaSound();
+                sound = new AlisaSound(this._appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
             case T_MARUSIA:
-                sound = new MarusiaSound();
+                sound = new MarusiaSound(this._appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
             case T_VK:
-                sound = new VkSound();
+                sound = new VkSound(this._appContext);
                 break;
 
             case T_TELEGRAM:
-                sound = new TelegramSound();
+                sound = new TelegramSound(this._appContext);
                 break;
 
             case T_VIBER:
-                sound = new ViberSound();
+                sound = new ViberSound(this._appContext);
                 break;
 
             case T_SMARTAPP:
+                sound = null;
+                break;
+
+            case T_MAXAPP:
                 sound = null;
                 break;
 
@@ -179,7 +199,11 @@ export class Sound {
                 break;
         }
         if (sound) {
-            return await sound.getSounds(this.sounds, text);
+            const res = await sound.getSounds(this.sounds, text);
+            if (res) {
+                return res.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '');
+            }
+            return res;
         }
         return text;
     }

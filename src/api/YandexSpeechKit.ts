@@ -1,5 +1,20 @@
 import { YandexRequest } from './YandexRequest';
-import { mmApp } from '../mmApp';
+import { fwrite } from '../utils';
+import { AppContext } from '../core/AppContext';
+
+/**
+ * Интерфейс для результатов синтеза речи
+ */
+export interface ITTSResult {
+    /**
+     * Имя файла
+     */
+    fileName: string;
+    /**
+     * Бинарные данные аудио
+     */
+    audioData: ArrayBuffer;
+}
 
 /**
  * Класс отвечающий за преобразование текста в аудио файл.
@@ -196,8 +211,8 @@ export class YandexSpeechKit extends YandexRequest {
      * Создает экземпляр YandexSpeechKit
      * @param oauth Авторизационный токен для синтеза речи
      */
-    public constructor(oauth: string | null = null) {
-        super(oauth);
+    public constructor(oauth: string | null = null, appContext: AppContext) {
+        super(oauth, appContext);
         this.lang = YandexSpeechKit.L_RU;
         this.emotion = YandexSpeechKit.E_NEUTRAL;
         this.speed = 1.0;
@@ -205,7 +220,7 @@ export class YandexSpeechKit extends YandexRequest {
         this.folderId = null;
         this.voice = 'oksana';
         if (oauth === null) {
-            this.setOAuth(mmApp.params.yandex_speech_kit_token || null);
+            this.setOAuth(appContext.platformParams.yandex_speech_kit_token || null);
         }
     }
 
@@ -247,7 +262,7 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Получение голосового текста
      * @param text Текст для преобразования в речь
-     * @returns Бинарные данные аудиофайла
+     * @returns Возвращает путь к сохраненному файлу и его бинарное содержимое
      *
      * @remarks
      * Поддерживаемые форматы:
@@ -263,6 +278,8 @@ export class YandexSpeechKit extends YandexRequest {
      * - Эмоции (emotion) поддерживаются только для ru-RU и голосов jane/omazh
      * - Скорость (speed) не поддерживается для премиум-голосов (alena, filipp)
      *
+     * Важно! после выполнения запроса, не забудьте удалить файл с результатом.
+     *
      * @example
      * ```typescript
      * // Пример с LPCM форматом
@@ -277,13 +294,23 @@ export class YandexSpeechKit extends YandexRequest {
      *
      * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
      */
-    public getTts(text: string | null = null): Promise<any> {
+    public async getTts(text: string | null = null): Promise<ITTSResult | null> {
         if (text) {
             this.text = text;
         }
         this._request.url = YandexSpeechKit.TTS_API_URL;
         this._request.isConvertJson = false;
+        this._request.isBinaryResponse = true;
         this._initPost();
-        return this.call<any>();
+        const audioData = (await this.call()) as ArrayBuffer | null;
+        if (!audioData) {
+            return null;
+        }
+        const fileName = `${this._appContext.appConfig.error_log || __dirname + '/../../logs'}/tts_${Date.now()}.ogg`;
+        fwrite(fileName, new Uint8Array(audioData), 'w');
+        return {
+            fileName,
+            audioData,
+        };
     }
 }

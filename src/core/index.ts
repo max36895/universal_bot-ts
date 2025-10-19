@@ -10,3 +10,4 @@
  */
 export * from './interfaces/IBot';
 export * from './Bot';
+export * from './AppContext';

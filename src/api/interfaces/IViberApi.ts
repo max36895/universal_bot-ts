@@ -357,7 +357,7 @@ export interface IViberParams {
      * Информация об отправителе
      * @type {IViberSender}
      */
-    sender?: string;
+    sender?: IViberSender;
 
     /**
      * Данные для отслеживания

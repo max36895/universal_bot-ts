@@ -1,6 +1,6 @@
 import { TemplateSoundTypes, ISound, YandexSpeechKit, Text } from '../../../../../src';
 
-export class UserSound implements TemplateSoundTypes {
+export class UserSound extends TemplateSoundTypes {
     /**
      * Возвращаем массив с воспроизводимыми звуками.
      * В случае если передается параметр text, то можно отправить запрос в Yandex SpeechKit, для преобразования текста в голос
@@ -26,7 +26,7 @@ export class UserSound implements TemplateSoundTypes {
          * если есть необходимость для прочтения текста
          */
         if (text) {
-            const speechKit = new YandexSpeechKit();
+            const speechKit = new YandexSpeechKit(null, this._appContext);
             const content = await speechKit.getTts(text);
             if (content) {
                 /*

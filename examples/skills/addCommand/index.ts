@@ -1,15 +1,14 @@
 import { BotTest } from '../../../src/test';
-import { mmApp } from '../../../src/mmApp';
 import skillDefaultConfig from '../../config/skillDefaultConfig';
 import { StandardController } from './controller/StandardController';
 
 const bot = new BotTest();
-bot.initConfig(skillDefaultConfig());
+bot.initAppConfig(skillDefaultConfig());
 const logic = new StandardController();
 bot.initBotController(logic);
 
 // Добавляем команду для отображения изображения
-mmApp.addCommand('bigImage', ['картинка', 'изображен'], (_, botController) => {
+bot.addCommand('bigImage', ['картинка', 'изображен'], (_, botController) => {
     if (botController) {
         botController.text = '';
         botController.tts = 'Большая картинка';
@@ -21,7 +20,7 @@ mmApp.addCommand('bigImage', ['картинка', 'изображен'], (_, bot
     }
 });
 // Добавляем команду для отображения списка изображений
-mmApp.addCommand('list', ['список', 'галер'], (_, botController) => {
+bot.addCommand('list', ['список', 'галер'], (_, botController) => {
     if (botController) {
         botController.tts = 'Галерея из нескольких изображений';
         botController.card.title = 'Галерея';
@@ -31,11 +30,11 @@ mmApp.addCommand('list', ['список', 'галер'], (_, botController) => {
     }
 });
 // Добавляем команду для обработки сохранения
-mmApp.addCommand('save', ['сохрани', 'save'], () => {
+bot.addCommand('save', ['сохрани', 'save'], () => {
     return 'Сохранил!';
 });
 // Добавляем команду для повторения
-mmApp.addCommand(
+bot.addCommand(
     'replay',
     ['*'],
     (userCommand) => {

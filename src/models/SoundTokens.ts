@@ -1,5 +1,4 @@
 import { Model } from './db/Model';
-import { mmApp } from '../mmApp';
 import { IModelRules } from './interface';
 import {
     IYandexRequestDownloadSound,
@@ -9,6 +8,7 @@ import {
     YandexSoundRequest,
 } from '../api';
 import { Text } from '../utils/standard/Text';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Интерфейс для внутреннего состояния модели звуковых файлов.
@@ -104,8 +104,8 @@ export class SoundTokens extends Model<ISoundModelState> {
      * Конструктор класса SoundTokens.
      * Инициализирует все поля значениями по умолчанию.
      */
-    public constructor() {
-        super();
+    public constructor(appContext: AppContext) {
+        super(appContext);
         this.soundToken = null;
         this.path = null;
         this.type = SoundTokens.T_ALISA;
@@ -182,13 +182,14 @@ export class SoundTokens extends Model<ISoundModelState> {
                     return this.soundToken;
                 } else {
                     const yImage = new YandexSoundRequest(
-                        mmApp.params.yandex_token || null,
-                        mmApp.params.app_id || null,
+                        this._appContext?.platformParams.yandex_token || null,
+                        this._appContext?.platformParams.app_id || null,
+                        this._appContext,
                     );
                     let res: IYandexRequestDownloadSound | null = null;
                     if (this.path) {
                         if (Text.isUrl(this.path)) {
-                            mmApp.saveLog(
+                            this._appContext?.saveLog(
                                 'SoundTokens.log',
                                 'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!',
                             );
@@ -210,9 +211,9 @@ export class SoundTokens extends Model<ISoundModelState> {
                 if (await this.whereOne(where)) {
                     return this.soundToken;
                 } else if (this.path) {
-                    const vkApi = new VkRequest();
+                    const vkApi = new VkRequest(this._appContext);
                     const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
-                        mmApp.params.user_id as string,
+                        this._appContext?.platformParams.user_id as string,
                         'audio_message',
                     );
                     if (uploadServerResponse) {
@@ -234,16 +235,16 @@ export class SoundTokens extends Model<ISoundModelState> {
                 break;
 
             case SoundTokens.T_TELEGRAM: {
-                const telegramApi = new TelegramRequest();
+                const telegramApi = new TelegramRequest(this._appContext);
                 if (await this.whereOne(where)) {
                     await telegramApi.sendAudio(
-                        mmApp.params.user_id as string,
+                        this._appContext?.platformParams.user_id as string,
                         this.soundToken as string,
                     );
                     return this.soundToken;
                 } else if (this.path) {
                     const sound = await telegramApi.sendAudio(
-                        mmApp.params.user_id as string,
+                        this._appContext?.platformParams.user_id as string,
                         this.path,
                     );
                     if (sound && sound.ok && sound.result.audio) {
@@ -262,7 +263,7 @@ export class SoundTokens extends Model<ISoundModelState> {
                 if (await this.whereOne(where)) {
                     return this.soundToken;
                 } else if (this.path) {
-                    const marusiaApi = new MarusiaRequest();
+                    const marusiaApi = new MarusiaRequest(this._appContext);
                     const uploadServerResponse = await marusiaApi.marusiaGetAudioUploadLink();
                     if (uploadServerResponse) {
                         const uploadResponse = await marusiaApi.upload(

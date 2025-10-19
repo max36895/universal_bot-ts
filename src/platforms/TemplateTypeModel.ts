@@ -1,4 +1,5 @@
 import { BotController } from '../controller';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Абстрактный базовый класс для работы с платформами.
@@ -41,10 +42,15 @@ export abstract class TemplateTypeModel {
     public sendInInit: any;
 
     /**
+     * Контекст приложения.
+     */
+    protected appContext: AppContext;
+
+    /**
      * Создает экземпляр класса.
      * Инициализирует базовые параметры и время начала обработки
      */
-    constructor() {
+    constructor(appContext: AppContext) {
         // @ts-ignore
         this.controller = undefined;
         this.error = null;
@@ -52,6 +58,7 @@ export abstract class TemplateTypeModel {
         this.isUsedLocalStorage = false;
         this.sendInInit = null;
         this.timeStart = null;
+        this.appContext = appContext;
     }
 
     /**

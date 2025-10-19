@@ -29,7 +29,7 @@ import { SoundTokens } from '../../../models/SoundTokens';
  * ], 'Поздравляем с победой!');
  * ```
  */
-export class MarusiaSound implements TemplateSoundTypes {
+export class MarusiaSound extends TemplateSoundTypes {
     /**
      * Флаг использования стандартных звуков Маруси
      *
@@ -137,7 +137,7 @@ export class MarusiaSound implements TemplateSoundTypes {
             ],
         },
         {
-            key: '##',
+            key: '#nature_forest#',
             sounds: [
                 '<speaker audio="marusia-sounds/nature-forest-1">',
                 '<speaker audio="marusia-sounds/nature-forest-2">',
@@ -387,7 +387,7 @@ export class MarusiaSound implements TemplateSoundTypes {
                          * @see (https://vk.ru/dev/marusia_skill_docs10) Смотри тут
                          */
                         if (isFile(sText) || Text.isUrl(sText)) {
-                            const sModel = new SoundTokens();
+                            const sModel = new SoundTokens(this._appContext);
                             sModel.type = SoundTokens.T_MARUSIA;
                             sModel.path = sText;
                             sText = `<speaker audio_vk_id="${await sModel.getToken()}">`;
@@ -432,7 +432,7 @@ export class MarusiaSound implements TemplateSoundTypes {
      * ```
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
-        return text.replace(key, Text.getText(value));
+        return Text.textReplace(key, value, text);
     }
 
     /**

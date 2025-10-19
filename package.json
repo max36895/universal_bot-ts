@@ -1,20 +1,46 @@
 {
     "name": "umbot",
-    "description": "Universal bot(vk, telegram, viber) or skills for Yandex.Alisa, Маруся and sber",
+    "description": "Универсальная библиотека для создания чат-ботов и голосовых навыков с единой бизнес-логикой для различных платформ (ВКонтакте, Telegram, Viber, MAX, Яндекс.Алиса, Маруся, Сбер (SmartApp)) | (Universal framework for creating chatbots and voice skills with a single business logic for various platforms (VK, Telegram, Viber, MAX, Yandex Alice, Marusia, Sber SmartApp))",
     "keywords": [
         "vk",
+        "vkontakte",
         "telegram",
-        "Alisa",
-        "Yandex",
-        "TS",
-        "Dialogs",
-        "api",
         "viber",
-        "Маруся",
-        "Sber",
-        "bot"
+        "max",
+        "yandex-alice",
+        "yandex",
+        "alice",
+        "marusia",
+        "sber",
+        "smartapp",
+        "typescript",
+        "ts",
+        "dialogs",
+        "bot",
+        "chatbot",
+        "voice-skill",
+        "voice-assistant",
+        "framework",
+        "cross-platform",
+        "бот",
+        "навык",
+        "чат-бот",
+        "голосовой-ассистент",
+        "алиса",
+        "яндекс",
+        "сбер",
+        "сбер-смарт",
+        "вконтакте",
+        "универсальный-фреймворк",
+        "единая-логика",
+        "платформы",
+        "боты",
+        "навыки"
     ],
-    "author": "Maxim-M",
+    "author": {
+        "name": "Maxim-M",
+        "email": "maximco36895@yandex.ru"
+    },
     "license": "MIT",
     "main": "dist/index.js",
     "exports": {
@@ -23,6 +49,9 @@
         },
         "./test": {
             "default": "./dist/test.js"
+        },
+        "./preload": {
+            "default": "./dist/Preload.js"
         }
     },
     "scripts": {
@@ -30,6 +59,7 @@
         "start": "shx rm -rf dist && tsc",
         "build": "shx rm -rf dist && tsc --declaration",
         "test": "jest",
+        "test:coverage": "jest --coverage",
         "bt": "npm run build && npm test",
         "create": "umbot",
         "doc": "typedoc --excludePrivate --excludeExternals",
@@ -42,7 +72,7 @@
         "url": "https://github.com/max36895/universal_bot-ts/issues"
     },
     "engines": {
-        "node": ">=16"
+        "node": ">=18"
     },
     "bin": {
         "umbot": "cli/umbot.js"
@@ -52,23 +82,24 @@
         "url": "https://github.com/max36895/universal_bot-ts.git"
     },
     "devDependencies": {
-        "@types/jest": "^29.5.12",
-        "@types/node": "^16.11.18",
-        "@typescript-eslint/eslint-plugin": "^7.1.0",
-        "@typescript-eslint/parser": "^7.1.0",
-        "eslint": "^8.57.0",
-        "jest": "~29.7.0",
-        "prettier": "~3.2.5",
-        "shx": "~0.3.2",
-        "ts-jest": "~29.3.2",
-        "typedoc": "~0.28.2",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^18.15.13",
+        "@typescript-eslint/eslint-plugin": "^8.46.0",
+        "@typescript-eslint/parser": "^8.46.0",
+        "eslint": "^9.37.0",
+        "globals": "^16.4.0",
+        "jest": "~30.2.0",
+        "prettier": "~3.6.2",
+        "shx": "~0.4.0",
+        "ts-jest": "~29.4.4",
+        "typedoc": "~0.28.13",
         "typescript": "^5.4.5"
     },
     "peerDependencies": {
-        "mongodb": "^6.15.0"
+        "mongodb": "^6.20.0"
     },
     "files": [
         "dist"
     ],
-    "version": "2.0.10"
+    "version": "2.1.0"
 }

@@ -1,5 +1,6 @@
-import { Sound, mmApp, T_ALISA, AlisaSound } from '../../src';
+import { Sound, T_ALISA, AlisaSound, AppContext } from '../../src';
 
+const appContext = new AppContext();
 describe('sound', () => {
     it('AlisaSound getPause', () => {
         expect(AlisaSound.getPause(1)).toEqual('sil <[1]>');
@@ -19,8 +20,8 @@ describe('sound', () => {
     });
 
     it('getSounds', async () => {
-        const sound = new Sound();
-        mmApp.appType = T_ALISA;
+        const sound = new Sound(appContext);
+        appContext.appType = T_ALISA;
         expect(await sound.getSounds('hello')).toEqual('hello');
         sound.sounds = [
             {
@@ -30,7 +31,7 @@ describe('sound', () => {
         ];
         expect(await sound.getSounds('hello')).toEqual('hello');
         expect(await sound.getSounds('hello [{test}] listen')).toEqual('hello <my_Sound> listen');
-        mmApp.appType = null;
+        appContext.appType = null;
         expect(await sound.getSounds('hello [{test}] listen')).toEqual('hello [{test}] listen');
     });
 });

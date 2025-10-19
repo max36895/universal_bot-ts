@@ -1,6 +1,5 @@
 import { TemplateCardTypes } from './TemplateCardTypes';
 import { TelegramRequest } from '../../../api/TelegramRequest';
-import { mmApp } from '../../../mmApp';
 import { ImageTokens } from '../../../models/ImageTokens';
 import { TTelegramChatId } from '../../../api';
 
@@ -181,15 +180,15 @@ export class TelegramCard extends TemplateCardTypes {
             try {
                 if (!image.imageToken) {
                     if (image.imageDir) {
-                        const mImage = new ImageTokens();
+                        const mImage = new ImageTokens(this._appContext);
                         mImage.type = ImageTokens.T_TELEGRAM;
                         mImage.caption = image.desc;
                         mImage.path = image.imageDir;
                         image.imageToken = await mImage.getToken();
                     }
                 } else {
-                    await new TelegramRequest().sendPhoto(
-                        mmApp.params.user_id as TTelegramChatId,
+                    await new TelegramRequest(this._appContext).sendPhoto(
+                        this._appContext.platformParams.user_id as TTelegramChatId,
                         image.imageToken,
                         image.desc,
                     );
@@ -198,7 +197,7 @@ export class TelegramCard extends TemplateCardTypes {
             } catch (e) {
                 // Логируем ошибку, но не прерываем цикл
                 const error = `\n${Date} Ошибка при обработке изображения для Telegram: ${e}`;
-                mmApp.saveLog('TelegramCard.log', error);
+                this._appContext.saveLog('TelegramCard.log', error);
             }
         }
         if (options.length > 1) {

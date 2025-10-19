@@ -96,6 +96,16 @@ export interface IEnvConfig {
      * ```
      */
     MARUSIA_TOKEN?: string;
+    /**
+     * Токен для Max
+     * Используется для авторизации в API MAX
+     *
+     * @example
+     * ```typescript
+     * MAX_TOKEN=1234567890abcdef
+     * ```
+     */
+    MAX_TOKEN?: string;
 
     /**
      * Токен для Сбер SmartApp
@@ -161,6 +171,12 @@ export interface IEnvConfig {
     DB_NAME?: string;
 }
 
+export interface IEnvConfigStatus {
+    status: boolean;
+    error?: string;
+    data?: IEnvConfig;
+}
+
 /**
  * Загружает переменные окружения из файла .env
  *
@@ -186,7 +202,7 @@ export interface IEnvConfig {
  *
  * @throws {Error} Если файл не найден или не может быть прочитан
  */
-export function loadEnvFile(envPath: string): IEnvConfig {
+export function loadEnvFile(envPath: string): IEnvConfigStatus {
     try {
         const envContent = fs.readFileSync(path.resolve(envPath), 'utf-8');
         const envVars: IEnvConfig = {};
@@ -202,9 +218,11 @@ export function loadEnvFile(envPath: string): IEnvConfig {
             }
         });
 
-        return envVars;
+        return { status: true, data: envVars };
     } catch (error) {
-        console.error(`Error loading .env file: ${(error as Error)?.message || 'Unknown error'}`);
-        return {};
+        return {
+            status: false,
+            error: `Error loading .env file: ${(error as Error)?.message || 'Unknown error'}`,
+        };
     }
 }

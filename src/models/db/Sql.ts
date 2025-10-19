@@ -9,22 +9,9 @@
  * @module models/db/Sql
  */
 
-import { mmApp } from '../../mmApp';
 import { DB } from './DB';
 import { IModelRes, TQueryCb } from '../interface';
-
-/**
- * Глобальная переменная для хранения подключения к базе данных.
- * Используется для предотвращения создания множественных подключений
- *
- * @example
- * ```typescript
- * if (_vDB) {
- *   await _vDB.connect();
- * }
- * ```
- */
-export let _vDB: DB | null = new DB();
+import { AppContext } from '../../core/AppContext';
 
 /**
  * Класс для работы с базой данных MongoDB
@@ -92,6 +79,16 @@ export class Sql {
     public database: string | null = null;
 
     /**
+     * Контекст приложения
+     */
+    public appContext: AppContext | undefined;
+
+    /**
+     * Внутренний объект для работы с базой данных
+     */
+    private _vDB: DB | undefined;
+
+    /**
      * Создает новый экземпляр класса Sql
      * Инициализирует подключение к базе данных
      *
@@ -100,16 +97,15 @@ export class Sql {
      * const sql = new Sql();
      * ```
      */
-    public constructor() {
-        if (!_vDB) {
-            _vDB = new DB();
-        }
+    public constructor(appContext?: AppContext) {
+        this._vDB = appContext?.vDB;
+        this.appContext = appContext;
         this.standardInit();
     }
 
     /**
      * Инициализирует подключение к базе данных из конфигурации
-     * Загружает параметры подключения из mmApp.config.db
+     * Загружает параметры подключения из appContext.config.db
      *
      * @example
      * ```typescript
@@ -122,12 +118,12 @@ export class Sql {
      * @returns Promise<boolean> - true если инициализация успешна, false в противном случае
      */
     public async standardInit(): Promise<boolean> {
-        if (typeof mmApp.config.db !== 'undefined' && mmApp.config.db) {
-            const config = mmApp.config.db;
+        if (typeof this.appContext?.appConfig.db !== 'undefined' && this.appContext?.appConfig.db) {
+            const config = this.appContext?.appConfig.db;
             if (config.host && config.database) {
                 this.initParam(config.host, config.user || '', config.pass || '', config.database);
             } else {
-                Sql._saveLog(
+                this._saveLog(
                     'Sql.standardInit(): Не переданы настройки для подключения к Базе Данных!',
                 );
                 return false;
@@ -135,7 +131,7 @@ export class Sql {
             try {
                 return await this.connect();
             } catch (exception) {
-                Sql._saveLog(`Ошибка при инициализации БД.\n${exception}`);
+                this._saveLog(`Ошибка при инициализации БД.\n${exception}`);
             }
         }
         return false;
@@ -164,8 +160,8 @@ export class Sql {
         this.user = user;
         this.pass = pass;
         this.database = database;
-        if (_vDB) {
-            _vDB.params = {
+        if (this._vDB) {
+            this._vDB.params = {
                 host: this.host,
                 user: this.user,
                 pass: this.pass,
@@ -188,8 +184,8 @@ export class Sql {
      * @returns Promise<boolean> - true если подключение успешно, false в противном случае
      */
     public async connect(): Promise<boolean> {
-        if (_vDB && !(await _vDB.connect())) {
-            Sql._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${_vDB.errors[0]}`);
+        if (this._vDB && !(await this._vDB.connect())) {
+            this._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${this._vDB.errors[0]}`);
             return false;
         }
         return true;
@@ -210,13 +206,14 @@ export class Sql {
      */
     public async isConnected(): Promise<boolean> {
         try {
-            if (_vDB && _vDB.dbConnect) {
-                const client = await _vDB.dbConnect;
+            if (this._vDB && this._vDB.dbConnect) {
+                const client = await this._vDB.dbConnect;
                 await client.db().admin().ping();
                 return true;
             }
             return false;
-        } catch (e) {
+        } catch (е) {
+            this.appContext?.saveLog('sql.log', `Sql.isConnected(): ${е}`);
             return false;
         }
     }
@@ -232,9 +229,10 @@ export class Sql {
      * ```
      */
     public close(): void {
-        if (_vDB) {
-            _vDB.destroy();
-            _vDB = null;
+        if (this._vDB) {
+            this._vDB.destroy();
+            this.appContext?.closeDB();
+            this._vDB = undefined;
         }
     }
 
@@ -276,23 +274,23 @@ export class Sql {
      */
     public async query(callback: TQueryCb): Promise<any> {
         try {
-            if (_vDB && _vDB.dbConnect) {
-                const client = await _vDB.dbConnect;
-                const db = client.db(_vDB.params?.database);
+            if (this._vDB && this._vDB.dbConnect) {
+                const client = await this._vDB.dbConnect;
+                const db = client.db(this._vDB.params?.database);
                 const data: IModelRes = await callback(client, db);
                 if (data.status) {
                     return data.data;
                 }
-                Sql._saveLog(data.error + '');
+                this._saveLog(data.error + '');
                 return null;
             } else {
-                Sql._saveLog('Не удалось выполнить запрос.');
+                this._saveLog('Не удалось выполнить запрос.');
                 return null;
             }
         } catch (err) {
-            Sql._saveLog(err as string);
-            if (_vDB) {
-                _vDB.dbConnect = null;
+            this._saveLog(err as string);
+            if (this._vDB) {
+                this._vDB.dbConnect = null;
             }
             return null;
         }
@@ -305,13 +303,11 @@ export class Sql {
      * @returns boolean - true если сообщение успешно сохранено, false в противном случае
      * @private
      */
-    protected static _saveLog(errorMsg: string): boolean {
-        if (mmApp.saveLog('sql.log', errorMsg)) {
+    protected _saveLog(errorMsg: string): boolean {
+        if (this.appContext?.saveLog('sql.log', errorMsg)) {
             return true;
         }
-        if (mmApp.isDevMode) {
-            console.warn('Sql.connect(): Не удалось создать/открыть файл!');
-        }
+        this.appContext?.logWarn('Sql.connect(): Не удалось создать/открыть файл!');
         return false;
     }
 }

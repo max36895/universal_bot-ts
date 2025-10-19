@@ -4,7 +4,7 @@
  * Time: {{time}}
  */
 
-import { AlisaSound, BotController, mmApp, Text, WELCOME_INTENT_NAME } from 'umbot';
+import { AlisaSound, BotController, Text, WELCOME_INTENT_NAME } from 'umbot';
 
 interface IQuestion {
     text: string;
@@ -81,7 +81,7 @@ export class __className__Controller extends BotController {
      * Отображаем пользователю текст помощи.
      */
     protected _help() {
-        this.text = Text.getText(mmApp.params.help_text || '');
+        this.text = Text.getText(this.appContext.platformParams.help_text || '');
     }
 
     /**

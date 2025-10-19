@@ -1,14 +1,8 @@
 import { Model } from './db/Model';
-import { mmApp } from '../mmApp';
 import { IModelRules } from './interface';
-import {
-    IYandexRequestDownloadImage,
-    MarusiaRequest,
-    TelegramRequest,
-    VkRequest,
-    YandexImageRequest,
-} from '../api';
+import { MarusiaRequest, MaxRequest, TelegramRequest, VkRequest, YandexImageRequest } from '../api';
 import { Text } from '../utils/standard/Text';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Интерфейс для внутреннего состояния модели изображений.
@@ -74,6 +68,11 @@ export class ImageTokens extends Model<IImageModelState> {
     public static readonly T_MARUSIA = 3;
 
     /**
+     * Тип платформы: Max
+     * */
+    public static readonly T_MAXAPP = 4;
+
+    /**
      * Идентификатор/токен изображения.
      * Уникальный идентификатор, используемый для ссылки на изображение в API платформы.
      */
@@ -101,8 +100,8 @@ export class ImageTokens extends Model<IImageModelState> {
      * Конструктор класса ImageTokens.
      * Инициализирует все поля значениями по умолчанию.
      */
-    public constructor() {
-        super();
+    public constructor(appContext: AppContext) {
+        super(appContext);
         this.imageToken = null;
         this.path = null;
         this.type = ImageTokens.T_ALISA;
@@ -169,120 +168,143 @@ export class ImageTokens extends Model<IImageModelState> {
      * }
      */
     public async getToken(): Promise<string | null> {
-        const where = { path: this.path, type: this.type };
-        switch (this.type) {
+        const { path, type } = this;
+        if (!path) return null;
+
+        const where = { path, type };
+        const exists = await this.whereOne(where);
+        if (exists && this.imageToken) {
+            return this._handleExistingToken(type);
+        }
+
+        switch (type) {
             case ImageTokens.T_ALISA:
-                if (await this.whereOne(where)) {
-                    return this.imageToken;
-                } else {
-                    const yImage = new YandexImageRequest(
-                        mmApp.params.yandex_token || null,
-                        mmApp.params.app_id || null,
-                    );
-                    let res: IYandexRequestDownloadImage | null = null;
-                    if (this.path) {
-                        if (Text.isUrl(this.path)) {
-                            res = await yImage.downloadImageUrl(this.path);
-                        } else {
-                            res = await yImage.downloadImageFile(this.path);
-                        }
-                    }
-                    if (res) {
-                        this.imageToken = res.id;
-                        if (await this.save(true)) {
-                            return this.imageToken;
-                        }
-                    }
-                }
-                break;
-
+                return this._uploadToAlisa(path);
             case ImageTokens.T_MARUSIA:
-                where.type = ImageTokens.T_MARUSIA;
-                if (await this.whereOne(where)) {
-                    return this.imageToken;
-                } else if (this.path) {
-                    const marusiaApi = new MarusiaRequest();
-                    const uploadServerResponse = await marusiaApi.marusiaGetPictureUploadLink();
-                    if (uploadServerResponse) {
-                        const uploadResponse = await marusiaApi.upload(
-                            uploadServerResponse.picture_upload_link,
-                            this.path,
-                        );
-                        if (uploadResponse) {
-                            const photo = await marusiaApi.marusiaSavePicture(
-                                uploadResponse.photo as string,
-                                uploadResponse.server,
-                                uploadResponse.hash,
-                            );
-                            if (photo) {
-                                this.imageToken = photo.photo_id;
-                                if (await this.save(true)) {
-                                    return this.imageToken;
-                                }
-                            }
-                        }
-                    }
-                }
-                break;
-
+                return this._uploadToMarusia(path);
             case ImageTokens.T_VK:
-                where.type = ImageTokens.T_VK;
-                if (await this.whereOne(where)) {
-                    return this.imageToken;
-                } else if (this.path) {
-                    const vkApi = new VkRequest();
-                    const uploadServerResponse = await vkApi.photosGetMessagesUploadServer(
-                        mmApp.params.user_id as string,
-                    );
-                    if (uploadServerResponse) {
-                        const uploadResponse = await vkApi.upload(
-                            uploadServerResponse.upload_url,
-                            this.path,
-                        );
-                        if (uploadResponse) {
-                            const photo = await vkApi.photosSaveMessagesPhoto(
-                                uploadResponse.photo as string,
-                                uploadResponse.server,
-                                uploadResponse.hash,
-                            );
-                            if (photo) {
-                                this.imageToken = `photo${photo.owner_id}_${photo.id}`;
-                                if (await this.save(true)) {
-                                    return this.imageToken;
-                                }
-                            }
-                        }
-                    }
-                }
-                break;
+                return this._uploadToVk(path);
+            case ImageTokens.T_MAXAPP:
+                return this._uploadToMax(path);
+            case ImageTokens.T_TELEGRAM:
+                return this._uploadToTelegram(path);
+            default:
+                this._log('ImageTokens.getToken(): Неизвестный тип платформы');
+                return null;
+        }
+    }
 
-            case ImageTokens.T_TELEGRAM: {
-                const telegramApi = new TelegramRequest();
-                if (await this.whereOne(where)) {
-                    await telegramApi.sendPhoto(
-                        mmApp.params.user_id as string,
-                        this.imageToken as string,
-                        this.caption,
-                    );
+    // --- Вспомогательные методы (маленькие, специализированные) ---
+
+    private async _handleExistingToken(type: number): Promise<string> {
+        if (type === ImageTokens.T_TELEGRAM && this.imageToken) {
+            await new TelegramRequest(this._appContext).sendPhoto(
+                this._appContext.platformParams.user_id as string,
+                this.imageToken,
+                this.caption || undefined,
+            );
+        }
+        return this.imageToken!;
+    }
+
+    private async _uploadToAlisa(path: string): Promise<string | null> {
+        const yImage = new YandexImageRequest(
+            this._appContext.platformParams.yandex_token || null,
+            this._appContext.platformParams.app_id || null,
+            this._appContext,
+        );
+
+        if (path) {
+            const res = Text.isUrl(path)
+                ? await yImage.downloadImageUrl(path)
+                : await yImage.downloadImageFile(path);
+
+            if (res?.id) {
+                this.imageToken = res.id;
+                if (await this.save(true)) {
                     return this.imageToken;
-                } else if (this.path) {
-                    const photo = await telegramApi.sendPhoto(
-                        mmApp.params.user_id as string,
-                        this.path,
-                        this.caption,
-                    );
-                    if (photo && photo.ok && photo.result.photo) {
-                        if (typeof photo.result.photo.file_id !== 'undefined') {
-                            this.imageToken = photo.result.photo.file_id;
-                            if (await this.save(true)) {
-                                return this.imageToken;
-                            }
-                        }
-                    }
                 }
-                break;
             }
         }
         return null;
+    }
+
+    private async _uploadToMarusia(path: string): Promise<string | null> {
+        const api = new MarusiaRequest(this._appContext);
+        const uploadLink = await api.marusiaGetPictureUploadLink();
+        if (!uploadLink) {
+            return null;
+        }
+
+        const upload = await api.upload(uploadLink.picture_upload_link, path);
+        if (!upload) {
+            return null;
+        }
+
+        const picture = await api.marusiaSavePicture(upload.photo, upload.server, upload.hash);
+        if (picture?.photo_id) {
+            this.imageToken = picture.photo_id;
+            if (await this.save(true)) {
+                return this.imageToken;
+            }
+        }
+        return null;
+    }
+
+    private async _uploadToVk(path: string): Promise<string | null> {
+        const api = new VkRequest(this._appContext);
+        const server = await api.photosGetMessagesUploadServer(
+            this._appContext.platformParams.user_id as string,
+        );
+        if (!server?.upload_url) {
+            return null;
+        }
+
+        const upload = await api.upload(server.upload_url, path);
+        if (!upload?.photo) {
+            return null;
+        }
+
+        const photo = await api.photosSaveMessagesPhoto(upload.photo, upload.server, upload.hash);
+        if (photo?.id) {
+            this.imageToken = `photo${photo.owner_id}_${photo.id}`;
+            if (await this.save(true)) {
+                return this.imageToken;
+            }
+        }
+        return null;
+    }
+
+    private async _uploadToMax(path: string): Promise<string | null> {
+        const api = new MaxRequest(this._appContext);
+        const upload = await api.upload(path, 'image');
+        if (upload?.token || upload?.url) {
+            this.imageToken = upload.token || upload.url;
+            if (await this.save(true)) {
+                return this.imageToken;
+            }
+        }
+        return null;
+    }
+
+    private async _uploadToTelegram(path: string): Promise<string | null> {
+        const api = new TelegramRequest(this._appContext);
+        const photo = await api.sendPhoto(
+            this._appContext.platformParams.user_id as string,
+            path,
+            this.caption || undefined,
+        );
+
+        if (photo?.ok && photo.result?.photo?.file_id) {
+            this.imageToken = photo.result.photo.file_id;
+            if (await this.save(true)) {
+                return this.imageToken;
+            }
+        }
+        return null;
+    }
+
+    private _log(error: string): void {
+        this._appContext.saveLog('ImageTokens.log', error);
     }
 }

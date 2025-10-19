@@ -24,3 +24,4 @@ export * from './ISberSmartApp';
 export * from './ITelegram';
 export * from './IViber';
 export * from './IVk';
+export * from './IMaxApp';

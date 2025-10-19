@@ -40,8 +40,8 @@
  * ```
  */
 import { Request } from './request/Request';
-import { mmApp } from '../mmApp';
 import { IRequestSend, IYandexApi } from './interfaces';
+import { AppContext } from '../core/AppContext';
 
 /**
  * @class YandexRequest
@@ -96,15 +96,21 @@ export class YandexRequest {
     protected _error: string | null;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Создает экземпляр класса YandexRequest
      *
      * Инициализирует класс с OAuth-токеном и настраивает
      * параметры HTTP-запросов.
      *
      * @param {string | null} [oauth=null] - OAuth-токен для авторизации
+     * @param {AppContext} [appContext] - Контекст приложения
      *
      * @remarks
-     * Если токен не указан, будет использован токен из mmApp.params.yandex_token.
+     * Если токен не указан, будет использован токен из appContext.platformParams.yandex_token.
      * Если и там токена нет, запросы будут выполняться без авторизации.
      *
      * @example
@@ -112,16 +118,17 @@ export class YandexRequest {
      * // Создание с токеном
      * const api = new YandexRequest('your-token');
      *
-     * // Создание без токена (будет использован токен из mmApp.params)
+     * // Создание без токена (будет использован токен из appContext.platformParams)
      * const api = new YandexRequest();
      *
      * // Создание без авторизации
      * const api = new YandexRequest(null);
      * ```
      */
-    public constructor(oauth: string | null = null) {
-        this.setOAuth(oauth || mmApp.params.yandex_token || null);
-        this._request = new Request();
+    public constructor(oauth: string | null = null, appContext: AppContext) {
+        this._request = new Request(appContext);
+        this._appContext = appContext;
+        this.setOAuth(oauth || appContext.platformParams.yandex_token || null);
         this._request.maxTimeQuery = 1500;
         this._error = null;
     }
@@ -157,7 +164,7 @@ export class YandexRequest {
     public setOAuth(oauth: string | null): void {
         this._oauth = oauth;
         if (this._request.header) {
-            this._request.header = { 'Authorization: OAuth ': this._oauth as string };
+            this._request.header = { Authorization: `OAuth ${this._oauth}` };
         }
     }
 
@@ -225,6 +232,6 @@ export class YandexRequest {
      */
     protected _log(error: string = ''): void {
         error = `\n${Date}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        mmApp.saveLog('YandexApi.log', error);
+        this._appContext.saveLog('YandexApi.log', error);
     }
 }

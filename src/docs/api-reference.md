@@ -34,32 +34,6 @@
 | action | intentName: string \| null, isCommand?: boolean | void                  | Обработка команды пользователя |
 | run    | -                                               | void                  | Запуск обработки запроса       |
 
-### mmApp
-
-Статический класс для управления глобальными настройками и состоянием приложения.
-
-#### Свойства
-
-| Свойство  | Тип              | Описание                   |
-| --------- | ---------------- | -------------------------- |
-| appType   | TAppType \| null | Тип платформы              |
-| config    | IAppConfig       | Конфигурация приложения    |
-| params    | IAppParam        | Параметры приложения       |
-| commands  | ICommand         | Зарегистрированные команды |
-| isDevMode | boolean          | Режим разработки           |
-
-#### Методы
-
-| Метод         | Параметры                                                                | Возвращаемое значение | Описание               |
-| ------------- | ------------------------------------------------------------------------ | --------------------- | ---------------------- |
-| setConfig     | config: IAppConfig                                                       | void                  | Установка конфигурации |
-| setParams     | params: IAppParam                                                        | void                  | Установка параметров   |
-| addCommand    | commandName: string, slots: string[], cb?: Function, isPattern?: boolean | void                  | Добавление команды     |
-| removeCommand | commandName: string                                                      | void                  | Удаление команды       |
-| saveData      | dir: IDir, data: string, mode?: string                                   | boolean               | Сохранение данных      |
-| saveJson      | fileName: string, data: any                                              | boolean               | Сохранение JSON        |
-| saveLog       | fileName: string, errorText?: string                                     | boolean               | Сохранение лога        |
-
 ## Компоненты
 
 ### Buttons
@@ -192,13 +166,15 @@ class MyController extends BotController {
 ### Работа с командами
 
 ```typescript
-import { mmApp } from 'umbot';
+import { Bot } from 'umbot';
+
+const bot = new Bot();
 
 // Добавление простой команды
-mmApp.addCommand('greeting', ['привет', 'здравствуй']);
+bot.addCommand('greeting', ['привет', 'здравствуй']);
 
 // Добавление команды с колбэком
-mmApp.addCommand(
+bot.addCommand(
     'numbers',
     ['\\b\\d{3}\\b'],
     (userCommand, botController) => {

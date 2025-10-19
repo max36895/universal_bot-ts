@@ -6,6 +6,8 @@ import { TelegramButton } from './types/TelegramButton';
 import { VkButton } from './types/VkButton';
 import { ViberButton } from './types/ViberButton';
 import { SmartAppButton } from './types/SmartAppButton';
+import { MaxButton } from './types/MaxButton';
+import { AppContext } from '../../core/AppContext';
 
 /**
  * Тип функции обратного вызова для обработки кнопок.
@@ -63,6 +65,11 @@ export class Buttons {
      */
     public static readonly T_VK_BUTTONS = 'vk_btn';
     /**
+     * Кнопки для Max.
+     * @type {string}
+     */
+    public static readonly T_MAX_BUTTONS = 'max_btn';
+    /**
      * Кнопки для Telegram.
      * @type {string}
      */
@@ -117,14 +124,29 @@ export class Buttons {
     public type: string;
 
     /**
+     * Контекст приложения.
+     */
+    protected appContext: AppContext;
+
+    /**
      * Создает новый экземпляр коллекции кнопок.
      * Инициализирует все массивы и устанавливает тип кнопок по умолчанию для Алисы.
      */
-    public constructor() {
+    public constructor(appContext: AppContext) {
         this.buttons = [];
         this.btns = [];
         this.links = [];
         this.type = Buttons.T_ALISA_BUTTONS;
+        this.appContext = appContext;
+    }
+
+    /**
+     * Устанавливает контекст приложения.
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext): Buttons {
+        this.appContext = appContext;
+        return this;
     }
 
     /**
@@ -156,6 +178,7 @@ export class Buttons {
         options: IButtonOptions = {},
     ): Buttons {
         let button: Button | null = new Button();
+        button.setAppContext(this.appContext);
         if (hide === Button.B_LINK) {
             if (!button.initLink(title, url, payload, options)) {
                 button = null;
@@ -238,22 +261,16 @@ export class Buttons {
      * @param {TButtonCb} callback - Функция для добавления кнопок
      * @private
      */
-    protected _initProcessingBtn(buttons: TButton[], callback: TButtonCb): void {
-        if (typeof buttons === 'object') {
-            buttons.forEach((button) => {
-                if (typeof button !== 'string') {
-                    callback(
-                        button.title || null,
-                        (<IButton>button).url || '',
-                        button.payload || null,
-                        button.options || {},
-                    );
-                } else {
-                    callback(button);
-                }
-            });
+    protected _initProcessingBtn(button: TButton, callback: TButtonCb): void {
+        if (typeof button !== 'string') {
+            callback(
+                button.title || null,
+                (<IButton>button).url || '',
+                button.payload || null,
+                button.options || {},
+            );
         } else {
-            callback(buttons);
+            callback(button);
         }
     }
 
@@ -263,14 +280,16 @@ export class Buttons {
      * @protected
      */
     protected _processing(): void {
-        if (this.btns.length) {
-            this._initProcessingBtn(this.btns, this.addBtn.bind(this));
-        }
-        if (this.links.length) {
-            this._initProcessingBtn(this.links, this.addLink.bind(this));
-        }
-        this.btns = [];
-        this.links = [];
+        const allButtons = [...this.btns, ...this.links];
+        allButtons.forEach((button) => {
+            if (this.links.includes(button)) {
+                this._initProcessingBtn(button, this.addLink.bind(this));
+            } else {
+                this._initProcessingBtn(button, this.addBtn.bind(this));
+            }
+        });
+        this.btns.length = 0;
+        this.links.length = 0;
     }
 
     /**
@@ -377,6 +396,9 @@ export class Buttons {
             case Buttons.T_SMARTAPP_BUTTON_CARD:
                 button = new SmartAppButton();
                 (button as SmartAppButton).isCard = true;
+                break;
+            case Buttons.T_MAX_BUTTONS:
+                button = new MaxButton();
                 break;
 
             case Buttons.T_USER_APP_BUTTONS:

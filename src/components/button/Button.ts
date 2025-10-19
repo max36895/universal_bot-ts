@@ -1,6 +1,6 @@
 import { IButtonOptions, TButtonPayload } from './interfaces';
-import { mmApp } from '../../mmApp';
 import { Text } from '../../utils/standard/Text';
+import { AppContext } from '../../core/AppContext';
 
 /**
  * @class Button
@@ -170,6 +170,11 @@ export class Button {
     public options: IButtonOptions;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext | undefined;
+
+    /**
      * Создает новый экземпляр кнопки.
      * Инициализирует все поля значениями по умолчанию.
      * @param {string} title Текст кнопки
@@ -192,6 +197,15 @@ export class Button {
         this.hide = hide;
         this.options = options;
         this._init(title, url, payload, hide, options);
+    }
+
+    /**
+     * Устанавливает контекст приложения.
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext): Button {
+        this._appContext = appContext;
+        return this;
     }
 
     /**
@@ -225,12 +239,12 @@ export class Button {
         if (title || title === '') {
             this.title = title;
             if (url && Text.isUrl(url)) {
-                if (mmApp.params.utm_text === null) {
+                if (this._appContext?.platformParams.utm_text === null) {
                     if (!url.includes('utm_source')) {
                         url += `${Button._getUrlSeparator(url)}utm_source=umBot&utm_medium=cpc&utm_campaign=phone`;
                     }
-                } else if (mmApp.params.utm_text) {
-                    url += Button._getUrlSeparator(url) + mmApp.params.utm_text;
+                } else if (this._appContext?.platformParams.utm_text) {
+                    url += Button._getUrlSeparator(url) + this._appContext?.platformParams.utm_text;
                 }
             } else {
                 url = null;

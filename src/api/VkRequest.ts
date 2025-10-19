@@ -1,5 +1,4 @@
 import { Request } from './request/Request';
-import { mmApp } from '../mmApp';
 import {
     IVkApi,
     IVkDocSave,
@@ -13,6 +12,7 @@ import {
     TVkDocType,
     TVkPeerId,
 } from './interfaces';
+import { AppContext } from '../core/AppContext';
 
 /**
  * Класс для взаимодействия с API ВКонтакте
@@ -107,22 +107,28 @@ export class VkRequest {
     public isAttachContent: boolean;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Создает экземпляр класса для работы с API ВКонтакте
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
-    public constructor() {
-        this._request = new Request();
+    public constructor(appContext: AppContext) {
+        this._request = new Request(appContext);
         this._request.maxTimeQuery = 5500;
         this.isAttachContent = false;
-        if (mmApp.params.vk_api_version) {
-            this._vkApiVersion = mmApp.params.vk_api_version;
+        this._appContext = appContext;
+        if (appContext.platformParams.vk_api_version) {
+            this._vkApiVersion = appContext.platformParams.vk_api_version;
         } else {
             this._vkApiVersion = this.VK_API_VERSION;
         }
         this.token = null;
         this._error = null;
-        if (mmApp.params.vk_token) {
-            this.initToken(mmApp.params.vk_token);
+        if (appContext.platformParams.vk_token) {
+            this.initToken(appContext.platformParams.vk_token);
         }
     }
 
@@ -142,6 +148,9 @@ export class VkRequest {
     public async call<T extends IVkApi>(method: string): Promise<T | null> {
         if (this.token) {
             this._request.header = null;
+            if (!this._request.post) {
+                this._request.post = {};
+            }
             this._request.post.access_token = this.token;
             this._request.post.v = this._vkApiVersion;
             const data = await this._request.send<T>(this.VK_API_ENDPOINT + method);
@@ -423,7 +432,7 @@ export class VkRequest {
             peer_id: peerId,
             type,
         };
-        return this.call<IVkUploadServer>('docs.getMessagesUploadServe');
+        return this.call<IVkUploadServer>('docs.getMessagesUploadServer');
     }
 
     /**
@@ -455,6 +464,6 @@ export class VkRequest {
      */
     protected _log(error: string = ''): void {
         error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        mmApp.saveLog('vkApi.log', error);
+        this._appContext.saveLog('vkApi.log', error);
     }
 }

@@ -25,5 +25,6 @@ export * from './Telegram';
 export * from './TemplateTypeModel';
 export * from './Viber';
 export * from './Vk';
+export * from './MaxApp';
 
 export * from './interfaces';

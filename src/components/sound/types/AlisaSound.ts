@@ -52,7 +52,7 @@ import { SoundTokens } from '../../../models/SoundTokens';
  * // complexText: '<speaker effect="megaphone">Внимание!</speaker>sil <[1000]>`<speaker effect="pitch_down">Важное сообщение</speaker>'
  * ```
  */
-export class AlisaSound implements TemplateSoundTypes {
+export class AlisaSound extends TemplateSoundTypes {
     /**
      * Флаг использования стандартных звуков Алисы
      *
@@ -572,7 +572,7 @@ export class AlisaSound implements TemplateSoundTypes {
                          * @see (https://dialogs.yandex.ru/developer/skills/<skill_id>/resources/sounds) Смотри тут
                          */
                         if (isFile(sText) || Text.isUrl(sText)) {
-                            const sModel = new SoundTokens();
+                            const sModel = new SoundTokens(this._appContext);
                             sModel.type = SoundTokens.T_ALISA;
                             sModel.path = sText;
                             sText = `<speaker audio="${await sModel.getToken()}">`;
@@ -617,7 +617,7 @@ export class AlisaSound implements TemplateSoundTypes {
      * ```
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
-        return text.replace(key, Text.getText(value));
+        return Text.textReplace(key, value, text);
     }
 
     /**

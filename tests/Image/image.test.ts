@@ -1,8 +1,8 @@
-import { Image } from '../../src';
-
+import { Image, AppContext } from '../../src';
+const appContext = new AppContext();
 describe('image', () => {
     it('Image init', () => {
-        const image = new Image();
+        const image = new Image(appContext);
 
         expect(image.init('test', '')).toBe(false);
 
@@ -32,7 +32,7 @@ describe('image', () => {
     });
 
     it('Image init isToken', () => {
-        const image = new Image();
+        const image = new Image(appContext);
         image.isToken = true;
         expect(image.init('https://google.com/image.png', 'title', 'desc')).toBe(true);
         expect(image.imageToken).toEqual('https://google.com/image.png');

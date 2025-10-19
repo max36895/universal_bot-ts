@@ -1,5 +1,6 @@
 import { Image } from '../../image/Image';
 import { Buttons } from '../../button';
+import { AppContext } from '../../../core/AppContext';
 
 /**
  * @class TemplateCardTypes
@@ -78,6 +79,11 @@ export abstract class TemplateCardTypes {
     public isUsedGallery: boolean = false;
 
     /**
+     * Контекст приложения.
+     */
+    protected _appContext: AppContext;
+
+    /**
      * Создает новый экземпляр карточки.
      * Инициализирует все поля значениями по умолчанию.
      * @example
@@ -85,10 +91,11 @@ export abstract class TemplateCardTypes {
      * const card = new CustomCard();
      * ```
      */
-    constructor() {
+    constructor(appContext: AppContext) {
         this.title = null;
         this.images = [];
-        this.button = new Buttons();
+        this._appContext = appContext;
+        this.button = new Buttons(appContext);
     }
 
     /**

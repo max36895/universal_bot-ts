@@ -20,47 +20,6 @@
  * - Telegram
  * - Viber
  * - VK
- *
- * @example
- * ```typescript
- * import { mmApp, BotController, run } from 'universal-bot';
- *
- * // Создание контроллера для обработки команд
- * class MyController extends BotController {
- *   action(intentName: string | null): void {
- *     if (intentName === 'welcome') {
- *       // Установка текста ответа
- *       this.text = 'Привет! Чем могу помочь?';
- *
- *       // Добавление интерактивных кнопок
- *       this.buttons
- *         .addBtn('Помощь')
- *         .addBtn('Выход');
- *
- *       // Добавление кнопки-ссылки
- *       this.buttons.addLink('Наш сайт', 'https://example.com');
- *     }
- *   }
- * }
- *
- * // Запуск приложения
- * run({
- *   // Конфигурация приложения
- *   appConfig: {
- *     isDevMode: true,
- *     defaultLanguage: 'ru-RU'
- *   },
- *
- *   // Параметры приложения
- *   appParam: {
- *     yandex_token: 'your-token',
- *     telegram_token: 'your-token'
- *   },
- *
- *   // Контроллер для обработки команд
- *   controller: new MyController()
- * });
- * ```
  */
 
 // ===== Ядро приложения =====
@@ -85,8 +44,9 @@ export * from './core';
  * - Константы
  * - Типы данных
  * - Глобальные параметры
+ * @deprecated
  */
-export * from './mmApp';
+export { mmApp } from './mmApp';
 
 // ===== Взаимодействие с web api =====
 /**
