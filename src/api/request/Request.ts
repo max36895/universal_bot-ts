@@ -118,6 +118,16 @@ export class Request {
     }
 
     /**
+     * Устанавливает контекст приложения
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext) {
+        if (appContext) {
+            this._appContext = appContext;
+        }
+    }
+
+    /**
      * Отправляет HTTP-запрос
      *
      * @param {string} [url] - URL для отправки запроса (если не указан, используется this.url)
