@@ -23,7 +23,7 @@ npm install umbot --save-dev
 ### Базовый синтаксис
 
 ```bash
-umbot <команда> [параметры]
+npx umbot <команда> [параметры]
 ```
 
 ### Доступные команды
@@ -137,7 +137,7 @@ umbot create simple-bot
     "name": "quiz-bot",
     "type": "quiz",
     "mode": "dev",
-    "params": {
+    "config": {
         "json": "./data",
         "error_log": "./logs",
         "isLocalStorage": true

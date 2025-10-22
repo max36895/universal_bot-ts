@@ -46,7 +46,7 @@ class MyController extends BotController {
 const bot = new Bot();
 
 // Настраиваем команды
-bot.initConfig({
+bot.setAppConfig({
     intents: [
         {
             name: 'help',
@@ -56,7 +56,7 @@ bot.initConfig({
 });
 
 // Настраиваем параметры
-bot.initParams({
+bot.setPlatformParams({
     json: __dirname + '/data',
     error_log: __dirname + '/logs',
     isLocalStorage: true,
@@ -119,7 +119,7 @@ const counter = this.userData.counter || 0;
 1. **Через интенты в конфигурации**
 
 ```typescript
-bot.initConfig({
+bot.setAppConfig({
     intents: [
         {
             name: 'start_game',
@@ -132,7 +132,7 @@ bot.initConfig({
 2. **Через прямые команды**
 
 ```typescript
-mmApp.addCommand('greeting', ['привет', 'здравствуй'], (cmd, controller) => {
+bot.addCommand('greeting', ['привет', 'здравствуй'], (cmd, controller) => {
     controller.text = 'Здравствуйте!';
 });
 ```
@@ -217,7 +217,7 @@ console.log('Данные:', this.userData);
 console.log('Команда:', this.userCommand);
 
 // В конфигурации
-bot.initParams({
+bot.setPlatformParams({
     error_log: './logs',
     isDevMode: true,
 });
@@ -230,7 +230,7 @@ bot.initParams({
 Достаточно указать соответствующий токен в параметрах:
 
 ```typescript
-bot.initParams({
+bot.setPlatformParams({
     telegram_token: 'YOUR_TOKEN', // Для Telegram
     vk_token: 'YOUR_TOKEN', // Для VK
     viber_token: 'YOUR_TOKEN', // Для Viber
@@ -248,7 +248,7 @@ const bot = new Bot(T_VK);
 Достаточно сохранить чувствительные данные в .env файл, передав путь к нему:
 
 ```typescript
-bot.initConfig({
+bot.setAppConfig({
     env: './.env', // путь до файла
 });
 ```
@@ -275,7 +275,7 @@ DB_NAME=bot_db
 `isLocalStorage`:
 
 ```typescript
-bot.initParams({
+bot.setPlatformParams({
     isLocalStorage: true, // Файловое хранилище
     // или
     isLocalStorage: false, // База данных

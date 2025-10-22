@@ -19,7 +19,7 @@ function main(
         switch (param.command) {
             case 'create':
                 const create = new CreateController();
-                create.params = param.params;
+                create.params = param.params ?? param;
                 let type = CreateController.T_DEFAULT;
                 if (param.params && param.params.type) {
                     let paramType = param.params.type.toLowerCase();

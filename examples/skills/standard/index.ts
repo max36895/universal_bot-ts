@@ -4,8 +4,8 @@ import skillDefaultParam from '../../config/skillDefaultParam';
 import { StandardController } from './controller/StandardController';
 
 const bot = new BotTest();
-bot.initAppConfig(skillDefaultConfig());
-bot.initPlatformParams(skillDefaultParam());
+bot.setAppConfig(skillDefaultConfig());
+bot.setPlatformParams(skillDefaultParam());
 const logic = new StandardController();
 bot.initBotController(logic);
 bot.test();

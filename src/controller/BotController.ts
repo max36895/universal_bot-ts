@@ -594,7 +594,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @protected
      */
-    protected constructor() {
+    constructor() {
         this.buttons = new Buttons(this.appContext as AppContext);
         this.card = new Card(this.appContext as AppContext);
         this.sound = new Sound(this.appContext as AppContext);

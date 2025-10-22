@@ -120,7 +120,7 @@ export interface IBotBotClassAndType {
  * Использование с базой данных:
  * ```typescript
  * const bot = new Bot();
- * bot.initConfig({
+ * bot.setAppConfig({
  *   db: {
  *     host: 'localhost',
  *     database: 'bot_db',
@@ -386,14 +386,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @param {IAppConfig} config - Конфигурация приложения
      * @deprecated
-     * @see initAppConfig
+     * @see setAppConfig
      */
     public initConfig(config: IAppConfig): void {
-        this.initAppConfig(config);
+        this.setAppConfig(config);
     }
 
     /**
-     * Инициализирует конфигурацию приложения
+     * Задает конфигурацию приложения
      * Устанавливает настройки бота, включая интенты, базу данных и другие параметры
      *
      * @param {IAppConfig} config - Конфигурация приложения
@@ -401,7 +401,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @example
      * ```typescript
      * // Конфигурация с базой данных
-     * bot.initAppConfig({
+     * bot.setAppConfig({
      *   db: {
      *     host: 'localhost',
      *     database: 'bot_db',
@@ -414,12 +414,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
      * ```typescript
-     * bot.initAppConfig({
+     * bot.setAppConfig({
      *     env: './.env', // путь до файла
      * });
      * ```
      */
-    public initAppConfig(config: IAppConfig): Bot {
+    public setAppConfig(config: IAppConfig): Bot {
         if (config) {
             this._appContext.setAppConfig(config);
         }
@@ -438,14 +438,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @param {IAppParam} params - Параметры приложения
      * @deprecated
-     * @see initPlatformParams
+     * @see setPlatformParams
      */
     public initParams(params: IAppParam): void {
-        this.initPlatformParams(params);
+        this.setPlatformParams(params);
     }
 
     /**
-     * Инициализирует параметры для платформ
+     * Задает параметры для платформ
      * Устанавливает дополнительные параметры для работы бота
      *
      * @param {IAppParam} params - Параметры платформы
@@ -453,7 +453,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @example
      * ```typescript
      * // Базовая настройка
-     * bot.initPlatformParams({
+     * bot.setPlatformParams({
      *   intents: [{
      *     name: 'help',
      *     slots: ['помощь', 'справка']
@@ -463,12 +463,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
      * ```typescript
-     * bot.initConfig({
+     * bot.setAppConfig({
      *     env: './.env', // путь до файла
      * });
      * ```
      */
-    public initPlatformParams(params: IAppParam): Bot {
+    public setPlatformParams(params: IAppParam): Bot {
         if (params) {
             this._appContext.setPlatformParams(params);
         }

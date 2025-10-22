@@ -160,10 +160,10 @@ describe('umbot', () => {
                 //bot = new TestBot();
                 bot.initBotController(botController);
                 bot.appType = type;
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
                 bot.setContent(bot.getSkillContent('0'.repeat(50)));
                 await bot.run(botClass);
                 expect(bot.getText()).toEqual('test');
@@ -176,10 +176,10 @@ describe('umbot', () => {
             async (type, botClass) => {
                 bot.initBotController(botController);
                 bot.appType = type;
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'btn', slots: ['кнопка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(bot.getSkillContent('0'.repeat(5) + ` кнопка ${'my '.repeat(10)}`));
                 await bot.run(botClass);
@@ -194,10 +194,10 @@ describe('umbot', () => {
             async (type, botClass) => {
                 bot.initBotController(botController);
                 bot.appType = type;
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(bot.getSkillContent('картинка'));
                 await bot.run(botClass);
@@ -212,10 +212,10 @@ describe('umbot', () => {
             async (type, botClass) => {
                 bot.initBotController(botController);
                 bot.appType = type;
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка', 'картинка_с_кнопкой'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(bot.getSkillContent('картинка'));
                 await bot.run(botClass);
@@ -230,10 +230,10 @@ describe('umbot', () => {
             async (type, botClass) => {
                 bot.initBotController(botController);
                 bot.appType = type;
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(bot.getSkillContent('картинка'));
                 await bot.run(botClass);
@@ -248,10 +248,10 @@ describe('umbot', () => {
             async (type, botClass) => {
                 bot.initBotController(botController);
                 bot.appType = type;
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(bot.getSkillContent('картинка'));
                 await bot.run(botClass);
@@ -268,10 +268,10 @@ describe('umbot', () => {
                 async (type, botClass) => {
                     bot.appType = type;
                     bot.initBotController(botController);
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
                     bot.addCommand('sound', ['звук'], () => {
                         botController.tts = `${AlisaSound.S_AUDIO_GAME_WIN} `.repeat(i).trim();
                     });
@@ -302,10 +302,10 @@ describe('umbot', () => {
                 async (type, botClass) => {
                     bot.initBotController(botController);
                     bot.appType = type;
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
                     botController.sound.sounds = [];
                     for (let j = 1; j < 15; j++) {
                         botController.sound.sounds.push({
@@ -338,10 +338,10 @@ describe('umbot', () => {
                 async (type, botClass) => {
                     bot.initBotController(botController);
                     bot.appType = type;
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
                     for (let j = 0; j < i * 100; j++) {
                         bot.addCommand(`cmd_${j}`, [`команда${j}`], () => {
                             botController.text = `cmd_${j}`;

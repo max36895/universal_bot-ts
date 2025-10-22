@@ -210,6 +210,7 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Создает экземпляр YandexSpeechKit
      * @param oauth Авторизационный токен для синтеза речи
+     * @param appContext Контекст приложения
      */
     public constructor(oauth: string | null = null, appContext: AppContext) {
         super(oauth, appContext);

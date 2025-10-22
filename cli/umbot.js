@@ -3,13 +3,13 @@
 /**
  * Универсальное приложение по созданию навыков и ботов.
  * Скрипт позволяет создавать шаблон для приложения.
- * @version 2.1.0
+ * @version 2.1.1
  * @author Maxim-M maximco36895@yandex.ru
  * @module
  */
 
 const consoleController = require(__dirname + '/controllers/ConsoleController');
-const utils = require(__dirname + './utils').utils;
+const utils = require(__dirname + '/utils').utils;
 
 const argv = process.argv;
 

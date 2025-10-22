@@ -4,7 +4,7 @@
  * Time: {{time}}
  */
 
-import { AlisaSound, BotController, Text, WELCOME_INTENT_NAME } from 'umbot';
+import { AlisaSound, BotController, Text, WELCOME_INTENT_NAME, IUserData } from 'umbot';
 
 interface IQuestion {
     text: string;
@@ -12,11 +12,15 @@ interface IQuestion {
     success: string;
 }
 
+interface IMyUserData extends IUserData {
+    question_id: number;
+}
+
 /**
  * Шаблон для викторины
  * Class __className__Controller
  */
-export class __className__Controller extends BotController {
+export class __className__Controller extends BotController<IMyUserData> {
     public question: IQuestion[];
     protected readonly START_QUESTION = 'start';
     protected readonly GAME_QUESTION = 'game';
@@ -81,7 +85,7 @@ export class __className__Controller extends BotController {
      * Отображаем пользователю текст помощи.
      */
     protected _help() {
-        this.text = Text.getText(this.appContext.platformParams.help_text || '');
+        this.text = Text.getText(this.appContext?.platformParams.help_text || '');
     }
 
     /**

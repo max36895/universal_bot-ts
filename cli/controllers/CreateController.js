@@ -150,8 +150,8 @@ class CreateController {
             '{{port}}',
         ];
         const name = this.#name.substr(0, 1).toUpperCase() + this.#name.substr(1);
-        const date = `${new Date().getDay()}.${new Date().getMonth()}.${new Date().getFullYear()}`;
-        const time = `${new Date().getHours()}:${new Date().getMinutes()}`;
+        const date = `${new Date().getDate().toString().padStart(2, '0')}.${(new Date().getMonth() + 1).toString().padStart(2, '0')}.${new Date().getFullYear()}`;
+        const time = `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`;
         const replace = [
             date,
             time,

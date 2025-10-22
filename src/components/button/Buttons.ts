@@ -257,7 +257,7 @@ export class Buttons {
     /**
      * Обрабатывает массив кнопок и добавляет их в коллекцию через callback.
      *
-     * @param {TButton[]} buttons - Массив кнопок для обработки
+     * @param {TButton[]} button - Массив кнопок для обработки
      * @param {TButtonCb} callback - Функция для добавления кнопок
      * @private
      */
