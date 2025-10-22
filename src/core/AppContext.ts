@@ -73,6 +73,9 @@ import { BotController } from '../controller';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { DB } from '../models/db';
 
+/**
+ * Тип для HTTP клиента
+ */
 export type THttpClient = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 
 /**
@@ -653,12 +656,7 @@ export class AppContext {
     public appConfig: IAppConfig = {
         error_log: '/../../logs',
         json: '/../../json',
-        db: {
-            host: '',
-            user: '',
-            pass: '',
-            database: '',
-        },
+        db: { host: '', user: '', pass: '', database: '' },
         isLocalStorage: false,
     };
 
@@ -682,14 +680,8 @@ export class AppContext {
         welcome_text: 'Текст приветствия',
         help_text: 'Текст помощи',
         intents: [
-            {
-                name: WELCOME_INTENT_NAME,
-                slots: ['привет', 'здравст'],
-            },
-            {
-                name: HELP_INTENT_NAME,
-                slots: ['помощ', 'что ты умеешь'],
-            },
+            { name: WELCOME_INTENT_NAME, slots: ['привет', 'здравст'] },
+            { name: HELP_INTENT_NAME, slots: ['помощ', 'что ты умеешь'] },
         ],
         utm_text: null,
     };
@@ -939,11 +931,7 @@ export class AppContext {
                 );
             }
         }
-        this.commands.set(commandName, {
-            slots,
-            isPattern,
-            cb,
-        });
+        this.commands.set(commandName, { slots, isPattern, cb });
     }
 
     /**
@@ -1032,17 +1020,11 @@ export class AppContext {
         const msg = `[${Date()}]: ${errorText}\n`;
 
         if (this._logger) {
-            this._logger.error(`[${fileName}]: ${msg}`, {
-                fileName,
-                trace: new Error().stack,
-            });
+            this._logger.error(`[${fileName}]: ${msg}`, { fileName, trace: new Error().stack });
             return true;
         }
 
-        const dir: IDir = {
-            path: this.appConfig.error_log || __dirname + '/../../logs',
-            fileName,
-        };
+        const dir: IDir = { path: this.appConfig.error_log || __dirname + '/../../logs', fileName };
         if (this._isDevMode) {
             console.error(msg);
         }

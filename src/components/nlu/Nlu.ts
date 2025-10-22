@@ -164,7 +164,7 @@ export class Nlu {
      * // user-name@domain.com
      * ```
      */
-    private static readonly EMAIL_REGEX = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/gi;
 
     /**
      * Регулярное выражение для поиска телефонных номеров.
