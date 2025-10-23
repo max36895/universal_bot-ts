@@ -6,8 +6,6 @@
  * - Выполнения CRUD операций
  * - Валидации данных
  * - Управления подключениями
- *
- * @module models/db/DbController
  */
 
 import { DbControllerModel } from './DbControllerModel';

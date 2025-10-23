@@ -62,7 +62,6 @@ class CreateController {
     _initParams(defaultParams) {
         let params;
         if (this.params && this.params.params) {
-            console.log(this.params.params, 'params');
             params = { ...defaultParams, ...this.params.params };
         } else {
             params = defaultParams;
@@ -149,9 +148,9 @@ class CreateController {
             '{{hostname}}',
             '{{port}}',
         ];
-        const name = this.#name.substr(0, 1).toUpperCase() + this.#name.substr(1);
-        const date = `${new Date().getDay()}.${new Date().getMonth()}.${new Date().getFullYear()}`;
-        const time = `${new Date().getHours()}:${new Date().getMinutes()}`;
+        const name = this.#name.substring(0, 1).toUpperCase() + this.#name.substring(1);
+        const date = `${new Date().getDate().toString().padStart(2, '0')}.${(new Date().getMonth() + 1).toString().padStart(2, '0')}.${new Date().getFullYear()}`;
+        const time = `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`;
         const replace = [
             date,
             time,
@@ -191,6 +190,7 @@ class CreateController {
     /**
      * Создает файл параметров проекта
      * @param {string} path Путь к шаблонам
+     * @param {string} type Тип приложения
      * @private
      */
     _getParamsFile(path, type) {
@@ -318,6 +318,5 @@ class CreateController {
 
 /**
  * Контроллер для создания новых проектов и компонентов.
- * @module CreateController
  */
 exports.create = CreateController;

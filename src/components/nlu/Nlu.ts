@@ -164,7 +164,7 @@ export class Nlu {
      * // user-name@domain.com
      * ```
      */
-    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/gi;
+    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/i;
 
     /**
      * Регулярное выражение для поиска телефонных номеров.
@@ -180,7 +180,7 @@ export class Nlu {
      * // 89991234567
      * ```
      */
-    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/gimu;
+    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/imu;
 
     /**
      * Регулярное выражение для поиска URL-ссылок.
@@ -195,7 +195,7 @@ export class Nlu {
      * // https://example.com/path
      * ```
      */
-    private static readonly LINK_REGEX = /((http|s:\/\/)[^( |\n)]+)/gimu;
+    private static readonly LINK_REGEX = /((http|s:\/\/)[^( |\n)]+)/imu;
 
     /**
      * Тип сущности: ФИО.

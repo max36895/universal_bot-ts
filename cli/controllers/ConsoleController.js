@@ -13,17 +13,17 @@ function main(
 ) {
     const infoText =
         'Доступные параметры:\n' +
-        '\ncreate (project name) - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
-        '\ngenerateEnv - Сгенерировать файл .env';
+        '\n - create (project name) - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
+        '\n - generateEnv - Сгенерировать файл .env';
     if (param && param.command) {
         switch (param.command) {
             case 'create':
                 const create = new CreateController();
-                create.params = param.params;
+                create.params = param.params ?? param;
                 let type = CreateController.T_DEFAULT;
                 if (param.params && param.params.type) {
                     let paramType = param.params.type.toLowerCase();
-                    paramType = paramType.substr(0, 1).toUpperCase() + paramType.substr(1);
+                    paramType = paramType.substring(0, 1).toUpperCase() + paramType.substring(1);
                     if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(paramType)) {
                         type = paramType;
                     } else {

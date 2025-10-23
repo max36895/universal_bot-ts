@@ -6,8 +6,8 @@ import { UserApp } from './UserTemplate/Controller/UserApp';
 import userDataConfig from './UserTemplate/userDataConfig';
 
 const bot = new BotTest();
-bot.initAppConfig(skillStorageConfig());
-bot.initPlatformParams(skillDefaultParam());
+bot.setAppConfig(skillStorageConfig());
+bot.setPlatformParams(skillDefaultParam());
 const logic = new UserAppController();
 bot.initBotController(logic);
 

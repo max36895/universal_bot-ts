@@ -3,7 +3,7 @@ import skillDefaultConfig from '../../config/skillDefaultConfig';
 import { StandardController } from './controller/StandardController';
 
 const bot = new BotTest();
-bot.initAppConfig(skillDefaultConfig());
+bot.setAppConfig(skillDefaultConfig());
 const logic = new StandardController();
 bot.initBotController(logic);
 

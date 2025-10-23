@@ -4,7 +4,7 @@
  * Time: {{time}}
  */
 
-exports.params = {
+exports.config = {
     db: {
         host: '',
         user: '',

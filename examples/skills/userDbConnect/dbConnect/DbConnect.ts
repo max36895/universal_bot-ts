@@ -1,14 +1,20 @@
 import { IDbControllerResult, IModelRes, TQueryCb } from '../../../../src/models';
 import { DbControllerModel, IQueryData, QueryData } from '../../../../src/models/db';
 import { Request } from '../../../../src/api';
+import { AppContext } from '../../../../src';
 
 export default class DbConnect extends DbControllerModel {
     protected _query: Request;
 
-    constructor() {
-        super();
-        this._query = new Request();
+    constructor(appContext?: AppContext) {
+        super(appContext);
+        this._query = new Request(appContext as AppContext);
         this._query.url = 'https://query.ru/query';
+    }
+
+    setAppContext(appContext: AppContext) {
+        super.setAppContext(appContext);
+        this._query.setAppContext(appContext);
     }
 
     /**

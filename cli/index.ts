@@ -54,7 +54,6 @@
  * ```bash
  * npm umbot create project.json
  * ```
- * @module
  */
 export * from './umbot';
 export * from './utils';

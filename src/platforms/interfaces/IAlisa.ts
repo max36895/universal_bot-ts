@@ -8,8 +8,6 @@
  * - Сессии (IAlisaSession)
  * - Состояния (IAlisaRequestState)
  * - Компоненты интерфейса (кнопки, карточки, изображения)
- *
- * @module platforms/interfaces/IAlisa
  */
 
 import { TButtonPayload } from '../../components/button/interfaces';

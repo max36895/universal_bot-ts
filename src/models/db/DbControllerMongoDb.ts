@@ -6,8 +6,6 @@
  * - Выполнения CRUD операций с данными
  * - Валидации данных перед сохранением
  * - Безопасного экранирования строк
- *
- * @module models/db/DbControllerMongoDb
  */
 
 import { DbControllerModel } from './DbControllerModel';

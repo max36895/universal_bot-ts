@@ -6,8 +6,6 @@
  * - Пользователи (IViberUser)
  * - Сообщения (IViberMessage)
  * - Обновления (IViberContent)
- *
- * @module platforms/interfaces/IViber
  */
 
 /**

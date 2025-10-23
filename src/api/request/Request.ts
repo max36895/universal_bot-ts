@@ -1,8 +1,6 @@
 /**
  * Модуль для отправки HTTP-запросов.
  * Предоставляет функционал для работы с различными типами запросов и ответов
- *
- * @module api/request/Request
  */
 import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
@@ -115,6 +113,16 @@ export class Request {
         this._setTimeOut = null;
         this.isBinaryResponse = false;
         this._appContext = appContext;
+    }
+
+    /**
+     * Устанавливает контекст приложения
+     * @param appContext
+     */
+    public setAppContext(appContext: AppContext) {
+        if (appContext) {
+            this._appContext = appContext;
+        }
     }
 
     /**

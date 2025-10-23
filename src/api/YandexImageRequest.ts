@@ -193,7 +193,7 @@ export class YandexImageRequest extends YandexRequest {
                     }),
                 );
                 // Если хотя бы одно изображение не удалено — вернуть false
-                return results.every((r) => r.status === 'fulfilled' && r.value === true);
+                return results.every((r) => r.status === 'fulfilled' && r.value);
             } else {
                 this._log(
                     'YandexImageRequest.deleteImages() Error: Не удалось получить загруженные звуки!',

@@ -6,8 +6,6 @@
  * - Типизации конфигурационных параметров
  * - Управления токенами для различных платформ
  * - Настройки подключения к базе данных
- *
- * @module utils/EnvConfig
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -171,9 +169,21 @@ export interface IEnvConfig {
     DB_NAME?: string;
 }
 
+/**
+ * Статус загрузки конфигурации
+ */
 export interface IEnvConfigStatus {
+    /**
+     * Флаг успешности загрузки
+     */
     status: boolean;
+    /**
+     * Ошибка загрузки
+     */
     error?: string;
+    /**
+     * Данные конфигурации
+     */
     data?: IEnvConfig;
 }
 

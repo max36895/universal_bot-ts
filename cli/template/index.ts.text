@@ -10,7 +10,7 @@ import {__className__Controller} from './controller/__className__Controller';
 
 const bot = new Bot();
 bot.initTypeInGet();
-bot.initAppConfig({{name}}Config);
-bot.initPlatformParams({{name}}Params);
+bot.setAppConfig({{name}}Config());
+bot.setPlatformParams({{name}}Params());
 bot.initBotController((new __className__Controller()));
 bot.start({{hostname}}, {{port}});

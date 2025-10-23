@@ -27,8 +27,6 @@
  * // Создание контроллера для работы с MongoDB
  * const userController = new DbControllerMongoDb(db, UserModel);
  * ```
- *
- * @module models/db
  */
 export * from './DB';
 export * from './Model';

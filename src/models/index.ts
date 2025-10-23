@@ -6,8 +6,6 @@
  * - Управления токенами изображений и звуков
  * - Хранения и обработки пользовательских данных
  *
- * @module models
- *
  * @example
  * ```typescript
  * import { db, ImageTokens, SoundTokens, UsersData } from './models';

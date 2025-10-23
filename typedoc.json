@@ -1,18 +1,6 @@
 {
-    "entryPoints": [
-        "src/build.ts",
-        "src/test.ts",
-        "src/mmApp.ts",
-        "src/api",
-        "src/components",
-        "src/controller",
-        "src/core",
-        "src/platforms",
-        "src/models",
-        "src/models/db",
-        "src/utils",
-        "cli"
-    ],
+    "entryPoints": ["src", "cli"],
+    "entryPointStrategy": "expand",
     "readme": "README.md",
     "name": "umbot",
     "out": "./docs/",
@@ -20,13 +8,24 @@
     "excludePrivate": true,
     "excludeExternals": true,
     "excludeInternal": true,
+    "excludeReferences": true,
     "theme": "default",
     "includeVersion": true,
     "categorizeByGroup": true,
     "searchInComments": true,
-    "sort": ["source-order"],
+    "sort": ["kind", "instance-first", "alphabetical"],
     "validation": {
         "invalidLink": true,
-        "notDocumented": true
+        "notDocumented": false
+    },
+    "navigationLinks": {
+        "GitHub": "https://github.com/max36895/universal_bot-ts",
+        "npm": "https://www.npmjs.com/package/umbot"
+    },
+    "visibilityFilters": {
+        "protected": false,
+        "private": false,
+        "inherited": true,
+        "external": false
     }
 }

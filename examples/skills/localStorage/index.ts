@@ -4,8 +4,8 @@ import skillDefaultParam from '../../config/skillDefaultParam';
 import { LocalStorageController } from './controller/LocalStorageController';
 
 const bot = new BotTest();
-bot.initAppConfig(skillStorageConfig());
-bot.initPlatformParams(skillDefaultParam());
+bot.setAppConfig(skillStorageConfig());
+bot.setPlatformParams(skillDefaultParam());
 const logic = new LocalStorageController();
 bot.initBotController(logic);
 /**

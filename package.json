@@ -99,7 +99,8 @@
         "mongodb": "^6.20.0"
     },
     "files": [
-        "dist"
+        "dist",
+        "cli"
     ],
-    "version": "2.1.0"
+    "version": "2.1.2"
 }

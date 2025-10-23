@@ -7,8 +7,6 @@
  * - Отправители (ITelegramMessageFrom)
  * - Чаты (ITelegramMessageChat)
  * - Обновления (ITelegramContent)
- *
- * @module platforms/interfaces/ITelegram
  */
 
 /**

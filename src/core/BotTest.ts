@@ -1,8 +1,6 @@
 /**
  * Модуль для тестирования бота.
  * Предоставляет инструменты для отладки и тестирования функциональности бота
- *
- * @module core/BotTest
  */
 import { TemplateTypeModel } from '../platforms';
 import { stdin } from '../utils/standard/util';
@@ -90,7 +88,7 @@ export interface IBotTestParams {
  * @example
  * ```typescript
  * const botTest = new BotTest();
- * botTest.initConfig({
+ * botTest.setAppConfig({
  *   intents: [{
  *     name: 'greeting',
  *     slots: ['привет', 'здравствуйте']

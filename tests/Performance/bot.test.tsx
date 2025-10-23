@@ -144,10 +144,10 @@ describe('umbot', () => {
                     bot.initBotController(botController);
                     bot.appType = T_ALISA;
                     const botClass = new Alisa(bot.appContext);
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
 
                     bot.setContent(getContent('0'.repeat(i * 2)));
                     await bot.run(botClass);
@@ -160,10 +160,10 @@ describe('umbot', () => {
                     bot.initBotController(botController);
                     bot.appType = T_ALISA;
                     const botClass = new Alisa(bot.appContext);
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [{ name: 'btn', slots: ['кнопка'] }],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
 
                     bot.setContent(getContent('0'.repeat(i) + ` кнопка ${''.repeat(i * 2)}`));
                     await bot.run(botClass);
@@ -176,10 +176,10 @@ describe('umbot', () => {
                 bot.initBotController(botController);
                 bot.appType = T_ALISA;
                 const botClass = new Alisa(bot.appContext);
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -190,10 +190,10 @@ describe('umbot', () => {
                 bot.initBotController(botController);
                 bot.appType = T_ALISA;
                 const botClass = new Alisa(bot.appContext);
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка_с_кнопкой'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -204,10 +204,10 @@ describe('umbot', () => {
                 bot.initBotController(botController);
                 bot.appType = T_ALISA;
                 const botClass = new Alisa(bot.appContext);
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -218,10 +218,10 @@ describe('umbot', () => {
                 bot.initBotController(botController);
                 bot.appType = T_ALISA;
                 const botClass = new Alisa(bot.appContext);
-                bot.initPlatformParams({
+                bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
                 });
-                bot.initAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
                 await bot.run(botClass);
@@ -235,10 +235,10 @@ describe('umbot', () => {
                     bot.initBotController(botController);
                     bot.appType = T_ALISA;
                     const botClass = new Alisa(bot.appContext);
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
                     bot.addCommand('sound', ['звук'], () => {
                         botController.tts = ` ${AlisaSound.S_AUDIO_GAME_WIN} `.repeat(i);
                     });
@@ -255,10 +255,10 @@ describe('umbot', () => {
                     bot.initBotController(botController);
                     bot.appType = T_ALISA;
                     const botClass = new Alisa(bot.appContext);
-                    bot.initPlatformParams({
+                    bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.initAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true });
                     botController.sound.sounds = [];
                     for (let j = 1; j < 15; j++) {
                         botController.sound.sounds.push({
@@ -296,10 +296,10 @@ describe('umbot', () => {
                                 slots: [`команда${j}`],
                             });
                         }
-                        bot.initPlatformParams({
+                        bot.setPlatformParams({
                             intents,
                         });
-                        bot.initAppConfig({ isLocalStorage: true });
+                        bot.setAppConfig({ isLocalStorage: true });
 
                         bot.setContent(getContent(`команда${i / 2}`));
                         await bot.run(botClass);
@@ -317,10 +317,10 @@ describe('umbot', () => {
                         bot.initBotController(botController);
                         bot.appType = T_ALISA;
                         const botClass = new Alisa(bot.appContext);
-                        bot.initPlatformParams({
+                        bot.setPlatformParams({
                             intents: [],
                         });
-                        bot.initAppConfig({ isLocalStorage: true });
+                        bot.setAppConfig({ isLocalStorage: true });
                         for (let j = 0; j < i * 100; j++) {
                             bot.addCommand(`cmd_${j}`, [`команда${j}`], () => {
                                 botController.text = `cmd_${j}`;

@@ -8,8 +8,6 @@
  * - Сессии (IMarusiaSession)
  * - Состояния (IMarusiaRequestState)
  * - Компоненты интерфейса (кнопки, карточки, изображения)
- *
- * @module platforms/interfaces/IMarusia
  */
 
 import { TButtonPayload } from '../../components/button/interfaces';

@@ -12,8 +12,6 @@
  * - Сообщения (ISberSmartAppMessageInfo)
  * - Карточки (ISberSmartAppCard)
  * - Кнопки (ISberSmartAppSuggestionButton)
- *
- * @module platforms/interfaces/ISberSmartApp
  */
 
 /**

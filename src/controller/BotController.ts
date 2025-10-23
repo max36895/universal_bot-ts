@@ -1,7 +1,5 @@
 /**
  * Модуль контроллера - основной компонент для обработки бизнес-логики бота
- *
- * @module controller/BotController
  */
 import { Buttons } from '../components/button';
 import { Card } from '../components/card';
@@ -594,7 +592,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @protected
      */
-    protected constructor() {
+    constructor() {
         this.buttons = new Buttons(this.appContext as AppContext);
         this.card = new Card(this.appContext as AppContext);
         this.sound = new Sound(this.appContext as AppContext);
@@ -711,10 +709,16 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (!this.userCommand || !this.appContext?.commands) {
             return null;
         }
+        const commandLength = this.appContext.commands.size;
         for (const [commandName, command] of this.appContext.commands) {
             if (
                 command &&
-                Text.isSayText(command.slots || [], this.userCommand, command.isPattern || false)
+                Text.isSayText(
+                    command.slots || [],
+                    this.userCommand,
+                    command.isPattern || false,
+                    commandLength < 500,
+                )
             ) {
                 const res = command.cb?.(this.userCommand, this);
                 if (res) {

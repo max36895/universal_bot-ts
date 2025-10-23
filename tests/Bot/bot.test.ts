@@ -110,10 +110,10 @@ describe('Bot', () => {
         jest.resetAllMocks();
     });
 
-    describe('initParams', () => {
+    describe('setPlatformParams', () => {
         it('should set config if config is provided', () => {
             const params = { intents: [{ name: 'greeting', slots: ['привет', 'здравствуйте'] }] };
-            bot.initPlatformParams(params);
+            bot.setPlatformParams(params);
             expect(bot.appContext.platformParams).toEqual({
                 ...params,
                 marusia_token: null,
@@ -136,10 +136,10 @@ describe('Bot', () => {
         });
     });
 
-    describe('initAppConfig', () => {
+    describe('setAppConfig', () => {
         it('should set params if params are provided', () => {
             const config = { isLocalStorage: true, error_log: './logs' };
-            bot.initAppConfig(config);
+            bot.setAppConfig(config);
             expect(bot.appContext.appConfig).toEqual({
                 ...config,
                 json: '/../../json',
@@ -282,10 +282,10 @@ describe('Bot', () => {
             bot.initBotController(botController);
             bot.appType = T_USER_APP;
             const botClass = new Alisa(bot.appContext);
-            bot.initPlatformParams({
+            bot.setPlatformParams({
                 intents: [{ name: 'setStore', slots: ['сохранить'] }],
             });
-            bot.initAppConfig({ isLocalStorage: true });
+            bot.setAppConfig({ isLocalStorage: true });
             jest.spyOn(botClass, 'getError').mockReturnValue(null);
 
             jest.spyOn(usersData, 'whereOne').mockResolvedValue(Promise.resolve(true));
@@ -301,13 +301,13 @@ describe('Bot', () => {
             bot.initBotController(botController);
             bot.appType = T_ALISA;
             const botClass = new Alisa(bot.appContext);
-            bot.initPlatformParams({
+            bot.setPlatformParams({
                 intents: [
                     { name: 'btn', slots: ['кнопка'] },
                     { name: 'card', slots: ['карточка'] },
                 ],
             });
-            bot.initAppConfig({ isLocalStorage: true });
+            bot.setAppConfig({ isLocalStorage: true });
 
             bot.setContent(getContent('Привет'));
             expect(await bot.run(botClass)).toEqual({
@@ -320,7 +320,7 @@ describe('Bot', () => {
                 session_state: {},
                 version: '1.0',
             });
-            bot.initAppConfig({ isLocalStorage: false });
+            bot.setAppConfig({ isLocalStorage: false });
 
             bot.setContent(getContent('Привет'));
             expect(await bot.run(botClass)).toEqual({

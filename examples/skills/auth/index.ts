@@ -4,8 +4,8 @@ import skillAuthParam from '../../config/skillAuthParam';
 import { AuthController } from './controller/AuthController';
 
 const bot = new BotTest();
-bot.initAppConfig(skillStorageConfig());
-bot.initPlatformParams(skillAuthParam());
+bot.setAppConfig(skillStorageConfig());
+bot.setPlatformParams(skillAuthParam());
 const logic = new AuthController();
 bot.initBotController(logic);
 /**

@@ -9,8 +9,8 @@ import {{name}}Params from './config/{{name}}Params';
 import { __className__Controller } from './controller/__className__Controller';
 
 const bot = new BotTest();
-bot.initAppConfig({{name}}Config);
-bot.initPlatformParams({{name}}Params);
+bot.setAppConfig({{name}}Config());
+bot.setPlatformParams({{name}}Params());
 bot.initBotController(new __className__Controller());
 bot.setDevMode(true);
 bot.test();

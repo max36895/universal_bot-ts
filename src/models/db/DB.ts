@@ -5,8 +5,6 @@
  * - Установки и управления соединением с MongoDB
  * - Конфигурации параметров подключения
  * - Обработки ошибок при работе с базой данных
- *
- * @module models/db/DB
  */
 
 import { MongoClient, MongoClientOptions, ServerApiVersion } from 'mongodb';

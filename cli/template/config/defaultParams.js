@@ -4,7 +4,7 @@
  * Time: {{time}}
  */
 
-exports.config = {
+exports.params = {
     yandex_token: '',
     welcome_text: '',
     help_text: '',

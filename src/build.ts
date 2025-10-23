@@ -4,7 +4,6 @@ import { Bot, IAppConfig, IAppParam } from './core';
 
 /**
  * Набор методов, упрощающих запуск приложения
- * @module build
  */
 
 /**
@@ -52,8 +51,8 @@ export interface IConfig {
  * @private
  */
 function _initParam(bot: Bot | BotTest, config: IConfig): void {
-    bot.initAppConfig(config.appConfig);
-    bot.initPlatformParams(config.appParam);
+    bot.setAppConfig(config.appConfig);
+    bot.setPlatformParams(config.appParam);
     bot.initBotController(config.controller);
 }
 

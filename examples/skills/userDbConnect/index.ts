@@ -5,8 +5,8 @@ import { BotTest } from '../../../src/test';
 import DbConnect from './dbConnect/DbConnect';
 
 const bot = new BotTest();
-bot.initAppConfig(skillDefaultConfig());
-bot.initPlatformParams(skillDefaultParam());
+bot.setAppConfig(skillDefaultConfig());
+bot.setPlatformParams(skillDefaultParam());
 const logic = new StandardController();
 bot.setUserDbController(new DbConnect());
 bot.initBotController(logic);
