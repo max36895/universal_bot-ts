@@ -6,8 +6,6 @@
  * - Выполнения CRUD операций
  * - Обработки результатов запросов
  * - Валидации данных
- *
- * @module models/interface/IDbControllerModel
  */
 
 import { IModelRes, IModelRules } from './IModel';

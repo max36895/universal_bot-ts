@@ -6,8 +6,6 @@
  * - Поиска совпадений в тексте
  * - Проверки схожести текстов
  * - Работы с окончаниями слов
- *
- * @module utils/standard/Text
  */
 import { rand, similarText } from './util';
 
@@ -22,6 +20,22 @@ import { rand, similarText } from './util';
  * ```
  */
 export type TPattern = string | readonly string[];
+
+/**
+ * Тип для регулярного выражения
+ */
+type PatternItem = string | RegExp;
+/**
+ * Тип для поиска совпадений в тексте с учетом регулярных выражений
+ * Может быть строкой или массивом строк
+ *
+ * @example
+ * ```typescript
+ * const pattern: TPattern = /привет/;
+ * const patterns: TPattern = ['привет', /здравствуйте/];
+ * ```
+ */
+export type TPatternReg = PatternItem | readonly PatternItem[];
 
 /**
  * Интерфейс результата проверки схожести текстов
@@ -154,7 +168,7 @@ export class Text {
      * ```
      */
     public static isUrl(link: string): boolean {
-        const URL_PATTERN = /((http|s:\/\/)[^( |\n)]+)/gimu;
+        const URL_PATTERN = /((http|s:\/\/)[^( |\n)]+)/imu;
         return URL_PATTERN.test(link);
     }
 
@@ -229,19 +243,51 @@ export class Text {
      *
      * @param {TPattern} patterns - Шаблоны для поиска
      * @param {string} text - Проверяемый текст
+     * @param {boolean} useDirectRegExp - Использовать исходные RegExp напрямую без нормализации и кэширования
      * @returns {boolean} true, если найдено совпадение с одним из шаблонов
      *
      * @private
      */
-    private static isSayPattern(patterns: TPattern, text: string): boolean {
+    private static isSayPattern(
+        patterns: TPatternReg,
+        text: string,
+        useDirectRegExp: boolean = false,
+    ): boolean {
         if (!text) {
             return false;
         }
+        let pattern: string | RegExp;
+        if (Array.isArray(patterns)) {
+            const newPatterns: string[] = [];
+            for (const patternBase of patterns) {
+                if (typeof patternBase === 'string') {
+                    newPatterns.push(patternBase);
+                } else {
+                    const cachedRegex = useDirectRegExp
+                        ? patternBase
+                        : Text.getCachedRegex(patternBase);
+                    if (cachedRegex.global) {
+                        // На случай если кто-то задал флаг g, сбрасываем lastIndex,
+                        // так как это может привести к не корректному результату
+                        cachedRegex.lastIndex = 0;
+                    }
+                    const res = cachedRegex.test(text);
+                    if (res) {
+                        return res;
+                    }
+                }
+            }
+            if (newPatterns.length) {
+                pattern = `(${newPatterns.join(')|(')})`;
+            } else {
+                return false;
+            }
+        } else {
+            pattern = patterns as string | RegExp;
+        }
 
-        const pattern = Array.isArray(patterns)
-            ? `(${patterns.join(')|(')})`
-            : (patterns as string);
-        const cachedRegex = Text.getCachedRegex(pattern);
+        const cachedRegex =
+            useDirectRegExp && typeof pattern !== 'string' ? pattern : Text.getCachedRegex(pattern);
         return !!text.match(cachedRegex);
     }
 
@@ -251,6 +297,7 @@ export class Text {
      * @param {TPattern} find - Искомый текст или массив текстов
      * @param {string} text - Исходный текст для поиска
      * @param {boolean} [isPattern=false] - Использовать ли регулярные выражения
+     * @param {boolean} [useDirectRegExp=false] - Использовать исходные RegExp напрямую без нормализации и кэширования. Стоит использовать только в крайних случаях.
      * @returns {boolean} true, если найдено совпадение
      *
      * @example
@@ -265,11 +312,16 @@ export class Text {
      * Text.isSayText(['\\bпривет\\b', '\\bмир\\b'], 'привет мир', true); // -> true
      * ```
      */
-    public static isSayText(find: TPattern, text: string, isPattern: boolean = false): boolean {
+    public static isSayText(
+        find: TPatternReg,
+        text: string,
+        isPattern: boolean = false,
+        useDirectRegExp: boolean = false,
+    ): boolean {
         if (!text) return false;
 
         if (isPattern) {
-            return Text.isSayPattern(find, text);
+            return Text.isSayPattern(find, text, useDirectRegExp);
         }
 
         if (typeof find === 'string') {
@@ -277,7 +329,7 @@ export class Text {
         }
 
         // Оптимизированный вариант для массива: early return + includes
-        for (const value of find) {
+        for (const value of find as string[]) {
             if (text.includes(value)) {
                 return true;
             }
@@ -293,14 +345,20 @@ export class Text {
      *
      * @private
      */
-    private static getCachedRegex(pattern: string): RegExp {
-        let regex = Text.regexCache.get(pattern);
+    private static getCachedRegex(pattern: string | RegExp): RegExp {
+        const key = typeof pattern === 'string' ? pattern : `${pattern.flags}|${pattern.source}`;
+        let regex = Text.regexCache.get(key);
         if (!regex) {
             if (Text.regexCache.size >= MAX_CACHE_SIZE) {
                 Text.regexCache.clear();
             }
-            regex = new RegExp(pattern, 'umig');
-            Text.regexCache.set(pattern, regex);
+            if (typeof pattern === 'string') {
+                regex = new RegExp(pattern, 'umi');
+                Text.regexCache.set(pattern, regex);
+            } else {
+                regex = new RegExp(pattern.source, pattern.flags);
+                Text.regexCache.set(key, regex);
+            }
         }
         return regex;
     }

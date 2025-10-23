@@ -7,8 +7,6 @@
  * - Информация о клиенте (IVkClientInfo)
  * - Объекты запросов (IVkRequestObject)
  * - Обновления (IVkRequestContent)
- *
- * @module platforms/interfaces/IVk
  */
 
 /**

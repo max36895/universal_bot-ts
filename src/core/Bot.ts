@@ -31,6 +31,7 @@ import {
     TAppType,
     ICommandParam,
     ILogger,
+    TSlots,
 } from './AppContext';
 import { IDbControllerModel } from '../models';
 
@@ -246,7 +247,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Добавляет команду для обработки пользовательских запросов
      *
      * @param {string} commandName - Уникальный идентификатор команды
-     * @param {string[]} slots - Триггеры для активации команды
+     * @param {TSlots} slots - Триггеры для активации команды
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -305,7 +306,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public addCommand<TBotController extends BotController = BotController>(
         commandName: string,
-        slots: string[],
+        slots: TSlots,
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): Bot {

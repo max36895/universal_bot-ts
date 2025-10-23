@@ -1,7 +1,5 @@
 /**
- * Основной класс приложения для создания мультиплатформенных чат-ботов
- * @packageDocumentation
- * @module core
+ * Основной класс приложения для создания мультиплатформенных чат-ботов*
  *
  * Основной класс приложения для создания мультиплатформенных чат-ботов
  *
@@ -553,6 +551,11 @@ export interface IAppParam {
 }
 
 /**
+ * Тип для слотов команд
+ */
+export type TSlots = (string | RegExp)[];
+
+/**
  * @interface ICommandParam
  * Параметры команды
  *
@@ -576,7 +579,7 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      *
      * Массив слов или регулярных выражений для активации команды.
      */
-    slots: string[];
+    slots: TSlots;
     /**
      * Флаг использования регулярных выражений
      *
@@ -844,7 +847,7 @@ export class AppContext {
      * Добавляет команду для обработки пользовательских запросов
      *
      * @param {string} commandName - Уникальный идентификатор команды
-     * @param {string[]} slots - Триггеры для активации команды
+     * @param {TSlots} slots - Триггеры для активации команды
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -903,7 +906,7 @@ export class AppContext {
      */
     public addCommand<TBotController extends BotController = BotController>(
         commandName: string,
-        slots: string[],
+        slots: TSlots,
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
@@ -919,8 +922,10 @@ export class AppContext {
 
             const errors: string[] = [];
             slots.forEach((slot) => {
-                if (dangerousPatterns.some((re) => re.test(slot))) {
-                    errors.push(slot);
+                if (typeof slot === 'string') {
+                    if (dangerousPatterns.some((re) => re.test(slot))) {
+                        errors.push(slot);
+                    }
                 }
             });
             if (errors.length) {

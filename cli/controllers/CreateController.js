@@ -318,6 +318,5 @@ class CreateController {
 
 /**
  * Контроллер для создания новых проектов и компонентов.
- * @module CreateController
  */
 exports.create = CreateController;

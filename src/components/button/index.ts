@@ -1,6 +1,5 @@
 /**
  * Компоненты, необходимые для работы с кнопками.
- * @module components/button
  */
 export * from './interfaces';
 

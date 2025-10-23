@@ -4,7 +4,6 @@ import { Bot, IAppConfig, IAppParam } from './core';
 
 /**
  * Набор методов, упрощающих запуск приложения
- * @module build
  */
 
 /**

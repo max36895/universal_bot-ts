@@ -6,8 +6,6 @@
  * - Обработки текста
  * - Работы с HTTP-параметрами
  * - Взаимодействия с консолью
- *
- * @module utils/standard/util
  */
 import * as fs from 'fs';
 import * as readline from 'readline';

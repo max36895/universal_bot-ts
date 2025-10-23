@@ -75,12 +75,24 @@ describe('Text', () => {
     it('Is say text', () => {
         expect(Text.isSayText('да', 'куда', true)).toBe(true);
         expect(Text.isSayText('да', 'куда')).toBe(true);
-        expect(Text.isSayText(`(?:^|\\s)да\\b`, 'куда')).toBe(false);
+        expect(Text.isSayText(`(?:^|\\s)да\\b`, 'куда', true)).toBe(false);
+        expect(Text.isSayText(/(?:^|\s)да\b/, 'куда', true)).toBe(false);
 
         const text = 'По полю шол человек, который сильно устал. Но он н отчаивался и пошел спать';
 
         expect(Text.isSayText('спать', text)).toBe(true);
         expect(Text.isSayText(['пошел', 'утопал'], text)).toBe(true);
+    });
+
+    it('Is say text regex', () => {
+        expect(Text.isSayText(/да/i, 'куда', true)).toBe(true);
+
+        const text = 'По полю шол человек, который сильно устал. Но он н отчаивался и пошел спать';
+
+        expect(Text.isSayText(/спать/i, text, true)).toBe(true);
+        expect(Text.isSayText([/пошел/i, 'утопал'], text, true)).toBe(true);
+        expect(Text.isSayText([/уехал/i, 'пошла', /куда/i, 'пошел'], text, true)).toBe(true);
+        expect(Text.isSayText([/пошла/i, 'утопал', /\d/i], text, true)).toBe(false);
     });
 
     it('Get ending', () => {

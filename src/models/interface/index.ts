@@ -6,8 +6,6 @@
  * - Управления подключением к базе данных
  * - Работы с контроллерами моделей
  *
- * @module models/interface
- *
  * @example
  * ```typescript
  * import { IModel, IDbControllerModel } from './models/interface';

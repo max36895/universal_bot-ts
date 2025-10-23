@@ -84,8 +84,6 @@
  * // Принудительный выбор формы
  * Text.getEnding(10, titles, 0); // -> 'Яблоко'
  * ```
- *
- * @module utils
  */
 export * from './standard/util';
 export * from './standard/Text';

@@ -5,8 +5,6 @@
  * - Чтения и записи данных в JSON файлы
  * - Кэширования данных для оптимизации производительности
  * - Выполнения CRUD операций с файловыми данными
- *
- * @module models/db/DbControllerFile
  */
 
 import { DbControllerModel } from './DbControllerModel';

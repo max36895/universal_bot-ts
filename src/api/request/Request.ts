@@ -1,8 +1,6 @@
 /**
  * Модуль для отправки HTTP-запросов.
  * Предоставляет функционал для работы с различными типами запросов и ответов
- *
- * @module api/request/Request
  */
 import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
