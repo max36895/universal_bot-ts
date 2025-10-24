@@ -1,6 +1,6 @@
 import { TBotAuth, TBotContent } from './interfaces/IBot';
 import { mmApp } from '../mmApp';
-import { BotController, IUserData } from '../controller';
+import { BaseBotController, BotController, IUserData } from '../controller';
 import { TemplateTypeModel } from '../platforms/TemplateTypeModel';
 import { GET } from '../utils/standard/util';
 import {
@@ -181,6 +181,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
     protected _auth: TBotAuth;
 
     /**
+     * Получение корректного контроллера
+     * @param botController
+     * @private
+     */
+    private _getBotController(botController?: BotController<TUserData>): BotController<TUserData> {
+        if (botController) {
+            return botController;
+        } else {
+            return new BaseBotController<TUserData>();
+        }
+    }
+
+    /**
      * Создает новый экземпляр бота
      *
      * @param {TAppType} [type] - Тип платформы (по умолчанию Алиса)
@@ -207,12 +220,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
         useGlobalState: boolean = false,
     ) {
         this._auth = null;
-        this._botController = botController as BotController<TUserData>;
+        this._botController = this._getBotController(botController);
         this._appContext = new AppContext();
         this._appContext.appType = !type ? T_ALISA : type;
         // todo оставлено для совместимости с предыдущими версиями. Удалить в будущем
         if (useGlobalState) {
-            mmApp.appType = !type ? T_ALISA : type;
+            mmApp.appType = this._appContext.appType;
             this._appContext = mmApp;
         }
         if (this._botController) {
@@ -236,6 +249,15 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Устанавливает тип платформы
+     * @param appType
+     */
+    public usePlatform(appType: TAppType): Bot {
+        this.appType = appType;
+        return this;
+    }
+
+    /**
      * Позволяет установить свою реализацию для логирования
      * @param logger
      */
@@ -248,6 +270,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @param {string} commandName - Уникальный идентификатор команды
      * @param {TSlots} slots - Триггеры для активации команды
+     *   - Если элемент — строка → ищется как подстрока (`text.includes(...)`).
+     *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
+     *   - Параметр `isPattern` учитывается **только если в `slots` нет RegExp**.
+     *   - При наличии хотя бы одного `RegExp`, `isPattern = false` игнорируется, и каждый элемент
+     *     обрабатывается согласно своему типу.
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -512,11 +539,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * bot.initBotController(new MyController());
      * ```
      */
-    public initBotController(fn: BotController<TUserData>): void {
+    public initBotController(fn: BotController<TUserData>): Bot {
         if (fn) {
             this._botController = fn;
             this._botController.setAppContext(this._appContext);
         }
+        return this;
     }
 
     /**

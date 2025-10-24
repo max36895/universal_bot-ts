@@ -252,6 +252,16 @@ class CreateController {
             this._generateFile(indexContent, indexFile);
             console.log('Index файл успешно создан!');
 
+            const packageFile = `${this.#path}/package.json`;
+            const packageContent = this._getFileContent(`${standardPath}/package.json`);
+            this._generateFile(packageContent, packageFile);
+            console.log('package.json файл успешно создан!');
+
+            const tsconfigFile = `${this.#path}/tsconfig.json`;
+            const tsconfigContent = this._getFileContent(`${standardPath}/tsconfig.json`);
+            this._generateFile(tsconfigContent, tsconfigFile);
+            console.log('tsconfig.json файл успешно создан!');
+
             console.log(`Проект успешно создан, и находится в директории: ${this.#path}`);
         } else {
             console.warn('Не удалось создать проект!');

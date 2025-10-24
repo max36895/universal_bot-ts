@@ -260,9 +260,7 @@ export class Text {
         if (Array.isArray(patterns)) {
             const newPatterns: string[] = [];
             for (const patternBase of patterns) {
-                if (typeof patternBase === 'string') {
-                    newPatterns.push(patternBase);
-                } else {
+                if (patternBase instanceof RegExp) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
                         : Text.getCachedRegex(patternBase);
@@ -275,6 +273,8 @@ export class Text {
                     if (res) {
                         return res;
                     }
+                } else {
+                    newPatterns.push(patternBase);
                 }
             }
             if (newPatterns.length) {
@@ -287,7 +287,7 @@ export class Text {
         }
 
         const cachedRegex =
-            useDirectRegExp && typeof pattern !== 'string' ? pattern : Text.getCachedRegex(pattern);
+            useDirectRegExp && pattern instanceof RegExp ? pattern : Text.getCachedRegex(pattern);
         return !!text.match(cachedRegex);
     }
 
@@ -326,12 +326,20 @@ export class Text {
 
         if (typeof find === 'string') {
             return text === find || text.includes(find);
+        } else if (find instanceof RegExp) {
+            return this.isSayPattern(find, text, useDirectRegExp);
         }
 
         // Оптимизированный вариант для массива: early return + includes
-        for (const value of find as string[]) {
-            if (text.includes(value)) {
-                return true;
+        for (const value of find) {
+            if (value instanceof RegExp) {
+                if (this.isSayPattern(value, text, useDirectRegExp)) {
+                    return true;
+                }
+            } else {
+                if (text.includes(value)) {
+                    return true;
+                }
             }
         }
         return false;

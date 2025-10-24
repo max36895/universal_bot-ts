@@ -204,6 +204,27 @@ export const WELCOME_INTENT_NAME = 'welcome';
 export const HELP_INTENT_NAME = 'help';
 
 /**
+ * Специальное имя команды для обработки неизвестных запросов.
+ *
+ * Если ни одна из зарегистрированных команд не сработала,
+ * и существует команда с именем `FALLBACK_COMMAND`,
+ * её callback будет выполнен как fallback-обработчик.
+ *
+ * @example
+ * ```typescript
+ * bot.addCommand(FALLBACK_COMMAND, [], (cmd, ctrl) => {
+ *   ctrl.text = 'Извините, я вас не понял. Скажите "помощь" для списка команд.';
+ *   ctrl.buttons.addBtn('Помощь');
+ * });
+ * ```
+ *
+ * @remarks
+ * - Fallback срабатывает только если нет совпадений по слотам.
+ * - Не влияет на стандартные интенты (`welcome`, `help`).
+ * - Можно зарегистрировать только одну fallback-команду (последняя перезапишет предыдущую).
+ */
+export const FALLBACK_COMMAND = '__umbot:fallback_command__';
+/**
  * @interface IAppDB
  * Параметры подключения к базе данных
  *
@@ -507,6 +528,12 @@ export interface IAppParam {
      * Может быть строкой или массивом вариантов.
      */
     help_text?: string | string[];
+    /**
+     * Текст, который будет показан, если нет подходящих команд не найдено
+     *
+     * Может быть строкой или массивом вариантов.
+     */
+    empty_text?: string | string[];
 
     /**
      * Массив интентов (команд) приложения
@@ -682,6 +709,7 @@ export class AppContext {
         user_id: null,
         welcome_text: 'Текст приветствия',
         help_text: 'Текст помощи',
+        empty_text: 'Извините, но я вас не понимаю',
         intents: [
             { name: WELCOME_INTENT_NAME, slots: ['привет', 'здравст'] },
             { name: HELP_INTENT_NAME, slots: ['помощ', 'что ты умеешь'] },
@@ -848,6 +876,11 @@ export class AppContext {
      *
      * @param {string} commandName - Уникальный идентификатор команды
      * @param {TSlots} slots - Триггеры для активации команды
+     *   - Если элемент — строка → ищется как подстрока (`text.includes(...)`).
+     *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
+     *   - Параметр `isPattern` учитывается **только если в `slots` нет RegExp**.
+     *   - При наличии хотя бы одного `RegExp`, `isPattern = false` игнорируется, и каждый элемент
+     *     обрабатывается согласно своему типу.
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -922,7 +955,7 @@ export class AppContext {
 
             const errors: string[] = [];
             slots.forEach((slot) => {
-                if (typeof slot === 'string') {
+                if (!(slot instanceof RegExp)) {
                     if (dangerousPatterns.some((re) => re.test(slot))) {
                         errors.push(slot);
                     }

@@ -95,6 +95,15 @@ describe('Text', () => {
         expect(Text.isSayText([/пошла/i, 'утопал', /\d/i], text, true)).toBe(false);
     });
 
+    it('Is say text adaptive regex', () => {
+        expect(Text.isSayText(/\d/i, 'игрок под номером 5')).toBe(true);
+        expect(Text.isSayText([/\d/i, 'спит'], 'игрок под номером 5')).toBe(true);
+        expect(Text.isSayText([/\d/i, 'спит'], 'игрок спит')).toBe(true);
+        expect(Text.isSayText([/\d{4,}/i, '\\d'], 'игрок под номером \\d')).toBe(true);
+        expect(Text.isSayText([/\d{4,}/i, '\\d'], 'игрок под номером 5', true)).toBe(true);
+        expect(Text.isSayText([/\d{4,}/i, '\\d'], 'игрок под номером \\d', true)).toBe(false);
+    });
+
     it('Get ending', () => {
         expect(Text.getEnding(1, ['яблоко', 'яблока', 'яблок'])).toEqual('яблоко');
         expect(Text.getEnding(2, ['яблоко', 'яблока', 'яблок'])).toEqual('яблока');

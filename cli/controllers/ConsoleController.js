@@ -2,7 +2,7 @@
 const CreateController = require(__dirname + '/CreateController').create;
 const utils = require(__dirname + '/../utils').utils;
 
-const VERSION = '2.1.0';
+const VERSION = '2.1.3';
 
 /**
  * Консольный скрипт, позволяющий создать пустой проект.
