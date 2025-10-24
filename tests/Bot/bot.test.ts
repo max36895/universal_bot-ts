@@ -132,6 +132,7 @@ describe('Bot', () => {
                 yandex_token: null,
                 app_id: null,
                 help_text: 'Текст помощи',
+                empty_text: 'Извините, но я вас не понимаю',
             });
         });
     });
@@ -212,10 +213,8 @@ describe('Bot', () => {
     });
 
     describe('run', () => {
-        it('should throw error if botController is not set', async () => {
-            await expect(bot.run()).rejects.toThrow(
-                'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController',
-            );
+        it('should throw error for empty request', async () => {
+            await expect(bot.run()).rejects.toThrow('Alisa:init(): Отправлен пустой запрос!');
         });
 
         it('should return result if botClass is set and init is successful', async () => {

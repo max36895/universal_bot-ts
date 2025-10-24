@@ -7,3 +7,5 @@
  * - Утилиты для работы с пользовательскими данными
  */
 export * from './BotController';
+
+export { BaseBotController } from './BaseBotController';

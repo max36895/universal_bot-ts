@@ -8,8 +8,10 @@ import { Nlu } from '../components/nlu';
 import { Text } from '../utils/standard/Text';
 import {
     AppContext,
+    FALLBACK_COMMAND,
     HELP_INTENT_NAME,
     IAppIntent,
+    ICommandParam,
     T_ALISA,
     T_MARUSIA,
     WELCOME_INTENT_NAME,
@@ -584,7 +586,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Контекст приложения
      */
-    public appContext: AppContext | undefined;
+    public appContext: AppContext;
 
     /**
      * Создает новый экземпляр контроллера.
@@ -593,6 +595,8 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * @protected
      */
     constructor() {
+        // Для корректности выставляем контекст по умолчанию.
+        this.appContext = new AppContext();
         this.buttons = new Buttons(this.appContext as AppContext);
         this.card = new Card(this.appContext as AppContext);
         this.sound = new Sound(this.appContext as AppContext);
@@ -603,11 +607,13 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Устанавливает контекст приложения
      * @param appContext
      */
-    public setAppContext(appContext: AppContext | undefined): BotController {
-        this.appContext = appContext;
-        this.buttons.setAppContext(appContext as AppContext);
-        this.card.setAppContext(appContext as AppContext);
-        this.sound.setAppContext(appContext as AppContext);
+    public setAppContext(appContext: AppContext): BotController {
+        if (appContext) {
+            this.appContext = appContext;
+            this.buttons.setAppContext(appContext as AppContext);
+            this.card.setAppContext(appContext as AppContext);
+            this.sound.setAppContext(appContext as AppContext);
+        }
         return this;
     }
 
@@ -711,6 +717,9 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         }
         const commandLength = this.appContext.commands.size;
         for (const [commandName, command] of this.appContext.commands) {
+            if (commandName === FALLBACK_COMMAND) {
+                continue;
+            }
             if (
                 command &&
                 Text.isSayText(
@@ -720,10 +729,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                     commandLength < 500,
                 )
             ) {
-                const res = command.cb?.(this.userCommand, this);
-                if (res) {
-                    this.text = res;
-                }
+                this._commandExecute(commandName, command);
                 return commandName;
             }
         }
@@ -754,6 +760,27 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     abstract action(intentName: string | null, isCommand?: boolean): void;
 
     /**
+     * Выполнение нужной команды
+     * @param commandName
+     * @param command
+     * @private
+     */
+    private _commandExecute(commandName: string, command: ICommandParam): void {
+        try {
+            const res = command?.cb?.(this.userCommand as string, this);
+            if (res) {
+                this.text = res;
+            }
+        } catch (e) {
+            this.appContext.logError(
+                `Ошибка в команде ${commandName === FALLBACK_COMMAND ? 'FALLBACK_COMMAND' : commandName}:`,
+                e as Record<string, unknown>,
+            );
+            this.text = 'Произошла ошибка. Попробуйте позже.';
+        }
+    }
+
+    /**
      * Запускает обработку запроса.
      * Определяет тип запроса и вызывает соответствующий обработчик
      *
@@ -769,30 +796,40 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
             this.action(commandResult, true);
         } else {
             let intent: string | null = this._getIntent(this.userCommand);
-            if (
-                intent === null &&
-                this.originalUserCommand &&
-                this.userCommand !== this.originalUserCommand
-            ) {
-                intent = this._getIntent(this.originalUserCommand.toLowerCase());
-            }
-            if (intent === null && this.messageId === 0) {
-                intent = WELCOME_INTENT_NAME;
-            }
-            /*
-             * Для стандартных действий параметры заполняются автоматически. Есть возможность переопределить их в action() по названию действия
-             */
-            switch (intent) {
-                case WELCOME_INTENT_NAME:
-                    this.text = Text.getText(this.appContext?.platformParams.welcome_text || '');
-                    break;
+            if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
+                const command = this.appContext.commands.get(FALLBACK_COMMAND);
+                if (command) {
+                    this._commandExecute(FALLBACK_COMMAND, command);
+                    this.action(FALLBACK_COMMAND, true);
+                }
+            } else {
+                if (
+                    intent === null &&
+                    this.originalUserCommand &&
+                    this.userCommand !== this.originalUserCommand
+                ) {
+                    intent = this._getIntent(this.originalUserCommand.toLowerCase());
+                }
+                if (intent === null && this.messageId === 0) {
+                    intent = WELCOME_INTENT_NAME;
+                }
+                /*
+                 * Для стандартных действий параметры заполняются автоматически. Есть возможность переопределить их в action() по названию действия
+                 */
+                switch (intent) {
+                    case WELCOME_INTENT_NAME:
+                        this.text = Text.getText(
+                            this.appContext?.platformParams.welcome_text || '',
+                        );
+                        break;
 
-                case HELP_INTENT_NAME:
-                    this.text = Text.getText(this.appContext?.platformParams.help_text || '');
-                    break;
-            }
+                    case HELP_INTENT_NAME:
+                        this.text = Text.getText(this.appContext?.platformParams.help_text || '');
+                        break;
+                }
 
-            this.action(intent as string);
+                this.action(intent as string);
+            }
         }
         if (
             this.tts === null &&
