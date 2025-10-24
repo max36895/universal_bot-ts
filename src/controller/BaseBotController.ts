@@ -9,7 +9,12 @@ import { Text } from '../utils';
 export class BaseBotController<
     TUserData extends IUserData = IUserData,
 > extends BotController<TUserData> {
-    public action(intentName: string | null, isCommand?: boolean) {
+    /**
+     * Обработка команд
+     * @param intentName
+     * @param isCommand
+     */
+    public action(intentName: string | null, isCommand?: boolean): void {
         if (isCommand) {
             return;
         }

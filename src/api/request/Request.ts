@@ -119,7 +119,7 @@ export class Request {
      * Устанавливает контекст приложения
      * @param appContext
      */
-    public setAppContext(appContext: AppContext) {
+    public setAppContext(appContext: AppContext): void {
         if (appContext) {
             this._appContext = appContext;
         }
