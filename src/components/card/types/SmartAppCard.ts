@@ -31,6 +31,70 @@ import { Image } from '../../image/Image';
  */
 export class SmartAppCard extends TemplateCardTypes {
     /**
+     * Возвращает карточку из 1 элемента
+     * @private
+     */
+    private _getOneElement(image: Image): ISberSmartAppCardItem[] {
+        const res: ISberSmartAppCardItem[] = [];
+        if (image.imageDir) {
+            res.push({
+                type: 'image_cell_view',
+                content: {
+                    url: image.imageDir,
+                },
+            });
+        }
+        if (image.title) {
+            res.push({
+                type: 'text_cell_view',
+                paddings: {
+                    top: '6x',
+                    left: '8x',
+                    right: '8x',
+                },
+                content: {
+                    text: image.title,
+                    typeface: image.params.titleTypeface || 'title1',
+                    text_color: image.params.titleText_color || 'default',
+                },
+            });
+        }
+        if (image.desc) {
+            res.push({
+                type: 'text_cell_view',
+                paddings: {
+                    top: '4x',
+                    left: '8x',
+                    right: '8x',
+                },
+                content: {
+                    text: image.desc,
+                    typeface: image.params.descTypeface || 'footnote1',
+                    text_color: image.params.descText_color || 'secondary',
+                },
+            });
+        }
+        const button = image.button.getButtons(Buttons.T_SMARTAPP_BUTTON_CARD);
+        if (button) {
+            res.push({
+                type: 'text_cell_view',
+                paddings: {
+                    top: '12x',
+                    left: '8x',
+                    right: '8x',
+                },
+                content: {
+                    actions: [button],
+                    text: button.text,
+                    typeface: 'button1',
+                    text_color: 'brand',
+                },
+            });
+        }
+        return res;
+    }
+
+    /**
      * Получает элементы для карточки Сбер SmartApp.
      *
      * Процесс работы:
@@ -81,68 +145,12 @@ export class SmartAppCard extends TemplateCardTypes {
      * // }
      * ```
      */
-    protected static _getCardItem(
+    protected _getCardItem(
         image: Image,
         isOne: boolean = false,
     ): ISberSmartAppCardItem | ISberSmartAppCardItem[] {
         if (isOne) {
-            const res: ISberSmartAppCardItem[] = [];
-            if (image.imageDir) {
-                res.push({
-                    type: 'image_cell_view',
-                    content: {
-                        url: image.imageDir,
-                    },
-                });
-            }
-            if (image.title) {
-                res.push({
-                    type: 'text_cell_view',
-                    paddings: {
-                        top: '6x',
-                        left: '8x',
-                        right: '8x',
-                    },
-                    content: {
-                        text: image.title,
-                        typeface: image.params.titleTypeface || 'title1',
-                        text_color: image.params.titleText_color || 'default',
-                    },
-                });
-            }
-            if (image.desc) {
-                res.push({
-                    type: 'text_cell_view',
-                    paddings: {
-                        top: '4x',
-                        left: '8x',
-                        right: '8x',
-                    },
-                    content: {
-                        text: image.desc,
-                        typeface: image.params.descTypeface || 'footnote1',
-                        text_color: image.params.descText_color || 'secondary',
-                    },
-                });
-            }
-            const button = image.button.getButtons(Buttons.T_SMARTAPP_BUTTON_CARD);
-            if (button) {
-                res.push({
-                    type: 'text_cell_view',
-                    paddings: {
-                        top: '12x',
-                        left: '8x',
-                        right: '8x',
-                    },
-                    content: {
-                        actions: [button],
-                        text: button.text,
-                        typeface: 'button1',
-                        text_color: 'brand',
-                    },
-                });
-            }
-            return res;
+            return this._getOneElement(image);
         }
         const cardItem: ISberSmartAppCardItem = {
             type: 'left_right_cell_view',
@@ -259,10 +267,7 @@ export class SmartAppCard extends TemplateCardTypes {
                 const card: ISberSmartAppCard = {
                     type: 'list_card',
                 };
-                card.cells = SmartAppCard._getCardItem(
-                    this.images[0],
-                    true,
-                ) as ISberSmartAppCardItem[];
+                card.cells = this._getCardItem(this.images[0], true) as ISberSmartAppCardItem[];
                 return { card };
             } else {
                 const card: ISberSmartAppCard = {
@@ -286,7 +291,7 @@ export class SmartAppCard extends TemplateCardTypes {
                 }
                 this.images.forEach((image) => {
                     (card as Required<ISberSmartAppCard>).cells.push(
-                        SmartAppCard._getCardItem(image) as ISberSmartAppCardItem,
+                        this._getCardItem(image) as ISberSmartAppCardItem,
                     );
                 });
                 return { card };

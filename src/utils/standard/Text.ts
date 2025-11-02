@@ -78,6 +78,22 @@ export interface ITextSimilarity {
 
 const MAX_CACHE_SIZE = 3000;
 
+interface ICacheItem {
+    /**
+     * Количество вызовов
+     */
+    cReq: number;
+    /**
+     * Регулярное выражение
+     */
+    regex: RegExp;
+}
+
+const CONFIRM_PATTERNS =
+    /(?:^|\s)да(?:^|\s|$)|(?:^|\s)конечно(?:^|\s|$)|(?:^|\s)соглас[^s]+(?:^|\s|$)|(?:^|\s)подтвер[^s]+(?:^|\s|$)/imu;
+const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|\s)не(?:^|\s|$)/imu;
+const URL_PATTERN = /^https?:\/\/.+\..+/imu;
+
 /**
  * Класс для работы с текстом и текстовыми операциями
  *
@@ -118,7 +134,7 @@ export class Text {
      *
      * @private
      */
-    private static readonly regexCache = new Map<string, RegExp>();
+    private static readonly regexCache = new Map<string, ICacheItem>();
 
     /**
      * Обрезает текст до указанной длины
@@ -168,8 +184,15 @@ export class Text {
      * ```
      */
     public static isUrl(link: string): boolean {
-        const URL_PATTERN = /((http|s:\/\/)[^( |\n)]+)/imu;
-        return URL_PATTERN.test(link);
+        if (URL_PATTERN.test(link)) {
+            try {
+                new URL(link);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+        return false;
     }
 
     /**
@@ -195,15 +218,7 @@ export class Text {
         if (!text) {
             return false;
         }
-
-        const CONFIRM_PATTERNS: readonly string[] = [
-            '(?:^|\\s)да(?:^|\\s|$)',
-            '(?:^|\\s)конечно(?:^|\\s|$)',
-            '(?:^|\\s)соглас[^s]+(?:^|\\s|$)',
-            '(?:^|\\s)подтвер[^s]+(?:^|\\s|$)',
-        ];
-
-        return Text.isSayPattern(CONFIRM_PATTERNS, text);
+        return Text.isSayPattern(CONFIRM_PATTERNS, text, true);
     }
 
     /**
@@ -228,14 +243,7 @@ export class Text {
         if (!text) {
             return false;
         }
-
-        const REJECT_PATTERNS: readonly string[] = [
-            '(?:^|\\s)нет(?:^|\\s|$)',
-            '(?:^|\\s)неа(?:^|\\s|$)',
-            '(?:^|\\s)не(?:^|\\s|$)',
-        ];
-
-        return Text.isSayPattern(REJECT_PATTERNS, text);
+        return Text.isSayPattern(REJECT_PATTERNS, text, true);
     }
 
     /**
@@ -354,18 +362,37 @@ export class Text {
      * @private
      */
     private static getCachedRegex(pattern: string | RegExp): RegExp {
-        const key = typeof pattern === 'string' ? pattern : `${pattern.flags}|${pattern.source}`;
-        let regex = Text.regexCache.get(key);
+        const key = typeof pattern === 'string' ? pattern : `${pattern.flags}@@${pattern.source}`;
+        const cache = Text.regexCache.get(key);
+        let regex = cache?.regex;
         if (!regex) {
             if (Text.regexCache.size >= MAX_CACHE_SIZE) {
-                Text.regexCache.clear();
+                // При переполнении кэша чистим 30% редко используемых команд
+                const entries = [...Text.regexCache.entries()].sort((tValue, oValue) => {
+                    return tValue[1].cReq - oValue[1].cReq;
+                });
+                const toRemove = Math.floor(MAX_CACHE_SIZE * 0.3);
+                for (let i = 0; i < toRemove; i++) {
+                    Text.regexCache.delete(entries[i][0]);
+                }
             }
             if (typeof pattern === 'string') {
                 regex = new RegExp(pattern, 'umi');
-                Text.regexCache.set(pattern, regex);
+                Text.regexCache.set(pattern, {
+                    cReq: 1,
+                    regex,
+                });
             } else {
                 regex = new RegExp(pattern.source, pattern.flags);
-                Text.regexCache.set(key, regex);
+                Text.regexCache.set(key, {
+                    cReq: 1,
+                    regex,
+                });
+            }
+        } else {
+            if (cache) {
+                cache.cReq++;
+                Text.regexCache.set(key, cache);
             }
         }
         return regex;
@@ -476,7 +503,7 @@ export class Text {
         compareText: TPattern,
         threshold: number = 80,
     ): ITextSimilarity {
-        const texts = Array.isArray(compareText) ? compareText : [compareText];
+        const texts: string[] = Array.isArray(compareText) ? compareText : [compareText];
         const normalizedOrigText = origText.toLowerCase();
 
         let maxSimilarity: ITextSimilarity = {

@@ -18,6 +18,8 @@ class CreateController {
      */
     static T_QUIZ = 'Quiz';
 
+    flags = [];
+
     #path;
     #name;
     /**
@@ -175,7 +177,7 @@ class CreateController {
      */
     _getConfigFile(path, type) {
         console.log('Создается файл с конфигурацией приложения: ...');
-        const configFile = `${this.#path}/config/{{name}}Config.ts`;
+        const configFile = `${this.#path}/src/config/{{name}}Config.ts`;
         let configContent;
         if (utils.isFile(`${path}/config/defaultConfig.js`)) {
             const config = require(`${path}/config/defaultConfig`);
@@ -195,7 +197,7 @@ class CreateController {
      */
     _getParamsFile(path, type) {
         console.log('Создается файл с параметрами приложения: ...');
-        const paramsFile = `${this.#path}/config/{{name}}Params.ts`;
+        const paramsFile = `${this.#path}/src/config/{{name}}Params.ts`;
         let paramsContent;
         if (utils.isFile(`${path}/config/${type}Params.js`)) {
             const param = require(`${path}/config/${type}Params`);
@@ -207,7 +209,25 @@ class CreateController {
         console.log('Файл с параметрами успешно создан!');
     }
 
-    /**
+    createDockerFile(path) {
+        const standardPath = __dirname + '/../template';
+        const dockerFile = `${path}/Dockerfile`;
+        const dockerContent = this._getFileContent(`${standardPath}/docker/Dockerfile.text`);
+        this._generateFile(dockerContent, dockerFile);
+        console.log('Dockerfile файл успешно создан!');
+    }
+
+    createDeployFile(path) {
+        const standardPath = __dirname + '/../template';
+        const deployFile = `${path}/.github/workflows/deploy.yml`;
+        fs.mkdirSync(`${path}/.github`);
+        fs.mkdirSync(`${path}/.github/workflows`);
+        const deployContent = this._getFileContent(`${standardPath}/github/deploy.yml`);
+        this._generateFile(deployContent, deployFile);
+        console.log('deploy.yml файл успешно создан!');
+    }
+
+    /**.
      * Создает структуру проекта
      * @param {string} type Тип проекта (Default или Quiz)
      * @private
@@ -215,7 +235,11 @@ class CreateController {
     _create(type = CreateController.T_DEFAULT) {
         if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) !== -1) {
             const standardPath = __dirname + '/../template';
-            const configFile = `${this.#path}/config`;
+            const srcPath = `${this.#path}/src`;
+            if (!utils.isDir(srcPath)) {
+                fs.mkdirSync(srcPath);
+            }
+            const configFile = `${srcPath}/config`;
             if (!utils.isDir(configFile)) {
                 fs.mkdirSync(configFile);
             }
@@ -224,18 +248,19 @@ class CreateController {
             this._getConfigFile(standardPath, typeToLower);
             this._getParamsFile(standardPath, typeToLower);
 
-            let controllerFile = `${this.#path}/controller`;
-            if (!utils.isDir(controllerFile)) {
-                fs.mkdirSync(controllerFile);
+            if (!(this.flags.includes('--minimal') && type === CreateController.T_DEFAULT)) {
+                let controllerFile = `${srcPath}/controller`;
+                if (!utils.isDir(controllerFile)) {
+                    fs.mkdirSync(controllerFile);
+                }
+                console.log('Создается класс с логикой приложения: ...');
+                controllerFile += '/{{className}}Controller.ts';
+                const controllerContent = this._getFileContent(
+                    `${standardPath}/controller/${type}Controller.ts.text`,
+                );
+                this._generateFile(controllerContent, controllerFile);
+                console.log('Класс с логикой приложения успешно создан!');
             }
-
-            console.log('Создается класс с логикой приложения: ...');
-            controllerFile += '/{{className}}Controller.ts';
-            const controllerContent = this._getFileContent(
-                `${standardPath}/controller/${type}Controller.ts.text`,
-            );
-            this._generateFile(controllerContent, controllerFile);
-            console.log('Класс с логикой приложения успешно создан!');
 
             console.log('Создается index файл: ...');
             let path = 'index';
@@ -247,7 +272,10 @@ class CreateController {
             } else if (mode === 'build') {
                 path += 'Build';
             }
-            const indexFile = `${this.#path}/index.ts`;
+            if (this.flags.includes('--minimal') && type === CreateController.T_DEFAULT) {
+                path += 'Min';
+            }
+            const indexFile = `${srcPath}/index.ts`;
             const indexContent = this._getFileContent(`${standardPath}/${path}.ts.text`);
             this._generateFile(indexContent, indexFile);
             console.log('Index файл успешно создан!');
@@ -261,6 +289,11 @@ class CreateController {
             const tsconfigContent = this._getFileContent(`${standardPath}/tsconfig.json`);
             this._generateFile(tsconfigContent, tsconfigFile);
             console.log('tsconfig.json файл успешно создан!');
+
+            if (this.flags.includes('--prod')) {
+                this.createDeployFile(this.#path);
+                this.createDockerFile(this.#path);
+            }
 
             console.log(`Проект успешно создан, и находится в директории: ${this.#path}`);
         } else {

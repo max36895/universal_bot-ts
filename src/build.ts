@@ -39,6 +39,18 @@ export interface IConfig {
      * Параметры для тестового окружения. Стоит указывать когда mode = dev
      */
     testParams?: IBotTestParams;
+    /**
+     * Дополнительная логика для бота. Стоит указывать когда нужно задать дополнительные настройки бота.
+     *
+     * @example
+     * ```typescript
+     * logic: (bot: Bot) => {
+     *      bot.addCommand('my_command', ['my_slot'], cb)
+     * }
+     * ```
+     * @param bot
+     */
+    logic?: (bot: Bot) => void;
 }
 
 /**
@@ -54,6 +66,9 @@ function _initParam(bot: Bot | BotTest, config: IConfig): void {
     bot.setAppConfig(config.appConfig);
     bot.setPlatformParams(config.appParam);
     bot.initBotController(config.controller);
+    if (config.logic) {
+        config.logic(bot);
+    }
 }
 
 /**

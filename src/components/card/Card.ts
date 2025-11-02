@@ -336,7 +336,7 @@ export class Card {
      * @param {string} [desc=' '] - Описание изображения
      * @param {TButton} [button=null] - Кнопки для элемента
      * @returns {boolean} true если элемент успешно добавлен
-     * @deprecated Используйте метод addImage вместо этого
+     * @deprecated Используйте метод addImage вместо этого. Будет удален в версию 2.2.0
      * @example
      * ```typescript
      * // Устаревший метод - не рекомендуется использовать

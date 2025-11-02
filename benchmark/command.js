@@ -6,15 +6,27 @@ const { performance } = require('perf_hooks');
 
 // --------------------------------------------------
 // Вывод результатов
+
+function memResult(value) {
+    const absValue = Math.abs(value);
+    if (absValue < 1024) {
+        return `${value}KB`;
+    } else if ((absValue < 1024) ^ 2) {
+        return `${(value / 1024).toFixed(2)}MB`;
+    } else {
+        return `${(value / (1024 * 2)).toFixed(2)}GB`;
+    }
+}
+
 function printScenarioBlock(items) {
     const byState = {};
     for (const item of items) byState[item.state] = item;
 
     const rep = byState.middle || byState.low || byState.high;
     if (rep) {
-        log(`  ├─ Память до запуска: ${rep.startMemory} КБ`);
-        log(`  ├─ Память после первого запуска: ${rep.afterRunMemory} КБ`);
-        log(`  ├─ Прирост памяти (первый запуск): +${rep.memoryIncrease} КБ`);
+        log(`  ├─ Память до запуска: ${memResult(rep.startMemory)}`);
+        log(`  ├─ Память после первого запуска: ${memResult(rep.afterRunMemory)}`);
+        log(`  ├─ Прирост памяти (первый запуск): +${memResult(rep.memoryIncrease)}`);
         const memPerCmd =
             (parseFloat(rep.afterRunMemory) - parseFloat(rep.startMemory)) / rep.count;
         log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
@@ -132,33 +144,31 @@ function printFinalSummary(results) {
             noRegItems.length;
 
         log(`\nИТОГОВАЯ СВОДКА (Количество команд: ${count.toLocaleString('ru-RU')})`);
-        log('─'.repeat(165));
+        log('─'.repeat(123));
         const header =
-            'Сценарий'.padEnd(35) +
+            'Сценарий'.padEnd(17) +
             ' | ' +
-            'Память всего (КБ)'.padStart(18) +
+            'Память всего'.padStart(18) +
             ' | ' +
-            'Память при run (КБ)'.padStart(20) +
+            'Лучший + 2 запуск'.padStart(19) +
             ' | ' +
-            'Лучший'.padStart(22) +
+            'Средний + 2 запуск'.padStart(25) +
             ' | ' +
-            'Средний'.padStart(22) +
+            'Худший + 2 запуск'.padStart(25) +
             ' | ' +
-            'Худший'.padStart(22) +
-            ' | ' +
-            '< 1 сек?'.padStart(8);
+            '< 1s'.padStart(4);
         log(header);
-        log('─'.repeat(165));
+        log('─'.repeat(123));
 
         // --- Эталон ---
-        const memBaselineStr = `${baselineMemAvg.toFixed(2)} (+0.0%)`;
-        const memBaselineStrRun = `${baselineMemRunAvg.toFixed(2)} (+0.0%)`;
+        const memBaselineStr = `${memResult(baselineMemAvg.toFixed(2))} (+0.0%)`;
 
         function formatPair(stateKey, firstTime, secondTime) {
             const base = baseline[stateKey];
             if (base === undefined) return '—';
             const delta = ((firstTime - base) / base) * 100;
-            return `${firstTime.toFixed(2)} (${(delta >= 0 ? '+' : '') + delta.toFixed(1)}%) → ${secondTime.toFixed(2)}`;
+            const deltaStr = delta < 10000 ? delta.toFixed(0) : `${(delta / 1000).toFixed(1)}K`;
+            return `${firstTime.toFixed(firstTime > 100 ? 1 : 2)}(${(delta >= 0 ? '+' : '') + deltaStr}%) → ${secondTime.toFixed(2)}`;
         }
 
         const bestBase = noRegItems.find((r) => r.state === 'low');
@@ -184,27 +194,25 @@ function printFinalSummary(results) {
             : 'Нет';
 
         log(
-            'Без регулярок — ЭТАЛОН'.padEnd(35) +
+            'Без regex ЭТАЛОН'.padEnd(17) +
                 ' | ' +
                 memBaselineStr.padStart(18) +
                 ' | ' +
-                memBaselineStrRun.padStart(20) +
+                bestStr.padStart(19) +
                 ' | ' +
-                bestStr.padStart(22) +
+                midStr.padStart(25) +
                 ' | ' +
-                midStr.padStart(22) +
+                worstStr.padStart(25) +
                 ' | ' +
-                worstStr.padStart(22) +
-                ' | ' +
-                over1sBase.padStart(8),
+                over1sBase.padStart(4),
         );
 
         // --- Регулярки ---
         const complexities = ['low', 'middle', 'high'];
         const labels = {
-            low: 'С регулярками (low — простая)',
-            middle: 'С регулярками (middle — умеренная)',
-            high: 'С регулярками (high — сложная)',
+            low: 'С regex простая',
+            middle: 'С regex умеренная',
+            high: 'С regex сложная',
         };
 
         for (const complexity of complexities) {
@@ -219,11 +227,7 @@ function printFinalSummary(results) {
             const memSumRun = regSubset.reduce((sum, r) => sum + parseFloat(r.memoryIncrease), 0);
             const avgMem = memSum / regSubset.length;
             const memDelta = ((avgMem - baselineMemAvg) / baselineMemAvg) * 100;
-            const memStr = `${avgMem.toFixed(2)} (${(memDelta >= 0 ? '+' : '') + memDelta.toFixed(1)}%)`;
-
-            const avgMemRun = memSumRun / regSubset.length;
-            const memDeltaRun = ((avgMemRun - baselineMemRunAvg) / baselineMemRunAvg) * 100;
-            const memStrRun = `${avgMemRun.toFixed(2)} (${(avgMemRun >= 0 ? '+' : '') + memDeltaRun.toFixed(1)}%)`;
+            const memStr = `${memResult(avgMem.toFixed(2))} (${(memDelta >= 0 ? '+' : '') + memDelta.toFixed(1)}%)`;
 
             // Время
             const bestItem = regSubset.find((r) => r.state === 'low');
@@ -248,19 +252,17 @@ function printFinalSummary(results) {
             const over1s = !anyOver1s ? 'Да' : 'Нет';
 
             log(
-                labels[complexity].padEnd(35) +
+                labels[complexity].padEnd(17) +
                     ' | ' +
                     memStr.padStart(18) +
                     ' | ' +
-                    memStrRun.padStart(20) +
+                    bestReg.padStart(19) +
                     ' | ' +
-                    bestReg.padStart(22) +
+                    midReg.padStart(25) +
                     ' | ' +
-                    midReg.padStart(22) +
+                    worstReg.padStart(25) +
                     ' | ' +
-                    worstReg.padStart(22) +
-                    ' | ' +
-                    over1s.padStart(8),
+                    over1s.padStart(4),
             );
         }
     }
@@ -349,6 +351,9 @@ function getRegex(regex, state, count, step) {
 async function runTest(count = 1000, useReg = false, state = 'middle', regState = 'middle') {
     const res = { state, regState: useReg ? regState : '', useReg, count };
     global.gc();
+    await new Promise((resolve) => {
+        setTimeout(resolve, 1);
+    });
     const startedMemory = process.memoryUsage().heapUsed;
     res.startMemory = (startedMemory / 1024).toFixed(2);
 
@@ -448,6 +453,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
     global.gc();
     bot.setContent(getContent(testCommand));
+    global.gc();
+    await new Promise((resolve) => {
+        setTimeout(resolve, 1);
+    });
     const beforeMemory = process.memoryUsage().heapUsed;
     res.beforeRunMemory = (beforeMemory / 1024).toFixed(2);
 
@@ -500,9 +509,15 @@ async function start() {
             console.log(`Запуск тестов для ${count} команд...`);
             for (let state of states) {
                 global.gc();
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 1);
+                });
                 await runTest(count, false, state);
                 for (let regState of regStates) {
                     global.gc();
+                    await new Promise((resolve) => {
+                        setTimeout(resolve, 1);
+                    });
                     await runTest(count, true, state, regState);
                 }
             }

@@ -442,9 +442,10 @@ export class Image {
         if (title) {
             this.title = title;
             if (!desc) {
-                desc = ' ';
+                this.desc = ' ';
+            } else {
+                this.desc = desc;
             }
-            this.desc = desc;
             if (button) {
                 initButton(button, this.button);
             }

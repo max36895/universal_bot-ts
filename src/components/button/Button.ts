@@ -238,18 +238,21 @@ export class Button {
     ): boolean {
         if (title || title === '') {
             this.title = title;
-            if (url && Text.isUrl(url)) {
+            let correctUrl = url;
+            if (correctUrl && Text.isUrl(correctUrl)) {
                 if (this._appContext?.platformParams.utm_text === null) {
-                    if (!url.includes('utm_source')) {
-                        url += `${Button._getUrlSeparator(url)}utm_source=umBot&utm_medium=cpc&utm_campaign=phone`;
+                    if (!correctUrl.includes('utm_source')) {
+                        correctUrl += `${Button._getUrlSeparator(correctUrl)}utm_source=umBot&utm_medium=cpc&utm_campaign=phone`;
                     }
                 } else if (this._appContext?.platformParams.utm_text) {
-                    url += Button._getUrlSeparator(url) + this._appContext?.platformParams.utm_text;
+                    correctUrl +=
+                        Button._getUrlSeparator(correctUrl) +
+                        this._appContext?.platformParams.utm_text;
                 }
             } else {
-                url = null;
+                correctUrl = null;
             }
-            this.url = url;
+            this.url = correctUrl;
             this.payload = payload;
             this.hide = hide;
             this.options = options;

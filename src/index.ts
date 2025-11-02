@@ -1,5 +1,5 @@
 /**
- * @version 2.1.3
+ * @version 2.1.4
  * @author Maxim-M <maximco36895@yandex.ru>
  *
  * Универсальный фреймворк для создания голосовых приложений и чат-ботов
@@ -40,7 +40,7 @@ export * from './core';
  * - Константы
  * - Типы данных
  * - Глобальные параметры
- * @deprecated
+ * @deprecated Будет удален в версию 2.2.0
  */
 export { mmApp } from './mmApp';
 

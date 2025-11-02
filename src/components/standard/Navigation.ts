@@ -198,11 +198,9 @@ export class Navigation<ElementType = TElementType> {
      * @private
      */
     protected _validatePage(maxPage?: number): void {
-        if (typeof maxPage === 'undefined') {
-            maxPage = this.getMaxPage();
-        }
-        if (this.thisPage >= maxPage) {
-            this.thisPage = maxPage - 1;
+        const maxValue = typeof maxPage === 'undefined' ? this.getMaxPage() : maxPage;
+        if (this.thisPage >= maxValue) {
+            this.thisPage = maxValue - 1;
         }
         if (this.thisPage < 0) {
             this.thisPage = 0;
@@ -384,7 +382,7 @@ export class Navigation<ElementType = TElementType> {
                     if (elementsTypeof === 'object') {
                         if (typeof keys === 'object') {
                             keys.forEach((key) => {
-                                const value = (this.elements[i] as any)[key];
+                                const value = (this.elements[i] as any)[key] as string;
                                 if (value) {
                                     const r = Text.textSimilarity(value, text, 75);
                                     setMaxElement(i, r);

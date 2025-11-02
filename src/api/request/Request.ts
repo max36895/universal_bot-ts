@@ -2,9 +2,11 @@
  * Модуль для отправки HTTP-запросов.
  * Предоставляет функционал для работы с различными типами запросов и ответов
  */
-import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
+import { httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
 import { AppContext, THttpClient } from '../../core';
+import fs from 'fs';
+import { basename } from 'path';
 
 /**
  * Класс для отправки HTTP-запросов.
@@ -138,6 +140,9 @@ export class Request {
 
         this._error = null;
         const data = (await this._run()) as T;
+        this.attachName = 'file';
+        this.attach = null;
+        this.post = null;
         if (this._error) {
             return { status: false, data: null, err: this._error };
         }
@@ -246,15 +251,26 @@ export class Request {
                 return;
             }
         } else if (this.post) {
-            post = JSON.stringify(this.post);
+            if (typeof this.post !== 'string' && !(this.post instanceof FormData)) {
+                post = JSON.stringify(this.post);
+            } else {
+                post = this.post;
+            }
         }
 
         if (post) {
             options.body = post;
+            options.method = this.customRequest || 'POST';
+            options.headers = this.header || Request.HEADER_AP_JSON;
         }
-
         if (this.header) {
             options.headers = this.header;
+        }
+
+        if (post instanceof FormData && options.headers) {
+            const headers = new Headers(options.headers);
+            headers.delete('Content-Type');
+            options.headers = headers;
         }
 
         if (this.customRequest) {
@@ -262,6 +278,20 @@ export class Request {
         }
 
         return options;
+    }
+
+    /**
+     * Добавляет файл в FormData
+     * @param formData
+     * @param filePath
+     * @param fileName
+     */
+    public addAttachFile(formData: FormData, filePath: string, fileName?: string): void {
+        const fileResult = fs.readFileSync(filePath);
+        if (fileResult) {
+            const fileBlob = new Blob([fileResult]);
+            formData.append(fileName || 'file', fileBlob, basename(filePath));
+        }
     }
 
     /**
@@ -274,12 +304,8 @@ export class Request {
     public getAttachFile(filePath: string, fileName?: string): FormData | null {
         try {
             const formData = new FormData();
-            const fileResult = fread(filePath);
-            if (fileResult.data) {
-                const blob = new Blob([fileResult.data], { type: 'application/octet-stream' });
-                formData.append(fileName || 'file', blob);
-                return formData;
-            }
+            this.addAttachFile(formData, filePath, fileName);
+            return formData;
         } catch (e) {
             if (this._appContext?.logError) {
                 this._appContext?.logError(

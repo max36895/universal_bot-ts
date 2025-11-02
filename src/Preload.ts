@@ -99,7 +99,6 @@ export class Preload {
                 }
             }
             if (platformParams.viber_token) {
-                // Добавлена проверка для Viber
                 if (!platforms || platforms.includes(T_VIBER)) {
                     result.push(T_VIBER);
                 }
@@ -109,8 +108,6 @@ export class Preload {
                     result.push(T_MAXAPP);
                 }
             }
-            // T_SMARTAPP и T_USER_APP не проверяются, так как у них, вероятно, нет уникального токена для загрузки файлов
-            // или логика загрузки отличается.
         }
         return result;
     }
@@ -137,7 +134,6 @@ export class Preload {
                 // Telegram отправляет файлы напрямую, предзагрузка не требуется.
                 break;
         }
-        // Возврат undefined, если тип не поддерживается или не нуждается в предзагрузке
         return undefined;
     }
 
@@ -161,11 +157,8 @@ export class Preload {
                 // Telegram отправляет аудио напрямую, предзагрузка не требуется.
                 break;
         }
-        // Возврат undefined, если тип не поддерживается или не нуждается в предзагрузке
         return undefined;
     }
-
-    // ... (внутри класса Preload, после loadSounds)
 
     /**
      * Подготавливает промисы для удаления изображений с серверов платформ и из базы данных.
@@ -217,6 +210,7 @@ export class Preload {
                                         if (req) {
                                             await imageTokensModel.remove();
                                         }
+                                        // eslint-disable-next-line require-atomic-updates
                                         imageTokensModel.imageToken = null;
                                     }
                                 }
@@ -289,6 +283,7 @@ export class Preload {
                                         if (req) {
                                             await soundTokensModel.remove();
                                         }
+                                        // eslint-disable-next-line require-atomic-updates
                                         soundTokensModel.soundToken = null;
                                     }
                                 }

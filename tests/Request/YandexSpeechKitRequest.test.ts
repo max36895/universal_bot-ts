@@ -27,8 +27,10 @@ describe('YandexSpeechKit', () => {
 
         tts.format = YandexSpeechKit.F_OGGOPUS;
         const result = await tts.getTts('Привет, Алиса!');
-        unlink(result.fileName);
-        expect(result.audioData).toEqual(buffer);
+        if (result) {
+            unlink(result?.fileName);
+        }
+        expect(result?.audioData).toEqual(buffer);
         expect(global.fetch).toHaveBeenCalledWith(
             'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize',
             expect.objectContaining({
@@ -50,7 +52,9 @@ describe('YandexSpeechKit', () => {
         tts.speed = 1.5;
         const res = await tts.getTts('Тест');
 
-        unlink(res.fileName);
+        if (res) {
+            unlink(res.fileName);
+        }
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"emotion":"good"');

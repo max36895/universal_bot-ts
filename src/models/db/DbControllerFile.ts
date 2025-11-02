@@ -226,11 +226,14 @@ export class DbControllerFile extends DbControllerModel {
         const content = this.getFileData();
         if (where) {
             for (const key in content) {
-                if (content.hasOwnProperty(key)) {
+                if (Object.hasOwnProperty.call(content, key)) {
                     let isSelected = null;
 
                     for (const data in where) {
-                        if (content[key].hasOwnProperty(data) && where.hasOwnProperty(data)) {
+                        if (
+                            Object.hasOwnProperty.call(content[key], data) &&
+                            Object.hasOwnProperty.call(where, data)
+                        ) {
                             isSelected = content[key][data] === where[data];
                             if (isSelected === false) {
                                 break;

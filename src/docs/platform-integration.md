@@ -36,7 +36,7 @@
 const bot = new Bot('alisa'); // или 'marusia', 'smart_app', 'telegram' и т.д.
 ```
 
-По умолчанию используется `alisa`.
+По умолчанию используется `auto`, и тип платформы определяется автоматически в зависимости от запроса.
 
 ## Общие требования
 
@@ -237,6 +237,8 @@ class VKController extends BotController {
 ```typescript
 bot.setPlatformParams({
     marusia_token: 'YOUR_TOKEN',
+});
+bot.setAppConfig({
     isLocalStorage: true,
 });
 ```
@@ -281,7 +283,7 @@ class MarusiaController extends BotController {
 2. Настройте параметры:
 
 ```typescript
-bot.setPlatformParams({
+bot.setAppConfig({
     isLocalStorage: true,
 });
 ```
@@ -425,6 +427,48 @@ class CustomPlatformAdapter extends TemplateTypeModel {
     }
 }
 ```
+
+## 🌐 Универсальный webhook-обработчик
+
+Если вы используете Express, Fastify или любой другой HTTP-фреймворк — вы можете интегрировать `umbot` через метод `webhookHandle`.
+
+### Пример для Express
+
+```ts
+import express from 'express';
+import { Bot, T_ALISA } from 'umbot';
+import { MyController } from './controller/MyController';
+
+const app = express();
+app.use(express.json({ type: '*/*' })); // важно для Алисы/Сбера
+
+// Инициализация бота (платформа указывается один раз)
+const bot = new Bot(T_ALISA);
+bot.initBotController(new MyController());
+bot.setAppConfig({
+  json: './data',
+  error_log: './logs',
+  isLocalStorage: true,
+});
+bot.setPlatformParams({
+  // Все токены можно задать здесь или через .env
+  yandex_token: process.env.YANDEX_TOKEN,
+  telegram_token: process.env.TELEGRAM_TOKEN,
+  vk_token: process.env.VK_TOKEN,
+  vk_confirmation_token: process.env.VK_CONFIRMATION_TOKEN,
+  viber_token: process.env.VIBER_TOKEN,
+  marusia_token: process.env.MARUSIA_TOKEN,
+  max_token: process.env.MAX_TOKEN,
+});
+
+// Подключение webhook-обработчика
+app.post('/webhook', (req, res) => {
+  bot.webhookHandle(req, res);
+});
+
+app.listen(3000, () => {
+  console.log('Сервер запущен на http://localhost:3000/webhook');
+});
 
 ## Лучшие практики
 

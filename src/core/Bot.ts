@@ -32,6 +32,7 @@ import {
     ICommandParam,
     ILogger,
     TSlots,
+    T_AUTO,
 } from './AppContext';
 import { IDbControllerModel } from '../models';
 
@@ -108,7 +109,7 @@ export interface IBotBotClassAndType {
  * Создание простого бота:
  * ```typescript
  * const bot = new Bot();
- * bot.initParam({
+ * bot.setPlatformParams({
  *   intents: [{
  *     name: 'greeting',
  *     slots: ['привет', 'здравствуйте']
@@ -135,7 +136,7 @@ export interface IBotBotClassAndType {
  * Создание бота для Telegram:
  * ```typescript
  * const bot = new Bot(T_TELEGRAM);
- * bot.initParam({
+ * bot.setPlatformParams({
  *   telegram_token: 'YOUR_BOT_TOKEN'
  * });
  * ```
@@ -180,6 +181,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     protected _auth: TBotAuth;
 
+    protected _defaultAppType: TAppType | 'auto' = 'auto';
+
     /**
      * Получение корректного контроллера
      * @param botController
@@ -196,7 +199,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Создает новый экземпляр бота
      *
-     * @param {TAppType} [type] - Тип платформы (по умолчанию Алиса)
+     * @param {TAppType} [type] - Тип платформы (по умолчанию автоопределение)
      * @param {BotController} [botController] - Контроллер с логикой
      * @param {Boolean} [useGlobalState] - Определяет нужно ли использовать глобальное состояние(mmApp). Не рекомендуется использовать.
      *
@@ -222,7 +225,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         this._auth = null;
         this._botController = this._getBotController(botController);
         this._appContext = new AppContext();
-        this._appContext.appType = !type ? T_ALISA : type;
+        this._defaultAppType = !type ? T_AUTO : type;
         // todo оставлено для совместимости с предыдущими версиями. Удалить в будущем
         if (useGlobalState) {
             mmApp.appType = this._appContext.appType;
@@ -237,15 +240,20 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Устанавливает тип платформы
      * @param appType
      */
-    public set appType(appType: TAppType) {
-        this._appContext.appType = appType;
+    public set appType(appType: TAppType | 'auto') {
+        this._defaultAppType = appType;
+        if (appType === 'auto') {
+            this._appContext.appType = null;
+        } else {
+            this._appContext.appType = appType;
+        }
     }
 
     /**
      * Возвращает тип платформы
      */
-    public get appType(): TAppType | null {
-        return this._appContext.appType;
+    public get appType(): TAppType | 'auto' {
+        return this._defaultAppType;
     }
 
     /**
@@ -303,6 +311,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   true  // включаем поддержку регулярных выражений
      * );
      * ```
+     * Библиотека проверяет регулярные выражения на ReDoS и логирует предупреждения по необходимости
      *
      * @example
      * Команда с доступом к состоянию:
@@ -400,7 +409,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     T_MARUSIA,
                     T_MAXAPP,
                     T_SMARTAPP,
-                ].indexOf(GET.type)
+                ].includes(GET.type)
             ) {
                 this._appContext.appType = GET.type;
                 return true;
@@ -413,7 +422,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Инициализирует конфигурацию приложения
      *
      * @param {IAppConfig} config - Конфигурация приложения
-     * @deprecated
+     * @deprecated Будет удален в версию 2.2.0
      * @see setAppConfig
      */
     public initConfig(config: IAppConfig): void {
@@ -465,7 +474,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Инициализирует параметры приложения
      *
      * @param {IAppParam} params - Параметры приложения
-     * @deprecated
+     * @deprecated Будет удален в версию 2.2.0
      * @see setPlatformParams
      */
     public initParams(params: IAppParam): void {
@@ -666,6 +675,183 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Определяет тип приложения по заголовкам или телу запроса
+     * @param body - Тело запроса
+     * @param headers - Заголовки запроса
+     * @protected
+     */
+    protected _setAppType(body: any, headers?: Record<string, unknown>): void {
+        if (!this._defaultAppType || this._defaultAppType === T_AUTO) {
+            // 1. Заголовки — самый надёжный способ
+            if (headers?.['x-ya-dialogs-request-id']) {
+                this._appContext.appType = T_ALISA;
+                return;
+            } else if (headers?.['x-marusia-request-id']) {
+                this._appContext.appType = T_MARUSIA;
+                return;
+            } else if (headers?.['x-viber-content-signature']) {
+                this._appContext.appType = T_VIBER;
+                return;
+            } else if (headers?.['x-sber-smartapp-signature']) {
+                this._appContext.appType = T_SMARTAPP;
+                return;
+            }
+            if (!body) {
+                this._appContext.appType = T_ALISA;
+                this._appContext.saveLog(
+                    'bot.log',
+                    'Пустое тело запроса. Используется fallback на Алису.',
+                );
+            } else if (body.request && body.version && body.session) {
+                if (body.meta?.client_id?.includes('MailRu')) {
+                    this._appContext.appType = T_MARUSIA;
+                } else if (body.meta?.client_id?.includes('yandex.searchplugin')) {
+                    this._appContext.appType = T_ALISA;
+                } else if (body.session.application?.application_id) {
+                    if (
+                        body.session.application?.application_id ===
+                        body.session.application?.application_id.toLowerCase()
+                    ) {
+                        this._appContext.appType = T_MARUSIA;
+                    } else {
+                        this._appContext.appType = T_ALISA;
+                    }
+                } else {
+                    this._appContext.saveLog(
+                        'bot.log',
+                        'Не удалось однозначно определить платформу (Алиса/Маруся). Используется fallback на Алису.',
+                    );
+                }
+            } else if (body.message_token && body.message) {
+                this._appContext.appType = T_VIBER;
+            } else if (body.uuid && body.payload?.app_info) {
+                this._appContext.appType = T_SMARTAPP;
+            } else if (body?.message?.chat?.id || body?.callback_query) {
+                // 2. Telegram: токен в URL или теле
+                this._appContext.appType = T_TELEGRAM;
+            } else if (body?.type === 'message_new' && body?.object?.message) {
+                // 3. VK: объект с типом "message_new" и т.д.
+                this._appContext.appType = T_VK;
+            } else if (body?.meta?.projectName && body?.request?.payload) {
+                // 4. MAX: проверка по структуре (у MAX есть уникальное поле)
+                this._appContext.appType = T_MAXAPP;
+            } else {
+                this._appContext.appType = T_ALISA;
+                this._appContext.saveLog(
+                    'bot.log',
+                    'Неизвестный формат запроса. Используется fallback на Алису.',
+                );
+            }
+        } else {
+            this._appContext.appType = this._defaultAppType;
+        }
+    }
+
+    /**
+     * Запуск логики приложения
+     * @param botClass - Класс бота, который будет подготавалить корректный ответ в зависимости от платформы
+     * @param type - Тип приложения
+     * @private
+     */
+    private async _runApp(botClass: TemplateTypeModel, type: number | null): Promise<TRunResult> {
+        if (botClass.sendInInit) {
+            return await botClass.sendInInit;
+        }
+        const userData = this._getUserData();
+        userData.escapeString('');
+        this._botController.userId = userData.escapeString(
+            this._botController.userId as string | number,
+        );
+        if (type) {
+            userData.type = type;
+        }
+
+        const isLocalStorage: boolean = !!(
+            this._appContext.appConfig.isLocalStorage && botClass.isLocalStorage()
+        );
+
+        let isNewUser = true;
+        if (isLocalStorage) {
+            botClass.isUsedLocalStorage = isLocalStorage;
+            this._botController.userData = (await botClass.getLocalStorage()) as TUserData;
+        } else {
+            const query = {
+                userId: userData.escapeString(this._botController.userId),
+            };
+            if (this._auth) {
+                query.userId = userData.escapeString(this._botController.userToken as string);
+            }
+
+            if (await userData.whereOne(query)) {
+                this._botController.userData = userData.data;
+                isNewUser = false;
+            } else {
+                this._botController.userData = {} as TUserData;
+                userData.userId = this._botController.userId;
+                userData.meta = this._botController.userMeta;
+            }
+        }
+        if (
+            !this._botController.oldIntentName &&
+            this._botController.userData &&
+            this._botController.userData.oldIntentName
+        ) {
+            this._botController.oldIntentName = this._botController.userData.oldIntentName;
+        }
+
+        this._botController.run();
+        if (this._botController.thisIntentName !== null && this._botController.userData) {
+            this._botController.userData.oldIntentName = this._botController.thisIntentName;
+        } else {
+            delete this._botController.userData?.oldIntentName;
+        }
+        let content: any;
+        if (this._botController.isSendRating) {
+            content = await botClass.getRatingContext();
+        } else {
+            if (
+                this._botController.store &&
+                JSON.stringify(this._botController.userData) === '{}'
+            ) {
+                this._botController.userData = this._botController.store as TUserData;
+            }
+            content = await botClass.getContext();
+        }
+        if (!isLocalStorage) {
+            userData.data = this._botController.userData;
+
+            if (isNewUser) {
+                userData.save(true).then((res) => {
+                    if (!res) {
+                        this._appContext.saveLog(
+                            'bot.log',
+                            `Bot:run(): Не удалось сохранить данные для пользователя: ${this._botController.userId}.`,
+                        );
+                    }
+                });
+            } else {
+                userData.update().then((res) => {
+                    if (!res) {
+                        this._appContext.saveLog(
+                            'bot.log',
+                            `Bot:run(): Не удалось обновить данные для пользователя: ${this._botController.userId}.`,
+                        );
+                    }
+                });
+            }
+        } else {
+            await botClass.setLocalStorage(this._botController.userData);
+        }
+
+        if (botClass.getError()) {
+            this._appContext.saveLog('bot.log', botClass.getError());
+        }
+        userData.destroy();
+        this._clearState();
+        return content;
+    }
+
+    /**
      * Запускает обработку запроса
      * Выполняет основную логику бота и возвращает результат
      *
@@ -689,6 +875,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this._appContext.saveLog('bot.log', errMsg);
             throw new Error(errMsg);
         }
+        if (!this._appContext.appType) {
+            this._setAppType(this._content);
+        }
         const { botClass, type } = this._getBotClassAndType(userBotClass);
 
         if (botClass) {
@@ -696,103 +885,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 this._botController.userToken = this._auth;
             }
             if (await botClass.init(this._content, this._botController)) {
-                if (botClass.sendInInit) {
-                    return await botClass.sendInInit;
-                }
-                const userData = this._getUserData();
-                userData.escapeString('');
-                this._botController.userId = userData.escapeString(
-                    this._botController.userId as string | number,
-                );
-                if (type) {
-                    userData.type = type;
-                }
-
-                const isLocalStorage: boolean = !!(
-                    this._appContext.appConfig.isLocalStorage && botClass.isLocalStorage()
-                );
-
-                let isNewUser = true;
-                if (isLocalStorage) {
-                    botClass.isUsedLocalStorage = isLocalStorage;
-                    this._botController.userData = (await botClass.getLocalStorage()) as TUserData;
-                } else {
-                    const query = {
-                        userId: userData.escapeString(this._botController.userId),
-                    };
-                    if (this._auth) {
-                        query.userId = userData.escapeString(
-                            this._botController.userToken as string,
-                        );
-                    }
-
-                    if (await userData.whereOne(query)) {
-                        this._botController.userData = userData.data;
-                        isNewUser = false;
-                    } else {
-                        this._botController.userData = {} as TUserData;
-                        userData.userId = this._botController.userId;
-                        userData.meta = this._botController.userMeta;
-                    }
-                }
-                if (
-                    !this._botController.oldIntentName &&
-                    this._botController.userData &&
-                    this._botController.userData.oldIntentName
-                ) {
-                    this._botController.oldIntentName = this._botController.userData.oldIntentName;
-                }
-
-                this._botController.run();
-                if (this._botController.thisIntentName !== null && this._botController.userData) {
-                    this._botController.userData.oldIntentName = this._botController.thisIntentName;
-                } else {
-                    delete this._botController.userData?.oldIntentName;
-                }
-                let content: any;
-                if (this._botController.isSendRating) {
-                    content = await botClass.getRatingContext();
-                } else {
-                    if (
-                        this._botController.store &&
-                        JSON.stringify(this._botController.userData) === '{}'
-                    ) {
-                        this._botController.userData = this._botController.store as TUserData;
-                    }
-                    content = await botClass.getContext();
-                }
-                if (!isLocalStorage) {
-                    userData.data = this._botController.userData;
-
-                    if (isNewUser) {
-                        userData.save(true).then((res) => {
-                            if (!res) {
-                                this._appContext.saveLog(
-                                    'bot.log',
-                                    `Bot:run(): Не удалось сохранить данные для пользователя: ${this._botController.userId}.`,
-                                );
-                            }
-                        });
-                    } else {
-                        userData.update().then((res) => {
-                            if (!res) {
-                                this._appContext.saveLog(
-                                    'bot.log',
-                                    `Bot:run(): Не удалось обновить данные для пользователя: ${this._botController.userId}.`,
-                                );
-                            }
-                        });
-                    }
-                } else {
-                    await botClass.setLocalStorage(this._botController.userData);
-                }
-
-                if (botClass.getError()) {
-                    this._appContext.saveLog('bot.log', botClass.getError());
-                }
-                userData.destroy();
-                this._clearState();
-                return content;
+                return await this._runApp(botClass, type);
             } else {
                 this._appContext.saveLog('bot.log', botClass.getError());
                 throw new Error(botClass.getError() || '');
@@ -801,6 +894,74 @@ export class Bot<TUserData extends IUserData = IUserData> {
             const msg = 'Не удалось определить тип приложения!';
             this._appContext.saveLog('bot.log', msg);
             throw new Error(msg);
+        }
+    }
+
+    /**
+     * Обрабатывает входящий webhook-запрос от любой поддерживаемой платформы.
+     * @param req - Объект входящего запроса (IncomingMessage или совместимый)
+     * @param res - Объект ответа (ServerResponse или совместимый)
+     * @param userBotClass - Пользовательский класс бота
+     *
+     * @example
+     * ```typescript
+     * // Express
+     * import express from 'express';
+     * const app = express();
+     * app.use(express.json({ type: '*\/*' })); // важно для Алисы/Сбера
+     *
+     * const bot = new Bot('alisa');
+     * bot.initBotController(new MyController());
+     * bot.setAppConfig({...});
+     *
+     * app.post('/webhook', (req, res) => bot.webhookHandle(req, res));
+     * ```
+     */
+    public async webhookHandle(
+        req: IncomingMessage,
+        res: ServerResponse,
+        userBotClass: TemplateTypeModel | null = null,
+    ): Promise<void> {
+        const send = (statusCode: number, body: string | object): void => {
+            res.statusCode = statusCode;
+            res.setHeader(
+                'Content-Type',
+                typeof body === 'string' ? 'text/plain' : 'application/json',
+            );
+            res.end(typeof body === 'string' ? body : JSON.stringify(body));
+        };
+
+        if (req.method !== 'POST') {
+            return send(400, 'Bad Request');
+        }
+
+        try {
+            const data = await this.readRequestData(req);
+            const query = JSON.parse(data) as string | null;
+
+            if (!query) {
+                return send(400, 'Empty request');
+            }
+
+            if (req.headers?.authorization) {
+                this._auth = req.headers.authorization.replace('Bearer ', '');
+            }
+
+            this._content = query;
+            this._setAppType(query, req.headers);
+            const result = await this.run(userBotClass);
+            const statusCode = result === 'notFound' ? 404 : 200;
+            return send(statusCode, result);
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                this._appContext.saveLog(
+                    'bot.log',
+                    `Bot:webhookHandle(): Syntax Error: ${error.message}`,
+                );
+                return send(400, 'Invalid JSON');
+            }
+            this._appContext.saveLog('bot.log', `Bot:webhookHandle(): Server error: ${error}`);
+            return send(500, 'Internal Server Error');
         }
     }
 
@@ -826,45 +987,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
         port: number = 3000,
         userBotClass: TemplateTypeModel | null = null,
     ): Server {
-        const send = (res: ServerResponse, statusCode: number, result: object | string): void => {
-            res.statusCode = statusCode;
-            res.setHeader(
-                'Content-Type',
-                typeof result === 'object' ? 'application/json' : 'text/plain',
-            );
-            res.end(typeof result === 'string' ? result : JSON.stringify(result));
-        };
-
         this.close();
 
         this._serverInst = createServer(
             async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-                // Принимаем только POST-запросы:
-                if (req.method !== 'POST') {
-                    send(res, 400, 'Bad Request');
-                    return;
-                }
-
-                try {
-                    const data = await this.readRequestData(req);
-                    const query: TBotContent = JSON.parse(data);
-                    if (query) {
-                        if (req.headers && req.headers.authorization) {
-                            this._auth = req.headers.authorization.replace('Bearer', '');
-                        }
-                        this.setContent(query);
-                        const result = await this.run(userBotClass);
-                        send(res, result === 'notFound' ? 404 : 200, result);
-                    }
-                } catch (error) {
-                    if (error instanceof SyntaxError) {
-                        this._appContext.saveLog('bot.log', `Bot:start(): Syntax Error: ${error}`);
-                        send(res, 400, 'Invalid JSON');
-                    } else {
-                        this._appContext.saveLog('bot.log', `Bot:start(): Server error: ${error}`);
-                        send(res, 500, 'Internal Server Error');
-                    }
-                }
+                return this.webhookHandle(req, res, userBotClass);
             },
         );
 

@@ -361,11 +361,10 @@ export class Buttons {
         userButton: TemplateButtonTypes | null = null,
     ): T | null {
         this._processing();
-        if (type === null) {
-            type = this.type;
-        }
+        const correctType = type === null ? this.type : type;
+
         let button: TemplateButtonTypes | null = null;
-        switch (type) {
+        switch (correctType) {
             case Buttons.T_ALISA_BUTTONS:
                 button = new AlisaButton();
                 (button as AlisaButton).isCard = false;

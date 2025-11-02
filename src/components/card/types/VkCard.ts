@@ -333,7 +333,7 @@ export class VkCard extends TemplateCardTypes {
      * ```
      */
     public async getCard(isOne: boolean): Promise<IVkCard | string[]> {
-        const object = [];
+        const object: IVkCard | string[] = [];
         const countImage = this.images.length;
         if (countImage) {
             if (countImage === 1 || isOne) {
@@ -347,6 +347,7 @@ export class VkCard extends TemplateCardTypes {
                 }
                 if (this.images[0].imageToken) {
                     object.push(this.images[0].imageToken);
+                    return object;
                 }
             } else {
                 const elements = [];

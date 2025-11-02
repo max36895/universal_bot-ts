@@ -8,7 +8,8 @@
       "DOM.Iterable"
     ],
     "moduleResolution": "node",
-    "removeComments": true,
+    "removeComments": false,
+    "stripInternal": true,
     "sourceMap": false,
     "allowJs": true,
     "skipLibCheck": true,

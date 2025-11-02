@@ -77,25 +77,31 @@ export class ViberRequest {
         if (this.token) {
             if (method) {
                 this._request.header = {
+                    ...this._request.header,
                     'X-Viber-Auth-Token': this.token,
                 };
                 this._request.post.min_api_version =
                     this._appContext.platformParams.viber_api_version || 2;
-                const data = (await this._request.send<IViberApi>(this.API_ENDPOINT + method)).data;
-                if (data) {
-                    if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
-                        this._error = JSON.stringify(data.failed_list);
-                        this._log(data.status_message);
+                const sendData = await this._request.send<IViberApi>(this.API_ENDPOINT + method);
+                if (sendData.status && sendData.data) {
+                    const data = sendData.data;
+                    if (data) {
+                        if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
+                            this._error = JSON.stringify(data.failed_list);
+                            this._log(data.status_message);
+                        }
+                        if (data.status === 0) {
+                            return data as T;
+                        }
+                        const statusMessage =
+                            typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
+                        if (statusMessage !== 'ok') {
+                            this._error = '';
+                            this._log(data.status_message);
+                        }
                     }
-                    if (data.status === 0) {
-                        return data as T;
-                    }
-                    const statusMessage =
-                        typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
-                    if (statusMessage !== 'ok') {
-                        this._error = '';
-                        this._log(data.status_message);
-                    }
+                } else {
+                    this._log(sendData.err);
                 }
             }
         } else {
@@ -282,7 +288,9 @@ export class ViberRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        this._appContext.saveLog('viberApi.log', error);
+        this._appContext.saveLog(
+            'viberApi.log',
+            `\n(${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        );
     }
 }

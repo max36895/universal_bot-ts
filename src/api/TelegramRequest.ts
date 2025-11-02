@@ -1,7 +1,7 @@
 import { Request } from './request/Request';
-import { ITelegramParams, ITelegramResult, TTelegramChatId } from './interfaces';
-import { isFile } from '../utils/standard/util';
+import { ITelegramMedia, ITelegramParams, ITelegramResult, TTelegramChatId } from './interfaces';
 import { AppContext } from '../core/AppContext';
+import { Text } from '../utils';
 
 /**
  * Класс для взаимодействия с API Telegram
@@ -116,15 +116,34 @@ export class TelegramRequest {
      * @param file Путь к файлу или его содержимое
      * @private
      */
-    protected _initPostFile(type: string, file: string): void {
-        if (!this._request.post) {
-            this._request.post = {};
-        }
-        if (isFile(file)) {
-            this._request.post[type] = this._request.getAttachFile(file);
+    protected _initPostFile(type: string, file: string | ITelegramMedia[]): void {
+        this._request.post = {};
+        if (type === 'media' && typeof file !== 'string') {
+            const formData = new FormData();
+            const media: ITelegramMedia[] = [];
+            file.forEach((item, index) => {
+                const key = `photo${index}`;
+                let mediaItem = item.media;
+                if (item.media.includes('attach://')) {
+                    this._request.addAttachFile(formData, item.media.replace('attach://', ''), key);
+                    mediaItem = `attach://${key}`;
+                }
+                media.push({
+                    type: item.type,
+                    media: mediaItem,
+                });
+            });
+            formData.append('media', JSON.stringify(media));
+            this._request.post = formData;
         } else {
-            this._request.post[type] = file;
+            if (Text.isUrl(file as string)) {
+                this._request.post[type] = file;
+            } else {
+                this._request.attach = file as string;
+                this._request.attachName = type;
+            }
         }
+        return;
     }
 
     /**
@@ -138,7 +157,11 @@ export class TelegramRequest {
         userId: TTelegramChatId | null = null,
     ): Promise<ITelegramResult | null> {
         if (userId) {
-            this._request.post.chat_id = userId;
+            if (this._request.post instanceof FormData) {
+                this._request.post.append('chat_id', userId.toString());
+            } else {
+                this._request.post.chat_id = userId;
+            }
         }
         if (this.token) {
             if (method) {
@@ -307,9 +330,10 @@ export class TelegramRequest {
             const countOptions = options.length;
             if (countOptions > 1) {
                 if (countOptions > 10) {
-                    options = options.slice(0, 10);
+                    this._request.post.options = options.slice(0, 10);
+                } else {
+                    this._request.post.options = options;
                 }
-                this._request.post.options = JSON.stringify(options);
             } else {
                 isSend = false;
             }
@@ -438,12 +462,32 @@ export class TelegramRequest {
     }
 
     /**
+     * Отправляет группу медиа
+     * @param userId ID чата или пользователя
+     * @param media Массив объектов ITelegramMedia
+     * @param params Дополнительные параметры:
+     */
+    public sendMediaGroup(
+        userId: TTelegramChatId,
+        media: ITelegramMedia[],
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        this._initPostFile('media', media);
+        if (params) {
+            this._request.post = { ...this._request.post, ...params };
+        }
+        return this.call('sendMediaGroup', userId);
+    }
+
+    /**
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      * @private
      */
     protected _log(error: string = ''): void {
-        error = `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        this._appContext.saveLog('telegramApi.log', error);
+        this._appContext.saveLog(
+            'telegramApi.log',
+            `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        );
     }
 }

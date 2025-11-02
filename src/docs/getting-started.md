@@ -19,6 +19,10 @@ npm install umbot
 
 ### 2. Создание простого навыка
 
+#### Базовый вариант
+
+Для базового варианта создадим контроллер нашего бота
+
 ```typescript
 import { Bot, BotController, WELCOME_INTENT_NAME } from 'umbot';
 
@@ -36,7 +40,7 @@ class MyController extends BotController {
                 break;
 
             default:
-                this.text = 'Извините, я вас не понял';
+                this.text = bc.userCommand || 'Вы ничего не сказали';
                 break;
         }
     }
@@ -46,7 +50,7 @@ class MyController extends BotController {
 const bot = new Bot();
 
 // Настраиваем команды
-bot.setAppConfig({
+bot.setPlatformParams({
     intents: [
         {
             name: 'help',
@@ -56,7 +60,7 @@ bot.setAppConfig({
 });
 
 // Настраиваем параметры
-bot.setPlatformParams({
+bot.setAppConfig({
     json: __dirname + '/data',
     error_log: __dirname + '/logs',
     isLocalStorage: true,
@@ -67,6 +71,34 @@ const controller = new MyController();
 bot.initBotController(controller);
 
 bot.start('localhost', 3000);
+```
+
+#### Минималистичный вариант
+
+Также можно совсем не создавать BotController, и решить все задачи за счет динамического добавления команд.
+Также обратите внимание на `FALLBACK_COMMAND`, обработчик будет выполнен в том случае, если не удалось найти нужную
+команду.
+
+```typescript
+import { Bot, BotController, FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';
+
+const bot = new Bot()
+    .setAppConfig({
+        json: __dirname + '/data',
+        error_log: __dirname + '/logs',
+        isLocalStorage: true,
+    })
+    .addCommand(WELCOME_INTENT_NAME, ['привет'], (_: string, bc: BotController) => {
+        bc.text = 'Привет! Я новый навык.';
+        bc.buttons.addBtn('Помощь');
+    })
+    .addCommand(HELP_INTENT_NAME, ['помощь'], (_: string, bc: BotController) => {
+        bc.text = 'Я умею отвечать на команды и показывать кнопки';
+    })
+    .addCommand(FALLBACK_COMMAND, ['*'], (_: string, bc: BotController) => {
+        bc.text = bc.userCommand || 'Вы ничего не сказали';
+    })
+    .start('localhost', 3000);
 ```
 
 ## Основные концепции
@@ -119,7 +151,7 @@ const counter = this.userData.counter || 0;
 1. **Через интенты в конфигурации**
 
 ```typescript
-bot.setAppConfig({
+bot.setPlatformParams({
     intents: [
         {
             name: 'start_game',
@@ -217,7 +249,7 @@ console.log('Данные:', this.userData);
 console.log('Команда:', this.userCommand);
 
 // В конфигурации
-bot.setPlatformParams({
+bot.setAppConfig({
     error_log: './logs',
     isDevMode: true,
 });
@@ -275,7 +307,7 @@ DB_NAME=bot_db
 `isLocalStorage`:
 
 ```typescript
-bot.setPlatformParams({
+bot.setAppConfig({
     isLocalStorage: true, // Файловое хранилище
     // или
     isLocalStorage: false, // База данных

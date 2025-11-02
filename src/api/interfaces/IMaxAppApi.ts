@@ -33,7 +33,7 @@ export interface IMaxParams {
     /**
      * Настройки для отображения вложений
      */
-    attachments?: Record<string, unknown>;
+    attachments?: Record<string, unknown>[];
 }
 
 /**

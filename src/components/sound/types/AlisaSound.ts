@@ -557,12 +557,16 @@ export class AlisaSound extends TemplateSoundTypes {
      * ```
      */
     public async getSounds(sounds: ISound[], text: string): Promise<string> {
-        if (this.isUsedStandardSound) {
-            sounds = [...this._standardSounds, ...sounds];
+        let updSounds: ISound[] = [];
+        if (sounds.length) {
+            updSounds = [...sounds, ...(this.isUsedStandardSound ? this._standardSounds : [])];
+        } else if (this.isUsedStandardSound) {
+            updSounds = this._standardSounds;
         }
-        if (sounds && sounds.length) {
-            for (let i = 0; i < sounds.length; i++) {
-                const sound = sounds[i];
+        let res = text;
+        if (updSounds && updSounds.length) {
+            for (let i = 0; i < updSounds.length; i++) {
+                const sound = updSounds[i];
                 if (typeof sound === 'object') {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         let sText: string = Text.getText(sound.sounds);
@@ -579,13 +583,13 @@ export class AlisaSound extends TemplateSoundTypes {
                         }
 
                         if (sText) {
-                            text = AlisaSound.replaceSound(sound.key, sText, text);
+                            res = AlisaSound.replaceSound(sound.key, sText, res);
                         }
                     }
                 }
             }
         }
-        return text;
+        return res;
     }
 
     /**

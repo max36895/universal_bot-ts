@@ -15,6 +15,26 @@ export type TTelegramQuestionType = 'quiz' | 'regular';
 export type TTelegramChatId = string | number;
 
 /**
+ * Интерфейс для медиафайлов в Telegram
+ */
+export interface ITelegramMedia {
+    /**
+     * Тип медиафайла
+     * @type {string}
+     * Возможные значения: "photo", "document", "audio", "video"
+     */
+    type: string;
+    /**
+     * ID медиафайла
+     */
+    media: string;
+    /**
+     * Подпись к медиафайлу
+     */
+    caption?: string;
+}
+
+/**
  * Интерфейс параметров для API Telegram
  * Определяет все возможные параметры для отправки сообщений и других действий
  *

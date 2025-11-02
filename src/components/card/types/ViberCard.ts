@@ -1,6 +1,7 @@
 import { TemplateCardTypes } from './TemplateCardTypes';
 import { Buttons, IViberButton, IViberButtonObject } from '../../button';
 import { Image } from '../../image/Image';
+import { Text } from '../../../utils';
 
 /**
  * @interface IViberCard
@@ -183,7 +184,7 @@ export class ViberCard extends TemplateCardTypes {
      */
     protected static _getElement(image: Image, countImage: number = 1): IViberCard {
         if (!image.imageToken) {
-            if (image.imageDir) {
+            if (Text.isUrl(image.imageDir || '')) {
                 image.imageToken = image.imageDir;
             }
         }

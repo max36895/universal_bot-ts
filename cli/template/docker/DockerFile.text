@@ -1,0 +1,36 @@
+# === umbot production Dockerfile ===
+# Минимальный, безопасный, многоступенчатый сбор
+
+# Stage 1: сборка
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+RUN npm run build
+
+# Stage 2: runtime
+FROM node:18-alpine
+
+# Создаём непривилегированного пользователя
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S umbot -u 1001
+
+WORKDIR /app
+
+# Копируем только необходимое
+COPY --from=builder --chown=umbot:nodejs /app/package*.json ./
+COPY --from=builder --chown=umbot:nodejs /app/dist ./dist
+
+# Копируем .env.example → .env (можно переопределить при запуске)
+COPY --chown=umbot:nodejs .env.example .env
+
+RUN npm ci --only=production --omit=dev
+
+USER umbot
+
+EXPOSE 3000
+
+CMD ["node", "dist/index.js"]

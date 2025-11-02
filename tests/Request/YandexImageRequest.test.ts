@@ -5,6 +5,10 @@ jest.mock('../../src/utils', () => ({
     fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
     isFile: jest.fn().mockReturnValue(true),
 }));
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
 import { YandexImageRequest } from '../../src/api/YandexImageRequest';
@@ -46,7 +50,6 @@ describe('YandexImageRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('/skills/skill-123/images'),
             expect.objectContaining({
-                headers: { 'Content-Type': 'application/json' },
                 body: expect.stringContaining('https://example.com/img.jpg'),
             }),
         );
@@ -65,7 +68,6 @@ describe('YandexImageRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('/skills/skill-123/images'),
             expect.objectContaining({
-                headers: { 'Content-Type': 'multipart/form-data' },
                 body: expect.any(FormData),
             }),
         );

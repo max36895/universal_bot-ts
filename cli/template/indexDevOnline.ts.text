@@ -9,7 +9,6 @@ import {{name}}Params from './config/{{name}}Params';
 import {__className__Controller} from './controller/__className__Controller';
 
 const bot = new Bot();
-bot.initTypeInGet();
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
 bot.initBotController(new __className__Controller());

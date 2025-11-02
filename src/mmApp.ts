@@ -92,7 +92,7 @@ import { IDir, AppContext, IAppConfig, IAppParam } from './core/AppContext';
  *   fileName: 'config.json'
  * }, JSON.stringify(config));
  * ```
- * @deprecated
+ * @deprecated Будет удален в версию 2.2.0
  */
 export class MmApp extends AppContext {
     /**
