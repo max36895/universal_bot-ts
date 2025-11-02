@@ -4,7 +4,10 @@ jest.mock('../../src/utils', () => ({
     ...jest.requireActual('../../src/utils'),
     fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
     isFile: jest.fn().mockReturnValue(true),
-    httpBuildQuery: jest.fn().mockReturnValue('param1=value1&param2=value2'),
+}));
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
 
 import { VkRequest } from '../../src/api/VkRequest';
@@ -34,8 +37,7 @@ describe('VkRequest', () => {
 
         expect(result).toEqual({ message_id: 123 });
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"peer_id":12345');
-        expect(body).toContain('"message":"Hello"');
+        expect(body).toContain('peer_id=12345&message=Hello&access_token=test-token');
     });
 
     it('should add random_id if not provided', async () => {
@@ -47,7 +49,7 @@ describe('VkRequest', () => {
         await vk.messagesSend(12345, 'Hi', {});
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toMatch(/"random_id":\d+/);
+        expect(body).toMatch(/random_id=\d+/);
     });
 
     it('should use custom random_id if provided', async () => {
@@ -59,7 +61,7 @@ describe('VkRequest', () => {
         await vk.messagesSend(12345, 'Hi', { random_id: 999 });
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"random_id":999');
+        expect(body).toContain('random_id=999&peer_id=12345&message=Hi&access_token=test-token');
     });
 
     it('should handle attachments', async () => {
@@ -70,10 +72,11 @@ describe('VkRequest', () => {
 
         await vk.messagesSend(12345, 'Photo', {
             attachments: ['photo123_456', 'doc789_012'],
+            random_id: 1761643168159,
         });
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"attachment":"photo123_456,doc789_012"');
+        expect(body).toContain('attachment=photo123_456,doc789_012');
     });
 
     // === usersGet ===
@@ -87,7 +90,7 @@ describe('VkRequest', () => {
         const result = await vk.usersGet(123);
         expect(result).toEqual([{ id: 123 }]);
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"user_id":123');
+        expect(body).toContain('user_id=123&access_token=test-token');
     });
 
     it('should call users.get with user_ids array', async () => {
@@ -98,7 +101,7 @@ describe('VkRequest', () => {
 
         await vk.usersGet(['123', '456']);
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"user_ids":["123","456"]');
+        expect(body).toContain('user_ids=123,456&access_token=test-token');
     });
 
     // === photos & docs ===
@@ -143,8 +146,7 @@ describe('VkRequest', () => {
         const result = await vk.docsSave('FILE123', 'MyDoc', 'tag1,tag2');
         expect(result).toEqual({ id: 200 });
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"title":"MyDoc"');
-        expect(body).toContain('"tags":"tag1,tag2"');
+        expect(body).toContain('file=FILE123&title=MyDoc&tags=tag1,tag2&access_token=test-token');
     });
 
     // === Ошибки ===
@@ -180,7 +182,6 @@ describe('VkRequest', () => {
             'https://vk.com/upload',
             expect.objectContaining({
                 body: expect.any(FormData),
-                headers: { 'Content-Type': 'multipart/form-data' },
             }),
         );
     });

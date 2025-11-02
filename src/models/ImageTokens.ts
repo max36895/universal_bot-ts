@@ -171,6 +171,19 @@ export class ImageTokens extends Model<IImageModelState> {
         const { path, type } = this;
         if (!path) return null;
 
+        if (
+            ![
+                ImageTokens.T_ALISA,
+                ImageTokens.T_MARUSIA,
+                ImageTokens.T_VK,
+                ImageTokens.T_MAXAPP,
+                ImageTokens.T_TELEGRAM,
+            ].includes(type)
+        ) {
+            this._log('ImageTokens.getToken(): Неизвестный тип платформы');
+            return null;
+        }
+
         const where = { path, type };
         const exists = await this.whereOne(where);
         if (exists && this.imageToken) {
@@ -188,13 +201,9 @@ export class ImageTokens extends Model<IImageModelState> {
                 return this._uploadToMax(path);
             case ImageTokens.T_TELEGRAM:
                 return this._uploadToTelegram(path);
-            default:
-                this._log('ImageTokens.getToken(): Неизвестный тип платформы');
-                return null;
         }
+        return null;
     }
-
-    // --- Вспомогательные методы (маленькие, специализированные) ---
 
     private async _handleExistingToken(type: number): Promise<string> {
         if (type === ImageTokens.T_TELEGRAM && this.imageToken) {
@@ -266,8 +275,8 @@ export class ImageTokens extends Model<IImageModelState> {
         }
 
         const photo = await api.photosSaveMessagesPhoto(upload.photo, upload.server, upload.hash);
-        if (photo?.id) {
-            this.imageToken = `photo${photo.owner_id}_${photo.id}`;
+        if (photo?.[0]?.id) {
+            this.imageToken = `photo${photo[0].owner_id}_${photo[0].id}`;
             if (await this.save(true)) {
                 return this.imageToken;
             }

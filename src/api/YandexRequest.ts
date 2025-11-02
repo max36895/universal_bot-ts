@@ -161,6 +161,11 @@ export class YandexRequest {
     public setOAuth(oauth: string | null): void {
         this._oauth = oauth;
         if (this._request.header) {
+            this._request.header = {
+                ...this._request.header,
+                Authorization: `OAuth ${this._oauth}`,
+            };
+        } else {
             this._request.header = { Authorization: `OAuth ${this._oauth}` };
         }
     }
@@ -207,9 +212,10 @@ export class YandexRequest {
      * ```
      */
     public async call<T extends IYandexApi>(url: string | null = null): Promise<T | null> {
+        this.setOAuth(this._oauth as string);
         const data: IRequestSend<T> = await this._request.send<T>(url);
         if (data.status && data.data) {
-            if (data.data.hasOwnProperty('error')) {
+            if (Object.hasOwnProperty.call(data.data, 'error')) {
                 this._error = JSON.stringify(data.data.error);
             }
             return data.data;
@@ -228,7 +234,9 @@ export class YandexRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        error = `\n${Date}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        this._appContext.saveLog('YandexApi.log', error);
+        this._appContext.saveLog(
+            'YandexApi.log',
+            `\n${new Date()}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        );
     }
 }

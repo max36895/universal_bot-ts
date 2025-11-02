@@ -93,6 +93,7 @@ export function similarText(first: string, second: string): number {
  * Объединяет два массива объектов
  * @param {object[]} array1 - Основной массив
  * @param {object[]} array2 - Массив для объединения
+ * @deprecated Будет удален в версию 2.2.0
  * @returns {object} Объединенный массив
  */
 export function arrayMerge(array1: object[], array2?: object[]): object {

@@ -4,7 +4,10 @@ jest.mock('../../src/utils', () => ({
     ...jest.requireActual('../../src/utils'),
     fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
     isFile: jest.fn().mockReturnValue(true),
-    httpBuildQuery: jest.fn().mockReturnValue('param1=value1&param2=value2'),
+}));
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
 
 import { AppContext } from '../../src';

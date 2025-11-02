@@ -91,7 +91,7 @@ export class YandexSoundRequest extends YandexRequest {
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
             const query = await this.call<IYandexRequestDownloadSoundRequest>();
-            if (query && typeof query.sound.id !== 'undefined') {
+            if (query && typeof query.sound?.id !== 'undefined') {
                 return query.sound;
             } else {
                 this._log(
@@ -131,6 +131,7 @@ export class YandexSoundRequest extends YandexRequest {
                 this._request.url = `${this._getSoundsUrl()}/${soundId}`;
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
+                this._request.customRequest = null;
                 if (query && typeof query.result !== 'undefined') {
                     return query.result;
                 } else {
@@ -156,10 +157,21 @@ export class YandexSoundRequest extends YandexRequest {
         if (this.skillId) {
             const sounds = await this.getLoadedSounds();
             if (sounds) {
-                sounds.forEach((sound) => {
-                    this.deleteSound(sound.id);
-                });
-                return true;
+                const results = await Promise.allSettled(
+                    sounds.map(async (image) => {
+                        try {
+                            await this.deleteSound(image.id);
+                            // Добавить задержку между запросами
+                            await new Promise((resolve) => setTimeout(resolve, 200));
+                            return true;
+                        } catch (e) {
+                            this._log(`Ошибка при удалении звука ${image.id}: ${e}`);
+                            return false;
+                        }
+                    }),
+                );
+                // Если хотя бы одно изображение не удалено — вернуть false
+                return results.every((r) => r.status === 'fulfilled' && r.value);
             } else {
                 this._log(
                     'YandexSoundRequest.deleteSounds() Error: Не удалось получить загруженные звуки!',

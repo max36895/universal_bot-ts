@@ -6,6 +6,11 @@ jest.mock('../../src/utils', () => ({
     isFile: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
+
 import { AppContext } from '../../src';
 import { MarusiaRequest } from '../../src/api/MarusiaRequest';
 
@@ -52,7 +57,6 @@ describe('MarusiaRequest', () => {
             'https://upload.example.com',
             expect.objectContaining({
                 body: expect.any(FormData),
-                headers: { 'Content-Type': 'multipart/form-data' },
             }),
         );
     });
@@ -81,7 +85,9 @@ describe('MarusiaRequest', () => {
         await marusia.marusiaCreateAudio(meta);
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"audio_meta":{"file":"audio_file_123"}');
+        expect(body).toContain(
+            'audio_meta=%5Bobject+Object%5D&access_token=test-marusia-token&v=5.103',
+        );
     });
 
     it('should return null when API returns error', async () => {

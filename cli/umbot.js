@@ -3,7 +3,7 @@
 /**
  * Универсальное приложение по созданию навыков и ботов.
  * Скрипт позволяет создавать шаблон для приложения.
- * @version 2.1.3
+ * @version 2.1.4
  * @author Maxim-M maximco36895@yandex.ru
  * @module
  */
@@ -36,5 +36,5 @@ if (argv[2]) {
         }
     }
 }
-consoleController.main(param);
+consoleController.main(param, argv);
 process.exitCode = 1;

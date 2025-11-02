@@ -5,6 +5,10 @@ jest.mock('../../src/utils/standard/util', () => ({
     isFile: jest.fn().mockReturnValue(true),
     fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
 import { TelegramRequest } from '../../src/api/TelegramRequest';
@@ -66,17 +70,12 @@ describe('TelegramRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('sendPhoto'),
             expect.objectContaining({
-                body: expect.any(String),
+                body: expect.any(FormData),
             }),
         );
-
-        const formData = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body) as Record<
-            string,
-            unknown
-        >;
-        expect(formData.chat_id).toBe(12345);
-        expect(formData.caption).toBe('My photo');
-        expect(formData.photo).toEqual({});
+        const formData = (global.fetch as jest.Mock).mock.calls[0][1].body as FormData;
+        expect(formData.get('chat_id')).toBe('12345');
+        expect(formData.get('caption')).toBe('My photo');
     });
 
     it('should send document', async () => {
@@ -90,7 +89,7 @@ describe('TelegramRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('sendDocument'),
             expect.objectContaining({
-                body: expect.any(String),
+                body: expect.any(FormData),
             }),
         );
     });
@@ -103,12 +102,9 @@ describe('TelegramRequest', () => {
 
         await telegram.sendAudio(12345, 'audio.mp3', { title: 'Song', performer: 'Artist' });
 
-        const formData = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body) as Record<
-            string,
-            unknown
-        >;
-        expect(formData.title).toBe('Song');
-        expect(formData.performer).toBe('Artist');
+        const formData = (global.fetch as jest.Mock).mock.calls[0][1].body as FormData;
+        expect(formData.get('title')).toContain('Song');
+        expect(formData.get('performer')).toContain('Artist');
     });
 
     // === Отправка опроса ===
@@ -123,7 +119,7 @@ describe('TelegramRequest', () => {
         expect(result).not.toBeNull();
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"question":"Your favorite?"');
-        expect(body).toContain('"options":"[\\"Red\\",\\"Blue\\"]"');
+        expect(body).toContain('"options":["Red","Blue"]');
     });
 
     it('should return null if poll has less than 2 options', async () => {

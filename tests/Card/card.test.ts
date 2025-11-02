@@ -14,6 +14,7 @@ import {
     T_VK,
     ViberButton,
     AppContext,
+    IAlisaImage,
 } from '../../src';
 import { IAlisaImageGallery } from '../../src/platforms/interfaces/IAlisa';
 
@@ -133,6 +134,43 @@ describe('Card test', () => {
             ],
         };
         expect(await defaultCard.getCards()).toEqual(alisaCardButton);
+
+        defaultCard.addImage('36895', 'Запись 4', 'Описание 4', 'Кнопка');
+        defaultCard.addImage('36895', 'Запись 5', 'Описание 5', 'Кнопка');
+        defaultCard.addImage('36895', 'Запись 6', 'Описание 6', 'Кнопка');
+        defaultCard.addImage('36895', 'Запись 7', 'Описание 7', 'Кнопка');
+        defaultCard.addImage('36895', 'Запись 7', 'Описание 7', 'Кнопка');
+        defaultCard.addImage('36895', 'Запись 8', 'Описание 8', 'Кнопка');
+
+        (alisaCardButton.items as IAlisaImage[]).push({
+            title: 'Запись 4',
+            description: 'Описание 4',
+            image_id: '36895',
+            button: {
+                text: 'Кнопка',
+            },
+        });
+        (alisaCardButton.items as IAlisaImage[]).push({
+            title: 'Запись 5',
+            description: 'Описание 5',
+            image_id: '36895',
+            button: {
+                text: 'Кнопка',
+            },
+        });
+        expect(await defaultCard.getCards()).toEqual(alisaCardButton);
+
+        defaultCard.isOne = true;
+        const alisaCardOneNew = {
+            type: AlisaCard.ALISA_CARD_BIG_IMAGE,
+            title: 'Запись 1',
+            description: 'Описание 1',
+            image_id: '36895',
+            button: {
+                text: 'Кнопка',
+            },
+        };
+        expect(await defaultCard.getCards()).toEqual(alisaCardOneNew);
     });
 
     it('Get Alisa gallery', async () => {
@@ -156,7 +194,40 @@ describe('Card test', () => {
             ],
         };
         expect(await defaultCard.getCards()).toEqual(alisaGallery);
+
+        defaultCard.addImage('36895', '4');
+        defaultCard.addImage('36895', '5');
+        defaultCard.addImage('36895', '6');
+        defaultCard.addImage('36895', '7');
+        defaultCard.addImage('36895', '8');
+
+        (alisaGallery.items as IAlisaImage[]).push(
+            {
+                title: '4',
+                image_id: '36895',
+            },
+            {
+                title: '5',
+                image_id: '36895',
+            },
+            {
+                title: '6',
+                image_id: '36895',
+            },
+            {
+                title: '7',
+                image_id: '36895',
+            },
+        );
+        expect(await defaultCard.getCards()).toEqual(alisaGallery);
         defaultCard.isUsedGallery = false;
+        defaultCard.isOne = true;
+        expect(await defaultCard.getCards()).toEqual({
+            type: AlisaCard.ALISA_CARD_BIG_IMAGE,
+            title: '1',
+            description: 'запись: 1',
+            image_id: '36895',
+        });
     });
 
     it('Get Viber card', async () => {

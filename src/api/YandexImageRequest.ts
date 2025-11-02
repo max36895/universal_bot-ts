@@ -86,7 +86,7 @@ export class YandexImageRequest extends YandexRequest {
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
-            if (query && typeof query.image.id !== 'undefined') {
+            if (query && typeof query.image?.id !== 'undefined') {
                 return query.image;
             } else {
                 this._log(
@@ -154,6 +154,7 @@ export class YandexImageRequest extends YandexRequest {
                 this._request.url = `${this._getImagesUrl()}/${imageId}`;
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
+                this._request.customRequest = null;
                 if (query && typeof query.result !== 'undefined') {
                     return query.result;
                 } else {

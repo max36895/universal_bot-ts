@@ -67,10 +67,13 @@
 npm install umbot
 ```
 
-Создайте проект за одну команду:
+Создайте и запустите проект за четыре команды:
 
 ```bash
 npx umbot create echo
+cd echo
+npm i
+npm run start
 ```
 
 Поправьте файлы нужным вам образом.

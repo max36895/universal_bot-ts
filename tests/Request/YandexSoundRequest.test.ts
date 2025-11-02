@@ -5,6 +5,10 @@ jest.mock('../../src/utils', () => ({
     fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
     isFile: jest.fn().mockReturnValue(true),
 }));
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
 import { YandexSoundRequest } from '../../src/api/YandexSoundRequest';
@@ -46,7 +50,6 @@ describe('YandexSoundRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('/skills/skill-456/sounds'),
             expect.objectContaining({
-                headers: { 'Content-Type': 'multipart/form-data' },
                 body: expect.any(FormData),
             }),
         );

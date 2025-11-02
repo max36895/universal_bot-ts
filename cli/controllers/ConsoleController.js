@@ -2,7 +2,36 @@
 const CreateController = require(__dirname + '/CreateController').create;
 const utils = require(__dirname + '/../utils').utils;
 
-const VERSION = '2.1.3';
+const VERSION = '2.1.4';
+
+function getFlags(argv) {
+    const flags = [];
+    argv.forEach((arg) => {
+        if (arg.startsWith('--')) {
+            flags.push(arg);
+        }
+    });
+    return flags;
+}
+
+function generateEnv() {
+    utils.fwrite(
+        '.env',
+        `TELEGRAM_TOKEN=your-telegram-token
+VK_TOKEN=your-vk-token
+VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
+VIBER_TOKEN=your-viber-token
+YANDEX_TOKEN=your-alisa-token
+MARUSIA_TOKEN=your-marusia-token
+MAX_TOKEN=your-max-token
+
+DB_HOST=localhost
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=bot_db`,
+    );
+    console.log('.env файл успешно создан');
+}
 
 /**
  * Консольный скрипт, позволяющий создать пустой проект.
@@ -10,15 +39,23 @@ const VERSION = '2.1.3';
  */
 function main(
     param = { appName: null, command: null, mode: 'prod', hostname: 'localhost', port: 3000 },
+    argv,
 ) {
     const infoText =
         'Доступные параметры:\n' +
-        '\n - create (project name) - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
-        '\n - generateEnv - Сгенерировать файл .env';
+        '\n - create <project-name> [--minimal] [--prod] - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
+        '\n\t --minimal   Создать минимальную рабочую версию (1 файл). Работает только для стандартного шаблона.' +
+        '\n\t --prod      Создать production-готовый проект (Docker, CI/CD)' +
+        '\n - generateEnv - Сгенерировать файл .env' +
+        '\n - add <feature> - Добавляет данные в проект. Доступные типы: ' +
+        '\n\t docker  Добавляет docker-compose.yml' +
+        '\n\t deploy  Добавляет файл для деплоя на сервер' +
+        '\n\t env     Добавляет файл .env';
     if (param && param.command) {
+        const create = new CreateController();
         switch (param.command) {
             case 'create':
-                const create = new CreateController();
+                create.flags = getFlags(argv);
                 create.params = param.params ?? param;
                 let type = CreateController.T_DEFAULT;
                 if (param.params && param.params.type) {
@@ -68,22 +105,23 @@ DB_NAME=${create.params?.config?.db?.database}`;
                 break;
 
             case 'generateenv':
-                utils.fwrite(
-                    '.env',
-                    `TELEGRAM_TOKEN=your-telegram-token
-VK_TOKEN=your-vk-token
-VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
-VIBER_TOKEN=your-viber-token
-YANDEX_TOKEN=your-alisa-token
-MARUSIA_TOKEN=your-marusia-token
-MAX_TOKEN=your-max-token
+                generateEnv();
+                break;
 
-DB_HOST=localhost
-DB_USER=user
-DB_PASSWORD=password
-DB_NAME=bot_db`,
-                );
-                console.log('.env файл успешно создан');
+            case 'add':
+                switch (argv[3]) {
+                    case 'docker':
+                        create.createDockerFile(__dirname);
+                        break;
+                    case 'deploy':
+                        create.createDeployFile(__dirname);
+                        break;
+                    case 'env':
+                        generateEnv();
+                        break;
+                    default:
+                        console.log(infoText);
+                }
                 break;
 
             default:

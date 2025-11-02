@@ -189,7 +189,7 @@ export class VkButton extends TemplateButtonTypes {
                 index++;
             }
             if (object.action.payload && typeof object.action.payload !== 'string') {
-                object.action.payload = JSON.stringify(object.action.payload);
+                object.action.payload = this._validateVkPayload(object.action.payload);
             }
         });
 
@@ -197,5 +197,23 @@ export class VkButton extends TemplateButtonTypes {
             one_time: !!buttons.length,
             buttons: buttons,
         };
+    }
+
+    protected _validateVkPayload(payload: unknown): string {
+        if (payload == null) return '';
+
+        const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        const byteLength = new TextEncoder().encode(str).length;
+
+        if (byteLength > 255) {
+            // Обрезаем до последнего валидного символа, не превышающего лимит
+            let trimmed = str;
+            while (new TextEncoder().encode(trimmed).length > 255) {
+                trimmed = trimmed.slice(0, -1);
+            }
+            return trimmed || '';
+        }
+
+        return str;
     }
 }

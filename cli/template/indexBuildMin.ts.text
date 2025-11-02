@@ -1,0 +1,28 @@
+/**
+ * Created by umbot
+ * Date: {{date}}
+ * Time: {{time}}
+ */
+import { run } from 'umbot/build';
+import { FALLBACK_COMMAND, Bot } from 'umbot';
+import {{name}}Config from './config/{{name}}Config';
+import {{name}}Params from './config/{{name}}Params';
+
+const config = {
+    appConfig: {{name}}Config(),
+    appParam: {{name}}Params(),
+    logic: (bot: Bot) => {
+        bot.addCommand('my_command',['my slots'], (_, botController) => {
+            // Ваша логика для обработки команды
+        });
+
+        // Fallback
+        bot.addCommand(FALLBACK_COMMAND, [], (_, botController) => {
+          if (botController) {
+            botController.text = 'Я вас не понял. Скажите "привет".';
+          }
+        });
+    }
+};
+const mode = 'dev';// Режим работы приложения. (prod, dev, dev-online)
+run(config, mode);

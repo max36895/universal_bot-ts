@@ -149,7 +149,11 @@ export class MaxRequest {
                 this._request.post.attachment = [];
             }
             if (typeof params.attachments !== 'undefined') {
-                this._request.post.attachment.push(params.attachments);
+                if (Array.isArray(params.attachments)) {
+                    this._request.post.attachment.push(...params.attachments);
+                } else {
+                    this._request.post.attachment.push(params.attachments);
+                }
                 delete params.attachments;
             }
 
@@ -185,7 +189,9 @@ export class MaxRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        this._appContext.saveLog('maxApi.log', error);
+        this._appContext.saveLog(
+            'maxApi.log',
+            `\n(${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        );
     }
 }

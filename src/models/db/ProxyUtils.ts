@@ -15,7 +15,7 @@ interface ProxyOptions {
 export function ProxyUtils<TTarget extends ProxyOptions>(target: TTarget): TTarget {
     return new Proxy(target, {
         set: (_: TTarget, prop: string, value): true => {
-            if ((target.state as object).hasOwnProperty(prop)) {
+            if (Object.hasOwnProperty.call(target.state as object, prop)) {
                 target.state[prop as keyof TTarget] = value;
             } else {
                 target[prop as keyof TTarget] = value;
@@ -23,7 +23,7 @@ export function ProxyUtils<TTarget extends ProxyOptions>(target: TTarget): TTarg
             return true;
         },
         get: (_: TTarget, prop: string): unknown => {
-            if ((target.state as object).hasOwnProperty(prop)) {
+            if (Object.hasOwnProperty.call(target.state as object, prop)) {
                 return target.state[prop as keyof TTarget];
             } else {
                 return target[prop as keyof TTarget];

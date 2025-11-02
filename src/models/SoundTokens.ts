@@ -176,112 +176,141 @@ export class SoundTokens extends Model<ISoundModelState> {
             path: this.path,
             type: this.type,
         };
+
+        if (
+            ![
+                SoundTokens.T_ALISA,
+                SoundTokens.T_MARUSIA,
+                SoundTokens.T_VK,
+                SoundTokens.T_TELEGRAM,
+            ].includes(this.type)
+        ) {
+            this._appContext.saveLog(
+                'SoundTokens.log',
+                'SoundTokens.getToken(): Неизвестный тип платформы',
+            );
+            return null;
+        }
+
+        const exists = await this.whereOne(where);
+        if (exists && this.soundToken) {
+            return this._handleExistingToken(this.type);
+        }
+
         switch (this.type) {
             case SoundTokens.T_ALISA:
-                if (await this.whereOne(where)) {
-                    return this.soundToken;
-                } else {
-                    const yImage = new YandexSoundRequest(
-                        this._appContext?.platformParams.yandex_token || null,
-                        this._appContext?.platformParams.app_id || null,
-                        this._appContext,
-                    );
-                    let res: IYandexRequestDownloadSound | null = null;
-                    if (this.path) {
-                        if (Text.isUrl(this.path)) {
-                            this._appContext?.saveLog(
-                                'SoundTokens.log',
-                                'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!',
-                            );
-                            return null;
-                        } else {
-                            res = await yImage.downloadSoundFile(this.path);
-                        }
-                    }
-                    if (res) {
-                        this.soundToken = res.id;
+                return await this._uploadToAlisa(this.path);
+
+            case SoundTokens.T_VK:
+                return await this._uploadToVk(this.path);
+
+            case SoundTokens.T_TELEGRAM:
+                return await this._uploadToTelegram(this.path);
+
+            case SoundTokens.T_MARUSIA:
+                return this._uploadToMarusia(this.path);
+        }
+        return null;
+    }
+
+    private async _handleExistingToken(type: number): Promise<string> {
+        if (type === SoundTokens.T_TELEGRAM && this.soundToken) {
+            await new TelegramRequest(this._appContext).sendAudio(
+                this._appContext?.platformParams.user_id as string,
+                this.soundToken as string,
+            );
+            return this.soundToken;
+        }
+        return this.soundToken!;
+    }
+
+    private async _uploadToAlisa(path: string | null): Promise<string | null> {
+        const yImage = new YandexSoundRequest(
+            this._appContext?.platformParams.yandex_token || null,
+            this._appContext?.platformParams.app_id || null,
+            this._appContext,
+        );
+        let res: IYandexRequestDownloadSound | null = null;
+        if (path) {
+            if (Text.isUrl(path)) {
+                this._appContext?.saveLog(
+                    'SoundTokens.log',
+                    'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!',
+                );
+                return null;
+            } else {
+                res = await yImage.downloadSoundFile(path);
+            }
+        }
+        if (res) {
+            this.soundToken = res.id;
+            if (await this.save(true)) {
+                return this.soundToken;
+            }
+        }
+        return null;
+    }
+
+    private async _uploadToMarusia(path: string | null): Promise<string | null> {
+        if (path) {
+            const marusiaApi = new MarusiaRequest(this._appContext);
+            const uploadServerResponse = await marusiaApi.marusiaGetAudioUploadLink();
+            if (uploadServerResponse) {
+                const uploadResponse = await marusiaApi.upload(
+                    uploadServerResponse.audio_upload_link,
+                    path,
+                );
+                if (uploadResponse) {
+                    const doc = await marusiaApi.marusiaCreateAudio(uploadResponse);
+                    if (doc) {
+                        this.soundToken = doc.id;
                         if (await this.save(true)) {
                             return this.soundToken;
                         }
                     }
                 }
-                break;
-
-            case SoundTokens.T_VK:
-                if (await this.whereOne(where)) {
-                    return this.soundToken;
-                } else if (this.path) {
-                    const vkApi = new VkRequest(this._appContext);
-                    const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
-                        this._appContext?.platformParams.user_id as string,
-                        'audio_message',
-                    );
-                    if (uploadServerResponse) {
-                        const uploadResponse = await vkApi.upload(
-                            uploadServerResponse.upload_url,
-                            this.path,
-                        );
-                        if (uploadResponse) {
-                            const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
-                            if (doc) {
-                                this.soundToken = `doc${doc.owner_id}_${doc.id}`;
-                                if (await this.save(true)) {
-                                    return this.soundToken;
-                                }
-                            }
-                        }
-                    }
-                }
-                break;
-
-            case SoundTokens.T_TELEGRAM: {
-                const telegramApi = new TelegramRequest(this._appContext);
-                if (await this.whereOne(where)) {
-                    await telegramApi.sendAudio(
-                        this._appContext?.platformParams.user_id as string,
-                        this.soundToken as string,
-                    );
-                    return this.soundToken;
-                } else if (this.path) {
-                    const sound = await telegramApi.sendAudio(
-                        this._appContext?.platformParams.user_id as string,
-                        this.path,
-                    );
-                    if (sound && sound.ok && sound.result.audio) {
-                        if (typeof sound.result.audio.file_id !== 'undefined') {
-                            this.soundToken = sound.result.audio.file_id;
-                            if (await this.save(true)) {
-                                return this.soundToken;
-                            }
-                        }
-                    }
-                }
-                break;
             }
+        }
+        return null;
+    }
 
-            case SoundTokens.T_MARUSIA:
-                if (await this.whereOne(where)) {
-                    return this.soundToken;
-                } else if (this.path) {
-                    const marusiaApi = new MarusiaRequest(this._appContext);
-                    const uploadServerResponse = await marusiaApi.marusiaGetAudioUploadLink();
-                    if (uploadServerResponse) {
-                        const uploadResponse = await marusiaApi.upload(
-                            uploadServerResponse.audio_upload_link,
-                            this.path,
-                        );
-                        if (uploadResponse) {
-                            const doc = await marusiaApi.marusiaCreateAudio(uploadResponse);
-                            if (doc) {
-                                this.soundToken = doc.id;
-                                if (await this.save(true)) {
-                                    return this.soundToken;
-                                }
-                            }
+    private async _uploadToVk(path: string | null): Promise<string | null> {
+        if (path) {
+            const vkApi = new VkRequest(this._appContext);
+            const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
+                this._appContext?.platformParams.user_id as string,
+                'audio_message',
+            );
+            if (uploadServerResponse) {
+                const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, path);
+                if (uploadResponse) {
+                    const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
+                    if (doc) {
+                        this.soundToken = `doc${doc.owner_id}_${doc.id}`;
+                        if (await this.save(true)) {
+                            return this.soundToken;
                         }
                     }
                 }
-                return null;
+            }
+        }
+        return null;
+    }
+
+    private async _uploadToTelegram(path: string | null): Promise<string | null> {
+        if (path) {
+            const sound = await new TelegramRequest(this._appContext).sendAudio(
+                this._appContext?.platformParams.user_id as string,
+                path,
+            );
+            if (sound && sound.ok && sound.result.audio) {
+                if (typeof sound.result.audio.file_id !== 'undefined') {
+                    this.soundToken = sound.result.audio.file_id;
+                    if (await this.save(true)) {
+                        return this.soundToken;
+                    }
+                }
+            }
         }
         return null;
     }

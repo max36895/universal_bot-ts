@@ -13,6 +13,7 @@ import {
     TVkPeerId,
 } from './interfaces';
 import { AppContext } from '../core/AppContext';
+import { httpBuildQuery } from '../utils';
 
 /**
  * Класс для взаимодействия с API ВКонтакте
@@ -117,6 +118,9 @@ export class VkRequest {
      */
     public constructor(appContext: AppContext) {
         this._request = new Request(appContext);
+        this._request.header = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        };
         this._request.maxTimeQuery = 5500;
         this.isAttachContent = false;
         this._appContext = appContext;
@@ -147,12 +151,21 @@ export class VkRequest {
      */
     public async call<T extends IVkApi>(method: string): Promise<T | null> {
         if (this.token) {
-            this._request.header = null;
+            if (!this._request.attach) {
+                // vk принимает post только в таком формате
+                this._request.header = {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                };
+            }
             if (!this._request.post) {
                 this._request.post = {};
             }
             this._request.post.access_token = this.token;
             this._request.post.v = this._vkApiVersion;
+            if (!this._request.attach) {
+                // vk принимает post только в таком формате
+                this._request.post = httpBuildQuery(this._request.post);
+            }
             const data = await this._request.send<T>(this.VK_API_ENDPOINT + method);
             if (data.status && data.data) {
                 this._error = JSON.stringify(data.err || []);
@@ -335,11 +348,11 @@ export class VkRequest {
 
             if (typeof params.keyboard !== 'undefined') {
                 if (typeof this._request.post.template !== 'undefined') {
-                    await this.call<IVKSendMessage>(method);
+                    // await this.call<IVKSendMessage>(method);
                     delete this._request.post.template;
                 }
                 if (typeof params.keyboard !== 'string') {
-                    params.template = JSON.stringify(params.keyboard);
+                    params.keyboard = JSON.stringify(params.keyboard);
                 }
                 this._request.post.keyboard = params.keyboard;
                 delete params.keyboard;
@@ -394,13 +407,13 @@ export class VkRequest {
         photo: string,
         server: string,
         hash: string,
-    ): Promise<IVkPhotosSave | null> {
+    ): Promise<IVkPhotosSave[] | null> {
         this._request.post = {
             photo,
             server,
             hash,
         };
-        return this.call<IVkPhotosSave>('photos.saveMessagesPhoto');
+        return this.call<IVkPhotosSave>('photos.saveMessagesPhoto') as unknown as IVkPhotosSave[];
     }
 
     /**
@@ -463,7 +476,9 @@ export class VkRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        error = `\n(${Date}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`;
-        this._appContext.saveLog('vkApi.log', error);
+        this._appContext.saveLog(
+            'vkApi.log',
+            `\n(${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        );
     }
 }

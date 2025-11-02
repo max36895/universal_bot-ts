@@ -2,9 +2,8 @@ import { TemplateTypeModel } from './TemplateTypeModel';
 import { BotController } from '../controller';
 import { ITelegramContent } from './interfaces';
 import { INluThisUser } from '../components/nlu';
-import { ITelegramParams, TelegramRequest } from '../api';
+import { ITelegramMedia, ITelegramParams, TelegramRequest } from '../api';
 import { Buttons } from '../components/button';
-import { ITelegramCard } from '../components/card';
 
 /**
  * Класс для работы с платформой Telegram.
@@ -130,13 +129,9 @@ export class Telegram extends TemplateTypeModel {
             );
 
             if (this.controller.card.images.length) {
-                const res: ITelegramCard = await this.controller.card.getCards();
+                const res: ITelegramMedia[] = await this.controller.card.getCards();
                 if (res) {
-                    await telegramApi.sendPoll(
-                        this.controller.userId as string,
-                        res.question,
-                        res.options,
-                    );
+                    await telegramApi.sendMediaGroup(this.controller.userId as string, res);
                 }
             }
 

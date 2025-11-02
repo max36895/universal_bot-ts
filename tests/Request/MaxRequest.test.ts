@@ -5,6 +5,10 @@ jest.mock('../../src/utils', () => ({
     fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
     isFile: jest.fn().mockReturnValue(true),
 }));
+jest.mock('fs', () => ({
+    ...jest.requireActual('fs'),
+    readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
 import { MaxRequest } from '../../src/api/MaxRequest';
@@ -53,7 +57,6 @@ describe('MaxRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             'https://platform-api.max.ru/uploads',
             expect.objectContaining({
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: 'test-max-token' },
                 body: expect.any(FormData),
             }),
         );
@@ -86,11 +89,11 @@ describe('MaxRequest', () => {
         });
 
         await max.messagesSend(12345, 'With attachment', {
-            attachments: 'file_123',
+            attachments: [{ type: 'image', payload: { token: 'file_123' } }],
         });
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"attachment":["file_123"]');
+        expect(body).toContain('"attachment":[{"type":"image","payload":{"token":"file_123"}}]');
     });
 
     it('should send message with inline keyboard', async () => {

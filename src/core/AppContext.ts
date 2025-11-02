@@ -63,6 +63,10 @@
  * appContext.addCommand('numbers', ['\\b\\d{3}\\b'], (text, controller) => {
  *   controller.text = `Вы ввели число: ${text}`;
  * }, true); // Явно указываем, что используем регулярное выражение
+ *
+ * appContext.addCommand('numbers', [/\d{3}/], (text, controller) => {
+ *   controller.text = `Вы ввели число: ${text}`;
+ * }); // Явно передали regexp
  * ```
  */
 import { saveData } from '../utils/standard/util';
@@ -70,11 +74,12 @@ import { IDbControllerModel } from '../models/interface';
 import { BotController } from '../controller';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { DB } from '../models/db';
+import * as process from 'node:process';
 
 /**
  * Тип для HTTP клиента
  */
-export type THttpClient = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+export type THttpClient = (url: URL | RequestInfo, init?: RequestInit) => Promise<Response>;
 
 /**
  * Тип метода для логирования
@@ -154,6 +159,10 @@ export type TAppType =
     | 'max_app';
 
 /**
+ * Тип платформы: Автоопределение
+ */
+export const T_AUTO = 'auto';
+/**
  * Тип платформы: Яндекс.Алиса
  */
 export const T_ALISA: TAppType = 'alisa';
@@ -224,6 +233,7 @@ export const HELP_INTENT_NAME = 'help';
  * - Можно зарегистрировать только одну fallback-команду (последняя перезапишет предыдущую).
  */
 export const FALLBACK_COMMAND = '__umbot:fallback_command__';
+
 /**
  * @interface IAppDB
  * Параметры подключения к базе данных
@@ -368,7 +378,7 @@ export interface IAppConfig {
      */
     isLocalStorage?: boolean;
     /**
-     * Путь к файлу с переменными окружения(.env)
+     * Путь к файлу с переменными окружения(.env). Если файл не найден, то поиск будет происходить в process.env
      */
     env?: string;
 }
@@ -831,7 +841,33 @@ export class AppContext {
             if (res.status) {
                 this._envVars = res.data;
             } else {
-                this.logError(res.error as string);
+                let correctEnvValue = {};
+                if (process.env) {
+                    correctEnvValue = {
+                        VIBER_TOKEN: process.env.VIBER_TOKEN,
+                        TELEGRAM_TOKEN: process.env.TELEGRAM_TOKEN,
+                        VK_TOKEN: process.env.VK_TOKEN,
+                        MAX_TOKEN: process.env.MAX_TOKEN,
+                        VK_CONFIRMATION_TOKEN: process.env.VK_CONFIRMATION_TOKEN,
+                        MARUSIA_TOKEN: process.env.MARUSIA_TOKEN,
+                        YANDEX_TOKEN: process.env.YANDEX_TOKEN,
+                        DB_HOST: process.env.DB_HOST,
+                        DB_USER: process.env.DB_USER,
+                        DB_PASSWORD: process.env.DB_PASSWORD,
+                        DB_NAME: process.env.DB_NAME,
+                    };
+                }
+                let isError = true;
+                Object.values(correctEnvValue).forEach((correctEnvValue) => {
+                    if (correctEnvValue) {
+                        isError = false;
+                    }
+                });
+                if (isError) {
+                    this.logError(
+                        (res.error as string) + '. Также не удалось получить данные из process.env',
+                    );
+                }
             }
         }
         return this._envVars;

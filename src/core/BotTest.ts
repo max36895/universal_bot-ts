@@ -88,7 +88,7 @@ export interface IBotTestParams {
  * @example
  * ```typescript
  * const botTest = new BotTest();
- * botTest.setAppConfig({
+ * botTest.setPlatformParams({
  *   intents: [{
  *     name: 'greeting',
  *     slots: ['привет', 'здравствуйте']
