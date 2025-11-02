@@ -85,20 +85,18 @@ export class ViberRequest {
                 const sendData = await this._request.send<IViberApi>(this.API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;
-                    if (data) {
-                        if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
-                            this._error = JSON.stringify(data.failed_list);
-                            this._log(data.status_message);
-                        }
-                        if (data.status === 0) {
-                            return data as T;
-                        }
-                        const statusMessage =
-                            typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
-                        if (statusMessage !== 'ok') {
-                            this._error = '';
-                            this._log(data.status_message);
-                        }
+                    if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
+                        this._error = JSON.stringify(data.failed_list);
+                        this._log(data.status_message);
+                    }
+                    if (data.status === 0) {
+                        return data as T;
+                    }
+                    const statusMessage =
+                        typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
+                    if (statusMessage !== 'ok') {
+                        this._error = '';
+                        this._log(data.status_message);
                     }
                 } else {
                     this._log(sendData.err);
