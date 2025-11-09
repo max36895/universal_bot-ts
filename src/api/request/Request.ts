@@ -207,6 +207,7 @@ export class Request {
                 }
                 this._error = 'Не удалось получить данные с ' + this.url;
             } catch (e) {
+                this._clearTimeout();
                 this._error = e instanceof Error ? e.message : String(e);
             }
         } else {

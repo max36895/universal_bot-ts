@@ -20,7 +20,7 @@
         "paths": {
             "*": ["node_modules/*", "src/*"]
         },
-        "types": ["node", "jest"],
+        "types": ["node"],
         "typeRoots": ["node_modules/@types"]
     },
     "include": ["src/**/*", "src/index.ts"],

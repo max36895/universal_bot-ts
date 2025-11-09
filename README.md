@@ -8,6 +8,8 @@
 форматах запросов и ответов, предоставляя разработчику единый, предсказуемый интерфейс. Это позволяет писать логику один
 раз — и запускать её везде.
 
+Библиотека следует [SemVer](https://semver.org/) . Breaking changes возможны только в MAJOR-версиях.
+
 [![npm version](https://badge.fury.io/js/umbot.svg)](https://badge.fury.io/js/umbot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)]()
@@ -119,6 +121,7 @@ export class EchoController extends BotController {
 - [Производительность и гарантии](src/docs/performance-and-guarantees.md)
 - [Тестирование](src/docs/testing.md)
 - [Развертывание](src/docs/deployment.md)
+- [Middleware](src/docs/middleware.md)
 - [FAQ](src/docs/getting-started.md#часто-задаваемые-вопросы)
 
 ### Полезные ссылки

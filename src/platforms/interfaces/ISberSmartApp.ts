@@ -1036,7 +1036,7 @@ export interface ISberSmartAppResponsePayload {
      * - application/text
      * - application/ssml
      */
-    pronounceTextType: string;
+    pronounceTextType: 'application/text' | 'application/ssml';
 
     /** Эмоция ассистента */
     emotion?: {
