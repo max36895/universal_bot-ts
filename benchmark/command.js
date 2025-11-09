@@ -139,9 +139,6 @@ function printFinalSummary(results) {
         const baselineMemAvg =
             noRegItems.reduce((sum, r) => sum + parseFloat(r.memoryIncreaseFromStart), 0) /
             noRegItems.length;
-        const baselineMemRunAvg =
-            noRegItems.reduce((sum, r) => sum + parseFloat(r.memoryIncrease), 0) /
-            noRegItems.length;
 
         log(`\nИТОГОВАЯ СВОДКА (Количество команд: ${count.toLocaleString('ru-RU')})`);
         log('─'.repeat(123));
@@ -224,7 +221,6 @@ function printFinalSummary(results) {
                 (sum, r) => sum + parseFloat(r.memoryIncreaseFromStart),
                 0,
             );
-            const memSumRun = regSubset.reduce((sum, r) => sum + parseFloat(r.memoryIncrease), 0);
             const avgMem = memSum / regSubset.length;
             const memDelta = ((avgMem - baselineMemAvg) / baselineMemAvg) * 100;
             const memStr = `${memResult(avgMem.toFixed(2))} (${(memDelta >= 0 ? '+' : '') + memDelta.toFixed(1)}%)`;

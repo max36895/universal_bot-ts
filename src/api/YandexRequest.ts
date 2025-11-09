@@ -215,7 +215,6 @@ export class YandexRequest {
         this.setOAuth(this._oauth as string);
         const data: IRequestSend<T> = await this._request.send<T>(url);
         if (data.status && data.data) {
-            //Object.hasOwnProperty.call(data.data, 'error')
             if (Object.hasOwnProperty.call(data.data, 'error')) {
                 this._error = JSON.stringify(data.data.error);
             }
