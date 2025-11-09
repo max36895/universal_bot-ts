@@ -1085,6 +1085,23 @@ export class AppContext {
     }
 
     /**
+     * Скрывает секретные данные в тексте
+     * @param text
+     * @private
+     */
+    private _maskSecrets(text: string): string {
+        return (
+            text
+                // Telegram bot token
+                .replace(/bot\d+:[A-Za-z0-9_-]{30,}/g, 'bot***')
+                // VK access token (vk1a...)
+                .replace(/vk1a[a-z0-9]{79}/g, 'vk1a***')
+                // Общий паттерн для длинных base64-подобных токенов
+                .replace(/([a-zA-Z0-9]{40,})/g, '***')
+        );
+    }
+
+    /**
      * Сохраняет лог ошибки
      * @param {string} fileName - Имя файла лога
      * @param {string} errorText - Текст ошибки
@@ -1102,6 +1119,12 @@ export class AppContext {
         if (this._isDevMode) {
             console.error(msg);
         }
-        return saveData(dir, msg, 'a');
+        try {
+            return saveData(dir, this._maskSecrets(msg), 'a');
+        } catch (e) {
+            console.error(`[saveLog] Ошибка записи в файл ${fileName}:`, e);
+            console.error(msg);
+            return false;
+        }
     }
 }

@@ -336,7 +336,9 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @example
      * ```typescript
-     * this.userId = 'user_123';
+     * this.userId = 'user_123';    // Telegram (string)
+     * this.userId = 123456789;     // VK (number)
+     * this.userId = null;          // не авторизован
      * ```
      */
     public userId: string | number | null = null;

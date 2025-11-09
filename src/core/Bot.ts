@@ -98,6 +98,15 @@ export interface IBotBotClassAndType {
 }
 
 /**
+ * Функция для обработки следующего шага в цепочке промежуточных функций
+ */
+export type MiddlewareNext = () => Promise<void>;
+/**
+ * Функция промежуточной обработки
+ */
+export type MiddlewareFn = (ctx: BotController, next: MiddlewareNext) => void | Promise<void>;
+
+/**
  * Основной класс для работы с ботом
  * Отвечает за инициализацию, конфигурацию и запуск бота
  * Поддерживает различные платформы: Алиса, Маруся, Telegram, VK, Viber и др.
@@ -181,7 +190,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     protected _auth: TBotAuth;
 
+    /**
+     * Тип платформы по умолчанию
+     * @protected
+     */
     protected _defaultAppType: TAppType | 'auto' = 'auto';
+
+    private _globalMiddlewares: MiddlewareFn[] = [];
+    private _platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
 
     /**
      * Получение корректного контроллера
@@ -680,7 +696,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param headers - Заголовки запроса
      * @protected
      */
-    protected _setAppType(body: any, headers?: Record<string, unknown>): void {
+    protected _setAppType(
+        body: any,
+        headers?: Record<string, unknown>,
+        userBotClass: TemplateTypeModel | null = null,
+    ): void {
         if (!this._defaultAppType || this._defaultAppType === T_AUTO) {
             // 1. Заголовки — самый надёжный способ
             if (headers?.['x-ya-dialogs-request-id']) {
@@ -736,7 +756,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 // 4. MAX: проверка по структуре (у MAX есть уникальное поле)
                 this._appContext.appType = T_MAXAPP;
             } else {
-                this._appContext.appType = T_ALISA;
+                if (userBotClass) {
+                    this._appContext.appType = T_USER_APP;
+                } else {
+                    this._appContext.appType = T_ALISA;
+                }
                 this._appContext.saveLog(
                     'bot.log',
                     'Неизвестный формат запроса. Используется fallback на Алису.',
@@ -799,7 +823,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this._botController.oldIntentName = this._botController.userData.oldIntentName;
         }
 
-        this._botController.run();
+        const shouldProceed =
+            this._globalMiddlewares.length ||
+            this._platformMiddlewares[this._appContext.appType as TAppType]?.length
+                ? await this._runMiddlewares(this._botController)
+                : true;
+        if (shouldProceed) {
+            this._botController.run();
+        }
         if (this._botController.thisIntentName !== null && this._botController.userData) {
             this._botController.userData.oldIntentName = this._botController.thisIntentName;
         } else {
@@ -852,11 +883,98 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Регистрирует middleware, вызываемый **до** выполнения `BotController.action()`.
+     *
+     * Middleware получает доступ к полному `BotController` (включая `text`, `isEnd`, `userData`, `buttons` и т.д.)
+     * и может:
+     * - Модифицировать контекст
+     * - Прервать выполнение (если не вызвать `next()`)
+     * - Выполнить логирование, tracing, rate limiting и др.
+     *
+     * @example
+     * // Глобальный middleware (для всех платформ)
+     * bot.use(async (ctx, next) => {
+     *   console.log('Запрос от:', ctx.appContext.appType);
+     *   await next();
+     * });
+     *
+     * @example
+     * // Только для Алисы
+     * bot.use('alisa', async (ctx, next) => {
+     *   if (!ctx.appContext.requestObject?.session?.user_id) {
+     *     ctx.text = 'Некорректный запрос';
+     *     ctx.isEnd = true;
+     *     // next() не вызывается → action() не запускается
+     *     return;
+     *   }
+     *   await next();
+     * });
+     *
+     * @param fn - Middleware-функция
+     * @returns Текущий экземпляр `Bot` для цепочки вызовов
+     */
+    use(fn: MiddlewareFn): this;
+
+    /**
+     * Регистрирует middleware, вызываемый только для указанной платформы.
+     *
+     * @param platform - Идентификатор платформы (`alisa`, `telegram`, `vk`, и т.д.)
+     * @param fn - Middleware-функция
+     * @returns Текущий экземпляр `Bot`
+     */
+    use(platform: TAppType, fn: MiddlewareFn): this;
+
+    use(arg1: TAppType | MiddlewareFn, arg2?: MiddlewareFn): this {
+        if (typeof arg1 === 'function') {
+            this._globalMiddlewares.push(arg1);
+        } else if (arg2) {
+            if (!this._platformMiddlewares[arg1]) {
+                this._platformMiddlewares[arg1] = [];
+            }
+            this._platformMiddlewares[arg1]!.push(arg2);
+        }
+        return this;
+    }
+
+    /**
+     * Выполняет middleware для текущего запроса
+     * @param controller
+     * @private
+     */
+    private async _runMiddlewares(controller: BotController): Promise<boolean> {
+        if (this._appContext.appType) {
+            const middlewares = [
+                ...this._globalMiddlewares,
+                ...(this._platformMiddlewares[this._appContext.appType] || []),
+            ];
+
+            if (middlewares.length === 0) return true;
+
+            let index = 0;
+            let isEnd = false;
+            const next = async (): Promise<void> => {
+                if (index < middlewares.length) {
+                    const mw = middlewares[index++];
+                    await mw(controller, next);
+                } else {
+                    isEnd = true;
+                }
+            };
+
+            // Запускаем цепочку
+            await next();
+            return isEnd;
+        }
+        return true;
+    }
+
+    /**
      * Запускает обработку запроса
      * Выполняет основную логику бота и возвращает результат
      *
      * @param {TemplateTypeModel | null} [userBotClass] - Пользовательский класс бота
      * @returns {Promise<TRunResult>} Результат выполнения бота
+     * @throws
      *
      * @example
      * ```typescript
@@ -876,8 +994,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
             throw new Error(errMsg);
         }
         if (!this._appContext.appType) {
-            this._setAppType(this._content);
+            this._setAppType(this._content, undefined, userBotClass);
         }
+
         const { botClass, type } = this._getBotClassAndType(userBotClass);
 
         if (botClass) {
@@ -948,7 +1067,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             }
 
             this._content = query;
-            this._setAppType(query, req.headers);
+            this._setAppType(query, req.headers, userBotClass);
             const result = await this.run(userBotClass);
             const statusCode = result === 'notFound' ? 404 : 200;
             return send(statusCode, result);

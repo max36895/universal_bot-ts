@@ -227,7 +227,10 @@ export abstract class Model<TState extends TStateData> {
      * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
-        return this.dbController.escapeString(text);
+        if (this.dbController) {
+            return this.dbController.escapeString(text);
+        }
+        return text.toString();
     }
 
     /**

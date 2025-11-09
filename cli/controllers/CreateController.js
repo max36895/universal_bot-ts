@@ -160,7 +160,7 @@ class CreateController {
             name,
             name,
             '',
-            '"' + (this.params?.hostname || 'localhost') + '"',
+            '"' + (this.params?.hostname || '0.0.0.0') + '"',
             this.params?.port || 3000,
         ];
         fileName = this._replace(find, replace, fileName);

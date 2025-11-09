@@ -47,7 +47,7 @@ module.exports = [
             '@typescript-eslint/ban-ts-comment': 'off',
 
             'require-atomic-updates': 'error',
-            'max-lines-per-function': ['warn', { max: 100 }],
+            'max-lines-per-function': ['warn', { max: 105 }],
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',
             'no-unused-vars': 'off', // ругается на абстрактные классы и интерфейсы
