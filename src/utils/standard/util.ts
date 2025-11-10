@@ -11,6 +11,8 @@ import * as fs from 'fs';
 import * as readline from 'readline';
 import { IDir } from '../../core/AppContext';
 
+let _lcsBuffer: Int32Array = new Int32Array(1024);
+
 /**
  * Интерфейс для GET-параметров
  *
@@ -68,7 +70,11 @@ export function similarText(first: string, second: string): number {
 
     // Helper function to calculate LCS length using dynamic programming
     const lcsLength = (shorter: string, longer: string): number => {
-        const dp = new Int32Array(longer.length + 1);
+        if (_lcsBuffer.length < longer.length + 1) {
+            _lcsBuffer = new Int32Array(longer.length + 1);
+        }
+        const dp = _lcsBuffer;
+        dp.fill(0, 0, longer.length + 1);
 
         for (let i = 0; i < shorter.length; i++) {
             let prevDiag = 0;
@@ -338,13 +344,29 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult
  * @param {IDir} dir - Объект с путем и названием файла
  * @param {string} data - Сохраняемые данные
  * @param {string} mode - Режим записи
+ * @param {boolean} isSync - Режим записи синхронаня/асинхронная. По умолчанию синхронная
  * @returns {boolean} true в случае успешного сохранения
  */
-export function saveData(dir: IDir, data: string, mode?: string): boolean {
+export function saveData(dir: IDir, data: string, mode?: string, isSync: boolean = true): boolean {
     if (!isDir(dir.path)) {
         mkdir(dir.path);
     }
-    fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+    if (isSync) {
+        fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+    } else {
+        fs.writeFile(
+            `${dir.path}/${dir.fileName}`,
+            data,
+            {
+                flag: mode || 'w',
+            },
+            (err) => {
+                if (err) {
+                    console.error('[saveLog] Ошибка:', err);
+                }
+            },
+        );
+    }
     return true;
 }
 

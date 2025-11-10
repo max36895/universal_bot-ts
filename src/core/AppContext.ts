@@ -76,6 +76,15 @@ import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { DB } from '../models/db';
 import * as process from 'node:process';
 
+const dangerousPatterns = [
+    /\(\w+\+\)\+/,
+    /\(\w+\*\)\*/,
+    /\(\w+\+\)\*/,
+    /\(\w+\*\)\+/,
+    /\[[^\]]*\+\]/, // [a+]
+    /(\w\+|\w\*){3,}/, // aaa+ или подобное
+];
+
 /**
  * Тип для HTTP клиента
  */
@@ -904,7 +913,36 @@ export class AppContext {
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
+        this.platformParams.intents?.forEach((intent) => {
+            if (intent.is_pattern) {
+                this._isDangerRegex(intent.slots);
+            }
+        });
         this._setTokens();
+    }
+
+    private _isDangerRegex(slots: TSlots | RegExp): boolean {
+        const errors: string[] = [];
+        if (slots instanceof RegExp) {
+            if (dangerousPatterns.some((re) => re.test(slots.source))) {
+                errors.push(slots.source);
+            }
+        } else {
+            slots.forEach((slot) => {
+                const slotStr = slot instanceof RegExp ? slot.source : slot;
+                if (dangerousPatterns.some((re) => re.test(slotStr))) {
+                    errors.push(slotStr);
+                }
+            });
+        }
+        if (errors.length) {
+            this.logWarn(
+                'Найдены небезопасные регулярные выражения, проверьте их корректность: ' +
+                    errors.join(', '),
+                {},
+            );
+        }
+        return !!errors.length;
     }
 
     /**
@@ -980,29 +1018,12 @@ export class AppContext {
         isPattern: boolean = false,
     ): void {
         if (isPattern) {
-            const dangerousPatterns = [
-                /\(\w+\+\)\+/,
-                /\(\w+\*\)\*/,
-                /\(\w+\+\)\*/,
-                /\(\w+\*\)\+/,
-                /\[[^\]]*\+\]/, // [a+]
-                /(\w\+|\w\*){3,}/, // aaa+ или подобное
-            ];
-
-            const errors: string[] = [];
-            slots.forEach((slot) => {
-                if (!(slot instanceof RegExp)) {
-                    if (dangerousPatterns.some((re) => re.test(slot))) {
-                        errors.push(slot);
-                    }
+            this._isDangerRegex(slots);
+        } else {
+            for (const slot of slots) {
+                if (slot instanceof RegExp) {
+                    this._isDangerRegex(slot);
                 }
-            });
-            if (errors.length) {
-                this.logWarn(
-                    'Найдены небезопасные регулярные выражения, проверьте их корректность: ' +
-                        errors.join(', '),
-                    {},
-                );
             }
         }
         this.commands.set(commandName, { slots, isPattern, cb });
@@ -1120,7 +1141,7 @@ export class AppContext {
             console.error(msg);
         }
         try {
-            return saveData(dir, this._maskSecrets(msg), 'a');
+            return saveData(dir, this._maskSecrets(msg), 'a', false);
         } catch (e) {
             console.error(`[saveLog] Ошибка записи в файл ${fileName}:`, e);
             console.error(msg);

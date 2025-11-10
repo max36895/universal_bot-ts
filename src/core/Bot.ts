@@ -771,6 +771,43 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
+    private async _getAppContent(botClass: TemplateTypeModel): Promise<string> {
+        if (
+            !this._botController.oldIntentName &&
+            this._botController.userData &&
+            this._botController.userData.oldIntentName
+        ) {
+            this._botController.oldIntentName = this._botController.userData.oldIntentName;
+        }
+
+        const shouldProceed =
+            this._globalMiddlewares.length ||
+            this._platformMiddlewares[this._appContext.appType as TAppType]?.length
+                ? await this._runMiddlewares(this._botController)
+                : true;
+        if (shouldProceed) {
+            this._botController.run();
+        }
+        if (this._botController.thisIntentName !== null && this._botController.userData) {
+            this._botController.userData.oldIntentName = this._botController.thisIntentName;
+        } else {
+            delete this._botController.userData?.oldIntentName;
+        }
+        let content: any;
+        if (this._botController.isSendRating) {
+            content = await botClass.getRatingContext();
+        } else {
+            if (
+                this._botController.store &&
+                JSON.stringify(this._botController.userData) === '{}'
+            ) {
+                this._botController.userData = this._botController.store as TUserData;
+            }
+            content = await botClass.getContext();
+        }
+        return content;
+    }
+
     /**
      * Запуск логики приложения
      * @param botClass - Класс бота, который будет подготавалить корректный ответ в зависимости от платформы
@@ -815,39 +852,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 userData.meta = this._botController.userMeta;
             }
         }
-        if (
-            !this._botController.oldIntentName &&
-            this._botController.userData &&
-            this._botController.userData.oldIntentName
-        ) {
-            this._botController.oldIntentName = this._botController.userData.oldIntentName;
-        }
 
-        const shouldProceed =
-            this._globalMiddlewares.length ||
-            this._platformMiddlewares[this._appContext.appType as TAppType]?.length
-                ? await this._runMiddlewares(this._botController)
-                : true;
-        if (shouldProceed) {
-            this._botController.run();
-        }
-        if (this._botController.thisIntentName !== null && this._botController.userData) {
-            this._botController.userData.oldIntentName = this._botController.thisIntentName;
-        } else {
-            delete this._botController.userData?.oldIntentName;
-        }
-        let content: any;
-        if (this._botController.isSendRating) {
-            content = await botClass.getRatingContext();
-        } else {
-            if (
-                this._botController.store &&
-                JSON.stringify(this._botController.userData) === '{}'
-            ) {
-                this._botController.userData = this._botController.store as TUserData;
-            }
-            content = await botClass.getContext();
-        }
+        const content = await this._getAppContent(botClass);
         if (!isLocalStorage) {
             userData.data = this._botController.userData;
 

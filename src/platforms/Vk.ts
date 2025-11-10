@@ -46,33 +46,6 @@ export class Vk extends TemplateTypeModel {
         controller: BotController,
     ): Promise<boolean> {
         if (query) {
-            /*
-             * array content
-             *  - string type:
-             *  - array object:
-             *      - array message
-             *          - int date
-             *          - int from_id
-             *          - int id
-             *          - int out
-             *          - int peer_id
-             *          - string text
-             *          - int conversation_message_id
-             *          - array fwd_messages
-             *          - bool important
-             *          - int random_id
-             *          - array attachments
-             *          - bool is_hidden
-             *          -
-             *      - array clientInfo
-             *          - array button_actions
-             *          - bool keyboard
-             *          - bool inline_keyboard
-             *          - int lang_id
-             *  - string group_id:
-             *  - string event_id:
-             *  - string secret:
-             */
             let content: IVkRequestContent;
             if (typeof query === 'string') {
                 content = <IVkRequestContent>JSON.parse(query);
