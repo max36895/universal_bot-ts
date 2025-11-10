@@ -1010,6 +1010,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 this._botController.userToken = this._auth;
             }
             if (await botClass.init(this._content, this._botController)) {
+                botClass.updateTimeStart();
                 return await this._runApp(botClass, type);
             } else {
                 this._appContext.saveLog('bot.log', botClass.getError());

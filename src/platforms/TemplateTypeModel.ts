@@ -85,6 +85,14 @@ export abstract class TemplateTypeModel {
     }
 
     /**
+     * Устанавливает время начала обработки запроса.
+     * Используется для измерения времени выполнения
+     */
+    public updateTimeStart(): void {
+        this._initProcessingTime();
+    }
+
+    /**
      * Получает время выполнения запроса в миллисекундах
      * @returns {number} Время выполнения запроса
      */
