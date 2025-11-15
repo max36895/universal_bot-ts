@@ -5,6 +5,10 @@ const { Bot, BotController, Alisa, T_ALISA } = require('./../dist/index');
 const { performance } = require('perf_hooks');
 const os = require('os');
 
+function gc() {
+    global.gc();
+}
+
 // --------------------------------------------------
 // Вывод результатов
 
@@ -31,6 +35,8 @@ function printScenarioBlock(items) {
         const memPerCmd =
             (parseFloat(rep.afterRunMemory) - parseFloat(rep.startMemory)) / rep.count;
         log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
+        const timePerCmd = rep.duration / rep.count;
+        log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
     }
 
     const low = byState.low;
@@ -276,7 +282,7 @@ class TestBotController extends BotController {
         super(appContext);
     }
 
-    action(intentName, isCommand) {
+    action(intentName, _) {
         if (intentName && intentName.startsWith('cmd_')) {
             this.text = `Обработана команда: ${intentName}`;
             this.userData[`data_for_${intentName}`] = `value_for_${intentName}`;
@@ -347,7 +353,7 @@ function getRegex(regex, state, count, step) {
 // сам тест
 async function runTest(count = 1000, useReg = false, state = 'middle', regState = 'middle') {
     const res = { state, regState: useReg ? regState : '', useReg, count };
-    global.gc();
+    gc();
     await new Promise((resolve) => {
         setTimeout(resolve, 1);
     });
@@ -355,8 +361,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     res.startMemory = (startedMemory / 1024).toFixed(2);
 
     const bot = new Bot();
-    const botController = new TestBotController(bot._appContext);
-    bot.initBotController(botController);
+    bot.initBotControllerClass(TestBotController);
     bot.appType = T_ALISA;
     const botClass = new Alisa(bot._appContext);
     bot.setAppConfig({ isLocalStorage: true });
@@ -448,9 +453,12 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         }
     }
 
-    global.gc();
-    bot.setContent(getContent(testCommand));
-    global.gc();
+    gc();
+    const content = getContent(testCommand);
+    await new Promise((resolve) => {
+        setTimeout(resolve, 1);
+    });
+    gc();
     await new Promise((resolve) => {
         setTimeout(resolve, 1);
     });
@@ -459,7 +467,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
     const start = performance.now();
     try {
-        await bot.run(botClass);
+        await bot.run(botClass, 'alisa', content);
     } catch (e) {
         /* ignore */
     }
@@ -473,15 +481,14 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         /* ignore */
     }
     const duration2 = performance.now() - start2;
-    global.gc();
+    gc();
     const afterMemory = process.memoryUsage().heapUsed;
     res.afterRunMemory = (afterMemory / 1024).toFixed(2);
     res.memoryIncrease = ((afterMemory - beforeMemory) / 1024).toFixed(2);
     res.memoryIncreaseFromStart = ((afterMemory - startedMemory) / 1024).toFixed(2);
 
-    botController.clearStoreData();
     bot.clearCommands();
-    global.gc();
+    gc();
     const finalMemory = process.memoryUsage().heapUsed;
     res.finalMemory = (finalMemory / 1024).toFixed(2);
     res.memoryDifference = ((finalMemory - startedMemory) / 1024).toFixed(2);
@@ -508,6 +515,9 @@ async function start() {
     try {
         // Количество команд
         const counts = [50, 250, 500, 1000, 2e3, 2e4, 2e5, 1e6, 2e6];
+        /*for (let i = 1; i < 1e4; i++) {
+            counts.push(2e6 + i * 1e6);
+        }*/
         // Исход поиска(требуемая команда в начале списка, требуемая команда в середине списка, требуемая команда не найдена))
         const states = ['low', 'middle', 'high'];
         // Сложность регулярных выражений (low — простая, middle — умеренная, high — сложная(субъективно))
@@ -520,7 +530,7 @@ async function start() {
                 '   это означает, что такую логику нужно архитектурно декомпозировать.',
         );
         // для чистоты запускаем gc
-        global.gc();
+        gc();
         let cCountFErr = 0;
 
         const printResult = () => {
@@ -578,7 +588,7 @@ async function start() {
                     `     — ${time20k <= 50 ? '🟢 Отлично: производительность в норме' : time20k <= 300 ? '🟡 Приемлемо: библиотека укладывается в 1 сек' : '⚠️ Внимание: время обработки велико. Убедитесь, что сервер имеет достаточные ресурсы (CPU ≥2 ядра, RAM ≥2 ГБ).'}\n` +
                     '💡 Примечание:\n' +
                     '   — Платформы (Алиса, Сбер и др.) дают до 3 секунд на ответ.\n' +
-                    '   — `umbot` гарантирует ≤1 сек на свою логику (оставляя 2+ сек на ваш код).\n' +
+                    '   — `umbot` гарантирует ≤1 сек на свою логику при количестве команд до 500 000 (оставляя 2+ сек на ваш код).\n' +
                     '   — Всплески времени (например, 100–200 мс) могут быть вызваны сборкой мусора (GC) в Node.js — это нормально.\n' +
                     '   — Если сервер слабый (1 ядро, 1 ГБ RAM), даже отличная библиотека не сможет компенсировать нехватку ресурсов.',
             );
@@ -608,13 +618,13 @@ async function start() {
                 cCountFErr = count;
                 console.log(`Запуск тестов для ${count} команд...`);
                 for (let state of states) {
-                    global.gc();
+                    gc();
                     await new Promise((resolve) => {
                         setTimeout(resolve, 1);
                     });
                     await runTest(count, false, state);
                     for (let regState of regStates) {
-                        global.gc();
+                        gc();
                         await new Promise((resolve) => {
                             setTimeout(resolve, 1);
                         });
@@ -625,7 +635,7 @@ async function start() {
         } catch (e) {
             console.log(`Упал при выполнении тестов для ${cCountFErr} команд. Ошибка: ${e}`);
         }
-        global.gc();
+        gc();
         printResult();
     } catch (error) {
         console.error('Ошибка:', error);

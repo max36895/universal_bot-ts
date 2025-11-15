@@ -289,15 +289,43 @@ export class DbControllerFile extends DbControllerModel {
         const file = `${path}/${fileName}.json`;
         const fileInfo = getFileInfo(file).data;
         if (fileInfo && fileInfo.isFile()) {
-            const fileData =
-                this.cachedFileData[file] && this.cachedFileData[file].version > fileInfo.mtimeMs
-                    ? this.cachedFileData[file].data
-                    : (fread(file).data as string);
-            this.cachedFileData[file] = {
-                data: fileData,
-                version: fileInfo.mtimeMs,
+            const getFileData = (isForce: boolean = false): string => {
+                const fileData =
+                    this.cachedFileData[file] &&
+                    this.cachedFileData[file].version > fileInfo.mtimeMs &&
+                    !isForce
+                        ? this.cachedFileData[file].data
+                        : (fread(file).data as string);
+
+                this.cachedFileData[file] = {
+                    data: fileData,
+                    version: fileInfo.mtimeMs,
+                };
+                return fileData;
             };
-            return JSON.parse(fileData);
+            try {
+                const fileData = getFileData();
+                if (fileData) {
+                    return JSON.parse(fileData);
+                }
+                return {};
+            } catch {
+                // Может возникнуть ситуация когда файл прочитался во время записи, из-за чего не получится его распарсить.
+                // Поэтому считаем что произошла ошибка при чтении, и пробуем прочитать повторно.
+                const fileData = getFileData(true);
+                if (!fileData) {
+                    return {};
+                }
+                try {
+                    return JSON.parse(fileData);
+                } catch (e) {
+                    this._appContext?.logError(`Ошибка при парсинге файла ${file}`, {
+                        content: fileData,
+                        error: (e as Error).message,
+                    });
+                    return {};
+                }
+            }
         } else {
             return {};
         }

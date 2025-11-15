@@ -286,9 +286,8 @@ export class ViberRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'viberApi.log',
-            `\n(${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        this._appContext.logError(
+            `ViberApi: (${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
         );
     }
 }

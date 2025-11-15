@@ -12,6 +12,7 @@ import {
 } from './interfaces';
 import { BotController } from '../controller';
 import { Text } from '../utils/standard/Text';
+import { T_ALISA } from '../core';
 
 /**
  * Класс для работы с платформой Яндекс Алиса.
@@ -71,7 +72,7 @@ export class Alisa extends TemplateTypeModel {
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
                 response.card = <IAlisaItemsList | IAlisaBigImage>(
-                    await this.controller.card.getCards()
+                    await this.controller.card.getCards(T_ALISA)
                 );
                 if (!response.card) {
                     response.card = undefined;
@@ -179,6 +180,7 @@ export class Alisa extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
+            this.controller = controller;
 
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (content.account_linking_complete_event) {
@@ -192,9 +194,7 @@ export class Alisa extends TemplateTypeModel {
                 this.error = 'Alisa.init(): Не корректные данные!';
                 return false;
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+
             this.controller.requestObject = content;
             this._initUserCommand(content.request);
             this._session = content.session;
@@ -239,7 +239,7 @@ export class Alisa extends TemplateTypeModel {
         if (this.controller.isAuth && this.controller.userToken === null) {
             result.start_account_linking = function (): void {};
         } else {
-            await this._initTTS();
+            await this._initTTS(T_ALISA);
             result.response = await this._getResponse();
         }
         if ((this._isState || this.isUsedLocalStorage) && this._stateName) {
@@ -251,7 +251,7 @@ export class Alisa extends TemplateTypeModel {
         }
         const timeEnd: number = this.getProcessingTime();
         if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `Alisa:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
+            this.error = `Alisa:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
         }
         return result;
     }

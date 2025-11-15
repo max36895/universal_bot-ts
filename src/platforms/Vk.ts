@@ -4,6 +4,7 @@ import { IVkRequestContent, IVkRequestObject } from './interfaces';
 import { VkRequest } from '../api/VkRequest';
 import { IVkParams } from '../api/interfaces';
 import { Buttons } from '../components/button';
+import { T_VK } from '../core';
 
 /**
  * Класс для работы с платформой ВКонтакте.
@@ -52,9 +53,8 @@ export class Vk extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+            this.controller = controller;
+
             this.controller.requestObject = content;
             switch (content.type || null) {
                 case 'confirmation':
@@ -110,7 +110,7 @@ export class Vk extends TemplateTypeModel {
                 params.keyboard = keyboard;
             }
             if (this.controller.card.images.length) {
-                const attach = await this.controller.card.getCards();
+                const attach = await this.controller.card.getCards(T_VK);
                 if (attach.type) {
                     params.template = attach;
                 } else {
@@ -118,7 +118,7 @@ export class Vk extends TemplateTypeModel {
                 }
             }
             if (this.controller.sound.sounds.length) {
-                const attach = await this.controller.sound.getSounds(this.controller.tts);
+                const attach = await this.controller.sound.getSounds(this.controller.tts, T_VK);
                 params.attachments = { ...attach, ...params.attachments };
             }
             const vkApi = new VkRequest(this.appContext);

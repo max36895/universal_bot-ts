@@ -67,8 +67,7 @@ bot.setAppConfig({
 });
 
 // Подключаем контроллер
-const controller = new MyController();
-bot.initBotController(controller);
+bot.initBotController(MyController);
 
 bot.start('localhost', 3000);
 ```
@@ -235,7 +234,7 @@ if (intentName === 'restart') {
 import { BotTest } from 'umbot';
 
 const bot = new BotTest();
-bot.initBotController(new MyController());
+bot.initBotController(MyController);
 
 // Запуск тестирования
 bot.test();

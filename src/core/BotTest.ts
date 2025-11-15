@@ -2,7 +2,6 @@
  * Модуль для тестирования бота.
  * Предоставляет инструменты для отладки и тестирования функциональности бота
  */
-import { TemplateTypeModel } from '../platforms';
 import { stdin } from '../utils/standard/util';
 import {
     alisaConfig,
@@ -13,7 +12,7 @@ import {
     maxAppConfig,
     smartAppConfig,
 } from '../platforms/skillsTemplateConfig';
-import { Bot } from './Bot';
+import { Bot, TBotControllerClass, TTemplateTypeModelClass } from './Bot';
 import {
     T_ALISA,
     T_MARUSIA,
@@ -23,8 +22,9 @@ import {
     T_VK,
     T_MAXAPP,
     T_SMARTAPP,
+    TAppType,
 } from './AppContext';
-import { IUserData } from './../controller/BotController';
+import { BotController, IUserData } from './../controller/BotController';
 
 /**
  * Функция для получения конфигурации пользовательского бота
@@ -64,7 +64,7 @@ export interface IBotTestParams {
      * Пользовательский класс для обработки команд
      * Если не указан, используется стандартный обработчик
      */
-    userBotClass?: TemplateTypeModel | null;
+    userBotClass?: TTemplateTypeModelClass | null;
 
     /**
      * Функция для получения конфигурации пользовательского бота.
@@ -94,7 +94,7 @@ export interface IBotTestParams {
  *     slots: ['привет', 'здравствуйте']
  *   }]
  * });
- * botTest.initBotController(new MyController());
+ * botTest.initBotController(MyController);
  *
  * // Запуск тестирования
  * await botTest.test({
@@ -104,6 +104,24 @@ export interface IBotTestParams {
  * ```
  */
 export class BotTest extends Bot {
+    protected _botController: BotController;
+
+    constructor(type?: TAppType, botController?: TBotControllerClass) {
+        super(type, botController);
+        if (botController) {
+            this._botController = new botController();
+        } else {
+            this._botController = new this._botControllerClass();
+        }
+        this._setBotController(this._botController);
+    }
+
+    initBotControllerClass(fn: TBotControllerClass): Bot {
+        this._botController = new fn();
+        this._setBotController(this._botController);
+        return super.initBotControllerClass(fn);
+    }
+
     /**
      * Запускает интерактивное тестирование бота
      * Позволяет вводить команды и получать ответы в консоли
@@ -155,6 +173,7 @@ export class BotTest extends Bot {
             if (typeof this._content === 'string') {
                 this.setContent(JSON.parse(this._content));
             }
+            this._setBotController(this._botController);
 
             let result: any = await this.run(userBotClass);
             if (isShowResult) {

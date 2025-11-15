@@ -210,8 +210,10 @@ export class Sql {
                 return true;
             }
             return false;
-        } catch (е) {
-            this.appContext?.saveLog('sql.log', `Sql.isConnected(): ${е}`);
+        } catch (e) {
+            this.appContext?.logError(`Sql.isConnected(): Не удалось проверить подключение к БД.`, {
+                error: e,
+            });
             return false;
         }
     }
@@ -301,11 +303,7 @@ export class Sql {
      * @returns boolean - true если сообщение успешно сохранено, false в противном случае
      * @private
      */
-    protected _saveLog(errorMsg: string): boolean {
-        if (this.appContext?.saveLog('sql.log', errorMsg)) {
-            return true;
-        }
-        this.appContext?.logWarn('Sql.connect(): Не удалось создать/открыть файл!');
-        return false;
+    protected _saveLog(errorMsg: string): void {
+        this.appContext?.logError(`SQL: ${errorMsg}`);
     }
 }

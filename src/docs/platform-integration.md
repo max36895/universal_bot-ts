@@ -445,7 +445,7 @@ app.use(express.json({ type: '*/*' })); // важно для Алисы/Сбер
 
 // Инициализация бота (платформа указывается один раз)
 const bot = new Bot(T_ALISA);
-bot.initBotController(new MyController());
+bot.initBotController(MyController);
 bot.setAppConfig({
     json: './data',
     error_log: './logs',

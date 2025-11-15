@@ -23,7 +23,7 @@ describe('ViberRequest', () => {
         appContext.platformParams.viber_api_version = 2;
         viber = new ViberRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
-        appContext.saveLog = jest.fn();
+        appContext.logError = jest.fn();
     });
 
     // === Базовый вызов call ===
@@ -192,10 +192,7 @@ describe('ViberRequest', () => {
 
         const result = await viber.sendMessage('user123', 'Bot', 'Hi');
         expect(result).toBeNull();
-        expect(appContext.saveLog).toHaveBeenCalledWith(
-            'viberApi.log',
-            expect.stringContaining('Not subscribed'),
-        );
+        expect(appContext.logError).toHaveBeenCalledWith(expect.stringContaining('Not subscribed'));
     });
 
     it('should return null if no token provided', async () => {

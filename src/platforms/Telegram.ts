@@ -4,6 +4,7 @@ import { ITelegramContent } from './interfaces';
 import { INluThisUser } from '../components/nlu';
 import { ITelegramMedia, ITelegramParams, TelegramRequest } from '../api';
 import { Buttons } from '../components/button';
+import { T_TELEGRAM } from '../core';
 
 /**
  * Класс для работы с платформой Telegram.
@@ -47,9 +48,7 @@ export class Telegram extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+            this.controller = controller;
             this.controller.requestObject = content;
 
             if (typeof content.message !== 'undefined') {
@@ -96,14 +95,14 @@ export class Telegram extends TemplateTypeModel {
             );
 
             if (this.controller.card.images.length) {
-                const res: ITelegramMedia[] = await this.controller.card.getCards();
+                const res: ITelegramMedia[] = await this.controller.card.getCards(T_TELEGRAM);
                 if (res) {
                     await telegramApi.sendMediaGroup(this.controller.userId as string, res);
                 }
             }
 
             if (this.controller.sound.sounds.length) {
-                await this.controller.sound.getSounds(this.controller.tts);
+                await this.controller.sound.getSounds(this.controller.tts, T_TELEGRAM);
             }
         }
         return 'ok';

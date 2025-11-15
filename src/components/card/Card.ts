@@ -19,6 +19,7 @@ import {
     T_USER_APP,
     T_VIBER,
     T_VK,
+    TAppType,
 } from '../../core/AppContext';
 
 /**
@@ -330,34 +331,6 @@ export class Card {
     }
 
     /**
-     * Вставляет элемент в карточку|список.
-     * @param {string} image - Идентификатор или расположение изображения
-     * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton} [button=null] - Кнопки для элемента
-     * @returns {boolean} true если элемент успешно добавлен
-     * @deprecated Используйте метод addImage вместо этого. Будет удален в версию 2.2.0
-     * @example
-     * ```typescript
-     * // Устаревший метод - не рекомендуется использовать
-     * const success = card.add('product.jpg', 'Название', 'Описание');
-     *
-     * // Рекомендуемый метод
-     * card.addImage('product.jpg', 'Название', 'Описание');
-     * ```
-     */
-    public add(
-        image: string | null,
-        title: string,
-        desc: string = ' ',
-        button: TButton | null = null,
-    ): boolean {
-        const imageLength: number = this.images.length;
-        this.addImage(image, title, desc, button);
-        return imageLength < this.images.length;
-    }
-
-    /**
      * Добавляет изображение в карточку.
      * @param {string} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
@@ -425,6 +398,7 @@ export class Card {
 
     /**
      * Получает карточку в формате для текущей платформы.
+     * @param {TAppType}[appType] - Тип приложения
      * @param {TemplateCardTypes | null} [userCard=null] - Пользовательский шаблон карточки
      * @returns {Promise<any>} Карточка в формате текущей платформы
      *
@@ -491,7 +465,7 @@ export class Card {
      * card.addImage('image.jpg', 'Название', 'Описание')
      *     .addButton('Подробнее');
      *
-     * const result = await card.getCards();
+     * const result = await card.getCards('alisa');
      * console.log(result);
      *
      * // Использование пользовательского шаблона
@@ -502,12 +476,15 @@ export class Card {
      * const customResult = await card.getCards(customTemplate);
      * ```
      */
-    public async getCards(userCard: TemplateCardTypes | null = null): Promise<any> {
+    public async getCards(
+        appType: TAppType | null,
+        userCard: TemplateCardTypes | null = null,
+    ): Promise<any> {
         if (this.template) {
             return this.template;
         }
         let card = null;
-        switch (this._appContext.appType) {
+        switch (appType) {
             case T_ALISA:
                 card = new AlisaCard(this._appContext);
                 break;
@@ -541,18 +518,5 @@ export class Card {
             return await card.getCard(this.isOne);
         }
         return {};
-    }
-
-    /**
-     * Возвращает JSON-строку со всеми элементами карточки.
-     * @param {TemplateCardTypes} [userCard=null] - Пользовательский класс для отображения карточки
-     * @returns {Promise<string>} JSON-строка с данными карточки
-     * @example
-     * ```typescript
-     * const cardJson = await card.getCardsJson();
-     * ```
-     */
-    public async getCardsJson(userCard: TemplateCardTypes | null = null): Promise<string> {
-        return JSON.stringify(await this.getCards(userCard));
     }
 }

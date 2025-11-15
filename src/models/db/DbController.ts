@@ -13,7 +13,7 @@ import { IQueryData, QueryData } from './QueryData';
 import { IModelRes, IModelRules, IDbControllerResult, TKey, TQueryCb } from '../interface';
 import { DbControllerFile } from './DbControllerFile';
 import { DbControllerMongoDb } from './DbControllerMongoDb';
-import { AppContext } from '../../core/AppContext';
+import { AppContext, EMetric } from '../../core/AppContext';
 
 /**
  * Контроллер для работы с данными
@@ -156,7 +156,13 @@ export class DbController extends DbControllerModel {
      * @returns Promise с результатом операции
      */
     public async save(queryData: QueryData, isNew: boolean = false): Promise<any> {
-        return this._controller.save(queryData, isNew);
+        const start = performance.now();
+        const res = await this._controller.save(queryData, isNew);
+        this._appContext?.logMetric(EMetric.DB_SAVE, performance.now() - start, {
+            tableName: this.tableName,
+            isNew: isNew,
+        });
+        return res;
     }
 
     /**
@@ -192,7 +198,12 @@ export class DbController extends DbControllerModel {
      * @returns Promise с результатом операции
      */
     public async update(updateQuery: QueryData): Promise<any> {
-        return this._controller.update(updateQuery);
+        const start = performance.now();
+        const res = await this._controller.update(updateQuery);
+        this._appContext?.logMetric(EMetric.DB_UPDATE, performance.now() - start, {
+            tableName: this.tableName,
+        });
+        return res;
     }
 
     /**
@@ -209,7 +220,12 @@ export class DbController extends DbControllerModel {
      * @returns Promise с результатом операции
      */
     public async insert(insertQuery: QueryData): Promise<any> {
-        return this._controller.insert(insertQuery);
+        const start = performance.now();
+        const res = await this._controller.insert(insertQuery);
+        this._appContext?.logMetric(EMetric.DB_INSERT, performance.now() - start, {
+            tableName: this.tableName,
+        });
+        return res;
     }
 
     /**
@@ -226,7 +242,12 @@ export class DbController extends DbControllerModel {
      * @returns Promise<boolean> - true если удаление успешно
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
-        return this._controller.remove(removeQuery);
+        const start = performance.now();
+        const res = await this._controller.remove(removeQuery);
+        this._appContext?.logMetric(EMetric.DB_REMOVE, performance.now() - start, {
+            tableName: this.tableName,
+        });
+        return res;
     }
 
     /**
@@ -247,7 +268,13 @@ export class DbController extends DbControllerModel {
      * @returns Результат выполнения запроса
      */
     public query(callback: TQueryCb): any {
-        return this._controller.query(callback);
+        const start = performance.now();
+        const res = this._controller.query(callback);
+        this._appContext?.logMetric(EMetric.DB_QUERY, performance.now() - start, {
+            tableName: this.tableName,
+            query: callback,
+        });
+        return res;
     }
 
     /**
@@ -285,7 +312,12 @@ export class DbController extends DbControllerModel {
      * @returns Promise с результатом запроса
      */
     public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
-        return this._controller.select(where, isOne);
+        const start = performance.now();
+        const res = await this._controller.select(where, isOne);
+        this._appContext?.logMetric(EMetric.DB_SELECT, performance.now() - start, {
+            tableName: this.tableName,
+        });
+        return res;
     }
 
     /**

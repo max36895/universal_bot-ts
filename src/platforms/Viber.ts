@@ -4,6 +4,7 @@ import { IViberContent } from './interfaces';
 import { ViberRequest } from '../api/ViberRequest';
 import { IViberParams } from '../api/interfaces';
 import { Buttons, IViberButtonObject } from '../components/button';
+import { T_VIBER } from '../core';
 
 /**
  * Класс для работы с платформой Viber
@@ -48,9 +49,8 @@ export class Viber extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+            this.controller = controller;
+
             this.controller.requestObject = content;
 
             if (content.message) {
@@ -130,14 +130,14 @@ export class Viber extends TemplateTypeModel {
             );
 
             if (this.controller.card.images.length) {
-                const res = await this.controller.card.getCards();
+                const res = await this.controller.card.getCards(T_VIBER);
                 if (res.length) {
                     await viberApi.richMedia(<string>this.controller.userId, res);
                 }
             }
 
             if (this.controller.sound.sounds.length) {
-                await this.controller.sound.getSounds(this.controller.tts);
+                await this.controller.sound.getSounds(this.controller.tts, T_VIBER);
             }
         }
         return 'ok';

@@ -11,6 +11,6 @@ import { __className__Controller } from './controller/__className__Controller';
 const bot = new BotTest();
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
-bot.initBotController(new __className__Controller());
+bot.initBotController(__className__Controller);
 bot.setDevMode(true);
 bot.test();

@@ -17,7 +17,7 @@ export default function (
         meta: {
             locale: 'ru-Ru',
             timezone: 'UTC',
-            client_id: 'local',
+            client_id: 'yandex.searchplugin_local',
             interfaces: {
                 payments: null,
                 account_linking: null,

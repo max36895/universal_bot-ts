@@ -69,13 +69,17 @@ export class UserApp extends TemplateTypeModel {
             /*
              * Получить информацию о карточке
              */
-            const cards = await this.controller.card.getCards(cardClass);
+            const cards = await this.controller.card.getCards(this.controller.appType, cardClass);
 
             const soundClass = new UserSound(this.appContext); // Класс отвечающий за отображение звуков. Должен быть унаследован от TemplateSoundTypes
             /*
              * Получить все звуки
              */
-            const sounds = await this.controller.sound.getSounds('', soundClass);
+            const sounds = await this.controller.sound.getSounds(
+                '',
+                this.controller.appType,
+                soundClass,
+            );
             fetch('https://localhost:8080', {
                 method: 'POST',
                 body: JSON.stringify({

@@ -70,7 +70,7 @@ class TestBotController extends BotController {
 
 class TestBot extends BotTest {
     getBotClassAndType(val: TemplateTypeModel | null = null) {
-        return super._getBotClassAndType(val);
+        return super._getBotClassAndType(this._appContext.appType, val);
     }
 
     public getSkillContent(query: string, count = 0) {
@@ -90,7 +90,7 @@ class TestBot extends BotTest {
     }
 
     public clearState() {
-        super._clearState();
+        super._clearState(this._botController);
     }
 
     public get appContext(): AppContext {
@@ -140,11 +140,24 @@ function getSkills(
 let bot: TestBot;
 let appContext: AppContext;
 describe('umbot', () => {
-    let botController: TestBotController;
-
     beforeEach(() => {
         bot = new TestBot();
-        botController = new TestBotController();
+        bot.setPlatformParams({
+            vk_token: '123',
+            telegram_token: '123',
+            viber_token: '123',
+            marusia_token: '123',
+            intents: [],
+        });
+        // @ts-ignore
+        bot.appContext.httpClient = () => {
+            return {
+                ok: true,
+                json: () => {
+                    return Promise.resolve({});
+                },
+            };
+        };
         appContext = bot.appContext;
     });
 
@@ -156,9 +169,7 @@ describe('umbot', () => {
         // Простое текстовое отображение
         getSkills(
             async (type, botClass) => {
-                botController = new TestBotController();
-                //bot = new TestBot();
-                bot.initBotController(botController);
+                bot.initBotControllerClass(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [],
@@ -174,7 +185,7 @@ describe('umbot', () => {
         );
         getSkills(
             async (type, botClass) => {
-                bot.initBotController(botController);
+                bot.initBotControllerClass(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'btn', slots: ['кнопка'] }],
@@ -192,7 +203,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotController(botController);
+                bot.initBotControllerClass(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
@@ -210,7 +221,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotController(botController);
+                bot.initBotControllerClass(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка', 'картинка_с_кнопкой'] }],
@@ -228,7 +239,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotController(botController);
+                bot.initBotControllerClass(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
@@ -246,7 +257,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotController(botController);
+                bot.initBotControllerClass(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
@@ -267,12 +278,12 @@ describe('umbot', () => {
             getSkills(
                 async (type, botClass) => {
                     bot.appType = type;
-                    bot.initBotController(botController);
+                    bot.initBotControllerClass(TestBotController);
                     bot.setPlatformParams({
                         intents: [],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
-                    bot.addCommand('sound', ['звук'], () => {
+                    bot.addCommand('sound', ['звук'], (_, botController) => {
                         botController.tts = `${AlisaSound.S_AUDIO_GAME_WIN} `.repeat(i).trim();
                     });
 
@@ -300,25 +311,29 @@ describe('umbot', () => {
         for (let i = 1; i < 9; i++) {
             getSkills(
                 async (type, botClass) => {
-                    bot.initBotController(botController);
+                    bot.initBotControllerClass(TestBotController);
                     bot.appType = type;
                     bot.setPlatformParams({
                         intents: [],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
-                    botController.sound.sounds = [];
-                    for (let j = 1; j < 15; j++) {
-                        botController.sound.sounds.push({
-                            key: `$s_${j}`,
-                            sounds: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-                        });
-                    }
-                    botController.sound.isUsedStandardSound = false;
-                    bot.addCommand('sound', ['звук'], () => {
+
+                    bot.addCommand('sound', ['звук'], (_, botController) => {
                         botController.tts = ``;
                         for (let j = 1; j <= i; j++) {
                             botController.tts += `$s_${j} `;
                         }
+                    });
+                    bot.use((botController, next) => {
+                        botController.sound.sounds = [];
+                        for (let j = 1; j < 15; j++) {
+                            botController.sound.sounds.push({
+                                key: `$s_${j}`,
+                                sounds: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                            });
+                        }
+                        botController.sound.isUsedStandardSound = false;
+                        return next();
                     });
 
                     bot.setContent(bot.getSkillContent('звук'));
@@ -336,14 +351,14 @@ describe('umbot', () => {
         for (let i = 2; i <= 10; i += 2) {
             getSkills(
                 async (type, botClass) => {
-                    bot.initBotController(botController);
+                    bot.initBotControllerClass(TestBotController);
                     bot.appType = type;
                     bot.setPlatformParams({
                         intents: [],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
                     for (let j = 0; j < i * 100; j++) {
-                        bot.addCommand(`cmd_${j}`, [`команда${j}`], () => {
+                        bot.addCommand(`cmd_${j}`, [`команда${j}`], (_, botController) => {
                             botController.text = `cmd_${j}`;
                         });
                     }

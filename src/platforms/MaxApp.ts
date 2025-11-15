@@ -4,6 +4,7 @@ import { MaxRequest } from '../api/MaxRequest';
 import { IMaxParams } from '../api/interfaces';
 import { Buttons } from '../components/button';
 import { IMaxRequestContent } from './interfaces/IMaxApp';
+import { T_MAXAPP } from '../core';
 
 /**
  * Класс для работы с платформой Max.
@@ -52,9 +53,8 @@ export class MaxApp extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+            this.controller = controller;
+
             this.controller.requestObject = content;
             switch (content.update_type || null) {
                 case 'message_created':
@@ -101,10 +101,10 @@ export class MaxApp extends TemplateTypeModel {
                 params.keyboard = keyboard;
             }
             if (this.controller.card.images.length) {
-                params.attachments = await this.controller.card.getCards();
+                params.attachments = await this.controller.card.getCards(T_MAXAPP);
             }
             if (this.controller.sound.sounds.length) {
-                const attach = await this.controller.sound.getSounds(this.controller.tts);
+                const attach = await this.controller.sound.getSounds(this.controller.tts, T_MAXAPP);
                 params.attachments = { ...attach, ...params.attachments };
             }
             const maxApi = new MaxRequest(this.appContext);

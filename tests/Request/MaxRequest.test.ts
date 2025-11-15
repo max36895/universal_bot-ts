@@ -22,7 +22,7 @@ describe('MaxRequest', () => {
         appContext.platformParams.max_token = 'test-max-token';
         max = new MaxRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
-        appContext.saveLog = jest.fn();
+        appContext.logError = jest.fn();
     });
 
     // === Базовый вызов call ===
@@ -135,10 +135,7 @@ describe('MaxRequest', () => {
 
         const result = await max.messagesSend(12345, 'Hi');
         expect(result).toBeNull();
-        expect(appContext.saveLog).toHaveBeenCalledWith(
-            'maxApi.log',
-            expect.stringContaining('Network error'),
-        );
+        expect(appContext.logError).toHaveBeenCalledWith(expect.stringContaining('Network error'));
     });
 
     it('should return null if no token', async () => {

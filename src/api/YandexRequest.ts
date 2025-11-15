@@ -234,9 +234,8 @@ export class YandexRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'YandexApi.log',
-            `\n${new Date()}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        this._appContext.logError(
+            `YandexApi: ${new Date()}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
         );
     }
 }

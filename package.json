@@ -69,7 +69,9 @@
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
         "prettier": "prettier --write .",
-        "bench": "node --expose-gc  ./benchmark/command.js"
+        "bench": "node --expose-gc  ./benchmark/command.js",
+        "stress": "node --prof --expose-gc ./benchmark/stress-test.js",
+        "stress2": "node --prof --expose-gc ./benchmark/stress.js"
     },
     "bugs": {
         "url": "https://github.com/max36895/universal_bot-ts/issues"
@@ -106,5 +108,5 @@
         "dist",
         "cli"
     ],
-    "version": "2.1.6"
+    "version": "2.2.0"
 }

@@ -15,6 +15,8 @@ import {
     T_ALISA,
     T_MARUSIA,
     WELCOME_INTENT_NAME,
+    TAppType,
+    EMetric,
 } from '../core/AppContext';
 
 /**
@@ -590,11 +592,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      */
     public appContext: AppContext;
 
+    public appType: TAppType | null = null;
+
     /**
      * Создает новый экземпляр контроллера.
      * Инициализирует все необходимые компоненты
-     *
-     * @protected
      */
     constructor() {
         // Для корректности выставляем контекст по умолчанию.
@@ -690,12 +692,20 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (!text) {
             return null;
         }
+        const start = performance.now();
         const intents: IAppIntent[] = this._intents();
         for (const intent of intents) {
             if (Text.isSayText(intent.slots || [], text, intent.is_pattern || false)) {
+                this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
+                    intent,
+                    status: true,
+                });
                 return intent.name;
             }
         }
+        this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
+            status: false,
+        });
         return null;
     }
 
@@ -717,24 +727,50 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (!this.userCommand || !this.appContext?.commands) {
             return null;
         }
+        const start = performance.now();
+        if (this.appContext.customCommandResolver) {
+            const res = this.appContext.customCommandResolver(
+                this.userCommand,
+                this.appContext.commands,
+            );
+            const command = res ? this.appContext.commands.get(res) : null;
+            if (res && command) {
+                this._commandExecute(res, command);
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                    res,
+                    status: true,
+                });
+            }
+            return res;
+        }
         const commandLength = this.appContext.commands.size;
         for (const [commandName, command] of this.appContext.commands) {
             if (commandName === FALLBACK_COMMAND) {
                 continue;
             }
+            if (!command.slots || command.slots.length === 0) {
+                continue;
+            }
             if (
                 command &&
                 Text.isSayText(
-                    command.slots || [],
+                    command.slots,
                     this.userCommand,
                     command.isPattern || false,
                     commandLength < 500,
                 )
             ) {
                 this._commandExecute(commandName, command);
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                    commandName,
+                    status: true,
+                });
                 return commandName;
             }
         }
+        this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+            status: false,
+        });
         return null;
     }
 
@@ -782,6 +818,16 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         }
     }
 
+    protected _actionMetric(commandName: string, isCommand: boolean = false): void {
+        const start = performance.now();
+        this.action(commandName, isCommand);
+        this.appContext.logMetric(EMetric.ACTION, performance.now() - start, {
+            commandName,
+            platform: this.appType,
+            isCommand,
+        });
+    }
+
     /**
      * Запускает обработку запроса.
      * Определяет тип запроса и вызывает соответствующий обработчик
@@ -795,14 +841,14 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public run(): void {
         const commandResult = this._getCommand();
         if (commandResult) {
-            this.action(commandResult, true);
+            this._actionMetric(commandResult, true);
         } else {
             let intent: string | null = this._getIntent(this.userCommand);
             if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
                 const command = this.appContext.commands.get(FALLBACK_COMMAND);
                 if (command) {
                     this._commandExecute(FALLBACK_COMMAND, command);
-                    this.action(FALLBACK_COMMAND, true);
+                    this._actionMetric(FALLBACK_COMMAND, true);
                 }
             } else {
                 if (
@@ -830,7 +876,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                         break;
                 }
 
-                this.action(intent as string);
+                this._actionMetric(intent as string);
             }
         }
         if (

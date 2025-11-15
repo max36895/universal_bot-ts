@@ -76,14 +76,10 @@ import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { DB } from '../models/db';
 import * as process from 'node:process';
 
-const dangerousPatterns = [
-    /\(\w+\+\)\+/,
-    /\(\w+\*\)\*/,
-    /\(\w+\+\)\*/,
-    /\(\w+\*\)\+/,
-    /\[[^\]]*\+\]/, // [a+]
-    /(\w\+|\w\*){3,}/, // aaa+ или подобное
-];
+interface IDangerRegex {
+    status: boolean;
+    slots: TSlots;
+}
 
 /**
  * Тип для HTTP клиента
@@ -100,18 +96,30 @@ export type TLoggerCb = (message: string, meta?: Record<string, unknown>) => voi
  */
 export interface ILogger {
     /**
+     * Метод для логирования информации
+     */
+    log?: (...args: unknown[]) => void;
+    /**
      * Метод для логирования ошибок
      * @param message
      * @param meta
      */
-    error: TLoggerCb;
+    error?: TLoggerCb;
 
     /**
      * Метод для логирования предупреждений
      * @param message
      * @param meta
      */
-    warn: TLoggerCb;
+    warn?: TLoggerCb;
+
+    /**
+     * Метод для логирования метрик
+     * @param name - имя метрики
+     * @param value - значение метрики
+     * @param labels - Дополнительная информация
+     */
+    metric?: (name: string, value: unknown, labels?: Record<string, unknown>) => void;
 }
 
 /**
@@ -166,6 +174,25 @@ export type TAppType =
     | 'user_application' // Пользовательское приложение
     | 'smart_app' // Сбер SmartApp
     | 'max_app';
+
+/**
+ * Константы для метрик
+ */
+export enum EMetric {
+    REQUEST = 'umbot_http_request_duration_ms',
+    GET_INTENT = 'umbot_get-intent_duration_ms',
+    GET_COMMAND = 'umbot_get-command_duration_ms',
+    ACTION = 'umbot_action_duration_ms',
+    MIDDLEWARE = 'umbot_middleware_duration_ms',
+    START_WEBHOOK = 'umbot_request_start',
+    END_WEBHOOK = 'umbot_request_duration_ms',
+    DB_SAVE = 'umbot_db_save_ms',
+    DB_UPDATE = 'umbot_db_update_ms',
+    DB_INSERT = 'umbot_db_insert_ms',
+    DB_QUERY = 'umbot_db_query_ms',
+    DB_REMOVE = 'umbot_db_remove_ms',
+    DB_SELECT = 'umbot_db_select_ms',
+}
 
 /**
  * Тип платформы: Автоопределение
@@ -645,6 +672,11 @@ export interface ICommandParam<TBotController extends BotController = BotControl
     cb?: (userCommand: string, botController: TBotController) => void | string;
 }
 
+export type TCommandResolver = (
+    userCommand: string,
+    commands: Map<string, ICommandParam>,
+) => string | null;
+
 /**
  * @class AppContext
  * Основной класс приложения
@@ -703,8 +735,8 @@ export class AppContext {
      * Конфигурация приложения
      */
     public appConfig: IAppConfig = {
-        error_log: '/../../logs',
-        json: '/../../json',
+        error_log: `${__dirname}/../../logs`,
+        json: `${__dirname}/../../json`,
         db: { host: '', user: '', pass: '', database: '' },
         isLocalStorage: false,
     };
@@ -774,6 +806,16 @@ export class AppContext {
      *```
      */
     public httpClient: THttpClient = global.fetch;
+
+    /**
+     * Флаг строгого режима обработки команд. При включении флага, если была передана потенциальная ReDoS атака, то она будет отклонена.
+     */
+    public strictMode: boolean = false;
+
+    /**
+     * Кастомизация поиска команд.
+     */
+    public customCommandResolver: TCommandResolver | undefined;
 
     /**
      * Получить текущее подключение к базе данных
@@ -913,36 +955,121 @@ export class AppContext {
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
-        this.platformParams.intents?.forEach((intent) => {
+        this.platformParams.intents?.forEach((intent, i) => {
             if (intent.is_pattern) {
-                this._isDangerRegex(intent.slots);
+                let res = this._isDangerRegex(intent.slots);
+                if (res.slots.length) {
+                    if (res.slots.length !== intent.slots.length) {
+                        intent.slots = res.slots as string[];
+                    }
+                } else {
+                    delete this.platformParams.intents?.[i];
+                }
+                // @ts-ignore
+                res = undefined;
             }
         });
         this._setTokens();
     }
 
-    private _isDangerRegex(slots: TSlots | RegExp): boolean {
-        const errors: string[] = [];
-        if (slots instanceof RegExp) {
-            if (dangerousPatterns.some((re) => re.test(slots.source))) {
-                errors.push(slots.source);
+    protected _isRegexLikelySafe(pattern: string, isRegex: boolean): boolean {
+        try {
+            if (!isRegex) {
+                new RegExp(pattern);
             }
+            // 1. Защита от слишком длинных шаблонов (DoS через размер)
+            if (pattern.length > 1000) return false;
+
+            // 2. Убираем экранированные символы из рассмотрения (упрощённо)
+            // Для простоты будем искать только в "сыром" виде — этого достаточно для эвристик
+
+            // 3. Основные ReDoS-эвристики
+
+            // a) Вложенные квантификаторы: (a+)+, (a*)*, [a-z]+*, и т.п.
+            // Ищем: закрывающая скобка или символ класса, за которой следует квантификатор
+            const dangerousNested = /\)+\s*[+*{?]|}\s*[+*{?]|]\s*[+*{?]/.test(pattern);
+            if (dangerousNested) return false;
+
+            // b) Альтернативы с пересекающимися паттернами: (a|aa), (a|a+)
+            // Простой признак: один терм — префикс другого
+            // Точное определение сложно без AST, но часто такие паттерны содержат:
+            // - `|` внутри группы + повторяющиеся символы
+            const hasPipeInGroup = /\([^)]*\|[^)]*\)/.test(pattern);
+            if (hasPipeInGroup) {
+                // Дополнительная эвристика: есть ли повторяющиеся символы или квантификаторы?
+                if (/\([^)]*(\w)\1+[^)]*\|/g.test(pattern)) return false;
+                if (/\([^)]*[+*{][^)]*\|/g.test(pattern)) return false;
+            }
+
+            // c) Повторяющиеся квантифицируемые группы: (a+){10,100}
+            if (/\([^)]*[+*{][^)]*\)\s*\{/g.test(pattern)) return false;
+
+            // d) Квантификаторы на "жадных" конструкциях без якорей — сложнее ловить,
+            // но если есть .*+ — это почти всегда опасно
+            if (/\.\s*[+*{]/.test(pattern)) return false;
+
+            // e) Слишком глубокая вложенность скобок — признак сложности
+            let depth = 0;
+            let maxDepth = 0;
+            for (let i = 0; i < pattern.length; i++) {
+                if (pattern[i] === '\\' && i + 1 < pattern.length) {
+                    i++; // пропускаем экранированный символ
+                    continue;
+                }
+                if (pattern[i] === '(') depth++;
+                else if (pattern[i] === ')') depth--;
+                if (depth < 0) return false; // некорректная скобочная структура
+                if (depth > maxDepth) maxDepth = depth;
+            }
+            if (maxDepth > 5) return false; // слишком глубоко — подозрительно
+
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private _isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
+        if (slots instanceof RegExp) {
+            if (this._isRegexLikelySafe(slots.source, true)) {
+                this[this.strictMode ? 'logError' : 'logWarn'](
+                    `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
+                    {},
+                );
+                if (this.strictMode) {
+                    return {
+                        status: false,
+                        slots: [],
+                    };
+                } else {
+                    return { status: true, slots: [slots] };
+                }
+            }
+            return {
+                status: true,
+                slots: [slots],
+            };
         } else {
+            const correctSlots: TSlots | undefined = [];
+            const errors: string[] | undefined = [];
             slots.forEach((slot) => {
                 const slotStr = slot instanceof RegExp ? slot.source : slot;
-                if (dangerousPatterns.some((re) => re.test(slotStr))) {
-                    errors.push(slotStr);
+                if (this._isRegexLikelySafe(slotStr, slot instanceof RegExp)) {
+                    (errors as string[]).push(slotStr);
+                } else {
+                    (correctSlots as TSlots).push(slot);
                 }
             });
+            const status = errors.length === 0;
+            if (!status) {
+                this[this.strictMode ? 'logError' : 'logWarn'](
+                    `Найдены небезопасные регулярные выражения, проверьте их корректность: ${errors.join(', ')}`,
+                    {},
+                );
+                errors.length = 0;
+            }
+            return { status, slots: this.strictMode ? correctSlots : slots };
         }
-        if (errors.length) {
-            this.logWarn(
-                'Найдены небезопасные регулярные выражения, проверьте их корректность: ' +
-                    errors.join(', '),
-                {},
-            );
-        }
-        return !!errors.length;
     }
 
     /**
@@ -1017,16 +1144,26 @@ export class AppContext {
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
+        let correctSlots: TSlots = this.strictMode ? [] : slots;
         if (isPattern) {
-            this._isDangerRegex(slots);
+            correctSlots = this._isDangerRegex(slots).slots;
         } else {
             for (const slot of slots) {
                 if (slot instanceof RegExp) {
-                    this._isDangerRegex(slot);
+                    const res = this._isDangerRegex(slot);
+                    if (res.status && this.strictMode) {
+                        correctSlots.push(slot);
+                    }
+                } else {
+                    if (this.strictMode) {
+                        correctSlots.push(slot);
+                    }
                 }
             }
         }
-        this.commands.set(commandName, { slots, isPattern, cb });
+        if (correctSlots.length) {
+            this.commands.set(commandName, { slots: correctSlots, isPattern, cb });
+        }
     }
 
     /**
@@ -1036,9 +1173,6 @@ export class AppContext {
     public removeCommand(commandName: string): void {
         if (this.commands.has(commandName)) {
             this.commands.delete(commandName);
-            if (this.commands.size === 0) {
-                this.commands.clear();
-            }
         }
     }
 
@@ -1058,16 +1192,40 @@ export class AppContext {
     }
 
     /**
+     * Логирование информации
+     * @param args
+     */
+    public log(...args: unknown[]): void {
+        if (this._logger?.log) {
+            this._logger.log(...args);
+        } else {
+            console.log(...args);
+        }
+    }
+
+    /**
      * Логирование ошибки
      * @param str
      * @param meta
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
-        if (this._logger) {
+        if (this._logger?.error) {
             this._logger.error(str, meta);
         }
-        const metaStr = JSON.stringify({ ...meta, trace: new Error().stack });
+        const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
         this.saveLog('error.log', `${str}\n${metaStr}`);
+    }
+
+    /**
+     * Логирование метрики
+     * @param name - имя метрики
+     * @param value - значение
+     * @param label - Дополнительные метаданные
+     */
+    public logMetric(name: string, value: unknown, label: Record<string, unknown>): void {
+        if (this._logger?.metric) {
+            this._logger.metric(name, value, label);
+        }
     }
 
     /**
@@ -1076,7 +1234,7 @@ export class AppContext {
      * @param meta
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
-        if (this._logger) {
+        if (this._logger?.warn) {
             this._logger.warn(str, { ...meta, trace: new Error().stack });
         } else if (this._isDevMode) {
             console.warn(str, meta);
@@ -1118,6 +1276,13 @@ export class AppContext {
                 // VK access token (vk1a...)
                 .replace(/vk1a[a-z0-9]{79}/g, 'vk1a***')
                 // Общий паттерн для длинных base64-подобных токенов
+                .replace(/"access_token"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"client_secret"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"vk_confirmation_token"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"sber_token"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"oauth"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"api_key"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"private_key"\s*:\s*"([^"]+)"/g, '***')
                 .replace(/([a-zA-Z0-9]{40,})/g, '***')
         );
     }
@@ -1131,12 +1296,12 @@ export class AppContext {
     public saveLog(fileName: string, errorText: string | null = ''): boolean {
         const msg = `[${Date()}]: ${errorText}\n`;
 
-        if (this._logger) {
+        /*if (this._logger?.error) {
             this._logger.error(`[${fileName}]: ${msg}`, { fileName, trace: new Error().stack });
             return true;
-        }
+        }*/
 
-        const dir: IDir = { path: this.appConfig.error_log || __dirname + '/../../logs', fileName };
+        const dir: IDir = { path: this.appConfig.error_log || `${__dirname}/../../logs`, fileName };
         if (this._isDevMode) {
             console.error(msg);
         }
@@ -1144,7 +1309,7 @@ export class AppContext {
             return saveData(dir, this._maskSecrets(msg), 'a', false);
         } catch (e) {
             console.error(`[saveLog] Ошибка записи в файл ${fileName}:`, e);
-            console.error(msg);
+            console.error('Текст ошибки: ', msg);
             return false;
         }
     }

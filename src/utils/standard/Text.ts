@@ -287,6 +287,7 @@ export class Text {
             }
             if (newPatterns.length) {
                 pattern = `(${newPatterns.join(')|(')})`;
+                newPatterns.length = 0;
             } else {
                 return false;
             }
@@ -332,20 +333,28 @@ export class Text {
             return Text.isSayPattern(find, text, useDirectRegExp);
         }
 
-        if (typeof find === 'string') {
-            return text === find || text.includes(find);
-        } else if (find instanceof RegExp) {
-            return this.isSayPattern(find, text, useDirectRegExp);
+        const oneFind = Array.isArray(find) && find.length === 1 ? find[0] : find;
+
+        if (typeof oneFind === 'string') {
+            if (text.length < oneFind.length) {
+                return false;
+            }
+            return text === oneFind || text.includes(oneFind);
+        } else if (oneFind instanceof RegExp) {
+            return this.isSayPattern(oneFind, text, useDirectRegExp);
         }
 
         // Оптимизированный вариант для массива: early return + includes
-        for (const value of find) {
+        for (const value of find as PatternItem[]) {
             if (value instanceof RegExp) {
                 if (this.isSayPattern(value, text, useDirectRegExp)) {
                     return true;
                 }
             } else {
-                if (text.includes(value)) {
+                if (text.length < value.length) {
+                    continue;
+                }
+                if (text === value || text.includes(value)) {
                     return true;
                 }
             }

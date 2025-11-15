@@ -314,6 +314,6 @@ export class ImageTokens extends Model<IImageModelState> {
     }
 
     private _log(error: string): void {
-        this._appContext.saveLog('ImageTokens.log', error);
+        this._appContext.logError(error);
     }
 }

@@ -4,7 +4,7 @@
  */
 import { httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
-import { AppContext, THttpClient } from '../../core';
+import { AppContext, EMetric, THttpClient } from '../../core';
 import fs from 'fs';
 import { basename } from 'path';
 
@@ -194,7 +194,13 @@ export class Request {
         if (this.url) {
             try {
                 this._clearTimeout();
+                const start = performance.now();
                 const response = await this._getHttpClient()(this._getUrl(), this._getOptions());
+                this._appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
+                    url: this.url,
+                    method: this.customRequest || 'POST',
+                    status: response.status || 0,
+                });
                 this._clearTimeout();
                 if (response.ok) {
                     if (this.isConvertJson) {

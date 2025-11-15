@@ -1,5 +1,5 @@
 import { BotController } from '../controller';
-import { AppContext } from '../core/AppContext';
+import { AppContext, TAppType } from '../core/AppContext';
 
 /**
  * Абстрактный базовый класс для работы с платформами.
@@ -64,14 +64,18 @@ export abstract class TemplateTypeModel {
     /**
      * Инициализирует TTS (Text-to-Speech) в контроллере.
      * Обрабатывает звуки и стандартные звуковые эффекты
+     * @param appType Тип приложения
      * @protected
      */
-    protected async _initTTS(): Promise<void> {
+    protected async _initTTS(appType: TAppType): Promise<void> {
         if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
-            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
+            this.controller.tts = await this.controller.sound.getSounds(
+                this.controller.tts,
+                appType,
+            );
         }
     }
 

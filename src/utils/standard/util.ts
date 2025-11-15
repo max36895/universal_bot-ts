@@ -96,20 +96,6 @@ export function similarText(first: string, second: string): number {
 }
 
 /**
- * Объединяет два массива объектов
- * @param {object[]} array1 - Основной массив
- * @param {object[]} array2 - Массив для объединения
- * @deprecated Будет удален в версию 2.2.0
- * @returns {object} Объединенный массив
- */
-export function arrayMerge(array1: object[], array2?: object[]): object {
-    if (array2) {
-        return [...array1, ...array2];
-    }
-    return array1;
-}
-
-/**
  * Результат выполнения операции с файлом
  *
  * @template T - Тип данных, возвращаемых при успешной операции
@@ -249,7 +235,9 @@ export function fwrite(
 ): FileOperationResult<void> {
     try {
         if (mode === 'w') {
-            fs.writeFileSync(fileName, fileContent);
+            const tmpPath = `${fileName}.tmp`;
+            fs.writeFileSync(tmpPath, fileContent);
+            fs.renameSync(tmpPath, fileName);
         } else {
             fs.appendFileSync(fileName, fileContent);
         }
@@ -344,7 +332,7 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult
  * @param {IDir} dir - Объект с путем и названием файла
  * @param {string} data - Сохраняемые данные
  * @param {string} mode - Режим записи
- * @param {boolean} isSync - Режим записи синхронаня/асинхронная. По умолчанию синхронная
+ * @param {boolean} isSync - Режим записи синхронная/асинхронная. По умолчанию синхронная
  * @returns {boolean} true в случае успешного сохранения
  */
 export function saveData(dir: IDir, data: string, mode?: string, isSync: boolean = true): boolean {
@@ -352,6 +340,11 @@ export function saveData(dir: IDir, data: string, mode?: string, isSync: boolean
         mkdir(dir.path);
     }
     if (isSync) {
+        try {
+            JSON.parse(data);
+        } catch {
+            console.error(`${dir.path}/${dir.fileName}`, data, mode);
+        }
         fwrite(`${dir.path}/${dir.fileName}`, data, mode);
     } else {
         fs.writeFile(
@@ -400,30 +393,6 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
         })
         .join(separator);
 }
-
-/**
- * Объект с GET-параметрами текущего URL
- * Доступен только в браузере
- *
- * @example
- * ```typescript
- * // URL: http://example.com?name=John&age=25
- * console.log(GET.name); // -> 'John'
- * console.log(GET.age); // -> '25'
- * ```
- */
-let GET: any = {};
-if (typeof window !== 'undefined') {
-    GET = window.location.search
-        .replace('?', '')
-        .split('&')
-        .reduce(function (p: any, e) {
-            const a = e.split('=');
-            p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
-            return p;
-        }, {});
-}
-export { GET };
 
 /**
  * Читает введенные данные из консоли

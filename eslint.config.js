@@ -47,10 +47,11 @@ module.exports = [
             '@typescript-eslint/ban-ts-comment': 'off',
 
             'require-atomic-updates': 'error',
-            'max-lines-per-function': ['warn', { max: 75 }],
+            'max-lines-per-function': ['warn', { max: 80 }],
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',
             'no-unused-vars': 'off', // ругается на абстрактные классы и интерфейсы
+            'no-unused-private-class-members': 'warn',
             'no-fallthrough': 'error',
             'no-eval': 'error',
             'no-implied-eval': 'error',

@@ -12,6 +12,7 @@ import {
 import { Text } from '../utils/standard/Text';
 import { Buttons } from '../components/button';
 import { IRequestSend, Request } from '../api';
+import { T_SMARTAPP } from '../core';
 
 /**
  * Класс для работы с платформой Сбер SmartApp.
@@ -77,7 +78,7 @@ export class SmartApp extends TemplateTypeModel {
                 if (typeof payload.items === 'undefined') {
                     payload.items = [];
                 }
-                const cards: ISberSmartAppItem = await this.controller.card.getCards();
+                const cards: ISberSmartAppItem = await this.controller.card.getCards(T_SMARTAPP);
                 payload.items.push(cards);
             }
             payload.suggestions = {
@@ -172,9 +173,7 @@ export class SmartApp extends TemplateTypeModel {
                 content = { ...query };
             }
 
-            if (!this.controller) {
-                this.controller = controller;
-            }
+            this.controller = controller;
             this._initUserCommand(content);
 
             this._session = {
@@ -244,12 +243,15 @@ export class SmartApp extends TemplateTypeModel {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
-            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
+            this.controller.tts = await this.controller.sound.getSounds(
+                this.controller.tts,
+                T_SMARTAPP,
+            );
         }
         result.payload = await this._getPayload();
         const timeEnd: number = this.getProcessingTime();
         if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `SmartApp:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
+            this.error = `SmartApp:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
         }
         return result;
     }

@@ -15,6 +15,7 @@ import {
     T_VIBER,
     T_VK,
     T_MAXAPP,
+    TAppType,
 } from '../../core/AppContext';
 
 /**
@@ -142,6 +143,7 @@ export class Sound {
      * 4. Применяет звуки к тексту
      *
      * @param {string | null} text - Исходный текст для обработки
+     * @param {TAppType} appType - Тип приложения
      * @param {TemplateSoundTypes | null} [userSound=null] - Пользовательский класс для обработки звуков
      * @returns {Promise<any>} Текст с встроенными звуками или исходный текст
      *
@@ -151,19 +153,20 @@ export class Sound {
      * sound.sounds = [
      *     { key: 'mySound', sounds: ['my_sound'] },
      * ];
-     * const result = await sound.getSounds('mySound');
+     * const result = await sound.getSounds('mySound', 'alice');
      * // my_sound
      * ```
      */
     public async getSounds(
         text: string | null,
+        appType: TAppType | null,
         userSound: TemplateSoundTypes | null = null,
     ): Promise<any> {
         if (!text) {
             return '';
         }
         let sound: any = null;
-        switch (this._appContext.appType) {
+        switch (appType) {
             case T_ALISA:
                 sound = new AlisaSound(this._appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;

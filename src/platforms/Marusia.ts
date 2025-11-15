@@ -13,6 +13,7 @@ import {
 } from './interfaces';
 import { BotController } from '../controller';
 import { Text } from '../utils/standard/Text';
+import { T_MARUSIA } from '../core';
 
 /**
  * Класс для работы с платформой Маруся.
@@ -33,7 +34,7 @@ export class Marusia extends TemplateTypeModel {
      * Максимальное время ответа навыка в секундах
      * @private
      */
-    private readonly MAX_TIME_REQUEST: number = 2.8;
+    private readonly MAX_TIME_REQUEST: number = 2800;
 
     /**
      * Информация о сессии пользователя
@@ -65,7 +66,7 @@ export class Marusia extends TemplateTypeModel {
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
                 response.card = <IMarusiaItemsList | IMarusiaBigImage>(
-                    await this.controller.card.getCards()
+                    await this.controller.card.getCards(T_MARUSIA)
                 );
                 if (!response.card) {
                     response.card = undefined;
@@ -148,6 +149,7 @@ export class Marusia extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
+            this.controller = controller;
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (typeof content.account_linking_complete_event !== 'undefined') {
                     this.controller.userEvents = {
@@ -160,9 +162,7 @@ export class Marusia extends TemplateTypeModel {
                 this.error = 'Marusia.init(): Не корректные данные!';
                 return false;
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+
             this.controller.requestObject = content;
             this._initUserCommand(content.request);
             if (typeof content.state !== 'undefined') {
@@ -198,7 +198,7 @@ export class Marusia extends TemplateTypeModel {
         const result: IMarusiaWebhookResponse = {
             version: this.VERSION,
         };
-        await this._initTTS();
+        await this._initTTS(T_MARUSIA);
         result.response = await this._getResponse();
         result.session = this._getSession();
         if (this.isUsedLocalStorage && this.controller.userData && this._stateName) {
@@ -206,7 +206,7 @@ export class Marusia extends TemplateTypeModel {
         }
         const timeEnd = this.getProcessingTime();
         if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `Marusia:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
+            this.error = `Marusia:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
         }
         return result;
     }

@@ -485,9 +485,8 @@ export class TelegramRequest {
      * @private
      */
     protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'telegramApi.log',
-            `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        this._appContext.logError(
+            `TelegramApi: (${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
         );
     }
 }
