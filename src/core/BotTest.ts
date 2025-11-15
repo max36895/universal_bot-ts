@@ -116,10 +116,10 @@ export class BotTest extends Bot {
         this._setBotController(this._botController);
     }
 
-    initBotControllerClass(fn: TBotControllerClass): this {
+    initBotController(fn: TBotControllerClass): this {
         this._botController = new fn();
         this._setBotController(this._botController);
-        return super.initBotControllerClass(fn);
+        return super.initBotController(fn);
     }
 
     /**
@@ -185,18 +185,14 @@ export class BotTest extends Bot {
                 );
             }
 
-            switch (this.appType) {
-                case T_ALISA:
-                    if (result.response.text) {
-                        result = result.response.text;
-                    } else {
-                        result = result.response.tts;
-                    }
-                    break;
-
-                default:
-                    result = this._botController.text;
-                    break;
+            if (this.appType === T_ALISA) {
+                if (result.response.text) {
+                    result = result.response.text;
+                } else {
+                    result = result.response.tts;
+                }
+            } else {
+                result = this._botController.text;
             }
 
             console.log(`Бот: > ${result}\n`);
@@ -210,7 +206,7 @@ export class BotTest extends Bot {
                 console.log('Вы: > ');
                 this._content = null;
                 this._botController.text = this._botController.tts = '';
-                state = this._botController.userData as IUserData;
+                state = this._botController.userData;
                 count++;
             }
         } while (!isEnd);

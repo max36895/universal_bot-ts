@@ -68,7 +68,7 @@ function mockRequest(text) {
 
 let errorsBot = [];
 const bot = new Bot(T_ALISA);
-bot.initBotControllerClass(StressController);
+bot.initBotController(StressController);
 bot.setLogger({
     error: (msg) => errorsBot.push(msg),
     warn: () => {},
@@ -175,7 +175,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
     const memStart = getMemoryMB();
     const start = process.hrtime.bigint();
 
-    const promises = Array(count)
+    const promises = new Array(count)
         .fill()
         .map(() =>
             Promise.race([
@@ -266,7 +266,7 @@ async function runAllTests() {
 // Запуск при вызове напрямую
 // ───────────────────────────────────────
 try {
-    runAllTests();
+    await runAllTests();
 } catch (err) {
     console.error('❌ Критическая ошибка при запуске тестов:', err);
     process.exit(1);

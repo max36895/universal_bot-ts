@@ -6,7 +6,7 @@ import { LocalStorageController } from './controller/LocalStorageController';
 const bot = new BotTest();
 bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillDefaultParam());
-bot.initBotControllerClass(LocalStorageController);
+bot.initBotController(LocalStorageController);
 /**
  * Отображаем ответ навыка и хранилище в консоли.
  */

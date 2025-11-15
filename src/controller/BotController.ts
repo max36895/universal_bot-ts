@@ -601,9 +601,9 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     constructor() {
         // Для корректности выставляем контекст по умолчанию.
         this.appContext = new AppContext();
-        this.buttons = new Buttons(this.appContext as AppContext);
-        this.card = new Card(this.appContext as AppContext);
-        this.sound = new Sound(this.appContext as AppContext);
+        this.buttons = new Buttons(this.appContext);
+        this.card = new Card(this.appContext);
+        this.sound = new Sound(this.appContext);
         this.nlu = new Nlu();
     }
 
@@ -611,12 +611,12 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Устанавливает контекст приложения
      * @param appContext
      */
-    public setAppContext(appContext: AppContext): BotController {
+    public setAppContext(appContext: AppContext): this {
         if (appContext) {
             this.appContext = appContext;
-            this.buttons.setAppContext(appContext as AppContext);
-            this.card.setAppContext(appContext as AppContext);
-            this.sound.setAppContext(appContext as AppContext);
+            this.buttons.setAppContext(appContext);
+            this.card.setAppContext(appContext);
+            this.sound.setAppContext(appContext);
         }
         return this;
     }

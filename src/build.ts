@@ -64,7 +64,7 @@ export interface IConfig {
 function _initParam(bot: Bot | BotTest, config: IConfig): void {
     bot.setAppConfig(config.appConfig);
     bot.setPlatformParams(config.appParam);
-    bot.initBotControllerClass(config.controller);
+    bot.initBotController(config.controller);
     if (config.logic) {
         config.logic(bot);
     }

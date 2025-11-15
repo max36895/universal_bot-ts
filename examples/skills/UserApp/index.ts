@@ -8,7 +8,7 @@ import userDataConfig from './UserTemplate/userDataConfig';
 const bot = new BotTest();
 bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillDefaultParam());
-bot.initBotControllerClass(UserAppController);
+bot.initBotController(UserAppController);
 
 //bot.run(userApp);
 /**

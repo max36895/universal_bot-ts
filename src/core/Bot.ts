@@ -204,8 +204,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     protected _defaultAppType: TAppType | 'auto' = 'auto';
 
-    private _globalMiddlewares: MiddlewareFn[] = [];
-    private _platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
+    private readonly _globalMiddlewares: MiddlewareFn[] = [];
+    private readonly _platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
 
     /**
      * Получение корректного контроллера
@@ -246,7 +246,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         this._auth = null;
         this._botControllerClass = this._getBotController(botController);
         this._appContext = new AppContext();
-        this._defaultAppType = !type ? T_AUTO : type;
+        this._defaultAppType = type || T_AUTO;
     }
 
     /**
@@ -616,7 +616,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * bot.initBotController(new MyController());
      * ```
      */
-    public initBotControllerClass(fn: TBotControllerClass<TUserData>): this {
+    public initBotController(fn: TBotControllerClass<TUserData>): this {
         if (fn) {
             this._botControllerClass = fn;
         }
@@ -834,7 +834,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
 
         const shouldProceed =
-            this._globalMiddlewares.length || this._platformMiddlewares[appType as TAppType]?.length
+            this._globalMiddlewares.length || this._platformMiddlewares[appType]?.length
                 ? await this._runMiddlewares(botController, appType)
                 : true;
         if (shouldProceed) {
@@ -904,7 +904,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this._globalMiddlewares.push(arg1);
         } else if (arg2) {
             this._platformMiddlewares[arg1] ??= [];
-            this._platformMiddlewares[arg1]!.push(arg2);
+            this._platformMiddlewares[arg1].push(arg2);
         }
         return this;
     }

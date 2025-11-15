@@ -8,5 +8,5 @@ const bot = new BotTest();
 bot.setAppConfig(skillDefaultConfig());
 bot.setPlatformParams(skillDefaultParam());
 bot.setUserDbController(new DbConnect());
-bot.initBotControllerClass(StandardController);
+bot.initBotController(StandardController);
 bot.test();

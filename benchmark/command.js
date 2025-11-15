@@ -346,7 +346,7 @@ function getRegex(regex, state, count, step) {
         // Сценарий когда может быть более 10_000 команд сложно представить, тем более чтобы все регулярные выражения были уникальны.
         // При 20_000 командах мы все еще укладываемся в ограничение.
         // Предварительный лимит на количество уникальных регулярных выражений составляет примерно 40_000 - 50_000 команд.
-        return `((\d+)_ref_${step % 1e3})`;
+        return `((\\d+)_ref_${step % 1e3})`;
     }
 }
 
@@ -361,7 +361,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     res.startMemory = (startedMemory / 1024).toFixed(2);
 
     const bot = new Bot();
-    bot.initBotControllerClass(TestBotController);
+    bot.initBotController(TestBotController);
     bot.appType = T_ALISA;
     const botClass = new Alisa(bot._appContext);
     bot.setAppConfig({ isLocalStorage: true });
@@ -499,7 +499,6 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 }
 
 function getAvailableMemoryMB() {
-    //const total = process.totalmem();
     const free = os.freemem();
     // Оставляем 200 МБ на систему и Node.js рантайм
     return Math.max(0, (free - 200 * 1024 * 1024) / (1024 * 1024));

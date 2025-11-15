@@ -168,7 +168,7 @@ describe('umbot', () => {
         // Простое текстовое отображение
         getSkills(
             async (type, botClass) => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [],
@@ -184,7 +184,7 @@ describe('umbot', () => {
         );
         getSkills(
             async (type, botClass) => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'btn', slots: ['кнопка'] }],
@@ -202,7 +202,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
@@ -220,7 +220,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка', 'картинка_с_кнопкой'] }],
@@ -238,7 +238,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
@@ -256,7 +256,7 @@ describe('umbot', () => {
 
         getSkills(
             async (type, botClass) => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = type;
                 bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
@@ -277,7 +277,7 @@ describe('umbot', () => {
             getSkills(
                 async (type, botClass) => {
                     bot.appType = type;
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.setPlatformParams({
                         intents: [],
                     });
@@ -299,7 +299,7 @@ describe('umbot', () => {
                         res = '#game_win# '.repeat(i);
                     }
                     res = res.trim();
-                    expect(bot.getTts()?.replace(/(win-\d)/g, 'win-d')).toEqual(res);
+                    expect(bot.getTts()?.replaceAll(/(win-\d)/g, 'win-d')).toEqual(res);
                     bot.clearState();
                 },
                 `Обработка звуков. Количество мелодий равно ${i}`,
@@ -310,7 +310,7 @@ describe('umbot', () => {
         for (let i = 1; i < 9; i++) {
             getSkills(
                 async (type, botClass) => {
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.appType = type;
                     bot.setPlatformParams({
                         intents: [],
@@ -349,7 +349,7 @@ describe('umbot', () => {
         for (let i = 2; i <= 10; i += 2) {
             getSkills(
                 async (type, botClass) => {
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.appType = type;
                     bot.setPlatformParams({
                         intents: [],

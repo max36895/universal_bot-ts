@@ -375,10 +375,10 @@ export class VkRequest {
         userId: TVkPeerId | string[],
         params: IVkParamsUsersGet | null = null,
     ): Promise<IVkUsersGet | null> {
-        if (typeof userId !== 'number') {
-            this._request.post = { user_ids: userId };
-        } else {
+        if (typeof userId === 'number') {
             this._request.post = { user_id: userId };
+        } else {
+            this._request.post = { user_ids: userId };
         }
         if (params) {
             this._request.post = { ...this._request.post, ...params };

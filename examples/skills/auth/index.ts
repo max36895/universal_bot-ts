@@ -6,7 +6,7 @@ import { AuthController } from './controller/AuthController';
 const bot = new BotTest();
 bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillAuthParam());
-bot.initBotControllerClass(AuthController);
+bot.initBotController(AuthController);
 /**
  * Отображаем ответ навыка и хранилище в консоли.
  */

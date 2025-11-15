@@ -225,7 +225,7 @@ describe('Bot', () => {
         });
 
         it('should return result if botClass is set and init is successful', async () => {
-            bot.initBotControllerClass(TestBotController);
+            bot.initBotController(TestBotController);
             bot.appType = T_USER_APP;
             const result = {
                 version: '1.0',
@@ -245,7 +245,7 @@ describe('Bot', () => {
         });
 
         it('should throw error if botClass is set and init is unsuccessful', async () => {
-            bot.initBotControllerClass(TestBotController);
+            bot.initBotController(TestBotController);
             bot.appType = T_USER_APP;
             const error = 'Alisa:init(): Отправлен пустой запрос!';
             jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(error);
@@ -258,7 +258,7 @@ describe('Bot', () => {
         });
 
         it('added user command', async () => {
-            bot.initBotControllerClass(TestBotController);
+            bot.initBotController(TestBotController);
             bot.appType = T_USER_APP;
             jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
             jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
@@ -291,7 +291,7 @@ describe('Bot', () => {
         });
 
         it('local store', async () => {
-            bot.initBotControllerClass(TestBotController);
+            bot.initBotController(TestBotController);
             bot.appType = T_USER_APP;
             bot.setPlatformParams({
                 intents: [{ name: 'setStore', slots: ['сохранить'] }],
@@ -307,7 +307,7 @@ describe('Bot', () => {
         });
 
         it('skill started', async () => {
-            bot.initBotControllerClass(TestBotController);
+            bot.initBotController(TestBotController);
             bot.appType = T_ALISA;
             bot.setPlatformParams({
                 intents: [
@@ -378,7 +378,7 @@ describe('Bot', () => {
 
     describe('request-scoped', () => {
         it('should not use shared controller', async () => {
-            bot.initBotControllerClass(TestBotController);
+            bot.initBotController(TestBotController);
             bot.appType = T_USER_APP;
             const botClass = new Alisa(bot.appContext);
             const result1 = {

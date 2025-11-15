@@ -138,7 +138,7 @@ describe('umbot', () => {
         for (let i = 2; i < 100; i++) {
             it(`Простое текстовое отображение. Длина запроса от пользователя ${i * 2}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
                     bot.setPlatformParams({
                         intents: [],
@@ -153,7 +153,7 @@ describe('umbot', () => {
         for (let i = 2; i < 50; i++) {
             it(`Простое текстовое отображение c кнопкой. Длина запроса от пользователя ${i * 3}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
                     bot.setPlatformParams({
                         intents: [{ name: 'btn', slots: ['кнопка'] }],
@@ -168,7 +168,7 @@ describe('umbot', () => {
 
         it(`Отображение карточки с 1 изображением.`, async () => {
             await getPerformance(async () => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
                 bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
@@ -181,7 +181,7 @@ describe('umbot', () => {
         });
         it(`Отображение карточки с 1 изображением и кнопкой`, async () => {
             await getPerformance(async () => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
                 bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка_с_кнопкой'] }],
@@ -194,7 +194,7 @@ describe('umbot', () => {
         });
         it(`Отображение галереи из 1 изображения.`, async () => {
             await getPerformance(async () => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
                 bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
@@ -207,7 +207,7 @@ describe('umbot', () => {
         });
         it(`Отображение галереи из 5 изображений.`, async () => {
             await getPerformance(async () => {
-                bot.initBotControllerClass(TestBotController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
                 bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
@@ -223,7 +223,7 @@ describe('umbot', () => {
         for (let i = 1; i < 15; i++) {
             it(`Обработка звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
                     bot.setPlatformParams({
                         intents: [],
@@ -242,7 +242,7 @@ describe('umbot', () => {
         for (let i = 1; i < 15; i++) {
             it(`Обработка своих звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotControllerClass(TestBotController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
                     bot.setPlatformParams({
                         intents: [],
@@ -279,7 +279,7 @@ describe('umbot', () => {
             it(`Обработка большого количества команд в intents. Количество команд равно ${i * 100}`, async () => {
                 await getPerformance(
                     async () => {
-                        bot.initBotControllerClass(TestBotController);
+                        bot.initBotController(TestBotController);
                         bot.appType = T_ALISA;
                         const intents = [];
                         for (let j = 0; j < i * 100; j++) {
@@ -306,7 +306,7 @@ describe('umbot', () => {
             it(`Обработка большого количества команд в addCommand. Количество команд равно ${i * 100}`, async () => {
                 await getPerformance(
                     async () => {
-                        bot.initBotControllerClass(TestBotController);
+                        bot.initBotController(TestBotController);
                         bot.setPlatformParams({
                             intents: [],
                         });

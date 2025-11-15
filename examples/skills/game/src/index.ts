@@ -6,7 +6,7 @@ import { GameController } from './controller/GameController';
 const bot = new Bot();
 bot.setAppConfig(skillGameConfig());
 bot.setPlatformParams(skillGameParam());
-bot.initBotControllerClass(GameController);
+bot.initBotController(GameController);
 // console.test
 // const params: IBotTestParams = {
 //     isShowResult: true,

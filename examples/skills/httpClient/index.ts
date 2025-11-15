@@ -4,7 +4,7 @@ import { StandardController } from './controller/StandardController';
 
 const bot = new BotTest();
 bot.setAppConfig(skillDefaultConfig());
-bot.initBotControllerClass(StandardController);
+bot.initBotController(StandardController);
 
 // Добавляем команду для обработки сохранения
 bot.addCommand('save', ['сохрани', 'save'], () => {
