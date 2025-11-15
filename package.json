@@ -70,8 +70,7 @@
         "lint:fix": "eslint . --ext .ts --fix",
         "prettier": "prettier --write .",
         "bench": "node --expose-gc  ./benchmark/command.js",
-        "stress": "node --prof --expose-gc ./benchmark/stress-test.js",
-        "stress2": "node --prof --expose-gc ./benchmark/stress.js"
+        "stress": "node --expose-gc ./benchmark/stress-test.js"
     },
     "bugs": {
         "url": "https://github.com/max36895/universal_bot-ts/issues"

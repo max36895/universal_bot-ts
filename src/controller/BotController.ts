@@ -745,14 +745,13 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         }
         const commandLength = this.appContext.commands.size;
         for (const [commandName, command] of this.appContext.commands) {
-            if (commandName === FALLBACK_COMMAND) {
+            if (commandName === FALLBACK_COMMAND || !command) {
                 continue;
             }
             if (!command.slots || command.slots.length === 0) {
                 continue;
             }
             if (
-                command &&
                 Text.isSayText(
                     command.slots,
                     this.userCommand,

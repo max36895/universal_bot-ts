@@ -8,7 +8,7 @@ import {
     T_TELEGRAM,
     T_MARUSIA,
     T_SMARTAPP,
-    TemplateTypeModel,
+    TTemplateTypeModelClass,
     AlisaSound,
     Viber,
     SmartApp,
@@ -69,7 +69,7 @@ class TestBotController extends BotController {
 }
 
 class TestBot extends BotTest {
-    getBotClassAndType(val: TemplateTypeModel | null = null) {
+    getBotClassAndType(val: TTemplateTypeModelClass | null = null) {
         return super._getBotClassAndType(this._appContext.appType, val);
     }
 
@@ -101,34 +101,33 @@ class TestBot extends BotTest {
 const SKILLS = [T_SMARTAPP, T_VIBER, T_TELEGRAM, T_MARUSIA, T_VK, T_MAXAPP, T_ALISA];
 
 function getSkills(
-    cb: (skill: TAppType, botClass: TemplateTypeModel) => Promise<void>,
+    cb: (skill: TAppType, botClass: TTemplateTypeModelClass) => Promise<void>,
     title: string,
     appContext: AppContext,
 ) {
-    for (let i = 0; i < SKILLS.length; i++) {
-        const skill = SKILLS[i];
+    for (let skill of SKILLS) {
         let botClass;
         switch (skill) {
             case T_SMARTAPP:
-                botClass = new SmartApp(appContext);
+                botClass = SmartApp;
                 break;
             case T_VIBER:
-                botClass = new Viber(appContext);
+                botClass = Viber;
                 break;
             case T_TELEGRAM:
-                botClass = new Telegram(appContext);
+                botClass = Telegram;
                 break;
             case T_MARUSIA:
-                botClass = new Marusia(appContext);
+                botClass = Marusia;
                 break;
             case T_VK:
-                botClass = new Vk(appContext);
+                botClass = Vk;
                 break;
             case T_MAXAPP:
-                botClass = new MaxApp(appContext);
+                botClass = MaxApp;
                 break;
             default:
-                botClass = new Alisa(appContext);
+                botClass = Alisa;
                 break;
         }
         it(`${title}: Проверка для приложения: ${skill}`, async () => {
@@ -339,7 +338,6 @@ describe('umbot', () => {
                     bot.setContent(bot.getSkillContent('звук'));
                     await bot.run(botClass);
                     bot.removeCommand('sound');
-                    // expect(bot.getTts()).toEqual('');
                     expect(bot.getTts()?.match(/\d+/g)?.length).toEqual(i);
                     bot.clearState();
                 },

@@ -52,7 +52,7 @@ function mockRequest(text) {
             message_id: 1,
             session_id: `s_${Date.now()}`,
             skill_id: 'stress',
-            user_id: `u_${Math.random().toString(36)}`,
+            user_id: `u_${crypto.randomBytes(8).toString('hex')}`,
             new: Math.random() > 0.9,
         },
         request: {
@@ -66,157 +66,6 @@ function mockRequest(text) {
     });
 }
 
-function generateRequests(total, commandCount) {
-    const requests = [];
-    for (let i = 0; i < total; i++) {
-        let text;
-        const pos = i % 3;
-        if (pos === 0) text = 'привет_0';
-        else if (pos === 1) text = `помощь_${Math.floor(commandCount / 2)}`;
-        else text = `удалить_${commandCount - 1}`;
-        requests.push(mockRequest(text));
-    }
-    return requests;
-}
-
-let errors = [];
-
-async function runScenario(bot, commandCount, requestCount, simultaneous = false) {
-    setupCommands(bot, commandCount);
-    errors.length = 0;
-    errors = [];
-    global.gc();
-
-    await new Promise((r) => setTimeout(r, 1)); // Ждём, пока все команды загрузятся
-    const requests = generateRequests(requestCount, commandCount);
-
-    const startMem = process.memoryUsage().heapUsed;
-    const startTime = Date.now();
-
-    if (!simultaneous) {
-        // Стресс-тест: ВСЁ СРАЗУ
-        const promises = requests.map((req) => {
-            if (simultaneous) {
-                return bot.run(Alisa, T_ALISA, req);
-            } else {
-                return Promise.race([
-                    bot.run(Alisa, T_ALISA, req),
-                    new Promise((_, reject) => {
-                        setTimeout(() => {
-                            reject(new Error('Timeout'));
-                        }, 4000);
-                    }),
-                ]);
-            }
-        });
-        await Promise.all(promises);
-        promises.length = 0; // Очистка массива, чтобы GC смог удалить объекты
-    } else {
-        // Реалистичная нагрузка: запросы распределены во времени
-        const step = Math.round(requestCount / 10); // 10 мс между запросами для крупного бота
-        const promises = [];
-        for (let i = 0; i < requestCount; i++) {
-            if (i % step === 0 && requestCount > 200) {
-                await new Promise((r) => setTimeout(r, step));
-            }
-            const reg = requests[i];
-            promises.push(bot.run(Alisa, T_ALISA, reg));
-        }
-        await Promise.allSettled(promises);
-        promises.length = 0; // Очистка массива, чтобы GC смог удалить объекты
-    }
-    requests.length = 0; // Очистка массива, чтобы GC смог удалить объекты
-
-    const endTime = Date.now();
-    const endMem = process.memoryUsage().heapUsed;
-    global.gc(); // Вызов GC для очистки мусора
-
-    return {
-        ok: requestCount - errors.length,
-        failed: errors.length,
-        errors,
-        time: endTime - startTime,
-        memory: endMem - startMem,
-    };
-}
-
-async function main() {
-    console.log('🚀 Реалистичный стресс-тест (честный, без обмана)\n');
-
-    const bot = new Bot(T_ALISA);
-    bot.initBotControllerClass(StressController);
-    bot.setLogger({
-        error: (msg) => errors.push(msg),
-        warn: () => {},
-        log: () => {},
-    });
-
-    // 1. Мелкий бот: 10 команд, 10 запросов за 1 сек (100 RPS мгновенно)
-    const res1 = await runScenario(bot, 10, 10, true);
-    bot.clearCommands();
-    global.gc();
-    console.log(`1. Мелкий бот (10 команд, 10 запросов за ~1 сек)`);
-    console.log(`   ✅ Успешно: ${res1.ok}, ❌ Упало: ${res1.failed}`);
-    console.log(
-        `   ⏱️ Время: ${res1.time} мс, 📈 Память: ${(res1.memory / 1024 / 1024).toFixed(2)} MB`,
-    );
-    if (res1.errors.length > 0) {
-        console.log('Ошибки:' + res1.errors.slice(0, 3));
-    }
-
-    // 2. Средний бот: 1000 команд, 1000 запросов за 10 сек (100 RPS)
-    const res2 = await runScenario(bot, 200, 100, false);
-    bot.clearCommands();
-    global.gc();
-    console.log(`\n2. Средний бот (200 команд, 100 запросов за ~10 сек)`);
-    console.log(`   ✅ Успешно: ${res2.ok}, ❌ Упало: ${res2.failed}`);
-    console.log(
-        `   ⏱️ Время: ${res2.time} мс, 📈 Память: ${(res2.memory / 1024 / 1024).toFixed(2)} MB`,
-    );
-    if (res2.errors.length > 0) {
-        console.log('Ошибки:' + res2.errors.slice(0, 3));
-    }
-
-    // 3. Крупный бот: 10 000 команд, 5000 запросов за 10 сек (500 RPS)
-    const res3 = await runScenario(bot, 2000, 5000, false);
-    bot.clearCommands();
-    global.gc();
-    console.log(`\n3. Крупный бот (2000 команд, 5000 запросов за ~10 сек)`);
-    console.log(`   ✅ Успешно: ${res3.ok}, ❌ Упало: ${res3.failed}`);
-    console.log(
-        `   ⏱️ Время: ${res3.time} мс, 📈 Память: ${(res3.memory / 1024 / 1024).toFixed(2)} MB`,
-    );
-
-    if (res3.errors.length > 0) {
-        console.log('Ошибки:' + res3.errors.slice(0, 3));
-    }
-    return;
-
-    // 4. Стресс-тест: 1000 команд, 1000 запросов СРАЗУ
-    const res4 = await runScenario(bot, 1000, 1000, true);
-    console.log(`\n4. Стресс-тест (1000 команд, 1000 запросов одномоментно)`);
-    console.log(`   ✅ Успешно: ${res4.ok}, ❌ Упало: ${res4.failed}`);
-    console.log(
-        `   ⏱️ Время: ${res4.time} мс, 📈 Память: ${(res4.memory / 1024 / 1024).toFixed(2)} MB`,
-    );
-    if (res4.errors.length > 0) {
-        console.log(
-            `   💡 Примечание: ошибки вызваны превышением лимита Алисы (3 сек) из-за искусственной перегрузки.`,
-        );
-        console.log('Ошибки:' + res4.errors.slice(0, 3));
-    }
-
-    console.log(`\n📋 ЗАКЛЮЧЕНИЕ:`);
-    if (res1.failed === 0 && res2.failed === 0 && res3.failed === 0) {
-        console.log(`🟢 Библиотека стабильна в реальных сценариях.`);
-        console.log(`✅ Рекомендуется к использованию в enterprise.`);
-    } else {
-        console.log(`⚠️ Обнаружены ошибки в реальных сценариях.`);
-        console.log(`❌ Требуется доработка.`);
-    }
-}
-
-// main().catch(console.error);
 let errorsBot = [];
 const bot = new Bot(T_ALISA);
 bot.initBotControllerClass(StressController);
@@ -225,7 +74,7 @@ bot.setLogger({
     warn: () => {},
     log: () => {},
 });
-setupCommands(bot, 10);
+setupCommands(bot, 1000);
 
 async function run() {
     let text;
@@ -295,9 +144,14 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
 
     console.log(`✅ Успешно: ${allLatencies.length}`);
     console.log(`❌ Ошибок: ${errors.length}`);
-    console.log(`❌ Ошибок: ${errors.slice(0, 3)}`);
+    if (errors.length) {
+        console.log(`❌ Ошибки: ${errors.slice(0, 3)}`);
+    }
     console.log(`❌ Ошибок Bot: ${errorsBot.length}`);
-    console.log(errorsBot);
+    if (errorsBot.length) {
+        console.log('Ошибки:');
+        console.log(errorsBot.slice(0, 3));
+    }
     console.log(`🕒 Среднее время: ${avg.toFixed(2)} мс`);
     console.log(`📈 p95 latency: ${p95.toFixed(2)} мс`);
     console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
@@ -344,7 +198,9 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
 
         console.log(`✅ Успешно: ${results.length}`);
         console.log(`❌ Ошибок Bot: ${errorsBot.length}`);
-        console.log(errorsBot);
+        if (errorsBot.length) {
+            console.log(errorsBot.slice(0, 3));
+        }
         console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
         console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
 
@@ -361,7 +217,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
 // 3. Запуск всех тестов
 // ───────────────────────────────────────
 async function runAllTests() {
-    console.log('🚀 Запуск стресс-тестов для метода run()\n');
+    console.log('🚀 Запуск стресс-тестов для метода Bot.run()\n');
 
     // Тест 1: нормальная нагрузка
     const normal = await normalLoadTest(200, 2);
@@ -393,13 +249,25 @@ async function runAllTests() {
     if (!burst100.success) {
         console.warn('⚠️  Burst-тест (100) завершился с ошибками');
     }
+
+    const burst500 = await burstTest(500);
+    if (!burst500.success) {
+        console.warn('⚠️  Burst-тест (500) завершился с ошибками');
+    }
+
+    const burst1000 = await burstTest(1000);
+    if (!burst1000.success) {
+        console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
+    }
     console.log('\n🏁 Тестирование завершено.');
 }
 
 // ───────────────────────────────────────
 // Запуск при вызове напрямую
 // ───────────────────────────────────────
-runAllTests().catch((err) => {
+try {
+    runAllTests();
+} catch (err) {
     console.error('❌ Критическая ошибка при запуске тестов:', err);
     process.exit(1);
-});
+}

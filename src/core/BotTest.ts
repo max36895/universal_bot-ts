@@ -116,7 +116,7 @@ export class BotTest extends Bot {
         this._setBotController(this._botController);
     }
 
-    initBotControllerClass(fn: TBotControllerClass): Bot {
+    initBotControllerClass(fn: TBotControllerClass): this {
         this._botController = new fn();
         this._setBotController(this._botController);
         return super.initBotControllerClass(fn);

@@ -349,7 +349,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         slots: TSlots,
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
-    ): Bot {
+    ): this {
         this._appContext.addCommand(commandName, slots, cb, isPattern);
         return this;
     }
@@ -358,7 +358,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Удаляет команду
      * @param commandName - Имя команды
      */
-    public removeCommand(commandName: string): Bot {
+    public removeCommand(commandName: string): this {
         this._appContext.removeCommand(commandName);
         return this;
     }
@@ -366,7 +366,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Удаляет все команды
      */
-    public clearCommands(): Bot {
+    public clearCommands(): this {
         this._appContext.clearCommands();
         return this;
     }
@@ -376,7 +376,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param {boolean} isDevMode - Флаг включения режима разработки
      * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
      */
-    public setDevMode(isDevMode: boolean): Bot {
+    public setDevMode(isDevMode: boolean): this {
         this._appContext.setDevMode(isDevMode);
         return this;
     }
@@ -385,7 +385,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Устанавливает режим работы приложения
      * @param appMode
      */
-    public setAppMode(appMode: TAppMode): Bot {
+    public setAppMode(appMode: TAppMode): this {
         switch (appMode) {
             case 'dev':
                 this.setDevMode(true);
@@ -429,7 +429,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Для fuzzy-поиска рассмотрите fuse.js или natural
      * При использовании регулярок — не забывайте про защиту от ReDoS
      */
-    public setCustomCommandResolver(resolver: TCommandResolver): Bot {
+    public setCustomCommandResolver(resolver: TCommandResolver): this {
         this._appContext.customCommandResolver = resolver;
         return this;
     }
@@ -461,7 +461,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * });
      * ```
      */
-    public setAppConfig(config: IAppConfig): Bot {
+    public setAppConfig(config: IAppConfig): this {
         if (config) {
             this._appContext.setAppConfig(config);
         }
@@ -499,7 +499,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * });
      * ```
      */
-    public setPlatformParams(params: IAppParam): Bot {
+    public setPlatformParams(params: IAppParam): this {
         if (params) {
             this._appContext.setPlatformParams(params);
         }
@@ -584,7 +584,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Устанавливает контроллер с базой данных
      * @param dbController
      */
-    public setUserDbController(dbController: IDbControllerModel | undefined): Bot {
+    public setUserDbController(dbController: IDbControllerModel | undefined): this {
         this._appContext.userDbController = dbController;
         if (this._appContext.userDbController) {
             this._appContext.userDbController.setAppContext(this._appContext);
@@ -616,7 +616,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * bot.initBotController(new MyController());
      * ```
      */
-    public initBotControllerClass(fn: TBotControllerClass<TUserData>): Bot {
+    public initBotControllerClass(fn: TBotControllerClass<TUserData>): this {
         if (fn) {
             this._botControllerClass = fn;
         }
@@ -723,12 +723,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
             } else {
                 if (userBotClass) {
                     return T_USER_APP;
-                } else {
-                    this._appContext.logWarn(
-                        'Bot:_getAppType: Неизвестный формат запроса. Используется fallback на Алису.',
-                    );
-                    return T_ALISA;
                 }
+                this._appContext.logWarn(
+                    'Bot:_getAppType: Неизвестный формат запроса. Используется fallback на Алису.',
+                );
+                return T_ALISA;
             }
         } else {
             return this._defaultAppType;
@@ -788,7 +787,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
 
         const content = await this._getAppContent(botController, botClass, appType);
-        if (!isLocalStorage) {
+        if (isLocalStorage) {
+            await botClass.setLocalStorage(botController.userData);
+        } else {
             userData.data = botController.userData;
 
             if (isNewUser) {
@@ -808,8 +809,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     }
                 });
             }
-        } else {
-            await botClass.setLocalStorage(botController.userData);
         }
 
         const error = botClass.getError();
@@ -904,9 +903,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (typeof arg1 === 'function') {
             this._globalMiddlewares.push(arg1);
         } else if (arg2) {
-            if (!this._platformMiddlewares[arg1]) {
-                this._platformMiddlewares[arg1] = [];
-            }
+            this._platformMiddlewares[arg1] ??= [];
             this._platformMiddlewares[arg1]!.push(arg2);
         }
         return this;
