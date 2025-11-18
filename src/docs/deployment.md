@@ -8,13 +8,13 @@
 
 ## Получение SSL-сертификата через acme.sh
 
-1. Установите `acme.sh`:
+### 1. Установите `acme.sh`:
 
 ```bash
 curl https://get.acme.sh | sh
 ```
 
-2. Выпустите сертификат:
+### 2. Выпустите сертификат:
 
 ```bash
 acme.sh --issue -d example.com -w /var/www/example
@@ -25,7 +25,7 @@ acme.sh --issue -d example.com -w /var/www/example
 - example.com — ваш домен
 - /var/www/example — корневая директория сайта (должна быть доступна по HTTP для прохождения проверки)
 
-3. Установите сертификат в нужные пути:
+### 3. Установите сертификат в нужные пути:
 
 ```bash
 acme.sh --install-cert -d example.com \

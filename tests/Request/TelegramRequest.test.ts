@@ -127,6 +127,7 @@ describe('TelegramRequest', () => {
         expect(result).toBeNull();
         expect(appContext.logError).toHaveBeenCalledWith(
             expect.stringContaining('Недостаточное количество вариантов'),
+            expect.objectContaining({}),
         );
     });
 

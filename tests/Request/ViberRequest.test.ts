@@ -192,7 +192,10 @@ describe('ViberRequest', () => {
 
         const result = await viber.sendMessage('user123', 'Bot', 'Hi');
         expect(result).toBeNull();
-        expect(appContext.logError).toHaveBeenCalledWith(expect.stringContaining('Not subscribed'));
+        expect(appContext.logError).toHaveBeenCalledWith(
+            expect.stringContaining('Not subscribed'),
+            expect.objectContaining({}),
+        );
     });
 
     it('should return null if no token provided', async () => {

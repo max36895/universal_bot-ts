@@ -260,7 +260,7 @@ export interface IUserData {
 export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Локальное хранилище с данными. Используется в случаях, когда нужно сохранить данные пользователя, но userData приложением не поддерживается.
-     * В случае если данные хранятся в usetData и store, пользователю вернятеся информация из userData.
+     * В случае если данные хранятся в userData и store, пользователю вернется информация из userData.
      */
     public store: Record<string, unknown> | undefined;
     /**
@@ -306,7 +306,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Используется для голосовых ассистентов
      *
      * @remarks
-     * Для неголосовых платформ текст будет преобразован в речь
+     * Для не голосовых платформ текст будет преобразован в речь
      * через Yandex SpeechKit и отправлен как аудио сообщение
      *
      * @example
@@ -658,8 +658,6 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @returns {IAppIntent[]} Массив интентов
      *
-     * @protected
-     *
      * @example
      * ```typescript
      * const intents = BotController._intents();
@@ -679,8 +677,6 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @param {string | null} text - Текст запроса
      * @returns {string | null} Название интента или null
-     *
-     * @protected
      *
      * @example
      * ```typescript
@@ -715,8 +711,6 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @returns {string | null} Команда или null
      *
-     * @protected
-     *
      * @example
      * ```typescript
      * const command = this._getCommand();
@@ -735,7 +729,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
             );
             const command = res ? this.appContext.commands.get(res) : null;
             if (res && command) {
-                this._commandExecute(res, command);
+                this.#commandExecute(res, command);
                 this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
                     res,
                     status: true,
@@ -759,7 +753,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                     commandLength < 500,
                 )
             ) {
-                this._commandExecute(commandName, command);
+                this.#commandExecute(commandName, command);
                 this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
                     commandName,
                     status: true,
@@ -800,9 +794,8 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Выполнение нужной команды
      * @param commandName
      * @param command
-     * @private
      */
-    private _commandExecute(commandName: string, command: ICommandParam): void {
+    #commandExecute(commandName: string, command: ICommandParam): void {
         try {
             const res = command?.cb?.(this.userCommand as string, this);
             if (res) {
@@ -817,6 +810,11 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         }
     }
 
+    /**
+     * Запуск обработки пользовательских команд с учетом метрик
+     * @param commandName
+     * @param isCommand
+     */
     protected _actionMetric(commandName: string, isCommand: boolean = false): void {
         const start = performance.now();
         this.action(commandName, isCommand);
@@ -846,7 +844,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
             if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
                 const command = this.appContext.commands.get(FALLBACK_COMMAND);
                 if (command) {
-                    this._commandExecute(FALLBACK_COMMAND, command);
+                    this.#commandExecute(FALLBACK_COMMAND, command);
                     this._actionMetric(FALLBACK_COMMAND, true);
                 }
             } else {

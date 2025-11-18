@@ -2,7 +2,8 @@
     "compilerOptions": {
         "module": "CommonJS",
         "target": "es2023",
-        "lib": ["es2023", "DOM", "DOM.Iterable"],
+        "useDefineForClassFields": true,
+        "lib": ["es2023", "DOM"],
         "moduleResolution": "node",
         "removeComments": false,
         "stripInternal": true,

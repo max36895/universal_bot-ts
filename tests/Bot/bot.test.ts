@@ -22,7 +22,6 @@ import {
     TTemplateTypeModelClass,
 } from '../../src';
 import { Server } from 'http';
-import { AppContext } from '../../src/core/AppContext';
 
 class TestBotController extends BotController {
     constructor() {
@@ -59,11 +58,7 @@ class TestBotController extends BotController {
 
 class TestBot extends Bot {
     getBotClassAndType(val: TTemplateTypeModelClass | null = null): IBotBotClassAndType {
-        return super._getBotClassAndType(this._appContext.appType, val);
-    }
-
-    public get appContext(): AppContext {
-        return this._appContext;
+        return super._getBotClassAndType(this.getAppContext().appType, val);
     }
 }
 
@@ -117,7 +112,7 @@ describe('Bot', () => {
         it('should set config if config is provided', () => {
             const params = { intents: [{ name: 'greeting', slots: ['привет', 'здравствуйте'] }] };
             bot.setPlatformParams(params);
-            expect(bot.appContext.platformParams).toEqual({
+            expect(bot.getAppContext().platformParams).toEqual({
                 ...params,
                 marusia_token: null,
                 telegram_token: null,
@@ -144,7 +139,7 @@ describe('Bot', () => {
         it('should set params if params are provided', () => {
             const config = { isLocalStorage: true, error_log: './logs', json: '/../json' };
             bot.setAppConfig(config);
-            expect(bot.appContext.appConfig).toEqual({
+            expect(bot.getAppContext().appConfig).toEqual({
                 ...config,
                 json: '/../json',
                 db: {
@@ -217,7 +212,6 @@ describe('Bot', () => {
     describe('run', () => {
         it('should throw error for empty request', async () => {
             bot.setLogger({
-                log: (_: string) => {},
                 error: (_: string) => {},
                 warn: () => {},
             });
@@ -250,7 +244,6 @@ describe('Bot', () => {
             const error = 'Alisa:init(): Отправлен пустой запрос!';
             jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(error);
             bot.setLogger({
-                log: (_: string) => {},
                 error: (_: string) => {},
                 warn: () => {},
             });
@@ -380,7 +373,7 @@ describe('Bot', () => {
         it('should not use shared controller', async () => {
             bot.initBotController(TestBotController);
             bot.appType = T_USER_APP;
-            const botClass = new Alisa(bot.appContext);
+            const botClass = new Alisa(bot.getAppContext());
             const result1 = {
                 version: '1.0',
                 response: {
@@ -436,6 +429,48 @@ describe('Bot', () => {
             expect(server).toBeInstanceOf(Server);
             bot.close();
             expect(server.listening).toBe(false);
+        });
+    });
+    describe('custom', () => {
+        it('setCustomCommandResolver', async () => {
+            bot.addCommand('hi', ['привет'], (_, bc) => {
+                bc.text = 'Привет!';
+            });
+            bot.addCommand('by', ['пока'], (_, bc) => {
+                bc.text = 'Пока!';
+            });
+            bot.initBotController(TestBotController);
+            bot.setCustomCommandResolver((userCommand, commands) => {
+                if (commands.has('hi') || commands.has('by')) {
+                    if (userCommand === 'привет') {
+                        return 'by';
+                    }
+                    return 'hi';
+                }
+                return null;
+            });
+            const result1 = {
+                version: '1.0',
+                response: {
+                    buttons: [],
+                    tts: 'Привет!',
+                    text: 'Привет!',
+                    end_session: false,
+                },
+            };
+            const result2 = {
+                version: '1.0',
+                response: {
+                    buttons: [],
+                    tts: 'Пока!',
+                    text: 'Пока!',
+                    end_session: false,
+                },
+            };
+            const run1 = await bot.run(Alisa, T_USER_APP, getContent('привет'));
+            const run2 = await bot.run(Alisa, T_USER_APP, getContent('пока'));
+            expect(run1).toEqual(result2);
+            expect(run2).toEqual(result1);
         });
     });
 });

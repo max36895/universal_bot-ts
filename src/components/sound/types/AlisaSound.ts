@@ -181,10 +181,8 @@ export class AlisaSound extends TemplateSoundTypes {
      * - Природные звуки (ветер, гром, дождь и др.)
      * - Звуки предметов (телефон, дверь, колокол и др.)
      * - Звуки животных
-     *
-     * @private
      */
-    protected _standardSounds: ISound[] = [
+    #standardSounds: ISound[] = [
         {
             key: '#game_win#',
             sounds: [
@@ -469,7 +467,7 @@ export class AlisaSound extends TemplateSoundTypes {
      */
     public static readonly S_AUDIO_GAME_8_BIT_MACHINE_GUN = '#game_gun#';
     /**
-     * Воспроизвести звук звока телефона
+     * Воспроизвести звук звонка телефона
      */
     public static readonly S_AUDIO_GAME_8_BIT_PHONE = '#games_phone#';
     /**
@@ -559,9 +557,9 @@ export class AlisaSound extends TemplateSoundTypes {
     public async getSounds(sounds: ISound[], text: string): Promise<string> {
         let updSounds: ISound[] = [];
         if (sounds.length) {
-            updSounds = [...sounds, ...(this.isUsedStandardSound ? this._standardSounds : [])];
+            updSounds = [...sounds, ...(this.isUsedStandardSound ? this.#standardSounds : [])];
         } else if (this.isUsedStandardSound) {
-            updSounds = this._standardSounds;
+            updSounds = this.#standardSounds;
         }
         let res = text;
         if (updSounds && updSounds.length) {

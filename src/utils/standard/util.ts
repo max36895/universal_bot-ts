@@ -9,7 +9,7 @@
  */
 import * as fs from 'fs';
 import * as readline from 'readline';
-import { IDir } from '../../core/AppContext';
+import { IDir, TLoggerCb } from '../../core/AppContext';
 
 let _lcsBuffer: Int32Array = new Int32Array(1024);
 
@@ -333,19 +333,44 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult
  * @param {string} data - Сохраняемые данные
  * @param {string} mode - Режим записи
  * @param {boolean} isSync - Режим записи синхронная/асинхронная. По умолчанию синхронная
+ * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
-export function saveData(dir: IDir, data: string, mode?: string, isSync: boolean = true): boolean {
+export function saveData(
+    dir: IDir,
+    data: string,
+    mode?: string,
+    isSync: boolean = true,
+    errorLogger?: TLoggerCb,
+): boolean {
     if (!isDir(dir.path)) {
         mkdir(dir.path);
     }
     if (isSync) {
         try {
             JSON.parse(data);
-        } catch {
-            console.error(`${dir.path}/${dir.fileName}`, data, mode);
+        } catch (e) {
+            errorLogger?.(
+                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${(e as Error).message}`,
+                {
+                    error: e,
+                    data,
+                    mode,
+                },
+            );
         }
-        fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+        const res = fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+        if (!res.success) {
+            errorLogger?.(
+                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${res.error}`,
+                {
+                    error: res.error,
+                    data,
+                    mode,
+                },
+            );
+            return false;
+        }
     } else {
         fs.writeFile(
             `${dir.path}/${dir.fileName}`,
@@ -355,7 +380,14 @@ export function saveData(dir: IDir, data: string, mode?: string, isSync: boolean
             },
             (err) => {
                 if (err) {
-                    console.error('[saveLog] Ошибка:', err);
+                    errorLogger?.(
+                        `[saveLog]Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${(err as Error).message}`,
+                        {
+                            error: err,
+                            data,
+                            mode,
+                        },
+                    );
                 }
             },
         );

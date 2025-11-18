@@ -78,7 +78,6 @@ export class MarusiaCard extends TemplateCardTypes {
      *    - Ограничивает длину текста
      *
      * @returns {Promise<IMarusiaImage[]>} Массив элементов карточки
-     * @private
      *
      * @example
      * ```typescript

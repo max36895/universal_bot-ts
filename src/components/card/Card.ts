@@ -220,7 +220,7 @@ export class Card {
 
     /**
      * Произвольный шаблон для отображения карточки.
-     * Используется для кастомизации отображения на определенных платформах. Не рекомендуется использовать при заание поддерживаемых платформ.
+     * Используется для кастомизации отображения на определенных платформах. Не рекомендуется использовать при задании поддерживаемых платформ.
      * При использовании этого параметра вы сами отвечаете за корректное отображение.
      * @type {any}
      * @example
@@ -236,7 +236,7 @@ export class Card {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Создает новый экземпляр карточки.
@@ -252,7 +252,7 @@ export class Card {
         this.images = [];
         this.title = null;
         this.desc = null;
-        this._appContext = appContext;
+        this.#appContext = appContext;
         this.clear();
     }
 
@@ -261,7 +261,7 @@ export class Card {
      * @param appContext
      */
     public setAppContext(appContext: AppContext): Card {
-        this._appContext = appContext;
+        this.#appContext = appContext;
         this.button.setAppContext(appContext);
         return this;
     }
@@ -370,7 +370,7 @@ export class Card {
         desc: string = ' ',
         button: TButton | null = null,
     ): Card {
-        const img = new Image(this._appContext);
+        const img = new Image(this.#appContext);
         if (img.init(image, title, desc, button)) {
             this.images.push(img);
         }
@@ -486,25 +486,25 @@ export class Card {
         let card = null;
         switch (appType) {
             case T_ALISA:
-                card = new AlisaCard(this._appContext);
+                card = new AlisaCard(this.#appContext);
                 break;
             case T_VK:
-                card = new VkCard(this._appContext);
+                card = new VkCard(this.#appContext);
                 break;
             case T_TELEGRAM:
-                card = new TelegramCard(this._appContext);
+                card = new TelegramCard(this.#appContext);
                 break;
             case T_VIBER:
-                card = new ViberCard(this._appContext);
+                card = new ViberCard(this.#appContext);
                 break;
             case T_MARUSIA:
-                card = new MarusiaCard(this._appContext);
+                card = new MarusiaCard(this.#appContext);
                 break;
             case T_SMARTAPP:
-                card = new SmartAppCard(this._appContext);
+                card = new SmartAppCard(this.#appContext);
                 break;
             case T_MAXAPP:
-                card = new MaxAppCard(this._appContext);
+                card = new MaxAppCard(this.#appContext);
                 break;
             case T_USER_APP:
                 card = userCard;

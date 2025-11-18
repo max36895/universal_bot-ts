@@ -71,7 +71,6 @@ export class Preload {
      *
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации.
      * @returns {TAppType[]} Массив доступных платформ.
-     * @private
      */
     protected _getPlatforms(platforms?: TAppType[]): TAppType[] {
         const result: TAppType[] = [];
@@ -118,9 +117,8 @@ export class Preload {
      * @param {TAppType} platform - Тип платформы.
      * @returns {number | undefined} Тип изображения для `ImageTokens` или `undefined`, если платформа не поддерживается
      *                               или не требует предзагрузки (например, Telegram).
-     * @private
      */
-    public _getImageType(platform: TAppType): number | undefined {
+    protected _getImageType(platform: TAppType): number | undefined {
         switch (platform) {
             case T_ALISA:
                 return ImageTokens.T_ALISA;
@@ -143,9 +141,8 @@ export class Preload {
      * @param {TAppType} platform - Тип платформы.
      * @returns {number | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается
      *                               или не требует предзагрузки (например, Telegram).
-     * @private
      */
-    public _getSoundType(platform: TAppType): number | undefined {
+    protected _getSoundType(platform: TAppType): number | undefined {
         switch (platform) {
             case T_ALISA:
                 return SoundTokens.T_ALISA;

@@ -71,30 +71,27 @@ export class VkRequest {
     /**
      * Версия VK API по умолчанию
      */
-    protected readonly VK_API_VERSION = '5.103';
+    private readonly VK_API_VERSION = '5.103';
 
     /**
      * Базовый URL для всех методов VK API
      */
-    protected readonly VK_API_ENDPOINT = 'https://api.vk.ru/method/';
+    private readonly VK_API_ENDPOINT = 'https://api.vk.ru/method/';
 
     /**
      * Текущая используемая версия VK API
-     * @private
      */
-    protected _vkApiVersion: string;
+    #vkApiVersion: string;
 
     /**
      * Экземпляр класса для выполнения HTTP-запросов
-     * @private
      */
     protected _request: Request;
 
     /**
      * Текст последней возникшей ошибки
-     * @private
      */
-    protected _error: string | null;
+    protected _error: object | string | null;
 
     /**
      * Токен доступа к VK API
@@ -125,9 +122,9 @@ export class VkRequest {
         this.isAttachContent = false;
         this._appContext = appContext;
         if (appContext.platformParams.vk_api_version) {
-            this._vkApiVersion = appContext.platformParams.vk_api_version;
+            this.#vkApiVersion = appContext.platformParams.vk_api_version;
         } else {
-            this._vkApiVersion = this.VK_API_VERSION;
+            this.#vkApiVersion = this.VK_API_VERSION;
         }
         this.token = null;
         this._error = null;
@@ -161,17 +158,17 @@ export class VkRequest {
                 this._request.post = {};
             }
             this._request.post.access_token = this.token;
-            this._request.post.v = this._vkApiVersion;
+            this._request.post.v = this.#vkApiVersion;
             if (!this._request.attach) {
                 // vk принимает post только в таком формате
                 this._request.post = httpBuildQuery(this._request.post);
             }
             const data = await this._request.send<T>(this.VK_API_ENDPOINT + method);
             if (data.status && data.data) {
-                this._error = JSON.stringify(data.err || []);
+                this._error = data.err || [];
                 if (typeof data.data.error !== 'undefined') {
-                    this._error = JSON.stringify(data.data.error);
-                    this._log();
+                    this._error = data;
+                    this._log('Запрос вернулся с ошибкой');
                     return null;
                 }
                 return (data.data.response as T) || data.data;
@@ -234,7 +231,7 @@ export class VkRequest {
         const data = await this._request.send<IVkUploadFile>(url);
         if (data.status && data.data) {
             if (typeof data.data.error !== 'undefined') {
-                this._error = JSON.stringify(data.data.error);
+                this._error = data;
                 this._log();
                 return null;
             }
@@ -473,11 +470,13 @@ export class VkRequest {
     /**
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
-     * @private
      */
     protected _log(error: string = ''): void {
         this._appContext.logError(
-            `VkApi: (${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+            `VkApi: (${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n`,
+            {
+                error: this._error,
+            },
         );
     }
 }

@@ -25,13 +25,11 @@ import { T_ALISA } from '../core';
 export class Alisa extends TemplateTypeModel {
     /**
      * Версия API Алисы
-     * @private
      */
     private readonly VERSION: string = '1.0';
 
     /**
      * Максимальное время ответа навыка в миллисекундах
-     * @private
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
 
@@ -61,7 +59,6 @@ export class Alisa extends TemplateTypeModel {
      * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
      * @returns {Promise<IAlisaResponse>} Объект ответа для Алисы
-     * @private
      */
     protected async _getResponse(): Promise<IAlisaResponse> {
         const response: IAlisaResponse = {
@@ -87,9 +84,8 @@ export class Alisa extends TemplateTypeModel {
      * Устанавливает состояние приложения.
      * Определяет тип хранилища и сохраняет состояние в контроллере
      * @param state Объект состояния из запроса
-     * @private
      */
-    private _setState(state: IAlisaRequestState): void {
+    #setState(state: IAlisaRequestState): void {
         if (typeof state.user !== 'undefined') {
             this.controller.state = state.user;
             this._stateName = 'user_state_update';
@@ -106,9 +102,8 @@ export class Alisa extends TemplateTypeModel {
      * Инициализирует команду пользователя.
      * Обрабатывает различные типы запросов и сохраняет команду в контроллере
      * @param request Объект запроса от пользователя
-     * @private
      */
-    private _initUserCommand(request: IAlisaRequest): void {
+    #initUserCommand(request: IAlisaRequest): void {
         if (request.type === 'SimpleUtterance') {
             this.controller.userCommand = request.command.trim() || '';
             this.controller.originalUserCommand = request.original_utterance.trim() || '';
@@ -130,9 +125,8 @@ export class Alisa extends TemplateTypeModel {
     /**
      * Устанавливает идентификатор пользователя.
      * Определяет ID пользователя из сессии или приложения
-     * @private
      */
-    private _setUserId(): void {
+    #setUserId(): void {
         if (this._session) {
             let userId: string | null = null;
             this._isState = false;
@@ -196,16 +190,16 @@ export class Alisa extends TemplateTypeModel {
             }
 
             this.controller.requestObject = content;
-            this._initUserCommand(content.request);
+            this.#initUserCommand(content.request);
             this._session = content.session;
-            this._setUserId();
+            this.#setUserId();
             this.controller.nlu.setNlu(content.request.nlu || {});
 
             this.controller.userMeta = content.meta || {};
             this.controller.messageId = this._session.message_id;
 
             if (typeof content.state !== 'undefined') {
-                this._setState(content.state);
+                this.#setState(content.state);
             }
 
             this.appContext.platformParams.app_id = this._session.skill_id;

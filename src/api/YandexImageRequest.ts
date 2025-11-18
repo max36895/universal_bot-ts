@@ -19,7 +19,7 @@ import { AppContext } from '../core/AppContext';
 export class YandexImageRequest extends YandexRequest {
     /**
      * Адрес, на который будет отправляться запрос
-     * @private
+     *
      */
     private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
@@ -51,7 +51,7 @@ export class YandexImageRequest extends YandexRequest {
      *
      * @return string
      */
-    private _getImagesUrl(): string {
+    #getImagesUrl(): string {
         return this.STANDARD_URL + `skills/${this.skillId}/images`;
     }
 
@@ -82,7 +82,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
-            this._request.url = this._getImagesUrl();
+            this._request.url = this.#getImagesUrl();
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
@@ -110,7 +110,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
-            this._request.url = this._getImagesUrl();
+            this._request.url = this.#getImagesUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;
             const query = await this.call<IYandexRequestDownloadImageRequest>();
@@ -134,7 +134,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async getLoadedImages(): Promise<IYandexRequestDownloadImage[] | null> {
         if (this.skillId) {
-            this._request.url = this._getImagesUrl();
+            this._request.url = this.#getImagesUrl();
             const query = await this.call<IYandexRequestDownloadImagesRequest>();
             return query?.images || null;
         } else {
@@ -151,7 +151,7 @@ export class YandexImageRequest extends YandexRequest {
     public async deleteImage(imageId: string): Promise<string | null> {
         if (this.skillId) {
             if (imageId) {
-                this._request.url = `${this._getImagesUrl()}/${imageId}`;
+                this._request.url = `${this.#getImagesUrl()}/${imageId}`;
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;

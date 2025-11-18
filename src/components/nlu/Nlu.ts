@@ -113,16 +113,14 @@ export class Nlu {
      * Содержит все сущности, извлеченные из текста.
      *
      * @type {INlu}
-     * @private
      */
-    private _nlu: INlu;
+    #nlu: INlu;
 
     /**
      * Кэш данных для оптимизации повторных запросов.
      * Хранит результаты извлечения сущностей по их типам.
      *
      * @type {Map<string, unknown[] | null>}
-     * @private
      * @example
      * ```typescript
      * // Пример содержимого кэша после обработки запроса
@@ -148,14 +146,13 @@ export class Nlu {
      * }
      * ```
      */
-    private _cachedData: Map<string, unknown[] | null> = new Map();
+    #cachedData: Map<string, unknown[] | null> = new Map();
 
     /**
      * Регулярное выражение для поиска email адресов.
      * Поддерживает стандартный формат email.
      *
      * @type {RegExp}
-     * @private
      * @example
      * ```typescript
      * // Находит адреса вида:
@@ -171,7 +168,6 @@ export class Nlu {
      * Поддерживает различные форматы записи номеров.
      *
      * @type {RegExp}
-     * @private
      * @example
      * ```typescript
      * // Находит номера вида:
@@ -187,7 +183,6 @@ export class Nlu {
      * Поддерживает HTTP и HTTPS протоколы.
      *
      * @type {RegExp}
-     * @private
      * @example
      * ```typescript
      * // Находит ссылки вида:
@@ -420,7 +415,7 @@ export class Nlu {
      * ```
      */
     public constructor() {
-        this._nlu = {};
+        this.#nlu = {};
     }
 
     /**
@@ -428,7 +423,6 @@ export class Nlu {
      *
      * @param {any} nlu - Входные данные NLU
      * @returns {INlu} Обработанные данные NLU
-     * @protected
      */
     protected _serializeNlu(nlu: any): INlu {
         // todo добавить обработку
@@ -452,8 +446,8 @@ export class Nlu {
      * ```
      */
     public setNlu(nlu: any): void {
-        this._nlu = this._serializeNlu(nlu);
-        this._cachedData.clear();
+        this.#nlu = this._serializeNlu(nlu);
+        this.#cachedData.clear();
     }
 
     /**
@@ -462,7 +456,6 @@ export class Nlu {
      *
      * @param {string} type - Тип данных для извлечения
      * @returns {T[] | null} Массив найденных сущностей или null
-     * @private
      * @example
      * ```typescript
      * // Внутренний метод, не предназначен для прямого использования
@@ -472,13 +465,13 @@ export class Nlu {
      * const dateTime = nlu.getDateTime();
      * ```
      */
-    private _getData<T = object>(type: string): T[] | null {
-        if (this._cachedData.has(type)) {
-            return (this._cachedData.get(type) as T[]) || null;
+    #getData<T = object>(type: string): T[] | null {
+        if (this.#cachedData.has(type)) {
+            return (this.#cachedData.get(type) as T[]) || null;
         }
         let data: (object | number)[] | null = null;
-        if (this._nlu.entities) {
-            this._nlu.entities.forEach((entity) => {
+        if (this.#nlu.entities) {
+            this.#nlu.entities.forEach((entity) => {
                 if (typeof entity.type !== 'undefined' && entity.type === type) {
                     if (data === null) {
                         data = [];
@@ -487,7 +480,7 @@ export class Nlu {
                 }
             });
         }
-        this._cachedData.set(type, data);
+        this.#cachedData.set(type, data);
         return data;
     }
 
@@ -506,7 +499,7 @@ export class Nlu {
      * ```
      */
     public getUserName(): INluThisUser | null {
-        return this._nlu.thisUser || null;
+        return this.#nlu.thisUser || null;
     }
 
     /**
@@ -525,7 +518,7 @@ export class Nlu {
      * ```
      */
     public getFio(): INluResult<INluFIO[]> {
-        const fio = this._getData<INluFIO>(Nlu.T_FIO);
+        const fio = this.#getData<INluFIO>(Nlu.T_FIO);
         const status = !!fio;
         return {
             status,
@@ -551,7 +544,7 @@ export class Nlu {
      * ```
      */
     public getGeo(): INluResult<INluGeo[]> {
-        const geo = this._getData<INluGeo>(Nlu.T_GEO);
+        const geo = this.#getData<INluGeo>(Nlu.T_GEO);
         const status = !!geo;
         return {
             status,
@@ -578,7 +571,7 @@ export class Nlu {
      * ```
      */
     public getDateTime(): INluResult<INluDateTime[]> {
-        const dateTime = this._getData<INluDateTime>(Nlu.T_DATETIME);
+        const dateTime = this.#getData<INluDateTime>(Nlu.T_DATETIME);
         const status = !!dateTime;
         return {
             status,
@@ -606,7 +599,7 @@ export class Nlu {
      * ```
      */
     public getNumber(): INluResult<number[]> {
-        const number = this._getData<number>(Nlu.T_NUMBER);
+        const number = this.#getData<number>(Nlu.T_NUMBER);
         const status = !!number;
         return {
             status,
@@ -708,7 +701,7 @@ export class Nlu {
      * ```
      */
     public getIntents(): INluIntents | null {
-        return this._nlu.intents || null;
+        return this.#nlu.intents || null;
     }
 
     /**

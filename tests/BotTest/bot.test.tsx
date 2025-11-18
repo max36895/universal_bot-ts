@@ -69,8 +69,8 @@ class TestBotController extends BotController {
 }
 
 class TestBot extends BotTest {
-    getBotClassAndType(val: TTemplateTypeModelClass | null = null) {
-        return super._getBotClassAndType(this._appContext.appType, val);
+    constructor() {
+        super(undefined, TestBotController);
     }
 
     public getSkillContent(query: string, count = 0) {
@@ -90,11 +90,7 @@ class TestBot extends BotTest {
     }
 
     public clearState() {
-        super._clearState(this._botController);
-    }
-
-    public get appContext(): AppContext {
-        return this._appContext;
+        this._botController?.clearStoreData?.();
     }
 }
 
@@ -148,16 +144,15 @@ describe('umbot', () => {
             marusia_token: '123',
             intents: [],
         });
-        // @ts-ignore
-        bot.appContext.httpClient = () => {
-            return {
+        bot.getAppContext().httpClient = () => {
+            return Promise.resolve({
                 ok: true,
                 json: () => {
                     return Promise.resolve({});
                 },
-            };
+            }) as Promise<Response>;
         };
-        appContext = bot.appContext;
+        appContext = bot.getAppContext();
     });
 
     afterEach(() => {

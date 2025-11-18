@@ -135,7 +135,10 @@ describe('MaxRequest', () => {
 
         const result = await max.messagesSend(12345, 'Hi');
         expect(result).toBeNull();
-        expect(appContext.logError).toHaveBeenCalledWith(expect.stringContaining('Network error'));
+        expect(appContext.logError).toHaveBeenCalledWith(
+            expect.stringContaining('Network error'),
+            expect.objectContaining({}),
+        );
     });
 
     it('should return null if no token', async () => {

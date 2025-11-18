@@ -50,7 +50,6 @@ export interface IImageModelState {
 export class ImageTokens extends Model<IImageModelState> {
     /**
      * Название таблицы для хранения данных об изображениях.
-     * @private
      */
     private TABLE_NAME = 'ImageTokens';
 

@@ -54,7 +54,7 @@ export abstract class TemplateTypeModel {
         // @ts-ignore
         this.controller = undefined;
         this.error = null;
-        this._initProcessingTime();
+        this.#initProcessingTime();
         this.isUsedLocalStorage = false;
         this.sendInInit = null;
         this.timeStart = null;
@@ -82,9 +82,8 @@ export abstract class TemplateTypeModel {
     /**
      * Устанавливает время начала обработки запроса.
      * Используется для измерения времени выполнения
-     * @private
      */
-    private _initProcessingTime(): void {
+    #initProcessingTime(): void {
         this.timeStart = Date.now();
     }
 
@@ -93,7 +92,7 @@ export abstract class TemplateTypeModel {
      * Используется для измерения времени выполнения
      */
     public updateTimeStart(): void {
-        this._initProcessingTime();
+        this.#initProcessingTime();
     }
 
     /**

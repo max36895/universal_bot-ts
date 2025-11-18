@@ -59,11 +59,7 @@ class TestBotController extends BotController {
     }
 }
 
-class TestBot extends Bot {
-    public get appContext() {
-        return this._appContext;
-    }
-}
+class TestBot extends Bot {}
 
 function getContent(query: string, count = 0) {
     return JSON.stringify({

@@ -597,21 +597,21 @@ export interface IAppParam {
      *   {
      *     name: 'greeting',
      *     slots: [
-     *       '\\b{_value_}\\b',      // Точное совпадение слова
-     *       '\\b{_value_}[^\\s]+\\b', // Начало слова (например, "привет" найдет "приветствие")
+     *       '\\b{_value_}\\b',             // Точное совпадение слова
+     *       '\\b{_value_}[^\\s]+\\b',      // Начало слова (например, "привет" найдет "приветствие")
      *       '(\\b{_value_}(|[^\\s]+)\\b)', // Точное совпадение или начало слова
-     *       '\\b(\\d{3})\\b',       // Числа от 100 до 999
-     *       '{_value_} \\d {_value_}', // Шаблон с числом между словами
-     *       '{_value_}'             // Любое вхождение слова
+     *       '\\b(\\d{3})\\b',              // Числа от 100 до 999
+     *       '{_value_} \\d {_value_}',     // Шаблон с числом между словами
+     *       '{_value_}'                    // Любое вхождение слова
+     *       /\d{0, 3}/i                    // Поиск числа от 0 до 999
      *     ],
      *     is_pattern: true
      *   }
      * ]
      * ```
      *
-     * Где {_value_} - это плейсхолдер, который будет заменен на конкретное значение
-     * при обработке команды. Например, если {_value_} = "привет", то регулярное
-     * выражение '\\b{_value_}\\b' будет искать точное совпадение слова "привет".
+     * Где {_value_} - это значение, которое необходимо найти.
+     * Например, если {_value_} = "привет", то регулярное выражение '\\b{_value_}\\b' будет искать точное совпадение слова "привет".
      */
     intents: IAppIntent[] | null;
 
@@ -672,6 +672,12 @@ export interface ICommandParam<TBotController extends BotController = BotControl
     cb?: (userCommand: string, botController: TBotController) => void | string;
 }
 
+/**
+ * Тип для функции обработки кастомного обработчика команд
+ * @param userCommand - Команда пользователя
+ * @param commands - Список всех зарегистрированных команд
+ * @return {string} - Имя команды
+ */
 export type TCommandResolver = (
     userCommand: string,
     commands: Map<string, ICommandParam>,
@@ -697,15 +703,13 @@ export type TCommandResolver = (
 export class AppContext {
     /**
      * Переменные окружения
-     * @private
      */
-    private _envVars: IEnvConfig | undefined;
+    #envVars: IEnvConfig | undefined;
 
     /**
      * Флаг режима разработки
-     * @private
      */
-    private _isDevMode: boolean = false;
+    #isDevMode: boolean = false;
 
     /**
      * Пользовательский контроллер базы данных
@@ -727,9 +731,9 @@ export class AppContext {
     public appType: TAppType | null = null;
 
     /**
-     * Логгер приложения
+     * Кастомный логгер приложения
      */
-    private _logger: ILogger | null = null;
+    #logger: ILogger | null = null;
 
     /**
      * Конфигурация приложения
@@ -771,7 +775,7 @@ export class AppContext {
     /**
      * База данных
      */
-    private _db: DB | undefined;
+    #db: DB | undefined;
 
     /**
      * Кастомный HTTP-клиент для выполнения всех исходящих запросов библиотеки.
@@ -808,7 +812,14 @@ export class AppContext {
     public httpClient: THttpClient = global.fetch;
 
     /**
-     * Флаг строгого режима обработки команд. При включении флага, если была передана потенциальная ReDoS атака, то она будет отклонена.
+     * Флаг строгого режима обработки команд и логов.
+     *
+     * При `true`:
+     * - Небезопасные регулярные выражения отклоняются;
+     * - Все секреты (токены, ключи) **автоматически маскируются** в логах — даже при использовании кастомного логгера;
+     * - Рекомендуется для production-сред.
+     *
+     * @default false
      */
     public strictMode: boolean = false;
 
@@ -821,18 +832,20 @@ export class AppContext {
      * Получить текущее подключение к базе данных
      */
     public get vDB(): DB {
-        if (!this._db) {
-            this._db = new DB(this);
+        if (!this.#db) {
+            this.#db = new DB(this);
         }
-        return this._db;
+        return this.#db;
     }
 
     /**
      * Закрыть подключение к базе данных
      */
-    public closeDB(): void {
-        this._db?.close();
-        this._db = undefined;
+    public async closeDB(): Promise<void> {
+        if (this.#db) {
+            await this.#db?.close();
+            this.#db = undefined;
+        }
     }
 
     /**
@@ -846,7 +859,7 @@ export class AppContext {
      * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
      */
     public setDevMode(isDevMode: boolean = false): void {
-        this._isDevMode = isDevMode;
+        this.#isDevMode = isDevMode;
     }
 
     /**
@@ -854,15 +867,14 @@ export class AppContext {
      * @returns {boolean} true, если включен режим разработки
      */
     public get isDevMode(): boolean {
-        return this._isDevMode;
+        return this.#isDevMode;
     }
 
     /**
      * Установка всех токенов из переменных окружения или параметров
-     * @private
      */
-    private _setTokens(): void {
-        const envVars = this._getEnvVars();
+    #setTokens(): void {
+        const envVars = this.#getEnvVars();
         if (envVars) {
             this.platformParams = {
                 ...this.platformParams,
@@ -881,16 +893,15 @@ export class AppContext {
     /**
      * Возвращает объект с настройками окружения
      * @param {string|undefined} envPath - Путь к файлу окружения
-     * @private
      */
-    private _getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
-        if (this._envVars) {
-            return this._envVars;
+    #getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
+        if (this.#envVars) {
+            return this.#envVars;
         }
         if (envPath) {
             const res = loadEnvFile(envPath);
             if (res.status) {
-                this._envVars = res.data;
+                this.#envVars = res.data;
             } else {
                 let correctEnvValue = {};
                 if (process.env) {
@@ -921,7 +932,7 @@ export class AppContext {
                 }
             }
         }
-        return this._envVars;
+        return this.#envVars;
     }
 
     /**
@@ -931,7 +942,7 @@ export class AppContext {
     public setAppConfig(config: IAppConfig): void {
         this.appConfig = { ...this.appConfig, ...config };
         if (config.env) {
-            const envVars = this._getEnvVars(config.env);
+            const envVars = this.#getEnvVars(config.env);
             if (envVars) {
                 // Пишем в конфиг для подключения к БД, только если есть настройки для подключения
                 if (this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME) {
@@ -944,7 +955,7 @@ export class AppContext {
                     };
                 }
 
-                this._setTokens();
+                this.#setTokens();
             }
         }
     }
@@ -957,7 +968,7 @@ export class AppContext {
         this.platformParams = { ...this.platformParams, ...params };
         this.platformParams.intents?.forEach((intent, i) => {
             if (intent.is_pattern) {
-                let res = this._isDangerRegex(intent.slots);
+                const res = this.#isDangerRegex(intent.slots);
                 if (res.slots.length) {
                     if (res.slots.length !== intent.slots.length) {
                         intent.slots = res.slots as string[];
@@ -965,50 +976,60 @@ export class AppContext {
                 } else {
                     delete this.platformParams.intents?.[i];
                 }
-                // @ts-ignore
-                res = undefined;
             }
         });
-        this._setTokens();
+        this.#setTokens();
     }
 
-    protected _isRegexLikelySafe(pattern: string, isRegex: boolean): boolean {
+    #isRegexLikelySafe(pattern: string, isRegex: boolean): boolean {
         try {
             if (!isRegex) {
                 new RegExp(pattern);
             }
             // 1. Защита от слишком длинных шаблонов (DoS через размер)
-            if (pattern.length > 1000) return false;
+            if (pattern.length > 1000) {
+                return false;
+            }
 
             // 2. Убираем экранированные символы из рассмотрения (упрощённо)
             // Для простоты будем искать только в "сыром" виде — этого достаточно для эвристик
 
             // 3. Основные ReDoS-эвристики
 
-            // a) Вложенные квантификаторы: (a+)+, (a*)*, [a-z]+*, и т.п.
+            // Вложенные квантификаторы: (a+)+, (a*)*, [a-z]+*, и т.п.
             // Ищем: закрывающая скобка или символ класса, за которой следует квантификатор
             const dangerousNested = /\)+\s*[+*{?]|}\s*[+*{?]|]\s*[+*{?]/.test(pattern);
-            if (dangerousNested) return false;
+            if (dangerousNested) {
+                return false;
+            }
 
-            // b) Альтернативы с пересекающимися паттернами: (a|aa), (a|a+)
+            // Альтернативы с пересекающимися паттернами: (a|aa), (a|a+)
             // Простой признак: один терм — префикс другого
             // Точное определение сложно без AST, но часто такие паттерны содержат:
             // - `|` внутри группы + повторяющиеся символы
             const hasPipeInGroup = /\([^)]*\|[^)]*\)/.test(pattern);
             if (hasPipeInGroup) {
                 // Дополнительная эвристика: есть ли повторяющиеся символы или квантификаторы?
-                if (/\([^)]*(\w)\1+[^)]*\|/g.test(pattern)) return false;
-                if (/\([^)]*[+*{][^)]*\|/g.test(pattern)) return false;
+                if (/\([^)]*(\w)\1+[^)]*\|/g.test(pattern)) {
+                    return false;
+                }
+                if (/\([^)]*[+*{][^)]*\|/g.test(pattern)) {
+                    return false;
+                }
             }
 
-            // c) Повторяющиеся квантифицируемые группы: (a+){10,100}
-            if (/\([^)]*[+*{][^)]*\)\s*\{/g.test(pattern)) return false;
+            // Повторяющиеся квантифицируемые группы: (a+){10,100}
+            if (/\([^)]*[+*{][^)]*\)\s*\{/g.test(pattern)) {
+                return false;
+            }
 
-            // d) Квантификаторы на "жадных" конструкциях без якорей — сложнее ловить,
+            // Квантификаторы на "жадных" конструкциях без якорей — сложнее ловить,
             // но если есть .*+ — это почти всегда опасно
-            if (/\.\s*[+*{]/.test(pattern)) return false;
+            if (/\.\s*[+*{]/.test(pattern)) {
+                return false;
+            }
 
-            // e) Слишком глубокая вложенность скобок — признак сложности
+            // Слишком глубокая вложенность скобок — признак сложности
             let depth = 0;
             let maxDepth = 0;
             for (let i = 0; i < pattern.length; i++) {
@@ -1018,20 +1039,26 @@ export class AppContext {
                 }
                 if (pattern[i] === '(') depth++;
                 else if (pattern[i] === ')') depth--;
-                if (depth < 0) return false; // некорректная скобочная структура
-                if (depth > maxDepth) maxDepth = depth;
+                if (depth < 0) {
+                    return false; // некорректная скобочная структура
+                }
+                if (depth > maxDepth) {
+                    maxDepth = depth;
+                }
             }
-            if (maxDepth > 5) return false; // слишком глубоко — подозрительно
-
-            return true;
+            return maxDepth <= 5;
         } catch {
             return false;
         }
     }
 
-    private _isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
+    /**
+     * Определяет опасная передана регулярка или нет
+     * @param slots
+     */
+    #isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
         if (slots instanceof RegExp) {
-            if (this._isRegexLikelySafe(slots.source, true)) {
+            if (this.#isRegexLikelySafe(slots.source, true)) {
                 this[this.strictMode ? 'logError' : 'logWarn'](
                     `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
                     {},
@@ -1054,7 +1081,7 @@ export class AppContext {
             const errors: string[] | undefined = [];
             slots.forEach((slot) => {
                 const slotStr = slot instanceof RegExp ? slot.source : slot;
-                if (this._isRegexLikelySafe(slotStr, slot instanceof RegExp)) {
+                if (this.#isRegexLikelySafe(slotStr, slot instanceof RegExp)) {
                     (errors as string[]).push(slotStr);
                 } else {
                     (correctSlots as TSlots).push(slot);
@@ -1146,11 +1173,11 @@ export class AppContext {
     ): void {
         let correctSlots: TSlots = this.strictMode ? [] : slots;
         if (isPattern) {
-            correctSlots = this._isDangerRegex(slots).slots;
+            correctSlots = this.#isDangerRegex(slots).slots;
         } else {
             for (const slot of slots) {
                 if (slot instanceof RegExp) {
-                    const res = this._isDangerRegex(slot);
+                    const res = this.#isDangerRegex(slot);
                     if (res.status && this.strictMode) {
                         correctSlots.push(slot);
                     }
@@ -1188,7 +1215,7 @@ export class AppContext {
      * @param logger
      */
     public setLogger(logger: ILogger | null): void {
-        this._logger = logger;
+        this.#logger = logger;
     }
 
     /**
@@ -1196,8 +1223,8 @@ export class AppContext {
      * @param args
      */
     public log(...args: unknown[]): void {
-        if (this._logger?.log) {
-            this._logger.log(...args);
+        if (this.#logger?.log) {
+            this.#logger.log(...args);
         } else {
             console.log(...args);
         }
@@ -1209,8 +1236,8 @@ export class AppContext {
      * @param meta
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
-        if (this._logger?.error) {
-            this._logger.error(str, meta);
+        if (this.#logger?.error) {
+            this.#logger.error(this.strictMode ? this.#maskSecrets(str) : str, meta);
         }
         const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
         this.saveLog('error.log', `${str}\n${metaStr}`);
@@ -1223,8 +1250,8 @@ export class AppContext {
      * @param label - Дополнительные метаданные
      */
     public logMetric(name: string, value: unknown, label: Record<string, unknown>): void {
-        if (this._logger?.metric) {
-            this._logger.metric(name, value, label);
+        if (this.#logger?.metric) {
+            this.#logger.metric(name, value, label);
         }
     }
 
@@ -1234,10 +1261,13 @@ export class AppContext {
      * @param meta
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
-        if (this._logger?.warn) {
-            this._logger.warn(str, { ...meta, trace: new Error().stack });
-        } else if (this._isDevMode) {
-            console.warn(str, meta);
+        if (this.#logger?.warn) {
+            this.#logger.warn(this.strictMode ? this.#maskSecrets(str) : str, {
+                ...meta,
+                trace: new Error().stack,
+            });
+        } else if (this.#isDevMode) {
+            console.warn(this.strictMode ? this.#maskSecrets(str) : str, meta);
         }
     }
 
@@ -1260,15 +1290,14 @@ export class AppContext {
             path: this.appConfig.json || __dirname + '/../../json',
             fileName: fileName.replace(/`/g, ''),
         };
-        return saveData(dir, JSON.stringify(data));
+        return saveData(dir, JSON.stringify(data), undefined, true, this.logError.bind(this));
     }
 
     /**
      * Скрывает секретные данные в тексте
      * @param text
-     * @private
      */
-    private _maskSecrets(text: string): string {
+    #maskSecrets(text: string): string {
         return (
             text
                 // Telegram bot token
@@ -1302,11 +1331,11 @@ export class AppContext {
         }*/
 
         const dir: IDir = { path: this.appConfig.error_log || `${__dirname}/../../logs`, fileName };
-        if (this._isDevMode) {
+        if (this.#isDevMode) {
             console.error(msg);
         }
         try {
-            return saveData(dir, this._maskSecrets(msg), 'a', false);
+            return saveData(dir, this.#maskSecrets(msg), 'a', false, this.logError.bind(this));
         } catch (e) {
             console.error(`[saveLog] Ошибка записи в файл ${fileName}:`, e);
             console.error('Текст ошибки: ', msg);

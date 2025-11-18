@@ -330,10 +330,9 @@ export abstract class Model<TState extends TStateData> {
     /**
      * Инициализирует параметры запроса.
      * Подготавливает данные для сохранения или обновления
-     *
-     * @private
      */
     private _initData(): void {
+        // Не назвать через "#", так как есть proxy
         this.validate();
         const idName = this.dbController.primaryKeyName;
         if (idName) {

@@ -1,111 +1,111 @@
 {
-    "name": "umbot",
-    "description": "Универсальная библиотека для создания чат-ботов и голосовых навыков с единой бизнес-логикой для различных платформ (ВКонтакте, Telegram, Viber, MAX, Яндекс.Алиса, Маруся, Сбер (SmartApp)) | (Universal framework for creating chatbots and voice skills with a single business logic for various platforms (VK, Telegram, Viber, MAX, Yandex Alice, Marusia, Sber SmartApp))",
-    "keywords": [
-        "vk",
-        "vkontakte",
-        "telegram",
-        "viber",
-        "max",
-        "yandex-alice",
-        "yandex",
-        "alice",
-        "marusia",
-        "sber",
-        "smartapp",
-        "typescript",
-        "ts",
-        "dialogs",
-        "bot",
-        "chatbot",
-        "voice-skill",
-        "voice-assistant",
-        "framework",
-        "cross-platform",
-        "бот",
-        "навык",
-        "чат-бот",
-        "голосовой-ассистент",
-        "алиса",
-        "яндекс",
-        "сбер",
-        "сбер-смарт",
-        "вконтакте",
-        "универсальный-фреймворк",
-        "единая-логика",
-        "платформы",
-        "боты",
-        "навыки"
-    ],
-    "author": {
-        "name": "Maxim-M",
-        "email": "maximco36895@yandex.ru"
+  "name": "umbot",
+  "description": "Универсальная библиотека для создания чат-ботов и голосовых навыков с единой бизнес-логикой для различных платформ (ВКонтакте, Telegram, Viber, MAX, Яндекс.Алиса, Маруся, Сбер (SmartApp)) | (Universal framework for creating chatbots and voice skills with a single business logic for various platforms (VK, Telegram, Viber, MAX, Yandex Alice, Marusia, Sber SmartApp))",
+  "keywords": [
+    "vk",
+    "vkontakte",
+    "telegram",
+    "viber",
+    "max",
+    "yandex-alice",
+    "yandex",
+    "alice",
+    "marusia",
+    "sber",
+    "smartapp",
+    "typescript",
+    "ts",
+    "dialogs",
+    "bot",
+    "chatbot",
+    "voice-skill",
+    "voice-assistant",
+    "framework",
+    "cross-platform",
+    "бот",
+    "навык",
+    "чат-бот",
+    "голосовой-ассистент",
+    "алиса",
+    "яндекс",
+    "сбер",
+    "сбер-смарт",
+    "вконтакте",
+    "универсальный-фреймворк",
+    "единая-логика",
+    "платформы",
+    "боты",
+    "навыки"
+  ],
+  "author": {
+    "name": "Maxim-M",
+    "email": "maximco36895@yandex.ru"
+  },
+  "license": "MIT",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "default": "./dist/index.js"
     },
-    "license": "MIT",
-    "types": "./dist/index.d.ts",
-    "main": "./dist/index.js",
-    "exports": {
-        ".": {
-            "default": "./dist/index.js"
-        },
-        "./utils": "./dist/utils/index.js",
-        "./test": {
-            "default": "./dist/test.js"
-        },
-        "./preload": {
-            "default": "./dist/Preload.js"
-        }
+    "./utils": "./dist/utils/index.js",
+    "./test": {
+      "default": "./dist/test.js"
     },
-    "scripts": {
-        "watch": "shx rm -rf dist && tsc -watch",
-        "start": "shx rm -rf dist && tsc",
-        "build": "shx rm -rf dist && tsc --declaration",
-        "test": "jest",
-        "test:coverage": "jest --coverage",
-        "bt": "npm run build && npm test",
-        "create": "umbot",
-        "doc": "typedoc --excludePrivate --excludeExternals",
-        "deploy": "npm run build && npm publish",
-        "lint": "eslint . --ext .ts",
-        "lint:fix": "eslint . --ext .ts --fix",
-        "prettier": "prettier --write .",
-        "bench": "node --expose-gc  ./benchmark/command.js",
-        "stress": "node --expose-gc ./benchmark/stress-test.js"
-    },
-    "bugs": {
-        "url": "https://github.com/max36895/universal_bot-ts/issues"
-    },
-    "engines": {
-        "node": ">=18.18"
-    },
-    "bin": {
-        "umbot": "cli/umbot.js"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/max36895/universal_bot-ts.git"
-    },
-    "devDependencies": {
-        "@types/jest": "^30.0.0",
-        "@types/node": "^18.15.13",
-        "@typescript-eslint/eslint-plugin": "^8.46.0",
-        "@typescript-eslint/parser": "^8.46.0",
-        "eslint": "^9.37.0",
-        "eslint-plugin-security": "^3.0.1",
-        "globals": "^16.4.0",
-        "jest": "~30.2.0",
-        "prettier": "~3.6.2",
-        "shx": "~0.4.0",
-        "ts-jest": "~29.4.4",
-        "typedoc": "~0.28.14",
-        "typescript": "^5.8.3"
-    },
-    "peerDependencies": {
-        "mongodb": "^6.20.0"
-    },
-    "files": [
-        "dist",
-        "cli"
-    ],
-    "version": "2.2.0"
+    "./preload": {
+      "default": "./dist/Preload.js"
+    }
+  },
+  "scripts": {
+    "watch": "shx rm -rf dist && tsc -watch",
+    "start": "shx rm -rf dist && tsc",
+    "build": "shx rm -rf dist && tsc --declaration",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "bt": "npm run build && npm test",
+    "create": "umbot",
+    "doc": "typedoc --excludePrivate --excludeExternals",
+    "deploy": "npm run build && npm publish",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "prettier": "prettier --write .",
+    "bench": "node --expose-gc  ./benchmark/command.js",
+    "stress": "node --expose-gc ./benchmark/stress-test.js"
+  },
+  "bugs": {
+    "url": "https://github.com/max36895/universal_bot-ts/issues"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "bin": {
+    "umbot": "cli/umbot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/max36895/universal_bot-ts.git"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^18.15.13",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "eslint": "^9.37.0",
+    "eslint-plugin-security": "^3.0.1",
+    "globals": "^16.4.0",
+    "jest": "~30.2.0",
+    "prettier": "~3.6.2",
+    "shx": "~0.4.0",
+    "ts-jest": "~29.4.4",
+    "typedoc": "~0.28.14",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "mongodb": "^6.20.0"
+  },
+  "files": [
+    "dist",
+    "cli"
+  ],
+  "version": "2.2.0"
 }

@@ -2,6 +2,9 @@
 // Запуск: node --expose-gc stress-test.js
 
 const { Bot, BotController, Alisa, T_ALISA, rand } = require('./../dist/index');
+const crypto = require('crypto');
+const os = require('os');
+const { eventLoopUtilization } = require('node:perf_hooks').performance;
 
 class StressController extends BotController {
     action(intentName) {
@@ -29,6 +32,17 @@ const PHRASES = [
     'настройки',
     'обновить',
 ];
+
+function getAvailableMemoryMB() {
+    const free = os.freemem();
+    // Оставляем 200 МБ на систему и Node.js рантайм
+    return Math.max(0, (free - 200 * 1024 * 1024) / (1024 * 1024));
+}
+
+function predictMemoryUsage(commandCount) {
+    // Базовое потребление + 0.4 КБ на команду + запас
+    return 15 + (commandCount * 0.5) / 1024 + 50; // в МБ
+}
 
 function setupCommands(bot, count) {
     bot.clearCommands();
@@ -70,11 +84,20 @@ let errorsBot = [];
 const bot = new Bot(T_ALISA);
 bot.initBotController(StressController);
 bot.setLogger({
-    error: (msg) => errorsBot.push(msg),
-    warn: () => {},
-    log: () => {},
+    error: (msg) => {
+        errorsBot.push(msg);
+        //console.error(msg);
+    },
+    warn: (...arg) => {
+        console.warn(...arg);
+    },
+    log: (...args) => {
+        console.log(...args);
+    },
+    //metric: console.log,
 });
-setupCommands(bot, 1000);
+const COMMAND_COUNT = 1000;
+setupCommands(bot, COMMAND_COUNT);
 
 async function run() {
     let text;
@@ -90,8 +113,7 @@ function getMemoryMB() {
 }
 
 function validateResult(result) {
-    // ЗАМЕНИТЕ НА ВАШУ ЛОГИКУ ВАЛИДАЦИИ
-    return result;
+    return result?.response?.text;
 }
 
 // ───────────────────────────────────────
@@ -101,6 +123,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
     console.log(
         `\n🧪 Нормальная нагрузка: ${iterations} раундов × ${concurrency} параллельных вызовов\n`,
     );
+    const eluBefore = eventLoopUtilization();
 
     const allLatencies = [];
     const errors = [];
@@ -135,6 +158,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
         }
     }
 
+    const eluAfter = eventLoopUtilization(eluBefore);
     const memEnd = getMemoryMB();
     const avg = allLatencies.length
         ? allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length
@@ -156,6 +180,10 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
     console.log(`📈 p95 latency: ${p95.toFixed(2)} мс`);
     console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
 
+    console.log(`📊 Event Loop Utilization:`);
+    console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
+    console.log(`   idle:  ${eluAfter.idle.toFixed(2)} ms`);
+    console.log(`   Utilization: ${(eluAfter.utilization * 100).toFixed(1)}%`);
     return {
         success: errors.length === 0,
         latencies: allLatencies,
@@ -171,23 +199,51 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
 // ───────────────────────────────────────
 async function burstTest(count = 5, timeoutMs = 10_000) {
     console.log(`\n🔥 Burst-тест: ${count} параллельных вызовов\n`);
+    global.gc();
 
     const memStart = getMemoryMB();
     const start = process.hrtime.bigint();
 
-    const promises = new Array(count)
-        .fill()
-        .map(() =>
-            Promise.race([
-                run(),
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error(`Таймаут ${timeoutMs} мс`)), timeoutMs),
-                ),
-            ]),
+    const predicted = predictMemoryUsage(count * COMMAND_COUNT);
+    const available = getAvailableMemoryMB();
+    if (predicted > available * 0.9) {
+        console.log(
+            `⚠️ Недостаточно памяти для теста (${count} одновременных запросов с ${COMMAND_COUNT} командами).`,
         );
+        return { status: false, outMemory: true };
+    }
+    let isMess = false;
+    let iter = 0;
+    const eluBefore = eventLoopUtilization();
+
+    const promises = new Array(count).fill().map(() =>
+        Promise.race([
+            (async () => {
+                iter++;
+                const mem = getMemoryMB();
+                const predicted = predictMemoryUsage(count * COMMAND_COUNT);
+                const available = getAvailableMemoryMB();
+                // Если уже занимаем много памяти, то не позволяем запускать процессы еще.
+                if (mem > 3700 || predicted > available * 0.9) {
+                    if (!isMess) {
+                        console.log(
+                            `⚠️ Недостаточно памяти для теста с итерацией ${iter} (${count} одновременных запросов с ${COMMAND_COUNT} командами).`,
+                        );
+                        isMess = false;
+                    }
+                    return {};
+                }
+                return await run();
+            })(),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`Таймаут ${timeoutMs} мс`)), timeoutMs),
+            ),
+        ]),
+    );
 
     try {
         const results = await Promise.all(promises);
+        const eluAfter = eventLoopUtilization(eluBefore);
         const invalid = results.filter((r) => !validateResult(r));
         if (invalid.length > 0) {
             throw new Error(`Получено ${invalid.length} некорректных результатов`);
@@ -204,11 +260,18 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
         console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
         console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
 
+        console.log(`📊 Event Loop Utilization:`);
+        console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
+        console.log(`   idle:  ${eluAfter.idle.toFixed(2)} ms`);
+        console.log(`   Utilization: ${(eluAfter.utilization * 100).toFixed(1)}%`);
+
+        global.gc();
         return { success: true, duration: totalMs, memDelta: memEnd - memStart };
     } catch (err) {
         const memEnd = getMemoryMB();
         console.error(`💥 Ошибка:`, err.message || err);
         console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+        global.gc();
         return { success: false, error: err.message || err, memDelta: memEnd - memStart };
     }
 }
@@ -217,6 +280,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
 // 3. Запуск всех тестов
 // ───────────────────────────────────────
 async function runAllTests() {
+    const isWin = process.platform === 'win32';
     console.log('🚀 Запуск стресс-тестов для метода Bot.run()\n');
 
     // Тест 1: нормальная нагрузка
@@ -249,15 +313,25 @@ async function runAllTests() {
     if (!burst100.success) {
         console.warn('⚠️  Burst-тест (100) завершился с ошибками');
     }
+    errorsBot = [];
 
     const burst500 = await burstTest(500);
     if (!burst500.success) {
         console.warn('⚠️  Burst-тест (500) завершился с ошибками');
     }
+    errorsBot = [];
 
-    const burst1000 = await burstTest(1000);
-    if (!burst1000.success) {
-        console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
+    // на windows nodeJS работает е очень хорошо, из-за чего можем вылететь за пределы потребляемой памяти(более 4gb, хотя на unix этот показатель в районе 400мб)
+    if (!isWin) {
+        const burst1000 = await burstTest(1000);
+        if (!burst1000.success) {
+            console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
+        }
+    } else {
+        console.log(
+            '⚠️ Внимание: Node.js на Windows работает менее эффективно, чем на Unix-системах (Linux/macOS). Это может приводить к высокому потреблению памяти и замедлению обработки под нагрузкой.\n' +
+                'Для корректной оценки производительности и использования в продакшене рекомендуется запускать приложение на сервере с Linux.',
+        );
     }
     console.log('\n🏁 Тестирование завершено.');
 }
@@ -265,9 +339,7 @@ async function runAllTests() {
 // ───────────────────────────────────────
 // Запуск при вызове напрямую
 // ───────────────────────────────────────
-try {
-    await runAllTests();
-} catch (err) {
+runAllTests().catch((err) => {
     console.error('❌ Критическая ошибка при запуске тестов:', err);
     process.exit(1);
-}
+});

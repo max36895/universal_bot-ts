@@ -105,7 +105,7 @@ export class Sound {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Конструктор класса Sound.
@@ -121,7 +121,7 @@ export class Sound {
     public constructor(appContext: AppContext) {
         this.sounds = [];
         this.isUsedStandardSound = true;
-        this._appContext = appContext;
+        this.#appContext = appContext;
     }
 
     /**
@@ -129,7 +129,7 @@ export class Sound {
      * @param appContext
      */
     public setAppContext(appContext: AppContext): Sound {
-        this._appContext = appContext;
+        this.#appContext = appContext;
         return this;
     }
 
@@ -168,25 +168,25 @@ export class Sound {
         let sound: any = null;
         switch (appType) {
             case T_ALISA:
-                sound = new AlisaSound(this._appContext);
+                sound = new AlisaSound(this.#appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
             case T_MARUSIA:
-                sound = new MarusiaSound(this._appContext);
+                sound = new MarusiaSound(this.#appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
             case T_VK:
-                sound = new VkSound(this._appContext);
+                sound = new VkSound(this.#appContext);
                 break;
 
             case T_TELEGRAM:
-                sound = new TelegramSound(this._appContext);
+                sound = new TelegramSound(this.#appContext);
                 break;
 
             case T_VIBER:
-                sound = new ViberSound(this._appContext);
+                sound = new ViberSound(this.#appContext);
                 break;
 
             case T_SMARTAPP:

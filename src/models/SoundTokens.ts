@@ -58,7 +58,6 @@ export interface ISoundModelState {
 export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Название таблицы для хранения данных о звуковых файлах.
-     * @private
      */
     private readonly TABLE_NAME = 'SoundTokens';
 

@@ -59,7 +59,6 @@ export interface IConfig {
  * @remarks
  * Устанавливает конфигурацию, параметры и контроллер для бота.
  * Этот метод должен вызываться перед запуском бота.
- * @private
  */
 function _initParam(bot: Bot | BotTest, config: IConfig): void {
     bot.setAppConfig(config.appConfig);
@@ -109,16 +108,17 @@ export function run(
         case 'dev':
             bot = new BotTest();
             _initParam(bot, config);
-            bot.setDevMode(true);
+            bot.setAppMode('dev');
             return (bot as BotTest).test(config.testParams);
         case 'dev-online':
             bot = new Bot();
             _initParam(bot, config);
-            bot.setDevMode(true);
+            bot.setAppMode('dev');
             return bot.start(hostname, port);
         case 'prod':
             bot = new Bot();
             _initParam(bot, config);
+            bot.setAppMode('strict_prod');
             return bot.start(hostname, port);
     }
 }

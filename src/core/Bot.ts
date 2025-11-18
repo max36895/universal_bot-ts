@@ -35,6 +35,7 @@ import {
     TCommandResolver,
 } from './AppContext';
 import { IDbControllerModel } from '../models';
+import { Text } from '../utils';
 
 /**
  * Тип для режима работы приложения
@@ -166,12 +167,11 @@ export type MiddlewareFn = (ctx: BotController, next: MiddlewareNext) => void | 
  */
 export class Bot<TUserData extends IUserData = IUserData> {
     /** Экземпляр HTTP-сервера */
-    protected _serverInst: Server | undefined;
+    #serverInst: Server | undefined;
 
     /**
      * Полученный запрос от пользователя.
      * Может быть JSON-строкой, текстом или null
-     * @protected
      * @type {TBotContent}
      */
     protected _content: TBotContent = null;
@@ -179,40 +179,36 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Контекст приложения
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Контроллер с бизнес-логикой приложения.
      * Обрабатывает команды и формирует ответы
      * @see BotControllerClass
-     * @protected
      * @type {BotController<TUserData>}
      */
-    protected _botControllerClass: TBotControllerClass<TUserData>;
+    #botControllerClass: TBotControllerClass<TUserData>;
 
     /**
      * Авторизационный токен пользователя.
      * Используется для авторизованных запросов (например, в Алисе)
-     * @protected
      * @type {TBotAuth}
      */
-    protected _auth: TBotAuth;
+    #auth: TBotAuth;
 
     /**
      * Тип платформы по умолчанию
-     * @protected
      */
-    protected _defaultAppType: TAppType | 'auto' = 'auto';
+    #defaultAppType: TAppType | 'auto' = 'auto';
 
-    private readonly _globalMiddlewares: MiddlewareFn[] = [];
-    private readonly _platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
+    readonly #globalMiddlewares: MiddlewareFn[] = [];
+    readonly #platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
 
     /**
      * Получение корректного контроллера
      * @param botController
-     * @private
      */
-    private _getBotController(
+    #getBotController(
         botController?: TBotControllerClass<TUserData>,
     ): TBotControllerClass<TUserData> {
         if (botController) {
@@ -243,10 +239,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```
      */
     constructor(type?: TAppType, botController?: TBotControllerClass<TUserData>) {
-        this._auth = null;
-        this._botControllerClass = this._getBotController(botController);
-        this._appContext = new AppContext();
-        this._defaultAppType = type || T_AUTO;
+        this.#auth = null;
+        this.#botControllerClass = this.#getBotController(botController);
+        this.#appContext = new AppContext();
+        this.#defaultAppType = type || T_AUTO;
     }
 
     /**
@@ -254,11 +250,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param appType
      */
     public set appType(appType: TAppType | 'auto') {
-        this._defaultAppType = appType;
+        this.#defaultAppType = appType;
         if (appType === 'auto') {
-            this._appContext.appType = null;
+            this.#appContext.appType = null;
         } else {
-            this._appContext.appType = appType;
+            this.#appContext.appType = appType;
         }
     }
 
@@ -266,7 +262,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Возвращает тип платформы
      */
     public get appType(): TAppType | 'auto' {
-        return this._defaultAppType;
+        return this.#defaultAppType;
     }
 
     /**
@@ -274,7 +270,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param logger
      */
     public setLogger(logger: ILogger | null): void {
-        this._appContext.setLogger(logger);
+        this.#appContext.setLogger(logger);
     }
 
     /**
@@ -350,7 +346,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): this {
-        this._appContext.addCommand(commandName, slots, cb, isPattern);
+        this.#appContext.addCommand(commandName, slots, cb, isPattern);
         return this;
     }
 
@@ -359,7 +355,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param commandName - Имя команды
      */
     public removeCommand(commandName: string): this {
-        this._appContext.removeCommand(commandName);
+        this.#appContext.removeCommand(commandName);
         return this;
     }
 
@@ -367,7 +363,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Удаляет все команды
      */
     public clearCommands(): this {
-        this._appContext.clearCommands();
+        this.#appContext.clearCommands();
         return this;
     }
 
@@ -377,7 +373,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
      */
     public setDevMode(isDevMode: boolean): this {
-        this._appContext.setDevMode(isDevMode);
+        this.#appContext.setDevMode(isDevMode);
         return this;
     }
 
@@ -392,11 +388,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 break;
             case 'strict_prod':
                 this.setDevMode(false);
-                this._appContext.strictMode = true;
+                this.#appContext.strictMode = true;
                 break;
             default:
                 this.setDevMode(false);
-                this._appContext.strictMode = false;
+                this.#appContext.strictMode = false;
         }
         return this;
     }
@@ -427,10 +423,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Сохраняйте порядок перебора, если он критичен для вашей логики
      * Используйте кэширование (Map<string, string>) для часто встречающихся фраз
      * Для fuzzy-поиска рассмотрите fuse.js или natural
-     * При использовании регулярок — не забывайте про защиту от ReDoS
+     * При использовании регулярных выражений — не забывайте про защиту от ReDoS
      */
     public setCustomCommandResolver(resolver: TCommandResolver): this {
-        this._appContext.customCommandResolver = resolver;
+        this.#appContext.customCommandResolver = resolver;
         return this;
     }
 
@@ -463,7 +459,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public setAppConfig(config: IAppConfig): this {
         if (config) {
-            this._appContext.setAppConfig(config);
+            this.#appContext.setAppConfig(config);
         }
         return this;
     }
@@ -472,7 +468,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Возвращает контекст приложения
      */
     public getAppContext(): AppContext {
-        return this._appContext;
+        return this.#appContext;
     }
 
     /**
@@ -501,7 +497,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public setPlatformParams(params: IAppParam): this {
         if (params) {
-            this._appContext.setPlatformParams(params);
+            this.#appContext.setPlatformParams(params);
         }
         return this;
     }
@@ -524,8 +520,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * - T_MARUSIA → Marusia
      * - T_SMARTAPP → SmartApp
      * - T_USER_APP → Пользовательский класс
-     *
-     * @protected
      */
     protected _getBotClassAndType(
         appType: TAppType | null,
@@ -536,43 +530,43 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
         switch (appType) {
             case T_ALISA:
-                botClass = new Alisa(this._appContext);
+                botClass = new Alisa(this.#appContext);
                 platformType = UsersData.T_ALISA;
                 break;
 
             case T_VK:
-                botClass = new Vk(this._appContext);
+                botClass = new Vk(this.#appContext);
                 platformType = UsersData.T_VK;
                 break;
 
             case T_TELEGRAM:
-                botClass = new Telegram(this._appContext);
+                botClass = new Telegram(this.#appContext);
                 platformType = UsersData.T_TELEGRAM;
                 break;
 
             case T_VIBER:
-                botClass = new Viber(this._appContext);
+                botClass = new Viber(this.#appContext);
                 platformType = UsersData.T_VIBER;
                 break;
 
             case T_MARUSIA:
-                botClass = new Marusia(this._appContext);
+                botClass = new Marusia(this.#appContext);
                 platformType = UsersData.T_MARUSIA;
                 break;
 
             case T_SMARTAPP:
-                botClass = new SmartApp(this._appContext);
+                botClass = new SmartApp(this.#appContext);
                 platformType = UsersData.T_SMART_APP;
                 break;
 
             case T_MAXAPP:
-                botClass = new MaxApp(this._appContext);
+                botClass = new MaxApp(this.#appContext);
                 platformType = UsersData.T_MAX_APP;
                 break;
 
             case T_USER_APP:
                 if (userBotClass) {
-                    botClass = new userBotClass(this._appContext);
+                    botClass = new userBotClass(this.#appContext);
                     platformType = UsersData.T_USER_APP;
                 }
                 break;
@@ -585,9 +579,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param dbController
      */
     public setUserDbController(dbController: IDbControllerModel | undefined): this {
-        this._appContext.userDbController = dbController;
-        if (this._appContext.userDbController) {
-            this._appContext.userDbController.setAppContext(this._appContext);
+        this.#appContext.userDbController = dbController;
+        if (this.#appContext.userDbController) {
+            this.#appContext.userDbController.setAppContext(this.#appContext);
         }
         return this;
     }
@@ -618,14 +612,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public initBotController(fn: TBotControllerClass<TUserData>): this {
         if (fn) {
-            this._botControllerClass = fn;
+            this.#botControllerClass = fn;
         }
         return this;
     }
 
     /**
      * Устанавливает контент запроса.
-     * Используется для передачи данных от пользователя в бота.
+     * Используется для передачи данных от пользователя в бот.
      * Не рекомендуется использовать напрямую, использовать только в крайнем случае, либо для тестов
      *
      * @param {TBotContent} content - Контент запроса
@@ -650,7 +644,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Очищает состояние пользователя
-     * @private
      */
     protected _clearState(botController: BotController): void {
         if (botController) {
@@ -663,14 +656,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param uBody - Тело запроса
      * @param headers - Заголовки запроса
      * @param userBotClass - Пользовательский класс бота
-     * @protected
      */
-    protected _getAppType(
+    #getAppType(
         uBody: any,
         headers?: Record<string, unknown>,
         userBotClass: TTemplateTypeModelClass | null = null,
     ): TAppType {
-        if (!this._defaultAppType || this._defaultAppType === T_AUTO) {
+        if (!this.#defaultAppType || this.#defaultAppType === T_AUTO) {
             // 1. Заголовки — самый надёжный способ
             if (headers?.['x-ya-dialogs-request-id']) {
                 return T_ALISA;
@@ -683,7 +675,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             }
             const body = typeof uBody === 'string' ? JSON.parse(uBody) : uBody;
             if (!body) {
-                this._appContext.logWarn(
+                this.#appContext.logWarn(
                     'Bot:_getAppType: Пустое тело запроса. Используется fallback на Алису.',
                 );
                 return T_ALISA;
@@ -702,7 +694,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         return T_ALISA;
                     }
                 } else {
-                    this._appContext.logWarn(
+                    this.#appContext.logWarn(
                         'Bot:_getAppType: Не удалось однозначно определить платформу (Алиса/Маруся). Используется fallback на Алису.',
                     );
                     return T_ALISA;
@@ -724,13 +716,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 if (userBotClass) {
                     return T_USER_APP;
                 }
-                this._appContext.logWarn(
+                this.#appContext.logWarn(
                     'Bot:_getAppType: Неизвестный формат запроса. Используется fallback на Алису.',
                 );
                 return T_ALISA;
             }
         } else {
-            return this._defaultAppType;
+            return this.#defaultAppType;
         }
     }
 
@@ -740,9 +732,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param botClass - Класс бота, который будет подготавливать корректный ответ в зависимости от платформы
      * @param appType - Тип приложения
      * @param platformType - Тип приложения
-     * @private
      */
-    private async _runApp(
+    async #runApp(
         botController: BotController<TUserData>,
         botClass: TemplateTypeModel,
         appType: TAppType,
@@ -751,14 +742,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (botClass.sendInInit) {
             return await botClass.sendInInit;
         }
-        const userData = new UsersData(this._appContext);
+        const userData = new UsersData(this.#appContext);
         botController.userId = userData.escapeString(botController.userId as string | number);
         if (platformType) {
             userData.type = platformType;
         }
 
         const isLocalStorage: boolean = !!(
-            this._appContext.appConfig.isLocalStorage && botClass.isLocalStorage()
+            this.#appContext.appConfig.isLocalStorage && botClass.isLocalStorage()
         );
 
         let isNewUser = true;
@@ -770,7 +761,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             const query = {
                 userId: userData.escapeString(botController.userId),
             };
-            if (this._auth) {
+            if (this.#auth) {
                 query.userId = userData.escapeString(botController.userToken as string);
             }
 
@@ -786,7 +777,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             }
         }
 
-        const content = await this._getAppContent(botController, botClass, appType);
+        const content = await this.#getAppContent(botController, botClass, appType);
         if (isLocalStorage) {
             await botClass.setLocalStorage(botController.userData);
         } else {
@@ -795,7 +786,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             if (isNewUser) {
                 userData.save(true).then((res) => {
                     if (!res) {
-                        this._appContext.logError(
+                        this.#appContext.logError(
                             `Bot:run(): Не удалось сохранить данные для пользователя: ${botController.userId}.`,
                         );
                     }
@@ -803,7 +794,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             } else {
                 userData.update().then((res) => {
                     if (!res) {
-                        this._appContext.logError(
+                        this.#appContext.logError(
                             `Bot:run(): Не удалось обновить данные для пользователя: ${botController.userId}.`,
                         );
                     }
@@ -813,14 +804,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
         const error = botClass.getError();
         if (error) {
-            this._appContext.logError(error);
+            this.#appContext.logError(error);
         }
         userData.destroy();
         this._clearState(botController);
         return content;
     }
 
-    private async _getAppContent(
+    async #getAppContent(
         botController: BotController<TUserData>,
         botClass: TemplateTypeModel,
         appType: TAppType,
@@ -834,8 +825,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
 
         const shouldProceed =
-            this._globalMiddlewares.length || this._platformMiddlewares[appType]?.length
-                ? await this._runMiddlewares(botController, appType)
+            this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length
+                ? await this.#runMiddlewares(botController, appType)
                 : true;
         if (shouldProceed) {
             botController.run();
@@ -901,10 +892,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     use(arg1: TAppType | MiddlewareFn, arg2?: MiddlewareFn): this {
         if (typeof arg1 === 'function') {
-            this._globalMiddlewares.push(arg1);
+            this.#globalMiddlewares.push(arg1);
         } else if (arg2) {
-            this._platformMiddlewares[arg1] ??= [];
-            this._platformMiddlewares[arg1].push(arg2);
+            this.#platformMiddlewares[arg1] ??= [];
+            this.#platformMiddlewares[arg1].push(arg2);
         }
         return this;
     }
@@ -913,14 +904,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Выполняет middleware для текущего запроса
      * @param controller
      * @param appType
-     * @private
      */
-    private async _runMiddlewares(controller: BotController, appType: TAppType): Promise<boolean> {
+    async #runMiddlewares(controller: BotController, appType: TAppType): Promise<boolean> {
         if (appType) {
             const start = performance.now();
             const middlewares = [
-                ...this._globalMiddlewares,
-                ...(this._platformMiddlewares[appType] || []),
+                ...this.#globalMiddlewares,
+                ...(this.#platformMiddlewares[appType] || []),
             ];
 
             if (middlewares.length === 0) return true;
@@ -940,7 +930,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 // Запускаем цепочку
                 await next();
             } catch (err) {
-                this._appContext.logError(
+                this.#appContext.logError(
                     `Bot:_runMiddlewares: Ошибка в middleware: ${(err as Error).message}`,
                     {
                         error: err,
@@ -948,7 +938,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 );
                 isEnd = false;
             }
-            this._appContext.logMetric(EMetric.MIDDLEWARE, performance.now() - start, {
+            this.#appContext.logMetric(EMetric.MIDDLEWARE, performance.now() - start, {
                 platform: appType,
             });
             // eslint-disable-next-line require-atomic-updates
@@ -958,10 +948,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
         return true;
     }
 
-    protected _$botController: BotController<TUserData> | null = null;
+    #$botController: BotController<TUserData> | null = null;
 
     protected _setBotController(botController: BotController<TUserData>): void {
-        this._$botController = botController;
+        this.#$botController = botController;
     }
 
     /**
@@ -989,38 +979,38 @@ export class Bot<TUserData extends IUserData = IUserData> {
         appType: TAppType | null = null,
         content: string | null = null,
     ): Promise<TRunResult> {
-        if (!this._botControllerClass) {
+        if (!this.#botControllerClass) {
             const errMsg =
                 'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController';
-            this._appContext.logError(errMsg);
+            this.#appContext.logError(errMsg);
             throw new Error(errMsg);
         }
-        const botController = this._$botController || new this._botControllerClass();
-        botController.setAppContext(this._appContext);
+        const botController = this.#$botController || new this.#botControllerClass();
+        botController.setAppContext(this.#appContext);
         let cAppType: TAppType = appType || T_ALISA;
         if (!appType) {
-            cAppType = this._getAppType(this._content || content, undefined, userBotClass);
+            cAppType = this.#getAppType(this._content || content, undefined, userBotClass);
         }
-        if (this._appContext.appType) {
-            cAppType = this._appContext.appType;
+        if (this.#appContext.appType) {
+            cAppType = this.#appContext.appType;
         }
         botController.appType = cAppType;
 
         const { botClass, platformType } = this._getBotClassAndType(cAppType, userBotClass);
         if (botClass) {
             if (botController.userToken === null) {
-                botController.userToken = this._auth;
+                botController.userToken = this.#auth;
             }
             botClass.updateTimeStart();
             if (await botClass.init(this._content || content, botController)) {
-                return await this._runApp(botController, botClass, cAppType, platformType);
+                return await this.#runApp(botController, botClass, cAppType, platformType);
             } else {
-                this._appContext.logError(botClass.getError() as string);
+                this.#appContext.logError(botClass.getError() as string);
                 throw new Error(botClass.getError() || '');
             }
         } else {
             const msg = 'Не удалось определить тип приложения!';
-            this._appContext.logError(msg);
+            this.#appContext.logError(msg);
             throw new Error(msg);
         }
     }
@@ -1064,9 +1054,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
 
         try {
-            this._appContext.logMetric(EMetric.START_WEBHOOK, Date.now(), {});
+            this.#appContext.logMetric(EMetric.START_WEBHOOK, Date.now(), {});
             const start = performance.now();
-            const data = await this.readRequestData(req);
+            const data = await this.#readRequestData(req);
             const query = JSON.parse(data) as string | null;
 
             if (!query) {
@@ -1074,26 +1064,26 @@ export class Bot<TUserData extends IUserData = IUserData> {
             }
 
             if (req.headers?.authorization) {
-                this._auth = req.headers.authorization.replace('Bearer ', '');
+                this.#auth = req.headers.authorization.replace('Bearer ', '');
             }
 
-            const appType = this._getAppType(query, req.headers, userBotClass);
+            const appType = this.#getAppType(query, req.headers, userBotClass);
             const result = await this.run(userBotClass, appType, query);
             const statusCode = result === 'notFound' ? 404 : 200;
-            this._appContext.logMetric(EMetric.END_WEBHOOK, performance.now() - start, {
+            this.#appContext.logMetric(EMetric.END_WEBHOOK, performance.now() - start, {
                 appType,
                 success: statusCode === 200,
             });
             return send(statusCode, result);
         } catch (error) {
             if (error instanceof SyntaxError) {
-                this._appContext.logError(`Bot:webhookHandle(): Syntax Error: ${error.message}`, {
+                this.#appContext.logError(`Bot:webhookHandle(): Syntax Error: ${error.message}`, {
                     file: 'Bot:webhookHandle()',
                     error,
                 });
                 return send(400, 'Invalid JSON');
             }
-            this._appContext.logError(`Bot:webhookHandle(): Server error: ${error}`, {
+            this.#appContext.logError(`Bot:webhookHandle(): Server error: ${error}`, {
                 error,
             });
             return send(500, 'Internal Server Error');
@@ -1124,24 +1114,45 @@ export class Bot<TUserData extends IUserData = IUserData> {
     ): Server {
         this.close();
 
-        this._serverInst = createServer(
+        this.#serverInst = createServer(
             async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
                 return this.webhookHandle(req, res, userBotClass);
             },
         );
 
-        this._serverInst.listen(port, hostname, () => {
-            this._appContext.log(`Server running at //${hostname}:${port}/`);
+        this.#serverInst.listen(port, hostname, () => {
+            this.#appContext.log(`Server running at //${hostname}:${port}/`);
         });
-        return this._serverInst;
+        // Если завершили процесс, то закрываем все подключения и чистим ресурсы.
+        process.on('SIGTERM', () => {
+            void this.#gracefulShutdown();
+        });
+
+        process.on('SIGINT', () => {
+            void this.#gracefulShutdown();
+        });
+
+        return this.#serverInst;
+    }
+
+    async #gracefulShutdown(): Promise<void> {
+        this.#appContext.log('Получен сигнал завершения. Выполняется graceful shutdown...');
+
+        this.close(); // закрывает HTTP-сервер
+
+        await this.#appContext.closeDB();
+        this.#appContext.clearCommands();
+        Text.clearCache();
+
+        this.#appContext.log('Graceful shutdown завершён.');
+        process.exit(0);
     }
 
     /**
      * Обработка запросов webhook сервера
      * @param req
-     * @private
      */
-    private readRequestData(req: IncomingMessage): Promise<string> {
+    #readRequestData(req: IncomingMessage): Promise<string> {
         return new Promise((resolve, reject) => {
             let data = '';
             req.on('data', (chunk: Buffer) => {
@@ -1163,9 +1174,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```
      */
     public close(): void {
-        if (this._serverInst) {
-            this._serverInst.close();
-            this._serverInst = undefined;
+        if (this.#serverInst) {
+            this.#serverInst.close();
+            this.#serverInst = undefined;
         }
     }
 }

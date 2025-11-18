@@ -158,6 +158,7 @@ export class DB {
      * ```
      *
      * @returns Promise<boolean> - true если подключение успешно установлено, false в противном случае
+     * @throws  {Error} Если произошла ошибка при подключении
      */
     public async connect(): Promise<boolean> {
         this.errors = [];

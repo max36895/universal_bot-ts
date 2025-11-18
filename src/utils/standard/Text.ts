@@ -131,10 +131,8 @@ export class Text {
     /**
      * Кэш для скомпилированных регулярных выражений.
      * Улучшает производительность при повторном использовании шаблонов
-     *
-     * @private
      */
-    private static readonly regexCache = new Map<string, ICacheItem>();
+    static readonly #regexCache = new Map<string, ICacheItem>();
 
     /**
      * Обрезает текст до указанной длины
@@ -218,7 +216,7 @@ export class Text {
         if (!text) {
             return false;
         }
-        return Text.isSayPattern(CONFIRM_PATTERNS, text, true);
+        return Text.#isSayPattern(CONFIRM_PATTERNS, text, true);
     }
 
     /**
@@ -243,7 +241,7 @@ export class Text {
         if (!text) {
             return false;
         }
-        return Text.isSayPattern(REJECT_PATTERNS, text, true);
+        return Text.#isSayPattern(REJECT_PATTERNS, text, true);
     }
 
     /**
@@ -253,10 +251,8 @@ export class Text {
      * @param {string} text - Проверяемый текст
      * @param {boolean} useDirectRegExp - Использовать исходные RegExp напрямую без нормализации и кэширования
      * @returns {boolean} true, если найдено совпадение с одним из шаблонов
-     *
-     * @private
      */
-    private static isSayPattern(
+    static #isSayPattern(
         patterns: TPatternReg,
         text: string,
         useDirectRegExp: boolean = false,
@@ -271,7 +267,7 @@ export class Text {
                 if (patternBase instanceof RegExp) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
-                        : Text.getCachedRegex(patternBase);
+                        : Text.#getCachedRegex(patternBase);
                     if (cachedRegex.global) {
                         // На случай если кто-то задал флаг g, сбрасываем lastIndex,
                         // так как это может привести к не корректному результату
@@ -296,7 +292,7 @@ export class Text {
         }
 
         const cachedRegex =
-            useDirectRegExp && pattern instanceof RegExp ? pattern : Text.getCachedRegex(pattern);
+            useDirectRegExp && pattern instanceof RegExp ? pattern : Text.#getCachedRegex(pattern);
         return !!text.match(cachedRegex);
     }
 
@@ -330,7 +326,7 @@ export class Text {
         if (!text) return false;
 
         if (isPattern) {
-            return Text.isSayPattern(find, text, useDirectRegExp);
+            return Text.#isSayPattern(find, text, useDirectRegExp);
         }
 
         const oneFind = Array.isArray(find) && find.length === 1 ? find[0] : find;
@@ -341,13 +337,13 @@ export class Text {
             }
             return text === oneFind || text.includes(oneFind);
         } else if (oneFind instanceof RegExp) {
-            return this.isSayPattern(oneFind, text, useDirectRegExp);
+            return this.#isSayPattern(oneFind, text, useDirectRegExp);
         }
 
         // Оптимизированный вариант для массива: early return + includes
         for (const value of find as PatternItem[]) {
             if (value instanceof RegExp) {
-                if (this.isSayPattern(value, text, useDirectRegExp)) {
+                if (this.#isSayPattern(value, text, useDirectRegExp)) {
                     return true;
                 }
             } else {
@@ -367,33 +363,31 @@ export class Text {
      *
      * @param {string} pattern - Шаблон регулярного выражения
      * @returns {RegExp} Скомпилированное регулярное выражение
-     *
-     * @private
      */
-    private static getCachedRegex(pattern: string | RegExp): RegExp {
+    static #getCachedRegex(pattern: string | RegExp): RegExp {
         const key = typeof pattern === 'string' ? pattern : `${pattern.flags}@@${pattern.source}`;
-        const cache = Text.regexCache.get(key);
+        const cache = Text.#regexCache.get(key);
         let regex = cache?.regex;
         if (!regex) {
-            if (Text.regexCache.size >= MAX_CACHE_SIZE) {
+            if (Text.#regexCache.size >= MAX_CACHE_SIZE) {
                 // При переполнении кэша чистим 30% редко используемых команд
-                const entries = [...Text.regexCache.entries()].sort((tValue, oValue) => {
+                const entries = [...Text.#regexCache.entries()].sort((tValue, oValue) => {
                     return tValue[1].cReq - oValue[1].cReq;
                 });
                 const toRemove = Math.floor(MAX_CACHE_SIZE * 0.3);
                 for (let i = 0; i < toRemove; i++) {
-                    Text.regexCache.delete(entries[i][0]);
+                    Text.#regexCache.delete(entries[i][0]);
                 }
             }
             if (typeof pattern === 'string') {
                 regex = new RegExp(pattern, 'umi');
-                Text.regexCache.set(pattern, {
+                Text.#regexCache.set(pattern, {
                     cReq: 1,
                     regex,
                 });
             } else {
                 regex = new RegExp(pattern.source, pattern.flags);
-                Text.regexCache.set(key, {
+                Text.#regexCache.set(key, {
                     cReq: 1,
                     regex,
                 });
@@ -401,7 +395,7 @@ export class Text {
         } else {
             if (cache) {
                 cache.cReq++;
-                Text.regexCache.set(key, cache);
+                Text.#regexCache.set(key, cache);
             }
         }
         return regex;
@@ -412,7 +406,7 @@ export class Text {
      * Стоит вызывать только в крайних случаях
      */
     public static clearCache(): void {
-        Text.regexCache.clear();
+        Text.#regexCache.clear();
     }
 
     /**

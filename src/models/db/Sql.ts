@@ -228,9 +228,9 @@ export class Sql {
      * console.log('Database connection closed');
      * ```
      */
-    public close(): void {
+    public async close(): Promise<void> {
         if (this._vDB) {
-            this._vDB.destroy();
+            await this._vDB.destroy();
             this.appContext?.closeDB();
             this._vDB = undefined;
         }
@@ -301,7 +301,6 @@ export class Sql {
      *
      * @param errorMsg - Текст ошибки для сохранения
      * @returns boolean - true если сообщение успешно сохранено, false в противном случае
-     * @private
      */
     protected _saveLog(errorMsg: string): void {
         this.appContext?.logError(`SQL: ${errorMsg}`);

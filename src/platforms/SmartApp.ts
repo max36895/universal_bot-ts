@@ -25,7 +25,6 @@ import { T_SMARTAPP } from '../core';
 export class SmartApp extends TemplateTypeModel {
     /**
      * Максимальное время ответа навыка в миллисекундах
-     * @private
      */
     private readonly MAX_TIME_REQUEST: number = 2800;
 
@@ -39,7 +38,6 @@ export class SmartApp extends TemplateTypeModel {
      * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
      * @returns {Promise<ISberSmartAppResponsePayload>} Объект ответа для SmartApp
-     * @private
      */
     protected async _getPayload(): Promise<ISberSmartAppResponsePayload> {
         const payload: ISberSmartAppResponsePayload = {
@@ -104,7 +102,6 @@ export class SmartApp extends TemplateTypeModel {
      * Инициализирует команду пользователя.
      * Обрабатывает различные типы сообщений и событий
      * @param content Объект запроса от пользователя
-     * @private
      *
      * Поддерживаемые типы сообщений:
      * - MESSAGE_TO_SKILL: сообщение пользователя
@@ -113,7 +110,7 @@ export class SmartApp extends TemplateTypeModel {
      * - RUN_APP: запуск приложения
      * - RATING_RESULT: результат оценки
      */
-    private _initUserCommand(content: ISberSmartAppWebhookRequest): void {
+    #initUserCommand(content: ISberSmartAppWebhookRequest): void {
         this.controller.requestObject = content;
         this.controller.messageId = content.messageId;
         switch (content.messageName) {
@@ -174,7 +171,7 @@ export class SmartApp extends TemplateTypeModel {
             }
 
             this.controller = controller;
-            this._initUserCommand(content);
+            this.#initUserCommand(content);
 
             this._session = {
                 device: content.payload.device,

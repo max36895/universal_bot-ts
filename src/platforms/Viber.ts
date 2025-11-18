@@ -7,7 +7,7 @@ import { Buttons, IViberButtonObject } from '../components/button';
 import { T_VIBER } from '../core';
 
 /**
- * Класс для работы с платформой Viber
+ * Класс для работы с платформой Viber.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате Viber
  * @class Viber
@@ -105,7 +105,7 @@ export class Viber extends TemplateTypeModel {
     }
 
     /**
-     * Формирует и отправляет ответ пользователю
+     * Формирует и отправляет ответ пользователю.
      * Отправляет текст, карточки и звуки через Viber API
      * @returns {Promise<string>} 'ok' при успешной отправке
      * @see TemplateTypeModel.getContext() Смотри тут

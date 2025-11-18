@@ -7,7 +7,7 @@
  * - Sber SmartApp
  * - Telegram
  * - Viber
- * - VKontakte
+ * - VK
  *
  * Каждый интерфейс определяет:
  * - Структуру входящих запросов

@@ -25,6 +25,7 @@ import {
     TAppType,
 } from './AppContext';
 import { BotController, IUserData } from './../controller/BotController';
+import { BaseBotController } from '../controller';
 
 /**
  * Функция для получения конфигурации пользовательского бота
@@ -111,7 +112,7 @@ export class BotTest extends Bot {
         if (botController) {
             this._botController = new botController();
         } else {
-            this._botController = new this._botControllerClass();
+            this._botController = new BaseBotController();
         }
         this._setBotController(this._botController);
     }
@@ -204,7 +205,7 @@ export class BotTest extends Bot {
                 isEnd = true;
             } else {
                 console.log('Вы: > ');
-                this._content = null;
+                this.setContent(null);
                 this._botController.text = this._botController.tts = '';
                 state = this._botController.userData;
                 count++;

@@ -12,4 +12,5 @@ const bot = new Bot();
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
 bot.initBotController(__className__Controller);
+bot.setAppMode('strict_prod');
 bot.start({{hostname}}, {{port}});
