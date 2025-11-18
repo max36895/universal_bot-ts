@@ -2,8 +2,8 @@
 // Запуск: node --expose-gc  .\command.js
 
 const { Bot, BotController, Alisa, T_ALISA } = require('./../dist/index');
-const { performance } = require('perf_hooks');
-const os = require('os');
+const { performance } = require('node:perf_hooks');
+const os = require('node:os');
 
 function gc() {
     global.gc();
@@ -189,13 +189,12 @@ function printFinalSummary(results) {
             ? formatPair('high', parseFloat(worstBase.duration), parseFloat(worstBase.duration2))
             : '—';
 
-        const over1sBase = !(
+        const over1sBase =
             (bestBase && parseFloat(bestBase.duration) >= 1000) ||
             (midBase && parseFloat(midBase.duration) >= 1000) ||
             (worstBase && parseFloat(worstBase.duration) >= 1000)
-        )
-            ? 'Да'
-            : 'Нет';
+                ? 'Нет'
+                : 'Да';
 
         log(
             'Без regex ЭТАЛОН'.padEnd(17) +
@@ -252,7 +251,7 @@ function printFinalSummary(results) {
                 : '—';
 
             const anyOver1s = regSubset.some((r) => parseFloat(r.duration) >= 1000);
-            const over1s = !anyOver1s ? 'Да' : 'Нет';
+            const over1s = anyOver1s ? 'Нет' : 'Да';
 
             log(
                 labels[complexity].padEnd(17) +
@@ -500,8 +499,8 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
 function getAvailableMemoryMB() {
     const free = os.freemem();
-    // Оставляем 200 МБ на систему и Node.js рантайм
-    return Math.max(0, (free - 200 * 1024 * 1024) / (1024 * 1024));
+    // Оставляем 50 МБ на систему и Node.js рантайм
+    return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
 }
 
 function predictMemoryUsage(commandCount) {

@@ -3,6 +3,7 @@
         "module": "commonjs",
         "target": "es2023",
         "lib": ["es2023", "dom"],
+        "useDefineForClassFields": true,
         "moduleResolution": "node",
         "removeComments": false,
         "sourceMap": false,

@@ -1,5 +1,5 @@
 import { Bot, BotController, Alisa, T_ALISA, AlisaSound, Text } from '../../src';
-import { performance } from 'perf_hooks';
+import { performance } from 'node:perf_hooks';
 
 // Базовое потребление памяти не должно превышать 500кб
 // const BASE_MEMORY_USED = 500;

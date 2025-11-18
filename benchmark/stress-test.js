@@ -2,8 +2,8 @@
 // Запуск: node --expose-gc stress-test.js
 
 const { Bot, BotController, Alisa, T_ALISA, rand } = require('./../dist/index');
-const crypto = require('crypto');
-const os = require('os');
+const crypto = require('node:crypto');
+const os = require('node:os');
 const { eventLoopUtilization } = require('node:perf_hooks').performance;
 
 class StressController extends BotController {
@@ -35,13 +35,13 @@ const PHRASES = [
 
 function getAvailableMemoryMB() {
     const free = os.freemem();
-    // Оставляем 200 МБ на систему и Node.js рантайм
-    return Math.max(0, (free - 200 * 1024 * 1024) / (1024 * 1024));
+    // Оставляем 50 МБ на систему и Node.js рантайм
+    return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
 }
 
 function predictMemoryUsage(commandCount) {
     // Базовое потребление + 0.4 КБ на команду + запас
-    return 15 + (commandCount * 0.5) / 1024 + 50; // в МБ
+    return 15 + (commandCount * 0.4) / 1024 + 50; // в МБ
 }
 
 function setupCommands(bot, count) {
@@ -229,7 +229,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
                         console.log(
                             `⚠️ Недостаточно памяти для теста с итерацией ${iter} (${count} одновременных запросов с ${COMMAND_COUNT} командами).`,
                         );
-                        isMess = false;
+                        isMess = true;
                     }
                     return {};
                 }
@@ -322,16 +322,16 @@ async function runAllTests() {
     errorsBot = [];
 
     // на windows nodeJS работает е очень хорошо, из-за чего можем вылететь за пределы потребляемой памяти(более 4gb, хотя на unix этот показатель в районе 400мб)
-    if (!isWin) {
-        const burst1000 = await burstTest(1000);
-        if (!burst1000.success) {
-            console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
-        }
-    } else {
+    if (isWin) {
         console.log(
             '⚠️ Внимание: Node.js на Windows работает менее эффективно, чем на Unix-системах (Linux/macOS). Это может приводить к высокому потреблению памяти и замедлению обработки под нагрузкой.\n' +
                 'Для корректной оценки производительности и использования в продакшене рекомендуется запускать приложение на сервере с Linux.',
         );
+    } else {
+        const burst1000 = await burstTest(1000);
+        if (!burst1000.success) {
+            console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
+        }
     }
     console.log('\n🏁 Тестирование завершено.');
 }

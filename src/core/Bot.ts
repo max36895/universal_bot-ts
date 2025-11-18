@@ -13,7 +13,7 @@ import {
     IMarusiaWebhookResponse,
 } from '../platforms';
 import { UsersData } from '../models/UsersData';
-import { IncomingMessage, ServerResponse, createServer, Server } from 'http';
+import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
 import {
     AppContext,
     IAppConfig,
@@ -179,7 +179,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Контекст приложения
      */
-    #appContext: AppContext;
+    readonly #appContext: AppContext;
 
     /**
      * Контроллер с бизнес-логикой приложения.
@@ -194,7 +194,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Используется для авторизованных запросов (например, в Алисе)
      * @type {TBotAuth}
      */
-    #auth: TBotAuth;
+    #auth: TBotAuth = null;
 
     /**
      * Тип платформы по умолчанию
@@ -239,7 +239,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```
      */
     constructor(type?: TAppType, botController?: TBotControllerClass<TUserData>) {
-        this.#auth = null;
         this.#botControllerClass = this.#getBotController(botController);
         this.#appContext = new AppContext();
         this.#defaultAppType = type || T_AUTO;
