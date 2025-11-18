@@ -376,7 +376,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
                 case 'middle':
                     command = getRegex(
                         new RegExp(
-                            `((([\\d\\-() ]{4,}\\d)|((?:\\+|\\d)[\\d\\-() ]{9,}\\d))_ref_${j})`,
+                            `((([\\d\\-() ]{4,}\\d)|((?:\\+|\\d)[\\d\\-() ]{9,}\\d))_ref_${j}_)`,
                             'i',
                         ),
                         state,
@@ -431,7 +431,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
                     regState === 'low'
                         ? `1 страниц`
                         : regState === 'middle'
-                          ? `88003553535_ref_1`
+                          ? `88003553535_ref_1_`
                           : regState === 'high'
                             ? `напомни для user_1 позвонить маме в 18:30`
                             : `cmd_1`;
@@ -441,7 +441,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
                     regState === 'low'
                         ? `5 станица`
                         : regState === 'middle'
-                          ? `88003553535_ref_${mid}`
+                          ? `88003553535_ref_${mid}_`
                           : regState === 'high'
                             ? `напомни для user_${mid} позвонить маме в 18:30`
                             : `cmd_${mid}`;

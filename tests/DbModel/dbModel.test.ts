@@ -156,11 +156,8 @@ describe('Db file connect', () => {
         userData.userId = 'userId5';
         userData.meta = 'meta';
         userData.data = { name: 'user 5' };
-        console.log('save');
         expect(await userData.save()).toBe(true);
-        console.log('where');
         expect(await userData.whereOne(query)).toBe(true);
-        console.log('eq');
         expect(userData.userId === 'userId5').toBe(true);
         expect(userData.data).toEqual({ name: 'user 5' });
     });
