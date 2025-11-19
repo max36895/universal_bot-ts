@@ -26,7 +26,7 @@ export class SmartApp extends TemplateTypeModel {
     /**
      * Максимальное время ответа навыка в миллисекундах
      */
-    private readonly MAX_TIME_REQUEST: number = 2800;
+    private readonly MAX_TIME_REQUEST: number = 2900;
 
     /**
      * Информация о сессии пользователя

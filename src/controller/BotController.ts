@@ -734,6 +734,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                     res,
                     status: true,
                 });
+            } else {
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                    status: false,
+                });
             }
             return res;
         }

@@ -333,7 +333,7 @@ function getRegex(regex, state, count, step) {
     if (
         (state === 'low' && step === 1) ||
         (state === 'middle' && step === mid) ||
-        (maxRegCount >= 2 && maxRegCount < MAX_REG_COUNT)
+        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT)
     ) {
         maxRegCount++;
         return regex;
@@ -393,10 +393,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
                     );
                     break;
                 default:
-                    command = `команда_${j}`;
+                    command = `команда_${j}_`;
             }
         } else {
-            command = `команда_${j}`;
+            command = `команда_${j}_`;
         }
         bot.addCommand(
             `cmd_${j}`,
@@ -415,10 +415,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     if (!useReg) {
         switch (state) {
             case 'low':
-                testCommand = `команда_1`;
+                testCommand = `команда_1_`;
                 break;
             case 'middle':
-                testCommand = `команда_${mid}`;
+                testCommand = `команда_${mid}_`;
                 break;
             case 'high':
                 testCommand = `несуществующая команда ${Date.now()}`;
@@ -512,8 +512,8 @@ function predictMemoryUsage(commandCount) {
 async function start() {
     try {
         // Количество команд
-        const counts = [50, 250, 500, 1000, 2e3, 2e4, 2e5, 1e6, 2e6];
-        /*for (let i = 1; i < 1e4; i++) {
+        const counts = [50, 250, 500, 1000, 2e3, 2e4, 2e5, 1e6]; //, 2e6];
+        /* for (let i = 1; i < 1e4; i++) {
             counts.push(2e6 + i * 1e6);
         }*/
         // Исход поиска(требуемая команда в начале списка, требуемая команда в середине списка, требуемая команда не найдена))
