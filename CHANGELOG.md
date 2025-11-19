@@ -25,6 +25,7 @@
 - Метод bot.initBotController принимает другие аргументы
 - Удалена возможность указать тип приложения через get параметры.
 - Более детальные логи при получении ошибки во время обращения к платформе
+- Оптимизирована работа с регулярными выражениями
 
 ### Исправлено
 
@@ -34,6 +35,7 @@
 - Ошибка когда логи могли не сохраняться
 - Ошибка с некорректной записью и чтением результатов из файловой бд
 - При завершении работы приложения, сбрасываются все команды и происходит отключение от бд
+- Ошибка в benchmark из-за чего он показывал результат лучше чем есть на самом деле
 
 ## [2.1.0] - 2025-19-10
 
@@ -262,27 +264,15 @@
 Создание бета-версии
 
 [master]: https://github.com/max36895/universal_bot-ts/compare/v2.1.0...master
-
 [2.1.0]: https://github.com/max36895/universal_bot-ts/compare/v2.0.0...v2.1.0
-
 [2.0.0]: https://github.com/max36895/universal_bot-ts/compare/v1.1.8...v2.0.0
-
 [1.1.8]: https://github.com/max36895/universal_bot-ts/compare/v1.1.6...v1.1.8
-
 [1.1.6]: https://github.com/max36895/universal_bot-ts/compare/v1.1.5...v1.1.6
-
 [1.1.5]: https://github.com/max36895/universal_bot-ts/compare/v1.1.4...v1.1.5
-
 [1.1.4]: https://github.com/max36895/universal_bot-ts/compare/v1.1.3...v1.1.4
-
 [1.1.3]: https://github.com/max36895/universal_bot-ts/compare/v1.1.2...v1.1.3
-
 [1.1.2]: https://github.com/max36895/universal_bot-ts/compare/v1.1.1...v1.1.2
-
 [1.1.1]: https://github.com/max36895/universal_bot-ts/compare/v1.1.0...v1.1.1
-
 [1.1.0]: https://github.com/max36895/universal_bot-ts/compare/v1.0.0...v1.1.0
-
 [1.0.0]: https://github.com/max36895/universal_bot-ts/compare/v0.9.0-beta...v1.0.0
-
 [0.9.0-beta]: https://github.com/max36895/universal_bot-ts/releases/tag/v0.9.0-beta

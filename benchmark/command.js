@@ -333,7 +333,8 @@ function getRegex(regex, state, count, step) {
     if (
         (state === 'low' && step === 1) ||
         (state === 'middle' && step === mid) ||
-        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT)
+        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT) ||
+        true
     ) {
         maxRegCount++;
         return regex;
@@ -371,7 +372,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         if (useReg) {
             switch (regState) {
                 case 'low':
-                    command = getRegex('(\\d страни)', state, count, j);
+                    command = getRegex('(_\\d страни)', state, count, j);
                     break;
                 case 'middle':
                     command = getRegex(
@@ -429,7 +430,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
             case 'low':
                 testCommand =
                     regState === 'low'
-                        ? `1 страниц`
+                        ? `_1 страниц`
                         : regState === 'middle'
                           ? `88003553535_ref_1_`
                           : regState === 'high'
@@ -439,7 +440,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
             case 'middle':
                 testCommand =
                     regState === 'low'
-                        ? `5 станица`
+                        ? `_5 станица`
                         : regState === 'middle'
                           ? `88003553535_ref_${mid}_`
                           : regState === 'high'
