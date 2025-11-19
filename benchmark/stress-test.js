@@ -86,15 +86,10 @@ bot.initBotController(StressController);
 bot.setLogger({
     error: (msg) => {
         errorsBot.push(msg);
-        //console.error(msg);
     },
     warn: (...arg) => {
-        console.warn(...arg);
+        console.warn('Warning от библиотеки', ...arg);
     },
-    log: (...args) => {
-        console.log(...args);
-    },
-    //metric: console.log,
 });
 const COMMAND_COUNT = 1000;
 setupCommands(bot, COMMAND_COUNT);
