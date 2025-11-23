@@ -500,6 +500,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
 function getAvailableMemoryMB() {
     const free = os.freemem();
+    return 3000;
     // Оставляем 50 МБ на систему и Node.js рантайм
     return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
 }

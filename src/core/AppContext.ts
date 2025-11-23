@@ -75,6 +75,7 @@ import { BotController } from '../controller';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { DB } from '../models/db';
 import * as process from 'node:process';
+import { getRegExp } from '../utils/standard/RegExp';
 
 interface IDangerRegex {
     status: boolean;
@@ -1118,7 +1119,7 @@ export class AppContext {
 
     #addRegexpInGroup(commandName: string, slots: TSlots): string | null {
         // Если количество команд до 3000, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
-        if (this.commands.size < 3000) {
+        if (this.commands.size < 100) {
             return commandName;
         }
         if (this.#isOldReg) {
@@ -1143,11 +1144,13 @@ export class AppContext {
                     return `(${typeof s === 'string' ? s : s.source})`;
                 });
                 group.butchRegexp = butchRegexp;
-                group.regExp = new RegExp(`${butchRegexp.join('|')}`, 'imu');
+                //group.regExp = new RegExp(`${butchRegexp.join('|')}`, 'imu');
+                group.regExp = getRegExp(`${butchRegexp.join('|')}`);
                 butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
                 groupData.commands.push(commandName);
-                groupData.regExp = this.regexpGroup.size > 30 ? group.regExp.source : group.regExp;
-                if (groupData.regExp instanceof RegExp) {
+                groupData.regExp = group.regExp;
+                //this.regexpGroup.size > 3000 ? group.regExp.source : group.regExp;
+                if (groupData.regExp instanceof RegExp || typeof groupData !== 'string') {
                     groupData.regExp.test('testing');
                 }
                 //groupData.regExp.test('testing');
@@ -1164,11 +1167,13 @@ export class AppContext {
                     name: commandName,
                     regLength: slots.length,
                     butchRegexp,
-                    regExp: new RegExp(`${butchRegexp.join('|')}`, 'imu'),
+                    //regExp: new RegExp(`${butchRegexp.join('|')}`, 'imu'),
+                    regExp: getRegExp(`${butchRegexp.join('|')}`),
                 });
                 this.regexpGroup.set(commandName, {
                     commands: [commandName],
-                    regExp: new RegExp(`${butchRegexp.join('|')}`, 'imu'),
+                    //regExp: new RegExp(`${butchRegexp.join('|')}`, 'imu'),
+                    regExp: getRegExp(`${butchRegexp.join('|')}`),
                 });
                 return commandName;
             }
@@ -1178,7 +1183,24 @@ export class AppContext {
         }
     }
 
-    #removeRegexpInGroup(commandName: string): void {}
+    #removeRegexpInGroup(commandName: string): void {
+        if (this.regexpGroup.has(commandName)) {
+            this.regexpGroup.delete(commandName);
+        } else if (this.commands.has(commandName)) {
+            const command = this.commands.get(commandName);
+            if (command?.__$groupName && this.regexpGroup.has(command?.__$groupName)) {
+                const group = this.regexpGroup.get(command.__$groupName);
+                const newCommands = group?.commands.filter((gCommand) => {
+                    return gCommand !== commandName;
+                }) as string[];
+                const newData = {
+                    commands: newCommands,
+                    regExp: getRegExp(''),
+                };
+                this.regexpGroup.set(command.__$groupName, newData);
+            }
+        }
+    }
 
     /**
      * Добавляет команду для обработки пользовательских запросов
@@ -1258,6 +1280,8 @@ export class AppContext {
             this.#isOldReg = true;
             groupName = this.#addRegexpInGroup(commandName, slots);
             correctSlots = this.#isDangerRegex(slots).slots;
+            correctSlots[0] = getRegExp(correctSlots[0]);
+            correctSlots[0].test('test');
         } else {
             this.#isOldReg = false;
             for (const slot of slots) {
@@ -1300,6 +1324,8 @@ export class AppContext {
      */
     public clearCommands(): void {
         this.commands.clear();
+        this.#noFullGroups.length = 0;
+        this.regexpGroup.clear();
     }
 
     /**

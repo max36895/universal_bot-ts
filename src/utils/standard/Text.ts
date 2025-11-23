@@ -7,6 +7,7 @@
  * - Проверки схожести текстов
  * - Работы с окончаниями слов
  */
+import { getRegExp } from './RegExp';
 import { rand, similarText } from './util';
 
 /**
@@ -264,7 +265,7 @@ export class Text {
         if (Array.isArray(patterns)) {
             const newPatterns: string[] = [];
             for (const patternBase of patterns) {
-                if (patternBase instanceof RegExp) {
+                if (patternBase instanceof RegExp || typeof patternBase !== 'string') {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
                         : Text.#getCachedRegex(patternBase);
@@ -274,6 +275,7 @@ export class Text {
                         cachedRegex.lastIndex = 0;
                     }
                     const res = cachedRegex.test(text);
+                    //console.log(cachedRegex);
                     if (res) {
                         return res;
                     }
@@ -293,6 +295,7 @@ export class Text {
 
         const cachedRegex =
             useDirectRegExp && pattern instanceof RegExp ? pattern : Text.#getCachedRegex(pattern);
+        return cachedRegex.test(text);
         return !!text.match(cachedRegex);
     }
 
@@ -380,13 +383,15 @@ export class Text {
                 }
             }
             if (typeof pattern === 'string') {
-                regex = new RegExp(pattern, 'umi');
+                regex = getRegExp(pattern);
+                //regex = new RegExp(pattern, 'umi');
                 Text.#regexCache.set(pattern, {
                     cReq: 1,
                     regex,
                 });
             } else {
-                regex = new RegExp(pattern.source, pattern.flags);
+                regex = getRegExp(pattern);
+                //regex = new RegExp(pattern.source, pattern.flags);
                 Text.#regexCache.set(key, {
                     cReq: 1,
                     regex,
