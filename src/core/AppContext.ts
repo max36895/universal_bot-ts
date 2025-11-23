@@ -1127,7 +1127,7 @@ export class AppContext {
                 let group = this.#noFullGroups[this.#noFullGroups.length - 1];
                 let groupName = group.name;
                 let groupData = this.regexpGroup.get(groupName) || { commands: [], regExp: null };
-                if (group.regLength >= 100 || (group.regExp?.source?.length || 0) > 1000) {
+                if (group.regLength >= 70 || (group.regExp?.source?.length || 0) > 500) {
                     groupData = { commands: [], regExp: null };
                     groupName = commandName;
                     this.#noFullGroups.pop();
