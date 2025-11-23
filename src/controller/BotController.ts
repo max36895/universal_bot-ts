@@ -742,12 +742,60 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
             return res;
         }
         const commandLength = this.appContext.commands.size;
+        let contCount = 0;
         for (const [commandName, command] of this.appContext.commands) {
-            if (commandName === FALLBACK_COMMAND || !command) {
+            if (commandName === FALLBACK_COMMAND || !command || contCount !== 0) {
+                if (contCount) {
+                    contCount--;
+                }
                 continue;
             }
             if (!command.slots || command.slots.length === 0) {
                 continue;
+            }
+            if (command.isPattern) {
+                const groups = this.appContext.regexpGroup.get(commandName);
+                if (groups) {
+                    contCount = groups.commands.length - 1;
+                    /*const butchRegexp1 = [];
+                    const butchRegexp = [];
+                    for (let group of groups) {
+                        const parts = this.appContext.commands.get(group)?.slots.map((s) => {
+                            return `(${typeof s === 'string' ? s : s.source})`;
+                        });
+                        butchRegexp1.push(`(${parts?.join('|')})`);
+                        butchRegexp.push(`(?<${group}>${parts?.join('|')})`);
+                    }*/
+                    /* const reg1 = new RegExp(`${butchRegexp1.join('|')}`, 'imu');
+                     if (!reg1.test(this.userCommand)) {
+                         continue;
+                     }
+                     const reg = new RegExp(`${butchRegexp.join('|')}`, 'imu');*/
+                    const reg =
+                        groups.regExp instanceof RegExp
+                            ? groups.regExp
+                            : new RegExp(groups.regExp as string, 'imu');
+                    const match = reg.exec(this.userCommand);
+                    if (match) {
+                        // Находим первую совпавшую подгруппу (index в массиве parts)
+                        for (let group of groups.commands) {
+                            if (typeof match.groups?.[group] !== 'undefined') {
+                                this.#commandExecute(
+                                    group,
+                                    // @ts-ignore
+                                    this.appContext.commands.get(group),
+                                );
+                                return group;
+                            }
+                        }
+                    }
+                    continue;
+                } else {
+                    //console.log(this.appContext.regexpGroup);
+                }
+            }
+            if (command.isPattern) {
+                //console.log(commandName, command);
             }
             if (
                 Text.isSayText(

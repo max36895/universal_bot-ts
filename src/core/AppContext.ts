@@ -670,6 +670,12 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * устанавливается как ответ бота.
      */
     cb?: (userCommand: string, botController: TBotController) => void | string;
+
+    /**
+     * Имя группы. Актуально для регулярок
+     * @private
+     */
+    __$groupName?: string | null;
 }
 
 /**
@@ -852,6 +858,15 @@ export class AppContext {
      * Добавленные команды для обработки
      */
     public commands: Map<string, ICommandParam<any>> = new Map();
+
+    public regexpGroup: Map<string, { commands: string[]; regExp: RegExp | null | string }> =
+        new Map();
+    #noFullGroups: {
+        name: string;
+        regLength: number;
+        butchRegexp: unknown[];
+        regExp: RegExp | null;
+    }[] = [];
 
     /**
      * Устанавливает режим разработки
@@ -1099,6 +1114,72 @@ export class AppContext {
         }
     }
 
+    #isOldReg = false;
+
+    #addRegexpInGroup(commandName: string, slots: TSlots): string | null {
+        // Если количество команд до 3000, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
+        if (this.commands.size < 3000) {
+            return commandName;
+        }
+        if (this.#isOldReg) {
+            if (this.#noFullGroups.length) {
+                let group = this.#noFullGroups[this.#noFullGroups.length - 1];
+                let groupName = group.name;
+                let groupData = this.regexpGroup.get(groupName) || { commands: [], regExp: null };
+                if (group.regLength >= 100 || (group.regExp?.source?.length || 0) > 1000) {
+                    groupData = { commands: [], regExp: null };
+                    groupName = commandName;
+                    this.#noFullGroups.pop();
+                    group = {
+                        name: commandName,
+                        regLength: 0,
+                        butchRegexp: [],
+                        regExp: null,
+                    };
+                    this.#noFullGroups.push(group);
+                }
+                const butchRegexp = group.butchRegexp || [];
+                const parts = slots.map((s) => {
+                    return `(${typeof s === 'string' ? s : s.source})`;
+                });
+                group.butchRegexp = butchRegexp;
+                group.regExp = new RegExp(`${butchRegexp.join('|')}`, 'imu');
+                butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
+                groupData.commands.push(commandName);
+                groupData.regExp = this.regexpGroup.size > 30 ? group.regExp.source : group.regExp;
+                if (groupData.regExp instanceof RegExp) {
+                    groupData.regExp.test('testing');
+                }
+                //groupData.regExp.test('testing');
+                this.regexpGroup.set(groupName, groupData);
+                group.regLength += slots.length;
+                return groupName;
+            } else {
+                const butchRegexp = [];
+                const parts = slots.map((s) => {
+                    return `(${typeof s === 'string' ? s : s.source})`;
+                });
+                butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
+                this.#noFullGroups.push({
+                    name: commandName,
+                    regLength: slots.length,
+                    butchRegexp,
+                    regExp: new RegExp(`${butchRegexp.join('|')}`, 'imu'),
+                });
+                this.regexpGroup.set(commandName, {
+                    commands: [commandName],
+                    regExp: new RegExp(`${butchRegexp.join('|')}`, 'imu'),
+                });
+                return commandName;
+            }
+        } else {
+            this.#noFullGroups.pop();
+            return null;
+        }
+    }
+
+    #removeRegexpInGroup(commandName: string): void {}
+
     /**
      * Добавляет команду для обработки пользовательских запросов
      *
@@ -1172,9 +1253,13 @@ export class AppContext {
         isPattern: boolean = false,
     ): void {
         let correctSlots: TSlots = this.strictMode ? [] : slots;
+        let groupName;
         if (isPattern) {
+            this.#isOldReg = true;
+            groupName = this.#addRegexpInGroup(commandName, slots);
             correctSlots = this.#isDangerRegex(slots).slots;
         } else {
+            this.#isOldReg = false;
             for (const slot of slots) {
                 if (slot instanceof RegExp) {
                     const res = this.#isDangerRegex(slot);
@@ -1189,7 +1274,12 @@ export class AppContext {
             }
         }
         if (correctSlots.length) {
-            this.commands.set(commandName, { slots: correctSlots, isPattern, cb });
+            this.commands.set(commandName, {
+                slots: correctSlots,
+                isPattern,
+                cb,
+                __$groupName: groupName,
+            });
         }
     }
 
@@ -1201,6 +1291,8 @@ export class AppContext {
         if (this.commands.has(commandName)) {
             this.commands.delete(commandName);
         }
+        this.#noFullGroups.length = 0;
+        this.regexpGroup.clear();
     }
 
     /**
