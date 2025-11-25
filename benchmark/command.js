@@ -333,8 +333,8 @@ function getRegex(regex, state, count, step) {
     if (
         (state === 'low' && step === 1) ||
         (state === 'middle' && step === mid) ||
-        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT) ||
-        true
+        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT) // ||
+        // true
     ) {
         maxRegCount++;
         return regex;
@@ -346,7 +346,7 @@ function getRegex(regex, state, count, step) {
         // Сценарий когда может быть более 10_000 команд сложно представить, тем более чтобы все регулярные выражения были уникальны.
         // При 20_000 командах мы все еще укладываемся в ограничение.
         // Предварительный лимит на количество уникальных регулярных выражений составляет примерно 40_000 - 50_000 команд.
-        return `((\\d+)_ref_${step % 1e3})`;
+        return `((\\d+)_ref_${step})`;
     }
 }
 
@@ -500,7 +500,6 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
 function getAvailableMemoryMB() {
     const free = os.freemem();
-    return 3000;
     // Оставляем 50 МБ на систему и Node.js рантайм
     return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
 }
@@ -514,7 +513,7 @@ function predictMemoryUsage(commandCount) {
 async function start() {
     try {
         // Количество команд
-        const counts = [50, 250, 500, 1000, 2e3, 2e4, 2e5]; //, 1e6, 2e6];
+        const counts = [50, 250, 500, 1000, 2e3, 2e4]; //, 2e5]; //, 1e6, 2e6];
         /* for (let i = 1; i < 1e4; i++) {
             counts.push(2e6 + i * 1e6);
         }*/

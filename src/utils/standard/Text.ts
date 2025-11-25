@@ -296,7 +296,6 @@ export class Text {
         const cachedRegex =
             useDirectRegExp && pattern instanceof RegExp ? pattern : Text.#getCachedRegex(pattern);
         return cachedRegex.test(text);
-        return !!text.match(cachedRegex);
     }
 
     /**

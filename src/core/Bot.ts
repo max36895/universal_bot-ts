@@ -609,9 +609,16 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * bot.initBotController(new MyController());
      * ```
      */
-    public initBotController(fn: TBotControllerClass<TUserData>): this {
+    public initBotController(fn: TBotControllerClass<TUserData> | BotController<TUserData>): this {
         if (fn) {
-            this.#botControllerClass = fn;
+            if (fn instanceof BotController) {
+                this.#appContext.logWarn(
+                    'Bot:initBotController() Передача экземпляра BotController устарела и будет удалена в будущих версиях. Вместо этого передавайте класс контроллера (например, MyController без new)',
+                );
+                this.#botControllerClass = fn.constructor as TBotControllerClass<TUserData>;
+            } else {
+                this.#botControllerClass = fn;
+            }
         }
         return this;
     }

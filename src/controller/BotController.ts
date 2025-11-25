@@ -756,18 +756,13 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                 const groups = this.appContext.regexpGroup.get(commandName);
                 if (groups) {
                     contCount = groups.commands.length - 1;
-                    //const reg = groups.regExp instanceof RegExp ? groups.regExp : new RegExp(groups.regExp as string, 'imu');
                     const reg = groups.regExp as RegExp;
                     const match = reg.exec(this.userCommand);
                     if (match) {
                         // Находим первую совпавшую подгруппу (index в массиве parts)
                         for (const group of groups.commands) {
                             if (typeof match.groups?.[group] !== 'undefined') {
-                                this.#commandExecute(
-                                    group,
-                                    // @ts-ignore
-                                    this.appContext.commands.get(group),
-                                );
+                                this.#commandExecute(group, this.appContext.commands.get(group));
                                 return group;
                             }
                         }
@@ -777,10 +772,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
             }
             if (
                 Text.isSayText(
-                    command.slots,
+                    command.regExp || command.slots,
                     this.userCommand,
                     command.isPattern || false,
-                    true, //commandLength < 500,
+                    typeof command.regExp !== 'string',
                 )
             ) {
                 this.#commandExecute(commandName, command);
@@ -825,11 +820,13 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * @param commandName
      * @param command
      */
-    #commandExecute(commandName: string, command: ICommandParam): void {
+    #commandExecute(commandName: string, command?: ICommandParam): void {
         try {
-            const res = command?.cb?.(this.userCommand as string, this);
-            if (res) {
-                this.text = res;
+            if (command) {
+                const res = command?.cb?.(this.userCommand as string, this);
+                if (res) {
+                    this.text = res;
+                }
             }
         } catch (e) {
             this.appContext.logError(
