@@ -18,6 +18,7 @@ import {
     TAppType,
     EMetric,
 } from '../core/AppContext';
+import { getRegExp, isRegex } from '../utils/standard/RegExp';
 
 /**
  * Тип статуса операции
@@ -756,18 +757,24 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                 const groups = this.appContext.regexpGroup.get(commandName);
                 if (groups) {
                     contCount = groups.commands.length - 1;
-                    const reg = groups.regExp as RegExp;
-                    const match = reg.exec(this.userCommand);
-                    if (match) {
-                        // Находим первую совпавшую подгруппу (index в массиве parts)
-                        for (const group of groups.commands) {
-                            if (typeof match.groups?.[group] !== 'undefined') {
-                                this.#commandExecute(group, this.appContext.commands.get(group));
-                                return group;
+                    const gRegExp = groups.regExp;
+                    if (gRegExp) {
+                        const reg = isRegex(gRegExp) ? gRegExp : getRegExp(gRegExp);
+                        const match = reg.exec(this.userCommand);
+                        if (match) {
+                            // Находим первую совпавшую подгруппу (index в массиве parts)
+                            for (const group of groups.commands) {
+                                if (typeof match.groups?.[group] !== 'undefined') {
+                                    this.#commandExecute(
+                                        group,
+                                        this.appContext.commands.get(group),
+                                    );
+                                    return group;
+                                }
                             }
                         }
+                        continue;
                     }
-                    continue;
                 }
             }
             if (

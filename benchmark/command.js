@@ -513,7 +513,7 @@ function predictMemoryUsage(commandCount) {
 async function start() {
     try {
         // Количество команд
-        const counts = [50, 250, 500, 1000, 2e3, 2e4]; //, 2e5]; //, 1e6, 2e6];
+        const counts = [50, 250, 500, 1000, 2e3, 2e4, 2e5]; //, 1e6, 2e6];
         /* for (let i = 1; i < 1e4; i++) {
             counts.push(2e6 + i * 1e6);
         }*/

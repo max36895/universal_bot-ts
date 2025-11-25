@@ -75,7 +75,7 @@ import { BotController } from '../controller';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { DB } from '../models/db';
 import * as process from 'node:process';
-import { getRegExp } from '../utils/standard/RegExp';
+import { getRegExp, __$usedRe2, isRegex } from '../utils/standard/RegExp';
 import os from 'os';
 
 interface IDangerRegex {
@@ -98,15 +98,29 @@ let MAX_COUNT_FOR_REG = 0;
  */
 function setMemoryLimit(): void {
     const total = os.totalmem();
+    // re2 гораздо лучше работает с оперативной память,
+    // поэтому если ее нет, то лимиты на количествое активных регулярок должно быть меньше
     if (total < 1.5 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 300;
         MAX_COUNT_FOR_REG = 700;
+        if (!__$usedRe2) {
+            MAX_COUNT_FOR_GROUP = 100;
+            MAX_COUNT_FOR_REG = 250;
+        }
     } else if (total < 3 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 500;
         MAX_COUNT_FOR_REG = 2000;
+        if (!__$usedRe2) {
+            MAX_COUNT_FOR_GROUP = 250;
+            MAX_COUNT_FOR_REG = 700;
+        }
     } else {
         MAX_COUNT_FOR_GROUP = 3000;
         MAX_COUNT_FOR_REG = 7000;
+        if (!__$usedRe2) {
+            MAX_COUNT_FOR_GROUP = 1000;
+            MAX_COUNT_FOR_REG = 3000;
+        }
     }
 }
 
@@ -1103,7 +1117,7 @@ export class AppContext {
      * @param slots
      */
     #isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
-        if (slots instanceof RegExp) {
+        if (isRegex(slots)) {
             if (this.#isRegexLikelySafe(slots.source, true)) {
                 this[this.strictMode ? 'logError' : 'logWarn'](
                     `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
@@ -1126,8 +1140,8 @@ export class AppContext {
             const correctSlots: TSlots | undefined = [];
             const errors: string[] | undefined = [];
             slots.forEach((slot) => {
-                const slotStr = slot instanceof RegExp ? slot.source : slot;
-                if (this.#isRegexLikelySafe(slotStr, slot instanceof RegExp)) {
+                const slotStr = isRegex(slot) ? slot.source : slot;
+                if (this.#isRegexLikelySafe(slotStr, isRegex(slot))) {
                     (errors as string[]).push(slotStr);
                 } else {
                     (correctSlots as TSlots).push(slot);
@@ -1387,7 +1401,7 @@ export class AppContext {
         } else {
             this.#isOldReg = false;
             for (const slot of slots) {
-                if (slot instanceof RegExp) {
+                if (isRegex(slot)) {
                     const res = this.#isDangerRegex(slot);
                     if (res.status && this.strictMode) {
                         correctSlots.push(slot);
