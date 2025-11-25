@@ -1394,9 +1394,7 @@ export class AppContext {
             this.#regExpCommandCount++;
             if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
                 regExp = getRegExp(correctSlots);
-                if (regExp) {
-                    regExp.test('__umbot_testing');
-                }
+                regExp.test('__umbot_testing');
             }
         } else {
             this.#isOldReg = false;
