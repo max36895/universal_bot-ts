@@ -82,6 +82,9 @@ function mockRequest(text) {
 
 let errorsBot = [];
 const bot = new Bot(T_ALISA);
+bot.setAppConfig({
+    isLocalStorage: true,
+});
 bot.initBotController(StressController);
 bot.setLogger({
     error: (msg) => {

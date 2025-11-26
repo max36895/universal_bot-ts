@@ -425,7 +425,7 @@ export class Nlu {
      * @returns {INlu} Обработанные данные NLU
      */
     protected _serializeNlu(nlu: any): INlu {
-        // todo добавить обработку
+        // todo Придумать обработку для nlu. Возможно стоит дать возможность указать свой обработчик
         return <INlu>nlu;
     }
 

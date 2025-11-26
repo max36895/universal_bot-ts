@@ -7,7 +7,7 @@
  * - Проверки схожести текстов
  * - Работы с окончаниями слов
  */
-import { getRegExp } from './RegExp';
+import { getRegExp, isRegex } from './RegExp';
 import { rand, similarText } from './util';
 
 /**
@@ -265,7 +265,7 @@ export class Text {
         if (Array.isArray(patterns)) {
             const newPatterns: string[] = [];
             for (const patternBase of patterns) {
-                if (patternBase instanceof RegExp || typeof patternBase !== 'string') {
+                if (isRegex(patternBase)) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
                         : Text.#getCachedRegex(patternBase);
@@ -294,7 +294,7 @@ export class Text {
         }
 
         const cachedRegex =
-            useDirectRegExp && pattern instanceof RegExp ? pattern : Text.#getCachedRegex(pattern);
+            useDirectRegExp && isRegex(pattern) ? pattern : Text.#getCachedRegex(pattern);
         return cachedRegex.test(text);
     }
 
@@ -338,13 +338,13 @@ export class Text {
                 return false;
             }
             return text === oneFind || text.includes(oneFind);
-        } else if (oneFind instanceof RegExp) {
+        } else if (isRegex(oneFind)) {
             return this.#isSayPattern(oneFind, text, useDirectRegExp);
         }
 
         // Оптимизированный вариант для массива: early return + includes
         for (const value of find as PatternItem[]) {
-            if (value instanceof RegExp) {
+            if (isRegex(value)) {
                 if (this.#isSayPattern(value, text, useDirectRegExp)) {
                     return true;
                 }
@@ -383,14 +383,12 @@ export class Text {
             }
             if (typeof pattern === 'string') {
                 regex = getRegExp(pattern);
-                //regex = new RegExp(pattern, 'umi');
                 Text.#regexCache.set(pattern, {
                     cReq: 1,
                     regex,
                 });
             } else {
                 regex = getRegExp(pattern);
-                //regex = new RegExp(pattern.source, pattern.flags);
                 Text.#regexCache.set(key, {
                     cReq: 1,
                     regex,

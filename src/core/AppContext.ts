@@ -1172,7 +1172,10 @@ export class AppContext {
         const parts = slots.map((s) => {
             return `(${typeof s === 'string' ? s : s.source})`;
         });
-        group.butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
+        const groupIndex = group.butchRegexp.length;
+        // Для уменьшения длины регулярного выражения, а также для исключения случая,
+        // когда имя команды может быть не корректным для имени группы, сами задаем корректное имя с учетом индекса
+        group.butchRegexp.push(`(?<_${groupIndex}>${parts?.join('|')})`);
         const pattern = group.butchRegexp.join('|');
         if (useReg) {
             const regExp = getRegExp(pattern);

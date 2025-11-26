@@ -236,7 +236,7 @@ export class SmartApp extends TemplateTypeModel {
             uuid: (this._session as ISberSmartAppSession).uuid,
         };
 
-        if (this.controller.sound.sounds.length /* || this.controller.sound.isUsedStandardSound*/) {
+        if (this.controller.sound.sounds.length) {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }

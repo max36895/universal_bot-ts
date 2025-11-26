@@ -473,4 +473,440 @@ describe('Bot', () => {
             expect(run2).toEqual(result1);
         });
     });
+
+    describe('findCommand', () => {
+        it('not used group and not regexp', async () => {
+            bot.initBotController(TestBotController);
+            bot.appType = T_USER_APP;
+            jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
+            bot.addCommand('cool', ['cool'], (_, botC) => {
+                botC.text = 'cool';
+            });
+            let res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            for (let i = 0; i < 50; i++) {
+                bot.addCommand(`test_${i}`, [`test_${i}`], () => {
+                    return 'empty';
+                });
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            bot.addCommand('my', ['hello'], (_, botC) => {
+                botC.text = 'hello';
+            });
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 50; i < 150; i++) {
+                bot.addCommand(`test_${i}`, [`test_${i}`], () => {
+                    return 'empty';
+                });
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand('my', ['by'], (_, botC) => {
+                botC.text = 'by';
+            });
+            res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+        });
+
+        it('not used group(many command) and not regexp', async () => {
+            bot.initBotController(TestBotController);
+            bot.appType = T_USER_APP;
+            jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
+            bot.addCommand('cool', ['cool'], (_, botC) => {
+                botC.text = 'cool';
+            });
+            for (let i = 0; i < 300; i++) {
+                bot.addCommand(`test_${i}`, [`test_${i}`], () => {
+                    return 'empty';
+                });
+            }
+            let res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            bot.addCommand('my', ['hello'], (_, botC) => {
+                botC.text = 'hello';
+            });
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 0; i < 150; i++) {
+                bot.addCommand(`test_${i}_${i}`, [`test_${i}_${i}`], () => {
+                    return 'empty_' + i;
+                });
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand('by', ['by'], (_, botC) => {
+                botC.text = 'by';
+            });
+            res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+        });
+
+        it('not used group and used regexp', async () => {
+            bot.initBotController(TestBotController);
+            bot.appType = T_USER_APP;
+            jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
+            bot.addCommand(
+                'cool',
+                ['cool'],
+                (_, botC) => {
+                    botC.text = 'cool';
+                },
+                true,
+            );
+            let res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            for (let i = 0; i < 50; i++) {
+                bot.addCommand(
+                    `test_${i}`,
+                    [`test_${i}`],
+                    () => {
+                        return 'empty';
+                    },
+                    true,
+                );
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            bot.addCommand(
+                'my',
+                ['hello'],
+                (_, botC) => {
+                    botC.text = 'hello';
+                },
+                true,
+            );
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 50; i < 150; i++) {
+                bot.addCommand(
+                    `test_${i}`,
+                    [`test_${i}`],
+                    () => {
+                        return 'empty';
+                    },
+                    true,
+                );
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand(
+                'by',
+                ['by'],
+                (_, botC) => {
+                    botC.text = 'by';
+                },
+                true,
+            );
+            res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+        });
+
+        it('used group and used regexp', async () => {
+            bot.initBotController(TestBotController);
+            bot.appType = T_USER_APP;
+            jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
+            bot.addCommand(
+                'cool',
+                ['cool'],
+                (_, botC) => {
+                    botC.text = 'cool';
+                },
+                true,
+            );
+            for (let i = 0; i < 300; i++) {
+                bot.addCommand(
+                    `test_${i}`,
+                    [`test_${i}`],
+                    () => {
+                        return 'empty';
+                    },
+                    true,
+                );
+            }
+            let res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            bot.addCommand(
+                'my',
+                ['hello'],
+                (_, botC) => {
+                    botC.text = 'hello';
+                },
+                true,
+            );
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 0; i < 150; i++) {
+                bot.addCommand(
+                    `test_${i}_${i}`,
+                    [`test_${i}_${i}`],
+                    () => {
+                        return 'empty_' + i;
+                    },
+                    true,
+                );
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand(
+                'by',
+                ['by'],
+                (_, botC) => {
+                    botC.text = 'by';
+                },
+                true,
+            );
+            res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+        });
+
+        it('used group and used find text and regexp', async () => {
+            bot.initBotController(TestBotController);
+            bot.appType = T_USER_APP;
+            jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
+            bot.addCommand(
+                'cool',
+                ['cool'],
+                (_, botC) => {
+                    botC.text = 'cool';
+                },
+                true,
+            );
+            for (let i = 0; i < 300; i++) {
+                bot.addCommand(
+                    `test_${i}`,
+                    [`test_${i}`],
+                    () => {
+                        return 'empty';
+                    },
+                    i % 50 !== 0,
+                );
+            }
+            let res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+
+            bot.addCommand(
+                'no group',
+                ['group'],
+                (_, botC) => {
+                    botC.text = 'no group';
+                },
+                true,
+            );
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('no group', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('no group');
+
+            bot.addCommand(
+                'my',
+                ['hello'],
+                (_, botC) => {
+                    botC.text = 'hello';
+                },
+                true,
+            );
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 0; i < 300; i++) {
+                bot.addCommand(
+                    `test_${i}_${i}`,
+                    [`test_${i}_${i}`],
+                    () => {
+                        return 'empty_' + i;
+                    },
+                    i % 50 !== 0,
+                );
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand(
+                'by',
+                ['by'],
+                (_, botC) => {
+                    botC.text = 'by';
+                },
+                true,
+            );
+            res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+        });
+
+        it('used group and removeCommand', async () => {
+            bot.initBotController(TestBotController);
+            bot.appType = T_USER_APP;
+            jest.spyOn(Alisa.prototype, 'setLocalStorage').mockResolvedValue(undefined);
+            jest.spyOn(Alisa.prototype, 'getError').mockReturnValue(null);
+            bot.addCommand(
+                'cool',
+                ['cool'],
+                (_, botC) => {
+                    botC.text = 'cool';
+                },
+                true,
+            );
+            for (let i = 0; i < 300; i++) {
+                bot.addCommand(
+                    `test_${i}`,
+                    [`test_${i}`],
+                    () => {
+                        return 'empty';
+                    },
+                    i % 30 !== 0,
+                );
+            }
+            let res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('cool', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+
+            bot.addCommand(
+                'no group',
+                ['group'],
+                (_, botC) => {
+                    botC.text = 'no group';
+                },
+                true,
+            );
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('no group', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('no group');
+
+            bot.addCommand(
+                'my',
+                ['hello'],
+                (_, botC) => {
+                    botC.text = 'hello';
+                },
+                true,
+            );
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 0; i < 300; i++) {
+                bot.addCommand(
+                    `test_${i}_${i}`,
+                    [`test_${i}_${i}`],
+                    () => {
+                        return 'empty_' + i;
+                    },
+                    i % 30 !== 0,
+                );
+            }
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand(
+                'by',
+                ['by'],
+                (_, botC) => {
+                    botC.text = 'by';
+                },
+                true,
+            );
+            res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+            bot.removeCommand('text_299_299');
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.removeCommand('text_291_291');
+            res = (await bot.run(
+                Alisa,
+                T_USER_APP,
+                getContent('hello', 2),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+        });
+    });
 });

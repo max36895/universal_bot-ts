@@ -763,13 +763,16 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                         const match = reg.exec(this.userCommand);
                         if (match) {
                             // Находим первую совпавшую подгруппу (index в массиве parts)
-                            for (const group of groups.commands) {
-                                if (typeof match.groups?.[group] !== 'undefined') {
-                                    this.#commandExecute(
-                                        group,
-                                        this.appContext.commands.get(group),
-                                    );
-                                    return group;
+                            for (const key in match.groups) {
+                                if (typeof match.groups[key] !== 'undefined') {
+                                    const commandName = groups.commands[+key.replace('_', '')];
+                                    if (commandName && this.appContext.commands.has(commandName)) {
+                                        this.#commandExecute(
+                                            commandName,
+                                            this.appContext.commands.get(commandName),
+                                        );
+                                        return commandName;
+                                    }
                                 }
                             }
                         }
