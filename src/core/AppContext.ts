@@ -99,27 +99,27 @@ let MAX_COUNT_FOR_REG = 0;
 function setMemoryLimit(): void {
     const total = os.totalmem();
     // re2 гораздо лучше работает с оперативной память,
-    // поэтому если ее нет, то лимиты на количествое активных регулярок должно быть меньше
+    // поэтому если ее нет, то лимиты на количество активных регулярок должно быть меньше
     if (total < 1.5 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 300;
         MAX_COUNT_FOR_REG = 700;
         if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 100;
-            MAX_COUNT_FOR_REG = 250;
+            MAX_COUNT_FOR_GROUP = 40;
+            MAX_COUNT_FOR_REG = 300;
         }
     } else if (total < 3 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 500;
         MAX_COUNT_FOR_REG = 2000;
         if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 250;
-            MAX_COUNT_FOR_REG = 700;
+            MAX_COUNT_FOR_GROUP = 180;
+            MAX_COUNT_FOR_REG = 600;
         }
     } else {
         MAX_COUNT_FOR_GROUP = 3000;
         MAX_COUNT_FOR_REG = 7000;
         if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 1000;
-            MAX_COUNT_FOR_REG = 3000;
+            MAX_COUNT_FOR_GROUP = 750;
+            MAX_COUNT_FOR_REG = 2000;
         }
     }
 }
@@ -910,7 +910,7 @@ export class AppContext {
      */
     public regexpGroup: Map<string, { commands: string[]; regExp: RegExp | null | string }> =
         new Map();
-    #noFullGroups: IGroup[] = [];
+    #noFullGroups: IGroup | null = null;
     #regExpCommandCount = 0;
 
     /**
@@ -1159,8 +1159,6 @@ export class AppContext {
         }
     }
 
-    #isOldReg = false;
-
     #getGroupRegExp(
         commandName: string,
         slots: TSlots,
@@ -1188,39 +1186,51 @@ export class AppContext {
         return pattern;
     }
 
-    #addRegexpInGroup(commandName: string, slots: TSlots): string | null {
+    #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
         if (this.#regExpCommandCount < 300) {
             return commandName;
         }
-        if (this.#isOldReg) {
-            if (this.#noFullGroups.length) {
-                let group = this.#noFullGroups[this.#noFullGroups.length - 1];
-                let groupName = group.name;
+        if (isRegexp) {
+            if (this.#noFullGroups) {
+                let groupName = this.#noFullGroups.name;
                 let groupData = this.regexpGroup.get(groupName) || { commands: [], regExp: null };
-                if (group.regLength >= 70 || (group.regExp?.source?.length || 0) > 500) {
+                if (
+                    this.#noFullGroups.butchRegexp.length === 1 &&
+                    this.#noFullGroups.name !== commandName
+                ) {
+                    const command = this.commands.get(this.#noFullGroups.name);
+                    if (command) {
+                        command.regExp = undefined;
+                        this.commands.set(this.#noFullGroups.name, command);
+                    }
+                }
+                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки
+                // Даем примерно 60 регулярок по 5 символов
+                if (
+                    this.#noFullGroups.regLength >= 60 ||
+                    (this.#noFullGroups.regExp?.source?.length || 0) > 850
+                ) {
                     groupData = { commands: [], regExp: null };
                     groupName = commandName;
-                    this.#noFullGroups.pop();
-                    group = {
+                    this.#noFullGroups = {
                         name: commandName,
                         regLength: 0,
                         butchRegexp: [],
                         regExp: null,
                     };
-                    this.#noFullGroups.push(group);
                 }
                 groupData.commands.push(commandName);
                 // не даем хранить много регулярок для групп, иначе можем выйти за пределы потребления памяти
                 groupData.regExp = this.#getGroupRegExp(
                     commandName,
                     slots,
-                    group,
+                    this.#noFullGroups,
                     this.regexpGroup.size < MAX_COUNT_FOR_GROUP,
                 );
 
                 this.regexpGroup.set(groupName, groupData);
-                group.regLength += slots.length;
+                this.#noFullGroups.regLength += slots.length;
                 return groupName;
             } else {
                 const butchRegexp = [];
@@ -1228,12 +1238,12 @@ export class AppContext {
                     return `(${typeof s === 'string' ? s : s.source})`;
                 });
                 butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
-                this.#noFullGroups.push({
+                this.#noFullGroups = {
                     name: commandName,
                     regLength: slots.length,
                     butchRegexp,
                     regExp: getRegExp(`${butchRegexp.join('|')}`),
-                });
+                };
                 this.regexpGroup.set(commandName, {
                     commands: [commandName],
                     regExp: getRegExp(`${butchRegexp.join('|')}`),
@@ -1241,7 +1251,16 @@ export class AppContext {
                 return commandName;
             }
         } else {
-            this.#noFullGroups.pop();
+            if (this.#noFullGroups) {
+                if (this.regexpGroup.has(this.#noFullGroups.name)) {
+                    const groupCommandCount =
+                        this.regexpGroup.get(this.#noFullGroups.name)?.commands?.length || 0;
+                    if (groupCommandCount < 2) {
+                        this.regexpGroup.delete(this.#noFullGroups.name);
+                    }
+                }
+                this.#noFullGroups = null;
+            }
             return null;
         }
     }
@@ -1391,16 +1410,17 @@ export class AppContext {
         let regExp;
         let groupName;
         if (isPattern) {
-            this.#isOldReg = true;
             correctSlots = this.#isDangerRegex(slots).slots;
-            groupName = this.#addRegexpInGroup(commandName, correctSlots);
-            this.#regExpCommandCount++;
-            if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
-                regExp = getRegExp(correctSlots);
-                regExp.test('__umbot_testing');
+            groupName = this.#addRegexpInGroup(commandName, correctSlots, true);
+            if (groupName === commandName) {
+                this.#regExpCommandCount++;
+                if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
+                    regExp = getRegExp(correctSlots);
+                    regExp.test('__umbot_testing');
+                }
             }
         } else {
-            this.#isOldReg = false;
+            this.#addRegexpInGroup(commandName, correctSlots, false);
             for (const slot of slots) {
                 if (isRegex(slot)) {
                     const res = this.#isDangerRegex(slot);
@@ -1431,7 +1451,8 @@ export class AppContext {
      */
     public removeCommand(commandName: string): void {
         if (this.commands.has(commandName)) {
-            if (this.commands.get(commandName)?.isPattern) {
+            const command = this.commands.get(commandName);
+            if (command?.isPattern && command.regExp) {
                 this.#regExpCommandCount--;
                 if (this.#regExpCommandCount < 0) {
                     this.#regExpCommandCount = 0;
@@ -1439,7 +1460,6 @@ export class AppContext {
             }
             this.commands.delete(commandName);
         }
-        this.#noFullGroups.length = 0;
         this.#removeRegexpInGroup(commandName);
     }
 
@@ -1448,7 +1468,7 @@ export class AppContext {
      */
     public clearCommands(): void {
         this.commands.clear();
-        this.#noFullGroups.length = 0;
+        this.#noFullGroups = null;
         this.#regExpCommandCount = 0;
         this.regexpGroup.clear();
     }

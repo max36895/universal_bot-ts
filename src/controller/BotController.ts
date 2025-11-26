@@ -706,6 +706,29 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         return null;
     }
 
+    #sendCustomCommandResolver(startTimer: number): string | null {
+        if (this.appContext.customCommandResolver) {
+            const res = this.appContext.customCommandResolver(
+                this.userCommand as string,
+                this.appContext.commands,
+            );
+            const command = res ? this.appContext.commands.get(res) : null;
+            if (res && command) {
+                this.#commandExecute(res, command);
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
+                    res,
+                    status: true,
+                });
+            } else {
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
+                    status: false,
+                });
+            }
+            return res;
+        }
+        return null;
+    }
+
     /**
      * Получает команду из запроса пользователя
      * Извлекает команду из текста запроса
@@ -724,25 +747,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         }
         const start = performance.now();
         if (this.appContext.customCommandResolver) {
-            const res = this.appContext.customCommandResolver(
-                this.userCommand,
-                this.appContext.commands,
-            );
-            const command = res ? this.appContext.commands.get(res) : null;
-            if (res && command) {
-                this.#commandExecute(res, command);
-                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
-                    res,
-                    status: true,
-                });
-            } else {
-                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
-                    status: false,
-                });
-            }
-            return res;
+            return this.#sendCustomCommandResolver(start);
         }
         let contCount = 0;
+        const commandsLength = this.appContext.commands.size;
         for (const [commandName, command] of this.appContext.commands) {
             if (commandName === FALLBACK_COMMAND || !command || contCount !== 0) {
                 if (contCount) {
@@ -785,7 +793,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                     command.regExp || command.slots,
                     this.userCommand,
                     command.isPattern || false,
-                    typeof command.regExp !== 'string',
+                    typeof command.regExp !== 'string' || commandsLength < 500,
                 )
             ) {
                 this.#commandExecute(commandName, command);
