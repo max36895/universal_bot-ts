@@ -48,7 +48,7 @@ export class DbControllerMongoDb extends DbControllerModel {
     constructor(appContext: AppContext) {
         super(appContext);
         if (appContext?.isSaveDb) {
-            this.#db = new Sql();
+            this.#db = new Sql(appContext);
         } else {
             this.#db = null;
         }

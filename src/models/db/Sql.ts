@@ -86,6 +86,8 @@ export class Sql {
      */
     private _vDB: DB | undefined;
 
+    #isUpdatedDBConfig = true;
+
     /**
      * Создает новый экземпляр класса Sql
      * Инициализирует подключение к базе данных
@@ -159,12 +161,21 @@ export class Sql {
         this.pass = pass;
         this.database = database;
         if (this._vDB) {
-            this._vDB.params = {
-                host: this.host,
-                user: this.user,
-                pass: this.pass,
-                database: this.database,
-            };
+            if (
+                this._vDB.params?.host !== host ||
+                this._vDB.params?.pass !== pass ||
+                this._vDB.params?.user !== user ||
+                this._vDB.params?.database !== database
+            ) {
+                this._vDB.params = {
+                    host: this.host,
+                    user: this.user,
+                    pass: this.pass,
+                    database: this.database,
+                };
+            } else {
+                this.#isUpdatedDBConfig = false;
+            }
         }
     }
 
@@ -182,6 +193,12 @@ export class Sql {
      * @returns Promise<boolean> - true если подключение успешно, false в противном случае
      */
     public async connect(): Promise<boolean> {
+        if (!this.#isUpdatedDBConfig) {
+            const isConnect = await this._vDB?.isConnected();
+            if (isConnect) {
+                return true;
+            }
+        }
         if (this._vDB && !(await this._vDB.connect())) {
             this._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${this._vDB.errors[0]}`);
             return false;

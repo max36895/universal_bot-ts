@@ -812,7 +812,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (error) {
             this.#appContext.logError(error);
         }
-        userData.destroy();
+        //userData.destroy();
         this._clearState(botController);
         return content;
     }
@@ -1144,7 +1144,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     async #gracefulShutdown(): Promise<void> {
         this.#appContext.log('Получен сигнал завершения. Выполняется graceful shutdown...');
 
-        this.close(); // закрывает HTTP-сервер
+        await this.close(); // закрывает HTTP-сервер
 
         await this.#appContext.closeDB();
         this.#appContext.clearCommands();
@@ -1179,10 +1179,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * bot.close();
      * ```
      */
-    public close(): void {
+    public async close(): Promise<void> {
         if (this.#serverInst) {
             this.#serverInst.close();
             this.#serverInst = undefined;
         }
+        await this.#appContext.closeDB();
     }
 }
