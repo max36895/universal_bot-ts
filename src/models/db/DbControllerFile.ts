@@ -11,24 +11,7 @@ import { DbControllerModel } from './DbControllerModel';
 import { IQueryData, QueryData } from './QueryData';
 import { fread, getFileInfo } from '../../utils/standard/util';
 import { IModelRes, TQueryCb } from '../interface';
-
-/**
- * Интерфейс для хранения информации о файле
- *
- * @interface IFileInfo
- */
-export interface IFileInfo {
-    /**
-     * Содержимое файла в виде строки
-     */
-    data: string;
-
-    /**
-     * Версия файла.
-     * Используется время последнего изменения файла в миллисекундах
-     */
-    version: number;
-}
+import { AppContext, IFileInfo } from '../../core/AppContext';
 
 /**
  * Тип для кэширования данных из файлов
@@ -64,10 +47,52 @@ export class DbControllerFile extends DbControllerModel {
     /**
      * Кэш для хранения данных из файлов.
      * Оптимизирует производительность при частом чтении
-     *
-     * @protected
      */
-    protected cachedFileData: IFileData = {};
+    #cachedFileData: IFileData = {};
+
+    set cachedFileData(data: IFileInfo | undefined) {
+        if (this._appContext?.fDB) {
+            if (data === undefined) {
+                delete this._appContext.fDB[this.tableName];
+            } else {
+                const timeOutId = this._appContext.fDB[this.tableName]?.timeOutId;
+                this._appContext.fDB[this.tableName] = data;
+                // из-за асинхронности может выйти так, что кто-то записывает новые данные, которые перетирают ранее установленный timeout
+                if (
+                    typeof this._appContext.fDB[this.tableName] &&
+                    typeof this._appContext.fDB[this.tableName].timeOutId === 'undefined' &&
+                    typeof timeOutId !== 'undefined'
+                ) {
+                    this._appContext.fDB[this.tableName].timeOutId = timeOutId;
+                }
+            }
+        } else {
+            if (data === undefined) {
+                delete this.#cachedFileData[this.tableName];
+            } else {
+                this.#cachedFileData[this.tableName] = data;
+            }
+        }
+    }
+
+    get cachedFileData(): IFileInfo {
+        if (this._appContext?.fDB) {
+            if (!this._appContext.fDB[this.tableName]) {
+                this._appContext.fDB[this.tableName] = {
+                    version: 0,
+                };
+            }
+            return this._appContext.fDB[this.tableName];
+        }
+        this.#cachedFileData ??= {};
+        return this.#cachedFileData[this.tableName];
+    }
+
+    #setCachedFileData<T extends keyof IFileInfo = keyof IFileInfo>(field: T, data: IFileInfo[T]) {
+        const cachedData = this.cachedFileData;
+        cachedData[field] = data;
+        this.cachedFileData = cachedData;
+    }
 
     /**
      * Уничтожает контроллер и очищает кэш
@@ -79,7 +104,34 @@ export class DbControllerFile extends DbControllerModel {
      */
     public destroy(): void {
         super.destroy();
-        this.cachedFileData = {};
+        if (this.cachedFileData.timeOutId) {
+            clearTimeout(this.cachedFileData.timeOutId);
+            this.#setCachedFileData('timeOutId', null);
+            this.#update(true);
+        }
+        this.cachedFileData = undefined;
+    }
+
+    /**
+     * Запись обновленного значения
+     * @param force
+     * @private
+     */
+    #update(force: boolean = false): void {
+        // data не нужен, так как все данные редактируются в объекте по ссылке
+        const cb = () => {
+            this._appContext?.saveJson(`${this.tableName}.json`, this.cachedFileData.data);
+            this.#setCachedFileData('timeOutId', null);
+        };
+        if (this.cachedFileData.timeOutId) {
+            clearTimeout(this.cachedFileData.timeOutId);
+            this.#setCachedFileData('timeOutId', null);
+        }
+        if (force) {
+            cb();
+        } else {
+            this.#setCachedFileData('timeOutId', setTimeout(cb, 500));
+        }
     }
 
     /**
@@ -105,7 +157,7 @@ export class DbControllerFile extends DbControllerModel {
             if (idVal !== undefined) {
                 if (typeof data[idVal] !== 'undefined') {
                     data[idVal] = { ...data[idVal], ...update };
-                    this._appContext?.saveJson(`${this.tableName}.json`, data);
+                    this.#update();
                 }
                 return true;
             }
@@ -133,7 +185,7 @@ export class DbControllerFile extends DbControllerModel {
             const idVal = insert[this.primaryKeyName as string];
             if (idVal) {
                 data[idVal] = insert;
-                this._appContext?.saveJson(`${this.tableName}.json`, data);
+                this.#update();
                 return true;
             }
         }
@@ -161,7 +213,7 @@ export class DbControllerFile extends DbControllerModel {
             if (idVal !== undefined) {
                 if (typeof data[idVal] !== 'undefined') {
                     delete data[idVal];
-                    this._appContext?.saveJson(`${this.tableName}.json`, data);
+                    this.#update();
                 }
                 return true;
             }
@@ -225,6 +277,38 @@ export class DbControllerFile extends DbControllerModel {
         let result = null;
         const content = this.getFileData();
         if (where) {
+            const whereKey = where[this.primaryKeyName as string];
+            if (whereKey) {
+                if (content[whereKey]) {
+                    if (Object.keys(where).length === 1) {
+                        return {
+                            status: true,
+                            data: isOne ? content[whereKey] : [content[whereKey]],
+                        };
+                    } else {
+                        let isSelected = false;
+                        for (const data in where) {
+                            if (
+                                Object.hasOwnProperty.call(content[whereKey], data) &&
+                                Object.hasOwnProperty.call(where, data)
+                            ) {
+                                isSelected = content[whereKey][data] === where[data];
+                                if (!isSelected) {
+                                    break;
+                                }
+                            }
+                        }
+                        return {
+                            status: isSelected,
+                            data: isOne ? content[whereKey] : [content[whereKey]],
+                        };
+                    }
+                } else {
+                    return {
+                        status: false,
+                    };
+                }
+            }
             for (const key in content) {
                 if (Object.hasOwnProperty.call(content, key)) {
                     let isSelected = null;
@@ -285,28 +369,27 @@ export class DbControllerFile extends DbControllerModel {
      */
     public getFileData(): any {
         const path = this._appContext?.appConfig.json;
-        const fileName = this.tableName;
-        const file = `${path}/${fileName}.json`;
+        const file = `${path}/${this.tableName}.json`;
         const fileInfo = getFileInfo(file).data;
         if (fileInfo && fileInfo.isFile()) {
-            const getFileData = (isForce: boolean = false): string => {
+            const getFileData = (isForce: boolean = false): string | object => {
                 const fileData =
-                    this.cachedFileData[file] &&
-                    this.cachedFileData[file].version > fileInfo.mtimeMs &&
+                    this.cachedFileData &&
+                    this.cachedFileData.version >= fileInfo.mtimeMs &&
                     !isForce
-                        ? this.cachedFileData[file].data
+                        ? this.cachedFileData.data
                         : (fread(file).data as string);
 
-                this.cachedFileData[file] = {
-                    data: fileData,
+                this.cachedFileData = {
+                    data: typeof fileData === 'string' ? JSON.parse(fileData) : fileData,
                     version: fileInfo.mtimeMs,
                 };
-                return fileData;
+                return this.cachedFileData.data as object;
             };
             try {
                 const fileData = getFileData();
                 if (fileData) {
-                    return JSON.parse(fileData);
+                    return typeof fileData === 'string' ? JSON.parse(fileData) : fileData;
                 }
                 return {};
             } catch {
@@ -317,7 +400,7 @@ export class DbControllerFile extends DbControllerModel {
                     return {};
                 }
                 try {
-                    return JSON.parse(fileData);
+                    return JSON.parse(fileData as string);
                 } catch (e) {
                     this._appContext?.logError(`Ошибка при парсинге файла ${file}`, {
                         content: fileData,
@@ -363,5 +446,16 @@ export class DbControllerFile extends DbControllerModel {
      */
     public async isConnected(): Promise<boolean> {
         return true;
+    }
+
+    public static close(appContext: AppContext): void {
+        if (appContext.fDB) {
+            Object.keys(appContext.fDB).forEach((key: string) => {
+                if (appContext.fDB[key].timeOutId) {
+                    clearTimeout(appContext.fDB[key].timeOutId);
+                    appContext?.saveJson(`${key}.json`, appContext.fDB[key].data);
+                }
+            });
+        }
     }
 }

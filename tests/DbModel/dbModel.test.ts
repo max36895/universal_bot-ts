@@ -40,7 +40,7 @@ describe('Db file connect', () => {
                 },
             },
             userId13: {
-                userId: 'userId3',
+                userId: 'userId13',
                 meta: 'user meta 1',
                 data: {
                     name: 'user 3',
@@ -49,6 +49,9 @@ describe('Db file connect', () => {
         };
         appContext.saveJson(FILE_NAME, data);
     });
+    afterEach(() => {
+        userData.destroy();
+    });
 
     it('Where string', async () => {
         let query = '`userId`="userId1"';
@@ -56,7 +59,7 @@ describe('Db file connect', () => {
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId1);
 
-        query = '`userId`="userId3" AND `meta`="user meta 1"';
+        query = '`userId`="userId13" AND `meta`="user meta 1"';
         uData = (await userData.where(query)).data;
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId13);
@@ -79,7 +82,7 @@ describe('Db file connect', () => {
         expect(uData[0]).toEqual(data.userId1);
 
         query = {
-            userId: 'userId3',
+            userId: 'userId13',
             meta: 'user meta 1',
         };
         uData = (await userData.where(query)).data;
@@ -105,7 +108,7 @@ describe('Db file connect', () => {
         expect(await userData.whereOne(query)).toBe(true);
         expect(userData.data).toEqual(data.userId1.data);
 
-        query = '`userId`="userId3" AND `meta`="user meta 1"';
+        query = '`userId`="userId13" AND `meta`="user meta 1"';
         expect(await userData.whereOne(query)).toBe(true);
         expect(userData.data).toEqual(data.userId13.data);
 
@@ -120,7 +123,7 @@ describe('Db file connect', () => {
         expect(userData.data).toEqual(data.userId1.data);
 
         query = {
-            userId: 'userId3',
+            userId: 'userId13',
             meta: 'user meta 1',
         };
         expect(await userData.whereOne(query)).toBe(true);

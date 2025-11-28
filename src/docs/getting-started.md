@@ -76,7 +76,7 @@ bot.start('localhost', 3000);
 
 Также можно совсем не создавать BotController, и решить все задачи за счет динамического добавления команд.
 Также обратите внимание на `FALLBACK_COMMAND`, обработчик будет выполнен в том случае, если не удалось найти нужную
-команду.
+команду. Также можно просто указать "\*", что также равносильно заданию через константу.
 
 ```typescript
 import { Bot, BotController, FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';

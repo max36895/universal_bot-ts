@@ -303,7 +303,8 @@ export class DbControllerMongoDb extends DbControllerModel {
      */
     public async destroy(): Promise<void> {
         if (this.#db) {
-            await this.#db.close();
+            // todo опасная возможность. Если кто-то извне вызовет, то оборвется подключение для всех, что плохо. Поэтому не отключаем само соединение с бд
+            //await this.#db.close();
             this.#db = null;
         }
     }

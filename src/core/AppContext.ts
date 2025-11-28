@@ -73,7 +73,7 @@ import { saveData } from '../utils/standard/util';
 import { IDbControllerModel } from '../models/interface';
 import { BotController } from '../controller';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
-import { DB } from '../models/db';
+import { DB, DbControllerFile } from '../models/db';
 import * as process from 'node:process';
 import { getRegExp, __$usedRe2, isRegex } from '../utils/standard/RegExp';
 import os from 'os';
@@ -125,6 +125,25 @@ function setMemoryLimit(): void {
 }
 
 setMemoryLimit();
+
+/**
+ * Интерфейс для хранения информации о файле
+ *
+ * @interface IFileInfo
+ */
+export interface IFileInfo {
+    /**
+     * Содержимое файла в виде строки
+     */
+    data?: object;
+
+    /**
+     * Версия файла.
+     * Используется время последнего изменения файла в миллисекундах
+     */
+    version: number;
+    timeOutId?: ReturnType<typeof setTimeout> | null;
+}
 
 /**
  * Тип для HTTP клиента
@@ -312,8 +331,9 @@ export const HELP_INTENT_NAME = 'help';
  * - Fallback срабатывает только если нет совпадений по слотам.
  * - Не влияет на стандартные интенты (`welcome`, `help`).
  * - Можно зарегистрировать только одну fallback-команду (последняя перезапишет предыдущую).
+ * - Можно просто передать "*"
  */
-export const FALLBACK_COMMAND = '__umbot:fallback_command__';
+export const FALLBACK_COMMAND = '*';
 
 /**
  * @interface IAppDB
@@ -890,6 +910,14 @@ export class AppContext {
         return this.#db;
     }
 
+    #fileDataBase: {
+        [tableName: string]: IFileInfo;
+    } = {};
+
+    public get fDB() {
+        return this.#fileDataBase;
+    }
+
     /**
      * Закрыть подключение к базе данных
      */
@@ -897,6 +925,11 @@ export class AppContext {
         if (this.#db) {
             await this.#db?.close();
             this.#db = undefined;
+        }
+        DbControllerFile.close(this);
+        this.#fileDataBase = {};
+        if (this.userDbController) {
+            this.userDbController.destroy();
         }
     }
 
@@ -1017,6 +1050,9 @@ export class AppContext {
 
                 this.#setTokens();
             }
+        }
+        if (this.appConfig.db && this.appConfig.db.host) {
+            this.setIsSaveDb(true);
         }
     }
 
@@ -1501,9 +1537,10 @@ export class AppContext {
     public logError(str: string, meta?: Record<string, unknown>): void {
         if (this.#logger?.error) {
             this.#logger.error(this.strictMode ? this.#maskSecrets(str) : str, meta);
+        } else {
+            const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
+            this.saveLog('error.log', `${str}\n${metaStr}`);
         }
-        const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
-        this.saveLog('error.log', `${str}\n${metaStr}`);
     }
 
     /**
@@ -1529,8 +1566,12 @@ export class AppContext {
                 ...meta,
                 trace: new Error().stack,
             });
-        } else if (this.#isDevMode) {
-            console.warn(this.strictMode ? this.#maskSecrets(str) : str, meta);
+        } else {
+            if (this.#isDevMode) {
+                console.warn(this.strictMode ? this.#maskSecrets(str) : str, meta);
+            }
+            const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
+            this.saveLog('warn.log', `${str}\n${metaStr}`);
         }
     }
 
