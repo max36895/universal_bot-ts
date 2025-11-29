@@ -562,7 +562,7 @@ export class AlisaSound extends TemplateSoundTypes {
             updSounds = STANDARD_SOUNDS;
         }
         let res = text;
-        if (updSounds && updSounds.length) {
+        if (updSounds.length) {
             for (let i = 0; i < updSounds.length; i++) {
                 const sound = updSounds[i];
                 if (typeof sound === 'object') {

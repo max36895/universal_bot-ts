@@ -457,9 +457,9 @@ export class DbControllerFile extends DbControllerModel {
     public static close(appContext: AppContext): void {
         if (appContext.fDB) {
             Object.keys(appContext.fDB).forEach((key: string) => {
-                if (appContext.fDB[key].timeOutId) {
+                if (appContext.fDB[key]?.timeOutId) {
                     clearTimeout(appContext.fDB[key].timeOutId);
-                    appContext?.saveJson(`${key}.json`, appContext.fDB[key].data);
+                    appContext.saveJson(`${key}.json`, appContext.fDB[key].data);
                 }
             });
         }
