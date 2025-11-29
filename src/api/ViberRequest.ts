@@ -12,17 +12,17 @@ import { Text } from '../utils/standard/Text';
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Базовый URL для всех методов Viber API
+ *
+ */
+const API_ENDPOINT = 'https://chatapi.viber.com/pa/';
+
+/**
  * Класс для взаимодействия с API Viber
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
  * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
  */
 export class ViberRequest {
-    /**
-     * Базовый URL для всех методов Viber API
-     *
-     */
-    private readonly API_ENDPOINT = 'https://chatapi.viber.com/pa/';
-
     /**
      * Экземпляр класса для выполнения HTTP-запросов
      *
@@ -82,7 +82,7 @@ export class ViberRequest {
                 };
                 this.#request.post.min_api_version =
                     this.#appContext.platformParams.viber_api_version || 2;
-                const sendData = await this.#request.send<IViberApi>(this.API_ENDPOINT + method);
+                const sendData = await this.#request.send<IViberApi>(API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;
                     if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {

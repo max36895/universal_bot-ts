@@ -9,6 +9,14 @@ import { AppContext, TAppType } from '../core/AppContext';
  */
 export abstract class TemplateTypeModel {
     /**
+     * Время ответа навыка в миллисекундах при котором будет отправлено предупреждение
+     */
+    protected WARMING_TIME_REQUEST = 2000;
+    /**
+     * Максимальное время ответа навыка в миллисекундах
+     */
+    protected MAX_TIME_REQUEST = 2900;
+    /**
      * Текст ошибки, возникшей при работе приложения
      * @protected
      */
@@ -109,6 +117,21 @@ export abstract class TemplateTypeModel {
      */
     public getError(): string | null {
         return this.error;
+    }
+
+    /**
+     * При превышении установленного времени исполнения, пишет информацию в лог
+     * @protected
+     */
+    protected _timeLimitLog(): void {
+        const timeEnd: number = this.getProcessingTime();
+        if (timeEnd >= this.MAX_TIME_REQUEST) {
+            this.error = `${this.constructor.name}:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
+        } else if (timeEnd >= this.WARMING_TIME_REQUEST) {
+            this.appContext.logWarn(
+                `${this.constructor.name}:getContext(): Время ответа составило: ${timeEnd / 1000} сек, рекомендуется проверить нагрузку на сервер, либо корректность работы самого навыка.`,
+            );
+        }
     }
 
     /**

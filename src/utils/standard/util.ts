@@ -351,7 +351,7 @@ export function saveData(
             JSON.parse(data);
         } catch (e) {
             errorLogger?.(
-                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${(e as Error).message}`,
+                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}", так как данные не в json формате. Ошибка: ${(e as Error).message}`,
                 {
                     error: e,
                     data,

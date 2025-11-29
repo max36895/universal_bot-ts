@@ -4,16 +4,16 @@ import { IMaxUploadFile, TMaxUploadFile } from './interfaces/IMaxAppApi';
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Базовый URL для всех методов Max API
+ */
+const MAX_API_ENDPOINT = 'https://platform-api.max.ru/';
+
+/**
  * Класс для взаимодействия с API Max
  * Предоставляет методы для отправки сообщений, загрузки файлов
  * @see (https://dev.max.ru/docs-api) Смотри тут
  */
 export class MaxRequest {
-    /**
-     * Базовый URL для всех методов Max API
-     */
-    private readonly MAX_API_ENDPOINT = 'https://platform-api.max.ru/';
-
     /**
      * Экземпляр класса для выполнения HTTP-запросов
      *
@@ -89,7 +89,7 @@ export class MaxRequest {
         if (this.token) {
             this.#request.header = null;
             this.#setAccessToken(this.token);
-            const data = await this.#request.send<T>(this.MAX_API_ENDPOINT + method);
+            const data = await this.#request.send<T>(MAX_API_ENDPOINT + method);
             if (data.status && data.data) {
                 return data.data;
             }
@@ -114,9 +114,7 @@ export class MaxRequest {
             this.#request.header = Request.HEADER_FORM_DATA;
             this.#request.post.type = type;
             this.#setAccessToken(this.token);
-            const data = await this.#request.send<IMaxUploadFile>(
-                this.MAX_API_ENDPOINT + 'uploads',
-            );
+            const data = await this.#request.send<IMaxUploadFile>(MAX_API_ENDPOINT + 'uploads');
             if (data.status && data.data) {
                 return data.data;
             }

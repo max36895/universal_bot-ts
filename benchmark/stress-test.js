@@ -93,8 +93,8 @@ bot.setLogger({
     error: (msg) => {
         errorsBot.push(msg);
     },
-    warn: (...arg) => {
-        console.warn('Warning от библиотеки', ...arg);
+    warn: () => {
+        // чтобы не писался файл с предупреждениями
     },
 });
 const COMMAND_COUNT = 1000;

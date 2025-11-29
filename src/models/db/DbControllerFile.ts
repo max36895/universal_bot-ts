@@ -58,11 +58,7 @@ export class DbControllerFile extends DbControllerModel {
                 const timeOutId = this._appContext.fDB[this.tableName]?.timeOutId;
                 this._appContext.fDB[this.tableName] = data;
                 // из-за асинхронности может выйти так, что кто-то записывает новые данные, которые перетирают ранее установленный timeout
-                if (
-                    typeof this._appContext.fDB[this.tableName] &&
-                    typeof this._appContext.fDB[this.tableName].timeOutId === 'undefined' &&
-                    typeof timeOutId !== 'undefined'
-                ) {
+                if (typeof data.timeOutId === 'undefined' && typeof timeOutId !== 'undefined') {
                     this._appContext.fDB[this.tableName].timeOutId = timeOutId;
                 }
             }
@@ -88,7 +84,10 @@ export class DbControllerFile extends DbControllerModel {
         return this.#cachedFileData[this.tableName];
     }
 
-    #setCachedFileData<T extends keyof IFileInfo = keyof IFileInfo>(field: T, data: IFileInfo[T]) {
+    #setCachedFileData<T extends keyof IFileInfo = keyof IFileInfo>(
+        field: T,
+        data: IFileInfo[T],
+    ): void {
         const cachedData = this.cachedFileData;
         cachedData[field] = data;
         this.cachedFileData = cachedData;
@@ -119,8 +118,10 @@ export class DbControllerFile extends DbControllerModel {
      */
     #update(force: boolean = false): void {
         // data не нужен, так как все данные редактируются в объекте по ссылке
-        const cb = () => {
-            this._appContext?.saveJson(`${this.tableName}.json`, this.cachedFileData.data);
+        const cb = (): void => {
+            if (this.cachedFileData.data) {
+                this._appContext?.saveJson(`${this.tableName}.json`, this.cachedFileData.data);
+            }
             this.#setCachedFileData('timeOutId', null);
         };
         if (this.cachedFileData.timeOutId) {
@@ -257,6 +258,39 @@ export class DbControllerFile extends DbControllerModel {
         return element;
     }
 
+    #selectInPrimaryKey(where: IQueryData, isOne: boolean = false, content: any): IModelRes {
+        const whereKey = where[this.primaryKeyName as string];
+        if (content[whereKey]) {
+            if (Object.keys(where).length === 1) {
+                return {
+                    status: true,
+                    data: isOne ? content[whereKey] : [content[whereKey]],
+                };
+            } else {
+                let isSelected = false;
+                for (const data in where) {
+                    if (
+                        Object.hasOwnProperty.call(content[whereKey], data) &&
+                        Object.hasOwnProperty.call(where, data)
+                    ) {
+                        isSelected = content[whereKey][data] === where[data];
+                        if (!isSelected) {
+                            break;
+                        }
+                    }
+                }
+                return {
+                    status: isSelected,
+                    data: isOne ? content[whereKey] : [content[whereKey]],
+                };
+            }
+        } else {
+            return {
+                status: false,
+            };
+        }
+    }
+
     /**
      * Выполняет поиск записей в файле
      *
@@ -279,35 +313,7 @@ export class DbControllerFile extends DbControllerModel {
         if (where) {
             const whereKey = where[this.primaryKeyName as string];
             if (whereKey) {
-                if (content[whereKey]) {
-                    if (Object.keys(where).length === 1) {
-                        return {
-                            status: true,
-                            data: isOne ? content[whereKey] : [content[whereKey]],
-                        };
-                    } else {
-                        let isSelected = false;
-                        for (const data in where) {
-                            if (
-                                Object.hasOwnProperty.call(content[whereKey], data) &&
-                                Object.hasOwnProperty.call(where, data)
-                            ) {
-                                isSelected = content[whereKey][data] === where[data];
-                                if (!isSelected) {
-                                    break;
-                                }
-                            }
-                        }
-                        return {
-                            status: isSelected,
-                            data: isOne ? content[whereKey] : [content[whereKey]],
-                        };
-                    }
-                } else {
-                    return {
-                        status: false,
-                    };
-                }
+                return this.#selectInPrimaryKey(where, isOne, content);
             }
             for (const key in content) {
                 if (Object.hasOwnProperty.call(content, key)) {

@@ -190,6 +190,11 @@ describe('Db is MongoDb', () => {
                 },
             },
         });
+        appContext.setLogger({
+            error: () => {
+                // если подключения к бд нет, то не нужно писать ошибки в лог
+            },
+        });
         usersData = new UsersData(appContext);
     }, MONGO_TIMEOUT);
 

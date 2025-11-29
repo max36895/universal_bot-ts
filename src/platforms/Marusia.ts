@@ -16,6 +16,11 @@ import { Text } from '../utils/standard/Text';
 import { T_MARUSIA } from '../core';
 
 /**
+ * Версия API Маруси
+ */
+const VERSION: string = '1.0';
+
+/**
  * Класс для работы с платформой Маруся.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате Маруси
@@ -24,16 +29,6 @@ import { T_MARUSIA } from '../core';
  * @see TemplateTypeModel Смотри тут
  */
 export class Marusia extends TemplateTypeModel {
-    /**
-     * Версия API Маруси
-     */
-    private readonly VERSION: string = '1.0';
-
-    /**
-     * Максимальное время ответа навыка в секундах
-     */
-    private readonly MAX_TIME_REQUEST: number = 2900;
-
     /**
      * Информация о сессии пользователя
      * @protected
@@ -192,7 +187,7 @@ export class Marusia extends TemplateTypeModel {
      */
     public async getContext(): Promise<IMarusiaWebhookResponse> {
         const result: IMarusiaWebhookResponse = {
-            version: this.VERSION,
+            version: VERSION,
         };
         await this._initTTS(T_MARUSIA);
         result.response = await this._getResponse();
@@ -200,10 +195,7 @@ export class Marusia extends TemplateTypeModel {
         if (this.isUsedLocalStorage && this.controller.userData && this._stateName) {
             result[this._stateName] = this.controller.userData;
         }
-        const timeEnd = this.getProcessingTime();
-        if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `Marusia:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
-        }
+        this._timeLimitLog();
         return result;
     }
 

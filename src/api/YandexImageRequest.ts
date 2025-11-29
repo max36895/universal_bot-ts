@@ -11,17 +11,18 @@ import {
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Адрес, на который будет отправляться запрос
+ *
+ */
+const STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
+
+/**
  * Класс отвечающий за загрузку изображений в навык Алисы.
  * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
  *
  * @class YandexImageRequest
  */
 export class YandexImageRequest extends YandexRequest {
-    /**
-     * Адрес, на который будет отправляться запрос
-     *
-     */
-    private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
      * Идентификатор навыка, необходимый для корректного сохранения изображения
      * @see YandexRequest Базовый класс для работы с API Яндекса
@@ -43,7 +44,7 @@ export class YandexImageRequest extends YandexRequest {
     ) {
         super(oauth, appContext);
         this.skillId = skillId || appContext.platformParams.app_id || null;
-        this._request.url = this.STANDARD_URL;
+        this._request.url = STANDARD_URL;
     }
 
     /**
@@ -52,7 +53,7 @@ export class YandexImageRequest extends YandexRequest {
      * @return string
      */
     #getImagesUrl(): string {
-        return this.STANDARD_URL + `skills/${this.skillId}/images`;
+        return STANDARD_URL + `skills/${this.skillId}/images`;
     }
 
     /**
@@ -62,7 +63,7 @@ export class YandexImageRequest extends YandexRequest {
      * - used: использованный объем хранилища
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
-        this._request.url = this.STANDARD_URL + 'status';
+        this._request.url = STANDARD_URL + 'status';
         const query = await this.call<IYandexImagesCheckOutPlaceRequest>();
         if (query && typeof query.images.quota !== 'undefined') {
             return query.images.quota;

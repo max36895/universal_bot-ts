@@ -14,7 +14,15 @@ import {
 } from './interfaces';
 import { AppContext } from '../core/AppContext';
 import { httpBuildQuery } from '../utils';
+/**
+ * Версия VK API по умолчанию
+ */
+const VK_API_VERSION = '5.103';
 
+/**
+ * Базовый URL для всех методов VK API
+ */
+const VK_API_ENDPOINT = 'https://api.vk.ru/method/';
 /**
  * Класс для взаимодействия с API ВКонтакте
  * Предоставляет методы для отправки сообщений, загрузки файлов и работы с другими функциями API
@@ -69,16 +77,6 @@ import { httpBuildQuery } from '../utils';
  */
 export class VkRequest {
     /**
-     * Версия VK API по умолчанию
-     */
-    private readonly VK_API_VERSION = '5.103';
-
-    /**
-     * Базовый URL для всех методов VK API
-     */
-    private readonly VK_API_ENDPOINT = 'https://api.vk.ru/method/';
-
-    /**
      * Текущая используемая версия VK API
      */
     #vkApiVersion: string;
@@ -124,7 +122,7 @@ export class VkRequest {
         if (appContext.platformParams.vk_api_version) {
             this.#vkApiVersion = appContext.platformParams.vk_api_version;
         } else {
-            this.#vkApiVersion = this.VK_API_VERSION;
+            this.#vkApiVersion = VK_API_VERSION;
         }
         this.token = null;
         this._error = null;
@@ -163,7 +161,7 @@ export class VkRequest {
                 // vk принимает post только в таком формате
                 this._request.post = httpBuildQuery(this._request.post);
             }
-            const data = await this._request.send<T>(this.VK_API_ENDPOINT + method);
+            const data = await this._request.send<T>(VK_API_ENDPOINT + method);
             if (data.status && data.data) {
                 this._error = data.err || [];
                 if (typeof data.data.error !== 'undefined') {

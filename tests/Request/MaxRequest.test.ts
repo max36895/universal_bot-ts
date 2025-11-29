@@ -148,8 +148,4 @@ describe('MaxRequest', () => {
         expect(result).toBeNull();
         expect(global.fetch).not.toHaveBeenCalled();
     });
-
-    it('should use correct API URL (no trailing spaces)', () => {
-        expect(max['MAX_API_ENDPOINT'].trim()).toBe('https://platform-api.max.ru/');
-    });
 });

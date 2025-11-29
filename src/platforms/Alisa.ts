@@ -15,6 +15,11 @@ import { Text } from '../utils/standard/Text';
 import { T_ALISA } from '../core';
 
 /**
+ * Версия API Алисы
+ */
+const VERSION: string = '1.0';
+
+/**
  * Класс для работы с платформой Яндекс Алиса.
  * Отвечает за инициализацию и обработку запросов от пользователя,
  * а также формирование ответов в формате Алисы
@@ -23,16 +28,6 @@ import { T_ALISA } from '../core';
  * @see TemplateTypeModel Смотри тут
  */
 export class Alisa extends TemplateTypeModel {
-    /**
-     * Версия API Алисы
-     */
-    private readonly VERSION: string = '1.0';
-
-    /**
-     * Максимальное время ответа навыка в миллисекундах
-     */
-    private readonly MAX_TIME_REQUEST: number = 2900;
-
     /**
      * Информация о сессии пользователя
      * @protected
@@ -228,7 +223,7 @@ export class Alisa extends TemplateTypeModel {
      */
     public async getContext(): Promise<IAlisaWebhookResponse> {
         const result: IAlisaWebhookResponse = {
-            version: this.VERSION,
+            version: VERSION,
         };
         if (this.controller.isAuth && this.controller.userToken === null) {
             result.start_account_linking = function (): void {};
@@ -243,10 +238,7 @@ export class Alisa extends TemplateTypeModel {
                 result[this._stateName] = this.controller.state;
             }
         }
-        const timeEnd: number = this.getProcessingTime();
-        if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `Alisa:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
-        }
+        this._timeLimitLog();
         return result;
     }
 

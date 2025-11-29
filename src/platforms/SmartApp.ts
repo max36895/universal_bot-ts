@@ -24,11 +24,6 @@ import { T_SMARTAPP } from '../core';
  */
 export class SmartApp extends TemplateTypeModel {
     /**
-     * Максимальное время ответа навыка в миллисекундах
-     */
-    private readonly MAX_TIME_REQUEST: number = 2900;
-
-    /**
      * Информация о сессии пользователя
      * @protected
      */
@@ -246,10 +241,7 @@ export class SmartApp extends TemplateTypeModel {
             );
         }
         result.payload = await this._getPayload();
-        const timeEnd: number = this.getProcessingTime();
-        if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `SmartApp:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
-        }
+        this._timeLimitLog();
         return result;
     }
 

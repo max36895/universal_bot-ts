@@ -145,6 +145,10 @@ export interface IFileInfo {
     timeOutId?: ReturnType<typeof setTimeout> | null;
 }
 
+interface IFileDataBase {
+    [tableName: string]: IFileInfo;
+}
+
 /**
  * Тип для HTTP клиента
  */
@@ -910,11 +914,14 @@ export class AppContext {
         return this.#db;
     }
 
-    #fileDataBase: {
-        [tableName: string]: IFileInfo;
-    } = {};
+    #fileDataBase: IFileDataBase = {};
 
-    public get fDB() {
+    /**
+     * Возвращает данные из файловой базы данные.
+     * Важно!
+     * Не рекомендуется использовать без острой необходимости
+     */
+    public get fDB(): IFileDataBase {
         return this.#fileDataBase;
     }
 
@@ -1154,7 +1161,7 @@ export class AppContext {
      */
     #isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
         if (isRegex(slots)) {
-            if (this.#isRegexLikelySafe(slots.source, true)) {
+            if (!this.#isRegexLikelySafe(slots.source, true)) {
                 this[this.strictMode ? 'logError' : 'logWarn'](
                     `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
                     {},
@@ -1178,9 +1185,9 @@ export class AppContext {
             slots.forEach((slot) => {
                 const slotStr = isRegex(slot) ? slot.source : slot;
                 if (this.#isRegexLikelySafe(slotStr, isRegex(slot))) {
-                    (errors as string[]).push(slotStr);
-                } else {
                     (correctSlots as TSlots).push(slot);
+                } else {
+                    (errors as string[]).push(slotStr);
                 }
             });
             const status = errors.length === 0;

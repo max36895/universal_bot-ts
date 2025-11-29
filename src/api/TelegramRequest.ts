@@ -4,6 +4,11 @@ import { AppContext } from '../core/AppContext';
 import { Text } from '../utils';
 
 /**
+ * Базовый URL для всех методов Telegram API
+ */
+const API_ENDPOINT = 'https://api.telegram.org/bot';
+
+/**
  * Класс для взаимодействия с API Telegram
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
  * @see (https://core.telegram.org/bots/api) Смотри тут
@@ -51,11 +56,6 @@ import { Text } from '../utils';
  * ```
  */
 export class TelegramRequest {
-    /**
-     * Базовый URL для всех методов Telegram API
-     */
-    public readonly API_ENDPOINT = 'https://api.telegram.org/bot';
-
     /**
      * Экземпляр класса для выполнения HTTP-запросов
      *
@@ -107,7 +107,7 @@ export class TelegramRequest {
      *
      */
     protected _getUrl(): string {
-        return `${this.API_ENDPOINT}${this.#appContext.platformParams.telegram_token}/`;
+        return `${API_ENDPOINT}${this.#appContext.platformParams.telegram_token}/`;
     }
 
     /**
