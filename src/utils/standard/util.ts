@@ -134,6 +134,8 @@ export interface FileOperationResult<T> {
     error?: Error;
 }
 
+const isFileReg = /^\S+\.\S+\b/imu;
+
 /**
  * Проверяет существование файла
  *
@@ -148,8 +150,12 @@ export interface FileOperationResult<T> {
  * ```
  */
 export function isFile(file: string): boolean {
-    const fileInfo = getFileInfo(file);
-    return (fileInfo.success && fileInfo.data?.isFile()) || false;
+    // Если в тексте нет точки, значит это явно не файл
+    if (isFileReg.test(file)) {
+        const fileInfo = getFileInfo(file);
+        return (fileInfo.success && fileInfo.data?.isFile()) || false;
+    }
+    return false;
 }
 
 /**

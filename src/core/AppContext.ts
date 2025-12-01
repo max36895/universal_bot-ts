@@ -100,26 +100,33 @@ function setMemoryLimit(): void {
     const total = os.totalmem();
     // re2 гораздо лучше работает с оперативной память,
     // поэтому если ее нет, то лимиты на количество активных регулярок должно быть меньше
-    if (total < 1.5 * 1024 ** 3) {
-        MAX_COUNT_FOR_GROUP = 300;
-        MAX_COUNT_FOR_REG = 700;
+    if (total < 0.8 * 1024 ** 3) {
+        MAX_COUNT_FOR_GROUP = 100;
+        MAX_COUNT_FOR_REG = 400;
+        if (!__$usedRe2) {
+            MAX_COUNT_FOR_GROUP = 10;
+            MAX_COUNT_FOR_REG = 300;
+        }
+    } else if (total < 1.5 * 1024 ** 3) {
+        MAX_COUNT_FOR_GROUP = 400;
+        MAX_COUNT_FOR_REG = 500;
         if (!__$usedRe2) {
             MAX_COUNT_FOR_GROUP = 40;
             MAX_COUNT_FOR_REG = 300;
         }
     } else if (total < 3 * 1024 ** 3) {
-        MAX_COUNT_FOR_GROUP = 500;
-        MAX_COUNT_FOR_REG = 2000;
+        MAX_COUNT_FOR_GROUP = 750;
+        MAX_COUNT_FOR_REG = 1500;
         if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 180;
-            MAX_COUNT_FOR_REG = 600;
+            MAX_COUNT_FOR_GROUP = 200;
+            MAX_COUNT_FOR_REG = 400;
         }
     } else {
-        MAX_COUNT_FOR_GROUP = 3000;
-        MAX_COUNT_FOR_REG = 7000;
+        MAX_COUNT_FOR_GROUP = 3400;
+        MAX_COUNT_FOR_REG = 3500;
         if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 750;
-            MAX_COUNT_FOR_REG = 2000;
+            MAX_COUNT_FOR_GROUP = 1000;
+            MAX_COUNT_FOR_REG = 1500;
         }
     }
 }
@@ -721,7 +728,7 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      *
      * Массив слов или регулярных выражений для активации команды.
      */
-    slots: TSlots;
+    slots: TSlots | undefined;
     /**
      * Флаг использования регулярных выражений
      *
@@ -1223,6 +1230,7 @@ export class AppContext {
             if (isRegUp) {
                 // прогреваем регулярку
                 regExp.test('__umbot_testing');
+                regExp.test('');
             }
             return regExp;
         }
@@ -1321,7 +1329,13 @@ export class AppContext {
                 if (command) {
                     command.__$groupName = newCommandName;
                     this.commands.set(cName, command);
-                    regExp = this.#getGroupRegExp(cName, command.slots, group, useReg, false);
+                    regExp = this.#getGroupRegExp(
+                        cName,
+                        command.slots as TSlots,
+                        group,
+                        useReg,
+                        false,
+                    );
                 }
             });
             return regExp;
@@ -1449,6 +1463,16 @@ export class AppContext {
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
+        if (commandName === FALLBACK_COMMAND) {
+            this.commands.set(commandName, {
+                slots: undefined,
+                isPattern: false,
+                cb,
+                regExp: undefined,
+                __$groupName: commandName,
+            });
+            return;
+        }
         let correctSlots: TSlots = this.strictMode ? [] : slots;
         let regExp;
         let groupName;
@@ -1460,6 +1484,7 @@ export class AppContext {
                 if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
                     regExp = getRegExp(correctSlots);
                     regExp.test('__umbot_testing');
+                    regExp.test('');
                 }
             }
         } else {
@@ -1493,6 +1518,10 @@ export class AppContext {
      * @param commandName - Имя команды
      */
     public removeCommand(commandName: string): void {
+        if (commandName === FALLBACK_COMMAND) {
+            this.commands.delete(commandName);
+            return;
+        }
         if (this.commands.has(commandName)) {
             const command = this.commands.get(commandName);
             if (command?.isPattern && command.regExp) {
@@ -1645,12 +1674,6 @@ export class AppContext {
         if (this.#isDevMode) {
             console.error(msg);
         }
-        try {
-            return saveData(dir, this.#maskSecrets(msg), 'a', false, this.logError.bind(this));
-        } catch (e) {
-            console.error(`[saveLog] Ошибка записи в файл ${fileName}:`, e);
-            console.error('Текст ошибки: ', msg);
-            return false;
-        }
+        return saveData(dir, this.#maskSecrets(msg), 'a', false, this.logError.bind(this));
     }
 }

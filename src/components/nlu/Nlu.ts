@@ -190,7 +190,7 @@ export class Nlu {
      * // https://example.com/path
      * ```
      */
-    private static readonly LINK_REGEX = /((http|s:\/\/)[^( |\n)]+)/imu;
+    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/imu;
 
     /**
      * Тип сущности: ФИО.

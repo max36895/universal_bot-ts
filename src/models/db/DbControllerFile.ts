@@ -393,23 +393,14 @@ export class DbControllerFile extends DbControllerModel {
                 return this.cachedFileData.data as object;
             };
             try {
-                const fileData = getFileData();
-                if (fileData) {
-                    return typeof fileData === 'string' ? JSON.parse(fileData) : fileData;
-                }
-                return {};
+                return getFileData() || {};
             } catch {
-                // Может возникнуть ситуация когда файл прочитался во время записи, из-за чего не получится его распарсить.
-                // Поэтому считаем что произошла ошибка при чтении, и пробуем прочитать повторно.
-                const fileData = getFileData(true);
-                if (!fileData) {
-                    return {};
-                }
                 try {
-                    return JSON.parse(fileData as string);
+                    // Может возникнуть ситуация когда файл прочитался во время записи, из-за чего не получится его распарсить.
+                    // Поэтому считаем что произошла ошибка при чтении, и пробуем прочитать повторно.
+                    return getFileData(true) || {};
                 } catch (e) {
                     this._appContext?.logError(`Ошибка при парсинге файла ${file}`, {
-                        content: fileData,
                         error: (e as Error).message,
                     });
                     return {};

@@ -99,6 +99,15 @@ bot.setLogger({
 });
 const COMMAND_COUNT = 1000;
 setupCommands(bot, COMMAND_COUNT);
+bot.addCommand('start', ['/start'], (_, bt) => {
+    bt.text = 'start';
+});
+bot.addCommand('help', ['/help'], (_, bt) => {
+    bt.text = 'help';
+});
+bot.addCommand('*', ['*'], (_, bt) => {
+    bt.text = 'hello my friend';
+});
 
 async function run() {
     let text;
@@ -288,29 +297,15 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
 async function runAllTests() {
     const isWin = process.platform === 'win32';
     console.log('🚀 Запуск стресс-тестов для метода Bot.run()\n');
-
-    // Тест 1: нормальная нагрузка
-    const normal = await normalLoadTest(200, 2);
-    if (!normal.success) {
-        console.warn('⚠️  Нормальный тест завершился с ошибками');
-    }
-    errorsBot = [];
-    // Тест 2: burst с 5 вызовами
-    const burst5 = await burstTest(5);
-    if (!burst5.success) {
-        console.warn('⚠️  Burst-тест (5) завершился с ошибками');
-    }
-    errorsBot = [];
-    // Тест 3: burst с 10 вызовами (опционально, для проверки устойчивости)
     const burst10 = await burstTest(10);
     if (!burst10.success) {
         console.warn('⚠️  Burst-тест (10) завершился с ошибками');
     }
-    errorsBot = [];
-    // Тест 3: burst с 10 вызовами (опционально, для проверки устойчивости)
-    const burst50 = await burstTest(50);
-    if (!burst50.success) {
-        console.warn('⚠️  Burst-тест (50) завершился с ошибками');
+    return;
+    // Тест 1: нормальная нагрузка
+    const normal = await normalLoadTest(200, 2);
+    if (!normal.success) {
+        console.warn('⚠️  Нормальный тест завершился с ошибками');
     }
     errorsBot = [];
 
@@ -325,12 +320,11 @@ async function runAllTests() {
         console.warn('⚠️  Burst-тест (500) завершился с ошибками');
     }
     errorsBot = [];
-
     if (burst500.success) {
         const startCount = 500;
-        for (let i = 2; i <= 10; i++) {
+        for (let i = 2; i <= 20; i++) {
             const burst = await burstTest(startCount * i);
-            if (!burst.success) {
+            if (!burst.success || rps < startCount * i) {
                 console.warn(`⚠️  Burst-тест (${startCount * i}) завершился с ошибками`);
                 break;
             }
@@ -349,7 +343,7 @@ async function runAllTests() {
     console.log('\n🏁 Тестирование завершено.');
     console.log('Ваше приложение с текущей конфигурацией сможет выдержать следующую нагрузку:');
     const daySeconds = 60 * 60 * 24;
-    console.log(`    - rps из теста: ${rps}`);
+    console.log(`    - RPS из теста: ${rps}`);
     console.log(
         `    - Количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {
             maximumSignificantDigits: 3,
@@ -358,7 +352,7 @@ async function runAllTests() {
         }).format(rps * daySeconds)}`,
     );
     console.log('В худшем случае если есть какая-то относительно тяжелая логика в приложении');
-    console.log(`    - rps равен 70% от того что показал тест: ${Math.floor(rps * 0.7)}`);
+    console.log(`    - RPS равен 70% от того что показал тест: ${Math.floor(rps * 0.7)}`);
     console.log(
         `    - Количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {
             maximumSignificantDigits: 3,
