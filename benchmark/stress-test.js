@@ -297,11 +297,6 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
 async function runAllTests() {
     const isWin = process.platform === 'win32';
     console.log('🚀 Запуск стресс-тестов для метода Bot.run()\n');
-    const burst10 = await burstTest(10);
-    if (!burst10.success) {
-        console.warn('⚠️  Burst-тест (10) завершился с ошибками');
-    }
-    return;
     // Тест 1: нормальная нагрузка
     const normal = await normalLoadTest(200, 2);
     if (!normal.success) {
