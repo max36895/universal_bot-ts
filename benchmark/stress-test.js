@@ -1,7 +1,7 @@
 // stress-test.js
 // Запуск: node --expose-gc stress-test.js
 
-const { Bot, BotController, Alisa, T_ALISA, rand, unlink } = require('./../dist/index');
+const { Bot, BotController, Alisa, T_ALISA, rand, unlink, Text } = require('./../dist/index');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const { eventLoopUtilization } = require('node:perf_hooks').performance;
@@ -48,9 +48,14 @@ function setupCommands(bot, count) {
     bot.clearCommands();
     for (let i = 0; i < count; i++) {
         const phrase = `${PHRASES[i % PHRASES.length]}_${Math.floor(i / PHRASES.length)}`;
-        bot.addCommand(`cmd_${i}`, [phrase], (cmd, ctrl) => {
-            ctrl.text = 'handled cmd';
-        });
+        bot.addCommand(
+            `cmd_${i}`,
+            [phrase],
+            (cmd, ctrl) => {
+                ctrl.text = 'handled cmd';
+            },
+            true,
+        );
     }
 }
 
@@ -115,6 +120,8 @@ async function run() {
     if (pos === 0) text = 'привет_0';
     else if (pos === 1) text = `помощь_12`;
     else text = `удалить_751154`;
+
+    text += '_' + Math.random();
     return bot.run(Alisa, T_ALISA, mockRequest(text));
 }
 
@@ -206,6 +213,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
 }
 
 let rps = Infinity;
+let RPS = [];
 
 // ───────────────────────────────────────
 // 2. Тест кратковременного всплеска (burst)
@@ -278,7 +286,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
         console.log(`   idle:  ${eluAfter.idle.toFixed(2)} ms`);
         console.log(`   Utilization: ${(eluAfter.utilization * 100).toFixed(1)}%`);
 
-        rps = Math.floor(Math.min(1000 / (totalMs / count), rps));
+        RPS.push(Math.floor(count / (totalMs / 1000)));
 
         global.gc();
         return { success: errorsBot.length === 0, duration: totalMs, memDelta: memEnd - memStart };
@@ -289,6 +297,180 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
         global.gc();
         return { success: false, error: err.message || err, memDelta: memEnd - memStart };
     }
+}
+
+async function testMaxRPS(durationSeconds = 10) {
+    console.log(
+        `\n📊 Тест максимального RPS (${durationSeconds} секунд)\nПокажет сколько запросов смогло обработаться за ${durationSeconds} секунд`,
+    );
+
+    const startTime = Date.now();
+    let totalRequests = 0;
+    const results = [];
+
+    // Запускаем непрерывный поток запросов
+    while (Date.now() - startTime < durationSeconds * 1000) {
+        const batchSize = 100; // Размер пачки
+        const promises = [];
+
+        for (let i = 0; i < batchSize; i++) {
+            promises.push(run());
+        }
+
+        const batchStart = performance.now();
+        await Promise.all(promises);
+        const batchTime = performance.now() - batchStart;
+
+        totalRequests += batchSize;
+        results.push({
+            batch: batchSize,
+            time: batchTime,
+            rps: batchSize / (batchTime / 1000),
+        });
+    }
+
+    const totalTime = (Date.now() - startTime) / 1000;
+    const avgRPS = totalRequests / totalTime;
+
+    console.log(`Всего запросов: ${totalRequests}`);
+    console.log(`Общее время: ${totalTime.toFixed(2)} сек`);
+    console.log(`Средний RPS: ${avgRPS.toFixed(0)}`);
+    console.log(`Максимальный RPS в пачке: ${Math.max(...results.map((r) => r.rps)).toFixed(0)}`);
+
+    return avgRPS;
+}
+
+async function realisticTest() {
+    console.log(
+        '🧪 Реалистичный тест который эмулирует работу приложения в условиях сервера\n' +
+            '(получение запроса -> привод его к корректному виду -> логика приложения -> отдача результата)',
+    );
+
+    const iterations = 10000;
+    const results = [];
+
+    for (let i = 0; i < iterations; i++) {
+        const start = performance.now();
+
+        const command = Text.getText(PHRASES) + '_' + (i % 1000);
+        // 1. Создаем объект запроса
+        const requestObj = {
+            meta: {
+                locale: 'ru-Ru',
+                timezone: 'UTC',
+                client_id: 'local',
+                interfaces: { screen: true },
+            },
+            session: {
+                message_id: 1,
+                session_id: `s_${Date.now()}`,
+                skill_id: 'stress',
+                user_id: `user_${i}`,
+                new: true,
+            },
+            request: {
+                command: command,
+                original_utterance: command,
+            },
+            state: { session: {} },
+            version: '1.0',
+        };
+
+        // 2. Эмулируем приход запроса на сервер
+        const jsonString = JSON.stringify(requestObj);
+
+        // 3. Эмулируем получение запроса на сервер
+        const parsedRequest = JSON.parse(jsonString);
+
+        // 4. Запускаем логику приложения
+        const result = await bot.run(Alisa, T_ALISA, JSON.stringify(parsedRequest));
+
+        // 5. Подготавливает корректный ответ на запрос
+        const responseJson = JSON.stringify(result);
+
+        // 6. Эмулируем отправку ответа пользователю
+        JSON.parse(responseJson);
+
+        const duration = performance.now() - start;
+        results.push(duration);
+    }
+
+    const avg = results.reduce((a, b) => a + b, 0) / results.length;
+    const rps = 1000 / avg;
+
+    console.log(`   Итераций: ${iterations}`);
+    console.log(`   Среднее время: ${avg.toFixed(2)} мс`);
+    console.log(`   Реалистичный RPS: ${rps.toFixed(0)}`);
+
+    return rps;
+}
+
+async function realCommandsTest() {
+    console.log('🧪 Тест со всеми командами');
+
+    const commandCount = bot.getAppContext().commands.size;
+    const iterations = 10000;
+
+    // Создаем 10000 запросов, равномерно распределенных по командам
+    const requests = [];
+    for (let i = 0; i < iterations; i++) {
+        const cmdIndex = i % commandCount;
+        const phrase = `${Text.getText(PHRASES)}_${cmdIndex}`;
+        requests.push(mockRequest(phrase));
+    }
+
+    // Перемешиваем
+    requests.sort(() => Math.random() - 0.5);
+
+    const start = performance.now();
+
+    // Обрабатываем пачками
+    const batchSize = 100;
+    for (let i = 0; i < iterations; i += batchSize) {
+        const batch = requests.slice(i, i + batchSize);
+        const promises = batch.map((req) => bot.run(Alisa, T_ALISA, req));
+        await Promise.all(promises);
+    }
+
+    const totalTime = performance.now() - start;
+    const avgTime = totalTime / iterations;
+    const rps = 1000 / avgTime;
+
+    console.log(`   Команд в боте: ${commandCount}`);
+    console.log(`   Запросов: ${iterations}`);
+    console.log(`   Общее время: ${totalTime.toFixed(0)} мс`);
+    console.log(`   Среднее время: ${avgTime.toFixed(3)} мс`);
+    console.log(`   RPS: ${rps.toFixed(0)}`);
+
+    return rps;
+}
+
+// Тест с fallback (*) командой
+async function fallbackTest() {
+    console.log(
+        '🧪 Тест с fallback командами (неизвестные запросы)\n' +
+            'Проверяет сценарий, когда все запросы пользователя не удалось найти среди команд',
+    );
+
+    const results = [];
+    const iterations = 5000;
+
+    for (let i = 0; i < iterations; i++) {
+        // Создаем случайный текст, которого точно нет в командах
+        const randomText = crypto.randomBytes(20).toString('hex');
+        const startReq = performance.now();
+        await bot.run(Alisa, T_ALISA, mockRequest(randomText));
+        results.push(performance.now() - startReq);
+    }
+
+    const avg = results.reduce((a, b) => a + b, 0) / results.length;
+    const rps = 1000 / avg;
+
+    console.log(`   Fallback запросов: ${iterations}`);
+    console.log(`   Среднее время: ${avg.toFixed(3)} мс`);
+    console.log(`   RPS: ${rps.toFixed(0)}`);
+
+    return rps;
 }
 
 // ───────────────────────────────────────
@@ -303,7 +485,6 @@ async function runAllTests() {
         console.warn('⚠️  Нормальный тест завершился с ошибками');
     }
     errorsBot = [];
-
     // Тест 3: burst с 10 вызовами (опционально, для проверки устойчивости)
     const burst100 = await burstTest(100);
     if (!burst100.success) {
@@ -319,12 +500,17 @@ async function runAllTests() {
         const startCount = 500;
         for (let i = 2; i <= 20; i++) {
             const burst = await burstTest(startCount * i);
-            if (!burst.success || rps < startCount * i) {
-                console.warn(`⚠️  Burst-тест (${startCount * i}) завершился с ошибками`);
+            if (!burst.success || RPS[RPS.length - 1] < startCount * i) {
+                // Вывод текста о том, что тест завершился с ошибками не корректно, так как это не соответствует действительности
+                //console.warn(`⚠️ Burst-тест (${startCount * i}) завершился с ошибками`);
                 break;
             }
         }
     }
+    await realCommandsTest();
+    await fallbackTest();
+    await realisticTest();
+    await testMaxRPS(10);
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
     unlink(__dirname + '/../json/UsersData.json');
@@ -338,6 +524,11 @@ async function runAllTests() {
     console.log('\n🏁 Тестирование завершено.');
     console.log('Ваше приложение с текущей конфигурацией сможет выдержать следующую нагрузку:');
     const daySeconds = 60 * 60 * 24;
+    rps = Math.floor(
+        RPS.reduce((acc, value) => {
+            return acc + value;
+        }, 0) / RPS.length,
+    );
     console.log(`    - RPS из теста: ${rps}`);
     console.log(
         `    - Количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {

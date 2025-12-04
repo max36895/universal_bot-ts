@@ -87,7 +87,7 @@ interface IGroup {
     name: string;
     regLength: number;
     butchRegexp: unknown[];
-    regExp: RegExp | null;
+    regExpSize: number;
 }
 
 let MAX_COUNT_FOR_GROUP = 0;
@@ -98,36 +98,26 @@ let MAX_COUNT_FOR_REG = 0;
  */
 function setMemoryLimit(): void {
     const total = os.totalmem();
-    // re2 гораздо лучше работает с оперативной память,
-    // поэтому если ее нет, то лимиты на количество активных регулярок должно быть меньше
+    // re2 гораздо лучше работает с оперативной память, а также ограничение на использование памяти не такое суровое
+    // например нативный reqExp уронит node при 3500 группах, либо при 68000 обычных регулярках(В этот лимит никогда не попадем, так как максимум активных регулярок порядка 7000)
+    // Поэтому если нет re2, то лимиты на количество активных регулярок должно быть меньше, для групп сильно меньше
     if (total < 0.8 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 100;
-        MAX_COUNT_FOR_REG = 400;
-        if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 10;
-            MAX_COUNT_FOR_REG = 300;
-        }
+        MAX_COUNT_FOR_REG = 500;
     } else if (total < 1.5 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 400;
-        MAX_COUNT_FOR_REG = 500;
-        if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 40;
-            MAX_COUNT_FOR_REG = 300;
-        }
+        MAX_COUNT_FOR_REG = 700;
     } else if (total < 3 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 750;
         MAX_COUNT_FOR_REG = 1500;
-        if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 200;
-            MAX_COUNT_FOR_REG = 400;
-        }
     } else {
         MAX_COUNT_FOR_GROUP = 3400;
         MAX_COUNT_FOR_REG = 3500;
-        if (!__$usedRe2) {
-            MAX_COUNT_FOR_GROUP = 1000;
-            MAX_COUNT_FOR_REG = 1500;
-        }
+    }
+
+    // Если нет re2, то количество активных регулярок для групп, нужно сильно сократить, иначе возможно падение nodejs
+    if (!__$usedRe2) {
+        MAX_COUNT_FOR_GROUP /= 10;
     }
 }
 
@@ -150,6 +140,7 @@ export interface IFileInfo {
      */
     version: number;
     timeOutId?: ReturnType<typeof setTimeout> | null;
+    isFile: boolean;
 }
 
 interface IFileDataBase {
@@ -755,6 +746,11 @@ export interface ICommandParam<TBotController extends BotController = BotControl
     regExp?: RegExp;
 }
 
+interface IGroupData {
+    commands: string[];
+    regExp: RegExp | null | string;
+}
+
 /**
  * Тип для функции обработки кастомного обработчика команд
  * @param userCommand - Команда пользователя
@@ -765,6 +761,13 @@ export type TCommandResolver = (
     userCommand: string,
     commands: Map<string, ICommandParam>,
 ) => string | null;
+
+const REG_DANGEROUS = /\)+\s*[+*{?]|}\s*[+*{?]/;
+const REG_PIPE = /\([^)]*\|[^)]*\)/;
+const REG_EV1 = /\([^)]*(\w)\1+[^)]*\|/;
+const REG_EV2 = /\([^)]*[+*{][^)]*\|/;
+const REG_REPEAT = /\([^)]*[+*{][^)]*\)\s*\{/;
+const REG_BAD = /\.\s*[+*{]/;
 
 /**
  * @class AppContext
@@ -955,8 +958,7 @@ export class AppContext {
     /**
      * Сгруппированные регулярные выражения. Начинает отрабатывать как только было задано более 250 регулярных выражений
      */
-    public regexpGroup: Map<string, { commands: string[]; regExp: RegExp | null | string }> =
-        new Map();
+    public regexpGroup: Map<string, IGroupData> = new Map();
     #noFullGroups: IGroup | null = null;
     #regExpCommandCount = 0;
 
@@ -1108,7 +1110,7 @@ export class AppContext {
 
             // Вложенные квантификаторы: (a+)+, (a*)*, [a-z]+*, и т.п.
             // Ищем: закрывающая скобка или символ класса, за которой следует квантификатор
-            const dangerousNested = /\)+\s*[+*{?]|}\s*[+*{?]|]\s*[+*{?]/.test(pattern);
+            const dangerousNested = REG_DANGEROUS.test(pattern);
             if (dangerousNested) {
                 return false;
             }
@@ -1117,25 +1119,25 @@ export class AppContext {
             // Простой признак: один терм — префикс другого
             // Точное определение сложно без AST, но часто такие паттерны содержат:
             // - `|` внутри группы + повторяющиеся символы
-            const hasPipeInGroup = /\([^)]*\|[^)]*\)/.test(pattern);
+            const hasPipeInGroup = REG_PIPE.test(pattern);
             if (hasPipeInGroup) {
                 // Дополнительная эвристика: есть ли повторяющиеся символы или квантификаторы?
-                if (/\([^)]*(\w)\1+[^)]*\|/g.test(pattern)) {
+                if (REG_EV1.test(pattern)) {
                     return false;
                 }
-                if (/\([^)]*[+*{][^)]*\|/g.test(pattern)) {
+                if (REG_EV2.test(pattern)) {
                     return false;
                 }
             }
 
             // Повторяющиеся квантифицируемые группы: (a+){10,100}
-            if (/\([^)]*[+*{][^)]*\)\s*\{/g.test(pattern)) {
+            if (REG_REPEAT.test(pattern)) {
                 return false;
             }
 
             // Квантификаторы на "жадных" конструкциях без якорей — сложнее ловить,
             // но если есть .*+ — это почти всегда опасно
-            if (/\.\s*[+*{]/.test(pattern)) {
+            if (REG_BAD.test(pattern)) {
                 return false;
             }
 
@@ -1209,13 +1211,17 @@ export class AppContext {
         }
     }
 
+    #timeOutReg: ReturnType<typeof setTimeout> | undefined;
+    #oldFnGroup: (() => void) | undefined;
+    #oldGroupName: string | undefined;
+
     #getGroupRegExp(
-        commandName: string,
+        groupData: IGroupData,
         slots: TSlots,
         group: IGroup,
         useReg: boolean = true,
         isRegUp: boolean = true,
-    ): RegExp | string {
+    ): void {
         group.butchRegexp ??= [];
         const parts = slots.map((s) => {
             return `(${typeof s === 'string' ? s : s.source})`;
@@ -1223,23 +1229,85 @@ export class AppContext {
         const groupIndex = group.butchRegexp.length;
         // Для уменьшения длины регулярного выражения, а также для исключения случая,
         // когда имя команды может быть не корректным для имени группы, сами задаем корректное имя с учетом индекса
-        group.butchRegexp.push(`(?<_${groupIndex}>${parts?.join('|')})`);
+        const pat = `(?<_${groupIndex}>${parts?.join('|')})`;
+        group.butchRegexp.push(pat);
+        group.regExpSize += pat.length;
         const pattern = group.butchRegexp.join('|');
         if (useReg) {
-            const regExp = getRegExp(pattern);
-            if (isRegUp) {
-                // прогреваем регулярку
-                regExp.test('__umbot_testing');
-                regExp.test('');
+            if (group.name !== this.#oldGroupName && this.#timeOutReg) {
+                this.#oldFnGroup?.();
+                this.#oldGroupName = group.name;
             }
-            return regExp;
+            if (this.#timeOutReg) {
+                clearTimeout(this.#timeOutReg);
+                this.#timeOutReg = undefined;
+            }
+            this.#oldFnGroup = (): void => {
+                const pattern = group.butchRegexp.join('|');
+                const regExp = getRegExp(pattern);
+                if (isRegUp) {
+                    // прогреваем регулярку
+                    regExp.test('__umbot_testing');
+                    regExp.test('');
+                }
+                groupData.regExp = regExp;
+                this.#timeOutReg = undefined;
+                this.#oldFnGroup = undefined;
+            };
+
+            this.#timeOutReg = setTimeout(this.#oldFnGroup, 100);
+            return;
+        } else {
+            if (this.#timeOutReg && this.#oldGroupName !== group.name) {
+                this.#oldFnGroup?.();
+            }
+            clearTimeout(this.#timeOutReg);
+            this.#oldFnGroup = undefined;
+            this.#oldGroupName = undefined;
+            this.#timeOutReg = undefined;
         }
-        return pattern;
+        groupData.regExp = pattern;
+    }
+
+    /**
+     * Проверяем что можно добавить регулярку в группу
+     * @param patternSource
+     * @private
+     */
+    #isSafeToGroup(patternSource: string) {
+        // Убираем экранирование, но осторожно
+        const s = patternSource;
+
+        // Если есть | внутри группы — потенциально опасно
+        if (s.includes('|')) {
+            // Но разрешаем, если | только на верхнем уровне и разделены литералами:
+            // Например: /user_1 foo|user_2 bar/ — OK
+            // Но /(\d+|\w+)/ — плохо
+            if (s.match(/\([^)]*\|[^)]*\)/)) {
+                return false; // | внутри скобок — не группируем
+            }
+        }
+
+        // Если есть вложенные квантификаторы — плохо
+        if (s.match(/\(\s*[^\s()]*\{\d*,?\d*\}\s*\)\{\d*,?\d*\}/)) {
+            return false;
+        }
+
+        // Если есть {n,} (без верхней границы) над гибким классом — рискованно
+        if (s.match(/\[[^\]]*[\s\-()]\][*+{]/)) {
+            return false;
+        }
+
+        // Если только фиксированная длина + литералы — OK
+        return true;
     }
 
     #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
         if (this.#regExpCommandCount < 300) {
+            return commandName;
+        }
+        if (!this.#isSafeToGroup(slots.join('|'))) {
             return commandName;
         }
         if (isRegexp) {
@@ -1256,11 +1324,11 @@ export class AppContext {
                         this.commands.set(this.#noFullGroups.name, command);
                     }
                 }
-                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки
+                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки.
                 // Даем примерно 60 регулярок по 5 символов
                 if (
                     this.#noFullGroups.regLength >= 60 ||
-                    (this.#noFullGroups.regExp?.source?.length || 0) > 850
+                    (this.#noFullGroups.regExpSize || 0) > 850
                 ) {
                     groupData = { commands: [], regExp: null };
                     groupName = commandName;
@@ -1268,13 +1336,13 @@ export class AppContext {
                         name: commandName,
                         regLength: 0,
                         butchRegexp: [],
-                        regExp: null,
+                        regExpSize: 0,
                     };
                 }
                 groupData.commands.push(commandName);
                 // не даем хранить много регулярок для групп, иначе можем выйти за пределы потребления памяти
-                groupData.regExp = this.#getGroupRegExp(
-                    commandName,
+                this.#getGroupRegExp(
+                    groupData,
                     slots,
                     this.#noFullGroups,
                     this.regexpGroup.size < MAX_COUNT_FOR_GROUP,
@@ -1289,15 +1357,16 @@ export class AppContext {
                     return `(${typeof s === 'string' ? s : s.source})`;
                 });
                 butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
+                const regExp = getRegExp(`${butchRegexp.join('|')}`);
                 this.#noFullGroups = {
                     name: commandName,
                     regLength: slots.length,
                     butchRegexp,
-                    regExp: getRegExp(`${butchRegexp.join('|')}`),
+                    regExpSize: regExp.source.length,
                 };
                 this.regexpGroup.set(commandName, {
                     commands: [commandName],
-                    regExp: getRegExp(`${butchRegexp.join('|')}`),
+                    regExp,
                 });
                 return commandName;
             }
@@ -1318,27 +1387,21 @@ export class AppContext {
 
     #removeRegexpInGroup(commandName: string): void {
         const getReg = (
+            groupData: IGroupData,
             newCommandName: string,
             newCommands: string[],
             group: IGroup,
             useReg: boolean,
-        ): RegExp | null => {
-            let regExp = null;
+        ): void => {
             newCommands.forEach((cName) => {
                 const command = this.commands.get(cName);
                 if (command) {
                     command.__$groupName = newCommandName;
                     this.commands.set(cName, command);
-                    regExp = this.#getGroupRegExp(
-                        cName,
-                        command.slots as TSlots,
-                        group,
-                        useReg,
-                        false,
-                    );
+                    console.log('wtf');
+                    this.#getGroupRegExp(groupData, command.slots as TSlots, group, useReg, false);
                 }
             });
-            return regExp;
         };
         if (this.regexpGroup.has(commandName)) {
             const group = this.regexpGroup.get(commandName);
@@ -1352,15 +1415,20 @@ export class AppContext {
                     name: newCommandName,
                     regLength: 0,
                     butchRegexp: [],
+                    regExpSize: 0,
+                };
+                const groupData: IGroupData = {
+                    commands: newCommands,
                     regExp: null,
                 };
-                const regExp = getReg(
+                getReg(
+                    groupData,
                     newCommandName,
                     newCommands,
                     nGroup,
                     typeof group.regExp !== 'string',
                 );
-                this.regexpGroup.set(newCommandName, { commands: newCommands, regExp });
+                this.regexpGroup.set(newCommandName, groupData);
             }
         } else if (this.commands.has(commandName)) {
             const command = this.commands.get(commandName);
@@ -1374,18 +1442,20 @@ export class AppContext {
                         name: commandName,
                         regLength: 0,
                         butchRegexp: [],
+                        regExpSize: 0,
+                    };
+                    const groupData: IGroupData = {
+                        commands: newCommands,
                         regExp: null,
                     };
-                    const newData = {
-                        commands: newCommands,
-                        regExp: getReg(
-                            commandName,
-                            newCommands,
-                            nGroup,
-                            typeof group.regExp !== 'string',
-                        ),
-                    };
-                    this.regexpGroup.set(command.__$groupName, newData);
+                    getReg(
+                        groupData,
+                        commandName,
+                        newCommands,
+                        nGroup,
+                        typeof group.regExp !== 'string',
+                    );
+                    this.regexpGroup.set(command.__$groupName, groupData);
                 }
             }
         }
@@ -1473,6 +1543,15 @@ export class AppContext {
             });
             return;
         }
+        if (
+            this.commands.size === 1e4 ||
+            this.commands.size === 5e4 ||
+            this.commands.size === 1e5
+        ) {
+            this.logWarn(
+                `Задано более ${this.commands.size} команд, скорей всего команды задаются через цикл, который отработал не корректно. Проверьте корректность работы приложения, а также добавленные команды.`,
+            );
+        }
         let correctSlots: TSlots = this.strictMode ? [] : slots;
         let regExp;
         let groupName;
@@ -1543,6 +1622,10 @@ export class AppContext {
         this.#noFullGroups = null;
         this.#regExpCommandCount = 0;
         this.regexpGroup.clear();
+        this.#oldGroupName = undefined;
+        this.#oldFnGroup = undefined;
+        clearTimeout(this.#timeOutReg);
+        this.#timeOutReg = undefined;
     }
 
     /**
@@ -1628,7 +1711,7 @@ export class AppContext {
     public saveJson(fileName: string, data: any): boolean {
         const dir: IDir = {
             path: this.appConfig.json || __dirname + '/../../json',
-            fileName: fileName.replace(/`/g, ''),
+            fileName: fileName,
         };
         return saveData(dir, JSON.stringify(data), undefined, true, this.logError.bind(this));
     }

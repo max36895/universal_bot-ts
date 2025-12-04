@@ -619,7 +619,10 @@ export class AlisaSound extends TemplateSoundTypes {
      * ```
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
-        return Text.textReplace(key, value, text);
+        if (text.includes(key)) {
+            return Text.textReplace(key, value, text);
+        }
+        return text;
     }
 
     /**
@@ -636,9 +639,12 @@ export class AlisaSound extends TemplateSoundTypes {
      * ```
      */
     public static removeSound(text: string): string {
-        return text.replace(
-            /(<speaker audio="([^"]+)">)|(<speaker effect="([^"]+)">)|(sil <\[\d+]>)/gim,
-            '',
-        );
+        if (text.includes('speaker') || text.includes('sil')) {
+            return text.replace(
+                /(<speaker audio="([^"]+)">)|(<speaker effect="([^"]+)">)|(sil <\[\d+]>)/gim,
+                '',
+            );
+        }
+        return text;
     }
 }

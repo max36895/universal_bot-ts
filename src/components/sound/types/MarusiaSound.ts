@@ -434,7 +434,10 @@ export class MarusiaSound extends TemplateSoundTypes {
      * ```
      */
     public static replaceSound(key: string, value: string | string[], text: string): string {
-        return Text.textReplace(key, value, text);
+        if (text.includes(key)) {
+            return Text.textReplace(key, value, text);
+        }
+        return text;
     }
 
     /**
@@ -451,9 +454,12 @@ export class MarusiaSound extends TemplateSoundTypes {
      * ```
      */
     public static removeSound(text: string): string {
-        return text.replace(
-            /(<speaker audio="([^"]+)">)|(<speaker audio_vk_id="([^"]+)">)/gimu,
-            '',
-        );
+        if (text.includes('speaker')) {
+            return text.replace(
+                /(<speaker audio="([^"]+)">)|(<speaker audio_vk_id="([^"]+)">)/gimu,
+                '',
+            );
+        }
+        return text;
     }
 }

@@ -331,9 +331,10 @@ let maxRegCount = 0;
 function getRegex(regex, state, count, step) {
     const mid = Math.round(count / 2);
     if (
-        (state === 'low' && step === 1) ||
+        (state === 'low' && (step === 1 || step === 2)) ||
         (state === 'middle' && step === mid) ||
-        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT)
+        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT) ||
+        true
     ) {
         maxRegCount++;
         return regex;
@@ -370,18 +371,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         if (useReg) {
             switch (regState) {
                 case 'low':
-                    command = getRegex('(_\\d страни)', state, count, j);
+                    command = getRegex(`${j} страниц`, state, count, j);
                     break;
                 case 'middle':
-                    command = getRegex(
-                        new RegExp(
-                            `((([\\d\\-() ]{4,}\\d)|((?:\\+|\\d)[\\d\\-() ]{9,}\\d))_ref_${j}_)`,
-                            'i',
-                        ),
-                        state,
-                        count,
-                        j,
-                    );
+                    command = getRegex(`(\\d\\d-\\d\\d-\\d\\d_ref_${j}_)`, state, count, j);
                     break;
                 case 'high':
                     command = getRegex(
@@ -428,9 +421,9 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
             case 'low':
                 testCommand =
                     regState === 'low'
-                        ? `_1 страниц`
+                        ? `1 страниц`
                         : regState === 'middle'
-                          ? `88003553535_ref_1_`
+                          ? `00-00-00_ref_1_`
                           : regState === 'high'
                             ? `напомни для user_1 позвонить маме в 18:30`
                             : `cmd_1`;
@@ -438,9 +431,9 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
             case 'middle':
                 testCommand =
                     regState === 'low'
-                        ? `_5 станица`
+                        ? `${mid} страниц`
                         : regState === 'middle'
-                          ? `88003553535_ref_${mid}_`
+                          ? `00-00-00_ref_${mid}_`
                           : regState === 'high'
                             ? `напомни для user_${mid} позвонить маме в 18:30`
                             : `cmd_${mid}`;

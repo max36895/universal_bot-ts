@@ -134,7 +134,19 @@ export interface FileOperationResult<T> {
     error?: Error;
 }
 
-const isFileReg = /^\S+\.\S+\b/imu;
+/**
+ * Быстрое сравнение на то похож введенный текст на имя файла или нет
+ * @param str
+ */
+function looksLikeFilePath(str: string): boolean {
+    const i = str.lastIndexOf('.');
+    return (
+        i > 0 && // есть точка, и не в начале
+        i < str.length - 1 && // не в конце
+        str.length - i <= 6 && // расширение ≤5 символов (".js", ".json" и т.п.)
+        /^\w+$/.test(str.slice(i + 1)) // расширение — только словесные символы
+    );
+}
 
 /**
  * Проверяет существование файла
@@ -151,7 +163,7 @@ const isFileReg = /^\S+\.\S+\b/imu;
  */
 export function isFile(file: string): boolean {
     // Если в тексте нет точки, значит это явно не файл
-    if (isFileReg.test(file)) {
+    if (looksLikeFilePath(file)) {
         const fileInfo = getFileInfo(file);
         return (fileInfo.success && fileInfo.data?.isFile()) || false;
     }

@@ -687,6 +687,7 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -703,6 +704,7 @@ describe('Bot', () => {
                     true,
                 );
             }
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -717,6 +719,7 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('by');
         });
@@ -744,6 +747,7 @@ describe('Bot', () => {
                     i % 50 !== 0,
                 );
             }
+            await new Promise((res) => setTimeout(res, 200));
             let res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -759,6 +763,7 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -774,6 +779,7 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -790,6 +796,7 @@ describe('Bot', () => {
                     i % 50 !== 0,
                 );
             }
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -804,6 +811,7 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('by');
         });
@@ -831,6 +839,7 @@ describe('Bot', () => {
                     i % 30 !== 0,
                 );
             }
+            await new Promise((res) => setTimeout(res, 200));
             let res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -861,6 +870,7 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -877,6 +887,7 @@ describe('Bot', () => {
                     i % 30 !== 0,
                 );
             }
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -891,9 +902,11 @@ describe('Bot', () => {
                 },
                 true,
             );
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(Alisa, T_USER_APP, getContent('by', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('by');
             bot.removeCommand('text_299_299');
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,
@@ -901,6 +914,7 @@ describe('Bot', () => {
             )) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('hello');
             bot.removeCommand('text_291_291');
+            await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(
                 Alisa,
                 T_USER_APP,

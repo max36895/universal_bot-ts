@@ -9,6 +9,7 @@
  */
 import { getRegExp, isRegex } from './RegExp';
 import { rand, similarText } from './util';
+import os from 'os';
 
 /**
  * Тип для поиска совпадений в тексте
@@ -77,7 +78,21 @@ export interface ITextSimilarity {
     text?: string | null;
 }
 
-const MAX_CACHE_SIZE = 3000;
+let MAX_CACHE_SIZE = 3000;
+
+function setMemoryLimit(): void {
+    const total = os.totalmem();
+    // На всякий случай ограничиваем кэш, если в кэш будут класть группы
+    if (total < 0.8 * 1024 ** 3) {
+        MAX_CACHE_SIZE = 2000;
+    } else if (total < 3 * 1024 ** 3) {
+        MAX_CACHE_SIZE = 2500;
+    } else {
+        MAX_CACHE_SIZE = 3000;
+    }
+}
+
+setMemoryLimit();
 
 interface ICacheItem {
     /**

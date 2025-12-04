@@ -40,6 +40,8 @@ export interface IQueryData {
     [key: string]: string | number | any;
 }
 
+const DATA_REG = /`([^`]+)`\s*=\s*(?:"([^"]*)"|(\S+))/gim;
+
 /**
  * Класс для управления данными запросов к базе данных
  * Позволяет хранить и манипулировать параметрами запросов и данными для обновления
@@ -123,15 +125,15 @@ export class QueryData {
      */
     public static getQueryData(str: string): IQueryData | null {
         if (str) {
-            const datas = str.matchAll(/((`[^`]+`)=(("[^"]+")|([^ ]+)))/gim);
+            const datas = str.matchAll(DATA_REG);
             const regData: IQueryData = {};
             let data = datas.next();
             while (!data.done) {
-                let val: string | number = data.value[3].replace(/"/g, '');
+                let val: string | number = data.value[2] ?? data.value[3];
                 if (!isNaN(+val)) {
                     val = +val;
                 }
-                regData[data.value[2].replace(/`/g, '')] = val;
+                regData[data.value[1]] = val;
                 data = datas.next();
             }
             return regData;

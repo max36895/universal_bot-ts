@@ -76,6 +76,8 @@ export class DbControllerFile extends DbControllerModel {
             if (!this._appContext.fDB[this.tableName]) {
                 this._appContext.fDB[this.tableName] = {
                     version: 0,
+                    data: {},
+                    isFile: true,
                 };
             }
             return this._appContext.fDB[this.tableName];
@@ -123,6 +125,7 @@ export class DbControllerFile extends DbControllerModel {
                 this._appContext?.saveJson(`${this.tableName}.json`, this.cachedFileData.data);
             }
             this.#setCachedFileData('timeOutId', null);
+            this.#setCachedFileData('isFile', true);
         };
         if (this.cachedFileData.timeOutId) {
             clearTimeout(this.cachedFileData.timeOutId);
@@ -376,7 +379,7 @@ export class DbControllerFile extends DbControllerModel {
     public getFileData(): any {
         const path = this._appContext?.appConfig.json;
         const file = `${path}/${this.tableName}.json`;
-        const fileInfo = getFileInfo(file).data;
+        const fileInfo = this.cachedFileData.isFile ? getFileInfo(file).data : null;
         if (fileInfo && fileInfo.isFile()) {
             const getFileData = (isForce: boolean = false): string | object => {
                 const fileData =
@@ -389,6 +392,7 @@ export class DbControllerFile extends DbControllerModel {
                 this.cachedFileData = {
                     data: typeof fileData === 'string' ? JSON.parse(fileData) : fileData,
                     version: fileInfo.mtimeMs,
+                    isFile: true,
                 };
                 return this.cachedFileData.data as object;
             };
@@ -407,7 +411,8 @@ export class DbControllerFile extends DbControllerModel {
                 }
             }
         } else {
-            return {};
+            this.#setCachedFileData('isFile', false);
+            return this.cachedFileData.data;
         }
     }
 

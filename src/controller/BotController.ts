@@ -773,7 +773,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                             // Находим первую совпавшую подгруппу (index в массиве parts)
                             for (const key in match.groups) {
                                 if (typeof match.groups[key] !== 'undefined') {
-                                    const commandName = groups.commands[+key.replace('_', '')];
+                                    const commandName = groups.commands[+key.slice(1)];
                                     if (commandName && this.appContext.commands.has(commandName)) {
                                         this.#commandExecute(
                                             commandName,
