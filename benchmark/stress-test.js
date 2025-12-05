@@ -48,14 +48,9 @@ function setupCommands(bot, count) {
     bot.clearCommands();
     for (let i = 0; i < count; i++) {
         const phrase = `${PHRASES[i % PHRASES.length]}_${Math.floor(i / PHRASES.length)}`;
-        bot.addCommand(
-            `cmd_${i}`,
-            [phrase],
-            (cmd, ctrl) => {
-                ctrl.text = 'handled cmd';
-            },
-            true,
-        );
+        bot.addCommand(`cmd_${i}`, [phrase], (cmd, ctrl) => {
+            ctrl.text = 'handled cmd';
+        });
     }
 }
 

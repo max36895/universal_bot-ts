@@ -69,7 +69,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "prettier": "prettier --write .",
-    "bench": "node --expose-gc  ./benchmark/command.js",
+    "bench": "node --expose-gc ./benchmark/command.js",
     "stress": "node --expose-gc ./benchmark/stress-test.js"
   },
   "bugs": {

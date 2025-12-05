@@ -99,25 +99,26 @@ let MAX_COUNT_FOR_REG = 0;
 function setMemoryLimit(): void {
     const total = os.totalmem();
     // re2 гораздо лучше работает с оперативной память, а также ограничение на использование памяти не такое суровое
-    // например нативный reqExp уронит node при 3500 группах, либо при 68000 обычных регулярках(В этот лимит никогда не попадем, так как максимум активных регулярок порядка 7000)
+    // например нативный reqExp уронит node при 3_400 группах, либо при 68_000 обычных регулярках (В этот лимит никогда не попадем, так как максимум активных регулярок порядка 10_000)
     // Поэтому если нет re2, то лимиты на количество активных регулярок должно быть меньше, для групп сильно меньше
     if (total < 0.8 * 1024 ** 3) {
-        MAX_COUNT_FOR_GROUP = 100;
-        MAX_COUNT_FOR_REG = 500;
+        MAX_COUNT_FOR_GROUP = 200;
+        MAX_COUNT_FOR_REG = 1000;
     } else if (total < 1.5 * 1024 ** 3) {
-        MAX_COUNT_FOR_GROUP = 400;
-        MAX_COUNT_FOR_REG = 700;
+        MAX_COUNT_FOR_GROUP = 800;
+        MAX_COUNT_FOR_REG = 1400;
     } else if (total < 3 * 1024 ** 3) {
-        MAX_COUNT_FOR_GROUP = 750;
-        MAX_COUNT_FOR_REG = 1500;
+        MAX_COUNT_FOR_GROUP = 1500;
+        MAX_COUNT_FOR_REG = 3000;
     } else {
-        MAX_COUNT_FOR_GROUP = 3400;
-        MAX_COUNT_FOR_REG = 3500;
+        MAX_COUNT_FOR_GROUP = 6800;
+        MAX_COUNT_FOR_REG = 7000;
     }
 
     // Если нет re2, то количество активных регулярок для групп, нужно сильно сократить, иначе возможно падение nodejs
     if (!__$usedRe2) {
-        MAX_COUNT_FOR_GROUP /= 10;
+        MAX_COUNT_FOR_GROUP /= 20;
+        MAX_COUNT_FOR_REG /= 2;
     }
 }
 
@@ -1269,48 +1270,15 @@ export class AppContext {
         groupData.regExp = pattern;
     }
 
-    /**
-     * Проверяем что можно добавить регулярку в группу
-     * @param patternSource
-     * @private
-     */
-    #isSafeToGroup(patternSource: string) {
-        // Убираем экранирование, но осторожно
-        const s = patternSource;
-
-        // Если есть | внутри группы — потенциально опасно
-        if (s.includes('|')) {
-            // Но разрешаем, если | только на верхнем уровне и разделены литералами:
-            // Например: /user_1 foo|user_2 bar/ — OK
-            // Но /(\d+|\w+)/ — плохо
-            if (s.match(/\([^)]*\|[^)]*\)/)) {
-                return false; // | внутри скобок — не группируем
-            }
-        }
-
-        // Если есть вложенные квантификаторы — плохо
-        if (s.match(/\(\s*[^\s()]*\{\d*,?\d*\}\s*\)\{\d*,?\d*\}/)) {
-            return false;
-        }
-
-        // Если есть {n,} (без верхней границы) над гибким классом — рискованно
-        if (s.match(/\[[^\]]*[\s\-()]\][*+{]/)) {
-            return false;
-        }
-
-        // Если только фиксированная длина + литералы — OK
-        return true;
-    }
-
     #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
         if (this.#regExpCommandCount < 300) {
             return commandName;
         }
-        if (!this.#isSafeToGroup(slots.join('|'))) {
-            return commandName;
-        }
         if (isRegexp) {
+            if (!this.#isRegexLikelySafe(slots.join('|'), false)) {
+                return commandName;
+            }
             if (this.#noFullGroups) {
                 let groupName = this.#noFullGroups.name;
                 let groupData = this.regexpGroup.get(groupName) || { commands: [], regExp: null };
@@ -1324,8 +1292,7 @@ export class AppContext {
                         this.commands.set(this.#noFullGroups.name, command);
                     }
                 }
-                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки.
-                // Даем примерно 60 регулярок по 5 символов
+                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки. Даем примерно 60 регулярок по 5 символов
                 if (
                     this.#noFullGroups.regLength >= 60 ||
                     (this.#noFullGroups.regExpSize || 0) > 850
@@ -1340,7 +1307,6 @@ export class AppContext {
                     };
                 }
                 groupData.commands.push(commandName);
-                // не даем хранить много регулярок для групп, иначе можем выйти за пределы потребления памяти
                 this.#getGroupRegExp(
                     groupData,
                     slots,
