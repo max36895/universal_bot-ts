@@ -116,7 +116,7 @@ async function run() {
     else if (pos === 1) text = `помощь_12`;
     else text = `удалить_751154`;
 
-    text += '_' + Math.random();
+    text += '_' + crypto.randomBytes(20).toString('hex');
     return bot.run(Alisa, T_ALISA, mockRequest(text));
 }
 
