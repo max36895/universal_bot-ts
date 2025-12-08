@@ -108,7 +108,6 @@ interface ICacheItem {
 const CONFIRM_PATTERNS =
     /(?:^|\s)да(?:^|\s|$)|(?:^|\s)конечно(?:^|\s|$)|(?:^|\s)соглас[^s]+(?:^|\s|$)|(?:^|\s)подтвер[^s]+(?:^|\s|$)/imu;
 const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|\s)не(?:^|\s|$)/imu;
-const URL_PATTERN = /^https?:\/\/.+\..+/imu;
 
 /**
  * Класс для работы с текстом и текстовыми операциями
@@ -198,7 +197,7 @@ export class Text {
      * ```
      */
     public static isUrl(link: string): boolean {
-        if (URL_PATTERN.test(link)) {
+        if (link.startsWith('http://') || link.startsWith('https://')) {
             try {
                 new URL(link);
                 return true;

@@ -364,6 +364,16 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     bot.appType = T_ALISA;
     const botClass = new Alisa(bot._appContext);
     bot.setAppConfig({ isLocalStorage: true });
+    bot.setLogger({
+        error: () => {
+            // чтобы не писать файл с ошибками
+            // пишется когда время обработки команд превышает допустимое
+        },
+        warn: () => {
+            // чтобы не писался файл с предупреждениями
+            // пишется когда количество команд больше 10_000
+        },
+    });
 
     maxRegCount = 0;
     for (let j = 0; j < count; j++) {

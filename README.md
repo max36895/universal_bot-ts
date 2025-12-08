@@ -133,6 +133,7 @@ export class EchoController extends BotController {
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
 - [Примеры проектов](./examples/README.md)
 - [Список изменений](./CHANGELOG.md)
+- [Что ждать в следующем релизе](./src/docs/next-releace.md)
 
 ## 🛠 Инструменты разработчика
 
