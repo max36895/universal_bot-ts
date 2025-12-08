@@ -5,7 +5,7 @@ let Re2: TRe2;
  * Нужен для того, чтобы можно было задать различные ограничения в зависимости от наличия библиотеки.
  * @private
  */
-let __$usedRe2 = false;
+let __$usedRe2: boolean;
 try {
     // На чистой винде, чтобы установить re2, нужно пострадать.
     // Чтобы сильно не париться, и не использовать относительно старую версию (актуальная версия работает на node 20 и выше),
@@ -36,7 +36,7 @@ export function isRegex(regExp: string | RegExp | unknown): regExp is RegExp {
  * @returns
  */
 export function getRegExp(reg: TPattern | TPattern[], flags: string = 'ium'): customRegExp {
-    let pattern = '';
+    let pattern;
     let flag = flags;
     const getPattern = (pat: TPattern): string => {
         return isRegex(pat) ? pat.source : pat;

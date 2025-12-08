@@ -79,7 +79,7 @@ export class VkRequest {
     /**
      * Текущая используемая версия VK API
      */
-    #vkApiVersion: string;
+    readonly #vkApiVersion: string;
 
     /**
      * Экземпляр класса для выполнения HTTP-запросов
@@ -408,7 +408,9 @@ export class VkRequest {
             server,
             hash,
         };
-        return this.call<IVkPhotosSave>('photos.saveMessagesPhoto') as unknown as IVkPhotosSave[];
+        return (await this.call<IVkPhotosSave>(
+            'photos.saveMessagesPhoto',
+        )) as unknown as IVkPhotosSave[];
     }
 
     /**
