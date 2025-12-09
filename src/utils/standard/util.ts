@@ -9,7 +9,9 @@
  */
 import * as fs from 'fs';
 import * as readline from 'readline';
-import { IDir } from '../../core/AppContext';
+import { IDir, TLoggerCb } from '../../core/AppContext';
+
+let _lcsBuffer: Int32Array = new Int32Array(1024);
 
 /**
  * Интерфейс для GET-параметров
@@ -68,7 +70,11 @@ export function similarText(first: string, second: string): number {
 
     // Helper function to calculate LCS length using dynamic programming
     const lcsLength = (shorter: string, longer: string): number => {
-        const dp = new Int32Array(longer.length + 1);
+        if (_lcsBuffer.length < longer.length + 1) {
+            _lcsBuffer = new Int32Array(longer.length + 1);
+        }
+        const dp = _lcsBuffer;
+        dp.fill(0, 0, longer.length + 1);
 
         for (let i = 0; i < shorter.length; i++) {
             let prevDiag = 0;
@@ -87,20 +93,6 @@ export function similarText(first: string, second: string): number {
     const totalLength = first.length + second.length;
 
     return (lcsLength(a, b) * 200) / totalLength;
-}
-
-/**
- * Объединяет два массива объектов
- * @param {object[]} array1 - Основной массив
- * @param {object[]} array2 - Массив для объединения
- * @deprecated Будет удален в версию 2.2.0
- * @returns {object} Объединенный массив
- */
-export function arrayMerge(array1: object[], array2?: object[]): object {
-    if (array2) {
-        return [...array1, ...array2];
-    }
-    return array1;
 }
 
 /**
@@ -143,6 +135,20 @@ export interface FileOperationResult<T> {
 }
 
 /**
+ * Быстрое сравнение на то похож введенный текст на имя файла или нет
+ * @param str
+ */
+function looksLikeFilePath(str: string): boolean {
+    const i = str.lastIndexOf('.');
+    return (
+        i > 0 && // есть точка, и не в начале
+        i < str.length - 1 && // не в конце
+        str.length - i <= 6 && // расширение ≤5 символов (".js", ".json" и т.п.)
+        /^\w+$/.test(str.slice(i + 1)) // расширение — только словесные символы
+    );
+}
+
+/**
  * Проверяет существование файла
  *
  * @param {string} file - Путь к проверяемому файлу
@@ -156,8 +162,12 @@ export interface FileOperationResult<T> {
  * ```
  */
 export function isFile(file: string): boolean {
-    const fileInfo = getFileInfo(file);
-    return (fileInfo.success && fileInfo.data?.isFile()) || false;
+    // Если в тексте нет точки, значит это явно не файл
+    if (looksLikeFilePath(file)) {
+        const fileInfo = getFileInfo(file);
+        return (fileInfo.success && fileInfo.data?.isFile()) || false;
+    }
+    return false;
 }
 
 /**
@@ -243,7 +253,9 @@ export function fwrite(
 ): FileOperationResult<void> {
     try {
         if (mode === 'w') {
-            fs.writeFileSync(fileName, fileContent);
+            const tmpPath = `${fileName}.tmp`;
+            fs.writeFileSync(tmpPath, fileContent);
+            fs.renameSync(tmpPath, fileName);
         } else {
             fs.appendFileSync(fileName, fileContent);
         }
@@ -338,13 +350,66 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult
  * @param {IDir} dir - Объект с путем и названием файла
  * @param {string} data - Сохраняемые данные
  * @param {string} mode - Режим записи
+ * @param {boolean} isSync - Режим записи синхронная/асинхронная. По умолчанию синхронная
+ * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
-export function saveData(dir: IDir, data: string, mode?: string): boolean {
+export function saveData(
+    dir: IDir,
+    data: string,
+    mode?: string,
+    isSync: boolean = true,
+    errorLogger?: TLoggerCb,
+): boolean {
     if (!isDir(dir.path)) {
         mkdir(dir.path);
     }
-    fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+    if (isSync) {
+        try {
+            JSON.parse(data);
+        } catch (e) {
+            errorLogger?.(
+                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}", так как данные не в json формате. Ошибка: ${(e as Error).message}`,
+                {
+                    error: e,
+                    data,
+                    mode,
+                },
+            );
+        }
+        const res = fwrite(`${dir.path}/${dir.fileName}`, data, mode);
+        if (!res.success) {
+            errorLogger?.(
+                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${res.error}`,
+                {
+                    error: res.error,
+                    data,
+                    mode,
+                },
+            );
+            return false;
+        }
+    } else {
+        fs.writeFile(
+            `${dir.path}/${dir.fileName}`,
+            data,
+            {
+                flag: mode || 'w',
+            },
+            (err) => {
+                if (err) {
+                    errorLogger?.(
+                        `[saveLog]Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${(err as Error).message}`,
+                        {
+                            error: err,
+                            data,
+                            mode,
+                        },
+                    );
+                }
+            },
+        );
+    }
     return true;
 }
 
@@ -378,30 +443,6 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
         })
         .join(separator);
 }
-
-/**
- * Объект с GET-параметрами текущего URL
- * Доступен только в браузере
- *
- * @example
- * ```typescript
- * // URL: http://example.com?name=John&age=25
- * console.log(GET.name); // -> 'John'
- * console.log(GET.age); // -> '25'
- * ```
- */
-let GET: any = {};
-if (typeof window !== 'undefined') {
-    GET = window.location.search
-        .replace('?', '')
-        .split('&')
-        .reduce(function (p: any, e) {
-            const a = e.split('=');
-            p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
-            return p;
-        }, {});
-}
-export { GET };
 
 /**
  * Читает введенные данные из консоли

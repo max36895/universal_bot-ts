@@ -86,6 +86,8 @@ export class Sql {
      */
     private _vDB: DB | undefined;
 
+    #isUpdatedDBConfig = true;
+
     /**
      * Создает новый экземпляр класса Sql
      * Инициализирует подключение к базе данных
@@ -159,12 +161,21 @@ export class Sql {
         this.pass = pass;
         this.database = database;
         if (this._vDB) {
-            this._vDB.params = {
-                host: this.host,
-                user: this.user,
-                pass: this.pass,
-                database: this.database,
-            };
+            if (
+                this._vDB.params?.host !== host ||
+                this._vDB.params?.pass !== pass ||
+                this._vDB.params?.user !== user ||
+                this._vDB.params?.database !== database
+            ) {
+                this._vDB.params = {
+                    host: this.host,
+                    user: this.user,
+                    pass: this.pass,
+                    database: this.database,
+                };
+            } else {
+                this.#isUpdatedDBConfig = false;
+            }
         }
     }
 
@@ -182,6 +193,12 @@ export class Sql {
      * @returns Promise<boolean> - true если подключение успешно, false в противном случае
      */
     public async connect(): Promise<boolean> {
+        if (!this.#isUpdatedDBConfig) {
+            const isConnect = await this._vDB?.isConnected();
+            if (isConnect) {
+                return true;
+            }
+        }
         if (this._vDB && !(await this._vDB.connect())) {
             this._saveLog(`Sql:connect() - Ошибка при подключении к БД.\n${this._vDB.errors[0]}`);
             return false;
@@ -210,8 +227,10 @@ export class Sql {
                 return true;
             }
             return false;
-        } catch (е) {
-            this.appContext?.saveLog('sql.log', `Sql.isConnected(): ${е}`);
+        } catch (e) {
+            this.appContext?.logError(`Sql.isConnected(): Не удалось проверить подключение к БД.`, {
+                error: e,
+            });
             return false;
         }
     }
@@ -226,9 +245,9 @@ export class Sql {
      * console.log('Database connection closed');
      * ```
      */
-    public close(): void {
+    public async close(): Promise<void> {
         if (this._vDB) {
-            this._vDB.destroy();
+            await this._vDB.destroy();
             this.appContext?.closeDB();
             this._vDB = undefined;
         }
@@ -299,13 +318,8 @@ export class Sql {
      *
      * @param errorMsg - Текст ошибки для сохранения
      * @returns boolean - true если сообщение успешно сохранено, false в противном случае
-     * @private
      */
-    protected _saveLog(errorMsg: string): boolean {
-        if (this.appContext?.saveLog('sql.log', errorMsg)) {
-            return true;
-        }
-        this.appContext?.logWarn('Sql.connect(): Не удалось создать/открыть файл!');
-        return false;
+    protected _saveLog(errorMsg: string): void {
+        this.appContext?.logError(`SQL: ${errorMsg}`);
     }
 }

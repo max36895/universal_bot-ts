@@ -126,7 +126,7 @@ export class Buttons {
     /**
      * Контекст приложения.
      */
-    protected appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Создает новый экземпляр коллекции кнопок.
@@ -137,7 +137,7 @@ export class Buttons {
         this.btns = [];
         this.links = [];
         this.type = Buttons.T_ALISA_BUTTONS;
-        this.appContext = appContext;
+        this.#appContext = appContext;
     }
 
     /**
@@ -145,7 +145,7 @@ export class Buttons {
      * @param appContext
      */
     public setAppContext(appContext: AppContext): Buttons {
-        this.appContext = appContext;
+        this.#appContext = appContext;
         return this;
     }
 
@@ -168,9 +168,8 @@ export class Buttons {
      * @param {boolean} hide - Тип отображения кнопки
      * @param {IButtonOptions} options - Дополнительные параметры
      * @returns {Buttons} this для цепочки вызовов
-     * @protected
      */
-    protected _add(
+    #add(
         title: string | null,
         url: string | null,
         payload: TButtonPayload,
@@ -178,7 +177,7 @@ export class Buttons {
         options: IButtonOptions = {},
     ): Buttons {
         let button: Button | null = new Button();
-        button.setAppContext(this.appContext);
+        button.setAppContext(this.#appContext);
         if (hide === Button.B_LINK) {
             if (!button.initLink(title, url, payload, options)) {
                 button = null;
@@ -221,7 +220,7 @@ export class Buttons {
         payload: TButtonPayload = '',
         options: IButtonOptions = {},
     ): Buttons {
-        return this._add(title, url, payload, Button.B_BTN, options);
+        return this.#add(title, url, payload, Button.B_BTN, options);
     }
 
     /**
@@ -251,7 +250,7 @@ export class Buttons {
         payload: TButtonPayload = '',
         options: IButtonOptions = {},
     ): Buttons {
-        return this._add(title, url, payload, Button.B_LINK, options);
+        return this.#add(title, url, payload, Button.B_LINK, options);
     }
 
     /**
@@ -259,9 +258,8 @@ export class Buttons {
      *
      * @param {TButton[]} button - Массив кнопок для обработки
      * @param {TButtonCb} callback - Функция для добавления кнопок
-     * @private
      */
-    protected _initProcessingBtn(button: TButton, callback: TButtonCb): void {
+    #initProcessingBtn(button: TButton, callback: TButtonCb): void {
         if (typeof button !== 'string') {
             callback(
                 button.title || null,
@@ -277,15 +275,14 @@ export class Buttons {
     /**
      * Обрабатывает массивы btns и links, добавляя их в основной массив buttons.
      * После обработки очищает массивы btns и links.
-     * @protected
      */
-    protected _processing(): void {
+    #processing(): void {
         const allButtons = [...this.btns, ...this.links];
         allButtons.forEach((button) => {
             if (this.links.includes(button)) {
-                this._initProcessingBtn(button, this.addLink.bind(this));
+                this.#initProcessingBtn(button, this.addLink.bind(this));
             } else {
-                this._initProcessingBtn(button, this.addBtn.bind(this));
+                this.#initProcessingBtn(button, this.addBtn.bind(this));
             }
         });
         this.btns.length = 0;
@@ -360,7 +357,7 @@ export class Buttons {
         type: string | null = null,
         userButton: TemplateButtonTypes | null = null,
     ): T | null {
-        this._processing();
+        this.#processing();
         const correctType = type === null ? this.type : type;
 
         let button: TemplateButtonTypes | null = null;

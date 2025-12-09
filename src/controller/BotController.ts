@@ -15,7 +15,10 @@ import {
     T_ALISA,
     T_MARUSIA,
     WELCOME_INTENT_NAME,
+    TAppType,
+    EMetric,
 } from '../core/AppContext';
+import { getRegExp, isRegex } from '../utils/standard/RegExp';
 
 /**
  * Тип статуса операции
@@ -258,7 +261,7 @@ export interface IUserData {
 export abstract class BotController<TUserData extends IUserData = IUserData> {
     /**
      * Локальное хранилище с данными. Используется в случаях, когда нужно сохранить данные пользователя, но userData приложением не поддерживается.
-     * В случае если данные хранятся в usetData и store, пользователю вернятеся информация из userData.
+     * В случае если данные хранятся в userData и store, пользователю вернется информация из userData.
      */
     public store: Record<string, unknown> | undefined;
     /**
@@ -304,7 +307,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Используется для голосовых ассистентов
      *
      * @remarks
-     * Для неголосовых платформ текст будет преобразован в речь
+     * Для не голосовых платформ текст будет преобразован в речь
      * через Yandex SpeechKit и отправлен как аудио сообщение
      *
      * @example
@@ -590,18 +593,18 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      */
     public appContext: AppContext;
 
+    public appType: TAppType | null = null;
+
     /**
      * Создает новый экземпляр контроллера.
      * Инициализирует все необходимые компоненты
-     *
-     * @protected
      */
     constructor() {
         // Для корректности выставляем контекст по умолчанию.
         this.appContext = new AppContext();
-        this.buttons = new Buttons(this.appContext as AppContext);
-        this.card = new Card(this.appContext as AppContext);
-        this.sound = new Sound(this.appContext as AppContext);
+        this.buttons = new Buttons(this.appContext);
+        this.card = new Card(this.appContext);
+        this.sound = new Sound(this.appContext);
         this.nlu = new Nlu();
     }
 
@@ -609,12 +612,12 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Устанавливает контекст приложения
      * @param appContext
      */
-    public setAppContext(appContext: AppContext): BotController {
+    public setAppContext(appContext: AppContext): this {
         if (appContext) {
             this.appContext = appContext;
-            this.buttons.setAppContext(appContext as AppContext);
-            this.card.setAppContext(appContext as AppContext);
-            this.sound.setAppContext(appContext as AppContext);
+            this.buttons.setAppContext(appContext);
+            this.card.setAppContext(appContext);
+            this.sound.setAppContext(appContext);
         }
         return this;
     }
@@ -656,8 +659,6 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *
      * @returns {IAppIntent[]} Массив интентов
      *
-     * @protected
-     *
      * @example
      * ```typescript
      * const intents = BotController._intents();
@@ -678,8 +679,6 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * @param {string | null} text - Текст запроса
      * @returns {string | null} Название интента или null
      *
-     * @protected
-     *
      * @example
      * ```typescript
      * const intent = BotController._getIntent('привет');
@@ -690,11 +689,42 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (!text) {
             return null;
         }
+        const start = performance.now();
         const intents: IAppIntent[] = this._intents();
         for (const intent of intents) {
             if (Text.isSayText(intent.slots || [], text, intent.is_pattern || false)) {
+                this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
+                    intent,
+                    status: true,
+                });
                 return intent.name;
             }
+        }
+        this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
+            status: false,
+        });
+        return null;
+    }
+
+    #sendCustomCommandResolver(startTimer: number): string | null {
+        if (this.appContext.customCommandResolver) {
+            const res = this.appContext.customCommandResolver(
+                this.userCommand as string,
+                this.appContext.commands,
+            );
+            const command = res ? this.appContext.commands.get(res) : null;
+            if (res && command) {
+                this.#commandExecute(res, command);
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
+                    res,
+                    status: true,
+                });
+            } else {
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
+                    status: false,
+                });
+            }
+            return res;
         }
         return null;
     }
@@ -704,8 +734,6 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Извлекает команду из текста запроса
      *
      * @returns {string | null} Команда или null
-     *
-     * @protected
      *
      * @example
      * ```typescript
@@ -717,24 +745,68 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
         if (!this.userCommand || !this.appContext?.commands) {
             return null;
         }
-        const commandLength = this.appContext.commands.size;
+        const start = performance.now();
+        if (this.appContext.customCommandResolver) {
+            return this.#sendCustomCommandResolver(start);
+        }
+        let contCount = 0;
+        const commandsLength = this.appContext.commands.size;
         for (const [commandName, command] of this.appContext.commands) {
-            if (commandName === FALLBACK_COMMAND) {
+            if (commandName === FALLBACK_COMMAND || !command || contCount !== 0) {
+                if (contCount) {
+                    contCount--;
+                }
                 continue;
             }
+            if (!command.slots || command.slots.length === 0) {
+                continue;
+            }
+            if (command.isPattern) {
+                const groups = this.appContext.regexpGroup.get(commandName);
+                if (groups) {
+                    contCount = groups.commands.length - 1;
+                    const gRegExp = groups.regExp;
+                    if (gRegExp) {
+                        const reg = isRegex(gRegExp) ? gRegExp : getRegExp(gRegExp);
+                        const match = reg.exec(this.userCommand);
+                        if (match) {
+                            // Находим первую совпавшую подгруппу (index в массиве parts)
+                            for (const key in match.groups) {
+                                if (typeof match.groups[key] !== 'undefined') {
+                                    const commandName = groups.commands[+key.slice(1)];
+                                    if (commandName && this.appContext.commands.has(commandName)) {
+                                        this.#commandExecute(
+                                            commandName,
+                                            this.appContext.commands.get(commandName),
+                                        );
+                                        return commandName;
+                                    }
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                }
+            }
             if (
-                command &&
                 Text.isSayText(
-                    command.slots || [],
+                    command.regExp || command.slots,
                     this.userCommand,
                     command.isPattern || false,
-                    commandLength < 500,
+                    typeof command.regExp !== 'string' || commandsLength < 500,
                 )
             ) {
-                this._commandExecute(commandName, command);
+                this.#commandExecute(commandName, command);
+                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                    commandName,
+                    status: true,
+                });
                 return commandName;
             }
         }
+        this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+            status: false,
+        });
         return null;
     }
 
@@ -765,13 +837,14 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * Выполнение нужной команды
      * @param commandName
      * @param command
-     * @private
      */
-    private _commandExecute(commandName: string, command: ICommandParam): void {
+    #commandExecute(commandName: string, command?: ICommandParam): void {
         try {
-            const res = command?.cb?.(this.userCommand as string, this);
-            if (res) {
-                this.text = res;
+            if (command) {
+                const res = command?.cb?.(this.userCommand as string, this);
+                if (res) {
+                    this.text = res;
+                }
             }
         } catch (e) {
             this.appContext.logError(
@@ -780,6 +853,21 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
             );
             this.text = 'Произошла ошибка. Попробуйте позже.';
         }
+    }
+
+    /**
+     * Запуск обработки пользовательских команд с учетом метрик
+     * @param commandName
+     * @param isCommand
+     */
+    protected _actionMetric(commandName: string, isCommand: boolean = false): void {
+        const start = performance.now();
+        this.action(commandName, isCommand);
+        this.appContext.logMetric(EMetric.ACTION, performance.now() - start, {
+            commandName,
+            platform: this.appType,
+            isCommand,
+        });
     }
 
     /**
@@ -795,14 +883,14 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public run(): void {
         const commandResult = this._getCommand();
         if (commandResult) {
-            this.action(commandResult, true);
+            this._actionMetric(commandResult, true);
         } else {
             let intent: string | null = this._getIntent(this.userCommand);
             if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
                 const command = this.appContext.commands.get(FALLBACK_COMMAND);
                 if (command) {
-                    this._commandExecute(FALLBACK_COMMAND, command);
-                    this.action(FALLBACK_COMMAND, true);
+                    this.#commandExecute(FALLBACK_COMMAND, command);
+                    this._actionMetric(FALLBACK_COMMAND, true);
                 }
             } else {
                 if (
@@ -830,7 +918,7 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                         break;
                 }
 
-                this.action(intent as string);
+                this._actionMetric(intent as string);
             }
         }
         if (

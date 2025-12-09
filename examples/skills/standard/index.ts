@@ -6,6 +6,5 @@ import { StandardController } from './controller/StandardController';
 const bot = new BotTest();
 bot.setAppConfig(skillDefaultConfig());
 bot.setPlatformParams(skillDefaultParam());
-const logic = new StandardController();
-bot.initBotController(logic);
+bot.initBotController(StandardController);
 bot.test();

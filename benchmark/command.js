@@ -2,7 +2,12 @@
 // Запуск: node --expose-gc  .\command.js
 
 const { Bot, BotController, Alisa, T_ALISA } = require('./../dist/index');
-const { performance } = require('perf_hooks');
+const { performance } = require('node:perf_hooks');
+const os = require('node:os');
+
+function gc() {
+    global.gc();
+}
 
 // --------------------------------------------------
 // Вывод результатов
@@ -30,6 +35,8 @@ function printScenarioBlock(items) {
         const memPerCmd =
             (parseFloat(rep.afterRunMemory) - parseFloat(rep.startMemory)) / rep.count;
         log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
+        const timePerCmd = rep.duration / rep.count;
+        log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
     }
 
     const low = byState.low;
@@ -182,13 +189,12 @@ function printFinalSummary(results) {
             ? formatPair('high', parseFloat(worstBase.duration), parseFloat(worstBase.duration2))
             : '—';
 
-        const over1sBase = !(
+        const over1sBase =
             (bestBase && parseFloat(bestBase.duration) >= 1000) ||
             (midBase && parseFloat(midBase.duration) >= 1000) ||
             (worstBase && parseFloat(worstBase.duration) >= 1000)
-        )
-            ? 'Да'
-            : 'Нет';
+                ? 'Нет'
+                : 'Да';
 
         log(
             'Без regex ЭТАЛОН'.padEnd(17) +
@@ -245,7 +251,7 @@ function printFinalSummary(results) {
                 : '—';
 
             const anyOver1s = regSubset.some((r) => parseFloat(r.duration) >= 1000);
-            const over1s = !anyOver1s ? 'Да' : 'Нет';
+            const over1s = anyOver1s ? 'Нет' : 'Да';
 
             log(
                 labels[complexity].padEnd(17) +
@@ -275,7 +281,7 @@ class TestBotController extends BotController {
         super(appContext);
     }
 
-    action(intentName, isCommand) {
+    action(intentName, _) {
         if (intentName && intentName.startsWith('cmd_')) {
             this.text = `Обработана команда: ${intentName}`;
             this.userData[`data_for_${intentName}`] = `value_for_${intentName}`;
@@ -325,9 +331,10 @@ let maxRegCount = 0;
 function getRegex(regex, state, count, step) {
     const mid = Math.round(count / 2);
     if (
-        (state === 'low' && step === 1) ||
+        (state === 'low' && (step === 1 || step === 2)) ||
         (state === 'middle' && step === mid) ||
-        (maxRegCount >= 2 && maxRegCount < MAX_REG_COUNT)
+        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT) ||
+        true
     ) {
         maxRegCount++;
         return regex;
@@ -335,18 +342,17 @@ function getRegex(regex, state, count, step) {
         // Не совсем честный способ задания регулярных выражений, как поступить иначе не понятно.
         // Будет много очень похожих регулярных выражений, из-за чего обработка будет медленной по понятной причине.
         // Тут либо как-то рандомно генерировать регулярные выражение, либо использовать заглушку.
-        // Также при использовании регулярок с завязкой на step, будем выходить за пределы лимита при 200_000 команд.
         // Сценарий когда может быть более 10_000 команд сложно представить, тем более чтобы все регулярные выражения были уникальны.
-        // При 20_000 командах мы все еще укладываемся в ограничение.
-        // Предварительный лимит на количество уникальных регулярных выражений составляет примерно 40_000 - 50_000 команд.
-        return `((\d+)_ref_${step % 1e3})`;
+        // При 20_000 командах мы все еще укладываемся в ограничение при использовании нативного RegExp с использованием re2 укладываемся в лимит и при 200_000.
+        // Предварительный лимит на количество уникальных регулярных выражений составляет примерно 40_000 - 50_000 команд для regExp.
+        return `((\\d+)_ref_${step})`;
     }
 }
 
 // сам тест
 async function runTest(count = 1000, useReg = false, state = 'middle', regState = 'middle') {
     const res = { state, regState: useReg ? regState : '', useReg, count };
-    global.gc();
+    gc();
     await new Promise((resolve) => {
         setTimeout(resolve, 1);
     });
@@ -354,11 +360,20 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     res.startMemory = (startedMemory / 1024).toFixed(2);
 
     const bot = new Bot();
-    const botController = new TestBotController(bot._appContext);
-    bot.initBotController(botController);
+    bot.initBotController(TestBotController);
     bot.appType = T_ALISA;
     const botClass = new Alisa(bot._appContext);
     bot.setAppConfig({ isLocalStorage: true });
+    bot.setLogger({
+        error: () => {
+            // чтобы не писать файл с ошибками
+            // пишется когда время обработки команд превышает допустимое
+        },
+        warn: () => {
+            // чтобы не писался файл с предупреждениями
+            // пишется когда количество команд больше 10_000
+        },
+    });
 
     maxRegCount = 0;
     for (let j = 0; j < count; j++) {
@@ -366,18 +381,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         if (useReg) {
             switch (regState) {
                 case 'low':
-                    command = getRegex('(\\d страни)', state, count, j);
+                    command = getRegex(`${j} страниц`, state, count, j);
                     break;
                 case 'middle':
-                    command = getRegex(
-                        new RegExp(
-                            `((([\\d\\-() ]{4,}\\d)|((?:\\+|\\d)[\\d\\-() ]{9,}\\d))_ref_${j})`,
-                            'i',
-                        ),
-                        state,
-                        count,
-                        j,
-                    );
+                    command = getRegex(`(\\d\\d-\\d\\d-\\d\\d_ref_${j}_)`, state, count, j);
                     break;
                 case 'high':
                     command = getRegex(
@@ -388,10 +395,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
                     );
                     break;
                 default:
-                    command = `команда_${j}`;
+                    command = `команда_${j}_`;
             }
         } else {
-            command = `команда_${j}`;
+            command = `команда_${j}_`;
         }
         bot.addCommand(
             `cmd_${j}`,
@@ -410,10 +417,10 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     if (!useReg) {
         switch (state) {
             case 'low':
-                testCommand = `команда_1`;
+                testCommand = `команда_1_`;
                 break;
             case 'middle':
-                testCommand = `команда_${mid}`;
+                testCommand = `команда_${mid}_`;
                 break;
             case 'high':
                 testCommand = `несуществующая команда ${Date.now()}`;
@@ -426,7 +433,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
                     regState === 'low'
                         ? `1 страниц`
                         : regState === 'middle'
-                          ? `88003553535_ref_1`
+                          ? `00-00-00_ref_1_`
                           : regState === 'high'
                             ? `напомни для user_1 позвонить маме в 18:30`
                             : `cmd_1`;
@@ -434,9 +441,9 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
             case 'middle':
                 testCommand =
                     regState === 'low'
-                        ? `5 станица`
+                        ? `${mid} страниц`
                         : regState === 'middle'
-                          ? `88003553535_ref_${mid}`
+                          ? `00-00-00_ref_${mid}_`
                           : regState === 'high'
                             ? `напомни для user_${mid} позвонить маме в 18:30`
                             : `cmd_${mid}`;
@@ -447,9 +454,12 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         }
     }
 
-    global.gc();
-    bot.setContent(getContent(testCommand));
-    global.gc();
+    gc();
+    const content = getContent(testCommand);
+    await new Promise((resolve) => {
+        setTimeout(resolve, 1);
+    });
+    gc();
     await new Promise((resolve) => {
         setTimeout(resolve, 1);
     });
@@ -458,7 +468,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
     const start = performance.now();
     try {
-        await bot.run(botClass);
+        await bot.run(botClass, 'alisa', content);
     } catch (e) {
         /* ignore */
     }
@@ -472,15 +482,14 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         /* ignore */
     }
     const duration2 = performance.now() - start2;
-    global.gc();
+    gc();
     const afterMemory = process.memoryUsage().heapUsed;
     res.afterRunMemory = (afterMemory / 1024).toFixed(2);
     res.memoryIncrease = ((afterMemory - beforeMemory) / 1024).toFixed(2);
     res.memoryIncreaseFromStart = ((afterMemory - startedMemory) / 1024).toFixed(2);
 
-    botController.clearStoreData();
     bot.clearCommands();
-    global.gc();
+    gc();
     const finalMemory = process.memoryUsage().heapUsed;
     res.finalMemory = (finalMemory / 1024).toFixed(2);
     res.memoryDifference = ((finalMemory - startedMemory) / 1024).toFixed(2);
@@ -490,38 +499,150 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     status.push(res);
 }
 
+function getAvailableMemoryMB() {
+    const free = os.freemem();
+    // Оставляем 50 МБ на систему и Node.js рантайм
+    return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
+}
+
+function predictMemoryUsage(commandCount) {
+    // Базовое потребление + 0.5 КБ на команду + запас
+    return 15 + (commandCount * 0.5) / 1024 + 50; // в МБ
+}
+
 // --- Запуск ---
 async function start() {
     try {
         // Количество команд
-        const counts = [50, 250, 500, 1000, 2e3, 2e4, 2e5, 1e6, 2e6];
+        const counts = [50, 250, 500, 1000, 2e3, 2e4, 5e4, 2e5, 1e6]; //, 2e6];
+        /* for (let i = 1; i < 1e4; i++) {
+            counts.push(2e6 + i * 5e5);
+        }*/
         // Исход поиска(требуемая команда в начале списка, требуемая команда в середине списка, требуемая команда не найдена))
         const states = ['low', 'middle', 'high'];
         // Сложность регулярных выражений (low — простая, middle — умеренная, high — сложная(субъективно))
         const regStates = ['low', 'middle', 'high'];
+
+        console.log(
+            '⚠️ Этот benchmark тестирует ЭКСТРЕМАЛЬНЫЕ сценарии (до 1 млн команд).\n' +
+                '   В реальных проектах редко используется более 1000 команд.\n' +
+                '   Результаты при >20 000 команд НЕ означают, что библиотека "медленная" —\n' +
+                '   это означает, что такую логику нужно архитектурно декомпозировать.',
+        );
         // для чистоты запускаем gc
-        global.gc();
-        for (let count of counts) {
-            console.log(`Запуск тестов для ${count} команд...`);
-            for (let state of states) {
-                global.gc();
-                await new Promise((resolve) => {
-                    setTimeout(resolve, 1);
-                });
-                await runTest(count, false, state);
-                for (let regState of regStates) {
-                    global.gc();
+        gc();
+        let cCountFErr = 0;
+
+        const printResult = () => {
+            console.log('Подготовка отчета...');
+            printSummary(status);
+            printFinalSummary(status);
+            console.log('');
+            console.log('🔍 АНАЛИЗ РЕЗУЛЬТАТОВ');
+            console.log('💡 Типичные production-проекты содержат:');
+            console.log('   • до 100 команд — простые навыки');
+            console.log('   • до 1 000 команд — сложные корпоративные боты');
+            console.log('   • до 10 000 команд — крайне редко (требует архитектурного пересмотра)');
+            console.log('');
+
+            const time250 = Math.max(
+                ...status
+                    .filter((item) => {
+                        return item.count === 250;
+                    })
+                    .map((item) => {
+                        return +item.duration;
+                    }),
+            );
+
+            const time1k = Math.max(
+                ...status
+                    .filter((item) => {
+                        return item.count === 1e3;
+                    })
+                    .map((item) => {
+                        return +item.duration;
+                    }),
+            );
+
+            const time20k = Math.max(
+                ...status
+                    .filter((item) => {
+                        return item.count === 2e4;
+                    })
+                    .map((item) => {
+                        return +item.duration;
+                    }),
+            );
+
+            console.log(
+                '✅ Анализ производительности:\n' +
+                    `   • При 250 команд (типичный средний навык):\n` +
+                    `     — Худший сценарий: ${time250} мс\n` +
+                    `     — ${time250 <= 20 ? '🟢 Отлично: библиотека не будет узким местом' : time250 <= 150 ? '🟡 Хорошо: укладывается в гарантии платформы' : '⚠️ Внимание: время близко к лимиту. Проверьте, не связано ли это с нагрузкой на сервер (CPU, RAM, GC).'}\n` +
+                    `   • При 1 000 команд (типичный крупный навык):\n` +
+                    `     — Худший сценарий: ${time1k} мс\n` +
+                    `     — ${time1k <= 35 ? '🟢 Отлично: библиотека не будет узким местом' : time1k <= 200 ? '🟡 Хорошо: укладывается в гарантии платформы' : '⚠️ Внимание: время близко к лимиту. Проверьте, не связано ли это с нагрузкой на сервер (CPU, RAM, GC).'}\n` +
+                    `   • При 20 000 команд (экстремальный сценарий):\n` +
+                    `     — Худший сценарий: ${time20k} мс\n` +
+                    `     — ${time20k <= 50 ? '🟢 Отлично: производительность в норме' : time20k <= 300 ? '🟡 Приемлемо: библиотека укладывается в 1 сек' : '⚠️ Внимание: время обработки велико, возможно стоит использовать re2 или задуматься о более производительной конфигурации сервера.'}\n` +
+                    '💡 Примечание:\n' +
+                    '   — Платформы (Алиса, Сбер и др.) дают до 3 секунд на ответ.\n' +
+                    '   — `umbot` гарантирует ≤1 сек на свою логику при количестве команд до 20 000 (оставляя 2+ сек на ваш код).\n' +
+                    '   — Всплески времени (например, 100–200 мс) могут быть вызваны сборкой мусора (GC) в Node.js — это нормально.\n' +
+                    '   — Если сервер слабый (1 ядро, 1 ГБ RAM), даже отличная библиотека не сможет компенсировать нехватку ресурсов.',
+            );
+            console.log('');
+            console.log('⚠️ Рекомендация:');
+            console.log('   Если вы планируете использовать >10 000 команд:');
+            console.log('   • Разбейте логику на поднавыки');
+            console.log('   • Используйте параметризованные интенты вместо статических команд');
+            console.log('   • Избегайте простых регулярных выражений в большом количестве');
+            console.log(
+                '💡 Вместо 10 000 статических команд:\n' +
+                    "   — Используйте `addCommand('search', [/^найти (.+)$/], ...)`  \n" +
+                    '   — Храните данные в БД, а не в коде\n' +
+                    '   — Делегируйте логику в `action()` через NLU или внешний API',
+            );
+        };
+
+        try {
+            for (let count of counts) {
+                const predicted = predictMemoryUsage(count);
+                const available = getAvailableMemoryMB();
+                if (predicted > available * 0.9) {
+                    console.log(`⚠️ Недостаточно памяти для теста (${count} команд).`);
+                    break;
+                }
+
+                cCountFErr = count;
+                console.log(`Запуск тестов для ${count} команд...`);
+                for (let state of states) {
+                    gc();
                     await new Promise((resolve) => {
                         setTimeout(resolve, 1);
                     });
-                    await runTest(count, true, state, regState);
+                    await runTest(count, false, state);
+                    for (let regState of regStates) {
+                        gc();
+                        await new Promise((resolve) => {
+                            setTimeout(resolve, 1);
+                        });
+                        await runTest(count, true, state, regState);
+                    }
                 }
             }
+        } catch (e) {
+            console.log(`Упал при выполнении тестов для ${cCountFErr} команд. Ошибка: ${e}`);
         }
-        global.gc();
-        console.log('Подготовка отчета...');
-        printSummary(status);
-        printFinalSummary(status);
+        gc();
+        printResult();
+        if (process.platform === 'win32') {
+            console.log(
+                '⚠️ Внимание: Node.js на Windows работает менее эффективно, чем на Unix-системах (Linux/macOS). Это может приводить к высокому потреблению памяти и замедлению обработки под нагрузкой.\n' +
+                    'Для корректной оценки производительности и использования в продакшене рекомендуется запускать приложение на сервере с Linux.',
+            );
+        }
     } catch (error) {
         console.error('Ошибка:', error);
     }

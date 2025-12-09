@@ -12,6 +12,7 @@ import {
 import { Text } from '../utils/standard/Text';
 import { Buttons } from '../components/button';
 import { IRequestSend, Request } from '../api';
+import { T_SMARTAPP } from '../core';
 
 /**
  * Класс для работы с платформой Сбер SmartApp.
@@ -23,12 +24,6 @@ import { IRequestSend, Request } from '../api';
  */
 export class SmartApp extends TemplateTypeModel {
     /**
-     * Максимальное время ответа навыка в миллисекундах
-     * @private
-     */
-    private readonly MAX_TIME_REQUEST: number = 2800;
-
-    /**
      * Информация о сессии пользователя
      * @protected
      */
@@ -38,7 +33,6 @@ export class SmartApp extends TemplateTypeModel {
      * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
      * @returns {Promise<ISberSmartAppResponsePayload>} Объект ответа для SmartApp
-     * @private
      */
     protected async _getPayload(): Promise<ISberSmartAppResponsePayload> {
         const payload: ISberSmartAppResponsePayload = {
@@ -77,7 +71,7 @@ export class SmartApp extends TemplateTypeModel {
                 if (typeof payload.items === 'undefined') {
                     payload.items = [];
                 }
-                const cards: ISberSmartAppItem = await this.controller.card.getCards();
+                const cards: ISberSmartAppItem = await this.controller.card.getCards(T_SMARTAPP);
                 payload.items.push(cards);
             }
             payload.suggestions = {
@@ -103,7 +97,6 @@ export class SmartApp extends TemplateTypeModel {
      * Инициализирует команду пользователя.
      * Обрабатывает различные типы сообщений и событий
      * @param content Объект запроса от пользователя
-     * @private
      *
      * Поддерживаемые типы сообщений:
      * - MESSAGE_TO_SKILL: сообщение пользователя
@@ -112,7 +105,7 @@ export class SmartApp extends TemplateTypeModel {
      * - RUN_APP: запуск приложения
      * - RATING_RESULT: результат оценки
      */
-    private _initUserCommand(content: ISberSmartAppWebhookRequest): void {
+    #initUserCommand(content: ISberSmartAppWebhookRequest): void {
         this.controller.requestObject = content;
         this.controller.messageId = content.messageId;
         switch (content.messageName) {
@@ -172,10 +165,8 @@ export class SmartApp extends TemplateTypeModel {
                 content = { ...query };
             }
 
-            if (!this.controller) {
-                this.controller = controller;
-            }
-            this._initUserCommand(content);
+            this.controller = controller;
+            this.#initUserCommand(content);
 
             this._session = {
                 device: content.payload.device,
@@ -240,17 +231,17 @@ export class SmartApp extends TemplateTypeModel {
             uuid: (this._session as ISberSmartAppSession).uuid,
         };
 
-        if (this.controller.sound.sounds.length /* || this.controller.sound.isUsedStandardSound*/) {
+        if (this.controller.sound.sounds.length) {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
-            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
+            this.controller.tts = await this.controller.sound.getSounds(
+                this.controller.tts,
+                T_SMARTAPP,
+            );
         }
         result.payload = await this._getPayload();
-        const timeEnd: number = this.getProcessingTime();
-        if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `SmartApp:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
-        }
+        this._timeLimitLog();
         return result;
     }
 

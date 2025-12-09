@@ -24,7 +24,7 @@ describe('MarusiaRequest', () => {
         appContext.platformParams.vk_token = 'test-vk-token';
         marusia = new MarusiaRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
-        appContext.saveLog = jest.fn();
+        appContext.logError = jest.fn();
     });
 
     it('should get picture upload link', async () => {
@@ -100,7 +100,7 @@ describe('MarusiaRequest', () => {
 
         const result = await marusia.marusiaGetPictureUploadLink();
         expect(result).toBeNull();
-        expect(appContext.saveLog).toHaveBeenCalled(); // если логирование вызывается
+        expect(appContext.logError).toHaveBeenCalled(); // если логирование вызывается
     });
 
     it('should return null if no token is provided', async () => {

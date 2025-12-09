@@ -3,6 +3,7 @@
         "module": "commonjs",
         "target": "es2023",
         "lib": ["es2023", "dom"],
+        "useDefineForClassFields": true,
         "moduleResolution": "node",
         "removeComments": false,
         "sourceMap": false,
@@ -23,9 +24,6 @@
         "types": ["node", "jest"],
         "typeRoots": ["node_modules/@types"]
     },
-    "includes": [
-        "src/**/*",
-        "cli/**/*"
-    ],
+    "includes": ["src/**/*", "cli/**/*"],
     "exclude": ["node_modules", "cli/template/**/*", "tests/**/*", "examples/**/*"]
 }

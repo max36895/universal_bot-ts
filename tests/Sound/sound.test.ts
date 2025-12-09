@@ -22,16 +22,20 @@ describe('sound', () => {
     it('getSounds', async () => {
         const sound = new Sound(appContext);
         appContext.appType = T_ALISA;
-        expect(await sound.getSounds('hello')).toEqual('hello');
+        expect(await sound.getSounds('hello', T_ALISA)).toEqual('hello');
         sound.sounds = [
             {
                 key: '[{test}]',
                 sounds: ['<my_Sound>'],
             },
         ];
-        expect(await sound.getSounds('hello')).toEqual('hello');
-        expect(await sound.getSounds('hello [{test}] listen')).toEqual('hello <my_Sound> listen');
+        expect(await sound.getSounds('hello', T_ALISA)).toEqual('hello');
+        expect(await sound.getSounds('hello [{test}] listen', T_ALISA)).toEqual(
+            'hello <my_Sound> listen',
+        );
         appContext.appType = null;
-        expect(await sound.getSounds('hello [{test}] listen')).toEqual('hello [{test}] listen');
+        expect(await sound.getSounds('hello [{test}] listen', null)).toEqual(
+            'hello [{test}] listen',
+        );
     });
 });

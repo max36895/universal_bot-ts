@@ -58,7 +58,6 @@ export interface ISoundModelState {
 export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Название таблицы для хранения данных о звуковых файлах.
-     * @private
      */
     private readonly TABLE_NAME = 'SoundTokens';
 
@@ -185,10 +184,7 @@ export class SoundTokens extends Model<ISoundModelState> {
                 SoundTokens.T_TELEGRAM,
             ].includes(this.type)
         ) {
-            this._appContext.saveLog(
-                'SoundTokens.log',
-                'SoundTokens.getToken(): Неизвестный тип платформы',
-            );
+            this._appContext.logError('SoundTokens.getToken(): Неизвестный тип платформы');
             return null;
         }
 
@@ -233,8 +229,7 @@ export class SoundTokens extends Model<ISoundModelState> {
         let res: IYandexRequestDownloadSound | null = null;
         if (path) {
             if (Text.isUrl(path)) {
-                this._appContext?.saveLog(
-                    'SoundTokens.log',
+                this._appContext?.logError(
                     'SoundTokens:getToken() - Нельзя отправить звук в навык для Алисы через url!',
                 );
                 return null;

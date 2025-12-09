@@ -4,6 +4,11 @@ import { AppContext } from '../core/AppContext';
 import { Text } from '../utils';
 
 /**
+ * Базовый URL для всех методов Telegram API
+ */
+const API_ENDPOINT = 'https://api.telegram.org/bot';
+
+/**
  * Класс для взаимодействия с API Telegram
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
  * @see (https://core.telegram.org/bots/api) Смотри тут
@@ -52,21 +57,16 @@ import { Text } from '../utils';
  */
 export class TelegramRequest {
     /**
-     * Базовый URL для всех методов Telegram API
-     */
-    public readonly API_ENDPOINT = 'https://api.telegram.org/bot';
-
-    /**
      * Экземпляр класса для выполнения HTTP-запросов
-     * @private
+     *
      */
-    protected _request: Request;
+    #request: Request;
 
     /**
      * Текст последней возникшей ошибки
-     * @private
+     *
      */
-    protected _error: string | null | undefined;
+    #error: object | string | null | undefined;
 
     /**
      * Токен доступа к Telegram API
@@ -76,18 +76,18 @@ export class TelegramRequest {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Создает экземпляр класса для работы с API Telegram
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
     public constructor(appContext: AppContext) {
-        this._request = new Request(appContext);
-        this._request.maxTimeQuery = 5500;
+        this.#request = new Request(appContext);
+        this.#request.maxTimeQuery = 5500;
         this.token = null;
-        this._error = null;
-        this._appContext = appContext;
+        this.#error = null;
+        this.#appContext = appContext;
         if (typeof appContext.platformParams.telegram_token !== 'undefined') {
             this.initToken(appContext.platformParams.telegram_token);
         }
@@ -104,20 +104,20 @@ export class TelegramRequest {
     /**
      * Формирует URL для отправки запроса
      * @returns Полный URL для API запроса
-     * @private
+     *
      */
     protected _getUrl(): string {
-        return `${this.API_ENDPOINT}${this._appContext.platformParams.telegram_token}/`;
+        return `${API_ENDPOINT}${this.#appContext.platformParams.telegram_token}/`;
     }
 
     /**
      * Подготавливает данные для отправки файла
      * @param type Тип отправляемого файла
      * @param file Путь к файлу или его содержимое
-     * @private
+     *
      */
-    protected _initPostFile(type: string, file: string | ITelegramMedia[]): void {
-        this._request.post = {};
+    #initPostFile(type: string, file: string | ITelegramMedia[]): void {
+        this.#request.post = {};
         if (type === 'media' && typeof file !== 'string') {
             const formData = new FormData();
             const media: ITelegramMedia[] = [];
@@ -125,7 +125,7 @@ export class TelegramRequest {
                 const key = `photo${index}`;
                 let mediaItem = item.media;
                 if (item.media.includes('attach://')) {
-                    this._request.addAttachFile(formData, item.media.replace('attach://', ''), key);
+                    this.#request.addAttachFile(formData, item.media.replace('attach://', ''), key);
                     mediaItem = `attach://${key}`;
                 }
                 media.push({
@@ -134,13 +134,13 @@ export class TelegramRequest {
                 });
             });
             formData.append('media', JSON.stringify(media));
-            this._request.post = formData;
+            this.#request.post = formData;
         } else {
             if (Text.isUrl(file as string)) {
-                this._request.post[type] = file;
+                this.#request.post[type] = file;
             } else {
-                this._request.attach = file as string;
-                this._request.attachName = type;
+                this.#request.attach = file as string;
+                this.#request.attachName = type;
             }
         }
         return;
@@ -157,27 +157,27 @@ export class TelegramRequest {
         userId: TTelegramChatId | null = null,
     ): Promise<ITelegramResult | null> {
         if (userId) {
-            if (this._request.post instanceof FormData) {
-                this._request.post.append('chat_id', userId.toString());
+            if (this.#request.post instanceof FormData) {
+                this.#request.post.append('chat_id', userId.toString());
             } else {
-                this._request.post.chat_id = userId;
+                this.#request.post.chat_id = userId;
             }
         }
         if (this.token) {
             if (method) {
-                const data = await this._request.send<ITelegramResult>(this._getUrl() + method);
+                const data = await this.#request.send<ITelegramResult>(this._getUrl() + method);
                 if (data.status && data.data) {
                     if (!data.data.ok) {
-                        this._error = data.data.description;
-                        this._log();
+                        this.#error = data;
+                        this.#log('Запрос завершился с ошибкой');
                         return null;
                     }
                     return data.data;
                 }
-                this._log(data.err);
+                this.#log(data.err);
             }
         } else {
-            this._log('Не указан telegram токен!');
+            this.#log('Не указан telegram токен!');
         }
         return null;
     }
@@ -186,9 +186,9 @@ export class TelegramRequest {
      * Санитизировать текст сообщения
      * @param text
      * @param parseMode
-     * @private
+     *
      */
-    private sanitizeTelegramMessage(text: string, parseMode?: string): string {
+    #sanitizeTelegramMessage(text: string, parseMode?: string): string {
         if (parseMode === 'HTML') {
             // Экранирование HTML сущностей
             return text
@@ -262,13 +262,13 @@ export class TelegramRequest {
         message: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        const safeMessage = this.sanitizeTelegramMessage(message, params?.parse_mode);
-        this._request.post = {
+        const safeMessage = this.#sanitizeTelegramMessage(message, params?.parse_mode);
+        this.#request.post = {
             chat_id: chatId,
             text: safeMessage,
         };
         if (params) {
-            this._request.post = { ...params, ...this._request.post };
+            this.#request.post = { ...params, ...this.#request.post };
         }
         return this.call('sendMessage');
     }
@@ -321,7 +321,7 @@ export class TelegramRequest {
         options: string[],
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> | null {
-        this._request.post = {
+        this.#request.post = {
             chat_id: chatId,
             question,
         };
@@ -330,9 +330,9 @@ export class TelegramRequest {
             const countOptions = options.length;
             if (countOptions > 1) {
                 if (countOptions > 10) {
-                    this._request.post.options = options.slice(0, 10);
+                    this.#request.post.options = options.slice(0, 10);
                 } else {
-                    this._request.post.options = options;
+                    this.#request.post.options = options;
                 }
             } else {
                 isSend = false;
@@ -340,11 +340,11 @@ export class TelegramRequest {
         }
         if (isSend) {
             if (params) {
-                this._request.post = { ...params, ...this._request.post };
+                this.#request.post = { ...params, ...this.#request.post };
             }
             return this.call('sendPoll');
         } else {
-            this._log('Недостаточное количество вариантов. Должно быть от 2 - 10 вариантов!');
+            this.#log('Недостаточное количество вариантов. Должно быть от 2 - 10 вариантов!');
             return null;
         }
     }
@@ -373,12 +373,12 @@ export class TelegramRequest {
         desc: string | null = null,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this._initPostFile('photo', file);
+        this.#initPostFile('photo', file);
         if (desc) {
-            this._request.post.caption = desc;
+            this.#request.post.caption = desc;
         }
         if (params) {
-            this._request.post = { ...params, ...this._request.post };
+            this.#request.post = { ...params, ...this.#request.post };
         }
         return this.call('sendPhoto', userId);
     }
@@ -400,9 +400,9 @@ export class TelegramRequest {
         file: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this._initPostFile('document', file);
+        this.#initPostFile('document', file);
         if (params) {
-            this._request.post = { ...params, ...this._request.post };
+            this.#request.post = { ...params, ...this.#request.post };
         }
         return this.call('sendDocument', userId);
     }
@@ -427,9 +427,9 @@ export class TelegramRequest {
         file: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this._initPostFile('audio', file);
+        this.#initPostFile('audio', file);
         if (params) {
-            this._request.post = { ...params, ...this._request.post };
+            this.#request.post = { ...params, ...this.#request.post };
         }
         return this.call('sendAudio', userId);
     }
@@ -454,9 +454,9 @@ export class TelegramRequest {
         file: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this._initPostFile('video', file);
+        this.#initPostFile('video', file);
         if (params) {
-            this._request.post = { ...params, ...this._request.post };
+            this.#request.post = { ...params, ...this.#request.post };
         }
         return this.call('sendVideo', userId);
     }
@@ -472,9 +472,9 @@ export class TelegramRequest {
         media: ITelegramMedia[],
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this._initPostFile('media', media);
+        this.#initPostFile('media', media);
         if (params) {
-            this._request.post = { ...this._request.post, ...params };
+            this.#request.post = { ...this.#request.post, ...params };
         }
         return this.call('sendMediaGroup', userId);
     }
@@ -482,12 +482,14 @@ export class TelegramRequest {
     /**
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
-     * @private
+     *
      */
-    protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'telegramApi.log',
-            `\n(${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+    #log(error: string = ''): void {
+        this.#appContext.logError(
+            `TelegramApi: (${Date.now()}): Произошла ошибка при отправке запроса по адресу: ${this.#request.url}\nОшибка:\n${error}\n`,
+            {
+                error: this.#error,
+            },
         );
     }
 }

@@ -8,10 +8,8 @@ import userDataConfig from './UserTemplate/userDataConfig';
 const bot = new BotTest();
 bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillDefaultParam());
-const logic = new UserAppController();
-bot.initBotController(logic);
+bot.initBotController(UserAppController);
 
-const userApp = new UserApp(bot.getAppContext());
 //bot.run(userApp);
 /**
  * Отображаем ответ навыка и хранилище в консоли.
@@ -20,7 +18,7 @@ const params: IBotTestParams = {
     isShowResult: true,
     isShowStorage: false,
     isShowTime: true,
-    userBotClass: userApp,
+    userBotClass: UserApp,
     userBotConfig: userDataConfig,
 };
 bot.test(params);

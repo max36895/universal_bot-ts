@@ -107,7 +107,7 @@ export class __className__Controller extends BotController<IMyUserData> {
                 break;
 
             case 'replay':
-                this.text = 'Повторяю ещё раз:\n';
+                this.text = 'Повторяю предыдущий вопрос:\n';
                 this._setQuestionText(this.userData.question_id);
                 break;
 
@@ -115,11 +115,11 @@ export class __className__Controller extends BotController<IMyUserData> {
                 switch (this.userData.prevCommand) {
                     case this.START_QUESTION:
                         if (Text.isSayTrue(this.userCommand || '')) {
-                            this.text = 'Отлично!\nТогда начинаем игу!\n';
+                            this.text = 'Отлично!\nТогда начинаем!\n';
                             this._quiz();
                             this.userData.prevCommand = this.GAME_QUESTION;
                         } else if (Text.isSayFalse(this.userCommand || '')) {
-                            this.text = 'Хорошо...\nПоиграем в другой раз!';
+                            this.text = 'Хорошо!\nПоиграем в другой раз!';
                             this.isEnd = true;
                         } else {
                             this.text = 'Скажи, ты готов начать игру?';

@@ -11,17 +11,17 @@ import {
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Адрес, на который будет отправляться запрос
+ */
+const STANDARD_URL = 'https://dialogs.yandex.net/api/v1/';
+
+/**
  * Класс, отвечающий за загрузку аудиофайлов в навык Алисы
  * @see https://yandex.ru/dev/dialogs/alice/doc/resource-sounds-upload-docpage/ Документация API Яндекс.Диалогов
  *
  * @class YandexSoundRequest
  */
 export class YandexSoundRequest extends YandexRequest {
-    /**
-     * Адрес, на который будет отправляться запрос
-     * @private
-     */
-    private readonly STANDARD_URL = 'https://dialogs.yandex.net/api/v1/';
     /**
      * Идентификатор навыка, необходимый для корректного сохранения аудиофайлов
      * @see YandexRequest Базовый класс для работы с API Яндекса
@@ -43,7 +43,7 @@ export class YandexSoundRequest extends YandexRequest {
     ) {
         super(oauth, appContext);
         this.skillId = skillId || appContext.platformParams.app_id || null;
-        this._request.url = this.STANDARD_URL;
+        this._request.url = STANDARD_URL;
     }
 
     /**
@@ -51,8 +51,8 @@ export class YandexSoundRequest extends YandexRequest {
      *
      * @return string
      */
-    private _getSoundsUrl(): string {
-        return `${this.STANDARD_URL}skills/${this.skillId}/sounds`;
+    #getSoundsUrl(): string {
+        return `${STANDARD_URL}skills/${this.skillId}/sounds`;
     }
 
     /**
@@ -63,7 +63,7 @@ export class YandexSoundRequest extends YandexRequest {
      * @remarks Для каждого аккаунта действует лимит в 1 ГБ. Учитывается размер сжатых файлов в формате OPUS
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
-        this._request.url = this.STANDARD_URL + 'status';
+        this._request.url = STANDARD_URL + 'status';
         const query = await this.call<IYandexSoundsCheckOutPlaceRequest>();
         if (query && typeof query.sounds.quota !== 'undefined') {
             return query.sounds.quota;
@@ -87,7 +87,7 @@ export class YandexSoundRequest extends YandexRequest {
      */
     public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound | null> {
         if (this.skillId) {
-            this._request.url = this._getSoundsUrl();
+            this._request.url = this.#getSoundsUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
             const query = await this.call<IYandexRequestDownloadSoundRequest>();
@@ -111,7 +111,7 @@ export class YandexSoundRequest extends YandexRequest {
      */
     public async getLoadedSounds(): Promise<IYandexRequestDownloadSound[] | null> {
         if (this.skillId) {
-            this._request.url = this._getSoundsUrl();
+            this._request.url = this.#getSoundsUrl();
             const query = await this.call<IYandexRequestDownloadSoundsRequest>();
             return query?.sounds || null;
         } else {
@@ -128,7 +128,7 @@ export class YandexSoundRequest extends YandexRequest {
     public async deleteSound(soundId: string): Promise<string | null> {
         if (this.skillId) {
             if (soundId) {
-                this._request.url = `${this._getSoundsUrl()}/${soundId}`;
+                this._request.url = `${this.#getSoundsUrl()}/${soundId}`;
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;

@@ -15,6 +15,7 @@ import {
     T_VIBER,
     T_VK,
     T_MAXAPP,
+    TAppType,
 } from '../../core/AppContext';
 
 /**
@@ -104,7 +105,7 @@ export class Sound {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Конструктор класса Sound.
@@ -120,7 +121,7 @@ export class Sound {
     public constructor(appContext: AppContext) {
         this.sounds = [];
         this.isUsedStandardSound = true;
-        this._appContext = appContext;
+        this.#appContext = appContext;
     }
 
     /**
@@ -128,7 +129,7 @@ export class Sound {
      * @param appContext
      */
     public setAppContext(appContext: AppContext): Sound {
-        this._appContext = appContext;
+        this.#appContext = appContext;
         return this;
     }
 
@@ -142,6 +143,7 @@ export class Sound {
      * 4. Применяет звуки к тексту
      *
      * @param {string | null} text - Исходный текст для обработки
+     * @param {TAppType} appType - Тип приложения
      * @param {TemplateSoundTypes | null} [userSound=null] - Пользовательский класс для обработки звуков
      * @returns {Promise<any>} Текст с встроенными звуками или исходный текст
      *
@@ -151,39 +153,40 @@ export class Sound {
      * sound.sounds = [
      *     { key: 'mySound', sounds: ['my_sound'] },
      * ];
-     * const result = await sound.getSounds('mySound');
+     * const result = await sound.getSounds('mySound', 'alice');
      * // my_sound
      * ```
      */
     public async getSounds(
         text: string | null,
+        appType: TAppType | null,
         userSound: TemplateSoundTypes | null = null,
     ): Promise<any> {
         if (!text) {
             return '';
         }
         let sound: any = null;
-        switch (this._appContext.appType) {
+        switch (appType) {
             case T_ALISA:
-                sound = new AlisaSound(this._appContext);
+                sound = new AlisaSound(this.#appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
             case T_MARUSIA:
-                sound = new MarusiaSound(this._appContext);
+                sound = new MarusiaSound(this.#appContext);
                 sound.isUsedStandardSound = this.isUsedStandardSound;
                 break;
 
             case T_VK:
-                sound = new VkSound(this._appContext);
+                sound = new VkSound(this.#appContext);
                 break;
 
             case T_TELEGRAM:
-                sound = new TelegramSound(this._appContext);
+                sound = new TelegramSound(this.#appContext);
                 break;
 
             case T_VIBER:
-                sound = new ViberSound(this._appContext);
+                sound = new ViberSound(this.#appContext);
                 break;
 
             case T_SMARTAPP:
@@ -201,7 +204,7 @@ export class Sound {
         if (sound) {
             const res = await sound.getSounds(this.sounds, text);
             if (res) {
-                return res.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '');
+                return res.includes('#') ? res.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '') : res;
             }
             return res;
         }

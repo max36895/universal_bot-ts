@@ -13,6 +13,12 @@ import {
 } from './interfaces';
 import { BotController } from '../controller';
 import { Text } from '../utils/standard/Text';
+import { T_MARUSIA } from '../core';
+
+/**
+ * Версия API Маруси
+ */
+const VERSION: string = '1.0';
 
 /**
  * Класс для работы с платформой Маруся.
@@ -23,18 +29,6 @@ import { Text } from '../utils/standard/Text';
  * @see TemplateTypeModel Смотри тут
  */
 export class Marusia extends TemplateTypeModel {
-    /**
-     * Версия API Маруси
-     * @private
-     */
-    private readonly VERSION: string = '1.0';
-
-    /**
-     * Максимальное время ответа навыка в секундах
-     * @private
-     */
-    private readonly MAX_TIME_REQUEST: number = 2.8;
-
     /**
      * Информация о сессии пользователя
      * @protected
@@ -65,7 +59,7 @@ export class Marusia extends TemplateTypeModel {
         if (this.controller.isScreen) {
             if (this.controller.card.images.length) {
                 response.card = <IMarusiaItemsList | IMarusiaBigImage>(
-                    await this.controller.card.getCards()
+                    await this.controller.card.getCards(T_MARUSIA)
                 );
                 if (!response.card) {
                     response.card = undefined;
@@ -93,9 +87,8 @@ export class Marusia extends TemplateTypeModel {
      * Устанавливает состояние приложения.
      * Определяет тип хранилища и сохраняет состояние в контроллере
      * @param state Объект состояния из запроса
-     * @private
      */
-    private _setState(state: IMarusiaRequestState): void {
+    #setState(state: IMarusiaRequestState): void {
         if (typeof state.user !== 'undefined') {
             this.controller.state = state.user;
             this._stateName = 'user_state_update';
@@ -109,9 +102,8 @@ export class Marusia extends TemplateTypeModel {
      * Инициализирует команду пользователя.
      * Обрабатывает различные типы запросов и сохраняет команду в контроллере
      * @param request Объект запроса от пользователя
-     * @private
      */
-    private _initUserCommand(request: IMarusiaRequest): void {
+    #initUserCommand(request: IMarusiaRequest): void {
         if (request.type === 'SimpleUtterance') {
             this.controller.userCommand = request.command.trim();
             this.controller.originalUserCommand = request.original_utterance.trim();
@@ -148,6 +140,7 @@ export class Marusia extends TemplateTypeModel {
             } else {
                 content = { ...query };
             }
+            this.controller = controller;
             if (typeof content.session === 'undefined' && typeof content.request === 'undefined') {
                 if (typeof content.account_linking_complete_event !== 'undefined') {
                     this.controller.userEvents = {
@@ -160,13 +153,11 @@ export class Marusia extends TemplateTypeModel {
                 this.error = 'Marusia.init(): Не корректные данные!';
                 return false;
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+
             this.controller.requestObject = content;
-            this._initUserCommand(content.request);
+            this.#initUserCommand(content.request);
             if (typeof content.state !== 'undefined') {
-                this._setState(content.state);
+                this.#setState(content.state);
             }
 
             this._session = content.session;
@@ -196,18 +187,15 @@ export class Marusia extends TemplateTypeModel {
      */
     public async getContext(): Promise<IMarusiaWebhookResponse> {
         const result: IMarusiaWebhookResponse = {
-            version: this.VERSION,
+            version: VERSION,
         };
-        await this._initTTS();
+        await this._initTTS(T_MARUSIA);
         result.response = await this._getResponse();
         result.session = this._getSession();
         if (this.isUsedLocalStorage && this.controller.userData && this._stateName) {
             result[this._stateName] = this.controller.userData;
         }
-        const timeEnd = this.getProcessingTime();
-        if (timeEnd >= this.MAX_TIME_REQUEST) {
-            this.error = `Marusia:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd} сек.`;
-        }
+        this._timeLimitLog();
         return result;
     }
 

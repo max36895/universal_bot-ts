@@ -1,5 +1,5 @@
 import { BotController } from '../controller';
-import { AppContext } from '../core/AppContext';
+import { AppContext, TAppType } from '../core/AppContext';
 
 /**
  * Абстрактный базовый класс для работы с платформами.
@@ -8,6 +8,14 @@ import { AppContext } from '../core/AppContext';
  * @class TemplateTypeModel
  */
 export abstract class TemplateTypeModel {
+    /**
+     * Время ответа навыка в миллисекундах при котором будет отправлено предупреждение
+     */
+    protected WARMING_TIME_REQUEST = 2000;
+    /**
+     * Максимальное время ответа навыка в миллисекундах
+     */
+    protected MAX_TIME_REQUEST = 2900;
     /**
      * Текст ошибки, возникшей при работе приложения
      * @protected
@@ -54,7 +62,7 @@ export abstract class TemplateTypeModel {
         // @ts-ignore
         this.controller = undefined;
         this.error = null;
-        this._initProcessingTime();
+        this.#initProcessingTime();
         this.isUsedLocalStorage = false;
         this.sendInInit = null;
         this.timeStart = null;
@@ -64,24 +72,35 @@ export abstract class TemplateTypeModel {
     /**
      * Инициализирует TTS (Text-to-Speech) в контроллере.
      * Обрабатывает звуки и стандартные звуковые эффекты
+     * @param appType Тип приложения
      * @protected
      */
-    protected async _initTTS(): Promise<void> {
+    protected async _initTTS(appType: TAppType): Promise<void> {
         if (this.controller.sound.sounds.length || this.controller.sound.isUsedStandardSound) {
             if (this.controller.tts === null) {
                 this.controller.tts = this.controller.text;
             }
-            this.controller.tts = await this.controller.sound.getSounds(this.controller.tts);
+            this.controller.tts = await this.controller.sound.getSounds(
+                this.controller.tts,
+                appType,
+            );
         }
     }
 
     /**
      * Устанавливает время начала обработки запроса.
      * Используется для измерения времени выполнения
-     * @private
      */
-    private _initProcessingTime(): void {
+    #initProcessingTime(): void {
         this.timeStart = Date.now();
+    }
+
+    /**
+     * Устанавливает время начала обработки запроса.
+     * Используется для измерения времени выполнения
+     */
+    public updateTimeStart(): void {
+        this.#initProcessingTime();
     }
 
     /**
@@ -98,6 +117,21 @@ export abstract class TemplateTypeModel {
      */
     public getError(): string | null {
         return this.error;
+    }
+
+    /**
+     * При превышении установленного времени исполнения, пишет информацию в лог
+     * @protected
+     */
+    protected _timeLimitLog(): void {
+        const timeEnd: number = this.getProcessingTime();
+        if (timeEnd >= this.MAX_TIME_REQUEST) {
+            this.error = `${this.constructor.name}:getContext(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
+        } else if (timeEnd >= this.WARMING_TIME_REQUEST) {
+            this.appContext.logWarn(
+                `${this.constructor.name}:getContext(): Время ответа составило: ${timeEnd / 1000} сек, рекомендуется проверить нагрузку на сервер, либо корректность работы самого навыка.`,
+            );
+        }
     }
 
     /**

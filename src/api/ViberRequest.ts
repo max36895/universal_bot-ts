@@ -12,28 +12,28 @@ import { Text } from '../utils/standard/Text';
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Базовый URL для всех методов Viber API
+ *
+ */
+const API_ENDPOINT = 'https://chatapi.viber.com/pa/';
+
+/**
  * Класс для взаимодействия с API Viber
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
  * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
  */
 export class ViberRequest {
     /**
-     * Базовый URL для всех методов Viber API
-     * @private
-     */
-    private readonly API_ENDPOINT = 'https://chatapi.viber.com/pa/';
-
-    /**
      * Экземпляр класса для выполнения HTTP-запросов
-     * @private
+     *
      */
-    protected _request: Request;
+    #request: Request;
 
     /**
      * Текст последней возникшей ошибки
-     * @private
+     *
      */
-    protected _error: string | null;
+    #error: object | string | null;
 
     /**
      * Токен доступа к Viber API
@@ -43,21 +43,21 @@ export class ViberRequest {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Создает экземпляр класса для работы с API Viber
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
     public constructor(appContext: AppContext) {
-        this._request = new Request(appContext);
+        this.#request = new Request(appContext);
         this.token = null;
-        this._error = null;
-        this._appContext = appContext;
+        this.#error = null;
+        this.#appContext = appContext;
         if (appContext.platformParams.viber_token) {
             this.initToken(appContext.platformParams.viber_token);
         }
-        this._request.post = {};
+        this.#request.post = {};
     }
 
     /**
@@ -76,18 +76,18 @@ export class ViberRequest {
     public async call<T extends IViberApi>(method: string): Promise<T | null> {
         if (this.token) {
             if (method) {
-                this._request.header = {
-                    ...this._request.header,
+                this.#request.header = {
+                    ...this.#request.header,
                     'X-Viber-Auth-Token': this.token,
                 };
-                this._request.post.min_api_version =
-                    this._appContext.platformParams.viber_api_version || 2;
-                const sendData = await this._request.send<IViberApi>(this.API_ENDPOINT + method);
+                this.#request.post.min_api_version =
+                    this.#appContext.platformParams.viber_api_version || 2;
+                const sendData = await this.#request.send<IViberApi>(API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;
                     if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
-                        this._error = JSON.stringify(data.failed_list);
-                        this._log(data.status_message);
+                        this.#error = sendData;
+                        this.#log(data.status_message);
                     }
                     if (data.status === 0) {
                         return data as T;
@@ -95,15 +95,15 @@ export class ViberRequest {
                     const statusMessage =
                         typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
                     if (statusMessage !== 'ok') {
-                        this._error = '';
-                        this._log(data.status_message);
+                        this.#error = sendData;
+                        this.#log(data.status_message);
                     }
                 } else {
-                    this._log(sendData.err);
+                    this.#log(sendData.err);
                 }
             }
         } else {
-            this._log('Не указан viber токен!');
+            this.#log('Не указан viber токен!');
         }
         return null;
     }
@@ -128,7 +128,7 @@ export class ViberRequest {
      * - device_type: тип устройства
      */
     public getUserDetails(id: string): Promise<IViberGetUserDetails | null> {
-        this._request.post = {
+        this.#request.post = {
             id,
         };
         return this.call<IViberGetUserDetails>('get_user_details');
@@ -162,18 +162,18 @@ export class ViberRequest {
         text: string,
         params: IViberParams | null = null,
     ): Promise<IViberApi | null> {
-        this._request.post.receiver = receiver;
+        this.#request.post.receiver = receiver;
         if (typeof sender !== 'string') {
-            this._request.post.sender = sender;
+            this.#request.post.sender = sender;
         } else {
-            this._request.post.sender = {
+            this.#request.post.sender = {
                 name: sender,
             };
         }
-        this._request.post.text = text;
-        this._request.post.type = 'text';
+        this.#request.post.text = text;
+        this.#request.post.type = 'text';
         if (params) {
-            this._request.post = { ...this._request.post, ...params };
+            this.#request.post = { ...this.#request.post, ...params };
         }
         return this.call<IViberApi>('send_message');
     }
@@ -192,7 +192,7 @@ export class ViberRequest {
         params: IViberWebhookParams | null = null,
     ): Promise<IViberApi | null> {
         if (url) {
-            this._request.post = {
+            this.#request.post = {
                 url,
                 event_types: [
                     'delivered',
@@ -206,12 +206,12 @@ export class ViberRequest {
                 send_photo: true,
             };
         } else {
-            this._request.post = {
+            this.#request.post = {
                 url: '',
             };
         }
         if (params) {
-            this._request.post = { ...this._request.post, ...params };
+            this.#request.post = { ...this.#request.post, ...params };
         }
         return this.call<IViberApi>('set_webhook');
     }
@@ -231,7 +231,7 @@ export class ViberRequest {
         richMedia: IViberButton[],
         params: IViberRichMediaParams | null = null,
     ): Promise<IViberApi | null> {
-        this._request.post = {
+        this.#request.post = {
             receiver,
             type: 'rich_media',
             rich_media: {
@@ -243,7 +243,7 @@ export class ViberRequest {
             },
         };
         if (params) {
-            this._request.post = { ...this._request.post, ...params };
+            this.#request.post = { ...this.#request.post, ...params };
         }
         return this.call<IViberApi>('send_message');
     }
@@ -264,16 +264,16 @@ export class ViberRequest {
         file: string,
         params: IViberParams | null = null,
     ): Promise<IViberApi | null> | null {
-        this._request.post = {
+        this.#request.post = {
             receiver,
         };
         if (Text.isSayText(['http://', 'https://'], file)) {
-            this._request.post.type = 'file';
-            this._request.post.media = file;
-            this._request.post.size = 10e4;
-            this._request.post.file_name = Text.resize(file, 150);
+            this.#request.post.type = 'file';
+            this.#request.post.media = file;
+            this.#request.post.size = 10e4;
+            this.#request.post.file_name = Text.resize(file, 150);
             if (params) {
-                this._request.post = { ...this._request.post, ...params };
+                this.#request.post = { ...this.#request.post, ...params };
             }
             return this.call<IViberApi>('send_message');
         }
@@ -283,12 +283,13 @@ export class ViberRequest {
     /**
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
-     * @private
      */
-    protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'viberApi.log',
-            `\n(${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+    #log(error: string = ''): void {
+        this.#appContext.logError(
+            `ViberApi: (${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this.#request.url}\nОшибка:\n${error}\n`,
+            {
+                error: this.#error,
+            },
         );
     }
 }

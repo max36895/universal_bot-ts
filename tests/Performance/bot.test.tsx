@@ -1,5 +1,5 @@
 import { Bot, BotController, Alisa, T_ALISA, AlisaSound, Text } from '../../src';
-import { performance } from 'perf_hooks';
+import { performance } from 'node:perf_hooks';
 
 // Базовое потребление памяти не должно превышать 500кб
 // const BASE_MEMORY_USED = 500;
@@ -59,18 +59,14 @@ class TestBotController extends BotController {
     }
 }
 
-class TestBot extends Bot {
-    public get appContext() {
-        return this._appContext;
-    }
-}
+class TestBot extends Bot {}
 
 function getContent(query: string, count = 0) {
     return JSON.stringify({
         meta: {
             locale: 'ru-Ru',
             timezone: 'UTC',
-            client_id: 'local',
+            client_id: 'yandex.searchplugin_local',
             interfaces: {
                 payments: null,
                 account_linking: null,
@@ -124,15 +120,12 @@ async function getPerformance(
 
 describe('umbot', () => {
     let bot: TestBot;
-    let botController: TestBotController;
 
     beforeEach(() => {
-        botController = new TestBotController();
         bot = new TestBot();
     });
 
     afterEach(() => {
-        botController.clearStoreData();
         bot.clearCommands();
         jest.resetAllMocks();
     });
@@ -141,90 +134,84 @@ describe('umbot', () => {
         for (let i = 2; i < 100; i++) {
             it(`Простое текстовое отображение. Длина запроса от пользователя ${i * 2}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotController(botController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
-                    const botClass = new Alisa(bot.appContext);
                     bot.setPlatformParams({
                         intents: [],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
 
                     bot.setContent(getContent('0'.repeat(i * 2)));
-                    await bot.run(botClass);
+                    await bot.run(Alisa);
                 });
             });
         }
         for (let i = 2; i < 50; i++) {
             it(`Простое текстовое отображение c кнопкой. Длина запроса от пользователя ${i * 3}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotController(botController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
-                    const botClass = new Alisa(bot.appContext);
                     bot.setPlatformParams({
                         intents: [{ name: 'btn', slots: ['кнопка'] }],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
 
                     bot.setContent(getContent('0'.repeat(i) + ` кнопка ${''.repeat(i * 2)}`));
-                    await bot.run(botClass);
+                    await bot.run(Alisa);
                 });
             });
         }
 
         it(`Отображение карточки с 1 изображением.`, async () => {
             await getPerformance(async () => {
-                bot.initBotController(botController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
-                const botClass = new Alisa(bot.appContext);
                 bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
                 });
                 bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(botClass);
+                await bot.run(Alisa);
             });
         });
         it(`Отображение карточки с 1 изображением и кнопкой`, async () => {
             await getPerformance(async () => {
-                bot.initBotController(botController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
-                const botClass = new Alisa(bot.appContext);
                 bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка_с_кнопкой'] }],
                 });
                 bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(botClass);
+                await bot.run(Alisa);
             });
         });
         it(`Отображение галереи из 1 изображения.`, async () => {
             await getPerformance(async () => {
-                bot.initBotController(botController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
-                const botClass = new Alisa(bot.appContext);
                 bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
                 });
                 bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(botClass);
+                await bot.run(Alisa);
             });
         });
         it(`Отображение галереи из 5 изображений.`, async () => {
             await getPerformance(async () => {
-                bot.initBotController(botController);
+                bot.initBotController(TestBotController);
                 bot.appType = T_ALISA;
-                const botClass = new Alisa(bot.appContext);
                 bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
                 });
                 bot.setAppConfig({ isLocalStorage: true });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(botClass);
+                await bot.run(Alisa);
             });
         });
 
@@ -232,19 +219,18 @@ describe('umbot', () => {
         for (let i = 1; i < 15; i++) {
             it(`Обработка звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotController(botController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
-                    const botClass = new Alisa(bot.appContext);
                     bot.setPlatformParams({
                         intents: [],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
-                    bot.addCommand('sound', ['звук'], () => {
+                    bot.addCommand('sound', ['звук'], (_, botController) => {
                         botController.tts = ` ${AlisaSound.S_AUDIO_GAME_WIN} `.repeat(i);
                     });
 
                     bot.setContent(getContent('звук'));
-                    await bot.run(botClass);
+                    await bot.run(Alisa);
                     bot.removeCommand('sound');
                 });
             });
@@ -252,30 +238,33 @@ describe('umbot', () => {
         for (let i = 1; i < 15; i++) {
             it(`Обработка своих звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
-                    bot.initBotController(botController);
+                    bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
-                    const botClass = new Alisa(bot.appContext);
                     bot.setPlatformParams({
                         intents: [],
                     });
                     bot.setAppConfig({ isLocalStorage: true });
-                    botController.sound.sounds = [];
-                    for (let j = 1; j < 15; j++) {
-                        botController.sound.sounds.push({
-                            key: `$s_${j}`,
-                            sounds: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-                        });
-                    }
-                    botController.sound.isUsedStandardSound = true;
-                    bot.addCommand('sound', ['звук'], () => {
+
+                    bot.addCommand('sound', ['звук'], (_, botController) => {
                         botController.tts = ``;
                         for (let j = 1; j < i; j++) {
                             botController.tts += `$s_${j} `;
                         }
                     });
+                    bot.use((botController, next) => {
+                        botController.sound.sounds = [];
+                        for (let j = 1; j < 15; j++) {
+                            botController.sound.sounds.push({
+                                key: `$s_${j}`,
+                                sounds: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                            });
+                        }
+                        botController.sound.isUsedStandardSound = true;
+                        return next();
+                    });
 
                     bot.setContent(getContent('звук'));
-                    await bot.run(botClass);
+                    await bot.run(Alisa);
                     bot.removeCommand('sound');
                 });
             });
@@ -286,9 +275,8 @@ describe('umbot', () => {
             it(`Обработка большого количества команд в intents. Количество команд равно ${i * 100}`, async () => {
                 await getPerformance(
                     async () => {
-                        bot.initBotController(botController);
+                        bot.initBotController(TestBotController);
                         bot.appType = T_ALISA;
-                        const botClass = new Alisa(bot.appContext);
                         const intents = [];
                         for (let j = 0; j < i * 100; j++) {
                             intents.push({
@@ -302,7 +290,7 @@ describe('umbot', () => {
                         bot.setAppConfig({ isLocalStorage: true });
 
                         bot.setContent(getContent(`команда${i / 2}`));
-                        await bot.run(botClass);
+                        await bot.run(Alisa);
                     },
                     BASE_DURATION,
                     BASE_MEMORY_USED + i * 3,
@@ -314,24 +302,25 @@ describe('umbot', () => {
             it(`Обработка большого количества команд в addCommand. Количество команд равно ${i * 100}`, async () => {
                 await getPerformance(
                     async () => {
-                        bot.initBotController(botController);
-                        bot.appType = T_ALISA;
-                        const botClass = new Alisa(bot.appContext);
+                        bot.initBotController(TestBotController);
                         bot.setPlatformParams({
                             intents: [],
                         });
                         bot.setAppConfig({ isLocalStorage: true });
                         for (let j = 0; j < i * 100; j++) {
-                            bot.addCommand(`cmd_${j}`, [`команда${j}`], () => {
+                            bot.addCommand(`cmd_${j}`, [`команда${j}`], (_, botController) => {
                                 botController.text = `cmd_${j}`;
                             });
                         }
 
-                        bot.setContent(getContent(`команда${i / 2}`));
-                        await bot.run(botClass);
+                        await bot.run(Alisa, T_ALISA, getContent(`команда${i / 2}`));
                     },
                     BASE_DURATION,
-                    BASE_MEMORY_USED + 10 + i * 10,
+                    /*
+                     * Из-за доп логики в поиске ReDoS команд, немного увеличилось потребление памяти
+                     * В среднем на выполнение 1 команды требуется около 0.33 кб
+                     */
+                    BASE_MEMORY_USED + 10 + i * 11,
                 );
             });
         }

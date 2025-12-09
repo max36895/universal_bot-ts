@@ -22,7 +22,7 @@ describe('MaxRequest', () => {
         appContext.platformParams.max_token = 'test-max-token';
         max = new MaxRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
-        appContext.saveLog = jest.fn();
+        appContext.logError = jest.fn();
     });
 
     // === Базовый вызов call ===
@@ -135,9 +135,9 @@ describe('MaxRequest', () => {
 
         const result = await max.messagesSend(12345, 'Hi');
         expect(result).toBeNull();
-        expect(appContext.saveLog).toHaveBeenCalledWith(
-            'maxApi.log',
+        expect(appContext.logError).toHaveBeenCalledWith(
             expect.stringContaining('Network error'),
+            expect.objectContaining({}),
         );
     });
 
@@ -147,9 +147,5 @@ describe('MaxRequest', () => {
         const result = await localMax.messagesSend(12345, 'Hi');
         expect(result).toBeNull();
         expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    it('should use correct API URL (no trailing spaces)', () => {
-        expect(max['MAX_API_ENDPOINT'].trim()).toBe('https://platform-api.max.ru/');
     });
 });

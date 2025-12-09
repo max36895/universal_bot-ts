@@ -15,7 +15,7 @@ describe('YandexRequest', () => {
     });
 
     it('should set OAuth header correctly', () => {
-        expect(yandex['_oauth']).toBe('test-yandex-token');
+        expect(yandex.oauth).toBe('test-yandex-token');
     });
 
     it('should call API with OAuth header', async () => {
@@ -41,6 +41,5 @@ describe('YandexRequest', () => {
 
         const result = await yandex.call<any>('https://api.yandex.ru/test');
         expect(result).toEqual({ error: 'Invalid token' });
-        expect(yandex['_error']).toContain('Invalid token');
     });
 });

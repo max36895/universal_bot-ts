@@ -19,6 +19,7 @@ import {
     T_USER_APP,
     T_VIBER,
     T_VK,
+    TAppType,
 } from '../../core/AppContext';
 
 /**
@@ -219,7 +220,7 @@ export class Card {
 
     /**
      * Произвольный шаблон для отображения карточки.
-     * Используется для кастомизации отображения на определенных платформах. Не рекомендуется использовать при заание поддерживаемых платформ.
+     * Используется для кастомизации отображения на определенных платформах. Не рекомендуется использовать при задании поддерживаемых платформ.
      * При использовании этого параметра вы сами отвечаете за корректное отображение.
      * @type {any}
      * @example
@@ -235,7 +236,7 @@ export class Card {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Создает новый экземпляр карточки.
@@ -251,7 +252,7 @@ export class Card {
         this.images = [];
         this.title = null;
         this.desc = null;
-        this._appContext = appContext;
+        this.#appContext = appContext;
         this.clear();
     }
 
@@ -260,7 +261,7 @@ export class Card {
      * @param appContext
      */
     public setAppContext(appContext: AppContext): Card {
-        this._appContext = appContext;
+        this.#appContext = appContext;
         this.button.setAppContext(appContext);
         return this;
     }
@@ -330,34 +331,6 @@ export class Card {
     }
 
     /**
-     * Вставляет элемент в карточку|список.
-     * @param {string} image - Идентификатор или расположение изображения
-     * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton} [button=null] - Кнопки для элемента
-     * @returns {boolean} true если элемент успешно добавлен
-     * @deprecated Используйте метод addImage вместо этого. Будет удален в версию 2.2.0
-     * @example
-     * ```typescript
-     * // Устаревший метод - не рекомендуется использовать
-     * const success = card.add('product.jpg', 'Название', 'Описание');
-     *
-     * // Рекомендуемый метод
-     * card.addImage('product.jpg', 'Название', 'Описание');
-     * ```
-     */
-    public add(
-        image: string | null,
-        title: string,
-        desc: string = ' ',
-        button: TButton | null = null,
-    ): boolean {
-        const imageLength: number = this.images.length;
-        this.addImage(image, title, desc, button);
-        return imageLength < this.images.length;
-    }
-
-    /**
      * Добавляет изображение в карточку.
      * @param {string} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
@@ -397,7 +370,7 @@ export class Card {
         desc: string = ' ',
         button: TButton | null = null,
     ): Card {
-        const img = new Image(this._appContext);
+        const img = new Image(this.#appContext);
         if (img.init(image, title, desc, button)) {
             this.images.push(img);
         }
@@ -425,6 +398,7 @@ export class Card {
 
     /**
      * Получает карточку в формате для текущей платформы.
+     * @param {TAppType}[appType] - Тип приложения
      * @param {TemplateCardTypes | null} [userCard=null] - Пользовательский шаблон карточки
      * @returns {Promise<any>} Карточка в формате текущей платформы
      *
@@ -491,7 +465,7 @@ export class Card {
      * card.addImage('image.jpg', 'Название', 'Описание')
      *     .addButton('Подробнее');
      *
-     * const result = await card.getCards();
+     * const result = await card.getCards('alisa');
      * console.log(result);
      *
      * // Использование пользовательского шаблона
@@ -502,32 +476,35 @@ export class Card {
      * const customResult = await card.getCards(customTemplate);
      * ```
      */
-    public async getCards(userCard: TemplateCardTypes | null = null): Promise<any> {
+    public async getCards(
+        appType: TAppType | null,
+        userCard: TemplateCardTypes | null = null,
+    ): Promise<any> {
         if (this.template) {
             return this.template;
         }
         let card = null;
-        switch (this._appContext.appType) {
+        switch (appType) {
             case T_ALISA:
-                card = new AlisaCard(this._appContext);
+                card = new AlisaCard(this.#appContext);
                 break;
             case T_VK:
-                card = new VkCard(this._appContext);
+                card = new VkCard(this.#appContext);
                 break;
             case T_TELEGRAM:
-                card = new TelegramCard(this._appContext);
+                card = new TelegramCard(this.#appContext);
                 break;
             case T_VIBER:
-                card = new ViberCard(this._appContext);
+                card = new ViberCard(this.#appContext);
                 break;
             case T_MARUSIA:
-                card = new MarusiaCard(this._appContext);
+                card = new MarusiaCard(this.#appContext);
                 break;
             case T_SMARTAPP:
-                card = new SmartAppCard(this._appContext);
+                card = new SmartAppCard(this.#appContext);
                 break;
             case T_MAXAPP:
-                card = new MaxAppCard(this._appContext);
+                card = new MaxAppCard(this.#appContext);
                 break;
             case T_USER_APP:
                 card = userCard;
@@ -541,18 +518,5 @@ export class Card {
             return await card.getCard(this.isOne);
         }
         return {};
-    }
-
-    /**
-     * Возвращает JSON-строку со всеми элементами карточки.
-     * @param {TemplateCardTypes} [userCard=null] - Пользовательский класс для отображения карточки
-     * @returns {Promise<string>} JSON-строка с данными карточки
-     * @example
-     * ```typescript
-     * const cardJson = await card.getCardsJson();
-     * ```
-     */
-    public async getCardsJson(userCard: TemplateCardTypes | null = null): Promise<string> {
-        return JSON.stringify(await this.getCards(userCard));
     }
 }

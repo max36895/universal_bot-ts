@@ -22,7 +22,7 @@ describe('TelegramRequest', () => {
         appContext.platformParams.telegram_token = '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11';
         telegram = new TelegramRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
-        appContext.saveLog = jest.fn(); // для проверки логирования
+        appContext.logError = jest.fn(); // для проверки логирования
     });
 
     // === Базовая отправка сообщения ===
@@ -125,9 +125,9 @@ describe('TelegramRequest', () => {
     it('should return null if poll has less than 2 options', async () => {
         const result = await telegram.sendPoll(12345, 'Q?', ['Only one']);
         expect(result).toBeNull();
-        expect(appContext.saveLog).toHaveBeenCalledWith(
-            'telegramApi.log',
+        expect(appContext.logError).toHaveBeenCalledWith(
             expect.stringContaining('Недостаточное количество вариантов'),
+            expect.objectContaining({}),
         );
     });
 
@@ -140,7 +140,7 @@ describe('TelegramRequest', () => {
 
         const result = await telegram.sendMessage(12345, 'Hi');
         expect(result).toBeNull();
-        expect(appContext.saveLog).toHaveBeenCalled();
+        expect(appContext.logError).toHaveBeenCalled();
     });
 
     it('should return null if no token provided', async () => {

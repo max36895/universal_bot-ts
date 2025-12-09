@@ -26,7 +26,7 @@
  *   if (response) {
  *     console.log('Успешный ответ:', response);
  *   } else {
- *     console.error('Ошибка запроса:', yandexApi._error);
+ *     console.error('Ошибка запроса:', yandexApi.#error);
  *   }
  * } catch (error) {
  *   console.error('Неожиданная ошибка:', error);
@@ -62,14 +62,13 @@ import { AppContext } from '../core/AppContext';
  *   console.log(result);
  * } else {
  *   // Обработка ошибки
- *   console.error(api._error);
+ *   console.error(api.#error);
  * }
  * ```
  */
 export class YandexRequest {
     /**
      * Экземпляр класса для отправки HTTP-запросов
-     * @private
      */
     protected _request: Request;
 
@@ -79,18 +78,16 @@ export class YandexRequest {
      * Используется для авторизации запросов к API Яндекса.
      * Подробная информация о получении токена:
      * @see https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/#http-images-load__auth
-     * @private
      */
-    protected _oauth: string | null | undefined;
+    #oauth: string | null | undefined;
 
     /**
      * Текст последней ошибки
      *
      * Содержит информацию о последней возникшей ошибке
      * при выполнении запроса к API.
-     * @private
      */
-    protected _error: string | null;
+    #error: object | string | null | undefined;
 
     /**
      * Контекст приложения.
@@ -127,7 +124,11 @@ export class YandexRequest {
         this._appContext = appContext;
         this.setOAuth(oauth || appContext.platformParams.yandex_token || null);
         this._request.maxTimeQuery = 1500;
-        this._error = null;
+        this.#error = null;
+    }
+
+    public get oauth(): string | null | undefined {
+        return this.#oauth;
     }
 
     /**
@@ -159,14 +160,14 @@ export class YandexRequest {
      * ```
      */
     public setOAuth(oauth: string | null): void {
-        this._oauth = oauth;
+        this.#oauth = oauth;
         if (this._request.header) {
             this._request.header = {
                 ...this._request.header,
-                Authorization: `OAuth ${this._oauth}`,
+                Authorization: `OAuth ${this.#oauth}`,
             };
         } else {
-            this._request.header = { Authorization: `OAuth ${this._oauth}` };
+            this._request.header = { Authorization: `OAuth ${this.#oauth}` };
         }
     }
 
@@ -203,7 +204,7 @@ export class YandexRequest {
      *     console.log('Name:', response.data.name);
      *   } else {
      *     // Обработка ошибки API
-     *     console.error('Ошибка API:', api._error);
+     *     console.error('Ошибка API:', api.#error);
      *   }
      * } catch (error) {
      *   // Обработка ошибок сети или сервера
@@ -212,14 +213,15 @@ export class YandexRequest {
      * ```
      */
     public async call<T extends IYandexApi>(url: string | null = null): Promise<T | null> {
-        this.setOAuth(this._oauth as string);
+        this.setOAuth(this.#oauth as string);
         const data: IRequestSend<T> = await this._request.send<T>(url);
         if (data.status && data.data) {
             if (Object.hasOwnProperty.call(data.data, 'error')) {
-                this._error = JSON.stringify(data.data.error);
+                this.#error = data;
             }
             return data.data;
         }
+        this.#error = data;
         this._log(data.err);
         return null;
     }
@@ -231,12 +233,13 @@ export class YandexRequest {
      * включая время возникновения, URL запроса и текст ошибки.
      *
      * @param {string} [error=''] - Текст ошибки для логирования
-     * @private
      */
     protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'YandexApi.log',
-            `\n${new Date()}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+        this._appContext.logError(
+            `YandexApi: ${new Date()}Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n`,
+            {
+                error: this.#error,
+            },
         );
     }
 }

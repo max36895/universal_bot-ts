@@ -143,7 +143,6 @@ export class ViberCard extends TemplateCardTypes {
      * @param {Image} image - Объект с изображением
      * @param {number} [countImage=1] - Количество изображений в карточке
      * @returns {IViberCard} Элемент карточки для Viber
-     * @private
      *
      * @example
      * ```typescript

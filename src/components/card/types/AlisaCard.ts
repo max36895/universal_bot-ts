@@ -145,7 +145,6 @@ export class AlisaCard extends TemplateCardTypes {
      *      * Описание: 256 символов
      *
      * @returns {Promise<IAlisaImage[]>} Массив элементов карточки
-     * @private
      *
      * @example
      * ```typescript

@@ -71,8 +71,12 @@ export class TelegramCard extends TemplateCardTypes {
                 }
             } catch (e) {
                 // Логируем ошибку, но не прерываем цикл
-                const error = `\n${Date} Ошибка при обработке изображения для Telegram: ${e}`;
-                this._appContext.saveLog('TelegramCard.log', error);
+                this._appContext.logError(
+                    `TelegramCard:getCard()\n${Date} Ошибка при обработке изображения для Telegram`,
+                    {
+                        error: e,
+                    },
+                );
             }
             return object;
         } else {
@@ -97,8 +101,10 @@ export class TelegramCard extends TemplateCardTypes {
                     }
                 } catch (e) {
                     // Логируем ошибку, но не прерываем цикл
-                    const error = `\n${Date} Ошибка при обработке изображения для Telegram: ${e}`;
-                    this._appContext.saveLog('TelegramCard.log', error);
+                    this._appContext.logError(
+                        `TelegramCard:getCard()\n${Date} Ошибка при обработке изображения для Telegram`,
+                        { error: e },
+                    );
                 }
             }
         }

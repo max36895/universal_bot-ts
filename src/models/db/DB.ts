@@ -158,6 +158,7 @@ export class DB {
      * ```
      *
      * @returns Promise<boolean> - true если подключение успешно установлено, false в противном случае
+     * @throws  {Error} Если произошла ошибка при подключении
      */
     public async connect(): Promise<boolean> {
         this.errors = [];
@@ -187,14 +188,12 @@ export class DB {
                 }
 
                 this.sql = new MongoClient(this.params.host, options);
-
                 const connect = async (): Promise<boolean> => {
                     if (!this.sql) {
                         return false;
                     }
                     this.dbConnect = this.sql.connect();
                     await this.dbConnect;
-
                     // Проверяем подключение сразу после установки
                     return await this.isConnected();
                 };
@@ -207,7 +206,6 @@ export class DB {
                         throw new Error('Failed to verify database connection');
                     }
                 }
-
                 return true;
             } catch (err) {
                 this.errors.push((err as Error).message);

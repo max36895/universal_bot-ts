@@ -76,7 +76,7 @@ export class YandexSpeechKit extends YandexRequest {
      */
     public static readonly V_JANE = 'jane';
     /**
-     * Голос для синтеза речи Омазж (ru)
+     * Голос для синтеза речи Омаж (ru)
      */
     public static readonly V_OMAZH = 'omazh';
     /**
@@ -227,9 +227,8 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Инициализация параметров для отправки запроса
-     * @private
      */
-    protected _initPost(): void {
+    #initPost(): void {
         this._request.post = {
             text: this.text,
             lang: this.lang,
@@ -302,7 +301,7 @@ export class YandexSpeechKit extends YandexRequest {
         this._request.url = YandexSpeechKit.TTS_API_URL;
         this._request.isConvertJson = false;
         this._request.isBinaryResponse = true;
-        this._initPost();
+        this.#initPost();
         const audioData = (await this.call()) as ArrayBuffer | null;
         if (!audioData) {
             return null;

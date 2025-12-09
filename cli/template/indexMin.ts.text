@@ -22,4 +22,6 @@ bot.addCommand(FALLBACK_COMMAND, [], (_, botController) => {
   }
 });
 
+bot.setAppMode('strict_prod');
+
 bot.start({{hostname}}, {{port}});

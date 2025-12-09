@@ -59,7 +59,7 @@ describe('Card test', () => {
             ],
         };
         appContext.appType = T_ALISA;
-        expect(await defaultCard.getCards()).toEqual(alisaCard);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCard);
 
         defaultCard.button.addBtn('1', URL);
         alisaCard.footer = {
@@ -69,7 +69,7 @@ describe('Card test', () => {
                 url: URL,
             },
         };
-        expect(await defaultCard.getCards()).toEqual(alisaCard);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCard);
 
         defaultCard.isOne = true;
 
@@ -83,11 +83,11 @@ describe('Card test', () => {
                 url: URL,
             },
         };
-        expect(await defaultCard.getCards()).toEqual(alisaCardOne);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCardOne);
 
         defaultCard.button = new Buttons(appContext);
         delete alisaCardOne.button;
-        expect(await defaultCard.getCards()).toEqual(alisaCardOne);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCardOne);
 
         defaultCard.clear();
         defaultCard.isOne = false;
@@ -133,7 +133,7 @@ describe('Card test', () => {
                 },
             ],
         };
-        expect(await defaultCard.getCards()).toEqual(alisaCardButton);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCardButton);
 
         defaultCard.addImage('36895', 'Запись 4', 'Описание 4', 'Кнопка');
         defaultCard.addImage('36895', 'Запись 5', 'Описание 5', 'Кнопка');
@@ -158,7 +158,7 @@ describe('Card test', () => {
                 text: 'Кнопка',
             },
         });
-        expect(await defaultCard.getCards()).toEqual(alisaCardButton);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCardButton);
 
         defaultCard.isOne = true;
         const alisaCardOneNew = {
@@ -170,7 +170,7 @@ describe('Card test', () => {
                 text: 'Кнопка',
             },
         };
-        expect(await defaultCard.getCards()).toEqual(alisaCardOneNew);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaCardOneNew);
     });
 
     it('Get Alisa gallery', async () => {
@@ -193,7 +193,7 @@ describe('Card test', () => {
                 },
             ],
         };
-        expect(await defaultCard.getCards()).toEqual(alisaGallery);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaGallery);
 
         defaultCard.addImage('36895', '4');
         defaultCard.addImage('36895', '5');
@@ -219,10 +219,10 @@ describe('Card test', () => {
                 image_id: '36895',
             },
         );
-        expect(await defaultCard.getCards()).toEqual(alisaGallery);
+        expect(await defaultCard.getCards(T_ALISA)).toEqual(alisaGallery);
         defaultCard.isUsedGallery = false;
         defaultCard.isOne = true;
-        expect(await defaultCard.getCards()).toEqual({
+        expect(await defaultCard.getCards(T_ALISA)).toEqual({
             type: AlisaCard.ALISA_CARD_BIG_IMAGE,
             title: '1',
             description: 'запись: 1',
@@ -249,11 +249,11 @@ describe('Card test', () => {
             },
         ];
         appContext.appType = T_VIBER;
-        expect(await defaultCard.getCards()).toEqual(viberCard);
+        expect(await defaultCard.getCards(T_VIBER)).toEqual(viberCard);
 
         defaultCard.isOne = true;
         viberCard[0].Columns = 1;
-        expect(await defaultCard.getCards()).toEqual(viberCard[0]);
+        expect(await defaultCard.getCards(T_VIBER)).toEqual(viberCard[0]);
 
         viberCard[0].Text = '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>';
         viberCard[0].ActionType = ViberButton.T_REPLY;
@@ -261,11 +261,11 @@ describe('Card test', () => {
         const buttons = new Buttons(appContext);
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
-        expect(await defaultCard.getCards()).toEqual(viberCard[0]);
+        expect(await defaultCard.getCards(T_VIBER)).toEqual(viberCard[0]);
 
         defaultCard.isOne = false;
         viberCard[0].Columns = 3;
-        expect(await defaultCard.getCards()).toEqual(viberCard);
+        expect(await defaultCard.getCards(T_VIBER)).toEqual(viberCard);
     });
 
     it('Get Vk card', async () => {
@@ -291,16 +291,16 @@ describe('Card test', () => {
             ],
         };
         appContext.appType = T_VK;
-        expect(await defaultCard.getCards()).toEqual([]);
+        expect(await defaultCard.getCards(T_VK)).toEqual([]);
 
         defaultCard.isOne = true;
-        expect(await defaultCard.getCards()).toEqual(['36895']);
+        expect(await defaultCard.getCards(T_VK)).toEqual(['36895']);
 
         defaultCard.isOne = false;
         const buttons = new Buttons(appContext);
         buttons.addBtn('1');
         defaultCard.images[0].button = buttons;
-        expect(await defaultCard.getCards()).toEqual(vkCard);
+        expect(await defaultCard.getCards(T_VK)).toEqual(vkCard);
     });
 
     it('Get MAX card', async () => {
@@ -312,13 +312,13 @@ describe('Card test', () => {
         };
         appContext.appType = T_MAXAPP;
         defaultCard.isOne = true;
-        expect(await defaultCard.getCards()).toEqual(maxCard);
+        expect(await defaultCard.getCards(T_MAXAPP)).toEqual(maxCard);
 
         defaultCard.isOne = false;
         delete maxCard.payload.token;
         maxCard.payload.photos = ['36895', '36895', '36895'];
-        expect(await defaultCard.getCards()).toEqual(maxCard);
+        expect(await defaultCard.getCards(T_MAXAPP)).toEqual(maxCard);
         defaultCard.clear();
-        expect(await defaultCard.getCards()).toEqual([]);
+        expect(await defaultCard.getCards(T_MAXAPP)).toEqual([]);
     });
 });

@@ -262,6 +262,17 @@ export class UsersData extends Model<IUserDataModelState> {
         return false;
     }
 
+    private safeStringify(obj: Record<string, unknown>): string {
+        const seen = new WeakSet();
+        return JSON.stringify(obj, (_, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (seen.has(value)) return '[Circular]';
+                seen.add(value);
+            }
+            return value;
+        });
+    }
+
     /**
      * Валидирует значения перед сохранением.
      * Преобразует объекты meta и data в JSON при сохранении в БД.
@@ -278,10 +289,10 @@ export class UsersData extends Model<IUserDataModelState> {
     public validate(): void {
         if (this._appContext?.isSaveDb) {
             if (typeof this.meta !== 'string') {
-                this.meta = JSON.stringify(this.meta);
+                this.meta = this.safeStringify(this.meta);
             }
             if (typeof this.data !== 'string') {
-                this.data = JSON.stringify(this.data);
+                this.data = this.safeStringify(this.data);
             }
         }
         super.validate();
@@ -319,7 +330,10 @@ export class UsersData extends Model<IUserDataModelState> {
                 try {
                     this.data = JSON.parse(this.data);
                 } catch (e) {
-                    this._appContext?.saveLog('userData.log', `Ошибка при парсинге данных: ${e}`);
+                    this._appContext?.logError(`UserData:init() Ошибка при парсинге данных`, {
+                        error: e,
+                        data: this.data,
+                    });
                 }
             }
         }

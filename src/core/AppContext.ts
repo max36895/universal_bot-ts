@@ -73,8 +73,80 @@ import { saveData } from '../utils/standard/util';
 import { IDbControllerModel } from '../models/interface';
 import { BotController } from '../controller';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
-import { DB } from '../models/db';
+import { DB, DbControllerFile } from '../models/db';
 import * as process from 'node:process';
+import { getRegExp, __$usedRe2, isRegex } from '../utils/standard/RegExp';
+import os from 'os';
+
+interface IDangerRegex {
+    status: boolean;
+    slots: TSlots;
+}
+
+interface IGroup {
+    name: string;
+    regLength: number;
+    butchRegexp: unknown[];
+    regExpSize: number;
+}
+
+let MAX_COUNT_FOR_GROUP = 0;
+let MAX_COUNT_FOR_REG = 0;
+
+/**
+ * Устанавливает ограничение на использование активных регулярных выражений. Нужен для того, чтобы приложение не падало под нагрузкой.
+ */
+function setMemoryLimit(): void {
+    const total = os.totalmem();
+    // re2 гораздо лучше работает с оперативной память, а также ограничение на использование памяти не такое суровое
+    // например нативный reqExp уронит node при 3_400 группах, либо при 68_000 обычных регулярках (В этот лимит никогда не попадем, так как максимум активных регулярок порядка 10_000)
+    // Поэтому если нет re2, то лимиты на количество активных регулярок должно быть меньше, для групп сильно меньше
+    if (total < 0.8 * 1024 ** 3) {
+        MAX_COUNT_FOR_GROUP = 200;
+        MAX_COUNT_FOR_REG = 1000;
+    } else if (total < 1.5 * 1024 ** 3) {
+        MAX_COUNT_FOR_GROUP = 800;
+        MAX_COUNT_FOR_REG = 1400;
+    } else if (total < 3 * 1024 ** 3) {
+        MAX_COUNT_FOR_GROUP = 1500;
+        MAX_COUNT_FOR_REG = 3000;
+    } else {
+        MAX_COUNT_FOR_GROUP = 6800;
+        MAX_COUNT_FOR_REG = 7000;
+    }
+
+    // Если нет re2, то количество активных регулярок для групп, нужно сильно сократить, иначе возможно падение nodejs
+    if (!__$usedRe2) {
+        MAX_COUNT_FOR_GROUP /= 20;
+        MAX_COUNT_FOR_REG /= 2;
+    }
+}
+
+setMemoryLimit();
+
+/**
+ * Интерфейс для хранения информации о файле
+ *
+ * @interface IFileInfo
+ */
+export interface IFileInfo {
+    /**
+     * Содержимое файла в виде строки
+     */
+    data?: object;
+
+    /**
+     * Версия файла.
+     * Используется время последнего изменения файла в миллисекундах
+     */
+    version: number;
+    timeOutId?: ReturnType<typeof setTimeout> | null;
+    isFile: boolean;
+}
+
+interface IFileDataBase {
+    [tableName: string]: IFileInfo;
+}
 
 /**
  * Тип для HTTP клиента
@@ -91,18 +163,30 @@ export type TLoggerCb = (message: string, meta?: Record<string, unknown>) => voi
  */
 export interface ILogger {
     /**
+     * Метод для логирования информации
+     */
+    log?: (...args: unknown[]) => void;
+    /**
      * Метод для логирования ошибок
      * @param message
      * @param meta
      */
-    error: TLoggerCb;
+    error?: TLoggerCb;
 
     /**
      * Метод для логирования предупреждений
      * @param message
      * @param meta
      */
-    warn: TLoggerCb;
+    warn?: TLoggerCb;
+
+    /**
+     * Метод для логирования метрик
+     * @param name - имя метрики
+     * @param value - значение метрики
+     * @param labels - Дополнительная информация
+     */
+    metric?: (name: string, value: unknown, labels?: Record<string, unknown>) => void;
 }
 
 /**
@@ -157,6 +241,25 @@ export type TAppType =
     | 'user_application' // Пользовательское приложение
     | 'smart_app' // Сбер SmartApp
     | 'max_app';
+
+/**
+ * Константы для метрик
+ */
+export enum EMetric {
+    REQUEST = 'umbot_http_request_duration_ms',
+    GET_INTENT = 'umbot_get-intent_duration_ms',
+    GET_COMMAND = 'umbot_get-command_duration_ms',
+    ACTION = 'umbot_action_duration_ms',
+    MIDDLEWARE = 'umbot_middleware_duration_ms',
+    START_WEBHOOK = 'umbot_request_start',
+    END_WEBHOOK = 'umbot_request_duration_ms',
+    DB_SAVE = 'umbot_db_save_ms',
+    DB_UPDATE = 'umbot_db_update_ms',
+    DB_INSERT = 'umbot_db_insert_ms',
+    DB_QUERY = 'umbot_db_query_ms',
+    DB_REMOVE = 'umbot_db_remove_ms',
+    DB_SELECT = 'umbot_db_select_ms',
+}
 
 /**
  * Тип платформы: Автоопределение
@@ -231,8 +334,9 @@ export const HELP_INTENT_NAME = 'help';
  * - Fallback срабатывает только если нет совпадений по слотам.
  * - Не влияет на стандартные интенты (`welcome`, `help`).
  * - Можно зарегистрировать только одну fallback-команду (последняя перезапишет предыдущую).
+ * - Можно просто передать "*"
  */
-export const FALLBACK_COMMAND = '__umbot:fallback_command__';
+export const FALLBACK_COMMAND = '*';
 
 /**
  * @interface IAppDB
@@ -561,21 +665,21 @@ export interface IAppParam {
      *   {
      *     name: 'greeting',
      *     slots: [
-     *       '\\b{_value_}\\b',      // Точное совпадение слова
-     *       '\\b{_value_}[^\\s]+\\b', // Начало слова (например, "привет" найдет "приветствие")
+     *       '\\b{_value_}\\b',             // Точное совпадение слова
+     *       '\\b{_value_}[^\\s]+\\b',      // Начало слова (например, "привет" найдет "приветствие")
      *       '(\\b{_value_}(|[^\\s]+)\\b)', // Точное совпадение или начало слова
-     *       '\\b(\\d{3})\\b',       // Числа от 100 до 999
-     *       '{_value_} \\d {_value_}', // Шаблон с числом между словами
-     *       '{_value_}'             // Любое вхождение слова
+     *       '\\b(\\d{3})\\b',              // Числа от 100 до 999
+     *       '{_value_} \\d {_value_}',     // Шаблон с числом между словами
+     *       '{_value_}'                    // Любое вхождение слова
+     *       /\d{0, 3}/i                    // Поиск числа от 0 до 999
      *     ],
      *     is_pattern: true
      *   }
      * ]
      * ```
      *
-     * Где {_value_} - это плейсхолдер, который будет заменен на конкретное значение
-     * при обработке команды. Например, если {_value_} = "привет", то регулярное
-     * выражение '\\b{_value_}\\b' будет искать точное совпадение слова "привет".
+     * Где {_value_} - это значение, которое необходимо найти.
+     * Например, если {_value_} = "привет", то регулярное выражение '\\b{_value_}\\b' будет искать точное совпадение слова "привет".
      */
     intents: IAppIntent[] | null;
 
@@ -616,7 +720,7 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      *
      * Массив слов или регулярных выражений для активации команды.
      */
-    slots: TSlots;
+    slots: TSlots | undefined;
     /**
      * Флаг использования регулярных выражений
      *
@@ -634,7 +738,37 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * устанавливается как ответ бота.
      */
     cb?: (userCommand: string, botController: TBotController) => void | string;
+
+    /**
+     * Имя группы. Актуально для регулярок
+     * @private
+     */
+    __$groupName?: string | null;
+    regExp?: RegExp;
 }
+
+interface IGroupData {
+    commands: string[];
+    regExp: RegExp | null | string;
+}
+
+/**
+ * Тип для функции обработки кастомного обработчика команд
+ * @param userCommand - Команда пользователя
+ * @param commands - Список всех зарегистрированных команд
+ * @return {string} - Имя команды
+ */
+export type TCommandResolver = (
+    userCommand: string,
+    commands: Map<string, ICommandParam>,
+) => string | null;
+
+const REG_DANGEROUS = /\)+\s*[+*{?]|}\s*[+*{?]/;
+const REG_PIPE = /\([^)]*\|[^)]*\)/;
+const REG_EV1 = /\([^)]*(\w)\1+[^)]*\|/;
+const REG_EV2 = /\([^)]*[+*{][^)]*\|/;
+const REG_REPEAT = /\([^)]*[+*{][^)]*\)\s*\{/;
+const REG_BAD = /\.\s*[+*{]/;
 
 /**
  * @class AppContext
@@ -656,15 +790,13 @@ export interface ICommandParam<TBotController extends BotController = BotControl
 export class AppContext {
     /**
      * Переменные окружения
-     * @private
      */
-    private _envVars: IEnvConfig | undefined;
+    #envVars: IEnvConfig | undefined;
 
     /**
      * Флаг режима разработки
-     * @private
      */
-    private _isDevMode: boolean = false;
+    #isDevMode: boolean = false;
 
     /**
      * Пользовательский контроллер базы данных
@@ -686,16 +818,16 @@ export class AppContext {
     public appType: TAppType | null = null;
 
     /**
-     * Логгер приложения
+     * Кастомный логгер приложения
      */
-    private _logger: ILogger | null = null;
+    #logger: ILogger | null = null;
 
     /**
      * Конфигурация приложения
      */
     public appConfig: IAppConfig = {
-        error_log: '/../../logs',
-        json: '/../../json',
+        error_log: `${__dirname}/../../logs`,
+        json: `${__dirname}/../../json`,
         db: { host: '', user: '', pass: '', database: '' },
         isLocalStorage: false,
     };
@@ -730,7 +862,7 @@ export class AppContext {
     /**
      * База данных
      */
-    private _db: DB | undefined;
+    #db: DB | undefined;
 
     /**
      * Кастомный HTTP-клиент для выполнения всех исходящих запросов библиотеки.
@@ -767,21 +899,56 @@ export class AppContext {
     public httpClient: THttpClient = global.fetch;
 
     /**
+     * Флаг строгого режима обработки команд и логов.
+     *
+     * При `true`:
+     * - Небезопасные регулярные выражения отклоняются;
+     * - Все секреты (токены, ключи) **автоматически маскируются** в логах — даже при использовании кастомного логгера;
+     * - Рекомендуется для production-сред.
+     *
+     * @default false
+     */
+    public strictMode: boolean = false;
+
+    /**
+     * Кастомизация поиска команд.
+     */
+    public customCommandResolver: TCommandResolver | undefined;
+
+    /**
      * Получить текущее подключение к базе данных
      */
     public get vDB(): DB {
-        if (!this._db) {
-            this._db = new DB(this);
+        if (!this.#db) {
+            this.#db = new DB(this);
         }
-        return this._db;
+        return this.#db;
+    }
+
+    #fileDataBase: IFileDataBase = {};
+
+    /**
+     * Возвращает данные из файловой базы данные.
+     * Важно!
+     * Не рекомендуется использовать без острой необходимости
+     */
+    public get fDB(): IFileDataBase {
+        return this.#fileDataBase;
     }
 
     /**
      * Закрыть подключение к базе данных
      */
-    public closeDB(): void {
-        this._db?.close();
-        this._db = undefined;
+    public async closeDB(): Promise<void> {
+        if (this.#db) {
+            await this.#db?.close();
+            this.#db = undefined;
+        }
+        DbControllerFile.close(this);
+        this.#fileDataBase = {};
+        if (this.userDbController) {
+            this.userDbController.destroy();
+        }
     }
 
     /**
@@ -790,12 +957,19 @@ export class AppContext {
     public commands: Map<string, ICommandParam<any>> = new Map();
 
     /**
+     * Сгруппированные регулярные выражения. Начинает отрабатывать как только было задано более 250 регулярных выражений
+     */
+    public regexpGroup: Map<string, IGroupData> = new Map();
+    #noFullGroups: IGroup | null = null;
+    #regExpCommandCount = 0;
+
+    /**
      * Устанавливает режим разработки
      * @param {boolean} isDevMode - Флаг включения режима разработки
      * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
      */
     public setDevMode(isDevMode: boolean = false): void {
-        this._isDevMode = isDevMode;
+        this.#isDevMode = isDevMode;
     }
 
     /**
@@ -803,15 +977,14 @@ export class AppContext {
      * @returns {boolean} true, если включен режим разработки
      */
     public get isDevMode(): boolean {
-        return this._isDevMode;
+        return this.#isDevMode;
     }
 
     /**
      * Установка всех токенов из переменных окружения или параметров
-     * @private
      */
-    private _setTokens(): void {
-        const envVars = this._getEnvVars();
+    #setTokens(): void {
+        const envVars = this.#getEnvVars();
         if (envVars) {
             this.platformParams = {
                 ...this.platformParams,
@@ -830,16 +1003,15 @@ export class AppContext {
     /**
      * Возвращает объект с настройками окружения
      * @param {string|undefined} envPath - Путь к файлу окружения
-     * @private
      */
-    private _getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
-        if (this._envVars) {
-            return this._envVars;
+    #getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
+        if (this.#envVars) {
+            return this.#envVars;
         }
         if (envPath) {
             const res = loadEnvFile(envPath);
             if (res.status) {
-                this._envVars = res.data;
+                this.#envVars = res.data;
             } else {
                 let correctEnvValue = {};
                 if (process.env) {
@@ -870,7 +1042,7 @@ export class AppContext {
                 }
             }
         }
-        return this._envVars;
+        return this.#envVars;
     }
 
     /**
@@ -880,7 +1052,7 @@ export class AppContext {
     public setAppConfig(config: IAppConfig): void {
         this.appConfig = { ...this.appConfig, ...config };
         if (config.env) {
-            const envVars = this._getEnvVars(config.env);
+            const envVars = this.#getEnvVars(config.env);
             if (envVars) {
                 // Пишем в конфиг для подключения к БД, только если есть настройки для подключения
                 if (this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME) {
@@ -893,8 +1065,11 @@ export class AppContext {
                     };
                 }
 
-                this._setTokens();
+                this.#setTokens();
             }
+        }
+        if (this.appConfig.db && this.appConfig.db.host) {
+            this.setIsSaveDb(true);
         }
     }
 
@@ -904,7 +1079,352 @@ export class AppContext {
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
-        this._setTokens();
+        this.platformParams.intents?.forEach((intent, i) => {
+            if (intent.is_pattern) {
+                const res = this.#isDangerRegex(intent.slots);
+                if (res.slots.length) {
+                    if (res.slots.length !== intent.slots.length) {
+                        intent.slots = res.slots as string[];
+                    }
+                } else {
+                    delete this.platformParams.intents?.[i];
+                }
+            }
+        });
+        this.#setTokens();
+    }
+
+    #isRegexLikelySafe(pattern: string, isRegex: boolean): boolean {
+        try {
+            if (!isRegex) {
+                new RegExp(pattern);
+            }
+            // 1. Защита от слишком длинных шаблонов (DoS через размер)
+            if (pattern.length > 1000) {
+                return false;
+            }
+
+            // 2. Убираем экранированные символы из рассмотрения (упрощённо)
+            // Для простоты будем искать только в "сыром" виде — этого достаточно для эвристик
+
+            // 3. Основные ReDoS-эвристики
+
+            // Вложенные квантификаторы: (a+)+, (a*)*, [a-z]+*, и т.п.
+            // Ищем: закрывающая скобка или символ класса, за которой следует квантификатор
+            const dangerousNested = REG_DANGEROUS.test(pattern);
+            if (dangerousNested) {
+                return false;
+            }
+
+            // Альтернативы с пересекающимися паттернами: (a|aa), (a|a+)
+            // Простой признак: один терм — префикс другого
+            // Точное определение сложно без AST, но часто такие паттерны содержат:
+            // - `|` внутри группы + повторяющиеся символы
+            const hasPipeInGroup = REG_PIPE.test(pattern);
+            if (hasPipeInGroup) {
+                // Дополнительная эвристика: есть ли повторяющиеся символы или квантификаторы?
+                if (REG_EV1.test(pattern)) {
+                    return false;
+                }
+                if (REG_EV2.test(pattern)) {
+                    return false;
+                }
+            }
+
+            // Повторяющиеся квантифицируемые группы: (a+){10,100}
+            if (REG_REPEAT.test(pattern)) {
+                return false;
+            }
+
+            // Квантификаторы на "жадных" конструкциях без якорей — сложнее ловить,
+            // но если есть .*+ — это почти всегда опасно
+            if (REG_BAD.test(pattern)) {
+                return false;
+            }
+
+            // Слишком глубокая вложенность скобок — признак сложности
+            let depth = 0;
+            let maxDepth = 0;
+            for (let i = 0; i < pattern.length; i++) {
+                if (pattern[i] === '\\' && i + 1 < pattern.length) {
+                    i++; // пропускаем экранированный символ
+                    continue;
+                }
+                if (pattern[i] === '(') depth++;
+                else if (pattern[i] === ')') depth--;
+                if (depth < 0) {
+                    return false; // некорректная скобочная структура
+                }
+                if (depth > maxDepth) {
+                    maxDepth = depth;
+                }
+            }
+            return maxDepth <= 5;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Определяет опасная передана регулярка или нет
+     * @param slots
+     */
+    #isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
+        if (isRegex(slots)) {
+            if (!this.#isRegexLikelySafe(slots.source, true)) {
+                this[this.strictMode ? 'logError' : 'logWarn'](
+                    `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
+                    {},
+                );
+                if (this.strictMode) {
+                    return {
+                        status: false,
+                        slots: [],
+                    };
+                } else {
+                    return { status: true, slots: [slots] };
+                }
+            }
+            return {
+                status: true,
+                slots: [slots],
+            };
+        } else {
+            const correctSlots: TSlots | undefined = [];
+            const errors: string[] | undefined = [];
+            slots.forEach((slot) => {
+                const slotStr = isRegex(slot) ? slot.source : slot;
+                if (this.#isRegexLikelySafe(slotStr, isRegex(slot))) {
+                    (correctSlots as TSlots).push(slot);
+                } else {
+                    (errors as string[]).push(slotStr);
+                }
+            });
+            const status = errors.length === 0;
+            if (!status) {
+                this[this.strictMode ? 'logError' : 'logWarn'](
+                    `Найдены небезопасные регулярные выражения, проверьте их корректность: ${errors.join(', ')}`,
+                    {},
+                );
+                errors.length = 0;
+            }
+            return { status, slots: this.strictMode ? correctSlots : slots };
+        }
+    }
+
+    #timeOutReg: ReturnType<typeof setTimeout> | undefined;
+    #oldFnGroup: (() => void) | undefined;
+    #oldGroupName: string | undefined;
+
+    #getGroupRegExp(
+        groupData: IGroupData,
+        slots: TSlots,
+        group: IGroup,
+        useReg: boolean = true,
+        isRegUp: boolean = true,
+    ): void {
+        group.butchRegexp ??= [];
+        const parts = slots.map((s) => {
+            return `(${typeof s === 'string' ? s : s.source})`;
+        });
+        const groupIndex = group.butchRegexp.length;
+        // Для уменьшения длины регулярного выражения, а также для исключения случая,
+        // когда имя команды может быть не корректным для имени группы, сами задаем корректное имя с учетом индекса
+        const pat = `(?<_${groupIndex}>${parts?.join('|')})`;
+        group.butchRegexp.push(pat);
+        group.regExpSize += pat.length;
+        const pattern = group.butchRegexp.join('|');
+        if (useReg) {
+            if (group.name !== this.#oldGroupName && this.#timeOutReg) {
+                this.#oldFnGroup?.();
+                this.#oldGroupName = group.name;
+            }
+            if (this.#timeOutReg) {
+                clearTimeout(this.#timeOutReg);
+                this.#timeOutReg = undefined;
+            }
+            this.#oldFnGroup = (): void => {
+                const pattern = group.butchRegexp.join('|');
+                const regExp = getRegExp(pattern);
+                if (isRegUp) {
+                    // прогреваем регулярку
+                    regExp.test('__umbot_testing');
+                    regExp.test('');
+                }
+                groupData.regExp = regExp;
+                this.#timeOutReg = undefined;
+                this.#oldFnGroup = undefined;
+            };
+
+            this.#timeOutReg = setTimeout(this.#oldFnGroup, 100);
+            return;
+        } else {
+            if (this.#timeOutReg && this.#oldGroupName !== group.name) {
+                this.#oldFnGroup?.();
+            }
+            clearTimeout(this.#timeOutReg);
+            this.#oldFnGroup = undefined;
+            this.#oldGroupName = undefined;
+            this.#timeOutReg = undefined;
+        }
+        groupData.regExp = pattern;
+    }
+
+    #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
+        // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
+        if (this.#regExpCommandCount < 300) {
+            return commandName;
+        }
+        if (isRegexp) {
+            if (!this.#isRegexLikelySafe(slots.join('|'), false)) {
+                return commandName;
+            }
+            if (this.#noFullGroups) {
+                let groupName = this.#noFullGroups.name;
+                let groupData = this.regexpGroup.get(groupName) || { commands: [], regExp: null };
+                if (
+                    this.#noFullGroups.butchRegexp.length === 1 &&
+                    this.#noFullGroups.name !== commandName
+                ) {
+                    const command = this.commands.get(this.#noFullGroups.name);
+                    if (command) {
+                        command.regExp = undefined;
+                        this.commands.set(this.#noFullGroups.name, command);
+                    }
+                }
+                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки. Даем примерно 60 регулярок по 5 символов
+                if (
+                    this.#noFullGroups.regLength >= 60 ||
+                    (this.#noFullGroups.regExpSize || 0) > 850
+                ) {
+                    groupData = { commands: [], regExp: null };
+                    groupName = commandName;
+                    this.#noFullGroups = {
+                        name: commandName,
+                        regLength: 0,
+                        butchRegexp: [],
+                        regExpSize: 0,
+                    };
+                }
+                groupData.commands.push(commandName);
+                this.#getGroupRegExp(
+                    groupData,
+                    slots,
+                    this.#noFullGroups,
+                    this.regexpGroup.size < MAX_COUNT_FOR_GROUP,
+                );
+
+                this.regexpGroup.set(groupName, groupData);
+                this.#noFullGroups.regLength += slots.length;
+                return groupName;
+            } else {
+                const butchRegexp = [];
+                const parts = slots.map((s) => {
+                    return `(${typeof s === 'string' ? s : s.source})`;
+                });
+                butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
+                const regExp = getRegExp(`${butchRegexp.join('|')}`);
+                this.#noFullGroups = {
+                    name: commandName,
+                    regLength: slots.length,
+                    butchRegexp,
+                    regExpSize: regExp.source.length,
+                };
+                this.regexpGroup.set(commandName, {
+                    commands: [commandName],
+                    regExp,
+                });
+                return commandName;
+            }
+        } else {
+            if (this.#noFullGroups) {
+                if (this.regexpGroup.has(this.#noFullGroups.name)) {
+                    const groupCommandCount =
+                        this.regexpGroup.get(this.#noFullGroups.name)?.commands?.length || 0;
+                    if (groupCommandCount < 2) {
+                        this.regexpGroup.delete(this.#noFullGroups.name);
+                    }
+                }
+                this.#noFullGroups = null;
+            }
+            return null;
+        }
+    }
+
+    #removeRegexpInGroup(commandName: string): void {
+        const getReg = (
+            groupData: IGroupData,
+            newCommandName: string,
+            newCommands: string[],
+            group: IGroup,
+            useReg: boolean,
+        ): void => {
+            newCommands.forEach((cName) => {
+                const command = this.commands.get(cName);
+                if (command) {
+                    command.__$groupName = newCommandName;
+                    this.commands.set(cName, command);
+                    console.log('wtf');
+                    this.#getGroupRegExp(groupData, command.slots as TSlots, group, useReg, false);
+                }
+            });
+        };
+        if (this.regexpGroup.has(commandName)) {
+            const group = this.regexpGroup.get(commandName);
+            this.regexpGroup.delete(commandName);
+            if (group?.commands?.length) {
+                const newCommands = group?.commands.filter((gCommand) => {
+                    return gCommand !== commandName;
+                }) as string[];
+                const newCommandName = newCommands[0];
+                const nGroup: IGroup = {
+                    name: newCommandName,
+                    regLength: 0,
+                    butchRegexp: [],
+                    regExpSize: 0,
+                };
+                const groupData: IGroupData = {
+                    commands: newCommands,
+                    regExp: null,
+                };
+                getReg(
+                    groupData,
+                    newCommandName,
+                    newCommands,
+                    nGroup,
+                    typeof group.regExp !== 'string',
+                );
+                this.regexpGroup.set(newCommandName, groupData);
+            }
+        } else if (this.commands.has(commandName)) {
+            const command = this.commands.get(commandName);
+            if (command?.__$groupName && this.regexpGroup.has(command?.__$groupName)) {
+                const group = this.regexpGroup.get(command.__$groupName);
+                if (group) {
+                    const newCommands = group?.commands.filter((gCommand) => {
+                        return gCommand !== commandName;
+                    }) as string[];
+                    const nGroup: IGroup = {
+                        name: commandName,
+                        regLength: 0,
+                        butchRegexp: [],
+                        regExpSize: 0,
+                    };
+                    const groupData: IGroupData = {
+                        commands: newCommands,
+                        regExp: null,
+                    };
+                    getReg(
+                        groupData,
+                        commandName,
+                        newCommands,
+                        nGroup,
+                        typeof group.regExp !== 'string',
+                    );
+                    this.regexpGroup.set(command.__$groupName, groupData);
+                }
+            }
+        }
     }
 
     /**
@@ -979,33 +1499,65 @@ export class AppContext {
         cb?: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
+        if (commandName === FALLBACK_COMMAND) {
+            this.commands.set(commandName, {
+                slots: undefined,
+                isPattern: false,
+                cb,
+                regExp: undefined,
+                __$groupName: commandName,
+            });
+            return;
+        }
+        if (
+            this.commands.size === 1e4 ||
+            this.commands.size === 5e4 ||
+            this.commands.size === 1e5
+        ) {
+            this.logWarn(
+                `Задано более ${this.commands.size} команд, скорей всего команды задаются через цикл, который отработал не корректно. Проверьте корректность работы приложения, а также добавленные команды.`,
+            );
+        }
+        let correctSlots: TSlots = this.strictMode ? [] : slots;
+        let regExp;
+        let groupName;
         if (isPattern) {
-            const dangerousPatterns = [
-                /\(\w+\+\)\+/,
-                /\(\w+\*\)\*/,
-                /\(\w+\+\)\*/,
-                /\(\w+\*\)\+/,
-                /\[[^\]]*\+\]/, // [a+]
-                /(\w\+|\w\*){3,}/, // aaa+ или подобное
-            ];
-
-            const errors: string[] = [];
-            slots.forEach((slot) => {
-                if (!(slot instanceof RegExp)) {
-                    if (dangerousPatterns.some((re) => re.test(slot))) {
-                        errors.push(slot);
+            correctSlots = this.#isDangerRegex(slots).slots;
+            if (correctSlots.length) {
+                groupName = this.#addRegexpInGroup(commandName, correctSlots, true);
+                if (groupName === commandName) {
+                    this.#regExpCommandCount++;
+                    if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
+                        regExp = getRegExp(correctSlots);
+                        regExp.test('__umbot_testing');
+                        regExp.test('');
                     }
                 }
-            });
-            if (errors.length) {
-                this.logWarn(
-                    'Найдены небезопасные регулярные выражения, проверьте их корректность: ' +
-                        errors.join(', '),
-                    {},
-                );
+            }
+        } else {
+            this.#addRegexpInGroup(commandName, correctSlots, false);
+            for (const slot of slots) {
+                if (isRegex(slot)) {
+                    const res = this.#isDangerRegex(slot);
+                    if (res.status && this.strictMode) {
+                        correctSlots.push(slot);
+                    }
+                } else {
+                    if (this.strictMode) {
+                        correctSlots.push(slot);
+                    }
+                }
             }
         }
-        this.commands.set(commandName, { slots, isPattern, cb });
+        if (correctSlots.length) {
+            this.commands.set(commandName, {
+                slots: correctSlots,
+                isPattern,
+                cb,
+                regExp,
+                __$groupName: groupName,
+            });
+        }
     }
 
     /**
@@ -1013,12 +1565,21 @@ export class AppContext {
      * @param commandName - Имя команды
      */
     public removeCommand(commandName: string): void {
-        if (this.commands.has(commandName)) {
+        if (commandName === FALLBACK_COMMAND) {
             this.commands.delete(commandName);
-            if (this.commands.size === 0) {
-                this.commands.clear();
-            }
+            return;
         }
+        if (this.commands.has(commandName)) {
+            const command = this.commands.get(commandName);
+            if (command?.isPattern && command.regExp) {
+                this.#regExpCommandCount--;
+                if (this.#regExpCommandCount < 0) {
+                    this.#regExpCommandCount = 0;
+                }
+            }
+            this.commands.delete(commandName);
+        }
+        this.#removeRegexpInGroup(commandName);
     }
 
     /**
@@ -1026,6 +1587,13 @@ export class AppContext {
      */
     public clearCommands(): void {
         this.commands.clear();
+        this.#noFullGroups = null;
+        this.#regExpCommandCount = 0;
+        this.regexpGroup.clear();
+        this.#oldGroupName = undefined;
+        this.#oldFnGroup = undefined;
+        clearTimeout(this.#timeOutReg);
+        this.#timeOutReg = undefined;
     }
 
     /**
@@ -1033,7 +1601,19 @@ export class AppContext {
      * @param logger
      */
     public setLogger(logger: ILogger | null): void {
-        this._logger = logger;
+        this.#logger = logger;
+    }
+
+    /**
+     * Логирование информации
+     * @param args
+     */
+    public log(...args: unknown[]): void {
+        if (this.#logger?.log) {
+            this.#logger.log(...args);
+        } else {
+            console.log(...args);
+        }
     }
 
     /**
@@ -1042,11 +1622,24 @@ export class AppContext {
      * @param meta
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
-        if (this._logger) {
-            this._logger.error(str, meta);
+        if (this.#logger?.error) {
+            this.#logger.error(this.strictMode ? this.#maskSecrets(str) : str, meta);
+        } else {
+            const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
+            this.saveLog('error.log', `${str}\n${metaStr}`);
         }
-        const metaStr = JSON.stringify({ ...meta, trace: new Error().stack });
-        this.saveLog('error.log', `${str}\n${metaStr}`);
+    }
+
+    /**
+     * Логирование метрики
+     * @param name - имя метрики
+     * @param value - значение
+     * @param label - Дополнительные метаданные
+     */
+    public logMetric(name: string, value: unknown, label: Record<string, unknown>): void {
+        if (this.#logger?.metric) {
+            this.#logger.metric(name, value, label);
+        }
     }
 
     /**
@@ -1055,10 +1648,17 @@ export class AppContext {
      * @param meta
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
-        if (this._logger) {
-            this._logger.warn(str, { ...meta, trace: new Error().stack });
-        } else if (this._isDevMode) {
-            console.warn(str, meta);
+        if (this.#logger?.warn) {
+            this.#logger.warn(this.strictMode ? this.#maskSecrets(str) : str, {
+                ...meta,
+                trace: new Error().stack,
+            });
+        } else {
+            if (this.#isDevMode) {
+                console.warn(this.strictMode ? this.#maskSecrets(str) : str, meta);
+            }
+            const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
+            this.saveLog('warn.log', `${str}\n${metaStr}`);
         }
     }
 
@@ -1079,17 +1679,16 @@ export class AppContext {
     public saveJson(fileName: string, data: any): boolean {
         const dir: IDir = {
             path: this.appConfig.json || __dirname + '/../../json',
-            fileName: fileName.replace(/`/g, ''),
+            fileName: fileName,
         };
-        return saveData(dir, JSON.stringify(data));
+        return saveData(dir, JSON.stringify(data), undefined, true, this.logError.bind(this));
     }
 
     /**
      * Скрывает секретные данные в тексте
      * @param text
-     * @private
      */
-    private _maskSecrets(text: string): string {
+    #maskSecrets(text: string): string {
         return (
             text
                 // Telegram bot token
@@ -1097,6 +1696,13 @@ export class AppContext {
                 // VK access token (vk1a...)
                 .replace(/vk1a[a-z0-9]{79}/g, 'vk1a***')
                 // Общий паттерн для длинных base64-подобных токенов
+                .replace(/"access_token"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"client_secret"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"vk_confirmation_token"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"sber_token"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"oauth"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"api_key"\s*:\s*"([^"]+)"/g, '***')
+                .replace(/"private_key"\s*:\s*"([^"]+)"/g, '***')
                 .replace(/([a-zA-Z0-9]{40,})/g, '***')
         );
     }
@@ -1110,21 +1716,15 @@ export class AppContext {
     public saveLog(fileName: string, errorText: string | null = ''): boolean {
         const msg = `[${Date()}]: ${errorText}\n`;
 
-        if (this._logger) {
+        /*if (this._logger?.error) {
             this._logger.error(`[${fileName}]: ${msg}`, { fileName, trace: new Error().stack });
             return true;
-        }
+        }*/
 
-        const dir: IDir = { path: this.appConfig.error_log || __dirname + '/../../logs', fileName };
-        if (this._isDevMode) {
+        const dir: IDir = { path: this.appConfig.error_log || `${__dirname}/../../logs`, fileName };
+        if (this.#isDevMode) {
             console.error(msg);
         }
-        try {
-            return saveData(dir, this._maskSecrets(msg), 'a');
-        } catch (e) {
-            console.error(`[saveLog] Ошибка записи в файл ${fileName}:`, e);
-            console.error(msg);
-            return false;
-        }
+        return saveData(dir, this.#maskSecrets(msg), 'a', false, this.logError.bind(this));
     }
 }

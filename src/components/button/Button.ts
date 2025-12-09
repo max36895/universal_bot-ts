@@ -149,7 +149,7 @@ export class Button {
 
     /**
      * Произвольные данные, отправляемые при нажатии на кнопку.
-     * Используются для передачи дополнительной информации в обработчик.
+     * Используются для передачи дополнительной информации в обработчике.
      * @type {TButtonPayload}
      */
     public payload: TButtonPayload;
@@ -172,7 +172,7 @@ export class Button {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext | undefined;
+    #appContext: AppContext | undefined;
 
     /**
      * Создает новый экземпляр кнопки.
@@ -196,7 +196,7 @@ export class Button {
         this.payload = payload;
         this.hide = hide;
         this.options = options;
-        this._init(title, url, payload, hide, options);
+        this.#init(title, url, payload, hide, options);
     }
 
     /**
@@ -204,7 +204,7 @@ export class Button {
      * @param appContext
      */
     public setAppContext(appContext: AppContext): Button {
-        this._appContext = appContext;
+        this.#appContext = appContext;
         return this;
     }
 
@@ -212,9 +212,8 @@ export class Button {
      * Возвращает разделитель для GET-запросов в URL.
      * @param {string} url URL для проверки
      * @returns {string} Разделитель ('?' или '&')
-     * @private
      */
-    private static _getUrlSeparator(url: string): string {
+    static #getUrlSeparator(url: string): string {
         return url.includes('?') ? '&' : '?';
     }
 
@@ -227,9 +226,8 @@ export class Button {
      * @param {boolean} hide Тип отображения кнопки
      * @param {IButtonOptions} options Дополнительные параметры
      * @returns {boolean} true если инициализация успешна
-     * @private
      */
-    private _init(
+    #init(
         title: string | null,
         url: string | null,
         payload: TButtonPayload,
@@ -240,14 +238,14 @@ export class Button {
             this.title = title;
             let correctUrl = url;
             if (correctUrl && Text.isUrl(correctUrl)) {
-                if (this._appContext?.platformParams.utm_text === null) {
+                if (this.#appContext?.platformParams.utm_text === null) {
                     if (!correctUrl.includes('utm_source')) {
-                        correctUrl += `${Button._getUrlSeparator(correctUrl)}utm_source=umBot&utm_medium=cpc&utm_campaign=phone`;
+                        correctUrl += `${Button.#getUrlSeparator(correctUrl)}utm_source=umBot&utm_medium=cpc&utm_campaign=phone`;
                     }
-                } else if (this._appContext?.platformParams.utm_text) {
+                } else if (this.#appContext?.platformParams.utm_text) {
                     correctUrl +=
-                        Button._getUrlSeparator(correctUrl) +
-                        this._appContext?.platformParams.utm_text;
+                        Button.#getUrlSeparator(correctUrl) +
+                        this.#appContext?.platformParams.utm_text;
                 }
             } else {
                 correctUrl = null;
@@ -304,7 +302,7 @@ export class Button {
         payload: TButtonPayload = null,
         options: IButtonOptions = {},
     ): boolean {
-        return this._init(title, url, payload, Button.B_LINK, options);
+        return this.#init(title, url, payload, Button.B_LINK, options);
     }
 
     /**
@@ -384,6 +382,6 @@ export class Button {
         payload: TButtonPayload = null,
         options: IButtonOptions = {},
     ): boolean {
-        return this._init(title, url, payload, Button.B_BTN, options);
+        return this.#init(title, url, payload, Button.B_BTN, options);
     }
 }

@@ -4,6 +4,7 @@ import { MaxRequest } from '../api/MaxRequest';
 import { IMaxParams } from '../api/interfaces';
 import { Buttons } from '../components/button';
 import { IMaxRequestContent } from './interfaces/IMaxApp';
+import { T_MAXAPP } from '../core';
 
 /**
  * Класс для работы с платформой Max.
@@ -46,42 +47,14 @@ export class MaxApp extends TemplateTypeModel {
         controller: BotController,
     ): Promise<boolean> {
         if (query) {
-            /*
-             * array content
-             *  - string type:
-             *  - array object:
-             *      - array message
-             *          - int date
-             *          - int from_id
-             *          - int id
-             *          - int out
-             *          - int peer_id
-             *          - string text
-             *          - int conversation_message_id
-             *          - array fwd_messages
-             *          - bool important
-             *          - int random_id
-             *          - array attachments
-             *          - bool is_hidden
-             *          -
-             *      - array clientInfo
-             *          - array button_actions
-             *          - bool keyboard
-             *          - bool inline_keyboard
-             *          - int lang_id
-             *  - string group_id:
-             *  - string event_id:
-             *  - string secret:
-             */
             let content: IMaxRequestContent;
             if (typeof query === 'string') {
                 content = <IMaxRequestContent>JSON.parse(query);
             } else {
                 content = { ...query };
             }
-            if (!this.controller) {
-                this.controller = controller;
-            }
+            this.controller = controller;
+
             this.controller.requestObject = content;
             switch (content.update_type || null) {
                 case 'message_created':
@@ -128,10 +101,10 @@ export class MaxApp extends TemplateTypeModel {
                 params.keyboard = keyboard;
             }
             if (this.controller.card.images.length) {
-                params.attachments = await this.controller.card.getCards();
+                params.attachments = await this.controller.card.getCards(T_MAXAPP);
             }
             if (this.controller.sound.sounds.length) {
-                const attach = await this.controller.sound.getSounds(this.controller.tts);
+                const attach = await this.controller.sound.getSounds(this.controller.tts, T_MAXAPP);
                 params.attachments = { ...attach, ...params.attachments };
             }
             const maxApi = new MaxRequest(this.appContext);

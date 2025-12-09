@@ -11,17 +11,18 @@ import {
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Адрес, на который будет отправляться запрос
+ *
+ */
+const STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
+
+/**
  * Класс отвечающий за загрузку изображений в навык Алисы.
  * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
  *
  * @class YandexImageRequest
  */
 export class YandexImageRequest extends YandexRequest {
-    /**
-     * Адрес, на который будет отправляться запрос
-     * @private
-     */
-    private readonly STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
     /**
      * Идентификатор навыка, необходимый для корректного сохранения изображения
      * @see YandexRequest Базовый класс для работы с API Яндекса
@@ -43,7 +44,7 @@ export class YandexImageRequest extends YandexRequest {
     ) {
         super(oauth, appContext);
         this.skillId = skillId || appContext.platformParams.app_id || null;
-        this._request.url = this.STANDARD_URL;
+        this._request.url = STANDARD_URL;
     }
 
     /**
@@ -51,8 +52,8 @@ export class YandexImageRequest extends YandexRequest {
      *
      * @return string
      */
-    private _getImagesUrl(): string {
-        return this.STANDARD_URL + `skills/${this.skillId}/images`;
+    #getImagesUrl(): string {
+        return STANDARD_URL + `skills/${this.skillId}/images`;
     }
 
     /**
@@ -62,7 +63,7 @@ export class YandexImageRequest extends YandexRequest {
      * - used: использованный объем хранилища
      */
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
-        this._request.url = this.STANDARD_URL + 'status';
+        this._request.url = STANDARD_URL + 'status';
         const query = await this.call<IYandexImagesCheckOutPlaceRequest>();
         if (query && typeof query.images.quota !== 'undefined') {
             return query.images.quota;
@@ -82,7 +83,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
-            this._request.url = this._getImagesUrl();
+            this._request.url = this.#getImagesUrl();
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
@@ -110,7 +111,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
-            this._request.url = this._getImagesUrl();
+            this._request.url = this.#getImagesUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;
             const query = await this.call<IYandexRequestDownloadImageRequest>();
@@ -134,7 +135,7 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async getLoadedImages(): Promise<IYandexRequestDownloadImage[] | null> {
         if (this.skillId) {
-            this._request.url = this._getImagesUrl();
+            this._request.url = this.#getImagesUrl();
             const query = await this.call<IYandexRequestDownloadImagesRequest>();
             return query?.images || null;
         } else {
@@ -151,7 +152,7 @@ export class YandexImageRequest extends YandexRequest {
     public async deleteImage(imageId: string): Promise<string | null> {
         if (this.skillId) {
             if (imageId) {
-                this._request.url = `${this._getImagesUrl()}/${imageId}`;
+                this._request.url = `${this.#getImagesUrl()}/${imageId}`;
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;

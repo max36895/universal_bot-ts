@@ -4,27 +4,27 @@ import { IMaxUploadFile, TMaxUploadFile } from './interfaces/IMaxAppApi';
 import { AppContext } from '../core/AppContext';
 
 /**
+ * Базовый URL для всех методов Max API
+ */
+const MAX_API_ENDPOINT = 'https://platform-api.max.ru/';
+
+/**
  * Класс для взаимодействия с API Max
  * Предоставляет методы для отправки сообщений, загрузки файлов
  * @see (https://dev.max.ru/docs-api) Смотри тут
  */
 export class MaxRequest {
     /**
-     * Базовый URL для всех методов Max API
-     */
-    protected readonly MAX_API_ENDPOINT = 'https://platform-api.max.ru/';
-
-    /**
      * Экземпляр класса для выполнения HTTP-запросов
-     * @private
+     *
      */
-    protected _request: Request;
+    #request: Request;
 
     /**
      * Текст последней возникшей ошибки
-     * @private
+     *
      */
-    protected _error: string | null;
+    #error: object | string | null;
 
     /**
      * Токен доступа к Max API
@@ -40,20 +40,20 @@ export class MaxRequest {
     /**
      * Контекст приложения.
      */
-    protected _appContext: AppContext;
+    #appContext: AppContext;
 
     /**
      * Создает экземпляр класса для работы с API ВКонтакте
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
     public constructor(appContext: AppContext) {
-        this._request = new Request(appContext);
-        this._request.maxTimeQuery = 5500;
+        this.#request = new Request(appContext);
+        this.#request.maxTimeQuery = 5500;
         this.isAttachContent = false;
         this.token = null;
-        this._error = null;
-        this._request.post = {};
-        this._appContext = appContext;
+        this.#error = null;
+        this.#request.post = {};
+        this.#appContext = appContext;
         if (appContext.platformParams.max_token) {
             this.initToken(appContext.platformParams.max_token);
         }
@@ -72,12 +72,12 @@ export class MaxRequest {
      * @param accessToken
      * @protected
      */
-    protected _setAccessToken(accessToken: string): void {
-        if (!this._request.header) {
-            this._request.header = {} as Record<string, string>;
+    #setAccessToken(accessToken: string): void {
+        if (!this.#request.header) {
+            this.#request.header = {} as Record<string, string>;
         }
-        (this._request.header as Record<string, string>).Authorization = accessToken;
-        this._request.post.access_token = this.token;
+        (this.#request.header as Record<string, string>).Authorization = accessToken;
+        this.#request.post.access_token = this.token;
     }
 
     /**
@@ -87,15 +87,16 @@ export class MaxRequest {
      */
     public async call<T extends IMaxAppApi>(method: string): Promise<T | null> {
         if (this.token) {
-            this._request.header = null;
-            this._setAccessToken(this.token);
-            const data = await this._request.send<T>(this.MAX_API_ENDPOINT + method);
+            this.#request.header = null;
+            this.#setAccessToken(this.token);
+            const data = await this.#request.send<T>(MAX_API_ENDPOINT + method);
             if (data.status && data.data) {
                 return data.data;
             }
-            this._log(data.err);
+            this.#error = data;
+            this.#log(data.err);
         } else {
-            this._log('Не указан MAX токен!');
+            this.#log('Не указан MAX токен!');
         }
         return null;
     }
@@ -108,20 +109,18 @@ export class MaxRequest {
      */
     public async upload(file: string, type: TMaxUploadFile): Promise<IMaxUploadFile | null> {
         if (this.token) {
-            this._request.attach = file;
-            this._request.isAttachContent = this.isAttachContent;
-            this._request.header = Request.HEADER_FORM_DATA;
-            this._request.post.type = type;
-            this._setAccessToken(this.token);
-            const data = await this._request.send<IMaxUploadFile>(
-                this.MAX_API_ENDPOINT + 'uploads',
-            );
+            this.#request.attach = file;
+            this.#request.isAttachContent = this.isAttachContent;
+            this.#request.header = Request.HEADER_FORM_DATA;
+            this.#request.post.type = type;
+            this.#setAccessToken(this.token);
+            const data = await this.#request.send<IMaxUploadFile>(MAX_API_ENDPOINT + 'uploads');
             if (data.status && data.data) {
                 return data.data;
             }
-            this._log(data.err);
+            this.#log(data.err);
         } else {
-            this._log('Не указан MAX токен!');
+            this.#log('Не указан MAX токен!');
         }
         return null;
     }
@@ -139,26 +138,26 @@ export class MaxRequest {
         params: IMaxParams | null = null,
     ): Promise<IMaxSendMessage | null> {
         const method = 'messages';
-        this._request.post = {
+        this.#request.post = {
             user_id: peerId,
             text: message,
         };
 
         if (params) {
             if (params.attachments || params.keyboard) {
-                this._request.post.attachment = [];
+                this.#request.post.attachment = [];
             }
             if (typeof params.attachments !== 'undefined') {
                 if (Array.isArray(params.attachments)) {
-                    this._request.post.attachment.push(...params.attachments);
+                    this.#request.post.attachment.push(...params.attachments);
                 } else {
-                    this._request.post.attachment.push(params.attachments);
+                    this.#request.post.attachment.push(params.attachments);
                 }
                 delete params.attachments;
             }
 
             if (typeof params.keyboard !== 'undefined') {
-                this._request.post.attachment.push({
+                this.#request.post.attachment.push({
                     type: 'inline_keyboard',
                     payload: params.keyboard,
                 });
@@ -166,7 +165,7 @@ export class MaxRequest {
             }
 
             if (Object.keys(params).length) {
-                this._request.post = { ...params, ...this._request.post };
+                this.#request.post = { ...params, ...this.#request.post };
             }
         }
         return await this.call(method);
@@ -177,7 +176,7 @@ export class MaxRequest {
      * @param url
      */
     public subscriptions(url: string): Promise<any> {
-        this._request.post = {
+        this.#request.post = {
             url,
         };
         return this.call('subscriptions');
@@ -186,12 +185,13 @@ export class MaxRequest {
     /**
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
-     * @private
      */
-    protected _log(error: string = ''): void {
-        this._appContext.saveLog(
-            'maxApi.log',
-            `\n(${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this._request.url}\nОшибка:\n${error}\n${this._error}\n`,
+    #log(error: string = ''): void {
+        this.#appContext.logError(
+            `MaxApi: (${new Date()}): Произошла ошибка при отправке запроса по адресу: ${this.#request.url}\nОшибка:\n${error}\n`,
+            {
+                error: this.#error,
+            },
         );
     }
 }

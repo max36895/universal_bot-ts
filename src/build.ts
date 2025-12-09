@@ -1,6 +1,5 @@
 import { BotTest, IBotTestParams } from './core/BotTest';
-import { BotController } from './controller';
-import { Bot, IAppConfig, IAppParam } from './core';
+import { Bot, IAppConfig, IAppParam, TBotControllerClass } from './core';
 
 /**
  * Набор методов, упрощающих запуск приложения
@@ -34,7 +33,7 @@ export interface IConfig {
     /**
      * Контроллер, отвечающий за логику приложения
      */
-    controller: BotController;
+    controller: TBotControllerClass;
     /**
      * Параметры для тестового окружения. Стоит указывать когда mode = dev
      */
@@ -60,7 +59,6 @@ export interface IConfig {
  * @remarks
  * Устанавливает конфигурацию, параметры и контроллер для бота.
  * Этот метод должен вызываться перед запуском бота.
- * @private
  */
 function _initParam(bot: Bot | BotTest, config: IConfig): void {
     bot.setAppConfig(config.appConfig);
@@ -87,7 +85,7 @@ function _initParam(bot: Bot | BotTest, config: IConfig): void {
  * run({
  *   appConfig: { ... },
  *   appParam: { ... },
- *   controller: new MyController(),
+ *   controller: MyController,
  *   testParams: { ... }
  * }, 'dev');
  *
@@ -110,18 +108,17 @@ export function run(
         case 'dev':
             bot = new BotTest();
             _initParam(bot, config);
-            bot.setDevMode(true);
+            bot.setAppMode('dev');
             return (bot as BotTest).test(config.testParams);
         case 'dev-online':
             bot = new Bot();
-            bot.initTypeInGet();
             _initParam(bot, config);
-            bot.setDevMode(true);
+            bot.setAppMode('dev');
             return bot.start(hostname, port);
         case 'prod':
             bot = new Bot();
-            bot.initTypeInGet();
             _initParam(bot, config);
+            bot.setAppMode('strict_prod');
             return bot.start(hostname, port);
     }
 }

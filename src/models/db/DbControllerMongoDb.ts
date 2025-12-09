@@ -42,17 +42,15 @@ export class DbControllerMongoDb extends DbControllerModel {
     /**
      * Подключение к базе данных MongoDB
      * Инициализируется только если appContext.isSaveDb равно true
-     *
-     * @private
      */
-    private _db: Sql | null;
+    #db: Sql | null;
 
     constructor(appContext: AppContext) {
         super(appContext);
         if (appContext?.isSaveDb) {
-            this._db = new Sql();
+            this.#db = new Sql(appContext);
         } else {
-            this._db = null;
+            this.#db = null;
         }
     }
 
@@ -73,11 +71,11 @@ export class DbControllerMongoDb extends DbControllerModel {
     public async update(updateQuery: QueryData): Promise<any> {
         let update = updateQuery.getData();
         let select = updateQuery.getQuery();
-        if (this._db) {
+        if (this.#db) {
             update = this.validate(update);
             select = this.validate(select);
             if (this.primaryKeyName) {
-                return !!(await this._db.query(async (client: any, db: Db) => {
+                return !!(await this.#db.query(async (client: any, db: Db) => {
                     try {
                         const collection = db.collection(this.tableName);
                         const result = await collection.updateOne(select as Filter<Document>, {
@@ -114,10 +112,10 @@ export class DbControllerMongoDb extends DbControllerModel {
      */
     public async insert(insertQuery: QueryData): Promise<any> {
         let insert = insertQuery.getData();
-        if (this._db) {
+        if (this.#db) {
             insert = this.validate(insert);
             if (this.primaryKeyName) {
-                return !!(await this._db.query(async (client: any, db: Db) => {
+                return !!(await this.#db.query(async (client: any, db: Db) => {
                     try {
                         const collection = db.collection(this.tableName);
                         const result = await collection.insertOne(insert as OptionalId<Document>);
@@ -152,9 +150,9 @@ export class DbControllerMongoDb extends DbControllerModel {
      */
     public async remove(removeQuery: QueryData): Promise<boolean> {
         let remove = removeQuery.getQuery();
-        if (this._db) {
+        if (this.#db) {
             remove = this.validate(remove);
-            return !!(await this._db.query(async (client: any, db: Db) => {
+            return !!(await this.#db.query(async (client: any, db: Db) => {
                 try {
                     const collection = db.collection(this.tableName);
                     const result = await collection.deleteOne(remove as Filter<Document>);
@@ -191,8 +189,8 @@ export class DbControllerMongoDb extends DbControllerModel {
      * @returns Результат выполнения запроса или null если нет подключения
      */
     public query(callback: TQueryCb): any {
-        if (this._db) {
-            return this._db.query(callback);
+        if (this.#db) {
+            return this.#db.query(callback);
         }
         return null;
     }
@@ -265,8 +263,8 @@ export class DbControllerMongoDb extends DbControllerModel {
      * @returns Promise с результатом запроса
      */
     public async select(where: IQueryData | null, isOne: boolean = false): Promise<IModelRes> {
-        if (this._db) {
-            return await this._db.query(async (client: any, db: Db) => {
+        if (this.#db) {
+            return await this.#db.query(async (client: any, db: Db) => {
                 try {
                     const collection = db.collection(this.tableName);
                     let results;
@@ -303,10 +301,11 @@ export class DbControllerMongoDb extends DbControllerModel {
      * controller.destroy();
      * ```
      */
-    public destroy(): void {
-        if (this._db) {
-            this._db.close();
-            this._db = null;
+    public async destroy(): Promise<void> {
+        if (this.#db) {
+            // todo опасная возможность. Если кто-то извне вызовет, то оборвется подключение для всех, что плохо. Поэтому не отключаем само соединение с бд
+            //await this.#db.close();
+            this.#db = null;
         }
     }
 
@@ -323,8 +322,8 @@ export class DbControllerMongoDb extends DbControllerModel {
      * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
-        if (this._db) {
-            return this._db.escapeString(text);
+        if (this.#db) {
+            return this.#db.escapeString(text);
         }
         return text + '';
     }
@@ -343,8 +342,8 @@ export class DbControllerMongoDb extends DbControllerModel {
      * @returns Promise<boolean> - true если подключение активно
      */
     public async isConnected(): Promise<boolean> {
-        if (this._db) {
-            return await this._db.isConnected();
+        if (this.#db) {
+            return await this.#db.isConnected();
         }
         return false;
     }

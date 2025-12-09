@@ -32,9 +32,8 @@ import { Image } from '../../image/Image';
 export class SmartAppCard extends TemplateCardTypes {
     /**
      * Возвращает карточку из 1 элемента
-     * @private
      */
-    private _getOneElement(image: Image): ISberSmartAppCardItem[] {
+    #getOneElement(image: Image): ISberSmartAppCardItem[] {
         const res: ISberSmartAppCardItem[] = [];
         if (image.imageDir) {
             res.push({
@@ -108,7 +107,6 @@ export class SmartAppCard extends TemplateCardTypes {
      * @param {Image} image - Объект с изображением и данными
      * @param {boolean} isOne - Флаг создания элементов для одной карточки
      * @returns {ISberSmartAppCardItem | ISberSmartAppCardItem[]} Элементы карточки
-     * @private
      *
      * @example
      * ```typescript
@@ -150,7 +148,7 @@ export class SmartAppCard extends TemplateCardTypes {
         isOne: boolean = false,
     ): ISberSmartAppCardItem | ISberSmartAppCardItem[] {
         if (isOne) {
-            return this._getOneElement(image);
+            return this.#getOneElement(image);
         }
         const cardItem: ISberSmartAppCardItem = {
             type: 'left_right_cell_view',

@@ -195,7 +195,6 @@ export class Navigation<ElementType = TElementType> {
      * Проверяет и корректирует значение thisPage в пределах допустимого диапазона
      *
      * @param {number} maxPage Максимальное количество страниц
-     * @private
      */
     protected _validatePage(maxPage?: number): void {
         const maxValue = typeof maxPage === 'undefined' ? this.getMaxPage() : maxPage;
@@ -235,7 +234,6 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если переход выполнен
-     * @private
      */
     protected _nextPage(text: string): boolean {
         if (this.isNext(text)) {
@@ -252,7 +250,6 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если переход выполнен
-     * @private
      */
     protected _oldPage(text: string): boolean {
         if (this.isOld(text)) {

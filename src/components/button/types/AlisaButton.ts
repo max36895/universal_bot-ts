@@ -91,7 +91,6 @@ export class AlisaButton extends TemplateButtonTypes {
     /**
      * Создание кнопки в формате Алисы
      *
-     * @private
      * @param {Button} button - Исходная кнопка для преобразования
      * @returns {IAlisaButtonCard | IAlisaButton | null} - Кнопка в формате Алисы или null, если кнопка невалидна
      *

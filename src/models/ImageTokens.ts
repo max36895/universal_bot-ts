@@ -50,7 +50,6 @@ export interface IImageModelState {
 export class ImageTokens extends Model<IImageModelState> {
     /**
      * Название таблицы для хранения данных об изображениях.
-     * @private
      */
     private TABLE_NAME = 'ImageTokens';
 
@@ -314,6 +313,6 @@ export class ImageTokens extends Model<IImageModelState> {
     }
 
     private _log(error: string): void {
-        this._appContext.saveLog('ImageTokens.log', error);
+        this._appContext.logError(error);
     }
 }

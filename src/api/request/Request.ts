@@ -4,7 +4,7 @@
  */
 import { httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { IRequestSend } from '../interfaces';
-import { AppContext, THttpClient } from '../../core';
+import { AppContext, EMetric, THttpClient } from '../../core';
 import fs from 'fs';
 import { basename } from 'path';
 
@@ -81,20 +81,18 @@ export class Request {
      */
     public isConvertJson: boolean;
 
-    /** Текст ошибки при выполнении запроса */
-    private _error: string | null;
-
-    /** Таймер для отмены запроса */
-    private _setTimeOut: NodeJS.Timeout | null;
     /**
      * Понимает что возвращается бинарный ответ
      */
     public isBinaryResponse: boolean = false;
 
+    /** Текст ошибки при выполнении запроса */
+    #error: Error | string | null;
+
     /**
      * Контекст приложения
      */
-    private _appContext?: AppContext;
+    #appContext?: AppContext;
 
     /**
      * Создает новый экземпляр Request.
@@ -111,10 +109,9 @@ export class Request {
         this.customRequest = null;
         this.maxTimeQuery = null;
         this.isConvertJson = true;
-        this._error = null;
-        this._setTimeOut = null;
+        this.#error = null;
         this.isBinaryResponse = false;
-        this._appContext = appContext;
+        this.#appContext = appContext;
     }
 
     /**
@@ -123,7 +120,7 @@ export class Request {
      */
     public setAppContext(appContext: AppContext): void {
         if (appContext) {
-            this._appContext = appContext;
+            this.#appContext = appContext;
         }
     }
 
@@ -138,13 +135,13 @@ export class Request {
             this.url = url;
         }
 
-        this._error = null;
-        const data = (await this._run()) as T;
+        this.#error = null;
+        const data = (await this.#run()) as T;
         this.attachName = 'file';
         this.attach = null;
         this.post = null;
-        if (this._error) {
-            return { status: false, data: null, err: this._error };
+        if (this.#error) {
+            return { status: false, data: null, err: this.#error };
         }
         return { status: true, data };
     }
@@ -153,7 +150,6 @@ export class Request {
      * Формирует URL с GET-параметрами
      *
      * @returns {string} Полный URL с параметрами
-     * @private
      */
     protected _getUrl(): string {
         let url: string = this.url || '';
@@ -164,22 +160,11 @@ export class Request {
     }
 
     /**
-     * Очищает таймер отмены запроса
-     * @private
-     */
-    private _clearTimeout(): void {
-        if (this._setTimeOut) {
-            clearTimeout(this._setTimeOut);
-            this._setTimeOut = null;
-        }
-    }
-
-    /**
      * Возвращает функцию для отправки запроса
      */
-    private _getHttpClient(): THttpClient {
-        if (this._appContext?.httpClient) {
-            return this._appContext?.httpClient;
+    #getHttpClient(): THttpClient {
+        if (this.#appContext?.httpClient) {
+            return this.#appContext?.httpClient;
         }
         return fetch;
     }
@@ -188,14 +173,17 @@ export class Request {
      * Выполняет HTTP-запрос
      *
      * @returns {Promise<T|string|null>} Ответ сервера или null в случае ошибки
-     * @private
      */
-    private async _run<T>(): Promise<T | string | null> {
+    async #run<T>(): Promise<T | string | null> {
         if (this.url) {
             try {
-                this._clearTimeout();
-                const response = await this._getHttpClient()(this._getUrl(), this._getOptions());
-                this._clearTimeout();
+                const start = performance.now();
+                const response = await this.#getHttpClient()(this._getUrl(), this._getOptions());
+                this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
+                    url: this.url,
+                    method: this.customRequest || 'POST',
+                    status: response.status || 0,
+                });
                 if (response.ok) {
                     if (this.isConvertJson) {
                         return await response.json();
@@ -205,13 +193,12 @@ export class Request {
                     }
                     return await response.text();
                 }
-                this._error = 'Не удалось получить данные с ' + this.url;
+                this.#error = 'Не удалось получить данные с ' + this.url;
             } catch (e) {
-                this._clearTimeout();
-                this._error = e instanceof Error ? e.message : String(e);
+                this.#error = e as Error;
             }
         } else {
-            this._error = 'Не указан url!';
+            this.#error = 'Не указан url!';
         }
         return null;
     }
@@ -220,16 +207,12 @@ export class Request {
      * Формирует параметры для http запроса
      *
      * @returns {RequestInit|undefined} Параметры запроса
-     * @private
      */
     protected _getOptions(): RequestInit | undefined {
         const options: RequestInit = {};
 
         if (this.maxTimeQuery) {
-            const controller = new AbortController();
-            const signal: AbortSignal = controller.signal;
-            this._setTimeOut = setTimeout(() => controller.abort(), this.maxTimeQuery);
-            options.signal = signal;
+            options.signal = AbortSignal.timeout(this.maxTimeQuery);
         }
 
         let post: BodyInit | null = null;
@@ -237,7 +220,7 @@ export class Request {
             if (isFile(this.attach)) {
                 const formData = this.getAttachFile(this.attach, this.attachName);
                 if (!formData) {
-                    this._error = `Не удалось прочитать файл: ${this.attach}`;
+                    this.#error = `Не удалось прочитать файл: ${this.attach}`;
                     return;
                 }
                 // Добавляем дополнительные поля из this.post в FormData
@@ -248,7 +231,7 @@ export class Request {
                 }
                 post = formData;
             } else {
-                this._error = `Не удалось найти файл: ${this.attach}`;
+                this.#error = `Не удалось найти файл: ${this.attach}`;
                 return;
             }
         } else if (this.post) {
@@ -308,8 +291,8 @@ export class Request {
             this.addAttachFile(formData, filePath, fileName);
             return formData;
         } catch (e) {
-            if (this._appContext?.logError) {
-                this._appContext?.logError(
+            if (this.#appContext?.logError) {
+                this.#appContext?.logError(
                     'Ошибка при чтении файла:',
                     e as Record<string, unknown>,
                 );
@@ -323,7 +306,7 @@ export class Request {
      *
      * @returns {string|null} Текст ошибки или null
      */
-    public getError(): string | null {
-        return this._error;
+    public getError(): Error | string | null {
+        return this.#error;
     }
 }
