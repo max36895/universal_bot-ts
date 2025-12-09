@@ -1523,13 +1523,15 @@ export class AppContext {
         let groupName;
         if (isPattern) {
             correctSlots = this.#isDangerRegex(slots).slots;
-            groupName = this.#addRegexpInGroup(commandName, correctSlots, true);
-            if (groupName === commandName) {
-                this.#regExpCommandCount++;
-                if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
-                    regExp = getRegExp(correctSlots);
-                    regExp.test('__umbot_testing');
-                    regExp.test('');
+            if (correctSlots.length) {
+                groupName = this.#addRegexpInGroup(commandName, correctSlots, true);
+                if (groupName === commandName) {
+                    this.#regExpCommandCount++;
+                    if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
+                        regExp = getRegExp(correctSlots);
+                        regExp.test('__umbot_testing');
+                        regExp.test('');
+                    }
                 }
             }
         } else {
