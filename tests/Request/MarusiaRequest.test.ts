@@ -12,7 +12,7 @@ jest.mock('fs', () => ({
 }));
 
 import { AppContext } from '../../src';
-import { MarusiaRequest } from '../../src/api/MarusiaRequest';
+import { MarusiaRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -20,8 +20,8 @@ describe('MarusiaRequest', () => {
     let marusia: MarusiaRequest;
 
     beforeEach(() => {
-        appContext.platformParams.marusia_token = 'test-marusia-token';
-        appContext.platformParams.vk_token = 'test-vk-token';
+        appContext.appConfig.tokens.marusia = { token: 'test-marusia-token' };
+        appContext.appConfig.tokens.vk = { token: 'test-vk-token' };
         marusia = new MarusiaRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
         appContext.logError = jest.fn();
@@ -104,8 +104,8 @@ describe('MarusiaRequest', () => {
     });
 
     it('should return null if no token is provided', async () => {
-        appContext.platformParams.marusia_token = null;
-        appContext.platformParams.vk_token = null;
+        appContext.appConfig.tokens.marusia = { token: null };
+        appContext.appConfig.tokens.vk = { token: null };
         const localMarusia = new MarusiaRequest(appContext);
 
         const result = await localMarusia.marusiaGetPictureUploadLink();

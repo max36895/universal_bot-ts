@@ -4,11 +4,13 @@
  * Time: {{time}}
  */
 import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 import { Bot, FALLBACK_COMMAND } from 'umbot';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
 
 const bot = new BotTest();
+bot.use(fullPlatforms);
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
 

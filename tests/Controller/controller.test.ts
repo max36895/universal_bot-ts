@@ -49,19 +49,19 @@ describe('Controller', () => {
 
     it('MyController addCommand minimum params', () => {
         appContext.platformParams.intents = [];
-        appContext.addCommand('test', ['start']);
+        appContext.command.addCommand('test', ['start'], () => {});
 
         uController.userCommand = 'start';
         uController.run();
         expect(uController.actionName).toEqual('test');
 
-        appContext.removeCommand('test');
+        appContext.command.removeCommand('test');
     });
 
     it('MyController addCommand cb used', () => {
         appContext.platformParams.intents = [];
         let isUsed = false;
-        appContext.addCommand('cb', ['go'], () => {
+        appContext.command.addCommand('cb', ['go'], () => {
             isUsed = true;
         });
 
@@ -71,7 +71,7 @@ describe('Controller', () => {
         expect(uController.actionName).toEqual('cb');
 
         isUsed = false;
-        appContext.removeCommand('cb');
+        appContext.command.removeCommand('cb');
         uController.userCommand = 'go cb removed command';
         uController.run();
         expect(isUsed).toBe(false);
@@ -79,7 +79,7 @@ describe('Controller', () => {
 
     it('MyController addCommand cb return string', () => {
         appContext.platformParams.intents = [];
-        appContext.addCommand('text', ['text'], () => {
+        appContext.command.addCommand('text', ['text'], () => {
             return 'test';
         });
 
@@ -88,6 +88,6 @@ describe('Controller', () => {
         expect(uController.text).toEqual('test');
         expect(uController.actionName).toEqual('text');
 
-        appContext.removeCommand('text');
+        appContext.command.removeCommand('text');
     });
 });

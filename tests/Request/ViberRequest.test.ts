@@ -11,7 +11,7 @@ jest.mock('fs', () => ({
 }));
 
 import { AppContext } from '../../src';
-import { ViberRequest } from '../../src/api/ViberRequest';
+import { ViberRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,8 +19,7 @@ describe('ViberRequest', () => {
     let viber: ViberRequest;
 
     beforeEach(() => {
-        appContext.platformParams.viber_token = 'test-viber-token';
-        appContext.platformParams.viber_api_version = 2;
+        appContext.appConfig.tokens.viber = { token: 'test-viber-token', api_version: 2 };
         viber = new ViberRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
         appContext.logError = jest.fn();
@@ -199,7 +198,7 @@ describe('ViberRequest', () => {
     });
 
     it('should return null if no token provided', async () => {
-        appContext.platformParams.viber_token = undefined;
+        appContext.appConfig.tokens.viber = { token: undefined };
         const localViber = new ViberRequest(appContext);
         const result = await localViber.sendMessage('user123', 'Bot', 'Hi');
         expect(result).toBeNull();

@@ -2,8 +2,8 @@
     "compilerOptions": {
         "module": "commonjs",
         "target": "es2023",
-        "lib": ["es2023", "dom"],
         "useDefineForClassFields": true,
+        "lib": ["es2023", "dom"],
         "moduleResolution": "node",
         "removeComments": false,
         "sourceMap": false,
@@ -19,7 +19,11 @@
         "outDir": "dist",
         "baseUrl": ".",
         "paths": {
-            "*": ["node_modules/*", "src/types/*"]
+            "umbot/plugins": ["src/plugins"],
+            "umbot/test": ["src/test"],
+            "umbot/build": ["src/build"],
+            "umbot/preload": ["src/Preload"],
+            "umbot/*": ["src/*"]
         },
         "types": ["node", "jest"],
         "typeRoots": ["node_modules/@types"]

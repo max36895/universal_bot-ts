@@ -11,7 +11,7 @@ jest.mock('fs', () => ({
 }));
 
 import { AppContext } from '../../src';
-import { VkRequest } from '../../src/api/VkRequest';
+import { VkRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,7 +19,7 @@ describe('VkRequest', () => {
     let vk: VkRequest;
 
     beforeEach(() => {
-        appContext.platformParams.vk_token = 'test-token';
+        appContext.appConfig.tokens.vk = { token: 'test-token' };
         vk = new VkRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
         appContext.logError = jest.fn();
@@ -163,7 +163,7 @@ describe('VkRequest', () => {
     });
 
     it('should return null if no token', async () => {
-        appContext.platformParams.vk_token = null;
+        appContext.appConfig.tokens.vk = { token: null };
         const localVk = new VkRequest(appContext);
         const result = await localVk.messagesSend(12345, 'Hi');
         expect(result).toBeNull();

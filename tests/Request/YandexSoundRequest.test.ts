@@ -11,7 +11,7 @@ jest.mock('fs', () => ({
 }));
 
 import { AppContext } from '../../src';
-import { YandexSoundRequest } from '../../src/api/YandexSoundRequest';
+import { YandexSoundRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,9 +19,8 @@ describe('YandexSoundRequest', () => {
     let soundApi: YandexSoundRequest;
 
     beforeEach(() => {
-        appContext.platformParams.app_id = 'skill-456';
-        appContext.platformParams.yandex_token = 'oauth-token';
-        soundApi = new YandexSoundRequest(null, null, appContext);
+        appContext.appConfig.tokens.alisa = { token: 'oauth-token' };
+        soundApi = new YandexSoundRequest(null, 'skill-456', appContext);
         (global.fetch as jest.Mock).mockClear();
     });
 

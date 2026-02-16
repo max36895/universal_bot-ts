@@ -9,7 +9,7 @@
  *   - Обработка команд навигации
  *
  * @example
- * ```typescript
+ * ```ts
  * import { Navigation } from './components/standard';
  *
  * // Создание экземпляра Navigation

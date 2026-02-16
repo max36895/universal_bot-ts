@@ -4,7 +4,7 @@
 
 - Сервер с публичным IP-адресом
 - Доменное имя
-- SSL-сертификат (обязателен для Яндекс.Алисы, Сбер SmartApp, Маруси, Viber и других платформ)
+- SSL-сертификат (обязателен для Алисы, Сбер SmartApp, Маруси, Viber и других платформ)
 
 ## Получение SSL-сертификата через acme.sh
 
@@ -38,7 +38,7 @@ acme.sh --install-cert -d example.com \
 
 Добавьте в конфигурацию nginx:
 
-```nginx
+```text
 server {
     listen 443 ssl;
     server_name example.com;
@@ -107,7 +107,8 @@ bot.start('0.0.0.0', 3000);
 
 ### 2. Интеграция в существующее приложение (Express/Fastify)
 
-См. (Универсальный webhook-обработчик.)[src/docs/platform-integration.md]
+См. (Универсальный
+webhook-обработчик.)[https://www.maxim-m.ru/bot/ts-doc/bot/ts-doc/documents/src_docs_platform-integration.md]
 
 ## Docker
 

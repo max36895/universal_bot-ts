@@ -2,41 +2,40 @@
 
 ## Поддерживаемые платформы
 
-Библиотека `umbot` обеспечивает единый API для разработки ботов и голосовых навыков на всех ведущих российских и
+Фреймворк `umbot` обеспечивает единое API для разработки ботов и голосовых навыков на всех ведущих российских и
 международных платформах.
 
 ### Сравнение с аналогами
 
-| Возможность                            | `umbot` | Jovo | SaluteJS | Отдельные SDK |
-| :------------------------------------- | :-----: | :--: | :------: | :-----------: |
-| Алиса + Маруся + Сбер одновременно     |   ✅    |  ❌  |    ❌    |      ❌       |
-| Единая бизнес-логика для всех платформ |   ✅    |  ❌  |    ❌    |      ❌       |
-| Поддержка Telegram / VK / Viber        |   ✅    |  ❌  |    ❌    |      ⚠️       |
-| TypeScript «из коробки»                |   ✅    |  ✅  |    ✅    |      ⚠️       |
-| Гарантии времени выполнения            |   ✅    |  ❌  |    ⚠️    |      ❌       |
+| Возможность                            | `umbot` | Jovo | SaluteJS |                    Отдельные SDK                     |
+| :------------------------------------- | :-----: | :--: | :------: | :--------------------------------------------------: |
+| Алиса + Маруся + Сбер одновременно     |   ✅    |  ❌  |    ❌    | Требуется ручная маршрутизация и дублирование логики |
+| Единая бизнес-логика для всех платформ |   ✅    |  ❌  |    ❌    |                          ❌                          |
+| Поддержка Telegram / VK / Viber        |   ✅    |  ❌  |    ❌    | Требуется ручная маршрутизация и дублирование логики |
+| TypeScript «из коробки»                |   ✅    |  ✅  |    ✅    |                          ⚠️                          |
+| Гарантии времени выполнения            |   ✅    |  ❌  |    ⚠️    |                          ❌                          |
 
-> **`umbot` — единственное решение с полной поддержкой всего российского стека голосовых ассистентов в одном коде.**
+> **`umbot` — Одно из решений с полной поддержкой всего российского стека голосовых ассистентов в одном коде.**
 
 ### Список платформ
 
-| Платформа           | Идентификатор      | Статус               |
-| ------------------- | ------------------ | -------------------- |
-| Яндекс.Алиса        | `alisa`            | ✅ Полная поддержка  |
-| Маруся              | `marusia`          | ✅ Полная поддержка  |
-| Сбер SmartApp       | `smart_app`        | ✅ Полная поддержка  |
-| Telegram            | `telegram`         | ✅ Полная поддержка  |
-| VK                  | `vk`               | ✅ Полная поддержка  |
-| MAX                 | `max_app`          | ✅ Полная поддержка  |
-| Viber               | `viber`            | ✅ Полная поддержка  |
-| Кастомная платформа | `user_application` | ✅ Базовая поддержка |
+| Платформа              | Идентификатор | Статус              |
+| ---------------------- | ------------- | ------------------- |
+| Яндекс.Алиса           | `alisa`       | ✅ Полная поддержка |
+| Маруся                 | `marusia`     | ✅ Полная поддержка |
+| Сбер SmartApp          | `smart_app`   | ✅ Полная поддержка |
+| Telegram               | `telegram`    | ✅ Полная поддержка |
+| VK                     | `vk`          | ✅ Полная поддержка |
+| MAX                    | `max_app`     | ✅ Полная поддержка |
+| Viber                  | `viber`       | ✅ Полная поддержка |
+| Любая другая платформа | `...`         | ✅ Через адаптеры   |
 
-Для выбора платформы укажите идентификатор при создании экземпляра:
+Выбор платформы происходит автоматически в зависимости от запроса, который пришел в приложение.
+Также есть возможность явно указать какая именно платформа используется:
 
 ```ts
-const bot = new Bot('alisa'); // или 'marusia', 'smart_app', 'telegram' и т.д.
+const bot = new Bot();
 ```
-
-По умолчанию используется `auto`, и тип платформы определяется автоматически в зависимости от запроса.
 
 ## Общие требования
 
@@ -45,14 +44,16 @@ const bot = new Bot('alisa'); // или 'marusia', 'smart_app', 'telegram' и т
 - HTTPS с валидным SSL-сертификатом
 - Стабильное время ответа (рекомендуется < 3 секунд)
 - Поддержка webhook URL
-- Node.js 18.18+ и TypeScript 5+
+- Node.js 20.0+ и TypeScript 5+
 
 ### Базовая настройка
 
-```typescript
-import { Bot, T_ALISA } from 'umbot';
+```ts
+import { Bot } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
 
-const bot = new Bot(T_ALISA);
+const bot = new Bot();
+bot.use(fullPlatforms); // Подключаем все доступные платформы
 bot.setPlatformParams({
     // Параметры платформы
     welcome_text: 'Привет!', // Текст приветствия
@@ -64,8 +65,7 @@ bot.setAppConfig({
     error_log: './logs', // Директория для логов
     isLocalStorage: true, // Использование локального хранилища
 });
-
-bot.initTypeInGet(); // Установка типа платформы из get параметра запроса. Удобно использовать если вы используете для доступа к приложению один url, в котором тип приложения определяется через get параметр
+bot.start(); // Запуск приложения
 ```
 
 ## Яндекс.Алиса
@@ -79,14 +79,22 @@ bot.initTypeInGet(); // Установка типа платформы из get 
 ### Настройка
 
 1. Создайте навык в консоли Яндекс.Диалоги
-2. Получите OAuth токен в [Яндекс.OAuth](https://oauth.yandex.ru). Не обязательно.
+2. Получите OAuth токен в [Яндекс.OAuth](https://oauth.yandex.ru) если он необходим. Токен нужен для загрузки аудио или
+   изображений.
 3. Настройте параметры в коде:
 
-```typescript
+```ts
 bot.setPlatformParams({
-    yandex_token: 'YOUR_OAUTH_TOKEN',
-    y_isAuthUser: true, // Для работы с авторизацией
+    isAuthUser: true, // Для работы с авторизацией
 });
+bot.use(new AlisaAdapter('YOUR_OAUTH_TOKEN')); // Указывыем токен в адаптере
+bot.setAppConfig({
+    tokens: {
+        alisa: {
+            token: 'YOUR_OAUTH_TOKEN',
+        },
+    },
+}); // Указываем токен через настройку приложения
 ```
 
 ### Особенности
@@ -98,7 +106,7 @@ bot.setPlatformParams({
 
 ### Пример контроллера
 
-```typescript
+```ts
 class AlisaController extends BotController {
     public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
@@ -114,7 +122,7 @@ class AlisaController extends BotController {
             this.tts = 'Привет! Рад вас видеть снова!';
 
             // Добавление карточки
-            this.card.add('image_token', 'Добро пожаловать', 'Описание', 'Кнопка');
+            this.card.addImage('image_token', 'Добро пожаловать', 'Описание', 'Кнопка');
 
             // Добавление кнопок
             this.buttons.addBtn('Помощь').addBtn('Начать игру');
@@ -137,10 +145,15 @@ class AlisaController extends BotController {
 2. Настройте webhook URL
 3. Настройте параметры в коде:
 
-```typescript
-bot.setPlatformParams({
-    telegram_token: 'YOUR_BOT_TOKEN',
-});
+```ts
+bot.use(new TelegramAdapter('YOUR_BOT_TOKEN')); // Указывыем токен в адаптере
+bot.setAppConfig({
+    tokens: {
+        telegram: {
+            token: 'YOUR_BOT_TOKEN',
+        },
+    },
+}); // Указываем токен через настройку приложения
 ```
 
 ### Особенности
@@ -152,7 +165,7 @@ bot.setPlatformParams({
 
 ### Пример контроллера
 
-```typescript
+```ts
 class TelegramController extends BotController {
     public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
@@ -185,12 +198,22 @@ class TelegramController extends BotController {
 3. Настройте Callback API
 4. Настройте параметры в коде:
 
-```typescript
-bot.setPlatformParams({
-    vk_token: 'YOUR_GROUP_TOKEN',
-    vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
-    vk_api_version: 'v5.131',
-});
+```ts
+bot.use(
+    new VkAdapter('YOUR_BOT_TOKEN', {
+        vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
+        vk_api_version: 'v5.131',
+    }),
+); // Указывыем токен в адаптере
+bot.setAppConfig({
+    tokens: {
+        vk: {
+            token: 'YOUR_BOT_TOKEN',
+            confirmationToken: 'YOUR_CONFIRMATION_TOKEN',
+            apiVersion: 'v5.131',
+        },
+    },
+}); // Указываем токен через настройку приложения
 ```
 
 ### Особенности
@@ -202,7 +225,7 @@ bot.setPlatformParams({
 
 ### Пример контроллера
 
-```typescript
+```ts
 class VKController extends BotController {
     public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
@@ -234,10 +257,15 @@ class VKController extends BotController {
 2. Получите токен для загрузки медиа
 3. Настройте параметры:
 
-```typescript
-bot.setPlatformParams({
-    marusia_token: 'YOUR_TOKEN',
-});
+```ts
+bot.use(new MarusiaAdapter('YOUR_BOT_TOKEN')); // Указывыем токен в адаптере
+bot.setAppConfig({
+    tokens: {
+        marusia: {
+            token: 'YOUR_BOT_TOKEN',
+        },
+    },
+}); // Указываем токен через настройку приложения
 bot.setAppConfig({
     isLocalStorage: true,
 });
@@ -251,7 +279,7 @@ bot.setAppConfig({
 
 ### Пример контроллера
 
-```typescript
+```ts
 class MarusiaController extends BotController {
     public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
@@ -281,7 +309,7 @@ class MarusiaController extends BotController {
 1. Создайте приложение в консоли разработчика
 2. Настройте параметры:
 
-```typescript
+```ts
 bot.setAppConfig({
     isLocalStorage: true,
 });
@@ -296,7 +324,7 @@ bot.setAppConfig({
 
 ### Пример контроллера
 
-```typescript
+```ts
 class SmartAppController extends BotController {
     public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
@@ -312,117 +340,105 @@ class SmartAppController extends BotController {
 }
 ```
 
-## Viber
-
-### Требования
-
-- Аккаунт Viber для бизнеса
-- HTTPS webhook
-- Public Account
-
-### Настройка
-
-1. Создайте Public Account
-2. Получите токен в настройках
-3. Настройте параметры:
-
-```typescript
-bot.setPlatformParams({
-    viber_token: 'YOUR_TOKEN',
-    viber_sender: 'Bot Name',
-    viber_api_version: 1,
-});
-```
-
-### Особенности
-
-- Rich Media Messages
-- Клавиатура сообщений
-- Поддержка различных типов контента
-- Tracking Events
-
-### Пример контроллера
-
-```typescript
-class ViberController extends BotController {
-    public action(intentName: string | null): void {
-        if (intentName === WELCOME_INTENT_NAME) {
-            this.text = 'Привет! Я Viber бот';
-
-            // Добавление клавиатуры
-            this.buttons
-                .addBtn('Меню')
-                .addBtn('Сайт', 'https://example.com')
-                .addBtn('Связаться с нами');
-
-            // Отправка Rich Media
-            this.card.addImage('image_token', 'Добро пожаловать', 'Выберите действие');
-        }
-    }
-}
-```
-
 ## Пользовательские платформы
 
 ### Настройка
 
-```typescript
-const bot = new Bot('user_application');
-bot.run(CustomPlatformAdapter); // Задаем кастомный адаптен
+```ts
+const bot = new Bot();
+bot.use(new MyAdapter()); // Задаем кастомный адаптер
 ```
 
 ### Создание адаптера
 
-```typescript
-import { TemplateTypeModel, Buttons } from 'umbot';
+```ts
+// MyAdapter.ts
+import { BasePlatformAdapter, TContent } from 'umbot/plugins';
 
-class CustomPlatformAdapter extends TemplateTypeModel {
+class MyAdapter extends BasePlatformAdapter {
     /**
-     * Получение ответа, который отправится пользователю. В случае с Алисой, Марусей и Сбер, возвращается json. С остальными типами, ответ отправляется непосредственно на сервер.
-     *
-     * @return {Promise<Object|string>}
+     * Уникальное имя платформы
      */
-    public async getContext(): Promise<Object | string> {
+    platformName: string = 'my_platform';
+
+    /**
+     * Возвращает признак того, соответствует ли запрос текущей платформе или нет
+     * @param query
+     * @param headers
+     */
+    isPlatformOnQuery(query: object, headers?: Record<string, unknown>): boolean {
+        return typeof query.data?.messageCount !== 'undefined';
+    }
+
+    /**
+     * Обработка полученного запроса. В данном методе необходимо настроить botController, необходимыми данными
+     * @param query Запрос от платформы
+     * @param controller Контроллер приложения
+     */
+    setQueryData(query: object | string, controller: BotController): boolean | Promise<boolean> {
+        if (this.appContext) {
+            if (query) {
+                let content: object;
+                if (typeof query === 'string') {
+                    content = JSON.parse(query);
+                } else {
+                    content = query;
+                }
+
+                controller.requestObject = content;
+                controller.userId = content.userId;
+                controller.userCommand = content.data.text;
+                controller.originalUserCommand = content.data.text;
+                controller.messageId = content.data.messageCount;
+
+                if (content.store) {
+                    controller.state = content.store;
+                }
+
+                controller.isScreen = false;
+
+                return true;
+            } else {
+                controller.platformOptions.error = 'MyAdapter:init(): Отправлен пустой запрос!';
+            }
+        } else {
+            console.error('Не указан контекст приложения!');
+        }
+        return false;
+    }
+
+    /**
+     * Возвращает результат, который будет отправлен платформе.
+     * @param controller
+     */
+    getContent(controller: BotController): TContent {
         return {
-            text: this.controller.text,
-            tts: this.controller.tts,
-            buttons: this.controller.buttons.getButtons(Buttons.T_ALISA_BUTTONS), // ипользуем формат для кнопок алисы
+            text: controller.text,
+            tts: controller.tts,
         };
     }
 
     /**
-     * Инициализация основных параметров. В случае успешной инициализации, вернет true, иначе false.
-     *
-     * @param {IVkRequestContent|string} query Запрос пользователя.
-     * @param {BotController} controller Ссылка на класс с логикой навык/бота.
-     * @return Promise<boolean>
-     * @see TemplateTypeModel.init() Смотри тут
+     * Возвращает демо результат запроса, который будет приходить от платформы
+     * @param query Запрос пользователя
+     * @param userId Идентификатор пользователя
+     * @param count Порядковый номер запроса
+     * @param state Данные из локального хранилища
      */
-    public async init(
-        query: string | IVkRequestContent,
-        controller: BotController,
-    ): Promise<boolean> {
-        let content;
-        if (typeof query === 'string') {
-            content = JSON.parse(query);
-        } else {
-            content = { ...query };
-        }
-        if (!this.controller) {
-            this.controller = controller;
-        }
-        this.controller.requestObject = content;
-
-        // Заполняем контроллер пришедшими данными
-        const object = content.object;
-        this.controller.userId = object.userIf;
-        this._appConfig.platformParams.user_id = this.controller.userId;
-        this.controller.userCommand = object.text.toLowerCase().trim();
-        this.controller.originalUserCommand = object.text.trim();
-        this.controller.messageId = object.message.id;
-        this.controller.payload = object.message.payload || null;
-
-        return true;
+    getQueryExample(
+        query: string,
+        userId: string,
+        count: number,
+        state: Record<string, unknown> | string,
+    ): Record<string, unknown> {
+        return {
+            userId,
+            data: {
+                text: query.toLowerCase(),
+                messageCount: count,
+            },
+            store: state,
+        };
     }
 }
 ```
@@ -436,39 +452,52 @@ class CustomPlatformAdapter extends TemplateTypeModel {
 
 ```ts
 import express from 'express';
-import { Bot, T_ALISA } from 'umbot';
-import { MyController } from './controller/MyController';
+import { Bot } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
 
 const app = express();
 app.use(express.json({ type: '*/*' })); // важно для Алисы/Сбера
 
 // Инициализация бота (платформа указывается один раз)
-const bot = new Bot(T_ALISA);
-bot.initBotController(MyController);
+const bot = new Bot();
+bot.use(fullPlatforms);
 bot.setAppConfig({
     json: './data',
     error_log: './logs',
     isLocalStorage: true,
-});
-bot.setPlatformParams({
-    // Все токены можно задать здесь или через .env
-    yandex_token: process.env.YANDEX_TOKEN,
-    telegram_token: process.env.TELEGRAM_TOKEN,
-    vk_token: process.env.VK_TOKEN,
-    vk_confirmation_token: process.env.VK_CONFIRMATION_TOKEN,
-    viber_token: process.env.VIBER_TOKEN,
-    marusia_token: process.env.MARUSIA_TOKEN,
-    max_token: process.env.MAX_TOKEN,
+    env: 'local',
 });
 
 // Подключение webhook-обработчика
 app.post('/webhook', (req, res) => {
-    bot.webhookHandle(req, res);
+    try {
+        bot.webhookHandle(req, res);
+    } catch (err) {
+        console.error('Webhook error:', err);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 app.listen(3000, () => {
     console.log('Сервер запущен на http://localhost:3000/webhook');
 });
+```
+
+## Активные рассылки (метод `send`)
+
+Начиная с версии 3.0.0, фреймворк поддерживает **активную отправку сообщений** — то есть бот может инициировать диалог
+с пользователем без входящего запроса.
+
+> ⚠️ **Важно**: не все платформы поддерживают эту функцию.
+> Например, Алиса и Маруся **не позволяют** отправлять сообщения без запроса.
+> Telegram, VK и MAX — **поддерживают**.
+> Поддержка функционала зависит от используемой платформы.
+
+### Пример использования
+
+```ts
+// Отправка сообщения пользователю в Telegram
+const success = bot.send('123456789', 'Привет! Это рассылка.');
 ```
 
 ## Лучшие практики

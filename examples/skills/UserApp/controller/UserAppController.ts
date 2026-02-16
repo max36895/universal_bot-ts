@@ -15,8 +15,6 @@ export class UserAppController extends BotController {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btns = ['Пример кнопки галереи'];
-                this.buttons.links = ['Пример ссылки для изображения'];
                 break;
 
             case HELP_INTENT_NAME:

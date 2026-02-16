@@ -19,33 +19,53 @@ try {
     __$usedRe2 = false;
 }
 
-export type customRegExp = RegExp;
+type customRegExp = RegExp;
 
-type TPattern = string | RegExp;
+/**
+ * Тип для регулярного выражения
+ */
+export type TPatternRegExp = string | RegExp;
 
-export function isRegex(regExp: string | RegExp | unknown): regExp is RegExp {
+/**
+ * Проверяет передано ли регулярное выражение или нет
+ * @param regExp Регулярное выражение
+ * @param customReg Кастомный обработчик для регулярных выражений
+ */
+export function isRegex(
+    regExp: TPatternRegExp | unknown,
+    customReg?: RegExpConstructor,
+): regExp is RegExp {
+    if (customReg) {
+        return regExp instanceof customReg || regExp instanceof RegExp;
+    }
     // @ts-ignore
     return regExp instanceof RegExp || regExp instanceof Re2;
 }
 
 /**
- * Возвращает корректный класс для обработки регулярных выражений.
- * В случае если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp
+ * Возвращает скомпилированное регулярное выражение.
+ * Если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp.
+ * В случае, если передан customReg, регулярное выражение будет собранно через него
  * @param reg - само регулярное выражение
  * @param flags - флаг для регулярного выражения
+ * @param customReg - Произвольная реализация для обработки регулярных выражений
  * @returns
  */
-export function getRegExp(reg: TPattern | TPattern[], flags: string = 'ium'): customRegExp {
+export function getRegExp(
+    reg: TPatternRegExp | TPatternRegExp[],
+    flags: string = 'ium',
+    customReg?: RegExpConstructor,
+): customRegExp {
     let pattern;
     let flag = flags;
-    const getPattern = (pat: TPattern): string => {
-        return isRegex(pat) ? pat.source : pat;
+    const getPattern = (pat: TPatternRegExp): string => {
+        return isRegex(pat, customReg) ? pat.source : pat;
     };
 
     if (Array.isArray(reg)) {
         if (reg.length === 1) {
             pattern = getPattern(reg[0]);
-            flag = isRegex(reg[0]) ? reg[0].flags : flags;
+            flag = isRegex(reg[0], customReg) ? reg[0].flags : flags;
         } else {
             const aPattern: string[] = [];
             reg.forEach((r) => {
@@ -55,7 +75,10 @@ export function getRegExp(reg: TPattern | TPattern[], flags: string = 'ium'): cu
         }
     } else {
         pattern = getPattern(reg);
-        flag = isRegex(reg) ? reg.flags : flags;
+        flag = isRegex(reg, customReg) ? reg.flags : flags;
+    }
+    if (customReg) {
+        return new customReg(pattern, flag);
     }
     return new Re2(pattern, flag);
 }

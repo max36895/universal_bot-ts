@@ -14,7 +14,7 @@
  * - Работы с окончаниями слов
  *
  * #### Обрезка текста
- * ```typescript
+ * ```ts
  * import { Text } from './standard/Text';
  *
  * const text = 'testing long long text';
@@ -28,7 +28,7 @@
  *
  * #### Поиск вхождений
  * Метод для поиска подстроки или массива подстрок в тексте
- * ```typescript
+ * ```ts
  * import { Text } from './standard/Text';
  *
  * const text = 'testing long long text';
@@ -40,12 +40,14 @@
  * Text.isSayText(['and', 'test'], text); // -> true
  *
  * // Поиск по регулярному выражению
+ * // При передаче строки в JavaScript нужно экранировать обратный слеш:
+ * // '\b' в строке = один символ (backspace), '\\b' = два символа (\ + b)
  * Text.isSayText(['and', '\\btest\\b'], text, true); // -> true
  * ```
  *
  * #### Проверка схожести текстов
  * Метод для определения степени схожести двух текстов
- * ```typescript
+ * ```ts
  * import { Text } from './standard/Text';
  *
  * // Тексты совпадают на 100%
@@ -68,7 +70,7 @@
  *
  * #### Работа с окончаниями слов
  * Метод для выбора правильного окончания слова в зависимости от числа
- * ```typescript
+ * ```ts
  * import { Text } from './standard/Text';
  *
  * const titles = [
@@ -87,3 +89,4 @@
  */
 export * from './standard/util';
 export * from './standard/Text';
+export * from './standard/RegExp';

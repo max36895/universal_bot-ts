@@ -8,25 +8,33 @@
  * - Выполнения CRUD операций
  */
 
-import {
-    IModelRes,
-    IModelRules,
-    IDbControllerModel,
-    IDbControllerResult,
-    TStateData,
-    TQueryCb,
-} from '../interface';
-import { IQueryData, QueryData } from './QueryData';
-import { DbController } from './DbController';
+import { IDataValue, IModelRes, IModelRules, TQueryCb } from '../interface';
+import { IQueryData, IQuery, getQueryData, TKey } from './QueryData';
+import { AppContext, IDbResult } from '../../core';
 import { ProxyUtils } from './ProxyUtils';
-import { AppContext } from '../../core/AppContext';
+
+export interface IModelState {
+    [key: string]: any;
+}
+
+/**
+ * Интерфейс для описания результата выполнения операции с поиском 1 значения
+ */
+export interface ISelectOneModelRes extends Omit<IModelRes, 'data'> {
+    /**
+     * Результат выполнения операции.
+     * Присутствует только при status = true.
+     * Может содержать любые данные в зависимости от операции
+     */
+    data?: IDataValue;
+}
 
 /**
  * Абстрактный класс для создания моделей данных
  * Предоставляет базовую функциональность для работы с данными в базе данных
  *
  * @example
- * ```typescript
+ * ```ts
  * class UserModel extends Model<UserState> {
  *   // Определение правил валидации
  *   rules(): IModelRules[] {
@@ -61,34 +69,12 @@ import { AppContext } from '../../core/AppContext';
  * @template TState - Тип состояния модели
  * @class Model
  */
-export abstract class Model<TState extends TStateData> {
+export abstract class Model<TState extends IModelState> {
     /**
-     * Контроллер для работы с базой данных
-     * Используется для выполнения запросов и управления данными
-     *
-     * @example
-     * ```typescript
-     * // Получение данных через контроллер
-     * const result = await this.dbController.select(
-     *   { where: { id: 1 } },
-     *   true
-     * );
-     * ```
-     */
-    public dbController: IDbControllerModel | DbController;
-
-    /**
-     * Объект для хранения параметров запроса
+     * Объект для хранения параметров запроса.
      * Содержит условия поиска и данные для обновления
-     *
-     * @example
-     * ```typescript
-     * // Установка параметров запроса
-     * this.queryData.setQuery({ id: 1 });
-     * this.queryData.setData({ name: 'John' });
-     * ```
      */
-    public queryData: QueryData;
+    public queryData: IQuery;
 
     /**
      * Начальный индекс для итерации по данным.
@@ -97,11 +83,11 @@ export abstract class Model<TState extends TStateData> {
     public startIndex = 0;
 
     /**
-     * Состояние модели
+     * Состояние модели.
      * Содержит текущие значения всех атрибутов
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Установка значений
      * this.state.username = 'John';
      * this.state.age = 25;
@@ -122,7 +108,7 @@ export abstract class Model<TState extends TStateData> {
      * Должен быть реализован в дочерних классах
      *
      * @example
-     * ```typescript
+     * ```ts
      * rules(): IModelRules[] {
      *   return [
      *     { name: ['username'], type: 'string', max: 50 },
@@ -141,7 +127,7 @@ export abstract class Model<TState extends TStateData> {
      * Должен быть реализован в дочерних классах
      *
      * @example
-     * ```typescript
+     * ```ts
      * attributeLabels(): UserState {
      *   return {
      *     id: 'ID',
@@ -161,7 +147,7 @@ export abstract class Model<TState extends TStateData> {
      * Должен быть реализован в дочерних классах
      *
      * @example
-     * ```typescript
+     * ```ts
      * tableName(): string {
      *   return 'users';
      * }
@@ -173,25 +159,23 @@ export abstract class Model<TState extends TStateData> {
     public abstract tableName(): string;
 
     /**
-     * Создает новый экземпляр модели
+     * Создает новый экземпляр модели.
      * Инициализирует контроллер базы данных и состояние модели
      *
      * @example
-     * ```typescript
+     * ```ts
      * const user = new UserModel();
      * ```
      */
     protected constructor(appContext: AppContext) {
         this._appContext = appContext;
-        if (appContext?.userDbController) {
-            this.dbController = appContext.userDbController;
-        } else {
-            this.dbController = new DbController(appContext);
-        }
-        this.dbController.tableName = this.tableName();
-        this.dbController.setRules(this.rules());
-        this.dbController.primaryKeyName = this.getId();
-        this.queryData = new QueryData();
+        this.queryData = {
+            query: null,
+            data: null,
+            tableName: this.tableName(),
+            primaryKeyName: this.getId(),
+            rules: this.rules(),
+        };
         Object.keys(this.attributeLabels()).forEach((key) => {
             this.state[key as keyof TState] = undefined;
         });
@@ -202,7 +186,7 @@ export abstract class Model<TState extends TStateData> {
      * Проверяет состояние подключения к базе данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * const isConnected = await model.isConnected();
      * if (isConnected) {
      *   // Выполнение операций с базой данных
@@ -211,15 +195,18 @@ export abstract class Model<TState extends TStateData> {
      *
      * @returns Promise<boolean> - true если подключение активно
      */
-    public async isConnected(): Promise<boolean> {
-        return await this.dbController.isConnected();
+    public isConnected(): Promise<boolean> | boolean {
+        if (this._appContext.database.adapter) {
+            return this._appContext.database.adapter.isConnected();
+        }
+        return false;
     }
 
     /**
      * Экранирует специальные символы в строке
      *
      * @example
-     * ```typescript
+     * ```ts
      * const safe = model.escapeString("O'Connor");
      * ```
      *
@@ -227,8 +214,8 @@ export abstract class Model<TState extends TStateData> {
      * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
-        if (this.dbController) {
-            return this.dbController.escapeString(text);
+        if (this._appContext.database.adapter) {
+            return this._appContext.database.adapter.escapeString(text);
         }
         return text.toString();
     }
@@ -238,7 +225,7 @@ export abstract class Model<TState extends TStateData> {
      * Может быть переопределен в дочерних классах
      *
      * @example
-     * ```typescript
+     * ```ts
      * validate(): void {
      *   if (!this.state.username) {
      *     throw new Error('Username is required');
@@ -254,7 +241,7 @@ export abstract class Model<TState extends TStateData> {
      *
      * @returns Имя первичного ключа или null
      */
-    protected getId(): string | number | null {
+    protected getId(): TKey {
         const labels = this.attributeLabels();
         for (const index in labels) {
             if (labels[index] === 'id' || labels[index] === 'ID') {
@@ -268,7 +255,7 @@ export abstract class Model<TState extends TStateData> {
      * Инициализирует модель данными
      *
      * @example
-     * ```typescript
+     * ```ts
      * model.init({
      *   id: 1,
      *   username: 'John',
@@ -278,7 +265,7 @@ export abstract class Model<TState extends TStateData> {
      *
      * @param data - Данные для инициализации
      */
-    public init(data: IDbControllerResult[] | IDbControllerResult | null): void {
+    public init(data: IDbResult[] | IDbResult | null): void {
         if (data === null) {
             return;
         }
@@ -287,8 +274,8 @@ export abstract class Model<TState extends TStateData> {
 
         for (const index in labels) {
             if (data) {
-                if (typeof (data as IDbControllerResult)[index] !== 'undefined') {
-                    this.state[index as keyof TState] = (data as IDbControllerResult)[
+                if (typeof (data as IDbResult)[index] !== 'undefined') {
+                    this.state[index as keyof TState] = (data as IDbResult)[
                         index
                     ] as TState[keyof TState];
                 } else if (typeof data[i] !== 'undefined') {
@@ -307,7 +294,7 @@ export abstract class Model<TState extends TStateData> {
      * Выполняет поиск записи по первичному ключу
      *
      * @example
-     * ```typescript
+     * ```ts
      * const result = await model.selectOne();
      * if (result.status) {
      *   model.init(result.data);
@@ -316,15 +303,25 @@ export abstract class Model<TState extends TStateData> {
      *
      * @returns Promise с результатом запроса
      */
-    public async selectOne(): Promise<IModelRes> {
-        const idName = this.dbController.primaryKeyName;
+    public async selectOne(): Promise<ISelectOneModelRes> {
+        const idName = this.queryData.primaryKeyName;
         if (idName) {
-            this.queryData.setQuery({
+            this.queryData.query = {
                 [idName]: this.state[idName],
-            });
+            };
         }
-        this.queryData.setData(null);
-        return await this.dbController.select(this.queryData.getQuery(), true);
+        this.queryData.data = null;
+        if (this._appContext.database.adapter) {
+            return (await this._appContext.database.adapter.select(
+                this.queryData,
+                this.queryData.query,
+                true,
+            )) as ISelectOneModelRes;
+        }
+        return {
+            status: false,
+            error: 'Не указан источник для базы данных',
+        };
     }
 
     /**
@@ -334,11 +331,11 @@ export abstract class Model<TState extends TStateData> {
     private _initData(): void {
         // Не назвать через "#", так как есть proxy
         this.validate();
-        const idName = this.dbController.primaryKeyName;
+        const idName = this.queryData.primaryKeyName;
         if (idName) {
-            this.queryData.setQuery({
+            this.queryData.query = {
                 [idName]: this.state[idName],
-            });
+            };
         }
         const data: IQueryData = {};
         for (const index in this.attributeLabels()) {
@@ -346,7 +343,7 @@ export abstract class Model<TState extends TStateData> {
                 data[index] = this.state[index];
             }
         }
-        this.queryData.setData(data);
+        this.queryData.data = data;
     }
 
     /**
@@ -354,7 +351,7 @@ export abstract class Model<TState extends TStateData> {
      * Если запись существует - обновляет, иначе создает новую
      *
      * @example
-     * ```typescript
+     * ```ts
      * model.state.name = 'John';
      * await model.save(); // Обновление существующей записи
      * await model.save(true); // Создание новой записи
@@ -363,54 +360,63 @@ export abstract class Model<TState extends TStateData> {
      * @param isNew - Флаг создания новой записи
      * @returns Promise с результатом операции
      */
-    public async save(isNew: boolean = false): Promise<any> {
+    public async save(isNew: boolean = false): Promise<boolean> {
         this._initData();
-        return await this.dbController.save(this.queryData, isNew);
+        if (this._appContext.database.adapter) {
+            return await this._appContext.database.adapter.save(this.queryData, isNew);
+        }
+        return false;
     }
 
     /**
      * Обновляет существующую запись в базе данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * model.state.name = 'John';
      * await model.update();
      * ```
      *
      * @returns Promise с результатом операции
      */
-    public async update(): Promise<any> {
+    public async update(): Promise<boolean> {
         this._initData();
-        return await this.dbController.update(this.queryData);
+        if (this._appContext.database.adapter) {
+            return await this._appContext.database.adapter.update(this.queryData);
+        }
+        return false;
     }
 
     /**
      * Добавляет новую запись в базу данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * model.state.name = 'John';
      * await model.add();
      * ```
      *
      * @returns Promise с результатом операции
      */
-    public async add(): Promise<any> {
+    public async add(): Promise<boolean> {
         this.validate();
-        this.queryData.setQuery(null);
+        this.queryData.query = null;
         const data: IQueryData = {};
         for (const index in this.attributeLabels()) {
             data[index] = this.state[index];
         }
-        this.queryData.setData(data);
-        return await this.dbController.insert(this.queryData);
+        this.queryData.data = data;
+        if (this._appContext.database.adapter) {
+            return await this._appContext.database.adapter.insert(this.queryData);
+        }
+        return false;
     }
 
     /**
      * Удаляет запись из базы данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * await model.remove();
      * ```
      *
@@ -418,14 +424,17 @@ export abstract class Model<TState extends TStateData> {
      */
     public async remove(): Promise<boolean> {
         this.validate();
-        const idName = this.dbController.primaryKeyName;
+        const idName = this.queryData.primaryKeyName;
         if (idName) {
-            this.queryData.setQuery({
+            this.queryData.query = {
                 [idName]: this.state[idName],
-            });
+            };
         }
-        this.queryData.setData(null);
-        return await this.dbController.remove(this.queryData);
+        this.queryData.data = null;
+        if (this._appContext.database.adapter) {
+            return await this._appContext.database.adapter.remove(this.queryData);
+        }
+        return false;
     }
 
     /**
@@ -435,17 +444,25 @@ export abstract class Model<TState extends TStateData> {
      * @param isOne - Флаг выборки одной записи
      * @returns Promise с результатом запроса
      */
-    public async where(where: any = '1', isOne: boolean = false): Promise<IModelRes> {
-        const select: IQueryData | null =
-            typeof where === 'string' ? QueryData.getQueryData(where) : where;
-        return await this.dbController.select(select, isOne);
+    public async where(
+        where: string | IQueryData = '1',
+        isOne: boolean = false,
+    ): Promise<IModelRes> {
+        const select: IQueryData | null = typeof where === 'string' ? getQueryData(where) : where;
+        if (this._appContext.database.adapter) {
+            return await this._appContext.database.adapter.select(this.queryData, select, isOne);
+        }
+        return {
+            status: false,
+            error: 'Не указан источник для базы данных',
+        };
     }
 
     /**
      * Выполняет запрос с выборкой одной записи
      *
      * @example
-     * ```typescript
+     * ```ts
      * const found = await model.whereOne({ id: 1 });
      * if (found) {
      *   console.log('Record found');
@@ -455,10 +472,10 @@ export abstract class Model<TState extends TStateData> {
      * @param where - Условия запроса
      * @returns Promise<boolean> - true если запись найдена
      */
-    public async whereOne(where: any = '1'): Promise<boolean> {
+    public async whereOne(where: string | IQueryData = '1'): Promise<boolean> {
         const res = await this.where(where, true);
-        if (res && res.status) {
-            this.init(this.dbController.getValue(res));
+        if (res && res.status && this._appContext.database.adapter) {
+            this.init(this._appContext.database.adapter.getValue(res));
             return true;
         }
         return false;
@@ -468,7 +485,7 @@ export abstract class Model<TState extends TStateData> {
      * Выполняет произвольный запрос к базе данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * const result = await model.query(async (client, db) => {
      *   const collection = db.collection('users');
      *   return await collection.aggregate([
@@ -481,19 +498,22 @@ export abstract class Model<TState extends TStateData> {
      * @param callback - Функция обратного вызова для выполнения запроса
      * @returns Результат выполнения запроса
      */
-    public query(callback: TQueryCb): any {
-        return this.dbController.query(callback);
+    public query(callback: TQueryCb): unknown {
+        if (this._appContext.database.adapter) {
+            return this._appContext.database.adapter.query(callback);
+        }
+        return null;
     }
 
     /**
      * Закрывает соединение с базой данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * model.destroy();
      * ```
      */
     public destroy(): void {
-        this.dbController.destroy();
+        this._appContext.database.adapter?.destroy();
     }
 }

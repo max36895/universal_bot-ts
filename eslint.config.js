@@ -43,11 +43,11 @@ module.exports = [
             'security/detect-unsafe-regex': 'warn',
 
             '@typescript-eslint/explicit-function-return-type': 'warn',
-            '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/ban-ts-comment': 'off',
+            '@typescript-eslint/no-explicit-any': 'off', // От any сложно отказаться
+            '@typescript-eslint/ban-ts-comment': 'off', // Есть места которые так просто не поправить. В основном они связаны с post
 
             'require-atomic-updates': 'error',
-            'max-lines-per-function': ['warn', { max: 80 }],
+            'max-lines-per-function': ['warn', { max: 100 }], // Меньшее значение мешает, из-за чего приходиться дробить метод, либо убирать логические разделения, благодаря которым удобнее читать код
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',
             'no-unused-vars': 'off', // ругается на абстрактные классы и интерфейсы

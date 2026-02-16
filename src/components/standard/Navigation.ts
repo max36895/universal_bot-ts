@@ -1,10 +1,10 @@
-import { ITextSimilarity, Text } from '../../utils/standard/Text';
+import { ITextSimilarity, Text } from '../../utils';
 
 /**
  * Тип элементов, по которым будет происходить навигация.
  * Может быть объектом, числом, строкой или любым другим типом.
  * @example
- * ```typescript
+ * ```ts
  * // Строковые элементы
  * const elements: TElementType[] = ['Элемент 1', 'Элемент 2', 'Элемент 3'];
  *
@@ -15,13 +15,13 @@ import { ITextSimilarity, Text } from '../../utils/standard/Text';
  * ];
  * ```
  */
-export type TElementType = Record<string, string> | number | string | any;
+export type TElementType = Record<string, string> | number | string | unknown;
 
 /**
  * Тип ключей для поиска по объектам.
  * Может быть строкой или массивом строк.
  * @example
- * ```typescript
+ * ```ts
  * // Одиночный ключ
  * const key: TKeys = 'name';
  *
@@ -43,7 +43,7 @@ export type TKeys = string | string[];
  * @class Navigation
  *
  * @example
- * ```typescript
+ * ```ts
  * // Создание экземпляра с максимальным количеством видимых элементов
  * const navigation = new Navigation<{id: number, name: string}>(3);
  *
@@ -89,7 +89,7 @@ export class Navigation<ElementType = TElementType> {
      * Дополняет или заменяет стандартные команды в зависимости от isUsedStandardText
      * @defaultValue []
      * @example
-     * ```typescript
+     * ```ts
      * navigation.nextText = ['следующая', 'продолжить'];
      * ```
      */
@@ -100,7 +100,7 @@ export class Navigation<ElementType = TElementType> {
      * Дополняет или заменяет стандартные команды в зависимости от isUsedStandardText
      * @defaultValue []
      * @example
-     * ```typescript
+     * ```ts
      * navigation.oldText = ['предыдущая', 'вернуться'];
      * ```
      */
@@ -129,7 +129,7 @@ export class Navigation<ElementType = TElementType> {
      * Создает экземпляр класса Navigation.
      * @param {number} maxVisibleElements Максимальное количество отображаемых элементов на странице
      * @example
-     * ```typescript
+     * ```ts
      * // Создание с 3 элементами на странице
      * const navigation = new Navigation(3);
      *
@@ -153,7 +153,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если обнаружена команда навигации вперед
      * @example
-     * ```typescript
+     * ```ts
      * const isNext = navigation.isNext('покажи дальше'); // true
      * const isNext = navigation.isNext('вернись назад'); // false
      * ```
@@ -175,7 +175,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если обнаружена команда навигации назад
      * @example
-     * ```typescript
+     * ```ts
      * const isOld = navigation.isOld('вернись назад'); // true
      * const isOld = navigation.isOld('покажи дальше'); // false
      * ```
@@ -213,7 +213,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если обнаружено указание страницы
      * @example
-     * ```typescript
+     * ```ts
      * const isNumberPage = navigation.numberPage('покажи 2 страницу'); // true
      * const isNumberPage = navigation.numberPage('следующая страница'); // false
      * ```
@@ -264,11 +264,15 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает массив элементов текущей страницы.
      * Обрабатывает команды навигации и возвращает элементы в пределах maxVisibleElements
      *
+     * ⚠️ ПОБОЧНЫЙ ЭФФЕКТ: При передаче `text` с командой навигации ("Дальше"/"Назад")
+     * автоматически изменяет `this.thisPage` (текущую страницу).
+     *
+     *
      * @param {ElementType[]} elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
      * @return {ElementType[]} Массив элементов текущей страницы
      * @example
-     * ```typescript
+     * ```ts
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' },
@@ -317,7 +321,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {number} thisPage Текущая страница
      * @return {ElementType | null} Выбранный элемент или null
      * @example
-     * ```typescript
+     * ```ts
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' }
@@ -379,14 +383,14 @@ export class Navigation<ElementType = TElementType> {
                     if (elementsTypeof === 'object') {
                         if (typeof keys === 'object') {
                             keys.forEach((key) => {
-                                const value = (this.elements[i] as any)[key] as string;
+                                const value = (this.elements[i] as Record<string, string>)[key];
                                 if (value) {
                                     const r = Text.textSimilarity(value, text, 75);
                                     setMaxElement(i, r);
                                 }
                             });
                         } else {
-                            const value = (this.elements[i] as any)[keys];
+                            const value = (this.elements[i] as Record<string, string>)[keys];
                             if (value) {
                                 const r = Text.textSimilarity(value, text, 75);
                                 setMaxElement(i, r);
@@ -410,14 +414,14 @@ export class Navigation<ElementType = TElementType> {
      * @param {boolean} isNumber Включить команды с номерами страниц
      * @return {string[]} Массив команд навигации
      * @example
-     * ```typescript
+     * ```ts
      * // Получение базовых команд
      * const commands = navigation.getPageNav();
-     * // ['дальше', 'вперед', 'назад']
+     * // ['👈 Назад', 'Дальше 👉']
      *
      * // Получение команд с номерами страниц
      * const commands = navigation.getPageNav(true);
-     * // ['дальше', 'вперед', 'назад', '1 страница', '2 страница']
+     * // ['1', '2', '3']
      * ```
      */
     public getPageNav(isNumber: boolean = false): string[] {
@@ -468,7 +472,7 @@ export class Navigation<ElementType = TElementType> {
      *
      * @return {string} Информация о текущей странице
      * @example
-     * ```typescript
+     * ```ts
      * const info = navigation.getPageInfo();
      * // "Страница 1 из 3"
      * ```
@@ -497,7 +501,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {ElementType[]} elements Массив элементов
      * @return {number} Максимальное количество страниц
      * @example
-     * ```typescript
+     * ```ts
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' },

@@ -11,7 +11,7 @@ jest.mock('fs', () => ({
 }));
 
 import { AppContext } from '../../src';
-import { YandexImageRequest } from '../../src/api/YandexImageRequest';
+import { YandexImageRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,9 +19,8 @@ describe('YandexImageRequest', () => {
     let imageApi: YandexImageRequest;
 
     beforeEach(() => {
-        appContext.platformParams.app_id = 'skill-123';
-        appContext.platformParams.yandex_token = 'oauth-token';
-        imageApi = new YandexImageRequest(null, null, appContext);
+        appContext.appConfig.tokens.alisa = { token: 'oauth-token' };
+        imageApi = new YandexImageRequest(null, 'skill-123', appContext);
         (global.fetch as jest.Mock).mockClear();
     });
 

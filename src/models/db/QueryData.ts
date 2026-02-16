@@ -6,13 +6,16 @@
  * - Парсинга строк запросов
  * - Управления данными для вставки и обновления
  */
+import { IModelRules } from '../interface/IModel';
 
 /**
- * Интерфейс для хранения данных запроса к базе данных
+ * Интерфейс для хранения данных запроса к базе данных.
  * Позволяет задавать произвольные поля и их значения
  *
+ * Значения могут быть простыми (строка, число) или объектами с операторами (например, $gt, $in). Формат условий зависит от реализации адаптера — фреймворк не навязывает конкретный диалект.
+ *
  * @example
- * ```typescript
+ * ```ts
  * const query: IQueryData = {
  *   id: 1,                    // Поиск по id = 1
  *   name: 'John',            // Поиск по name = 'John'
@@ -28,7 +31,7 @@ export interface IQueryData {
      * Значение - условие для поиска или значение для обновления
      *
      * @example
-     * ```typescript
+     * ```ts
      * {
      *   'user_id': 123,           // Точное совпадение
      *   'status': 'active',       // Точное совпадение
@@ -37,165 +40,71 @@ export interface IQueryData {
      * }
      * ```
      */
-    [key: string]: string | number | any;
+    [key: string]: any | string | number;
 }
 
 const DATA_REG = /`([^`]+)`\s*=\s*(?:"([^"]*)"|(\S+))/gim;
 
 /**
- * Класс для управления данными запросов к базе данных
- * Позволяет хранить и манипулировать параметрами запросов и данными для обновления
- *
- * @example
- * ```typescript
- * // Создание запроса для поиска пользователей
- * const query = new QueryData(
- *   { age: { $gt: 18 }, status: 'active' },
- *   null
- * );
- *
- * // Создание запроса для обновления данных
- * const update = new QueryData(
- *   { id: 1 },
- *   { name: 'John', age: 25 }
- * );
- * ```
+ * Тип для ключа
  */
-export class QueryData {
-    /**
-     * Параметры запроса для поиска данных
-     * Содержит условия фильтрации и поиска
-     *
-     * @example
-     * ```typescript
-     * this._query = {
-     *   id: 1,
-     *   status: 'active'
-     * };
-     * ```
-     */
-    protected _query: IQueryData | null = null;
+export type TKey = string | number | null;
 
+/**
+ * Структура запроса к базе данных.
+ *
+ * Используется всеми методами адаптера (`_select`, `_insert` и др.).
+ */
+export interface IQuery {
+    /**
+     * Условие фильтрации (для SELECT/UPDATE/DELETE)
+     */
+    query: IQueryData | null;
     /**
      * Данные для вставки или обновления
-     * Содержит поля и их новые значения
-     *
-     * @example
-     * ```typescript
-     * this._data = {
-     *   name: 'John',
-     *   age: 25,
-     *   status: 'active'
-     * };
-     * ```
      */
-    protected _data: IQueryData | null = null;
-
+    data: IQueryData | null;
     /**
-     * Создает новый экземпляр QueryData
-     *
-     * @param query - Параметры запроса для поиска
-     * @param data - Данные для вставки/обновления
-     *
-     * @example
-     * ```typescript
-     * const queryData = new QueryData(
-     *   { id: 1 },
-     *   { name: 'John' }
-     * );
-     * ```
+     * Название таблиц
      */
-    constructor(query: IQueryData | null = null, data: IQueryData | null = null) {
-        this.setQuery(query);
-        this.setData(data);
-    }
-
+    tableName: string;
     /**
-     * Парсит строку запроса в объект IQueryData
-     * Поддерживает формат `field=value` с возможностью экранирования
-     *
-     * @example
-     * ```typescript
-     * const query = QueryData.getQueryData('`id`=1 `name`="John Doe"');
-     * // Результат: { id: 1, name: 'John Doe' }
-     * ```
-     *
-     * @param str - Строка запроса для парсинга
-     * @returns Объект с параметрами запроса или null
+     * Имя поля, используемого как первичный ключ (может быть null)
      */
-    public static getQueryData(str: string): IQueryData | null {
-        if (str) {
-            const datas = str.matchAll(DATA_REG);
-            const regData: IQueryData = {};
-            let data = datas.next();
-            while (!data.done) {
-                let val: string | number = data.value[2] ?? data.value[3];
-                if (!isNaN(+val)) {
-                    val = +val;
-                }
-                regData[data.value[1]] = val;
-                data = datas.next();
+    primaryKeyName: TKey;
+    /**
+     * Правила валидации модели
+     */
+    rules: IModelRules[];
+}
+
+/**
+ * Парсит строку запроса в объект IQueryData
+ * Поддерживает формат `field=value` с возможностью экранирования
+ *
+ * @example
+ * ```ts
+ * const query = QueryData.getQueryData('`id`=1 `name`="John Doe"');
+ * // Результат: { id: 1, name: 'John Doe' }
+ * ```
+ *
+ * @param str - Строка запроса для парсинга
+ * @returns Объект с параметрами запроса или null
+ */
+export function getQueryData(str: string): IQueryData | null {
+    if (str) {
+        const datas = str.matchAll(DATA_REG);
+        const regData: IQueryData = {};
+        let data = datas.next();
+        while (!data.done) {
+            let val: string | number = data.value[2] ?? data.value[3];
+            if (!isNaN(+val)) {
+                val = +val;
             }
-            return regData;
+            regData[data.value[1]] = val;
+            data = datas.next();
         }
-        return null;
+        return regData;
     }
-
-    /**
-     * Получает текущие параметры запроса
-     *
-     * @example
-     * ```typescript
-     * const query = queryData.getQuery();
-     * console.log(query); // { id: 1, status: 'active' }
-     * ```
-     *
-     * @returns Текущие параметры запроса или null
-     */
-    public getQuery(): IQueryData | null {
-        return this._query;
-    }
-
-    /**
-     * Устанавливает новые параметры запроса
-     *
-     * @example
-     * ```typescript
-     * queryData.setQuery({ id: 1, status: 'active' });
-     * ```
-     *
-     * @param query - Новые параметры запроса
-     */
-    public setQuery(query: IQueryData | null): void {
-        this._query = query;
-    }
-
-    /**
-     * Получает текущие данные для вставки/обновления
-     *
-     * @example
-     * ```typescript
-     * const data = queryData.getData();
-     * console.log(data); // { name: 'John', age: 25 }
-     * ```
-     *
-     * @returns Текущие данные или null
-     */
-    public getData(): IQueryData | null {
-        return this._data;
-    }
-
-    /**
-     * Устанавливает новые данные для вставки/обновления
-     *
-     * @example
-     * ```typescript
-     * queryData.setData({ name: 'John', age: 25 });
-     * ```
-     *
-     * @param data - Новые данные для вставки/обновления
-     */
-    public setData(data: IQueryData | null): void {
-        this._data = data;
-    }
+    return null;
 }

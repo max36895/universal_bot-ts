@@ -4,7 +4,7 @@
  * Time: {{time}}
  */
 
-import { AlisaSound, BotController, Text, WELCOME_INTENT_NAME, IUserData } from 'umbot';
+import { BotController, Text, WELCOME_INTENT_NAME, IUserData, SoundConstants } from 'umbot';
 
 interface IQuestion {
     text: string;
@@ -47,7 +47,9 @@ export class __className__Controller extends BotController<IMyUserData> {
         }
         this.userData.question_id = id;
         this.text = this.question[id].text;
-        this.buttons.btns = this.question[id].variants;
+        this.question[id].variants.forEach((variant) => {
+            this.buttons.addBtn(variant);
+        });
     }
 
     /**
@@ -58,14 +60,14 @@ export class __className__Controller extends BotController<IMyUserData> {
      */
     protected _isSuccess(text: string | null, questionId: number) {
         if (Text.isSayText(this.question[questionId].success, text || '')) {
-            const successTexts = ['Совершенно верно!\n'];
+            const successTexts = ['Совершенно верно!'];
             this.text = Text.getText(successTexts);
-            this.tts = this.text + AlisaSound.S_AUDIO_GAME_WIN;
+            this.tts = this.text + SoundConstants.S_AUDIO_GAME_WIN;
             questionId++;
         } else {
-            const failTexts = ['Ты ошибся... Попробуй ещё раз!\n'];
+            const failTexts = ['Ты ошибся... Попробуй ещё раз!'];
             this.text = Text.getText(failTexts);
-            this.tts = this.text + AlisaSound.S_AUDIO_GAME_LOSS;
+            this.tts = this.text + SoundConstants.S_AUDIO_GAME_LOSS;
         }
         this._setQuestionText(questionId);
     }
@@ -74,6 +76,7 @@ export class __className__Controller extends BotController<IMyUserData> {
      * Начат квест
      */
     protected _quiz() {
+        this.thisIntentName = this.GAME_QUESTION;
         if (typeof this.userData.question_id !== 'undefined') {
             this._isSuccess(this.userCommand, this.userData.question_id);
         } else {
@@ -102,8 +105,8 @@ export class __className__Controller extends BotController<IMyUserData> {
     public action(intentName: string): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
-                this.userData.prevCommand = this.START_QUESTION;
-                this.buttons.btns = ['Да', 'Нет'];
+                this.thisIntentName = this.START_QUESTION;
+                this.buttons.addBtn('Да').addBtn('Нет');
                 break;
 
             case 'replay':
@@ -112,18 +115,18 @@ export class __className__Controller extends BotController<IMyUserData> {
                 break;
 
             default:
-                switch (this.userData.prevCommand) {
+                switch (this.userData.oldIntentName) {
                     case this.START_QUESTION:
                         if (Text.isSayTrue(this.userCommand || '')) {
                             this.text = 'Отлично!\nТогда начинаем!\n';
                             this._quiz();
-                            this.userData.prevCommand = this.GAME_QUESTION;
+                            this.thisIntentName = this.GAME_QUESTION;
                         } else if (Text.isSayFalse(this.userCommand || '')) {
                             this.text = 'Хорошо!\nПоиграем в другой раз!';
                             this.isEnd = true;
                         } else {
                             this.text = 'Скажи, ты готов начать игру?';
-                            this.buttons.btns = ['Да', 'Нет'];
+                            this.buttons.addBtn('Да').addBtn('Нет');
                         }
                         break;
 

@@ -1,7 +1,7 @@
 global.fetch = jest.fn();
 
 import { AppContext } from '../../src';
-import { YandexRequest } from '../../src/api/YandexRequest';
+import { YandexRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -9,7 +9,7 @@ describe('YandexRequest', () => {
     let yandex: YandexRequest;
 
     beforeEach(() => {
-        appContext.platformParams.yandex_token = 'test-yandex-token';
+        appContext.appConfig.tokens.alisa = { token: 'test-yandex-token' };
         yandex = new YandexRequest(null, appContext);
         (global.fetch as jest.Mock).mockClear();
     });
@@ -24,7 +24,7 @@ describe('YandexRequest', () => {
             json: async () => ({ result: 'ok' }),
         });
 
-        const result = await yandex.call<any>('https://api.yandex.ru/test');
+        const result = await yandex.call('https://api.yandex.ru/test');
 
         expect(result).toEqual({ result: 'ok' });
         expect(global.fetch).toHaveBeenCalledWith(
@@ -39,7 +39,7 @@ describe('YandexRequest', () => {
             json: async () => ({ error: 'Invalid token' }),
         });
 
-        const result = await yandex.call<any>('https://api.yandex.ru/test');
+        const result = await yandex.call('https://api.yandex.ru/test');
         expect(result).toEqual({ error: 'Invalid token' });
     });
 });

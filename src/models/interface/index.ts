@@ -7,7 +7,7 @@
  * - Работы с контроллерами моделей
  *
  * @example
- * ```typescript
+ * ```ts
  * import { IModel, IDbControllerModel } from './models/interface';
  *
  * // Реализация базовой модели
@@ -34,4 +34,3 @@
  * ```
  */
 export * from './IModel';
-export * from './IDbControllerModel';

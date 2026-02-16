@@ -1,11 +1,6 @@
-import { Buttons, TButton, TButtonPayload } from '../button';
+import { Buttons, TButton } from '../button';
 import { Text, isFile } from '../../utils';
-import {
-    ISberSmartAppCardPadding,
-    TSberSmartAppTextColor,
-    TSberSmartAppTypeface,
-} from '../../platforms/interfaces';
-import { AppContext } from '../../core/AppContext';
+import { AppContext } from '../../core';
 
 /**
  * @interface IImageParams
@@ -18,7 +13,7 @@ import { AppContext } from '../../core/AppContext';
  * - Расширяется дополнительными параметрами
  *
  * @example
- * ```typescript
+ * ```ts
  * // Базовые параметры
  * const params: IImageParams = {
  *     titleTypeface: 'headline2',
@@ -43,126 +38,12 @@ import { AppContext } from '../../core/AppContext';
  */
 export interface IImageParams {
     /**
-     * Стиль верхнего текста (заголовка).
-     * Определяет типографику для заголовка изображения.
-     *
-     * @type {TSberSmartAppTypeface}
-     * @example
-     * ```typescript
-     * titleTypeface: 'headline2' // Основной заголовок
-     * titleTypeface: 'title1'    // Крупный заголовок
-     * titleTypeface: 'body1'     // Обычный текст
-     * ```
-     */
-    titleTypeface?: TSberSmartAppTypeface;
-
-    /**
-     * Цвет верхнего текста (заголовка).
-     * Определяет цветовое оформление заголовка.
-     *
-     * @type {TSberSmartAppTextColor}
-     * @example
-     * ```typescript
-     * titleText_color: 'default'   // Основной цвет
-     * titleText_color: 'secondary' // Вторичный цвет
-     * titleText_color: 'brand'     // Цвет бренда
-     * ```
-     */
-    titleText_color?: TSberSmartAppTextColor;
-
-    /**
-     * Отступы для верхнего текста (заголовка).
-     * Определяет пространство вокруг заголовка.
-     *
-     * @type {ISberSmartAppCardPadding}
-     * @example
-     * ```typescript
-     * titleMargins: {
-     *     top: '4x',
-     *     left: '8x',
-     *     right: '8x'
-     * }
-     * ```
-     */
-    titleMargins?: ISberSmartAppCardPadding;
-
-    /**
-     * Максимальное количество строк для верхнего текста.
-     * Ограничивает высоту заголовка.
-     *
-     * @type {number}
-     * @example
-     * ```typescript
-     * titleMax_lines: 2 // Заголовок в две строки
-     * titleMax_lines: 1 // Однострочный заголовок
-     * ```
-     */
-    titleMax_lines?: number;
-
-    /**
-     * Стиль нижнего текста (описания).
-     * Определяет типографику для описания изображения.
-     *
-     * @type {TSberSmartAppTypeface}
-     * @example
-     * ```typescript
-     * descTypeface: 'body3'    // Мелкий текст
-     * descTypeface: 'footnote1' // Сноска
-     * descTypeface: 'body1'    // Обычный текст
-     * ```
-     */
-    descTypeface?: TSberSmartAppTypeface;
-
-    /**
-     * Цвет нижнего текста (описания).
-     * Определяет цветовое оформление описания.
-     *
-     * @type {TSberSmartAppTextColor}
-     * @example
-     * ```typescript
-     * descText_color: 'secondary' // Вторичный цвет
-     * descText_color: 'default'   // Основной цвет
-     * descText_color: 'brand'     // Цвет бренда
-     * ```
-     */
-    descText_color?: TSberSmartAppTextColor;
-
-    /**
-     * Отступы для нижнего текста (описания).
-     * Определяет пространство вокруг описания.
-     *
-     * @type {ISberSmartAppCardPadding}
-     * @example
-     * ```typescript
-     * descMargins: {
-     *     top: '2x',
-     *     left: '8x',
-     *     right: '8x'
-     * }
-     * ```
-     */
-    descMargins?: ISberSmartAppCardPadding;
-
-    /**
-     * Максимальное количество строк для нижнего текста.
-     * Ограничивает высоту описания.
-     *
-     * @type {number}
-     * @example
-     * ```typescript
-     * descMax_lines: 3 // Описание в три строки
-     * descMax_lines: 2 // Описание в две строки
-     * ```
-     */
-    descMax_lines?: number;
-
-    /**
      * Дополнительные параметры изображения.
      * Позволяет расширять интерфейс специфичными параметрами.
      *
      * @type {any}
      * @example
-     * ```typescript
+     * ```ts
      * // Добавление пользовательских параметров
      * const params: IImageParams = {
      *     titleTypeface: 'headline2',
@@ -172,7 +53,7 @@ export interface IImageParams {
      * };
      * ```
      */
-    [name: string]: any;
+    [name: string]: unknown;
 }
 
 /**
@@ -186,8 +67,8 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
     } else {
         const title: string | null = button.title || button.text || null;
         const url: string | null = button.url || null;
-        const payload: TButtonPayload = button.payload || null;
-        buttonInst.addBtn(title, url, payload);
+        const payload = button.payload || null;
+        buttonInst.addBtn(title, url, payload as Record<string, unknown>);
     }
 }
 
@@ -203,9 +84,9 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
  * - Гибкая настройка параметров отображения
  *
  * @example
- * ```typescript
+ * ```ts
  * // Создание изображения из URL
- * const image = new Image();
+ * const image = new Image(appContext);
  * image.init(
  *     'https://example.com/image.jpg',
  *     'Заголовок изображения',
@@ -214,7 +95,7 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
  * );
  *
  * // Создание изображения из файла
- * const localImage = new Image();
+ * const localImage = new Image(appContext);
  * localImage.init(
  *     '/path/to/image.jpg',
  *     'Локальное изображение',
@@ -222,7 +103,7 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
  * );
  *
  * // Создание изображения с токеном
- * const tokenImage = new Image();
+ * const tokenImage = new Image(appContext);
  * tokenImage.isToken = true;
  * tokenImage.init(
  *     'image_token_123',
@@ -231,7 +112,7 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
  * );
  * ```
  */
-export class Image {
+export class Image<TImageParams extends IImageParams = IImageParams> {
     /**
      * Кнопки для обработки действий с изображением.
      * Зависит от типа приложения и платформы.
@@ -239,8 +120,8 @@ export class Image {
      * @type {Buttons}
      * @see Buttons
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.button.addBtn('Нажми меня', 'https://example.com');
      * image.button.addBtn('Другая кнопка', null, { action: 'custom' });
      * ```
@@ -253,8 +134,8 @@ export class Image {
      *
      * @type {string}
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.title = 'Название товара';
      * ```
      */
@@ -266,8 +147,8 @@ export class Image {
      *
      * @type {string}
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.desc = 'Подробное описание товара';
      * ```
      */
@@ -279,8 +160,8 @@ export class Image {
      *
      * @type {string | null}
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.imageToken = 'image_token_123';
      * ```
      */
@@ -292,8 +173,8 @@ export class Image {
      *
      * @type {string | null}
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.imageDir = 'https://example.com/image.jpg';
      * // или
      * image.imageDir = '/path/to/image.jpg';
@@ -303,13 +184,13 @@ export class Image {
 
     /**
      * Флаг использования токена.
-     * Если true, то imageToken используется как идентификатор.
+     * Если true, то imageDir используется как идентификатор.
      *
      * @type {boolean}
      * @default false
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.isToken = true;
      * image.init('image_token_123', 'Заголовок', 'Описание');
      * ```
@@ -322,8 +203,8 @@ export class Image {
      *
      * @type {IImageParams}
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      * image.params = {
      *     titleTypeface: 'headline2',
      *     titleText_color: 'default',
@@ -332,29 +213,18 @@ export class Image {
      * };
      * ```
      */
-    public params: IImageParams;
+    public params: TImageParams;
 
     /**
      * Конструктор класса Image.
      * Инициализирует все свойства значениями по умолчанию.
      *
-     * @param {AppContext} appContext - Контекст приложения
+     * @param {AppContext} appContext - Контекст приложения.
+     * ⚠️ Обычно НЕ создаётся вручную — автоматически передаётся через контроллер
      * @param {string | null} image - Путь к изображению или токен
      * @param {string} title - Заголовок изображения
      * @param {string} [desc=' '] - Описание изображения
      * @param {TButton | null} [button=null] - Кнопки для изображения
-     *
-     * @example
-     * ```typescript
-     * const image = new Image();
-     * // image.button = new Buttons()
-     * // image.title = ''
-     * // image.desc = ''
-     * // image.imageToken = null
-     * // image.imageDir = null
-     * // image.isToken = false
-     * // image.params = {}
-     * ```
      */
     public constructor(
         appContext: AppContext,
@@ -369,7 +239,7 @@ export class Image {
         this.imageToken = null;
         this.imageDir = null;
         this.isToken = false;
-        this.params = {};
+        this.params = {} as TImageParams;
         this.init(image, title, desc, button);
     }
 
@@ -395,8 +265,8 @@ export class Image {
      * @returns {boolean} true если инициализация успешна, false в противном случае
      *
      * @example
-     * ```typescript
-     * const image = new Image();
+     * ```ts
+     * const image = new Image(appContext);
      *
      * // Инициализация с URL
      * image.init(

@@ -14,8 +14,10 @@ export class __className__Controller extends BotController {
      * Либо вернуть текст помощи.
      *
      * @param {string} intentName Название действия.
+     * @param {boolean} isCommand Флаг, указывающий на то, что обрабатывается зарегистрированная команда.
+     * @param {boolean} isStep Флаг, указывающий на то, что обрабатывается зарегистрированный шаг.
      */
-    public action(intentName: string): void {
+    public action(intentName: string, isCommand?: boolean, isStep?: boolean): void {
         // TODO: Implement action() method.
     }
 }

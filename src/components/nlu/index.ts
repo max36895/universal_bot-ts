@@ -19,7 +19,7 @@
  *   - INluThisUser: Интерфейс для информации о пользователе
  *
  * @example
- * ```typescript
+ * ```ts
  * import { Nlu } from './components/nlu';
  *
  * // Создание экземпляра Nlu

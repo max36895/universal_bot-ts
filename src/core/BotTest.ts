@@ -2,30 +2,12 @@
  * Модуль для тестирования бота.
  * Предоставляет инструменты для отладки и тестирования функциональности бота
  */
-import { stdin } from '../utils/standard/util';
-import {
-    alisaConfig,
-    marusiaConfig,
-    vkConfig,
-    telegramConfig,
-    viberConfig,
-    maxAppConfig,
-    smartAppConfig,
-} from '../platforms/skillsTemplateConfig';
-import { Bot, TBotControllerClass, TTemplateTypeModelClass } from './Bot';
-import {
-    T_ALISA,
-    T_MARUSIA,
-    T_TELEGRAM,
-    T_USER_APP,
-    T_VIBER,
-    T_VK,
-    T_MAXAPP,
-    T_SMARTAPP,
-    TAppType,
-} from './AppContext';
-import { BotController, IUserData } from './../controller/BotController';
-import { BaseBotController } from '../controller';
+import { TAppType } from './interfaces/IAppContext';
+
+import { BotController, IUserData, BaseBotController } from '../controller';
+import { Bot, TBotControllerClass, TRunResult } from './Bot';
+import { stdin } from '../utils/';
+import { performance } from 'node:perf_hooks';
 
 /**
  * Функция для получения конфигурации пользовательского бота
@@ -36,7 +18,7 @@ import { BaseBotController } from '../controller';
  * @param {number} count - Номер сообщения в диалоге
  * @returns {any} Конфигурация для пользовательского бота
  */
-export type TUserBotConfigCb = (query: string, userId: string, count: number) => any;
+export type TUserBotConfigCb = (query: string, userId: string, count: number) => unknown;
 
 /**
  * Параметры для тестирования бота.
@@ -60,34 +42,24 @@ export interface IBotTestParams {
      * @defaultValue true
      */
     isShowTime?: boolean;
+}
 
-    /**
-     * Пользовательский класс для обработки команд
-     * Если не указан, используется стандартный обработчик
-     */
-    userBotClass?: TTemplateTypeModelClass | null;
-
-    /**
-     * Функция для получения конфигурации пользовательского бота.
-     * Используется только для типа приложения T_USER_APP
-     *
-     * @param {string} query - Пользовательский запрос
-     * @param {string} userId - Идентификатор пользователя
-     * @param {number} count - Номер сообщения в диалоге
-     * @returns {any} Конфигурация для пользовательского бота
-     */
-    userBotConfig?: TUserBotConfigCb | null;
+interface IResponse {
+    response: {
+        text: string;
+        tts: string;
+    };
 }
 
 /**
- * Класс для тестирования бота
- * Предоставляет интерактивный режим для отладки и тестирования функциональности
+ * Класс для тестирования бота.
+ * Предоставляет интерактивный режим для отладки и тестирования функциональности.
+ * Для того чтобы протестировать необходимую платформу, необходимо указать `appType`, в случае если значение не указано или установлено в auto, то для тестирования будет использоваться первая платформа.
  *
- * @class BotTest
  * @extends Bot
  *
  * @example
- * ```typescript
+ * ```ts
  * const botTest = new BotTest();
  * botTest.setPlatformParams({
  *   intents: [{
@@ -131,7 +103,7 @@ export class BotTest extends Bot {
      * @returns {Promise<void>}
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Базовое тестирование
      * await botTest.test();
      *
@@ -147,8 +119,6 @@ export class BotTest extends Bot {
         isShowResult = false,
         isShowStorage = false,
         isShowTime = true,
-        userBotClass = null,
-        userBotConfig = null,
     }: IBotTestParams = {}): Promise<void> {
         let count: number = 0;
         let state: string | IUserData = {};
@@ -166,51 +136,60 @@ export class BotTest extends Bot {
                 }
             }
             if (!this._content) {
-                this.setContent(
-                    JSON.stringify(this.getSkillContent(query, count, state, userBotConfig)),
-                );
+                this.setContent(JSON.stringify(this.getSkillContent(query, count, state)));
             }
-            const timeStart: number = Date.now();
+            const timeStart: number = performance.now();
             if (typeof this._content === 'string') {
                 this.setContent(JSON.parse(this._content));
             }
             this._setBotController(this._botController);
 
-            let result: any = await this.run(userBotClass);
-            if (isShowResult) {
-                console.log(`Результат работы: > \n${JSON.stringify(result)}\n\n`);
-            }
-            if (isShowStorage) {
-                console.log(
-                    `Данные в хранилище > \n${JSON.stringify(this._botController.userData)}\n\n`,
-                );
-            }
+            const result: IResponse = (await this.run(this.appType)) as IResponse;
+            const platformAdapter = this.getAppContext().platforms;
 
-            if (this.appType === T_ALISA) {
-                if (result.response.text) {
-                    result = result.response.text;
+            let strRes = '';
+            if (
+                this._botController.appType &&
+                platformAdapter &&
+                platformAdapter[this._botController.appType as string].isVoice
+            ) {
+                if (result.response?.text) {
+                    strRes = result.response.text;
                 } else {
-                    result = result.response.tts;
+                    strRes = result.response?.tts || 'пусто';
                 }
             } else {
-                result = this._botController.text;
+                strRes = this._botController.text;
             }
 
-            console.log(`Бот: > ${result}\n`);
-            if (isShowTime) {
-                const endTime: number = Date.now() - timeStart;
-                console.log(`Время выполнения: ${endTime}\n`);
+            if (isShowResult) {
+                console.log(`Ответ для платформы: > ${JSON.stringify(result)}`);
             }
+            if (isShowStorage) {
+                console.log(`Данные в базе > ${JSON.stringify(this._botController.userData)}`);
+                console.log(`Данные в хранилище > ${JSON.stringify(this._botController.state)}`);
+            }
+            if (isShowTime) {
+                const endTime: number = performance.now() - timeStart;
+                console.log(`Время выполнения: ${endTime.toFixed(3)}мс`);
+            }
+            console.log(`\nОтвет бота: > ${strRes}`);
+
             if (this._botController.isEnd) {
                 isEnd = true;
             } else {
-                console.log('Вы: > ');
+                console.log('Ваш запрос: > ');
                 this.setContent(null);
                 this._botController.text = this._botController.tts = '';
                 state = this._botController.userData;
                 count++;
+                this._botController.clearStoreData();
             }
         } while (!isEnd);
+    }
+
+    protected _clearState(): void {
+        return;
     }
 
     /**
@@ -220,7 +199,6 @@ export class BotTest extends Bot {
      * @param {string} query - Пользовательский запрос
      * @param {number} count - Номер сообщения в диалоге
      * @param {object|string} state - Данные из хранилища
-     * @param {TUserBotConfigCb} [userBotConfig] - Функция для пользовательской конфигурации
      * @returns {any} Конфигурация для выбранной платформы
      *
      * @protected
@@ -228,55 +206,32 @@ export class BotTest extends Bot {
     protected getSkillContent(
         query: string,
         count: number,
-        state: object | string,
-        userBotConfig?: TUserBotConfigCb | null,
-    ): any {
+        state: Record<string, unknown> | string,
+    ): unknown {
         /**
          * Все переменные используются внутри шаблонов
          */
-        let content: object = {};
         const userId: string = 'user_local_test';
-        switch (this.appType) {
-            case T_ALISA:
-                content = alisaConfig(query, userId, count, state);
-                break;
-
-            case T_MARUSIA:
-                content = marusiaConfig(query, userId, count, state);
-                break;
-
-            case T_VK:
-                this._botController.isSend = false;
-                content = vkConfig(query, userId, count);
-                break;
-
-            case T_TELEGRAM:
-                this._botController.isSend = false;
-                content = telegramConfig(query, userId, count);
-                break;
-
-            case T_VIBER:
-                this._botController.isSend = false;
-                content = viberConfig(query, userId);
-                break;
-
-            case T_MAXAPP:
-                this._botController.isSend = false;
-                content = maxAppConfig(query, userId, count);
-                break;
-
-            case T_SMARTAPP:
-                this._botController.isSend = false;
-                content = smartAppConfig(query, userId, count);
-                break;
-
-            case T_USER_APP:
-                this._botController.isSend = true;
-                if (userBotConfig) {
-                    content = userBotConfig(query, userId, count);
-                }
-                break;
+        let appType = this.appType;
+        if (appType === 'auto') {
+            appType = Object.keys(this.getAppContext().platforms)[0];
+            this.appType = appType;
         }
-        return content;
+        if (!this.getAppContext().platforms[appType].isVoice) {
+            this._botController.isSend = false;
+        }
+        return this.getAppContext().platforms[appType].getQueryExample(query, userId, count, state);
+    }
+
+    /**
+     * Запуск обработку запроса
+     * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит за классом.
+     * @param appType
+     * @param content
+     */
+    public run(appType?: TAppType | null, content?: string | null): Promise<TRunResult> {
+        this.appType = appType || 'alisa';
+        this._botController.appType = appType || 'alisa';
+        return super.run(appType, content);
     }
 }
