@@ -36,7 +36,7 @@ export async function soundProcessing(
         for (let i = 0; i < sounds.length; i++) {
             const sound = sounds[i];
             if (sound) {
-                if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
+                if (sound.sounds !== undefined && sound.key !== undefined) {
                     let sText: string | null = Text.getText(sound.sounds);
                     if (isFile(sText) || Text.isUrl(sText)) {
                         sText = await getSoundInDB(controller, sText);

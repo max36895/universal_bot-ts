@@ -63,7 +63,7 @@ export class YandexImageRequest extends YandexRequest {
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = STANDARD_URL + 'status';
         const query = await this.call<IYandexImagesCheckOutPlaceRequest>();
-        if (query && typeof query.images.quota !== 'undefined') {
+        if (query?.images?.quota !== undefined) {
             return query.images.quota;
         }
         this._log('checkOutPlace() Не удалось проверить занятое место под изображения.');
@@ -85,7 +85,7 @@ export class YandexImageRequest extends YandexRequest {
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
-            if (query && typeof query.image?.id !== 'undefined') {
+            if (query?.image?.id !== undefined) {
                 return query.image;
             } else {
                 this._log('downloadImageUrl() Не удалось загрузить изображение из web-ресурса.');
@@ -113,7 +113,7 @@ export class YandexImageRequest extends YandexRequest {
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;
             const query = await this.call<IYandexRequestDownloadImageRequest>();
-            if (typeof query?.image?.id !== 'undefined') {
+            if (query?.image?.id !== undefined) {
                 return query.image;
             } else {
                 this._log(
@@ -157,7 +157,7 @@ export class YandexImageRequest extends YandexRequest {
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;
-                if (query && typeof query.result !== 'undefined') {
+                if (query?.result !== undefined) {
                     return query.result;
                 } else {
                     this._log('deleteImage() Не удалось удалить изображение.');

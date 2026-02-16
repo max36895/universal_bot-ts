@@ -112,10 +112,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 let userId: string | null = null;
                 controller.platformOptions.isState = false;
                 if (this.appContext.platformParams.isAuthUser) {
-                    if (
-                        typeof session.user !== 'undefined' &&
-                        typeof session.user.user_id !== 'undefined'
-                    ) {
+                    if (session.user !== undefined && session.user.user_id !== undefined) {
                         userId = session.user.user_id;
                         controller.platformOptions.isState = true;
                         controller.userToken = session.user.access_token || null;
@@ -124,8 +121,8 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
 
                 if (userId === null) {
                     if (
-                        typeof session.application !== 'undefined' &&
-                        session.application.application_id !== 'undefined'
+                        session.application !== undefined &&
+                        session.application.application_id !== undefined
                     ) {
                         userId = session.application.application_id;
                     } else {
@@ -145,13 +142,13 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
      * @param state Объект состояния из запроса
      */
     #setState(controller: BotController, state: IAlisaRequestState): void {
-        if (typeof state.user !== 'undefined') {
+        if (state.user !== undefined) {
             controller.state = state.user;
             controller.platformOptions.stateName = 'user_state_update';
-        } else if (typeof state.application !== 'undefined') {
+        } else if (state.application !== undefined) {
             controller.state = state.application;
             controller.platformOptions.stateName = 'application_state';
-        } else if (typeof state.session !== 'undefined') {
+        } else if (state.session !== undefined) {
             controller.state = state.session;
             controller.platformOptions.stateName = 'session_state';
         }
@@ -166,10 +163,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 } else {
                     content = query;
                 }
-                if (
-                    typeof content.session === 'undefined' &&
-                    typeof content.request === 'undefined'
-                ) {
+                if (content.session === undefined && content.request === undefined) {
                     if (content.account_linking_complete_event) {
                         controller.userEvents = {
                             auth: {
@@ -191,14 +185,13 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 controller.userMeta = content.meta || {};
                 controller.messageId = content.session.message_id;
 
-                if (typeof content.state !== 'undefined') {
+                if (content.state !== undefined) {
                     this.#setState(controller, content.state);
                 }
 
                 controller.platformOptions.appId = content.session.skill_id;
                 controller.isScreen =
-                    typeof (controller.userMeta as IAlisaRequestMeta).interfaces.screen !==
-                    'undefined';
+                    (controller.userMeta as IAlisaRequestMeta).interfaces.screen !== undefined;
                 /*
                  * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
                  * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут

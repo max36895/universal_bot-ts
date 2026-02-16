@@ -297,7 +297,7 @@ export class Adapter extends Base<IMongoDbInfo> {
                 }
                 rule.name.forEach((data) => {
                     if (type === 'string') {
-                        if (typeof rule.max !== 'undefined') {
+                        if (rule.max !== undefined) {
                             element[data] = Text.resize(element[data] as string, rule.max);
                         }
                         element[data] = this.escapeString(element[data] as string);

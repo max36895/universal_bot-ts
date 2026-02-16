@@ -19,7 +19,7 @@ function getElement(image: Image, countImage: number = 1): IViberCard {
     }
     const btn: IViberButtonObject | null =
         image.button.getButtons<IViberButtonObject>(buttonProcessing);
-    if (btn && typeof btn.Buttons !== 'undefined') {
+    if (btn?.Buttons !== undefined) {
         element = { ...element, ...btn.Buttons[0] };
         element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;
     }

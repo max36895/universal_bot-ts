@@ -69,7 +69,7 @@ export class Adapter extends Base<IFileDbInfo> {
         super();
     }
     connect(): Promise<boolean> | boolean {
-        // todo костыль, но нужно как-то предварительно загрузить содержимое файлов, иначе потом будет читаться много раз сразу.
+        // TODO костыль, но нужно как-то предварительно загрузить содержимое файлов, иначе потом будет читаться много раз сразу.
         this.getFileData('UsersData');
         this.getFileData('SoundTokens');
         this.getFileData('ImageTokens');
@@ -89,16 +89,14 @@ export class Adapter extends Base<IFileDbInfo> {
                 const timeOutId = this._appContext.database.databaseInfo[tableName]?.timeOutId;
                 this._appContext.database.databaseInfo[tableName] = data;
                 // из-за асинхронности может выйти так, что кто-то записывает новые данные, которые перетирают ранее установленный timeout
-                if (typeof data.timeOutId === 'undefined' && typeof timeOutId !== 'undefined') {
+                if (data.timeOutId === undefined && timeOutId !== undefined) {
                     this._appContext.database.databaseInfo[tableName].timeOutId = timeOutId;
                 }
             }
+        } else if (data === undefined) {
+            delete this.#cachedFileData[tableName];
         } else {
-            if (data === undefined) {
-                delete this.#cachedFileData[tableName];
-            } else {
-                this.#cachedFileData[tableName] = data;
-            }
+            this.#cachedFileData[tableName] = data;
         }
     }
 
@@ -188,7 +186,7 @@ export class Adapter extends Base<IFileDbInfo> {
         if (select) {
             const idVal = select[updateData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
-                if (typeof data[idVal] !== 'undefined') {
+                if (data[idVal] !== undefined) {
                     data[idVal] = { ...data[idVal], ...update };
                     this.#update(updateData.tableName);
                 }
@@ -226,7 +224,7 @@ export class Adapter extends Base<IFileDbInfo> {
         if (remove) {
             const idVal = remove[removeData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
-                if (typeof data[idVal] !== 'undefined') {
+                if (data[idVal] !== undefined) {
                     delete data[idVal];
                     this.#update(removeData.tableName);
                 }
@@ -248,7 +246,7 @@ export class Adapter extends Base<IFileDbInfo> {
         selectData: IQuery,
         where: IQueryData,
         isOne: boolean = false,
-        content: TFileData,
+        content: TFileData = {},
     ): IModelRes {
         const whereKey = where[selectData.primaryKeyName as string];
         if (content[whereKey]) {
@@ -260,10 +258,7 @@ export class Adapter extends Base<IFileDbInfo> {
             } else {
                 let isSelected = false;
                 for (const data in where) {
-                    if (
-                        Object.hasOwnProperty.call(content[whereKey], data) &&
-                        Object.hasOwnProperty.call(where, data)
-                    ) {
+                    if (Object.hasOwn(content[whereKey], data) && Object.hasOwn(where, data)) {
                         isSelected = content[whereKey][data] === where[data];
                         if (!isSelected) {
                             break;
@@ -303,14 +298,11 @@ export class Adapter extends Base<IFileDbInfo> {
                 return this.#selectInPrimaryKey(selectData, where, isOne, content);
             }
             for (const key in content) {
-                if (Object.hasOwnProperty.call(content, key)) {
+                if (Object.hasOwn(content, key)) {
                     let isSelected = null;
 
                     for (const data in where) {
-                        if (
-                            Object.hasOwnProperty.call(content[key], data) &&
-                            Object.hasOwnProperty.call(where, data)
-                        ) {
+                        if (Object.hasOwn(content[key], data) && Object.hasOwn(where, data)) {
                             isSelected = content[key][data] === where[data];
                             if (isSelected === false) {
                                 break;
@@ -326,9 +318,7 @@ export class Adapter extends Base<IFileDbInfo> {
                                 data: result,
                             };
                         }
-                        if (result === null) {
-                            result = [];
-                        }
+                        result ??= [];
                         result.push(content[key]);
                     }
                 }
@@ -375,7 +365,7 @@ export class Adapter extends Base<IFileDbInfo> {
         const fileInfo = this.getCachedFileData(tableName).isFileRead
             ? null
             : getFileInfo(file).data;
-        if (fileInfo && fileInfo.isFile()) {
+        if (fileInfo?.isFile()) {
             // При размере базы более 400мб, может произойти падение приложения.
             if (fileInfo.size > 3.6e8) {
                 this._appContext.logError(

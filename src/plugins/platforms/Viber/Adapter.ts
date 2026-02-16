@@ -50,9 +50,9 @@ export class Adapter extends BasePlatform<IViberContent | string> {
             return false;
         }
         return (
-            typeof body.event !== 'undefined' &&
-            typeof body.timestamp !== 'undefined' &&
-            typeof body.message_token !== 'undefined'
+            body.event !== undefined &&
+            body.timestamp !== undefined &&
+            body.message_token !== undefined
         );
     }
 

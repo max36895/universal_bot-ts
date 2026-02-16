@@ -93,7 +93,7 @@ export class TelegramRequest {
         this.token = null;
         this.#error = null;
         this.#appContext = appContext;
-        if (typeof appContext.appConfig.tokens[T_TELEGRAM].token !== 'undefined') {
+        if (appContext.appConfig.tokens[T_TELEGRAM].token !== undefined) {
             this.initToken(appContext.appConfig.tokens[T_TELEGRAM].token as string);
         }
     }

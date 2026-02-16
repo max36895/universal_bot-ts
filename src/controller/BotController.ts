@@ -981,7 +981,7 @@ export abstract class BotController<
                         if (match) {
                             // Находим первую совпавшую подгруппу (index в массиве parts)
                             for (const key in match.groups) {
-                                if (typeof match.groups[key] !== 'undefined') {
+                                if (match.groups[key] !== undefined) {
                                     const commandName = groups.commands[+key.slice(1)];
                                     if (commandName && this.appContext.commands.has(commandName)) {
                                         return this.#commandCb(

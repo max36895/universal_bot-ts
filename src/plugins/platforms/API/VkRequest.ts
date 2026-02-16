@@ -169,7 +169,7 @@ export class VkRequest {
             const data = await this._request.send<T>(VK_API_ENDPOINT + method);
             if (data.status && data.data) {
                 this._error = data.err || [];
-                if (typeof data.data.error !== 'undefined') {
+                if (data.data.error !== undefined) {
                     this._error = data;
                     this._log('call() Запрос к платформе вернулся с ошибкой.');
                     return null;
@@ -233,7 +233,7 @@ export class VkRequest {
         this._request.header = Request.HEADER_FORM_DATA;
         const data = await this._request.send<IVkUploadFile>(url);
         if (data.status && data.data) {
-            if (typeof data.data.error !== 'undefined') {
+            if (data.data.error !== undefined) {
                 this._error = data;
                 this._log();
                 return null;
@@ -327,18 +327,18 @@ export class VkRequest {
             delete this._request.post.peer_id;
         }
         if (params) {
-            if (typeof params.random_id !== 'undefined') {
+            if (params.random_id !== undefined) {
                 this._request.post.random_id = params.random_id;
             } else {
                 this._request.post.random_id = Date.now();
             }
 
-            if (typeof params.attachments !== 'undefined') {
+            if (params.attachments !== undefined) {
                 this._request.post.attachment = params.attachments.join(',');
                 delete params.attachments;
             }
 
-            if (typeof params.template !== 'undefined') {
+            if (params.template !== undefined) {
                 if (typeof params.template !== 'string') {
                     params.template = JSON.stringify(params.template);
                 }
@@ -346,8 +346,8 @@ export class VkRequest {
                 delete params.template;
             }
 
-            if (typeof params.keyboard !== 'undefined') {
-                if (typeof this._request.post.template !== 'undefined') {
+            if (params.keyboard !== undefined) {
+                if (this._request.post.template !== undefined) {
                     // await this.call<IVKSendMessage>(method);
                     delete this._request.post.template;
                 }

@@ -56,7 +56,7 @@ export default class DBAdapter extends BaseDbAdapter {
                 if (idVal === '__proto__' || idVal === 'constructor' || idVal === 'prototype') {
                     return false;
                 }
-                if (typeof data[idVal] !== 'undefined') {
+                if (data[idVal] !== undefined) {
                     data[idVal] = { ...data[idVal], ...update };
                     this._saveData(data, updateData.tableName);
                 }
@@ -86,7 +86,7 @@ export default class DBAdapter extends BaseDbAdapter {
         if (remove) {
             const idVal = remove[removeData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
-                if (typeof data[idVal] !== 'undefined') {
+                if (data[idVal] !== undefined) {
                     delete data[idVal];
                     this._saveData(data, removeData.tableName);
                 }

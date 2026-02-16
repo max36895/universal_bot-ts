@@ -198,7 +198,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
 
         if (controller.isScreen) {
             if (controller.card.images.length) {
-                if (typeof payload.items === 'undefined') {
+                if (payload.items === undefined) {
                     payload.items = [];
                 }
                 const cards: ISberSmartAppItem | null =
@@ -214,7 +214,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
             };
         }
         if (controller.isEnd) {
-            if (typeof payload.items === 'undefined') {
+            if (payload.items === undefined) {
                 payload.items = [];
             }
             payload.items.push({

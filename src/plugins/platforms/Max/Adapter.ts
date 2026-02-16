@@ -64,7 +64,7 @@ export class Adapter extends BasePlatform<string | IMaxRequestContent> {
                 controller.requestObject = content;
                 switch (content.update_type || null) {
                     case 'message_created':
-                        if (typeof content.message !== 'undefined') {
+                        if (content.message !== undefined) {
                             const object: IMaxRequestContent['message'] = content.message;
                             controller.userId = object.sender.user_id;
                             controller.userCommand = object.body.text.toLowerCase().trim();

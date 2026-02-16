@@ -334,7 +334,7 @@ export function soundProcessing(soundInfo: ISoundInfo): string {
         for (let i = 0; i < updSounds.length; i++) {
             const sound = updSounds[i];
             if (typeof sound === 'object') {
-                if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
+                if (sound.sounds !== undefined && sound.key !== undefined) {
                     const sText: string = Text.getText(sound.sounds);
                     /!*
                      * Не стоит так делать, так как нужно время, пока Vk обработает звуковую дорожку.

@@ -63,7 +63,7 @@ export class YandexSoundRequest extends YandexRequest {
     public async checkOutPlace(): Promise<IYandexCheckOutPlace | null> {
         this._request.url = STANDARD_URL + 'status';
         const query = await this.call<IYandexSoundsCheckOutPlaceRequest>();
-        if (query && typeof query.sounds.quota !== 'undefined') {
+        if (query?.sounds?.quota !== undefined) {
             return query.sounds.quota;
         }
         this._log('checkOutPlace() Не удалось проверить занятое место под аудиофайлы.');
@@ -89,7 +89,7 @@ export class YandexSoundRequest extends YandexRequest {
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
             const query = await this.call<IYandexRequestDownloadSoundRequest>();
-            if (query && typeof query.sound?.id !== 'undefined') {
+            if (query?.sound?.id !== undefined) {
                 return query.sound;
             } else {
                 this._log(`downloadSoundFile() Не удалось загрузить аудио по пути "${soundDir}".`);
@@ -129,7 +129,7 @@ export class YandexSoundRequest extends YandexRequest {
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;
-                if (query && typeof query.result !== 'undefined') {
+                if (query?.result !== undefined) {
                     return query.result;
                 } else {
                     this._log('deleteSound() Не удалось удалить аудиофайл.');

@@ -82,7 +82,7 @@ export class UserAdapter extends BasePlatformAdapter<IUserResponse> {
      */
     isPlatformOnQuery(query: IUserResponse, headers?: Record<string, unknown>): boolean {
         console.log(query);
-        return typeof query.data?.messageCount !== 'undefined';
+        return query.data?.messageCount !== undefined;
     }
 
     /**

@@ -46,7 +46,7 @@ export class Adapter extends BasePlatform<string | ITelegramContent> {
             return false;
         }
         return !!(
-            typeof body.update_id !== 'undefined' &&
+            body.update_id !== undefined &&
             (body.message ||
                 body.callback_query ||
                 body.inline_query ||
@@ -70,7 +70,7 @@ export class Adapter extends BasePlatform<string | ITelegramContent> {
                 }
                 controller.requestObject = content;
 
-                if (typeof content.message !== 'undefined') {
+                if (content.message !== undefined) {
                     controller.userId = content.message.chat.id;
                     controller.userCommand = content.message.text.toLowerCase().trim();
                     controller.originalUserCommand = content.message.text;

@@ -453,7 +453,7 @@ export class Nlu {
         let data: (object | number)[] | null = null;
         if (this.#nlu.entities) {
             this.#nlu.entities.forEach((entity) => {
-                if (typeof entity.type !== 'undefined' && entity.type === type) {
+                if (entity.type !== undefined && entity.type === type) {
                     if (data === null) {
                         data = [];
                     }

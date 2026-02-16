@@ -151,7 +151,7 @@ export class MaxRequest {
         if (params) {
             if (params.attachments || params.keyboard) {
                 const attachment = [];
-                if (typeof params.attachments !== 'undefined') {
+                if (params.attachments !== undefined) {
                     if (Array.isArray(params.attachments)) {
                         attachment.push(...params.attachments);
                     } else {
@@ -159,8 +159,7 @@ export class MaxRequest {
                     }
                     delete params.attachments;
                 }
-
-                if (typeof params.keyboard !== 'undefined') {
+                if (params.keyboard !== undefined) {
                     attachment.push({
                         type: 'inline_keyboard',
                         payload: params.keyboard,

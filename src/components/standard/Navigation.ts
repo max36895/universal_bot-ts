@@ -197,7 +197,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {number} maxPage Максимальное количество страниц
      */
     protected _validatePage(maxPage?: number): void {
-        const maxValue = typeof maxPage === 'undefined' ? this.getMaxPage() : maxPage;
+        const maxValue = maxPage === undefined ? this.getMaxPage() : maxPage;
         if (this.thisPage >= maxValue) {
             this.thisPage = maxValue - 1;
         }
@@ -303,7 +303,7 @@ export class Navigation<ElementType = TElementType> {
         const end: number = start + this.maxVisibleElements;
         if (this.elements.length >= start) {
             for (let i = start; i < end; i++) {
-                if (typeof this.elements[i] !== 'undefined') {
+                if (this.elements[i] !== undefined) {
                     showElements.push(this.elements[i]);
                 }
             }
@@ -369,7 +369,7 @@ export class Navigation<ElementType = TElementType> {
         };
 
         for (let i = start; i < end; i++) {
-            if (typeof this.elements[i] !== 'undefined') {
+            if (this.elements[i] !== undefined) {
                 if (index === number) {
                     return this.elements[i];
                 }
@@ -479,7 +479,7 @@ export class Navigation<ElementType = TElementType> {
      */
     public getPageInfo(): string {
         if (
-            typeof this.elements[this.thisPage * this.maxVisibleElements] === 'undefined' ||
+            this.elements[this.thisPage * this.maxVisibleElements] === undefined ||
             this.thisPage < 0
         ) {
             this.thisPage = 0;

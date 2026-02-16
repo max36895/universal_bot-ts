@@ -42,7 +42,7 @@ export class __className__Controller extends BotController<IMyUserData> {
      * @param {number} id Идентификатор записи
      */
     protected _setQuestionText(id: number) {
-        if (typeof this.question[id] === 'undefined') {
+        if (this.question[id] === undefined) {
             id = 0;
         }
         this.userData.question_id = id;
@@ -77,7 +77,7 @@ export class __className__Controller extends BotController<IMyUserData> {
      */
     protected _quiz() {
         this.thisIntentName = this.GAME_QUESTION;
-        if (typeof this.userData.question_id !== 'undefined') {
+        if (this.userData.question_id !== undefined) {
             this._isSuccess(this.userCommand, this.userData.question_id);
         } else {
             this._setQuestionText(0);

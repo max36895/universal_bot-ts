@@ -87,7 +87,7 @@ export class ViberRequest {
                 const sendData = await this.#request.send<IViberApi>(API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;
-                    if (typeof data.failed_list !== 'undefined' && data.failed_list.length) {
+                    if (data.failed_list !== undefined && data.failed_list.length) {
                         this.#error = sendData;
                         this.#log(data.status_message);
                     }
@@ -95,7 +95,7 @@ export class ViberRequest {
                         return data as T;
                     }
                     const statusMessage =
-                        typeof data.status_message !== 'undefined' ? data.status_message : 'ok';
+                        data.status_message !== undefined ? data.status_message : 'ok';
                     if (statusMessage !== 'ok') {
                         this.#error = sendData;
                         this.#log(data.status_message);

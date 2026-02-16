@@ -123,7 +123,7 @@ class CreateController {
             const maxReplace = replace.length - 1;
             find.forEach((f, i) => {
                 let r = replace[i];
-                if (typeof r === 'undefined') {
+                if (r === undefined) {
                     r = replace[maxReplace];
                 }
                 res = res.replace(new RegExp(f, 'g'), r);

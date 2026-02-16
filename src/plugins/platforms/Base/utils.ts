@@ -134,7 +134,7 @@ export function defaultSoundProcessing(
         for (let i = 0; i < updSounds.length; i++) {
             const sound = updSounds[i];
             if (typeof sound === 'object') {
-                if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
+                if (sound.sounds !== undefined && sound.key !== undefined) {
                     const sText: string = Text.getText(sound.sounds);
                     if (sText) {
                         res = replaceSound(sound.key, sText, res);

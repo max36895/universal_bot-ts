@@ -102,10 +102,10 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
      * @param state Объект состояния из запроса
      */
     #setState(controller: BotController, state: IMarusiaRequestState): void {
-        if (typeof state.user !== 'undefined') {
+        if (state.user !== undefined) {
             controller.state = state.user;
             controller.platformOptions.stateName = 'user_state_update';
-        } else if (typeof state.session !== 'undefined') {
+        } else if (state.session !== undefined) {
             controller.state = state.session;
             controller.platformOptions.stateName = 'session_state';
         }
@@ -120,10 +120,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
                 } else {
                     content = query;
                 }
-                if (
-                    typeof content.session === 'undefined' &&
-                    typeof content.request === 'undefined'
-                ) {
+                if (content.session === undefined && content.request === undefined) {
                     if (content.account_linking_complete_event) {
                         controller.userEvents = {
                             auth: {
@@ -139,7 +136,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
 
                 controller.requestObject = content;
                 this.#initUserCommand(content.request, controller);
-                if (typeof content.state !== 'undefined') {
+                if (content.state !== undefined) {
                     this.#setState(controller, content.state);
                 }
 
@@ -152,8 +149,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
 
                 controller.platformOptions.appId = content.session.skill_id;
                 controller.isScreen =
-                    typeof (controller.userMeta as IMarusiaRequestMeta).interfaces.screen !==
-                    'undefined';
+                    (controller.userMeta as IMarusiaRequestMeta).interfaces.screen !== undefined;
                 return true;
             } else {
                 controller.platformOptions.error = `MarusiaAdapter:setQueryData(): ${EMPTY_QUERY_ERROR}`;

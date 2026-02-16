@@ -55,11 +55,9 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
             return false;
         }
         return (
-            typeof body.type !== 'undefined' &&
-            typeof body.group_id !== 'undefined' &&
-            (typeof body.object !== 'undefined' ||
-                typeof body.secret !== 'undefined' ||
-                body.type === 'confirmation')
+            body.type !== undefined &&
+            body.group_id !== undefined &&
+            (body.object !== undefined || body.secret !== undefined || body.type === 'confirmation')
         );
     }
 
@@ -84,7 +82,7 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
                         return true;
 
                     case 'message_new':
-                        if (typeof content.object !== 'undefined') {
+                        if (content.object !== undefined) {
                             const object: IVkRequestObject = content.object;
                             controller.userId = object.message.from_id;
                             controller.userCommand = object.message.text.toLowerCase().trim();
@@ -142,7 +140,7 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
             }
             if (controller.card.images.length) {
                 const attach = await controller.card.getCards(cardProcessing, controller);
-                if (typeof (attach as IVkCard).type !== 'undefined') {
+                if ((attach as IVkCard).type !== undefined) {
                     params.template = attach;
                 } else {
                     params.attachments = attach as string[];

@@ -101,7 +101,7 @@ export function buttonProcessing(buttons: Button<IVkButton>[]): IVkButtonObject 
             }
         }
 
-        if (typeof button.payload?.color !== 'undefined' && !button.url) {
+        if (button.payload?.color !== undefined && !button.url) {
             object.color = button.payload.color;
         }
         if (button.type === VK_TYPE_PAY) {
@@ -110,11 +110,11 @@ export function buttonProcessing(buttons: Button<IVkButton>[]): IVkButtonObject 
         // @ts-ignore
         object = { ...object, ...button.options };
         const groupOptions = button.options[GROUP_NAME];
-        if (typeof groupOptions !== 'undefined') {
-            if (typeof object[GROUP_NAME] !== 'undefined') {
+        if (groupOptions !== undefined) {
+            if (object[GROUP_NAME] !== undefined) {
                 delete object[GROUP_NAME];
             }
-            if (typeof groups[+groupOptions] !== 'undefined') {
+            if (groups[+groupOptions] !== undefined) {
                 (<IVkButton[]>finalButtons[groups[+groupOptions]]).push(object);
             } else {
                 groups[+groupOptions] = index;

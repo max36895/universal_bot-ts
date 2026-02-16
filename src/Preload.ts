@@ -234,7 +234,7 @@ export class Preload {
             images.forEach((image) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getImageType(platform);
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         const removePromise = (async (): Promise<boolean> => {
                             try {
                                 const tokenRecord = await imageTokensModel.where({
@@ -306,7 +306,7 @@ export class Preload {
             sounds.forEach((sound) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getSoundType(platform);
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         const removePromise = (async (): Promise<boolean> => {
                             try {
                                 // Аналогично removeImages, но для SoundTokens
@@ -386,7 +386,7 @@ export class Preload {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getImageType(platform);
                     // Проверяем, что тип определен перед установкой
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         imageToken.path = image;
                         imageToken.platform = type;
                         if (type === T_TELEGRAM) {
@@ -438,7 +438,7 @@ export class Preload {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getSoundType(platform);
                     // Проверяем, что тип определен перед установкой
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         soundToken.path = sound;
                         soundToken.platform = type;
                         if (type === T_TELEGRAM) {

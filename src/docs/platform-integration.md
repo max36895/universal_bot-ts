@@ -367,7 +367,7 @@ class MyAdapter extends BasePlatformAdapter {
      * @param headers
      */
     isPlatformOnQuery(query: object, headers?: Record<string, unknown>): boolean {
-        return typeof query.data?.messageCount !== 'undefined';
+        return query.data?.messageCount !== undefined;
     }
 
     /**

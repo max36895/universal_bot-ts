@@ -274,11 +274,11 @@ export abstract class Model<TState extends IModelState> {
 
         for (const index in labels) {
             if (data) {
-                if (typeof (data as IDbResult)[index] !== 'undefined') {
+                if ((data as IDbResult)[index] !== undefined) {
                     this.state[index as keyof TState] = (data as IDbResult)[
                         index
                     ] as TState[keyof TState];
-                } else if (typeof data[i] !== 'undefined') {
+                } else if (data[i] !== undefined) {
                     this.state[index] = data[i] as TState[keyof TState];
                 } else {
                     this.state[index] = '' as TState[keyof TState];
