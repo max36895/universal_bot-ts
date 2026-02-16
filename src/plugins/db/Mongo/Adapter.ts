@@ -78,19 +78,19 @@ export class Adapter extends Base<IMongoDbInfo> {
                     connectTimeoutMS: 2000,
                     socketTimeoutMS: 2000,
                     maxPoolSize: 1,
-                    ...this._appContext?.appConfig.db?.options,
+                    ...this._appContext.appConfig.db.options,
                     serverApi: {
                         version: ServerApiVersion.v1,
                         strict: true,
                         deprecationErrors: true,
-                        ...(this._appContext?.appConfig.db?.options?.serverApi as object),
+                        ...(this._appContext.appConfig.db.options?.serverApi as object),
                     },
                 };
 
-                if (this._appContext.appConfig.db?.user) {
+                if (this._appContext.appConfig.db.user) {
                     options.auth = {
-                        username: this._appContext.appConfig.db?.user,
-                        password: this._appContext.appConfig.db?.pass,
+                        username: this._appContext.appConfig.db.user,
+                        password: this._appContext.appConfig.db.pass,
                     };
                 }
 

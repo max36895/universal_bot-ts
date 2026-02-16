@@ -265,7 +265,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
             ) {
                 if (controller.state && controller.appContext.database.adapter) {
                     result[controller.platformOptions.stateName as keyof IState] =
-                        controller.state && Object.keys(controller.state).length !== 0
+                        Object.keys(controller.state).length !== 0
                             ? controller.state
                             : controller.userData;
                 } else {

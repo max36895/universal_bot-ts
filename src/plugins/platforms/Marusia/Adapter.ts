@@ -205,7 +205,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
             ) {
                 if (controller.state && controller.appContext.database.adapter) {
                     result[controller.platformOptions.stateName as TState] =
-                        controller.state && Object.keys(controller.state).length !== 0
+                        Object.keys(controller.state).length !== 0
                             ? controller.state
                             : controller.userData;
                 } else {

@@ -86,11 +86,9 @@ const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
 export function getPause(text: string): string {
     const match = text.matchAll(PAUSE_REG);
     let res = text;
-    if (match) {
-        for (const m of match) {
-            const reg = m[0].replace(/\[/g, '\\[');
-            res = res.replace(new RegExp(reg, 'g'), `sil <[${m[1]}]>`);
-        }
+    for (const m of match) {
+        const reg = m[0].replace(/\[/g, '\\[');
+        res = res.replace(new RegExp(reg, 'g'), `sil <[${m[1]}]>`);
     }
     return res;
 }

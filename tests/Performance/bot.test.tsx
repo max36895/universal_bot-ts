@@ -1,5 +1,5 @@
 import { Bot, BotController, SoundConstants, Text } from '../../src';
-import { T_ALISA, AlisaSound, AlisaAdapter, FileAdapter } from '../../src/plugins';
+import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { performance } from 'node:perf_hooks';
 
 // Базовое потребление памяти не должно превышать 500кб

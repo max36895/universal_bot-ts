@@ -97,7 +97,7 @@ export function buttonProcessing(buttons: Button<IVkButton>[]): IVkButtonObject 
             if (typeof button.payload === 'string') {
                 object.action.payload = button.payload;
             } else {
-                object.action.payload = button.payload;
+                object.action.payload = JSON.stringify(button.payload);
             }
         }
 

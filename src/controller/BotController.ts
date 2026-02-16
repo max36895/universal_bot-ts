@@ -809,7 +809,7 @@ export abstract class BotController<
         if (!text) {
             return null;
         }
-        const start = this.appContext?.usedMetric ? performance.now() : 0;
+        const start = this.appContext.usedMetric ? performance.now() : 0;
         const intents: IAppIntent[] = this._intents();
         for (const intent of intents) {
             if (
@@ -821,7 +821,7 @@ export abstract class BotController<
                     this.appContext.command.getCustomRegExp(),
                 )
             ) {
-                if (this.appContext?.usedMetric) {
+                if (this.appContext.usedMetric) {
                     this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
                         intent,
                         status: true,
@@ -830,7 +830,7 @@ export abstract class BotController<
                 return intent.name;
             }
         }
-        if (this.appContext?.usedMetric) {
+        if (this.appContext.usedMetric) {
             this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
                 status: false,
             });

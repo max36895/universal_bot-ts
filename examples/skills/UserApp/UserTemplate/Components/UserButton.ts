@@ -33,9 +33,7 @@ export function buttonProcessing(buttons: Button[]): IButton[] | null {
             if (button.url) {
                 object.url = button.url;
             }
-            if (object) {
-                objects.push(object);
-            }
+            objects.push(object);
         }
     });
 
