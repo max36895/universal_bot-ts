@@ -84,14 +84,17 @@ const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
  * @returns {string} - Строка с паузой в формате sil <[ms]>
  */
 export function getPause(text: string): string {
-    const match = text.matchAll(PAUSE_REG);
-    let res = text;
-    for (const m of match) {
-        const reg = m[0].replace(/\[/g, '\\[');
-        res = res.replace(new RegExp(reg, 'g'), `sil <[${m[1]}]>`);
-    }
-    return res;
+    return text.replace(PAUSE_REG, (_, ms: string) => `sil <[${ms}]>`);
 }
+
+/**
+ * Базовый метод для обработки tts.
+ * Основная задача метода - найти все ключи в запросе, и заменить их на корректные звуки/эффекты.
+ * По умолчанию используется в Алисе и Марусе.
+ * @param soundInfo - Информация необходимая для обработки аудио
+ * @param defaultSounds - Стандартные звуки
+ * @param defaultEffects - Стандартные эффекты
+ */
 
 /**
  * Базовый метод для обработки tts.
