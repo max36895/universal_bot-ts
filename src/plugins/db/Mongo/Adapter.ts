@@ -70,7 +70,6 @@ export class Adapter extends Base<IMongoDbInfo> {
         let mongoClient: MongoClient | null = null;
         let mongoConnect: MongoClient | null = null;
         if (this._appContext.appConfig.db) {
-            //await this.close();
             try {
                 const options: MongoClientOptions = {
                     timeoutMS: 3000,
@@ -240,9 +239,9 @@ export class Adapter extends Base<IMongoDbInfo> {
     public async _query(callback: TQueryCb<MongoClient, Db>): Promise<unknown | null> {
         const vDB = this._appContext.database.databaseInfo;
         try {
-            if (vDB && vDB.mongoConnect) {
-                const client = await vDB.mongoConnect;
-                const db = client.db(this._appContext.appConfig.db?.database as string);
+            if (vDB?.mongoConnect) {
+                const client = vDB.mongoConnect;
+                const db = client.db(this._appContext.appConfig.db?.database);
                 const data: IModelRes | boolean = await callback(client, db);
                 if (data.status) {
                     return data.data;
@@ -279,7 +278,6 @@ export class Adapter extends Base<IMongoDbInfo> {
         if (!element) {
             return {};
         }
-        //const element = { ..._element };
         const rules = query.rules;
         if (rules) {
             rules.forEach((rule) => {

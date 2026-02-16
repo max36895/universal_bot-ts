@@ -122,14 +122,14 @@ export class VkRequest {
         this.isAttachContent = false;
         this._appContext = appContext;
         if (appContext.appConfig.tokens[T_VK].api_version) {
-            this.#vkApiVersion = appContext.appConfig.tokens[T_VK].api_version as string;
+            this.#vkApiVersion = appContext.appConfig.tokens[T_VK].api_version;
         } else {
             this.#vkApiVersion = VK_API_VERSION;
         }
         this.token = null;
         this._error = null;
         if (appContext.appConfig.tokens[T_VK].token) {
-            this.initToken(appContext.appConfig.tokens[T_VK].token as string);
+            this.initToken(appContext.appConfig.tokens[T_VK].token);
         }
     }
 
@@ -327,10 +327,10 @@ export class VkRequest {
             delete this._request.post.peer_id;
         }
         if (params) {
-            if (params.random_id !== undefined) {
-                this._request.post.random_id = params.random_id;
-            } else {
+            if (params.random_id === undefined) {
                 this._request.post.random_id = Date.now();
+            } else {
+                this._request.post.random_id = params.random_id;
             }
 
             if (params.attachments !== undefined) {

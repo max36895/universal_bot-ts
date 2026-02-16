@@ -48,8 +48,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
         return !!(
             body.messageName &&
             body.uuid &&
-            body.payload &&
-            body.payload.character &&
+            body.payload?.character &&
             body.payload?.app_info
         );
     }
@@ -141,8 +140,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
 
                 controller.platformOptions.appId = content.payload.app_info.applicationId;
                 if (
-                    content.payload.device.capabilities &&
-                    content.payload.device.capabilities.screen
+                    content.payload.device.capabilities?.screen
                 ) {
                     controller.isScreen = content.payload.device.capabilities.screen.available;
                 } else {
@@ -198,9 +196,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
 
         if (controller.isScreen) {
             if (controller.card.images.length) {
-                if (payload.items === undefined) {
-                    payload.items = [];
-                }
+                payload.items ??= [];
                 const cards: ISberSmartAppItem | null =
                     controller.card.getCards<ISberSmartAppItem | null>(cardProcessing, controller);
                 if (cards) {
@@ -214,9 +210,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
             };
         }
         if (controller.isEnd) {
-            if (payload.items === undefined) {
-                payload.items = [];
-            }
+            payload.items ??= [];
             payload.items.push({
                 command: {
                     type: 'close_app',
@@ -235,9 +229,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
         };
 
         if (controller.sound.sounds.length) {
-            if (controller.tts === null) {
-                controller.tts = controller.text;
-            }
+            controller.tts ??= controller.text;
         }
         result.payload = this.#getPayload(controller);
         this._timeLimitLog(controller);

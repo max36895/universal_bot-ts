@@ -28,7 +28,7 @@ export class ViberRequest {
      * Экземпляр класса для выполнения HTTP-запросов
      *
      */
-    #request: Request;
+    readonly #request: Request;
 
     /**
      * Текст последней возникшей ошибки
@@ -44,7 +44,7 @@ export class ViberRequest {
     /**
      * Контекст приложения.
      */
-    #appContext: AppContext;
+    readonly #appContext: AppContext;
 
     /**
      * Создает экземпляр класса для работы с API Viber
@@ -56,7 +56,7 @@ export class ViberRequest {
         this.#error = null;
         this.#appContext = appContext;
         if (appContext.appConfig.tokens[T_VIBER].token) {
-            this.initToken(appContext.appConfig.tokens[T_VIBER].token as string);
+            this.initToken(appContext.appConfig.tokens[T_VIBER].token);
         }
         this.#request.post = {};
     }
@@ -87,15 +87,14 @@ export class ViberRequest {
                 const sendData = await this.#request.send<IViberApi>(API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;
-                    if (data.failed_list !== undefined && data.failed_list.length) {
+                    if (data.failed_list?.length) {
                         this.#error = sendData;
                         this.#log(data.status_message);
                     }
                     if (data.status === 0) {
                         return data as T;
                     }
-                    const statusMessage =
-                        data.status_message !== undefined ? data.status_message : 'ok';
+                    const statusMessage = data.status_message ?? 'ok';
                     if (statusMessage !== 'ok') {
                         this.#error = sendData;
                         this.#log(data.status_message);
@@ -167,12 +166,12 @@ export class ViberRequest {
         this.#request.post ??= {};
         if (!(this.#request.post instanceof FormData)) {
             this.#request.post.receiver = receiver;
-            if (typeof sender !== 'string') {
-                this.#request.post.sender = sender;
-            } else {
+            if (typeof sender === 'string') {
                 this.#request.post.sender = {
                     name: sender,
                 };
+            } else {
+                this.#request.post.sender = sender;
             }
             this.#request.post.text = text;
             this.#request.post.type = 'text';

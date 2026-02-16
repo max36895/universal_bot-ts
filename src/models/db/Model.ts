@@ -233,7 +233,7 @@ export abstract class Model<TState extends IModelState> {
      * }
      * ```
      */
-    public validate(): void {}
+    public validate(): void { /* TODO document why this method 'validate' is empty */ }
 
     /**
      * Определяет имя первичного ключа таблицы.
@@ -278,10 +278,10 @@ export abstract class Model<TState extends IModelState> {
                     this.state[index as keyof TState] = (data as IDbResult)[
                         index
                     ] as TState[keyof TState];
-                } else if (data[i] !== undefined) {
-                    this.state[index] = data[i] as TState[keyof TState];
-                } else {
+                } else if (data[i] === undefined) {
                     this.state[index] = '' as TState[keyof TState];
+                } else {
+                    this.state[index] = data[i] as TState[keyof TState];
                 }
             } else {
                 this.state[index] = '' as TState[keyof TState];

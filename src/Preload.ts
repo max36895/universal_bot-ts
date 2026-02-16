@@ -103,7 +103,7 @@ export interface IOptions {
  */
 export class Preload {
     private _appContext: AppContext | undefined;
-    private _controller: BotController = new BaseBotController();
+    private readonly _controller: BotController = new BaseBotController();
 
     /**
      * Создает экземпляр класса Preload.
@@ -381,7 +381,7 @@ export class Preload {
         const promises: Promise<string | null>[] = [];
         if (allowedPlatforms.length && this._appContext) {
             // Создаем один экземпляр ImageTokens и переиспользуем его
-            const imageToken = new ImageTokens(this._appContext as AppContext);
+            const imageToken = new ImageTokens(this._appContext);
             images.forEach((image) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getImageType(platform);
@@ -433,7 +433,7 @@ export class Preload {
         const promises: Promise<string | null>[] = [];
         if (allowedPlatforms.length && this._appContext) {
             // Создаем один экземпляр SoundTokens и переиспользуем его
-            const soundToken = new SoundTokens(this._appContext as AppContext);
+            const soundToken = new SoundTokens(this._appContext);
             sounds.forEach((sound) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getSoundType(platform);

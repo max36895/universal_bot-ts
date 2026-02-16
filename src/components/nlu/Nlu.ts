@@ -146,7 +146,7 @@ export class Nlu {
      * }
      * ```
      */
-    #cachedData: Map<string, unknown[] | null> = new Map();
+    readonly #cachedData: Map<string, unknown[] | null> = new Map();
 
     /**
      * Регулярное выражение для поиска email адресов.
@@ -454,9 +454,7 @@ export class Nlu {
         if (this.#nlu.entities) {
             this.#nlu.entities.forEach((entity) => {
                 if (entity.type !== undefined && entity.type === type) {
-                    if (data === null) {
-                        data = [];
-                    }
+                    data ??= [];
                     data.push(entity.value);
                 }
             });

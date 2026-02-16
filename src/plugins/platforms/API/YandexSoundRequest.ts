@@ -89,10 +89,10 @@ export class YandexSoundRequest extends YandexRequest {
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;
             const query = await this.call<IYandexRequestDownloadSoundRequest>();
-            if (query?.sound?.id !== undefined) {
-                return query.sound;
-            } else {
+            if (query?.sound?.id === undefined) {
                 this._log(`downloadSoundFile() Не удалось загрузить аудио по пути "${soundDir}".`);
+            } else {
+                return query.sound;
             }
         } else {
             this._log('downloadSoundFile() Не указан навык, в который необходимо загрузить аудио.');
@@ -129,10 +129,10 @@ export class YandexSoundRequest extends YandexRequest {
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;
-                if (query?.result !== undefined) {
-                    return query.result;
-                } else {
+                if (query?.result === undefined) {
                     this._log('deleteSound() Не удалось удалить аудиофайл.');
+                } else {
+                    return query.result;
                 }
             } else {
                 this._log('deleteSound() Не выбрано аудио для удаления.');

@@ -116,7 +116,7 @@ export class Adapter extends BasePlatform<IViberContent | string> {
 
             await viberApi.sendMessage(
                 <string>controller.userId,
-                controller.appContext.appConfig.tokens[this.platformName].sender as string,
+                controller.appContext.appConfig.tokens[this.platformName].sender,
                 controller.text,
                 params,
             );

@@ -110,20 +110,20 @@ export function buttonProcessing(buttons: Button<IVkButton>[]): IVkButtonObject 
         // @ts-ignore
         object = { ...object, ...button.options };
         const groupOptions = button.options[GROUP_NAME];
-        if (groupOptions !== undefined) {
+        if (groupOptions === undefined) {
+            finalButtons[index] = object;
+            index++;
+        } else {
             if (object[GROUP_NAME] !== undefined) {
                 delete object[GROUP_NAME];
             }
-            if (groups[+groupOptions] !== undefined) {
-                (<IVkButton[]>finalButtons[groups[+groupOptions]]).push(object);
-            } else {
+            if (groups[+groupOptions] === undefined) {
                 groups[+groupOptions] = index;
                 finalButtons[index] = [object];
                 index++;
+            } else {
+                (<IVkButton[]>finalButtons[groups[+groupOptions]]).push(object);
             }
-        } else {
-            finalButtons[index] = object;
-            index++;
         }
         if (object.action.payload && typeof object.action.payload !== 'string') {
             object.action.payload = _validateVkPayload(object.action.payload);

@@ -197,7 +197,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {number} maxPage Максимальное количество страниц
      */
     protected _validatePage(maxPage?: number): void {
-        const maxValue = maxPage === undefined ? this.getMaxPage() : maxPage;
+        const maxValue = maxPage ?? this.getMaxPage();
         if (this.thisPage >= maxValue) {
             this.thisPage = maxValue - 1;
         }
@@ -219,7 +219,7 @@ export class Navigation<ElementType = TElementType> {
      * ```
      */
     public numberPage(text: string): boolean {
-        const data = text.match(/((-|)\d) страни/imu);
+        const data = /((-|)\d) страни/imu.exec(text);
         if (data) {
             this.thisPage = +data[1] - 1;
             this._validatePage();
@@ -379,22 +379,20 @@ export class Navigation<ElementType = TElementType> {
                 if (keys === null || elementsTypeof === 'string') {
                     const r = Text.textSimilarity(this.elements[i] + '', text, 75);
                     setMaxElement(i, r);
-                } else {
-                    if (elementsTypeof === 'object') {
-                        if (typeof keys === 'object') {
-                            keys.forEach((key) => {
-                                const value = (this.elements[i] as Record<string, string>)[key];
-                                if (value) {
-                                    const r = Text.textSimilarity(value, text, 75);
-                                    setMaxElement(i, r);
-                                }
-                            });
-                        } else {
-                            const value = (this.elements[i] as Record<string, string>)[keys];
+                } else if (elementsTypeof === 'object') {
+                    if (typeof keys === 'object') {
+                        keys.forEach((key) => {
+                            const value = (this.elements[i] as Record<string, string>)[key];
                             if (value) {
                                 const r = Text.textSimilarity(value, text, 75);
                                 setMaxElement(i, r);
                             }
+                        });
+                    } else {
+                        const value = (this.elements[i] as Record<string, string>)[keys];
+                        if (value) {
+                            const r = Text.textSimilarity(value, text, 75);
+                            setMaxElement(i, r);
                         }
                     }
                 }
@@ -428,14 +426,7 @@ export class Navigation<ElementType = TElementType> {
         const maxPage: number = this.getMaxPage();
         this._validatePage(maxPage);
         const buttons: string[] = [];
-        if (!isNumber) {
-            if (this.thisPage) {
-                buttons.push('👈 Назад');
-            }
-            if (this.thisPage + 1 < maxPage) {
-                buttons.push('Дальше 👉');
-            }
-        } else {
+        if (isNumber) {
             let index: number = this.thisPage - 2;
             if (index < 0) {
                 index = 0;
@@ -461,6 +452,13 @@ export class Navigation<ElementType = TElementType> {
                     }
                     break;
                 }
+            }
+        } else {
+            if (this.thisPage) {
+                buttons.push('👈 Назад');
+            }
+            if (this.thisPage + 1 < maxPage) {
+                buttons.push('Дальше 👉');
             }
         }
         return buttons;

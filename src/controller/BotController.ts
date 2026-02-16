@@ -877,16 +877,10 @@ export abstract class BotController<
                             },
                         );
                     }
-                } else {
-                    if (this.appContext?.usedMetric) {
-                        this.appContext.logMetric(
-                            EMetric.GET_COMMAND,
-                            performance.now() - startTimer,
-                            {
-                                status: false,
-                            },
-                        );
-                    }
+                } else if (this.appContext?.usedMetric) {
+                    this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
+                        status: false,
+                    });
                 }
             };
             if (res instanceof Promise) {
@@ -912,7 +906,6 @@ export abstract class BotController<
                         });
                     }
                     this._actionMetric(commandName, true);
-                    return;
                 })
                 .catch((err) => {
                     this.appContext.logError(
@@ -921,7 +914,6 @@ export abstract class BotController<
                             err,
                         },
                     );
-                    return;
                 });
         }
         if (this.appContext?.usedMetric) {
@@ -931,7 +923,6 @@ export abstract class BotController<
             });
         }
         this._actionMetric(commandName, true);
-        return;
     }
 
     /**
@@ -1068,7 +1059,6 @@ export abstract class BotController<
                         if (result) {
                             this.text = result;
                         }
-                        return;
                     });
                 }
                 if (res) {
@@ -1114,12 +1104,11 @@ export abstract class BotController<
         if (this.appContext.steps.size) {
             const intents = this.nlu.getIntents();
             for (const [stepName, step] of this.appContext.steps) {
-                if (stepName === this.oldIntentName || (intents && intents[stepName])) {
+                if (stepName === this.oldIntentName || intents?.[stepName]) {
                     const res = step.cb(this);
                     if (res) {
                         return res.then(() => {
                             this._actionMetric(stepName, false, true);
-                            return;
                         });
                     }
                     this._actionMetric(stepName, false, true);
@@ -1185,9 +1174,7 @@ export abstract class BotController<
             return stepResult;
         }
         const commandResult = this._getCommand();
-        if (commandResult !== null) {
-            return commandResult;
-        } else {
+        if (commandResult === null) {
             let intent: string | null = this._getIntent(this.userCommand);
             if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
                 const command = this.appContext.commands.get(FALLBACK_COMMAND);
@@ -1224,6 +1211,8 @@ export abstract class BotController<
 
                 this._actionMetric(intent as string);
             }
+        } else {
+            return commandResult;
         }
     }
 }

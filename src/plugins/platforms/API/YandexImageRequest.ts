@@ -85,10 +85,10 @@ export class YandexImageRequest extends YandexRequest {
             this._request.header = Request.HEADER_AP_JSON;
             this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
-            if (query?.image?.id !== undefined) {
-                return query.image;
-            } else {
+            if (query?.image?.id === undefined) {
                 this._log('downloadImageUrl() Не удалось загрузить изображение из web-ресурса.');
+            } else {
+                return query.image;
             }
         } else {
             this._log(
@@ -113,12 +113,12 @@ export class YandexImageRequest extends YandexRequest {
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;
             const query = await this.call<IYandexRequestDownloadImageRequest>();
-            if (query?.image?.id !== undefined) {
-                return query.image;
-            } else {
+            if (query?.image?.id === undefined) {
                 this._log(
                     `downloadImageFile() Не удалось загрузить изображение по пути "${imageDir}".`,
                 );
+            } else {
+                return query.image;
             }
         } else {
             this._log(
@@ -157,10 +157,10 @@ export class YandexImageRequest extends YandexRequest {
                 this._request.customRequest = 'DELETE';
                 const query = await this.call<IYandexRemoveRequest>();
                 this._request.customRequest = null;
-                if (query?.result !== undefined) {
-                    return query.result;
-                } else {
+                if (query?.result === undefined) {
                     this._log('deleteImage() Не удалось удалить изображение.');
+                } else {
+                    return query.result;
                 }
             } else {
                 this._log('deleteImage() Не выбрано изображение для удаления.');

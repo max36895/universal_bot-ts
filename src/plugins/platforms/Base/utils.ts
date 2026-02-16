@@ -131,8 +131,8 @@ export function defaultSoundProcessing(
     }
     let res = soundInfo.text;
     if (updSounds.length) {
-        for (let i = 0; i < updSounds.length; i++) {
-            const sound = updSounds[i];
+        for (const element of updSounds) {
+            const sound = element;
             if (typeof sound === 'object') {
                 if (sound.sounds !== undefined && sound.key !== undefined) {
                     const sText: string = Text.getText(sound.sounds);

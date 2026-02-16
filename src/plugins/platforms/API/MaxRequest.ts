@@ -19,7 +19,7 @@ export class MaxRequest {
      * Экземпляр класса для выполнения HTTP-запросов
      *
      */
-    #request: Request;
+    readonly #request: Request;
 
     /**
      * Текст последней возникшей ошибки
@@ -41,7 +41,7 @@ export class MaxRequest {
     /**
      * Контекст приложения.
      */
-    #appContext: AppContext;
+    readonly #appContext: AppContext;
 
     /**
      * Создает экземпляр класса для работы с API ВКонтакте
@@ -56,7 +56,7 @@ export class MaxRequest {
         this.#request.post = {};
         this.#appContext = appContext;
         if (appContext.appConfig.tokens[T_MAX_APP].token) {
-            this.initToken(appContext.appConfig.tokens[T_MAX_APP].token as string);
+            this.initToken(appContext.appConfig.tokens[T_MAX_APP].token);
         }
     }
 

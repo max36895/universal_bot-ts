@@ -1,6 +1,6 @@
 'use strict';
-const fs = require('fs');
-const { exec } = require('child_process');
+const fs = require('node:fs');
+const { exec } = require('node:child_process');
 const utils = require(__dirname + '/../utils').utils;
 
 /**
@@ -233,7 +233,9 @@ class CreateController {
      * @private
      */
     _create(type = CreateController.T_DEFAULT) {
-        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) !== -1) {
+        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) === -1) {
+            console.warn('Не удалось создать проект!');
+        } else {
             const standardPath = __dirname + '/../template';
             const srcPath = `${this.#path}/src`;
             if (!utils.isDir(srcPath)) {
@@ -296,8 +298,6 @@ class CreateController {
             }
 
             console.log(`Проект успешно создан, и находится в директории: ${this.#path}`);
-        } else {
-            console.warn('Не удалось создать проект!');
         }
     }
 
@@ -318,7 +318,6 @@ class CreateController {
         exec(`prettier.cmd --write ${this.#path}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec error: ${error}`);
-                return;
             }
         });
     }

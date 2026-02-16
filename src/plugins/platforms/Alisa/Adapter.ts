@@ -112,7 +112,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 let userId: string | null = null;
                 controller.platformOptions.isState = false;
                 if (this.appContext.platformParams.isAuthUser) {
-                    if (session.user !== undefined && session.user.user_id !== undefined) {
+                    if (session.user?.user_id !== undefined) {
                         userId = session.user.user_id;
                         controller.platformOptions.isState = true;
                         controller.userToken = session.user.access_token || null;
@@ -120,13 +120,10 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 }
 
                 if (userId === null) {
-                    if (
-                        session.application !== undefined &&
-                        session.application.application_id !== undefined
-                    ) {
-                        userId = session.application.application_id;
-                    } else {
+                    if (session.application?.application_id === undefined) {
                         userId = session.user_id as string;
+                    } else {
+                        userId = session.application.application_id;
                     }
                 }
 
@@ -258,9 +255,9 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
             ) {
                 if (controller.state && controller.appContext.database.adapter) {
                     result[controller.platformOptions.stateName as keyof IState] =
-                        Object.keys(controller.state).length !== 0
-                            ? controller.state
-                            : controller.userData;
+                        Object.keys(controller.state).length === 0
+                            ? controller.userData
+                            : controller.state;
                 } else {
                     result[controller.platformOptions.stateName as keyof IState] =
                         controller.userData;

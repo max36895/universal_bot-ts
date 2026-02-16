@@ -140,10 +140,10 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
             }
             if (controller.card.images.length) {
                 const attach = await controller.card.getCards(cardProcessing, controller);
-                if ((attach as IVkCard).type !== undefined) {
-                    params.template = attach;
-                } else {
+                if ((attach as IVkCard).type === undefined) {
                     params.attachments = attach as string[];
+                } else {
+                    params.template = attach;
                 }
             }
             if (controller.sound.sounds.length) {

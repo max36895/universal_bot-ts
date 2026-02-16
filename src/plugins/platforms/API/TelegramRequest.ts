@@ -65,7 +65,7 @@ export class TelegramRequest {
      * Экземпляр класса для выполнения HTTP-запросов
      *
      */
-    #request: Request;
+    readonly #request: Request;
 
     /**
      * Текст последней возникшей ошибки
@@ -81,7 +81,7 @@ export class TelegramRequest {
     /**
      * Контекст приложения.
      */
-    #appContext: AppContext;
+    readonly #appContext: AppContext;
 
     /**
      * Создает экземпляр класса для работы с API Telegram
@@ -94,7 +94,7 @@ export class TelegramRequest {
         this.#error = null;
         this.#appContext = appContext;
         if (appContext.appConfig.tokens[T_TELEGRAM].token !== undefined) {
-            this.initToken(appContext.appConfig.tokens[T_TELEGRAM].token as string);
+            this.initToken(appContext.appConfig.tokens[T_TELEGRAM].token);
         }
     }
 
@@ -140,15 +140,12 @@ export class TelegramRequest {
             });
             formData.append('media', JSON.stringify(media));
             this.#request.post = formData;
-        } else {
-            if (Text.isUrl(file as string)) {
+        } else if (Text.isUrl(file as string)) {
                 this.#request.post[type] = file;
             } else {
                 this.#request.attach = file as string;
                 this.#request.attachName = type;
             }
-        }
-        return;
     }
 
     /**
@@ -198,11 +195,11 @@ export class TelegramRequest {
         if (parseMode === 'HTML') {
             // Экранирование HTML сущностей
             return text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll('\'', '&#39;');
         }
         return text;
     }
