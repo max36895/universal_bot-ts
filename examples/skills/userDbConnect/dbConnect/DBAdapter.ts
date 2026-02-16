@@ -86,6 +86,10 @@ export default class DBAdapter extends BaseDbAdapter {
         if (remove) {
             const idVal = remove[removeData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
+                // Prevent prototype pollution via special object keys
+                if (idVal === '__proto__' || idVal === 'constructor' || idVal === 'prototype') {
+                    return false;
+                }
                 if (data[idVal] !== undefined) {
                     delete data[idVal];
                     this._saveData(data, removeData.tableName);
