@@ -52,6 +52,10 @@ export default class DBAdapter extends BaseDbAdapter {
         if (select) {
             const idVal = select[updateData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
+                // Prevent prototype pollution via special object keys
+                if (idVal === '__proto__' || idVal === 'constructor' || idVal === 'prototype') {
+                    return false;
+                }
                 if (typeof data[idVal] !== 'undefined') {
                     data[idVal] = { ...data[idVal], ...update };
                     this._saveData(data, updateData.tableName);
