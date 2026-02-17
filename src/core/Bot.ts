@@ -7,6 +7,7 @@ import {
     TBotAuth,
     TBotContent,
     TBotResponseCb,
+    TCommandGroupMode,
     TPlugin,
 } from './interfaces/IBot';
 
@@ -212,7 +213,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     #defaultAppType: TAppType | 'auto' = 'auto';
     // Чтобы не дублировать повторное подключение к базе.
-    #appConnectStatus: IAppConnectStatus = {
+    readonly #appConnectStatus: IAppConnectStatus = {
         isConnecting: false,
     };
 
@@ -275,6 +276,17 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public get appType(): string {
         return this.#defaultAppType;
+    }
+
+    /**
+     * Задает режим работы с регулярным выражениями.
+     * При значении auto, регулярные выражения будут группироваться в группу, благодаря чему уменьшается время обработки. Логика начинает отрабатывать после того, как добавили более 300 команд.
+     * При значении no-group, группировка регулярных выражений производиться не будет, из-за чего каждое регулярное выражение будет обрабатываться отдельно. Указывать данное значение стоит в том случае, если вы получаете сильную деградацию при обработке групп.
+     * При значении group, все регулярные выражения будут добавляться в группу. Перед использованием данного значения, перепроверьте производительность, так как при группировке определенных регулярных выражений, производительность может быть ниже.
+     * @param mode - Определяет режим работы с регулярными выражениями.
+     */
+    public setCommandGroupMode(mode: TCommandGroupMode): void {
+        this.#appContext.command.setCommandGroupMode(mode);
     }
 
     /**
@@ -518,6 +530,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public setAppMode(appMode: TAppMode): this {
         this.#appContext.appMode = appMode;
+        this.#appContext.command.strictMode = appMode === 'strict_prod';
         return this;
     }
 
@@ -776,7 +789,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     if (
                         this.#appContext.platforms[platformName].isPlatformOnQuery(uBody, headers)
                     ) {
-                        return this.#appContext.platforms[platformName].platformName as TAppType;
+                        return this.#appContext.platforms[platformName].platformName;
                     }
                 }
             }
@@ -847,12 +860,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
         let isNewUser = true;
 
         botController.platformOptions.usedLocalStorage = botClass.isLocalStorage(botController);
-        botController.state = (await botClass.getLocalStorage(botController)) as TUserData;
+        botController.state = await botClass.getLocalStorage(botController);
         if (isLocalStorage) {
-            botController.userData = (await botClass.getLocalStorage(botController)) as TUserData;
+            botController.userData = await botClass.getLocalStorage(botController);
         } else {
             if (botController.platformOptions.usedLocalStorage) {
-                botController.state = (await botClass.getLocalStorage(botController)) as TUserData;
+                botController.state = await botClass.getLocalStorage(botController);
             }
             if (this.#appContext.database.adapter && !this.#appContext.appConfig.isLocalStorage) {
                 const query = {
@@ -1067,11 +1080,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
         if (typeof arg1 !== 'string') {
             arg1.init(this.#appContext);
-        } else {
-            if (arg2) {
-                this.#platformMiddlewares[arg1] ??= [];
-                this.#platformMiddlewares[arg1].push(arg2);
-            }
+        } else if (arg2) {
+            this.#platformMiddlewares[arg1] ??= [];
+            this.#platformMiddlewares[arg1].push(arg2);
         }
         return this;
     }
@@ -1177,7 +1188,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         botController.setAppContext(this.#appContext);
         let cAppType: TAppType | null = appType;
         if (!appType) {
-            cAppType = this.#getAppType(this._content || content, undefined);
+            cAppType = this.#getAppType(this._content || content);
         }
         botController.appType = cAppType;
 
@@ -1187,9 +1198,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 this.#appContext.logError(msg);
                 throw new Error(msg);
             }
-            if (botController.userToken === null) {
-                botController.userToken = this.#auth;
-            }
+            botController.userToken ??= this.#auth;
             const botClass = this.#appContext.platforms[cAppType];
             botClass.updateTimeStart(botController);
             let res = botClass.setQueryData(this._content || content, botController);

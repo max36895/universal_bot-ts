@@ -74,7 +74,8 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     const items: IAlisaImage[] = [];
     const maxCount = cardInfo.usedGallery ? ALISA_MAX_GALLERY_IMAGES : ALISA_MAX_IMAGES;
     const images = cardInfo.images.slice(0, maxCount);
-    for (const image of images) {
+    for (let i = 0; i < images.length; i++) {
+        const image = images[i];
         let button: IAlisaButtonCard | null = null;
         if (!cardInfo.usedGallery) {
             button = image.button.getButtons<IAlisaButtonCard>(alisaCardButton);
@@ -143,30 +144,28 @@ export async function cardProcessing(
                 }
                 return object;
             }
+        } else if (cardInfo.usedGallery) {
+            const object: IAlisaImageGallery = {
+                type: 'ImageGallery',
+            };
+            object.items = await _getItem(cardInfo, controller);
+            return object;
         } else {
-            if (cardInfo.usedGallery) {
-                const object: IAlisaImageGallery = {
-                    type: 'ImageGallery',
+            const object: IAlisaItemsList = {
+                type: ALISA_CARD_ITEMS_LIST,
+                header: {
+                    text: Text.resize(cardInfo.title || '', 64),
+                },
+            };
+            object.items = await _getItem(cardInfo, controller);
+            const btn: IAlisaButtonCard | null = cardInfo.buttons.getButtons(alisaCardButton);
+            if (btn?.text) {
+                object.footer = {
+                    text: btn.text,
+                    button: btn,
                 };
-                object.items = await _getItem(cardInfo, controller);
-                return object;
-            } else {
-                const object: IAlisaItemsList = {
-                    type: ALISA_CARD_ITEMS_LIST,
-                    header: {
-                        text: Text.resize(cardInfo.title || '', 64),
-                    },
-                };
-                object.items = await _getItem(cardInfo, controller);
-                const btn: IAlisaButtonCard | null = cardInfo.buttons.getButtons(alisaCardButton);
-                if (btn?.text) {
-                    object.footer = {
-                        text: btn.text,
-                        button: btn,
-                    };
-                }
-                return object;
             }
+            return object;
         }
     }
     return null;

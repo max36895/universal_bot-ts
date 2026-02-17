@@ -62,29 +62,26 @@ export class Adapter extends BasePlatform<string | IMaxRequestContent> {
                 }
 
                 controller.requestObject = content;
-                switch (content.update_type || null) {
-                    case 'message_created':
-                        if (content.message !== undefined) {
-                            const object: IMaxRequestContent['message'] = content.message;
-                            controller.userId = object.sender.user_id;
-                            controller.userCommand = object.body.text.toLowerCase().trim();
-                            controller.originalUserCommand = object.body.text.trim();
-                            controller.messageId = object.body.seq;
-                            controller.payload = object.body.attachments || null;
-                            const thisUser = {
-                                username: object.sender.username,
-                                first_name: object.sender.first_name || null,
-                                last_name: object.sender.last_name || null,
-                            };
-                            controller.nlu.setNlu({ thisUser });
-                            return true;
-                        }
-                        return false;
-
-                    default:
-                        controller.platformOptions.error =
-                            'MaxAdapter:setQueryData(): Некорректный тип данных!';
-                        break;
+                if (content.update_type === 'message_created') {
+                    if (content.message !== undefined) {
+                        const object: IMaxRequestContent['message'] = content.message;
+                        controller.userId = object.sender.user_id;
+                        controller.userCommand = object.body.text.toLowerCase().trim();
+                        controller.originalUserCommand = object.body.text.trim();
+                        controller.messageId = object.body.seq;
+                        controller.payload = object.body.attachments || null;
+                        const thisUser = {
+                            username: object.sender.username,
+                            first_name: object.sender.first_name || null,
+                            last_name: object.sender.last_name || null,
+                        };
+                        controller.nlu.setNlu({ thisUser });
+                        return true;
+                    }
+                    return false;
+                } else {
+                    controller.platformOptions.error =
+                        'MaxAdapter:setQueryData(): Некорректный тип данных!';
                 }
             } else {
                 controller.platformOptions.error = `MaxAdapter:setQueryData(): ${EMPTY_QUERY_ERROR}`;

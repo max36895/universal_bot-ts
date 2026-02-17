@@ -21,6 +21,7 @@ async function getSoundInDB(controller: BotController, path: string): Promise<st
         return null;
     });
 }
+
 /**
  * Получение корректного ответа для озвучивания запроса пользователю MAX
  * @param soundInfo Информация необходимая для обработки аудио
@@ -33,8 +34,8 @@ export async function soundProcessing(
     const { sounds, text } = soundInfo;
     const data: IMaxAudio[] = [];
     if (sounds) {
-        for (const element of sounds) {
-            const sound = element;
+        for (let i = 0; i < sounds.length; i++) {
+            const sound = sounds[i];
             if (sound) {
                 if (sound.sounds !== undefined && sound.key !== undefined) {
                     let sText: string | null = Text.getText(sound.sounds);

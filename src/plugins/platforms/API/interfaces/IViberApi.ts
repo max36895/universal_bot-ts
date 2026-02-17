@@ -1,5 +1,3 @@
-//import { IViberButton, IViberButtonObject } from '../../components/button/interfaces';
-
 import { IViberButton, IViberButtonObject } from '../../Viber/interfaces/IViberPlatform';
 
 /**

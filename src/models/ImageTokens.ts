@@ -50,7 +50,7 @@ export class ImageTokens extends Model<IImageModelState> {
     /**
      * Название таблицы для хранения данных об изображениях.
      */
-    private TABLE_NAME = 'ImageTokens';
+    private readonly TABLE_NAME = 'ImageTokens';
 
     /**
      * Идентификатор/токен изображения.

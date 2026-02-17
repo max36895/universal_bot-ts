@@ -276,7 +276,8 @@ export class Text {
         let pattern: PatternItem;
         if (Array.isArray(patterns)) {
             const newPatterns: string[] = [];
-            for (const patternBase of patterns) {
+            for (let i = 0; i < patterns.length; i++) {
+                const patternBase = patterns[i];
                 if (isRegex(patternBase, customReg)) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
@@ -358,7 +359,8 @@ export class Text {
         }
 
         // Оптимизированный вариант для массива: early return + includes
-        for (const value of find as PatternItem[]) {
+        for (let i = 0; i < (find as TPatternReg[]).length; i++) {
+            const value = (find as TPatternReg[])[i];
             if (isRegex(value, customReg)) {
                 if (this.#isSayPattern(value, text, useDirectRegExp, customReg)) {
                     return true;
@@ -367,7 +369,7 @@ export class Text {
                 if (text.length < value.length) {
                     continue;
                 }
-                if (text === value || text.includes(value)) {
+                if (text === value || text.includes(value as string)) {
                     return true;
                 }
             }
@@ -413,11 +415,9 @@ export class Text {
                     regex,
                 });
             }
-        } else {
-            if (cache) {
-                cache.cReq++;
-                Text.#regexCache.set(key, cache);
-            }
+        } else if (cache) {
+            cache.cReq++;
+            Text.#regexCache.set(key, cache);
         }
         return regex;
     }

@@ -74,7 +74,8 @@ export async function getValueInDB(
 async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise<IMarusiaImage[]> {
     const items: IMarusiaImage[] = [];
     const images = cardInfo.images.slice(0, MARUSIA_MAX_IMAGES);
-    for (const image of images) {
+    for (let i = 0; i < images.length; i++) {
+        const image = images[i];
         let button: IMarusiaButtonCard | null =
             image.button.getButtons<IMarusiaButtonCard>(marusiaCardButton);
         if (!button?.text) {

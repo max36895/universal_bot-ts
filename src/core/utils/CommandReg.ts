@@ -4,6 +4,7 @@ import { isRegexLikelySafe } from './utils';
 import os from 'os';
 import { BotController } from '../../controller';
 import { TAppPlugin } from '../interfaces/IAppContext';
+import { TCommandGroupMode } from '../interfaces/IBot';
 
 export interface IGroupData {
     commands: string[];
@@ -198,7 +199,7 @@ export class CommandReg {
      */
     public commands: Map<string, ICommandParam> = new Map();
 
-    #exactMatchMap = new Map<string, string>();
+    readonly #exactMatchMap = new Map<string, string>();
     /**
      * Добавленные шаги для обработки
      */
@@ -208,6 +209,8 @@ export class CommandReg {
      * В строгом режиме работы, все ReDOS регулярные выражения не будут добавляться.
      */
     public strictMode: boolean = false;
+
+    #commandGroupMode: TCommandGroupMode = 'auto';
 
     /**
      * Кастомизация поиска команд.
@@ -237,6 +240,10 @@ export class CommandReg {
             return typeof reg === 'function' ? reg() : reg.getData();
         }
         return undefined;
+    }
+
+    setCommandGroupMode(mode: TCommandGroupMode): void {
+        this.#commandGroupMode = mode;
     }
 
     /**
@@ -269,9 +276,9 @@ export class CommandReg {
             slots.forEach((slot) => {
                 const slotStr = isRegex(slot, this.getCustomRegExp()) ? slot.source : slot;
                 if (isRegexLikelySafe(slotStr, isRegex(slot, this.getCustomRegExp()))) {
-                    (correctSlots as TSlots).push(slot);
+                    correctSlots.push(slot);
                 } else {
-                    (errors as string[]).push(slotStr);
+                    errors.push(slotStr);
                 }
             });
             const status = errors.length === 0;
@@ -346,7 +353,10 @@ export class CommandReg {
 
     #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
-        if (this.#regExpCommandCount < 300) {
+        if (
+            this.#commandGroupMode === 'no-group' ||
+            (this.#commandGroupMode === 'auto' && this.#regExpCommandCount < 300)
+        ) {
             return commandName;
         }
         if (isRegexp) {
@@ -448,7 +458,7 @@ export class CommandReg {
             if (group?.commands?.length) {
                 const newCommands = group?.commands.filter((gCommand) => {
                     return gCommand !== commandName;
-                }) as string[];
+                });
                 const newCommandName = newCommands[0];
                 const nGroup: IGroup = {
                     name: newCommandName,
@@ -476,7 +486,7 @@ export class CommandReg {
                 if (group) {
                     const newCommands = group?.commands.filter((gCommand) => {
                         return gCommand !== commandName;
-                    }) as string[];
+                    });
                     const nGroup: IGroup = {
                         name: commandName,
                         regLength: 0,
@@ -619,7 +629,8 @@ export class CommandReg {
             }
         } else {
             this.#addRegexpInGroup(commandName, correctSlots, false);
-            for (const slot of slots) {
+            for (let i = 0; i < slots.length; i++) {
+                const slot = slots[i];
                 if (isRegex(slot, this.getCustomRegExp())) {
                     const res = this.isDangerRegex(slot);
                     if (res.status && this.strictMode) {

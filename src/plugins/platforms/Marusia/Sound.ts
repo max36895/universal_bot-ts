@@ -322,35 +322,4 @@ export async function getSoundInDB(
  */
 export function soundProcessing(soundInfo: ISoundInfo): string {
     return defaultSoundProcessing(soundInfo, STANDARD_SOUNDS);
-    /*let updSounds: ISound[] = [];
-    if (soundInfo.sounds.length) {
-        updSounds = [...soundInfo.sounds, ...(soundInfo.usedStandardSound ? STANDARD_SOUNDS : [])];
-    } else if (soundInfo.usedStandardSound) {
-        updSounds = STANDARD_SOUNDS;
-    }
-    soundInfo.text = getPause(soundInfo.text);
-    let res = soundInfo.text;
-    if (updSounds.length) {
-        for (let i = 0; i < updSounds.length; i++) {
-            const sound = updSounds[i];
-            if (typeof sound === 'object') {
-                if (sound.sounds !== undefined && sound.key !== undefined) {
-                    const sText: string = Text.getText(sound.sounds);
-                    /!*
-                     * Не стоит так делать, так как нужно время, пока Vk обработает звуковую дорожку.
-                     * Лучше загружать звуки через консоль администратора!
-                     * @see (https://vk.ru/dev/marusia_skill_docs10) Смотри тут
-                     *!/
-                    /!* if (isFile(sText) || Text.isUrl(sText)) {
-                        getSoundInDB()
-                    }*!/
-
-                    if (sText) {
-                        res = replaceSound(sound.key, sText, res);
-                    }
-                }
-            }
-        }
-    }
-    return res;*/
 }

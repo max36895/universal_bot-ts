@@ -477,3 +477,11 @@ export type TSoundProcessing<TResult = string | Promise<string> | Promise<string
     soundInfo: ISoundInfo,
     controller: BotController,
 ) => TResult;
+
+/**
+ * Тип, определяющий режим работы с группировкой регулярных выражений.
+ *  - auto - Режим, при котором регулярные выражения группируются при достижении определенного количества.
+ *  - no-group - Режим, запрещающий группировать регулярные выражения.
+ *  - group - Режим, при котором все регулярные выражения группируются.
+ */
+export type TCommandGroupMode = 'auto' | 'no-group' | 'group';

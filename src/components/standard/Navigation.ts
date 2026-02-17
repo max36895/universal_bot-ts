@@ -350,7 +350,7 @@ export class Navigation<ElementType = TElementType> {
         }
 
         let number: number | null = null;
-        const data = text.match(/(\d)/imu);
+        const data =/(\d)/imu.exec(text);
         if (data) {
             number = +data[0][0];
         }

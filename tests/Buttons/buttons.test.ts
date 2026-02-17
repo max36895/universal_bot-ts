@@ -1,5 +1,13 @@
 import { Button, Buttons, AppContext } from '../../src';
-import { AlisaButton, AlisaCard, TelegramButton, ViberButton, VkButton } from '../../src/plugins';
+import {
+    AlisaButton,
+    AlisaCard,
+    MarusiaButton,
+    MaxButton,
+    TelegramButton,
+    ViberButton,
+    VkButton,
+} from '../../src/plugins';
 
 const DEFAULT_URL = 'https://test.ru';
 
@@ -75,6 +83,39 @@ describe('Buttons test', () => {
         expect(defaultButtons.getButtons(AlisaCard.alisaCardButton)).toEqual({
             text: '1',
         });
+    });
+
+    it('Get buttons Marusia', () => {
+        const alisaButtons = [
+            {
+                title: '1',
+                hide: true,
+            },
+            {
+                title: '1',
+                hide: false,
+                url: DEFAULT_URL,
+            },
+            {
+                title: '2',
+                hide: true,
+            },
+            {
+                title: '2',
+                hide: false,
+                url: DEFAULT_URL,
+            },
+            {
+                title: '3',
+                hide: true,
+            },
+            {
+                title: '3',
+                hide: false,
+                url: DEFAULT_URL,
+            },
+        ];
+        expect(defaultButtons.getButtons(MarusiaButton.buttonProcessing)).toEqual(alisaButtons);
     });
 
     it('Get buttons Vk', () => {
@@ -244,6 +285,46 @@ describe('Buttons test', () => {
         defaultButtons.clear();
         expect(defaultButtons.getButtons(TelegramButton.buttonProcessing)).toEqual({
             remove_keyboard: true,
+        });
+    });
+
+    it('Get buttons Max', () => {
+        const maxButtons = {
+            buttons: [
+                {
+                    text: '1',
+                    type: 'message',
+                },
+                {
+                    text: '1',
+                    type: 'link',
+                    url: 'https://test.ru',
+                },
+                {
+                    text: '2',
+                    type: 'message',
+                },
+                {
+                    text: '2',
+                    type: 'link',
+                    url: 'https://test.ru',
+                },
+                {
+                    text: '3',
+                    type: 'message',
+                },
+                {
+                    text: '3',
+                    type: 'link',
+                    url: 'https://test.ru',
+                },
+            ],
+        };
+
+        expect(defaultButtons.getButtons(MaxButton.buttonProcessing)).toEqual(maxButtons);
+        defaultButtons.clear();
+        expect(defaultButtons.getButtons(MaxButton.buttonProcessing)).toEqual({
+            buttons: [],
         });
     });
 });

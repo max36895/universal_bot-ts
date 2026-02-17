@@ -100,7 +100,7 @@ export async function cardProcessing(
                          * У карточки в любом случае должна быть хоть одна кнопка.
                          * Максимальное количество кнопок 3
                          */
-                        if (button && button.one_time) {
+                        if (button?.one_time) {
                             element.buttons = button.buttons.splice(0, 3) as IVkButton[];
                             element.action = { type: 'open_photo' };
                             elements.push(element);

@@ -257,7 +257,7 @@ describe('umbot', () => {
                     res = '#game_win# '.repeat(i);
                 }
                 res = res.trim();
-                expect(bot.getTts()?.replaceAll(/(win-\d)/g, 'win-d')).toEqual(res);
+                expect(bot.getTts()?.replace(/(win-\d)/g, 'win-d')).toEqual(res);
                 bot.clearState();
             }, `Обработка звуков. Количество мелодий равно ${i}`);
         }

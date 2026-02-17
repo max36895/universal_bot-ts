@@ -85,7 +85,7 @@ export class YandexRequest {
     public constructor(oauth: string | null = null, appContext: AppContext) {
         this._request = new Request(appContext);
         this._appContext = appContext;
-        this.setOAuth(oauth || (appContext.appConfig.tokens[T_ALISA].token as string) || null);
+        this.setOAuth(oauth || (appContext.appConfig.tokens[T_ALISA].token) || null);
         this._request.maxTimeQuery = 1500;
         this.#error = null;
     }
@@ -179,7 +179,7 @@ export class YandexRequest {
         this.setOAuth(this.#oauth as string);
         const data: IRequestSend<T> = await this._request.send<T>(url);
         if (data.status && data.data) {
-            if (Object.hasOwnProperty.call(data.data, 'error')) {
+            if (Object.hasOwn(data.data, 'error')) {
                 this.#error = data;
             }
             return data.data;

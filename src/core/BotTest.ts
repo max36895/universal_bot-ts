@@ -150,8 +150,7 @@ export class BotTest extends Bot {
             let strRes = '';
             if (
                 this._botController.appType &&
-                platformAdapter &&
-                platformAdapter[this._botController.appType as string].isVoice
+                platformAdapter?.[this._botController.appType]?.isVoice
             ) {
                 if (result.response?.text) {
                     strRes = result.response.text;

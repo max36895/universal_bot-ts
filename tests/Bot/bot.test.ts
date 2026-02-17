@@ -1,6 +1,27 @@
-import { Bot, BotController, IPlatformData, IUserData, UsersData } from '../../src';
-import { T_ALISA, AlisaAdapter, FileAdapter, IAlisaWebhookResponse } from '../../src/plugins';
+import { AppContext, Bot, BotController, IPlatformData, IUserData, UsersData } from '../../src';
+import {
+    T_ALISA,
+    AlisaAdapter,
+    FileAdapter,
+    IAlisaWebhookResponse,
+    voicePlatforms,
+} from '../../src/plugins';
 import { Server } from 'http';
+
+class MyReg extends RegExp {
+    constructor(parent: RegExp | string, flags: string) {
+        super(parent, flags);
+        MyReg.created++;
+    }
+
+    exec(string: string): RegExpExecArray | null {
+        MyReg.used++;
+        return super.exec(string);
+    }
+
+    static created = 0;
+    static used = 0;
+}
 
 class TestBotController extends BotController {
     constructor() {
@@ -627,7 +648,222 @@ describe('Bot', () => {
         });
     });
 
+    describe('customLogger', () => {
+        it('metric', async () => {
+            bot.initBotController(TestBotController);
+            let logCount = 0;
+            let warnCount = 0;
+            let errorCount = 0;
+            let errorMessage = '';
+            let metricCount = 0;
+            bot.setLogger({
+                log: () => {
+                    logCount++;
+                },
+                error: (message) => {
+                    errorCount++;
+                    errorMessage = message;
+                },
+                warn: () => warnCount++,
+                metric: () => metricCount++,
+            });
+            bot.addCommand('cool', ['cool'], (_, botC) => {
+                botC.text = 'cool';
+            });
+            bot.use(new AlisaAdapter());
+            await bot.run(T_ALISA, getContent('cool', 2));
+            expect(metricCount).toBe(3);
+            for (let i = 0; i < 50000; i++) {
+                bot.addCommand(`test_${i}`, [`test_${i}`], () => {
+                    return 'empty';
+                });
+            }
+            expect(warnCount).toBe(2);
+            expect(errorCount).toBe(0);
+            bot.addCommand('error', ['error_test'], () => {
+                return Promise.reject('test');
+            });
+            await bot.run(T_ALISA, getContent('error_test', 2));
+            expect(metricCount).toBe(4);
+            expect(errorCount).toBe(1);
+            expect(errorMessage).toBe(
+                'BotController: Произошла ошибка при обработке команды \"error\", ошибка: \"test\"',
+            );
+        });
+    });
+
     describe('findCommand', () => {
+        it('redos warning', () => {
+            let warmMessage;
+            let errorMessage;
+            bot.setLogger({
+                error: (message) => {
+                    errorMessage = message;
+                },
+                warn: (message) => {
+                    warmMessage = message;
+                },
+            });
+            bot.addCommand('normal', [/\d+/], () => {});
+            expect(warmMessage).toBe(undefined);
+            expect(errorMessage).toBe(undefined);
+            bot.addCommand('normal2', ['/\d+/'], () => {}, true);
+            expect(warmMessage).toBe(undefined);
+            expect(errorMessage).toBe(undefined);
+
+            bot.addCommand('redos', [/.*/], () => {});
+            expect(warmMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: .*',
+            );
+            expect(errorMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+
+            bot.addCommand('redos2', ['/.*/'], () => {}, true);
+            expect(warmMessage).toBe(
+                'Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /.*/',
+            );
+            expect(errorMessage).toBe(undefined);
+            bot.clearCommands();
+
+            bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], () => {}, true);
+            expect(warmMessage).toBe(
+                `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /${'test'.repeat(777)}/`,
+            );
+            expect(errorMessage).toBe(undefined);
+            bot.clearCommands();
+
+            bot.addCommand('redos4', [/(a*)*/], () => {});
+            expect(warmMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a*)*',
+            );
+            expect(errorMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+
+            bot.addCommand('redos5', [/(a|a+)+/], () => {});
+            expect(warmMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a|a+)+',
+            );
+            expect(errorMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+
+            bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
+            expect(warmMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a+){10,1000}',
+            );
+            expect(errorMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+        });
+        it('redos error', () => {
+            let warmMessage;
+            let errorMessage;
+            bot.setLogger({
+                error: (message) => {
+                    errorMessage = message;
+                },
+                warn: (message) => {
+                    warmMessage = message;
+                },
+            });
+            bot.setAppMode('strict_prod');
+            bot.addCommand('normal', [/\d+/], () => {});
+            expect(warmMessage).toBe(undefined);
+            expect(errorMessage).toBe(undefined);
+            bot.addCommand('normal2', ['/\d+/'], () => {}, true);
+            expect(warmMessage).toBe(undefined);
+            expect(errorMessage).toBe(undefined);
+
+            bot.addCommand('redos', [/.*/], () => {});
+            expect(errorMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: .*',
+            );
+            expect(warmMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+
+            bot.addCommand('redos2', ['/.*/'], () => {}, true);
+            expect(errorMessage).toBe(
+                'Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /.*/',
+            );
+            expect(warmMessage).toBe(undefined);
+            bot.clearCommands();
+
+            bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], () => {}, true);
+            expect(errorMessage).toBe(
+                `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /${'test'.repeat(777)}/`,
+            );
+            expect(warmMessage).toBe(undefined);
+            bot.clearCommands();
+
+            bot.addCommand('redos4', [/(a*)*/], () => {});
+            expect(errorMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a*)*',
+            );
+            expect(warmMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+
+            bot.addCommand('redos5', [/(a|a+)+/], () => {});
+            expect(errorMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a|a+)+',
+            );
+            expect(warmMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+
+            bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
+            expect(errorMessage).toBe(
+                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a+){10,1000}',
+            );
+            expect(warmMessage).toBe(undefined);
+            warmMessage = undefined;
+            errorMessage = undefined;
+            bot.clearCommands();
+        });
+
+        it('addCommand and base botController', async () => {
+            bot.addCommand('cool', ['cool'], (_, botC) => {
+                botC.text = 'cool';
+            });
+            bot.use(new AlisaAdapter());
+            let res = (await bot.run(T_ALISA, getContent('cool', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            for (let i = 0; i < 50; i++) {
+                bot.addCommand(`test_${i}`, [`test_${i}`], () => {
+                    return 'empty';
+                });
+            }
+            res = (await bot.run(T_ALISA, getContent('cool', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('cool');
+            bot.addCommand('my', ['hello'], (_, botC) => {
+                botC.text = 'hello';
+            });
+            res = (await bot.run(T_ALISA, getContent('hello', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            for (let i = 50; i < 150; i++) {
+                bot.addCommand(`test_${i}`, [`test_${i}`], () => {
+                    return 'empty';
+                });
+            }
+            res = (await bot.run(T_ALISA, getContent('hello', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hello');
+            bot.addCommand('my', ['by'], (_, botC) => {
+                botC.text = 'by';
+            });
+            res = (await bot.run(T_ALISA, getContent('by', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('by');
+        });
+
         it('not used group and not regexp', async () => {
             bot.initBotController(TestBotController);
             bot.addCommand('cool', ['cool'], (_, botC) => {
@@ -966,6 +1202,130 @@ describe('Bot', () => {
             await new Promise((res) => setTimeout(res, 200));
             res = (await bot.run(T_ALISA, getContent('hello', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('hello');
+        });
+
+        it('group mode auto', () => {
+            bot.addCommand('_0', ['0'], () => {}, true);
+            expect(bot.getAppContext().commands.size).toBe(1);
+            for (let i = 1; i < 300; i++) {
+                bot.addCommand(`_${i}`, [`${i}`], () => {}, true);
+            }
+            expect(bot.getAppContext().commands.size).toBe(300);
+            expect(bot.getAppContext().commands.get('_299')?.__$groupName).toBe('_299');
+            bot.addCommand('_300', ['300'], () => {}, true);
+            bot.addCommand('_301', ['301'], () => {}, true);
+            expect(bot.getAppContext().commands.get('_301')?.__$groupName).toBe('_300');
+        });
+
+        it('group mode group', () => {
+            bot.setCommandGroupMode('group');
+            bot.addCommand('_0', ['0'], () => {}, true);
+            expect(bot.getAppContext().commands.size).toBe(1);
+            for (let i = 1; i < 20; i++) {
+                bot.addCommand(`_${i}`, [`${i}`], () => {}, true);
+            }
+            expect(bot.getAppContext().commands.size).toBe(20);
+            expect(bot.getAppContext().commands.get('_19')?.__$groupName).toBe('_0');
+            bot.addCommand('_300', ['300'], () => {}, true);
+            bot.addCommand('_301', ['301'], () => {}, true);
+            expect(bot.getAppContext().commands.get('_301')?.__$groupName).toBe('_0');
+            bot.setCommandGroupMode('auto');
+        });
+
+        it('group mode no-group', () => {
+            bot.setCommandGroupMode('no-group');
+            bot.addCommand('_0', ['0'], () => {}, true);
+            expect(bot.getAppContext().commands.size).toBe(1);
+            for (let i = 1; i < 300; i++) {
+                bot.addCommand(`_${i}`, [`${i}`], () => {}, true);
+            }
+            expect(bot.getAppContext().commands.size).toBe(300);
+            expect(bot.getAppContext().commands.get('_299')?.__$groupName).toBe('_299');
+            bot.addCommand('_300', ['300'], () => {}, true);
+            bot.addCommand('_301', ['301'], () => {}, true);
+            expect(bot.getAppContext().commands.get('_301')?.__$groupName).toBe('_301');
+            bot.setCommandGroupMode('auto');
+        });
+    });
+
+    describe('adapters', () => {
+        it('i18n', async () => {
+            const i18n = (appContext: AppContext) => {
+                const fn = (text: string) => {
+                    if (text === 'привет') {
+                        return 'hi';
+                    }
+                    return text;
+                };
+                appContext.plugins.i18n = fn;
+            };
+            i18n.isPlugin = true;
+            bot.use(i18n);
+            bot.use(voicePlatforms);
+            bot.addCommand('hi2', ['прив'], (_, botController) => {
+                botController.text = 'приветик';
+            });
+            bot.addCommand('hi', ['привет'], (_, botController) => {
+                botController.text = 'привет';
+            });
+            let res = (await bot.run(T_ALISA, getContent('прив'))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('приветик');
+
+            res = (await bot.run(T_ALISA, getContent('привет'))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('hi');
+        });
+        it('regExp', async () => {
+            let usedRegExp = 0;
+            const reg = (appContext: AppContext) => {
+                const fn = () => {
+                    usedRegExp++;
+                    return MyReg as unknown as RegExpConstructor;
+                };
+                appContext.plugins.regExp = fn;
+            };
+            reg.isPlugin = true;
+            bot.use(reg);
+            bot.use(voicePlatforms);
+            bot.addCommand('reg', ['\\d+'], (userCommand) => `Вы сказали ${userCommand}`, true);
+            const res = (await bot.run(T_ALISA, getContent('5'))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Вы сказали 5');
+            expect(usedRegExp).toBe(5);
+            expect(MyReg.created).toBe(1);
+            // Вызывается 3 раза, так как 2 раза идет прогрев + 1 реальный вызов
+            expect(MyReg.used).toBe(3);
+            await bot.run(T_ALISA, getContent('привет'));
+            expect(usedRegExp).toBe(7);
+            expect(MyReg.created).toBe(1);
+            expect(MyReg.used).toBe(4);
+        });
+    });
+
+    describe('env', () => {
+        it('init', () => {
+            bot.setAppConfig({
+                env: __dirname + '/env',
+            });
+            expect(bot.getAppContext().appConfig.tokens).toEqual({
+                alisa: {
+                    token: 'your-alisa-token',
+                },
+                marusia: {
+                    token: 'your-marusia-token',
+                },
+                max_app: {
+                    token: 'your-max-token',
+                },
+                telegram: {
+                    token: 'your-telegram-token',
+                },
+                viber: {
+                    token: 'your-viber-token',
+                },
+                vk: {
+                    confirmation_token: 'your-vk-confirmation-token',
+                    token: 'your-vk-token',
+                },
+            });
         });
     });
 });

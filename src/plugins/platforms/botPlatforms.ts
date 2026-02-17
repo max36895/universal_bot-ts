@@ -10,6 +10,7 @@ function botPlatforms(appContext: AppContext): void {
     adapters.forEach((adapter) => {
         if (!adapter.adapter.isVoice()) {
             const platformAdapter = new adapter.adapter();
+            platformAdapter.init(appContext);
             appContext.platforms[platformAdapter.platformName] = platformAdapter;
         }
     });

@@ -48,8 +48,8 @@ export async function soundProcessing(
     const { sounds, text } = soundInfo;
     const data: string[] = [];
     if (sounds) {
-        for (const element of sounds) {
-            const sound = element;
+        for (let i = 0; i < sounds.length; i++) {
+            const sound = sounds[i];
             if (sound) {
                 if (sound.sounds !== undefined && sound.key !== undefined) {
                     let sText: string | null = Text.getText(sound.sounds);

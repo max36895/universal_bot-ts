@@ -811,7 +811,8 @@ export abstract class BotController<
         }
         const start = this.appContext.usedMetric ? performance.now() : 0;
         const intents: IAppIntent[] = this._intents();
-        for (const intent of intents) {
+        for (let i = 0; i < intents.length; i++) {
+            const intent = intents[i];
             if (
                 Text.isSayText(
                     intent.slots || [],

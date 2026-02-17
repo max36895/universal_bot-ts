@@ -720,7 +720,7 @@ export class Nlu {
      * ```
      */
     public static getLink(query: string): INluResult<string[] | null> {
-        const links = query.match(Nlu.LINK_REGEX);
+        const links = Nlu.LINK_REGEX.exec(query);
         return {
             status: !!links,
             result: links,
@@ -743,7 +743,7 @@ export class Nlu {
      * ```
      */
     public static getPhone(query: string): INluResult<string[] | null> {
-        const phones = query.match(Nlu.PHONE_REGEX);
+        const phones = Nlu.PHONE_REGEX.exec(query);
         return {
             status: !!phones,
             result: phones,
@@ -766,7 +766,7 @@ export class Nlu {
      * ```
      */
     public static getEMail(query: string): INluResult<string[] | null> {
-        const emails = query.match(Nlu.EMAIL_REGEX);
+        const emails = Nlu.EMAIL_REGEX.exec(query);
         return {
             status: !!emails,
             result: emails,

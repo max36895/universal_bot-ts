@@ -189,8 +189,8 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
      * Конфигурация приложения
      */
     public appConfig: Required<IAppConfig> = {
-        error_log: join(__dirname, '..', '..', 'logs'), //`${__dirname}/../../logs`,
-        json: join(__dirname, '..', '..', 'json'), //`${__dirname}/../../json`,
+        error_log: join(__dirname, '..', '..', 'logs'),
+        json: join(__dirname, '..', '..', 'json'),
         db: { host: '', user: '', pass: '', database: '' },
         isLocalStorage: false,
         tokens: {},
@@ -369,10 +369,10 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
                 if (this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME) {
                     this.appConfig.db = {
                         ...this.appConfig.db,
-                        host: (envVars.DB_HOST || this.appConfig.db?.host) as string,
+                        host: envVars.DB_HOST || this.appConfig.db?.host,
                         user: envVars.DB_USER || this.appConfig.db?.user,
                         pass: envVars.DB_PASSWORD || this.appConfig.db?.pass,
-                        database: (envVars.DB_NAME || this.appConfig.db?.database) as string,
+                        database: envVars.DB_NAME || this.appConfig.db?.database,
                     };
                 }
 
@@ -509,8 +509,8 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
                 regex: /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g,
                 replacement: '$1:"***"',
             },
-            { regex: /"[A-Za-z0-9+/=]{30,}"/g, replacement: '"***"' },
-            { regex: /\b[A-Za-z0-9]{64,}\b/g, replacement: '***' },
+            { regex: /"[A-Za-z0-9+/=]{30,256}"/g, replacement: '"***"' },
+            { regex: /\b[A-Za-z0-9]{64,256}\b/g, replacement: '***' },
         ];
 
         let result = text;

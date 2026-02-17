@@ -107,7 +107,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * - Дополнительная информация
      * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
-    public meta: any; //Record<string, unknown> | string | null;
+    public meta: any;
 
     /**
      * Основные данные пользователя.
@@ -118,7 +118,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * - Другие пользовательские данные
      * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
-    public data: any; //string | Record<string, unknown> | null;
+    public data: any;
 
     /**
      * Тип платформы пользователя.
@@ -275,9 +275,8 @@ export class UsersData extends Model<IUserDataModelState> {
      */
     public init(data: IDbResult[] | IDbResult | null): void {
         super.init(data);
-        //if (this._appContext?.isSaveDb) {
         if (typeof this.meta === 'string') {
-            if (this.meta[0] === '{' || this.meta[0] === '[') {
+            if (this.meta.startsWith('{') || this.meta.startsWith('[')) {
                 this.meta = JSON.parse(this.meta);
             }
         }

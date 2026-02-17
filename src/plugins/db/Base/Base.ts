@@ -88,11 +88,12 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param res Результат запроса. В случае успешного запроса вернутся данные, в противном случае null
      */
     public getValue(res: IModelRes<IDbResult>): IDbResult | null {
-        if (res && res.status) {
+        if (res?.status) {
             return res.data as IDbResult;
         }
         return null;
     }
+
     /**
      * Выполняет SELECT-запрос.
      *
@@ -123,6 +124,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         where: IQueryData | null,
         isOne: boolean,
     ): IModelRes | Promise<IModelRes>;
+
     /**
      * Выполняет INSERT-запрос.
      *
@@ -137,6 +139,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
      */
     public abstract _insert(insertData: IQuery): boolean | Promise<boolean>;
+
     /**
      * Выполняет UPDATE-запрос.
      *
@@ -151,6 +154,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
      */
     public abstract _update(updateData: IQuery): boolean | Promise<boolean>;
+
     /**
      * Выполняет DELETE-запрос.
      *
@@ -165,6 +169,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
      */
     public abstract _remove(removeData: IQuery): boolean | Promise<boolean>;
+
     /**
      * Выполняет произвольный запрос через callback.
      * Если вы планируете использовать `query()`, обязательно переопределите `_query`. По умолчанию он возвращает null и не выполняет никаких действий.
@@ -174,6 +179,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     public _query(_callback: TQueryCb): Promise<unknown> | unknown {
         return null;
     }
+
     /**
      * Выполняет SELECT-запрос.
      *
@@ -201,6 +207,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         });
         return res;
     }
+
     /**
      * Выполняет INSERT-запрос.
      *
@@ -221,6 +228,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         });
         return res;
     }
+
     /**
      * Выполняет UPDATE-запрос.
      *
@@ -241,6 +249,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         });
         return res;
     }
+
     /**
      * Выполняет DELETE-запрос.
      *
@@ -261,6 +270,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         });
         return res;
     }
+
     /**
      * Выполняет произвольный запрос через callback.
      *
@@ -270,6 +280,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     public query(callback: TQueryCb): Promise<unknown> | unknown {
         return this._query(callback);
     }
+
     /**
      * Сохраняет запись: вставляет новую или обновляет существующую.
      * Логика:
@@ -293,6 +304,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
             return await this.insert(saveData);
         }
     }
+
     /**
      * Выполняет SELECT с ограничением до одной записи.
      * @param selectData Дополнительные данные для запроса
@@ -307,6 +319,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         }
         return null;
     }
+
     /**
      * Экранирует строку для безопасного использования в запросах.
      *
@@ -322,15 +335,21 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Проверяет, установлено ли соединение с БД.
      */
     public abstract isConnected(): Promise<boolean> | boolean;
+
     /**
      * Вызывается при завершении работы приложения или замене адаптера.
      * Используйте для закрытия соединений, сохранения данных и т.п.
      */
-    public destroy(): void {}
+    public destroy(): void {
+        /* TODO document why this method 'destroy' is empty */
+    }
+
     /**
      * Вызывается при удалении модели или завершении сессии.
      * Может использоваться для освобождения ресурсов, связанных с таблицей.
      * @param _tableName Название таблицы, подключение к которой закрывается
      */
-    public close(_tableName: string): void {}
+    public close(_tableName: string): void {
+        /* TODO document why this method 'close' is empty */
+    }
 }

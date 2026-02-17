@@ -95,7 +95,7 @@ export class Button<TButtonPayload = Record<string, unknown> | string | null> {
      * Устанавливает контекст приложения.
      * @param appContext
      */
-    public setAppContext(appContext: AppContext): Button<TButtonPayload> {
+    public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
         return this;
     }

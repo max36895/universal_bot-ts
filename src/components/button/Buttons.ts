@@ -50,7 +50,7 @@ export class Buttons {
      * Устанавливает контекст приложения.
      * @param appContext
      */
-    public setAppContext(appContext: AppContext): Buttons {
+    public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
         return this;
     }
@@ -79,18 +79,16 @@ export class Buttons {
         payload: TButtonPayload,
         hide: boolean = false,
         options: IButtonOptions = {},
-    ): Buttons {
+    ): this {
         let button: Button | null = new Button();
         button.setAppContext(this.#appContext);
         if (hide === Button.B_LINK) {
             if (!button.initLink(title, url, payload, options)) {
                 button = null;
             }
-        } else {
-            if (!button.initBtn(title, url, payload, options)) {
+        } else if (!button.initBtn(title, url, payload, options)) {
                 button = null;
             }
-        }
         if (button) {
             this.buttons.push(button);
         }
@@ -120,7 +118,7 @@ export class Buttons {
         url: string | null = '',
         payload: TButtonPayload = '',
         options: IButtonOptions = {},
-    ): Buttons {
+    ): this {
         return this.#add(title, url, payload, Button.B_BTN, options);
     }
 
@@ -147,7 +145,7 @@ export class Buttons {
         url: string = '',
         payload: TButtonPayload = '',
         options: IButtonOptions = {},
-    ): Buttons {
+    ): this {
         return this.#add(title, url, payload, Button.B_LINK, options);
     }
 
@@ -159,7 +157,7 @@ export class Buttons {
     public getButtons<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,
     ): T | null {
-        return buttonProcessing(this.buttons as Button<TType>[]) as T | null;
+        return buttonProcessing(this.buttons as Button<TType>[]);
     }
 
     /**
@@ -171,7 +169,7 @@ export class Buttons {
         buttonProcessing: TButtonProcessing<T | null, TType>,
     ): string | null {
         const btn: object[] | null = this.getButtons(buttonProcessing) as object[] | null;
-        if (btn && btn.length) {
+        if (btn?.length) {
             return JSON.stringify(btn);
         }
         return null;

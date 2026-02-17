@@ -10,7 +10,7 @@ bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillDefaultParam());
 bot.initBotController(UserAppController);
 
-//bot.run();
+// bot.run();
 /**
  * Отображаем ответ навыка и хранилище в консоли.
  */

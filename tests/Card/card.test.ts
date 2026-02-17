@@ -6,6 +6,8 @@ import {
     T_VK,
     AlisaCard,
     AlisaConstants,
+    MarusiaCard,
+    MarusiaConstants,
     ViberCard,
     ViberButton,
     VkCard,
@@ -14,6 +16,9 @@ import {
     IAlisaItemsList,
     IAlisaBigImage,
     IMaxCard,
+    IMarusiaButtonCard,
+    IMarusiaItemsList,
+    IMarusiaBigImage,
 } from '../../src/plugins';
 import { IViberCard } from '../../src/plugins/platforms/Viber/interfaces/IViberPlatform';
 
@@ -187,6 +192,25 @@ describe('Card test', () => {
             alisaCardOneNew,
         );
     });
+    it('Get Alisa card for addOneImage', async () => {
+        const alisaCard = {
+            type: AlisaConstants.ALISA_CARD_BIG_IMAGE,
+            title: 'Запись 0',
+            description: 'Описание 0',
+            image_id: '123456',
+        };
+        botController.appType = T_ALISA;
+        defaultCard.addOneImage('123456', 'Запись 0', 'Описание 0');
+        expect(await defaultCard.getCards(AlisaCard.cardProcessing, botController)).toEqual(
+            alisaCard,
+        );
+        defaultCard.addImage('1', '2', '3');
+        defaultCard.addImage('4', '5', '6');
+        defaultCard.addOneImage('123456', 'Запись 0', 'Описание 0');
+        expect(await defaultCard.getCards(AlisaCard.cardProcessing, botController)).toEqual(
+            alisaCard,
+        );
+    });
 
     it('Get Alisa gallery', async () => {
         defaultCard.isUsedGallery = true;
@@ -247,6 +271,159 @@ describe('Card test', () => {
             description: 'запись: 1',
             image_id: '123456',
         });
+    });
+
+    it('Get Marusia card', async () => {
+        const marusiaCard: IMarusiaItemsList = {
+            type: MarusiaConstants.MARUSIA_CARD_ITEMS_LIST,
+            header: {
+                text: 'title',
+            },
+            items: [
+                {
+                    title: '1',
+                    description: 'запись: 1',
+                    image_id: '123456',
+                },
+                {
+                    title: '2',
+                    description: 'запись: 2',
+                    image_id: '123456',
+                },
+                {
+                    title: '3',
+                    description: 'запись: 3',
+                    image_id: '123456',
+                },
+            ],
+        };
+        botController.appType = T_ALISA;
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCard,
+        );
+
+        defaultCard.button.addBtn('1', URL);
+        marusiaCard.footer = {
+            text: '1',
+            button: {
+                text: '1',
+                url: URL,
+            },
+        };
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCard,
+        );
+
+        defaultCard.isOne = true;
+
+        const marusiaCardOne: IMarusiaBigImage = {
+            type: MarusiaConstants.MARUSIA_CARD_BIG_IMAGE,
+            image_id: '123456',
+            title: '1',
+            description: 'запись: 1',
+            button: {
+                text: '1',
+                url: URL,
+            },
+        };
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCardOne,
+        );
+
+        defaultCard.button = new Buttons(appContext);
+        delete marusiaCardOne.button;
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCardOne,
+        );
+
+        defaultCard.clear();
+        defaultCard.isOne = false;
+        defaultCard.addImage('123456', 'Запись 1', 'Описание 1', 'Кнопка');
+        defaultCard.addImage('123456', 'Запись 2', 'Описание 2', { title: 'Кнопка', url: URL });
+        defaultCard.addImage('123456', 'Запись 3', 'Описание 3', {
+            title: 'Кнопка',
+            payload: { text: 'text' },
+        });
+        const marusiaCardButton = {
+            type: MarusiaConstants.MARUSIA_CARD_ITEMS_LIST,
+            header: {
+                text: 'title',
+            },
+            items: [
+                {
+                    title: 'Запись 1',
+                    description: 'Описание 1',
+                    image_id: '123456',
+                    button: {
+                        text: 'Кнопка',
+                    },
+                },
+                {
+                    title: 'Запись 2',
+                    description: 'Описание 2',
+                    image_id: '123456',
+                    button: {
+                        text: 'Кнопка',
+                        url: URL,
+                    },
+                },
+                {
+                    title: 'Запись 3',
+                    description: 'Описание 3',
+                    image_id: '123456',
+                    button: {
+                        text: 'Кнопка',
+                        payload: {
+                            text: 'text',
+                        },
+                    },
+                },
+            ],
+        };
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCardButton,
+        );
+
+        defaultCard.addImage('123456', 'Запись 4', 'Описание 4', 'Кнопка');
+        defaultCard.addImage('123456', 'Запись 5', 'Описание 5', 'Кнопка');
+        defaultCard.addImage('123456', 'Запись 6', 'Описание 6', 'Кнопка');
+        defaultCard.addImage('123456', 'Запись 7', 'Описание 7', 'Кнопка');
+        defaultCard.addImage('123456', 'Запись 7', 'Описание 7', 'Кнопка');
+        defaultCard.addImage('123456', 'Запись 8', 'Описание 8', 'Кнопка');
+
+        marusiaCardButton.items.push({
+            title: 'Запись 4',
+            description: 'Описание 4',
+            image_id: '123456',
+            button: {
+                text: 'Кнопка',
+            },
+        });
+        marusiaCardButton.items.push({
+            title: 'Запись 5',
+            description: 'Описание 5',
+            image_id: '123456',
+            button: {
+                text: 'Кнопка',
+            },
+        });
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCardButton,
+        );
+
+        defaultCard.isOne = true;
+        const marusiaCardOneNew = {
+            type: MarusiaConstants.MARUSIA_CARD_BIG_IMAGE,
+            title: 'Запись 1',
+            description: 'Описание 1',
+            image_id: '123456',
+            button: {
+                text: 'Кнопка',
+            },
+        };
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
+            marusiaCardOneNew,
+        );
     });
 
     it('Get Viber card', async () => {

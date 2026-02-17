@@ -150,7 +150,7 @@ export class Card {
      * Устанавливает контекст приложения.
      * @param appContext
      */
-    public setAppContext(appContext: AppContext): Card {
+    public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
         this.button.setAppContext(appContext);
         return this;
@@ -165,7 +165,7 @@ export class Card {
      * card.setTitle('Название товара');
      * ```
      */
-    public setTitle(title: string): Card {
+    public setTitle(title: string): this {
         this.title = title;
         return this;
     }
@@ -179,7 +179,7 @@ export class Card {
      * card.setDescription('Подробное описание товара');
      * ```
      */
-    public setDescription(description: string): Card {
+    public setDescription(description: string): this {
         this.desc = description;
         return this;
     }
@@ -201,7 +201,7 @@ export class Card {
      * });
      * ```
      */
-    public addButton(button: TButton): Card {
+    public addButton(button: TButton): this {
         initButton(button, this.button);
         return this;
     }
@@ -259,7 +259,7 @@ export class Card {
         title: string = ' ',
         desc: string = ' ',
         button: TButton | null = null,
-    ): Card {
+    ): this {
         const img = new Image(this.#appContext);
         if (img.init(image, title, desc, button)) {
             this.images.push(img);
@@ -282,7 +282,7 @@ export class Card {
         title: string = ' ',
         desc: string = ' ',
         button: TButton | null = null,
-    ): Card {
+    ): this {
         this.isOne = true;
         this.images = [];
         return this.addImage(image, title, desc, button);

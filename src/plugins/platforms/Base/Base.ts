@@ -26,6 +26,7 @@ export const EMPTY_QUERY_ERROR =
     'Получено пустое тело запроса от платформы, дальнейшая корректная работа не возможно. Скорей всего запрос пришел не от платформы.';
 export const EMPTY_CONTEXT_ERROR =
     'Не указан контекст приложения, дальнейшая работа приложения не доступна. Проверьте корректность настройки приложения.';
+
 /**
  * Базовый класс для создания адаптера собственной платформы (Telegram, WhatsApp, Slack и др.).
  *
@@ -77,6 +78,7 @@ export abstract class BasePlatform<TQuery = unknown>
         this._token = platformToken;
         this._platformOptions = additionalPlatformOptions;
     }
+
     /**
      * Инициализация адаптера.
      * Определять не обязательно. Стоит указывать в случаях, когда нужно выполнить доп логику, например указать токены или писать какую-то статистику по использованию.
@@ -172,6 +174,7 @@ export abstract class BasePlatform<TQuery = unknown>
     public getRatingContext(controller: BotController): TContent {
         return this.getContent(controller);
     }
+
     /**
      * Отправка текста пользователю
      * Этот метод используется для активных рассылок — когда бот инициирует диалог первым (например, уведомление).
@@ -255,9 +258,7 @@ export abstract class BasePlatform<TQuery = unknown>
      */
     protected async _initTTS(controller: BotController): Promise<void> {
         if (controller.sound.sounds.length || controller.sound.isUsedStandardSound) {
-            if (controller.tts === null) {
-                controller.tts = controller.text;
-            }
+            controller.tts ??= controller.text;
             return this.soundProcessing(controller);
         }
     }
@@ -271,6 +272,7 @@ export abstract class BasePlatform<TQuery = unknown>
     isLocalStorage(_controller: BotController): boolean {
         return false;
     }
+
     /**
      * Получает данные из локального хранилища платформы.
      *
@@ -289,7 +291,9 @@ export abstract class BasePlatform<TQuery = unknown>
      * @param _data - данные для сохранения
      * @param _controller - контроллер приложения
      */
-    setLocalStorage<TStorageData>(_data: TStorageData, _controller: BotController): void {}
+    setLocalStorage<TStorageData>(_data: TStorageData, _controller: BotController): void {
+        /* TODO document why this method 'setLocalStorage' is empty */
+    }
 
     /**
      * Флаг, указывающий, что платформа голосовая (например, Алиса, Маруся).

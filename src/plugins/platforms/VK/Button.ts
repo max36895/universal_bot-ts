@@ -48,21 +48,12 @@ function _validateVkPayload(payload: unknown): string {
     if (payload == null) return '';
 
     const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    //const byteLength = new TextEncoder().encode(str).length;
 
     const encoder = new TextEncoder();
     const bytes = encoder.encode(str);
     if (bytes.length > 255) {
         return new TextDecoder().decode(bytes.slice(0, 255));
-    } /*
-    if (byteLength > 255) {
-        // Обрезаем до последнего валидного символа, не превышающего лимит
-        let trimmed = str;
-        while (new TextEncoder().encode(trimmed).length > 255) {
-            trimmed = trimmed.slice(0, -1);
-        }
-        return trimmed || '';
-    }*/
+    }
 
     return str;
 }

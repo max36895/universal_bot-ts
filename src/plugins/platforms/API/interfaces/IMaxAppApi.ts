@@ -80,7 +80,7 @@ export interface IMaxParams {
     /**
      * Настройки для отображения клавиатуры
      */
-    keyboard?: IMaxButtonObject; //Record<string, unknown>;
+    keyboard?: IMaxButtonObject;
     /**
      * Настройки для отображения вложений
      */

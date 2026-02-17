@@ -390,44 +390,4 @@ export async function getSoundInDB(
  */
 export function soundProcessing(soundInfo: ISoundInfo): string {
     return defaultSoundProcessing(soundInfo, STANDARD_SOUNDS, STANDARD_EFFECTS);
-    /*
-    let updSounds: ISound[] = [];
-    if (soundInfo.sounds.length) {
-        updSounds = [...soundInfo.sounds, ...(soundInfo.usedStandardSound ? STANDARD_SOUNDS : [])];
-    } else if (soundInfo.usedStandardSound) {
-        updSounds = STANDARD_SOUNDS;
-    }
-    const usedSoundEffect = soundInfo.text.includes('#');
-    if (usedSoundEffect) {
-        STANDARD_EFFECTS.forEach((item) => {
-            soundInfo.text = soundInfo.text.replace(new RegExp(item.key, 'g'), item.effect);
-        });
-        soundInfo.text = getPause(soundInfo.text);
-    } else if (!soundInfo.sounds.length) {
-        return soundInfo.text;
-    }
-    let res = soundInfo.text;
-    if (updSounds.length) {
-        for (let i = 0; i < updSounds.length; i++) {
-            const sound = updSounds[i];
-            if (typeof sound === 'object') {
-                if (sound.sounds !== undefined && sound.key !== undefined) {
-                    const sText: string = Text.getText(sound.sounds);
-                    /!*
-                     * Не стоит так делать, так как нужно время, пока Yandex обработает звуковую дорожку.
-                     * Лучше загружать звуки через консоль администратора!
-                     * @see (https://dialogs.yandex.ru/developer/skills/<skill_id>/resources/sounds) Смотри тут
-                     *!/
-                    /!* if (isFile(sText) || Text.isUrl(sText)) {
-                       getSoundInDB()
-                    }*!/
-
-                    if (sText) {
-                        res = replaceSound(sound.key, sText, res);
-                    }
-                }
-            }
-        }
-    }
-    return res;*/
 }

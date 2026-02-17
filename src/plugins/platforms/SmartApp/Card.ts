@@ -6,8 +6,6 @@ import {
     ISberSmartAppItem,
     ISberSmartAppCardAction,
     ISberSmartAppSuggestionButton,
-    TSberSmartAppTypeface,
-    TSberSmartAppTextColor,
     ISberSmartImageParam,
 } from './interfaces/ISmartAppPlatform';
 
@@ -129,13 +127,11 @@ function getCardItem(
     }
     const button = image.button.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
     if (button) {
-        if (!cardItem.bottom_text) {
-            cardItem.bottom_text = {
+        cardItem.bottom_text ??= {
                 text: image.title,
-                typeface: (image.params.descTypeface as TSberSmartAppTypeface) || 'body3',
-                text_color: (image.params.descText_color as TSberSmartAppTextColor) || 'default',
+                typeface: (image.params.descTypeface) || 'body3',
+                text_color: (image.params.descText_color) || 'default',
             };
-        }
         cardItem.bottom_text.actions = button;
     }
     return cardItem;
