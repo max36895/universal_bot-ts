@@ -776,7 +776,7 @@ describe('Bot', () => {
             bot.addCommand('normal', [/\d+/], () => {});
             expect(warmMessage).toBe(undefined);
             expect(errorMessage).toBe(undefined);
-            bot.addCommand('normal2', ['/\d+/'], () => {}, true);
+            bot.addCommand('normal2', ['/\\d+/'], () => {}, true);
             expect(warmMessage).toBe(undefined);
             expect(errorMessage).toBe(undefined);
 
