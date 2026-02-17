@@ -302,11 +302,11 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
         if (this.isToken) {
             this.imageToken = image;
         } else if (image && (Text.isUrl(image) || isFile(image))) {
-                this.imageDir = image;
-                this.imageToken = null;
-            } else {
-                this.imageToken = image;
-            }
+            this.imageDir = image;
+            this.imageToken = null;
+        } else {
+            this.imageToken = image;
+        }
         if (title) {
             this.title = title;
             if (!desc) {

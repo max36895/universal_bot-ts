@@ -16,7 +16,6 @@ import {
     IAlisaItemsList,
     IAlisaBigImage,
     IMaxCard,
-    IMarusiaButtonCard,
     IMarusiaItemsList,
     IMarusiaBigImage,
 } from '../../src/plugins';

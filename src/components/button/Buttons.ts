@@ -87,8 +87,8 @@ export class Buttons {
                 button = null;
             }
         } else if (!button.initBtn(title, url, payload, options)) {
-                button = null;
-            }
+            button = null;
+        }
         if (button) {
             this.buttons.push(button);
         }

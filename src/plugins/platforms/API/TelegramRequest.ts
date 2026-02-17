@@ -141,11 +141,11 @@ export class TelegramRequest {
             formData.append('media', JSON.stringify(media));
             this.#request.post = formData;
         } else if (Text.isUrl(file as string)) {
-                this.#request.post[type] = file;
-            } else {
-                this.#request.attach = file as string;
-                this.#request.attachName = type;
-            }
+            this.#request.post[type] = file;
+        } else {
+            this.#request.attach = file as string;
+            this.#request.attachName = type;
+        }
     }
 
     /**
@@ -199,7 +199,7 @@ export class TelegramRequest {
                 .replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;')
                 .replaceAll('"', '&quot;')
-                .replaceAll('\'', '&#39;');
+                .replaceAll("'", '&#39;');
         }
         return text;
     }

@@ -128,10 +128,10 @@ function getCardItem(
     const button = image.button.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
     if (button) {
         cardItem.bottom_text ??= {
-                text: image.title,
-                typeface: (image.params.descTypeface) || 'body3',
-                text_color: (image.params.descText_color) || 'default',
-            };
+            text: image.title,
+            typeface: image.params.descTypeface || 'body3',
+            text_color: image.params.descText_color || 'default',
+        };
         cardItem.bottom_text.actions = button;
     }
     return cardItem;

@@ -233,7 +233,9 @@ export abstract class Model<TState extends IModelState> {
      * }
      * ```
      */
-    public validate(): void { /* TODO document why this method 'validate' is empty */ }
+    public validate(): void {
+        /* TODO document why this method 'validate' is empty */
+    }
 
     /**
      * Определяет имя первичного ключа таблицы.

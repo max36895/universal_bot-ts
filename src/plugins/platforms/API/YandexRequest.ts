@@ -85,7 +85,7 @@ export class YandexRequest {
     public constructor(oauth: string | null = null, appContext: AppContext) {
         this._request = new Request(appContext);
         this._appContext = appContext;
-        this.setOAuth(oauth || (appContext.appConfig.tokens[T_ALISA].token) || null);
+        this.setOAuth(oauth || appContext.appConfig.tokens[T_ALISA].token || null);
         this._request.maxTimeQuery = 1500;
         this.#error = null;
     }

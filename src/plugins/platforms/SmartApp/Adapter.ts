@@ -139,9 +139,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
                 controller.userMeta = content.payload.meta || {};
 
                 controller.platformOptions.appId = content.payload.app_info.applicationId;
-                if (
-                    content.payload.device.capabilities?.screen
-                ) {
+                if (content.payload.device.capabilities?.screen) {
                     controller.isScreen = content.payload.device.capabilities.screen.available;
                 } else {
                     controller.isScreen = true;
