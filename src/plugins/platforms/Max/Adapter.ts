@@ -33,38 +33,24 @@ export class Adapter extends BasePlatform<string | IMaxRequestContent> {
         }
     }
 
-    isPlatformOnQuery(
-        query: string | IMaxRequestContent,
-        headers?: Record<string, unknown>,
-    ): boolean {
+    isPlatformOnQuery(query: IMaxRequestContent, headers?: Record<string, unknown>): boolean {
         if (headers?.['X-Max-Signature']) {
             return true;
         }
-        const body = typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+        if (!query) {
             this.appContext?.logWarn(`MaxAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
-        return body?.meta?.projectName && body?.request?.payload;
+        return !!(query.update_type && query.message.body);
     }
 
-    async setQueryData(
-        query: string | IMaxRequestContent,
-        controller: BotController,
-    ): Promise<boolean> {
+    async setQueryData(query: IMaxRequestContent, controller: BotController): Promise<boolean> {
         if (this.appContext) {
             if (query) {
-                let content: IMaxRequestContent;
-                if (typeof query === 'string') {
-                    content = <IMaxRequestContent>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-
-                controller.requestObject = content;
-                if (content.update_type === 'message_created') {
-                    if (content.message !== undefined) {
-                        const object: IMaxRequestContent['message'] = content.message;
+                controller.requestObject = query;
+                if (query.update_type === 'message_created') {
+                    if (query.message !== undefined) {
+                        const object: IMaxRequestContent['message'] = query.message;
                         controller.userId = object.sender.user_id;
                         controller.userCommand = object.body.text.toLowerCase().trim();
                         controller.originalUserCommand = object.body.text.trim();
@@ -94,15 +80,17 @@ export class Adapter extends BasePlatform<string | IMaxRequestContent> {
 
     async getContent(controller: BotController): Promise<string> {
         if (controller.isSend) {
-            const keyboard = controller.buttons.getButtons<IMaxButtonObject>(buttonProcessing);
+            const keyboard = controller.isButtonsInit()
+                ? controller.buttons.getButtons<IMaxButtonObject>(buttonProcessing)
+                : null;
             const params: IMaxParams = {};
             if (keyboard) {
                 params.keyboard = keyboard;
             }
-            if (controller.card.images.length) {
+            if (controller.isCardInit() && controller.card.images.length) {
                 params.attachments = await controller.card.getCards(cardProcessing, controller);
             }
-            if (controller.sound.sounds.length) {
+            if (controller.isSoundInit() && controller.sound.sounds.length) {
                 const attach = await controller.sound.getSounds(
                     controller.tts,
                     soundProcessing,

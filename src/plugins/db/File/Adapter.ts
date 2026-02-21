@@ -300,29 +300,27 @@ export class Adapter extends Base<IFileDbInfo> {
                 return this.#selectInPrimaryKey(selectData, where, isOne, content);
             }
             for (const key in content) {
-                if (Object.hasOwn(content, key)) {
-                    let isSelected = null;
+                let isSelected = null;
 
-                    for (const data in where) {
-                        if (Object.hasOwn(content[key], data) && Object.hasOwn(where, data)) {
-                            isSelected = content[key][data] === where[data];
-                            if (isSelected === false) {
-                                break;
-                            }
+                for (const data in where) {
+                    if (Object.hasOwn(content[key], data) && Object.hasOwn(where, data)) {
+                        isSelected = content[key][data] === where[data];
+                        if (isSelected === false) {
+                            break;
                         }
                     }
+                }
 
-                    if (isSelected) {
-                        if (isOne) {
-                            result = content[key];
-                            return {
-                                status: true,
-                                data: result,
-                            };
-                        }
-                        result ??= [];
-                        result.push(content[key]);
+                if (isSelected) {
+                    if (isOne) {
+                        result = content[key];
+                        return {
+                            status: true,
+                            data: result,
+                        };
                     }
+                    result ??= [];
+                    result.push(content[key]);
                 }
             }
         } else {

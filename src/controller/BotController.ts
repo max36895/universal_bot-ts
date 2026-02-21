@@ -305,81 +305,10 @@ export abstract class BotController<
     TUserData extends IUserData = IUserData,
     TPlatformState extends IPlatformData = IPlatformData,
 > {
-    /**
-     * Компонент для отображения различных кнопок пользователю.
-     * Позволяет создавать интерактивные элементы управления в приложении.
-     *
-     * @remarks
-     * ## 🎯 ТИПИЧНОЕ ИСПОЛЬЗОВАНИЕ:
-     * - Навигация по меню
-     * - Быстрые ответы (Да/Нет)
-     * - Выбор из вариантов
-     * - Быстрое действие/команда
-     *
-     *
-     * @see Buttons
-     * @example
-     * ```ts
-     * this.buttons
-     *   .addBtn('Помощь')
-     *   .addBtn('Выход');
-     * ```
-     */
-    public buttons: Buttons;
-
-    /**
-     * Компонент для отображения карточек пользователю.
-     * Позволяет создавать визуальные элементы с изображениями и текстом.
-     * Также при указании нескольких изображений, они автоматически преобразуются в карточку.
-     *
-     * @remarks
-     * ## 🎯 КОГДА ИСПОЛЬЗОВАТЬ:
-     * - Каталог товаров/услуг
-     * - Галерея изображений
-     * - Карточки статей/новостей
-     * - Навигация
-     *
-     * @see Card
-     * @example
-     ```ts
-     * // КАТАЛОГ ТОВАРОВ (интернет-магазин):
-     * this.text = 'Популярные товары:';
-     * this.card
-     *   .addImage(
-     *     'https://example.com/iphone.jpg',
-     *     'iPhone 15 Pro',
-     *     '99 990 ₽\nЭкран 6.1", процессор A17 Pro'
-     *   )
-     *   .addButton('Купить')
-     *
-     *   .addImage(
-     *     'https://example.com/macbook.jpg',
-     *     'MacBook Air M2',
-     *     '124 990 ₽\n13.6", 8ГБ RAM, 256ГБ SSD'
-     *   )
-     *   .addButton('Купить');
-     *
-     * // ГАЛЕРЕЯ ФОТОГРАФИЙ:
-     * this.text = 'Наши работы:';
-     * this.card
-     *   .addImage('photo1.jpg', 'Свадьба', 'Иван и Мария')
-     *   .addImage('photo2.jpg', 'Выпускной', 'Школа №123')
-     *   .addImage('photo3.jpg', 'Корпоратив', 'Компания "Рога и копыта"');
-     *
-     * // КАРТОЧКИ НОВОСТЕЙ:
-     * this.card
-     *   .addImage(
-     *     'news1.jpg',
-     *     'Новое обновление бота',
-     *     'Добавлена оплата картой и доставка',
-     *     {
-     *         title: 'Перейти',
-     *         url: 'https://example.com/news/1'
-     *     }
-     *   )
-     * ```
-     */
-    public card: Card;
+    #buttons: Buttons | undefined;
+    #card: Card | undefined;
+    #nlu: Nlu | undefined;
+    #sound: Sound | undefined;
 
     /**
      * Текст, который будет отображен пользователю.
@@ -403,22 +332,6 @@ export abstract class BotController<
      * ```
      */
     public tts: string | null = null;
-
-    /**
-     * Обработанный NLU (Natural Language Understanding).
-     * Содержит результаты обработки естественного языка, как правило, данные заполняются самой платформой.
-     *
-     * @see Nlu
-     */
-    public nlu: Nlu;
-
-    /**
-     * Компонент для работы со звуками.
-     * Позволяет добавлять звуковые эффекты и музыку. Используется вместе с tts.
-     *
-     * @see Sound
-     */
-    public sound: Sound;
 
     /**
      * Уникальный идентификатор пользователя.
@@ -753,10 +666,144 @@ export abstract class BotController<
         // Для корректности выставляем контекст по умолчанию.
         this.appContext = appContext || new AppContext();
         this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
-        this.buttons = new Buttons(this.appContext);
-        this.card = new Card(this.appContext);
-        this.sound = new Sound();
-        this.nlu = new Nlu();
+    }
+    /**
+     * Компонент для отображения различных кнопок пользователю.
+     * Позволяет создавать интерактивные элементы управления в приложении.
+     *
+     * @remarks
+     * ## 🎯 ТИПИЧНОЕ ИСПОЛЬЗОВАНИЕ:
+     * - Навигация по меню
+     * - Быстрые ответы (Да/Нет)
+     * - Выбор из вариантов
+     * - Быстрое действие/команда
+     *
+     *
+     * @see Buttons
+     * @example
+     * ```ts
+     * this.buttons
+     *   .addBtn('Помощь')
+     *   .addBtn('Выход');
+     * ```
+     */
+    get buttons(): Buttons {
+        if (!this.#buttons) {
+            this.#buttons = new Buttons(this.appContext);
+        }
+        return this.#buttons;
+    }
+
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализированы кнопки или нет
+     * @returns
+     */
+    isButtonsInit(): boolean {
+        return !!this.#buttons;
+    }
+
+    /**
+     * Компонент для отображения карточек пользователю.
+     * Позволяет создавать визуальные элементы с изображениями и текстом.
+     * Также при указании нескольких изображений, они автоматически преобразуются в карточку.
+     *
+     * @remarks
+     * ## 🎯 КОГДА ИСПОЛЬЗОВАТЬ:
+     * - Каталог товаров/услуг
+     * - Галерея изображений
+     * - Карточки статей/новостей
+     * - Навигация
+     *
+     * @see Card
+     * @example
+     ```ts
+     * // КАТАЛОГ ТОВАРОВ (интернет-магазин):
+     * this.text = 'Популярные товары:';
+     * this.card
+     *   .addImage(
+     *     'https://example.com/iphone.jpg',
+     *     'iPhone 15 Pro',
+     *     '99 990 ₽\nЭкран 6.1", процессор A17 Pro'
+     *   )
+     *   .addButton('Купить')
+     *
+     *   .addImage(
+     *     'https://example.com/macbook.jpg',
+     *     'MacBook Air M2',
+     *     '124 990 ₽\n13.6", 8ГБ RAM, 256ГБ SSD'
+     *   )
+     *   .addButton('Купить');
+     *
+     * // ГАЛЕРЕЯ ФОТОГРАФИЙ:
+     * this.text = 'Наши работы:';
+     * this.card
+     *   .addImage('photo1.jpg', 'Свадьба', 'Иван и Мария')
+     *   .addImage('photo2.jpg', 'Выпускной', 'Школа №123')
+     *   .addImage('photo3.jpg', 'Корпоратив', 'Компания "Рога и копыта"');
+     *
+     * // КАРТОЧКИ НОВОСТЕЙ:
+     * this.card
+     *   .addImage(
+     *     'news1.jpg',
+     *     'Новое обновление бота',
+     *     'Добавлена оплата картой и доставка',
+     *     {
+     *         title: 'Перейти',
+     *         url: 'https://example.com/news/1'
+     *     }
+     *   )
+     * ```
+     */
+    get card(): Card {
+        if (!this.#card) {
+            this.#card = new Card(this.appContext);
+        }
+        return this.#card;
+    }
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализированы карточки или нет
+     * @returns
+     */
+    isCardInit(): boolean {
+        return !!this.#card;
+    }
+    /**
+     * Компонент для работы со звуками.
+     * Позволяет добавлять звуковые эффекты и музыку. Используется вместе с tts.
+     *
+     * @see Sound
+     */
+    get sound(): Sound {
+        if (!this.#sound) {
+            this.#sound = new Sound();
+        }
+        return this.#sound;
+    }
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализированы звуки или нет
+     * @returns
+     */
+    isSoundInit(): boolean {
+        return !!this.#sound;
+    }
+    /**
+     * Обработанный NLU (Natural Language Understanding).
+     * Содержит результаты обработки естественного языка, как правило, данные заполняются самой платформой.
+     *
+     * @see Nlu
+     */
+    get nlu(): Nlu {
+        if (!this.#nlu) {
+            this.#nlu = new Nlu();
+        }
+        return this.#nlu;
+    }
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализирован nlu или нет
+     * @returns
+     */
+    isNlunit(): boolean {
+        return !!this.#nlu;
     }
 
     /**
@@ -767,8 +814,12 @@ export abstract class BotController<
         if (appContext) {
             this.appContext = appContext;
             this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
-            this.buttons.setAppContext(appContext);
-            this.card.setAppContext(appContext);
+            if (this.#buttons) {
+                this.#buttons.setAppContext(appContext);
+            }
+            if (this.#card) {
+                this.#card.setAppContext(appContext);
+            }
         }
         return this;
     }
@@ -1196,15 +1247,15 @@ export abstract class BotController<
                 this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
                 return res;
             } else {
-                if (
-                    intent === null &&
-                    this.originalUserCommand &&
-                    this.userCommand !== this.originalUserCommand
-                ) {
-                    // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
-                    // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
-                    intent = this._getIntent(this.originalUserCommand.toLowerCase());
-                }
+                // if (
+                //     intent === null &&
+                //     this.originalUserCommand &&
+                //     this.userCommand !== this.originalUserCommand
+                // ) {
+                //     // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
+                //     // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
+                //     intent = this._getIntent(this.originalUserCommand.toLowerCase());
+                // }
                 if (intent === null && this.messageId === 0) {
                     intent = DEFAULT_WELCOME_INTENT_NAME;
                 }

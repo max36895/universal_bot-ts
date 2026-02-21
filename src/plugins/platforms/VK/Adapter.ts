@@ -41,49 +41,37 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
         }
     }
 
-    isPlatformOnQuery(
-        query: string | IVkRequestContent,
-        headers?: Record<string, unknown>,
-    ): boolean {
+    isPlatformOnQuery(query: IVkRequestContent, headers?: Record<string, unknown>): boolean {
         if (headers?.['x-vk-signature']) {
             return true;
         }
-        const body: IVkRequestContent = typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+        if (!query) {
             this.appContext?.logWarn(`VkAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
 
             return false;
         }
         return (
-            body.type !== undefined &&
-            body.group_id !== undefined &&
-            (body.object !== undefined || body.secret !== undefined || body.type === 'confirmation')
+            query.type !== undefined &&
+            query.group_id !== undefined &&
+            (query.object !== undefined ||
+                query.secret !== undefined ||
+                query.type === 'confirmation')
         );
     }
 
-    async setQueryData(
-        query: string | IVkRequestContent,
-        controller: BotController,
-    ): Promise<boolean> {
+    async setQueryData(query: IVkRequestContent, controller: BotController): Promise<boolean> {
         if (this.appContext) {
             if (query) {
-                let content: IVkRequestContent;
-                if (typeof query === 'string') {
-                    content = <IVkRequestContent>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-
-                controller.requestObject = content;
-                switch (content.type || null) {
+                controller.requestObject = query;
+                switch (query.type) {
                     case 'confirmation':
                         controller.platformOptions.sendInInit = this._platformOptions
                             ?.vk_confirmation_token as string;
                         return true;
 
                     case 'message_new':
-                        if (content.object !== undefined) {
-                            const object: IVkRequestObject = content.object;
+                        if (query.object !== undefined) {
+                            const object: IVkRequestObject = query.object;
                             controller.userId = object.message.from_id;
                             controller.userCommand = object.message.text.toLowerCase().trim();
                             controller.originalUserCommand = object.message.text.trim();
@@ -105,14 +93,14 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
                         return false;
 
                     case 'message_event':
-                        if (content.object?.payload) {
+                        if (query.object?.payload) {
                             controller.userCommand =
-                                typeof content.object.payload === 'string'
-                                    ? content.object.payload
-                                    : JSON.stringify(content.object.payload);
-                            controller.userId = content.object.user_id as number;
-                            controller.payload = content.object.payload;
-                            controller.messageId = content.object.conversation_message_id || 0;
+                                typeof query.object.payload === 'string'
+                                    ? query.object.payload
+                                    : JSON.stringify(query.object.payload);
+                            controller.userId = query.object.user_id as number;
+                            controller.payload = query.object.payload;
+                            controller.messageId = query.object.conversation_message_id || 0;
                             return true;
                         }
                         return false;
@@ -133,12 +121,14 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
 
     async getContent(controller: BotController): Promise<string> {
         if (controller.isSend) {
-            const keyboard = controller.buttons.getButtonJson(buttonProcessing);
+            const keyboard = controller.isButtonsInit()
+                ? controller.buttons.getButtonJson(buttonProcessing)
+                : null;
             const params: IVkParams = {};
             if (keyboard) {
                 params.keyboard = keyboard;
             }
-            if (controller.card.images.length) {
+            if (controller.isCardInit() && controller.card.images.length) {
                 const attach = await controller.card.getCards(cardProcessing, controller);
                 if ((attach as IVkCard).type === undefined) {
                     params.attachments = attach as string[];
@@ -146,7 +136,7 @@ export class Adapter extends BasePlatform<string | IVkRequestContent> {
                     params.template = attach;
                 }
             }
-            if (controller.sound.sounds.length) {
+            if (controller.isSoundInit() && controller.sound.sounds.length) {
                 const attach = await controller.sound.getSounds(
                     controller.tts,
                     soundProcessing,

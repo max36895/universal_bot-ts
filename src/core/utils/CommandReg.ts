@@ -1,4 +1,4 @@
-import { ILogger, TLoggerCb } from '../interfaces/ILogger'; // Подставьте реальный путь
+import { ILogger, TLoggerCb } from '../interfaces/ILogger';
 import { getRegExp, __$usedRe2, isRegex, TPatternRegExp } from '../../utils/standard/RegExp';
 import { isRegexLikelySafe } from './utils';
 import os from 'os';
@@ -274,7 +274,7 @@ export class CommandReg {
         } else {
             const correctSlots: TSlots | undefined = [];
             const errors: string[] | undefined = [];
-            slots.forEach((slot) => {
+            for (const slot of slots) {
                 const isReg = isRegex(slot);
                 const slotStr = isReg ? slot.source : slot;
                 if (isRegexLikelySafe(slotStr, isReg)) {
@@ -282,7 +282,7 @@ export class CommandReg {
                 } else {
                     errors.push(slotStr);
                 }
-            });
+            }
             const status = errors.length === 0;
             if (!status) {
                 this[this.strictMode ? 'logError' : 'logWarn']?.(
@@ -606,11 +606,8 @@ export class CommandReg {
             });
             return;
         }
-        if (
-            this.commands.size === 1e4 ||
-            this.commands.size === 5e4 ||
-            this.commands.size === 1e5
-        ) {
+        const size = this.commands.size;
+        if (size === 1e4 || size === 5e4 || size === 1e5) {
             this.logWarn(
                 `Задано более ${this.commands.size} команд, скорей всего команды задаются через цикл, который отработал не корректно. Проверьте корректность работы приложения, а также добавленные команды.`,
             );
@@ -644,8 +641,8 @@ export class CommandReg {
                     if (this.strictMode) {
                         correctSlots.push(slot);
                     }
-                    if (this.#exactMatchMap.has(slot)) {
-                        const tCommandName = this.#exactMatchMap.get(slot);
+                    const tCommandName = this.#exactMatchMap.get(slot);
+                    if (tCommandName) {
                         if (tCommandName !== commandName) {
                             this.logError(
                                 `Для команды "${commandName}", используется та же активационная фраза что и для команды "${tCommandName}". Проверьте корректность регистрации команд.`,

@@ -33,53 +33,40 @@ export class Adapter extends BasePlatform<string | ITelegramContent> {
         }
     }
 
-    isPlatformOnQuery(
-        query: string | ITelegramContent,
-        headers?: Record<string, unknown>,
-    ): boolean {
+    isPlatformOnQuery(query: ITelegramContent, headers?: Record<string, unknown>): boolean {
         if (headers?.['x-telegram-bot-api-secret-token']) {
             return true;
         }
-        const body: ITelegramContent = typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+        if (!query) {
             this.appContext?.logWarn(`TelegramAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
         return !!(
-            body.update_id !== undefined &&
-            (body.message ||
-                body.callback_query ||
-                body.inline_query ||
-                body.chosen_inline_result ||
-                body.channel_post ||
-                body.edited_message)
+            query.update_id !== undefined &&
+            (query.message ||
+                query.callback_query ||
+                query.inline_query ||
+                query.chosen_inline_result ||
+                query.channel_post ||
+                query.edited_message)
         );
     }
 
-    async setQueryData(
-        query: string | ITelegramContent,
-        controller: BotController,
-    ): Promise<boolean> {
+    async setQueryData(query: ITelegramContent, controller: BotController): Promise<boolean> {
         if (this.appContext) {
             if (query) {
-                let content: ITelegramContent;
-                if (typeof query === 'string') {
-                    content = <ITelegramContent>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-                controller.requestObject = content;
+                controller.requestObject = query;
 
-                if (content.message !== undefined) {
-                    controller.userId = content.message.chat.id;
-                    controller.userCommand = content.message.text.toLowerCase().trim();
-                    controller.originalUserCommand = content.message.text;
-                    controller.messageId = content.message.message_id;
+                if (query.message !== undefined) {
+                    controller.userId = query.message.chat.id;
+                    controller.userCommand = query.message.text.toLowerCase().trim();
+                    controller.originalUserCommand = query.message.text;
+                    controller.messageId = query.message.message_id;
 
                     const thisUser: INluThisUser = {
-                        username: content.message.chat.username || null,
-                        first_name: content.message.chat.first_name || null,
-                        last_name: content.message.chat.last_name || null,
+                        username: query.message.chat.username || null,
+                        first_name: query.message.chat.first_name || null,
+                        last_name: query.message.chat.last_name || null,
                     };
                     controller.nlu.setNlu({ thisUser });
                     return true;

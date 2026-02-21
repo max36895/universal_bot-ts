@@ -40,58 +40,51 @@ export class Adapter extends BasePlatform<IViberContent | string> {
         }
     }
 
-    isPlatformOnQuery(query: IViberContent | string, headers?: Record<string, unknown>): boolean {
+    isPlatformOnQuery(query: IViberContent, headers?: Record<string, unknown>): boolean {
         if (headers?.['x-viber-content-signature']) {
             return true;
         }
-        const body: IViberContent = typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+        if (!query) {
             this.appContext?.logWarn(`ViberAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
         return (
-            body.event !== undefined &&
-            body.timestamp !== undefined &&
-            body.message_token !== undefined
+            query.event !== undefined &&
+            query.timestamp !== undefined &&
+            query.message_token !== undefined
         );
     }
 
-    async setQueryData(query: string | IViberContent, controller: BotController): Promise<boolean> {
+    async setQueryData(query: IViberContent, controller: BotController): Promise<boolean> {
         if (this.appContext) {
             if (query) {
-                let content: IViberContent;
-                if (typeof query === 'string') {
-                    content = <IViberContent>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-                controller.requestObject = content;
+                controller.requestObject = query;
 
-                if (content.message) {
-                    switch (content.event) {
+                if (query.message) {
+                    switch (query.event) {
                         case 'conversation_started':
-                            if (content.user) {
-                                controller.userId = content.user.id;
+                            if (query.user) {
+                                controller.userId = query.user.id;
 
                                 controller.userCommand = '';
                                 controller.messageId = 0;
 
                                 this.appContext.appConfig.tokens[this.platformName].api_version =
-                                    (content.user.api_version || 2) as unknown as string;
-                                this.setNlu(controller, content.sender.name || '');
+                                    (query.user.api_version || 2) as unknown as string;
+                                this.setNlu(controller, query.sender.name || '');
                             }
                             return true;
 
                         case 'message':
-                            controller.userId = content.sender.id;
-                            controller.userCommand = content.message.text.toLowerCase().trim();
-                            controller.originalUserCommand = content.message.text;
-                            controller.messageId = content.message_token;
+                            controller.userId = query.sender.id;
+                            controller.userCommand = query.message.text.toLowerCase().trim();
+                            controller.originalUserCommand = query.message.text;
+                            controller.messageId = query.message_token;
 
-                            this.appContext.appConfig.tokens[this.platformName].api_version =
-                                (content.sender.api_version || 2) as unknown as string;
+                            this.appContext.appConfig.tokens[this.platformName].api_version = (query
+                                .sender.api_version || 2) as unknown as string;
 
-                            this.setNlu(controller, content.sender.name || '');
+                            this.setNlu(controller, query.sender.name || '');
                             return true;
                     }
                 }
@@ -108,7 +101,9 @@ export class Adapter extends BasePlatform<IViberContent | string> {
         if (controller.isSend) {
             const viberApi = new ViberRequest(controller.appContext);
             const params: IViberParams = {};
-            const keyboard = controller.buttons.getButtons<IViberButtonObject>(buttonProcessing);
+            const keyboard = controller.isButtonsInit()
+                ? controller.buttons.getButtons<IViberButtonObject>(buttonProcessing)
+                : null;
             if (keyboard) {
                 params.keyboard = keyboard;
                 params.keyboard.Type = 'keyboard';
@@ -121,14 +116,14 @@ export class Adapter extends BasePlatform<IViberContent | string> {
                 params,
             );
 
-            if (controller.card.images.length) {
+            if (controller.isCardInit() && controller.card.images.length) {
                 const res = controller.card.getCards(cardProcessing, controller);
                 if (Array.isArray(res) && res.length) {
                     await viberApi.richMedia(<string>controller.userId, res);
                 }
             }
 
-            if (controller.sound.sounds.length) {
+            if (controller.isSoundInit() && controller.sound.sounds.length) {
                 await controller.sound.getSounds(controller.tts, soundProcessing, controller);
             }
         }

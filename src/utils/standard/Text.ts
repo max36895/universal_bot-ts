@@ -347,15 +347,17 @@ export class Text {
             return Text.#isSayPattern(find, text, useDirectRegExp, customReg);
         }
 
-        const oneFind = Array.isArray(find) && find.length === 1 ? find[0] : find;
+        if (typeof find === 'string') {
+            return text.length >= find.length && (text === find || text.includes(find));
+        }
 
-        if (typeof oneFind === 'string') {
-            if (text.length < oneFind.length) {
-                return false;
-            }
-            return text === oneFind || text.includes(oneFind);
-        } else if (isRegex(oneFind)) {
-            return this.#isSayPattern(oneFind, text, useDirectRegExp, customReg);
+        if (isRegex(find)) {
+            return Text.#isSayPattern(find, text, useDirectRegExp, customReg);
+        }
+
+        if (find.length === 1 && typeof find[0] === 'string') {
+            const str = find[0];
+            return text.length >= str.length && (text === str || text.includes(str));
         }
 
         // Оптимизированный вариант для массива: early return + includes

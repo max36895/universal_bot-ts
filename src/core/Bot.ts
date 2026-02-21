@@ -1118,22 +1118,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     async #runMiddlewares(controller: BotController, appType: TAppType): Promise<boolean> {
         if (appType) {
-            if (!(this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length)) {
+            if (
+                this.#globalMiddlewares.length === 0 &&
+                !this.#platformMiddlewares[appType]?.length
+            ) {
                 return true;
             }
-            const middlewares = [
-                ...this.#globalMiddlewares,
-                ...(this.#platformMiddlewares[appType] || []),
-            ];
 
-            if (middlewares.length === 0) {
-                return true;
-            }
             const start = this.#appContext.usedMetric ? performance.now() : 0;
 
             let index = 0;
             let isEnd = false;
             try {
+                let middlewares = this.#globalMiddlewares;
                 const next = async (): Promise<void> => {
                     if (index < middlewares.length) {
                         const mw = middlewares[index++];
@@ -1142,9 +1139,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         isEnd = true;
                     }
                 };
-
                 // Запускаем цепочку
                 await next();
+                if (isEnd && this.#platformMiddlewares[appType]?.length) {
+                    isEnd = false;
+                    index = 0;
+                    middlewares = this.#platformMiddlewares[appType];
+                    await next();
+                }
             } catch (err) {
                 this.#appContext.logError(
                     `Bot:runMiddlewares: Ошибка при обработке middleware: ${(err as Error).message}`,
@@ -1152,15 +1154,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         error: err,
                     },
                 );
-                isEnd = false;
+                // isEnd = false;
             }
             if (this.#appContext.usedMetric) {
                 this.#appContext.logMetric(EMetric.MIDDLEWARE, performance.now() - start, {
                     platform: appType,
                 });
             }
-            // eslint-disable-next-line require-atomic-updates
-            middlewares.length = 0;
             return isEnd;
         }
         return true;
@@ -1208,7 +1208,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.logError(errMsg);
             throw new Error(errMsg);
         }
-
+        let correctContent = this._content || content;
+        if (correctContent && typeof correctContent === 'string') {
+            correctContent = JSON.parse(correctContent);
+        }
         let botController: BotController<TUserData, IPlatformData>;
         if (this.#$botController) {
             botController = this.#$botController;
@@ -1217,11 +1220,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
             botController = new this.#botControllerClass(this.#appContext);
         }
         botController.setAppContext(this.#appContext);
-        const cAppType: TAppType | null = appType || this.#getAppType(this._content || content);
+        const cAppType: TAppType | null = appType || this.#getAppType(correctContent);
         botController.appType = cAppType;
         const botClass = cAppType ? this.#appContext.platforms[cAppType] : null;
         if (botClass) {
-            if (!(this._content || content)) {
+            if (!correctContent) {
                 const msg = `Для платформы "${cAppType}", передано пустое содержимое, корректно обработать запрос невозможно.`;
                 this.#appContext.logError(msg);
                 throw new Error(msg);
@@ -1229,7 +1232,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             botController.userToken ??= this.#auth;
 
             botClass.updateTimeStart(botController);
-            let res = botClass.setQueryData(this._content || content, botController);
+            let res = botClass.setQueryData(correctContent, botController);
             if (isPromise(res)) {
                 res = await res;
             }

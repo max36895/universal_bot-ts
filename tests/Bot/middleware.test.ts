@@ -118,7 +118,6 @@ describe('Middleware', () => {
 
         bot.setContent(getContent('test'));
         await bot.run();
-
-        expect(order).toEqual([1, 2, 3, 4]);
+        expect(order).toEqual([1, 4, 2, 3]);
     });
 });

@@ -32,24 +32,22 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
     platformName = T_SMART_APP;
 
     isPlatformOnQuery(
-        query: string | ISberSmartAppWebhookRequest,
+        query: ISberSmartAppWebhookRequest,
         headers?: Record<string, unknown>,
     ): boolean {
         if (headers?.['x-sber-smartapp-webhook-token'] || headers?.['x-sber-token']) {
             return true;
         }
-        const body: ISberSmartAppWebhookRequest =
-            typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+        if (!query) {
             this.appContext?.logWarn(`SmartAppAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
 
         return !!(
-            body.messageName &&
-            body.uuid &&
-            body.payload?.character &&
-            body.payload?.app_info
+            query.messageName &&
+            query.uuid &&
+            query.payload?.character &&
+            query.payload?.app_info
         );
     }
 
@@ -106,41 +104,34 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
         }
     }
 
-    setQueryData(query: string | ISberSmartAppWebhookRequest, controller: BotController): boolean {
+    setQueryData(query: ISberSmartAppWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
-                let content: ISberSmartAppWebhookRequest;
-                if (typeof query === 'string') {
-                    content = <ISberSmartAppWebhookRequest>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-
-                this.#initUserCommand(content, controller);
+                this.#initUserCommand(query, controller);
 
                 controller.platformOptions.session = {
-                    device: content.payload.device,
-                    meta: content.payload.meta,
-                    sessionId: content.sessionId,
-                    messageId: content.messageId,
-                    uuid: content.uuid,
-                    projectName: content.payload.projectName,
+                    device: query.payload.device,
+                    meta: query.payload.meta,
+                    sessionId: query.sessionId,
+                    messageId: query.messageId,
+                    uuid: query.uuid,
+                    projectName: query.payload.projectName,
                 };
 
-                controller.oldIntentName = content.payload.intent;
-                controller.appeal = content.payload.character.appeal;
-                controller.userId = content.uuid.userId;
+                controller.oldIntentName = query.payload.intent;
+                controller.appeal = query.payload.character.appeal;
+                controller.userId = query.uuid.userId;
                 const nlu = {
-                    entities: content.payload.message.entities,
-                    tokens: content.payload.message.tokenized_elements_list,
+                    entities: query.payload.message.entities,
+                    tokens: query.payload.message.tokenized_elements_list,
                 };
                 controller.nlu.setNlu(nlu);
 
-                controller.userMeta = content.payload.meta || {};
+                controller.userMeta = query.payload.meta || {};
 
-                controller.platformOptions.appId = content.payload.app_info.applicationId;
-                if (content.payload.device.capabilities?.screen) {
-                    controller.isScreen = content.payload.device.capabilities.screen.available;
+                controller.platformOptions.appId = query.payload.app_info.applicationId;
+                if (query.payload.device.capabilities?.screen) {
+                    controller.isScreen = query.payload.device.capabilities.screen.available;
                 } else {
                     controller.isScreen = true;
                 }
@@ -193,7 +184,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
         }
 
         if (controller.isScreen) {
-            if (controller.card.images.length) {
+            if (controller.isCardInit() && controller.card.images.length) {
                 payload.items ??= [];
                 const cards: ISberSmartAppItem | null =
                     controller.card.getCards<ISberSmartAppItem | null>(cardProcessing, controller);
@@ -202,9 +193,11 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
                 }
             }
             payload.suggestions = {
-                buttons: controller.buttons.getButtons(
-                    buttonProcessing,
-                ) as ISberSmartAppSuggestionButton[],
+                buttons: controller.isButtonsInit()
+                    ? (controller.buttons.getButtons(
+                          buttonProcessing,
+                      ) as ISberSmartAppSuggestionButton[])
+                    : [],
             };
         }
         if (controller.isEnd) {

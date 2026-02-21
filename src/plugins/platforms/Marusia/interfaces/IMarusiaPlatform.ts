@@ -61,6 +61,9 @@ export interface IMarusiaNlu {
  * Содержит информацию о текущем диалоге с пользователем
  */
 export interface IMarusiaSession {
+    application: {
+        application_id: string;
+    };
     /**
      * Признак новой сессии
      * true - начало нового диалога

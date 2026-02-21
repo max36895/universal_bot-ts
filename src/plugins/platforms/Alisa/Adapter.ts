@@ -50,22 +50,18 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
         }
     }
 
-    isPlatformOnQuery(
-        query: string | IAlisaWebhookRequest,
-        _headers?: Record<string, unknown>,
-    ): boolean {
-        const body: IAlisaWebhookRequest = typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+    isPlatformOnQuery(query: IAlisaWebhookRequest, _headers?: Record<string, unknown>): boolean {
+        if (!query) {
             this.appContext?.logWarn(`AlisaAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
-        if (body.request && body.version && body.session) {
-            if (body.meta?.client_id?.includes('yandex.searchplugin')) {
+        if (query.request && query.version && query.session) {
+            if (query.meta?.client_id?.includes('yandex.searchplugin')) {
                 return true;
-            } else if (body.session.application?.application_id) {
+            } else if (query.session.application?.application_id) {
                 return (
-                    body.session.application?.application_id !==
-                    body.session.application?.application_id.toLowerCase()
+                    query.session.application?.application_id !==
+                    query.session.application?.application_id.toLowerCase()
                 );
             } else {
                 this.appContext?.logWarn(
@@ -142,17 +138,11 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
         }
     }
 
-    setQueryData(query: string | IAlisaWebhookRequest, controller: BotController): boolean {
+    setQueryData(query: IAlisaWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
-                let content: IAlisaWebhookRequest;
-                if (typeof query === 'string') {
-                    content = <IAlisaWebhookRequest>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-                if (content.session === undefined && content.request === undefined) {
-                    if (content.account_linking_complete_event) {
+                if (query.session === undefined && query.request === undefined) {
+                    if (query.account_linking_complete_event) {
                         controller.userEvents = {
                             auth: {
                                 status: true,
@@ -165,26 +155,26 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                     return false;
                 }
 
-                controller.requestObject = content;
-                this.#initUserCommand(content.request, controller);
-                this.#setUserId(controller, content.session);
-                controller.nlu.setNlu(content.request.nlu || {});
+                controller.requestObject = query;
+                this.#initUserCommand(query.request, controller);
+                this.#setUserId(controller, query.session);
+                controller.nlu.setNlu(query.request.nlu || {});
 
-                controller.userMeta = content.meta || {};
-                controller.messageId = content.session.message_id;
+                controller.userMeta = query.meta || {};
+                controller.messageId = query.session.message_id;
 
-                if (content.state !== undefined) {
-                    this.#setState(controller, content.state);
+                if (query.state !== undefined) {
+                    this.#setState(controller, query.state);
                 }
 
-                controller.platformOptions.appId = content.session.skill_id;
+                controller.platformOptions.appId = query.session.skill_id;
                 controller.isScreen =
                     (controller.userMeta as IAlisaRequestMeta).interfaces.screen !== undefined;
                 /*
                  * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
                  * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут
                  */
-                if (!content.request.command && content.request.original_utterance === 'ping') {
+                if (!query.request.command && query.request.original_utterance === 'ping') {
                     controller.text = 'pong';
                     controller.platformOptions.sendInInit = {
                         version: VERSION,
@@ -215,7 +205,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
             end_session: controller.isEnd,
         };
         if (controller.isScreen) {
-            if (controller.card.images.length) {
+            if (controller.isCardInit() && controller.card.images.length) {
                 response.card = <IAlisaItemsList | IAlisaBigImage>(
                     await controller.card.getCards(cardProcessing, controller)
                 );
@@ -223,7 +213,9 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                     response.card = undefined;
                 }
             }
-            response.buttons = controller.buttons.getButtons(buttonProcessing) as IAlisaButton[];
+            response.buttons = controller.isButtonsInit()
+                ? (controller.buttons.getButtons(buttonProcessing) as IAlisaButton[])
+                : [];
         }
         return response;
     }
@@ -253,12 +245,14 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
      * звуковых эффектов в соответствии с требованиями Алисы.
      */
     async soundProcessing(controller: BotController): Promise<void> {
-        // eslint-disable-next-line require-atomic-updates
-        controller.tts = await controller.sound.getSounds(
-            controller.tts,
-            soundProcessing,
-            controller,
-        );
+        if (controller.isSoundInit()) {
+            // eslint-disable-next-line require-atomic-updates
+            controller.tts = await controller.sound.getSounds(
+                controller.tts,
+                soundProcessing,
+                controller,
+            );
+        }
     }
 
     /**

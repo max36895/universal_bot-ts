@@ -45,25 +45,21 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
         }
     }
 
-    isPlatformOnQuery(
-        query: string | IMarusiaWebhookRequest,
-        headers?: Record<string, unknown>,
-    ): boolean {
+    isPlatformOnQuery(query: IMarusiaWebhookRequest, headers?: Record<string, unknown>): boolean {
         if (headers?.['x-marusia-signature']) {
             return true;
         }
-        const body = typeof query === 'string' ? JSON.parse(query) : query;
-        if (!body) {
+        if (!query) {
             this.appContext?.logWarn(`MarusiaAdapter:isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
-        if (body.request && body.version && body.session) {
-            if (body.meta?.client_id?.includes('MailRu')) {
+        if (query.request && query.version && query.session) {
+            if (query.meta?.client_id?.includes('MailRu')) {
                 return true;
-            } else if (body.session.application?.application_id) {
+            } else if (query.session.application?.application_id) {
                 return (
-                    body.session.application?.application_id ==
-                    body.session.application?.application_id.toLowerCase()
+                    query.session.application?.application_id ==
+                    query.session.application?.application_id.toLowerCase()
                 );
             }
         }
@@ -111,17 +107,11 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
         }
     }
 
-    setQueryData(query: string | IMarusiaWebhookRequest, controller: BotController): boolean {
+    setQueryData(query: IMarusiaWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
-                let content: IMarusiaWebhookRequest;
-                if (typeof query === 'string') {
-                    content = <IMarusiaWebhookRequest>JSON.parse(query);
-                } else {
-                    content = query;
-                }
-                if (content.session === undefined && content.request === undefined) {
-                    if (content.account_linking_complete_event) {
+                if (query.session === undefined && query.request === undefined) {
+                    if (query.account_linking_complete_event) {
                         controller.userEvents = {
                             auth: {
                                 status: true,
@@ -134,20 +124,20 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
                     return false;
                 }
 
-                controller.requestObject = content;
-                this.#initUserCommand(content.request, controller);
-                if (content.state !== undefined) {
-                    this.#setState(controller, content.state);
+                controller.requestObject = query;
+                this.#initUserCommand(query.request, controller);
+                if (query.state !== undefined) {
+                    this.#setState(controller, query.state);
                 }
 
-                controller.platformOptions.session = content.session;
-                controller.userId = content.session.user_id as string;
-                controller.nlu.setNlu(content.request.nlu || null);
+                controller.platformOptions.session = query.session;
+                controller.userId = query.session.user_id as string;
+                controller.nlu.setNlu(query.request.nlu || null);
 
-                controller.userMeta = content.meta || {};
-                controller.messageId = content.session.message_id;
+                controller.userMeta = query.meta || {};
+                controller.messageId = query.session.message_id;
 
-                controller.platformOptions.appId = content.session.skill_id;
+                controller.platformOptions.appId = query.session.skill_id;
                 controller.isScreen =
                     (controller.userMeta as IMarusiaRequestMeta).interfaces.screen !== undefined;
                 return true;
@@ -172,7 +162,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
             end_session: controller.isEnd,
         };
         if (controller.isScreen) {
-            if (controller.card.images.length) {
+            if (controller.isCardInit() && controller.card.images.length) {
                 response.card = <IMarusiaItemsList | IMarusiaBigImage>(
                     await controller.card.getCards(cardProcessing, controller)
                 );
@@ -180,7 +170,9 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
                     response.card = undefined;
                 }
             }
-            response.buttons = controller.buttons.getButtons(buttonProcessing) as IMarusiaButton[];
+            response.buttons = controller.isButtonsInit()
+                ? (controller.buttons.getButtons(buttonProcessing) as IMarusiaButton[])
+                : [];
         }
         return response;
     }
