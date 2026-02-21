@@ -82,15 +82,15 @@ export class BotTest extends Bot {
     constructor(type?: TAppType, botController?: TBotControllerClass) {
         super(type, botController);
         if (botController) {
-            this._botController = new botController();
+            this._botController = new botController(this.getAppContext());
         } else {
-            this._botController = new BaseBotController();
+            this._botController = new BaseBotController(this.getAppContext());
         }
         this._setBotController(this._botController);
     }
 
     initBotController(fn: TBotControllerClass): this {
-        this._botController = new fn();
+        this._botController = new fn(this.getAppContext());
         this._setBotController(this._botController);
         return super.initBotController(fn);
     }
@@ -124,14 +124,13 @@ export class BotTest extends Bot {
         let state: string | IUserData = {};
         let isEnd = false;
         do {
-            let query = '';
+            let query;
             if (count === 0) {
                 console.log("Для выхода введите 'exit'\n");
                 query = 'Привет';
             } else {
                 query = await stdin();
                 if (query === 'exit') {
-                    isEnd = true;
                     break;
                 }
             }
@@ -147,7 +146,7 @@ export class BotTest extends Bot {
             const result: IResponse = (await this.run(this.appType)) as IResponse;
             const platformAdapter = this.getAppContext().platforms;
 
-            let strRes = '';
+            let strRes;
             if (
                 this._botController.appType &&
                 platformAdapter?.[this._botController.appType]?.isVoice

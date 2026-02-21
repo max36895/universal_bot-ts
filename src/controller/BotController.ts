@@ -13,6 +13,16 @@ import {
     TAppType,
     EMetric,
 } from '../core';
+import { isPromise } from '../utils/isPromise';
+
+/*
+ * magick
+ * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать,
+ * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты
+ */
+const DEFAULT_FALLBACK_COMMAND = FALLBACK_COMMAND;
+const DEFAULT_HELP_INTENT_NAME = HELP_INTENT_NAME;
+const DEFAULT_WELCOME_INTENT_NAME = WELCOME_INTENT_NAME;
 
 /**
  * Тип статуса операции
@@ -733,13 +743,16 @@ export abstract class BotController<
      */
     public platformOptions: IPlatformOptions = {};
 
+    #getCustomRegExp: RegExpConstructor | undefined;
+
     /**
      * Создает новый экземпляр контроллера.
      * Инициализирует все необходимые компоненты.
      */
-    constructor() {
+    constructor(appContext?: AppContext) {
         // Для корректности выставляем контекст по умолчанию.
-        this.appContext = new AppContext();
+        this.appContext = appContext || new AppContext();
+        this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
         this.buttons = new Buttons(this.appContext);
         this.card = new Card(this.appContext);
         this.sound = new Sound();
@@ -753,6 +766,7 @@ export abstract class BotController<
     public setAppContext(appContext: AppContext): this {
         if (appContext) {
             this.appContext = appContext;
+            this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
             this.buttons.setAppContext(appContext);
             this.card.setAppContext(appContext);
         }
@@ -819,7 +833,7 @@ export abstract class BotController<
                     text,
                     intent.is_pattern || false,
                     false,
-                    this.appContext.command.getCustomRegExp(),
+                    this.#getCustomRegExp,
                 )
             ) {
                 if (this.appContext.usedMetric) {
@@ -884,7 +898,7 @@ export abstract class BotController<
                     });
                 }
             };
-            if (res instanceof Promise) {
+            if (isPromise(res)) {
                 return res.then(cb);
             }
             return cb(res);
@@ -939,7 +953,6 @@ export abstract class BotController<
         if (this.appContext.command.customCommandResolver) {
             return this.#sendCustomCommandResolver(start);
         }
-
         const tCommandName = this.appContext.command.getExactMatchCommand(this.userCommand);
         if (tCommandName) {
             const command = this.appContext.commands.get(tCommandName);
@@ -949,9 +962,9 @@ export abstract class BotController<
         }
 
         let contCount = 0;
-        const commandsLength = this.appContext.commands.size;
+        const useDirectRegExp = this.appContext.commands.size < 500;
         for (const [commandName, command] of this.appContext.commands) {
-            if (commandName === FALLBACK_COMMAND || !command || contCount !== 0) {
+            if (commandName === DEFAULT_FALLBACK_COMMAND || !command || contCount !== 0) {
                 if (contCount) {
                     contCount--;
                 }
@@ -966,9 +979,9 @@ export abstract class BotController<
                     contCount = groups.commands.length - 1;
                     const gRegExp = groups.regExp;
                     if (gRegExp) {
-                        const reg = isRegex(gRegExp, this.appContext.command.getCustomRegExp())
+                        const reg = isRegex(gRegExp)
                             ? gRegExp
-                            : getRegExp(gRegExp, 'ium', this.appContext.command.getCustomRegExp());
+                            : getRegExp(gRegExp, 'ium', this.#getCustomRegExp);
                         const match = reg.exec(this.userCommand);
                         if (match) {
                             // Находим первую совпавшую подгруппу (index в массиве parts)
@@ -996,8 +1009,8 @@ export abstract class BotController<
                     command.regExp || command.slots,
                     this.userCommand,
                     command.isPattern || false,
-                    typeof command.regExp !== 'string' || commandsLength < 500,
-                    this.appContext.command.getCustomRegExp(),
+                    command.isRegExpString || useDirectRegExp,
+                    this.#getCustomRegExp,
                 )
             ) {
                 return this.#commandCb(commandName, command, start);
@@ -1055,7 +1068,7 @@ export abstract class BotController<
         try {
             if (command) {
                 const res = command?.cb?.(this.userCommand as string, this);
-                if (res instanceof Promise) {
+                if (isPromise(res)) {
                     return res.then((result) => {
                         if (result) {
                             this.text = result;
@@ -1068,7 +1081,7 @@ export abstract class BotController<
             }
         } catch (e) {
             this.appContext.logError(
-                `BotController: Ошибка в команде ${commandName === FALLBACK_COMMAND ? 'FALLBACK_COMMAND' : commandName}:`,
+                `BotController: Ошибка в команде ${commandName === DEFAULT_FALLBACK_COMMAND ? 'FALLBACK_COMMAND' : commandName}:`,
                 e as Record<string, unknown>,
             );
             this.text = 'Произошла ошибка. Попробуйте позже.';
@@ -1177,36 +1190,35 @@ export abstract class BotController<
         const commandResult = this._getCommand();
         if (commandResult === null) {
             let intent: string | null = this._getIntent(this.userCommand);
-            if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
-                const command = this.appContext.commands.get(FALLBACK_COMMAND);
-                if (command) {
-                    const res = this.#commandExecute(FALLBACK_COMMAND, command);
-                    this._actionMetric(FALLBACK_COMMAND, true);
-                    return res;
-                }
+            const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
+            if (!intent && fallbackCommand) {
+                const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
+                this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+                return res;
             } else {
                 if (
                     intent === null &&
                     this.originalUserCommand &&
                     this.userCommand !== this.originalUserCommand
                 ) {
+                    // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
+                    // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
                     intent = this._getIntent(this.originalUserCommand.toLowerCase());
                 }
                 if (intent === null && this.messageId === 0) {
-                    intent = WELCOME_INTENT_NAME;
+                    intent = DEFAULT_WELCOME_INTENT_NAME;
                 }
                 /*
-                 * Для стандартных действий параметры заполняются автоматически. Есть возможность переопределить их в action() по названию действия
+                 * Для стандартных действий параметры заполняются автоматически.
+                 * Есть возможность переопределить их в action() по названию действия
                  */
                 switch (intent) {
-                    case WELCOME_INTENT_NAME:
-                        this.text = Text.getText(
-                            this.appContext?.platformParams.welcome_text || '',
-                        );
+                    case DEFAULT_WELCOME_INTENT_NAME:
+                        this.text = Text.getText(this.appContext.platformParams.welcome_text);
                         break;
 
-                    case HELP_INTENT_NAME:
-                        this.text = Text.getText(this.appContext?.platformParams.help_text || '');
+                    case DEFAULT_HELP_INTENT_NAME:
+                        this.text = Text.getText(this.appContext.platformParams.help_text);
                         break;
                 }
 

@@ -141,13 +141,15 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
         isSendConnect?: boolean;
     } = {};
 
+    #logErrorBind = this.logError.bind(this);
+
     /**
      * Все зарегистрированные команды и шаги
      */
     public command: CommandReg = new CommandReg(
         {
             warn: this.logWarn.bind(this),
-            error: this.logError.bind(this),
+            error: this.#logErrorBind,
         },
         this.plugins,
     );
@@ -489,7 +491,7 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
             path: this.appConfig.json || join(__dirname, '..', '..', 'json'),
             fileName: fileName,
         };
-        return saveData(dir, JSON.stringify(data), undefined, true, this.logError.bind(this));
+        return saveData(dir, JSON.stringify(data), undefined, true, this.#logErrorBind);
     }
 
     /**
@@ -537,6 +539,6 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
         if (this.appMode === 'dev') {
             console.error(msg);
         }
-        return saveData(dir, this.#maskSecrets(msg), 'a', false, this.logError.bind(this));
+        return saveData(dir, this.#maskSecrets(msg), 'a', false, this.#logErrorBind);
     }
 }

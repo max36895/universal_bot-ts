@@ -103,7 +103,7 @@ export interface IOptions {
  */
 export class Preload {
     private _appContext: AppContext | undefined;
-    private readonly _controller: BotController = new BaseBotController();
+    private readonly _controller: BotController;
 
     /**
      * Создает экземпляр класса Preload.
@@ -113,6 +113,7 @@ export class Preload {
      */
     constructor(appContext?: AppContext) {
         this.setAppContext(appContext);
+        this._controller = new BaseBotController(appContext as AppContext);
     }
 
     /**

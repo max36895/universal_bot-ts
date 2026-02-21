@@ -422,6 +422,7 @@ export class Nlu {
      * Устанавливает данные NLU и очищает кэш.
      *
      * @param {any} nlu - Данные NLU для обработки
+     * @param {boolean} isClearCache - Флаг, говорящий о том, что нужно сбросить кэш
      * @example
      * ```ts
      * nlu.setNlu({
@@ -434,9 +435,11 @@ export class Nlu {
      * });
      * ```
      */
-    public setNlu(nlu: any): void {
+    public setNlu(nlu: any, isClearCache: boolean = false): void {
         this.#nlu = nlu;
-        this.#cachedData.clear();
+        if (isClearCache) {
+            this.#cachedData.clear();
+        }
     }
 
     /**

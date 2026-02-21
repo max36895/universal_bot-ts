@@ -278,7 +278,7 @@ export class Text {
             const newPatterns: string[] = [];
             for (let i = 0; i < patterns.length; i++) {
                 const patternBase = patterns[i];
-                if (isRegex(patternBase, customReg)) {
+                if (isRegex(patternBase)) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
                         : Text.#getCachedRegex(patternBase, customReg);
@@ -306,7 +306,7 @@ export class Text {
         }
 
         const cachedRegex =
-            useDirectRegExp && isRegex(pattern, customReg)
+            useDirectRegExp && isRegex(pattern)
                 ? pattern
                 : Text.#getCachedRegex(pattern, customReg);
         return cachedRegex.test(text);
@@ -354,14 +354,14 @@ export class Text {
                 return false;
             }
             return text === oneFind || text.includes(oneFind);
-        } else if (isRegex(oneFind, customReg)) {
+        } else if (isRegex(oneFind)) {
             return this.#isSayPattern(oneFind, text, useDirectRegExp, customReg);
         }
 
         // Оптимизированный вариант для массива: early return + includes
         for (let i = 0; i < (find as TPatternReg[]).length; i++) {
             const value = (find as TPatternReg[])[i];
-            if (isRegex(value, customReg)) {
+            if (isRegex(value)) {
                 if (this.#isSayPattern(value, text, useDirectRegExp, customReg)) {
                     return true;
                 }
@@ -442,8 +442,11 @@ export class Text {
      * Text.getText(['привет', 'здравствуйте']); // -> случайная строка из массива
      * ```
      */
-    public static getText(str: TPattern): string {
-        return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
+    public static getText(str?: TPattern): string {
+        if (str) {
+            return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
+        }
+        return '';
     }
 
     /**

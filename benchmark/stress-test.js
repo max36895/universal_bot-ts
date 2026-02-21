@@ -3,7 +3,7 @@
 
 const { Bot, BotController, rand, unlink, Text } = require('../dist/index');
 
-const { fullPlatforms, FileAdapter } = require('../dist/plugins');
+const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');
 
 const FileDBAdapter = FileAdapter;
 const crypto = require('node:crypto');
@@ -88,7 +88,7 @@ function mockRequest(text) {
 }
 
 let errorsBot = [];
-const bot = new Bot('alisa');
+const bot = new Bot(T_ALISA);
 bot.setAppConfig({
     // Когда используется локальное хранилище, скорость обработки выше.
     // Связанно с тем что не нужно создавать бд файл с большим количеством пользователей и очень частой записью/обращением.
@@ -108,7 +108,7 @@ bot.setLogger({
         errorsBot.push(msg);
         console.warn(msg);
     },
-    metric: (name, time) => {
+    /*metric: (name, time) => {
         if (!metric[name]) {
             metric[name] = {
                 name: name,
@@ -120,7 +120,7 @@ bot.setLogger({
             metric[name].count++;
             metric[name].time += time;
         }
-    },
+    },*/
 });
 bot.use(fullPlatforms);
 // Не будем подключать адаптер бд если храним данные внутри самой платформы
@@ -150,7 +150,7 @@ async function run() {
     }
 
     text += ' ' + crypto.randomBytes(20).toString('hex');
-    return bot.run('alisa', mockRequest(text));
+    return bot.run(T_ALISA, mockRequest(text));
 }
 
 function getMemoryMB() {
@@ -399,7 +399,7 @@ async function realisticTest() {
         const parsedRequest = JSON.parse(jsonString);
 
         // 4. Запускаем логику приложения
-        const result = await bot.run('alisa', JSON.stringify(parsedRequest));
+        const result = await bot.run(T_ALISA, JSON.stringify(parsedRequest));
 
         // 5. Подготавливает корректный ответ на запрос
         const responseJson = JSON.stringify(result);
@@ -446,7 +446,7 @@ async function realCommandsTest() {
     const batchSize = 100;
     for (let i = 0; i < iterations; i += batchSize) {
         const batch = requests.slice(i, i + batchSize);
-        const promises = batch.map((req) => bot.run('alisa', req));
+        const promises = batch.map((req) => bot.run(T_ALISA, req));
         await Promise.all(promises);
     }
 
@@ -537,7 +537,6 @@ async function runAllTests() {
     await testMaxRPS(3);
     console.log('');
     await testMaxRPS(15);
-
     console.log('');
     // Позволяем сохранить данные в файловую бд
     await new Promise((resolve) => setTimeout(resolve, 1000));

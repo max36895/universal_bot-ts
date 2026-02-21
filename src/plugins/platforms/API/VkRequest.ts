@@ -324,7 +324,7 @@ export class VkRequest {
 
         if (typeof peerId !== 'number') {
             this._request.post.domain = peerId;
-            delete this._request.post.peer_id;
+            this._request.post.peer_id = undefined;
         }
         if (params) {
             if (params.random_id === undefined) {
@@ -335,7 +335,7 @@ export class VkRequest {
 
             if (params.attachments !== undefined) {
                 this._request.post.attachment = params.attachments.join(',');
-                delete params.attachments;
+                params.attachments = undefined;
             }
 
             if (params.template !== undefined) {
@@ -343,19 +343,19 @@ export class VkRequest {
                     params.template = JSON.stringify(params.template);
                 }
                 this._request.post.template = params.template;
-                delete params.template;
+                params.template = undefined;
             }
 
             if (params.keyboard !== undefined) {
                 if (this._request.post.template !== undefined) {
                     // await this.call<IVKSendMessage>(method);
-                    delete this._request.post.template;
+                    this._request.post.template = undefined;
                 }
                 if (typeof params.keyboard !== 'string') {
                     params.keyboard = JSON.stringify(params.keyboard);
                 }
                 this._request.post.keyboard = params.keyboard;
-                delete params.keyboard;
+                params.keyboard = undefined;
             }
 
             if (Object.keys(params).length) {

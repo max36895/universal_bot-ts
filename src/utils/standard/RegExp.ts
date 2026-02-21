@@ -28,17 +28,10 @@ export type TPatternRegExp = string | RegExp;
 /**
  * Проверяет передано ли регулярное выражение или нет
  * @param regExp Регулярное выражение
- * @param customReg Кастомный обработчик для регулярных выражений
  */
-export function isRegex(
-    regExp: TPatternRegExp | unknown,
-    customReg?: RegExpConstructor,
-): regExp is RegExp {
-    if (customReg) {
-        return regExp instanceof customReg || regExp instanceof RegExp;
-    }
+export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
     // @ts-ignore
-    return regExp instanceof RegExp || regExp instanceof Re2;
+    return regExp && typeof regExp.test === 'function' && typeof regExp.exec === 'function';
 }
 
 /**
@@ -58,13 +51,13 @@ export function getRegExp(
     let pattern;
     let flag = flags;
     const getPattern = (pat: TPatternRegExp): string => {
-        return isRegex(pat, customReg) ? pat.source : pat;
+        return isRegex(pat) ? pat.source : pat;
     };
 
     if (Array.isArray(reg)) {
         if (reg.length === 1) {
             pattern = getPattern(reg[0]);
-            flag = isRegex(reg[0], customReg) ? reg[0].flags : flags;
+            flag = isRegex(reg[0]) ? reg[0].flags : flags;
         } else {
             const aPattern: string[] = [];
             reg.forEach((r) => {
@@ -74,7 +67,7 @@ export function getRegExp(
         }
     } else {
         pattern = getPattern(reg);
-        flag = isRegex(reg, customReg) ? reg.flags : flags;
+        flag = isRegex(reg) ? reg.flags : flags;
     }
     if (customReg) {
         return new customReg(pattern, flag);

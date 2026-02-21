@@ -102,10 +102,10 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
      * @param state Объект состояния из запроса
      */
     #setState(controller: BotController, state: IMarusiaRequestState): void {
-        if (state.user !== undefined) {
+        if (state.user) {
             controller.state = state.user;
             controller.platformOptions.stateName = 'user_state_update';
-        } else if (state.session !== undefined) {
+        } else if (state.session) {
             controller.state = state.session;
             controller.platformOptions.stateName = 'session_state';
         }
@@ -185,7 +185,10 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
         return response;
     }
 
-    async getContent(controller: BotController): Promise<IMarusiaWebhookResponse> {
+    async getContent(
+        controller: BotController,
+        stateData?: Record<string, unknown> | null,
+    ): Promise<IMarusiaWebhookResponse> {
         const result: IMarusiaWebhookResponse = {
             version: VERSION,
         };
@@ -193,23 +196,8 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
         await this._initTTS(controller);
         result.response = await this._getResponse(controller);
         result.session = controller.platformOptions.session as IMarusiaWebhookResponse['session'];
-        if (controller.platformOptions.stateName) {
-            if (
-                controller.platformOptions.isState &&
-                controller.platformOptions.usedLocalStorage &&
-                controller.userData
-            ) {
-                if (controller.state && controller.appContext.database.adapter) {
-                    result[controller.platformOptions.stateName as TState] =
-                        Object.keys(controller.state).length === 0
-                            ? controller.userData
-                            : controller.state;
-                } else {
-                    result[controller.platformOptions.stateName as TState] = controller.userData;
-                }
-            } else if (controller.state) {
-                result[controller.platformOptions.stateName as TState] = controller.state;
-            }
+        if (controller.platformOptions.stateName && stateData) {
+            result[controller.platformOptions.stateName as TState] = stateData;
         }
         this._timeLimitLog(controller);
         return result;

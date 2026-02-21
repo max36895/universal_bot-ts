@@ -1,5 +1,6 @@
 {
     "name": "umbot",
+    "version": "3.0.0",
     "description": "Универсальный фреймворк для создания чат-ботов и голосовых навыков с единой бизнес-логикой для различных платформ (ВКонтакте, Telegram, Viber, MAX, Яндекс.Алиса, Маруся, Сбер (SmartApp)) | (Universal framework for creating chatbots and voice skills with a single business logic for various platforms (VK, Telegram, Viber, MAX, Yandex Alice, Marusia, Sber SmartApp))",
     "keywords": [
         "vk",
@@ -42,6 +43,7 @@
         "email": "maximco36895@yandex.ru"
     },
     "license": "MIT",
+    "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "typesVersions": {
         "*": {
@@ -62,7 +64,10 @@
             ]
         }
     },
-    "main": "./dist/index.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/max36895/universal_bot-ts.git"
+    },
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -105,41 +110,38 @@
         "prettier": "prettier --write .",
         "bench": "node --expose-gc ./benchmark/command.js",
         "stress": "node --expose-gc ./benchmark/stress-test.js",
+        "fb": "node --expose-gc ./benchmark/fb.js",
         "typecheck": "tsc --noEmit"
+    },
+    "engines": {
+        "node": ">=20.19.0"
     },
     "bugs": {
         "url": "https://github.com/max36895/universal_bot-ts/issues"
     },
-    "engines": {
-        "node": ">=20"
-    },
     "bin": {
         "umbot": "cli/umbot.js"
     },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/max36895/universal_bot-ts.git"
-    },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@types/jest": "^30.0.0",
         "@types/node": "^20.19.30",
-        "@typescript-eslint/eslint-plugin": "^8.55.0",
-        "@typescript-eslint/parser": "^8.55.0",
-        "eslint": "^9.39.2",
-        "eslint-plugin-security": "^3.0.1",
-        "globals": "^16.4.0",
-        "jest": "~30.2.0",
-        "prettier": "~3.8.1",
-        "ts-jest": "~29.4.6",
-        "typedoc": "^0.28.16",
+        "@typescript-eslint/eslint-plugin": "^8.56.0",
+        "@typescript-eslint/parser": "^8.56.0",
+        "eslint": "^10.0.0",
+        "eslint-plugin-security": "^4.0.0",
+        "globals": "^17.3.0",
+        "jest": "^30.2.0",
+        "prettier": "^3.8.1",
+        "ts-jest": "^29.4.6",
+        "typedoc": "^0.28.17",
         "typescript": "^5.9.3"
     },
     "peerDependencies": {
-        "mongodb": "^6.21.0"
+        "mongodb": "^7.1.0"
     },
     "files": [
         "dist",
         "cli"
-    ],
-    "version": "3.0.0"
+    ]
 }

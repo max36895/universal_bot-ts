@@ -107,27 +107,18 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
      * Определяет ID пользователя из сессии или приложения
      */
     #setUserId(controller: BotController, session?: IAlisaSession): void {
-        if (this.appContext) {
-            if (session) {
-                let userId: string | null = null;
-                controller.platformOptions.isState = false;
-                if (this.appContext.platformParams.isAuthUser) {
-                    if (session.user?.user_id !== undefined) {
-                        userId = session.user.user_id;
-                        controller.platformOptions.isState = true;
-                        controller.userToken = session.user.access_token || null;
-                    }
+        if (this.appContext && session) {
+            controller.platformOptions.isState = false;
+            if (this.appContext.platformParams.isAuthUser && session.user?.user_id !== undefined) {
+                controller.userId = session.user.user_id;
+                controller.platformOptions.isState = true;
+                controller.userToken = session.user.access_token || null;
+            } else {
+                if (session.application?.application_id === undefined) {
+                    controller.userId = session.user_id as string;
+                } else {
+                    controller.userId = session.application.application_id;
                 }
-
-                if (userId === null) {
-                    if (session.application?.application_id === undefined) {
-                        userId = session.user_id as string;
-                    } else {
-                        userId = session.application.application_id;
-                    }
-                }
-
-                controller.userId = userId;
             }
         }
     }
@@ -139,13 +130,13 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
      * @param state Объект состояния из запроса
      */
     #setState(controller: BotController, state: IAlisaRequestState): void {
-        if (state.user !== undefined) {
+        if (state.user) {
             controller.state = state.user;
             controller.platformOptions.stateName = 'user_state_update';
-        } else if (state.application !== undefined) {
+        } else if (state.application) {
             controller.state = state.application;
             controller.platformOptions.stateName = 'application_state';
-        } else if (state.session !== undefined) {
+        } else if (state.session) {
             controller.state = state.session;
             controller.platformOptions.stateName = 'session_state';
         }
@@ -170,7 +161,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                         return true;
                     }
                     controller.platformOptions.error =
-                        'AlisaAdapter.setQueryData(): Переданы не корректные данные!';
+                        'AlisaAdapter.setQueryData(): Переданы не корректные данные для авторизации!';
                     return false;
                 }
 
@@ -193,7 +184,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                  * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
                  * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут
                  */
-                if (content.request.original_utterance === 'ping' && !content.request.command) {
+                if (!content.request.command && content.request.original_utterance === 'ping') {
                     controller.text = 'pong';
                     controller.platformOptions.sendInInit = {
                         version: VERSION,
@@ -237,7 +228,10 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
         return response;
     }
 
-    async getContent(controller: BotController): Promise<IAlisaWebhookResponse> {
+    async getContent(
+        controller: BotController,
+        stateData?: Record<string, unknown> | null,
+    ): Promise<IAlisaWebhookResponse> {
         const result: IAlisaWebhookResponse = {
             version: VERSION,
         };
@@ -247,24 +241,8 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
             await this._initTTS(controller);
             result.response = await this._getResponse(controller);
         }
-        if (controller.platformOptions.stateName) {
-            if (
-                this.appContext?.appConfig.isLocalStorage &&
-                controller.platformOptions.usedLocalStorage &&
-                controller.userData
-            ) {
-                if (controller.state && controller.appContext.database.adapter) {
-                    result[controller.platformOptions.stateName as keyof IState] =
-                        Object.keys(controller.state).length === 0
-                            ? controller.userData
-                            : controller.state;
-                } else {
-                    result[controller.platformOptions.stateName as keyof IState] =
-                        controller.userData;
-                }
-            } else if (controller.state && Object.keys(controller.state).length) {
-                result[controller.platformOptions.stateName as keyof IState] = controller.state;
-            }
+        if (controller.platformOptions.stateName && stateData) {
+            result[controller.platformOptions.stateName as keyof IState] = stateData;
         }
         this._timeLimitLog(controller);
         return result;

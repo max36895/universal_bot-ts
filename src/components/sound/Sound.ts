@@ -1,6 +1,7 @@
 import { ISound } from './interfaces';
 import { TSoundProcessing } from '../../core';
 import { BotController } from '../../controller';
+import { isPromise } from '../../utils/isPromise';
 
 /**
  * @class Sound
@@ -126,7 +127,7 @@ export class Sound {
         );
         if (res) {
             let stringRes;
-            if (res instanceof Promise) {
+            if (isPromise(res)) {
                 stringRes = await res;
             } else {
                 stringRes = res;

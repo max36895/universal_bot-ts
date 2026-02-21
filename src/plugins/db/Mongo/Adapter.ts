@@ -116,7 +116,7 @@ export class Adapter extends Base<IMongoDbInfo> {
                 return true;
             } catch (err) {
                 errors.push((err as Error).message);
-                mongoConnect = null;
+                // mongoConnect = null;
                 mongoClient = null;
                 this._saveLog('При подключении в базе данных произошла ошибка:', err as Error);
                 return false;

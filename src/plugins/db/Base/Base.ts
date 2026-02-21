@@ -9,6 +9,7 @@ import {
     TQueryCb,
     IQueryData,
     IQuery,
+    isPromise,
 } from '../../../index';
 import { BasePlugin } from '../../Base';
 
@@ -199,7 +200,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
 
         const start = performance.now();
         let res = this._select(selectData, where, isOne);
-        if (res instanceof Promise) {
+        if (isPromise(res)) {
             res = await res;
         }
         this._appContext?.logMetric(EMetric.DB_SELECT, performance.now() - start, {
@@ -220,7 +221,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         }
         const start = performance.now();
         let res = this._insert(insertData);
-        if (res instanceof Promise) {
+        if (isPromise(res)) {
             res = await res;
         }
         this._appContext?.logMetric(EMetric.DB_INSERT, performance.now() - start, {
@@ -241,7 +242,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         }
         const start = performance.now();
         let res = this._update(updateData);
-        if (res instanceof Promise) {
+        if (isPromise(res)) {
             res = await res;
         }
         this._appContext?.logMetric(EMetric.DB_UPDATE, performance.now() - start, {
@@ -262,7 +263,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
         }
         const start = performance.now();
         let res = this._remove(removeData);
-        if (res instanceof Promise) {
+        if (isPromise(res)) {
             res = await res;
         }
         this._appContext?.logMetric(EMetric.DB_REMOVE, performance.now() - start, {

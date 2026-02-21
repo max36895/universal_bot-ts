@@ -1,5 +1,4 @@
 import { BotController, IUserData } from './BotController';
-import { WELCOME_INTENT_NAME, HELP_INTENT_NAME } from '../core';
 import { Text } from '../utils';
 
 function i18n(controller: BaseBotController): void {
@@ -30,16 +29,8 @@ export class BaseBotController<
             i18n(this);
             return;
         }
-        switch (intentName) {
-            case WELCOME_INTENT_NAME:
-                this.text = Text.getText(this.appContext?.platformParams.welcome_text || '');
-                break;
-            case HELP_INTENT_NAME:
-                this.text = Text.getText(this.appContext?.platformParams.help_text || '');
-                break;
-            default:
-                this.text = Text.getText(this.appContext?.platformParams.empty_text || '');
-                break;
+        if (!this.text) {
+            this.text = Text.getText(this.appContext?.platformParams.empty_text || '');
         }
         i18n(this);
     }

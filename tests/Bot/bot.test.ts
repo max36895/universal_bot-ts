@@ -651,15 +651,12 @@ describe('Bot', () => {
     describe('customLogger', () => {
         it('metric', async () => {
             bot.initBotController(TestBotController);
-            let logCount = 0;
             let warnCount = 0;
             let errorCount = 0;
             let errorMessage = '';
             let metricCount = 0;
             bot.setLogger({
-                log: () => {
-                    logCount++;
-                },
+                log: () => {},
                 error: (message) => {
                     errorCount++;
                     errorMessage = message;
@@ -687,7 +684,7 @@ describe('Bot', () => {
             expect(metricCount).toBe(4);
             expect(errorCount).toBe(1);
             expect(errorMessage).toBe(
-                'BotController: Произошла ошибка при обработке команды \"error\", ошибка: \"test\"',
+                'BotController: Произошла ошибка при обработке команды "error", ошибка: "test"',
             );
         });
     });
@@ -707,7 +704,7 @@ describe('Bot', () => {
             bot.addCommand('normal', [/\d+/], () => {});
             expect(warmMessage).toBe(undefined);
             expect(errorMessage).toBe(undefined);
-            bot.addCommand('normal2', ['/\d+/'], () => {}, true);
+            bot.addCommand('normal2', ['/\\d+/'], () => {}, true);
             expect(warmMessage).toBe(undefined);
             expect(errorMessage).toBe(undefined);
 
@@ -734,6 +731,7 @@ describe('Bot', () => {
             expect(errorMessage).toBe(undefined);
             bot.clearCommands();
 
+            // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos4', [/(a*)*/], () => {});
             expect(warmMessage).toBe(
                 'Найдено небезопасное регулярное выражение, проверьте его корректность: (a*)*',
@@ -743,6 +741,7 @@ describe('Bot', () => {
             errorMessage = undefined;
             bot.clearCommands();
 
+            // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos5', [/(a|a+)+/], () => {});
             expect(warmMessage).toBe(
                 'Найдено небезопасное регулярное выражение, проверьте его корректность: (a|a+)+',
@@ -751,14 +750,13 @@ describe('Bot', () => {
             warmMessage = undefined;
             errorMessage = undefined;
             bot.clearCommands();
-
+            // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
             expect(warmMessage).toBe(
                 'Найдено небезопасное регулярное выражение, проверьте его корректность: (a+){10,1000}',
             );
             expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
+
             bot.clearCommands();
         });
         it('redos error', () => {
@@ -802,7 +800,7 @@ describe('Bot', () => {
             );
             expect(warmMessage).toBe(undefined);
             bot.clearCommands();
-
+            // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos4', [/(a*)*/], () => {});
             expect(errorMessage).toBe(
                 'Найдено небезопасное регулярное выражение, проверьте его корректность: (a*)*',
@@ -811,7 +809,7 @@ describe('Bot', () => {
             warmMessage = undefined;
             errorMessage = undefined;
             bot.clearCommands();
-
+            // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos5', [/(a|a+)+/], () => {});
             expect(errorMessage).toBe(
                 'Найдено небезопасное регулярное выражение, проверьте его корректность: (a|a+)+',
@@ -820,14 +818,13 @@ describe('Bot', () => {
             warmMessage = undefined;
             errorMessage = undefined;
             bot.clearCommands();
-
+            // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
             expect(errorMessage).toBe(
                 'Найдено небезопасное регулярное выражение, проверьте его корректность: (a+){10,1000}',
             );
             expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
+
             bot.clearCommands();
         });
 
@@ -1250,8 +1247,8 @@ describe('Bot', () => {
 
     describe('adapters', () => {
         it('i18n', async () => {
-            const i18n = (appContext: AppContext) => {
-                const fn = (text: string) => {
+            const i18n = (appContext: AppContext): void => {
+                const fn = (text: string): string => {
                     if (text === 'привет') {
                         return 'hi';
                     }
@@ -1276,8 +1273,8 @@ describe('Bot', () => {
         });
         it('regExp', async () => {
             let usedRegExp = 0;
-            const reg = (appContext: AppContext) => {
-                const fn = () => {
+            const reg = (appContext: AppContext): void => {
+                const fn = (): RegExpConstructor => {
                     usedRegExp++;
                     return MyReg as unknown as RegExpConstructor;
                 };
@@ -1289,12 +1286,12 @@ describe('Bot', () => {
             bot.addCommand('reg', ['\\d+'], (userCommand) => `Вы сказали ${userCommand}`, true);
             const res = (await bot.run(T_ALISA, getContent('5'))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('Вы сказали 5');
-            expect(usedRegExp).toBe(5);
+            expect(usedRegExp).toBe(3);
             expect(MyReg.created).toBe(1);
             // Вызывается 3 раза, так как 2 раза идет прогрев + 1 реальный вызов
             expect(MyReg.used).toBe(3);
             await bot.run(T_ALISA, getContent('привет'));
-            expect(usedRegExp).toBe(7);
+            expect(usedRegExp).toBe(5);
             expect(MyReg.created).toBe(1);
             expect(MyReg.used).toBe(4);
         });

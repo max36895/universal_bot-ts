@@ -84,7 +84,8 @@ export class Adapter extends Base<IFileDbInfo> {
     setCachedFileData(tableName: string, data: IFileInfo | undefined): void {
         if (this._appContext.database.databaseInfo) {
             if (data === undefined) {
-                delete this._appContext.database.databaseInfo[tableName];
+                // @ts-ignore
+                this._appContext.database.databaseInfo[tableName] = undefined;
             } else {
                 const timeOutId = this._appContext.database.databaseInfo[tableName]?.timeOutId;
                 this._appContext.database.databaseInfo[tableName] = data;
@@ -94,7 +95,8 @@ export class Adapter extends Base<IFileDbInfo> {
                 }
             }
         } else if (data === undefined) {
-            delete this.#cachedFileData[tableName];
+            // @ts-ignore
+            this.#cachedFileData[tableName] = undefined;
         } else {
             this.#cachedFileData[tableName] = data;
         }

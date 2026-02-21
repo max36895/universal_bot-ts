@@ -163,9 +163,13 @@ export interface IPlatformAdapter<TQuery = any> extends IPlugin {
      * метод может возвращать `{ ok: true }` или аналог.
      *
      * @param controller - контроллер с готовым ответом
+     * @param stateData - данные для локального хранилища
      * @returns ответ в формате, понятном платформе
      */
-    getContent: (controller: BotController) => object | string | Promise<object | string>;
+    getContent: (
+        controller: BotController,
+        stateData?: Record<string, unknown> | null,
+    ) => object | string | Promise<object | string>;
     /**
      * Формирует контекст для отправки рейтинга (если поддерживается платформой).
      *

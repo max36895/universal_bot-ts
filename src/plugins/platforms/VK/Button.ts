@@ -106,7 +106,7 @@ export function buttonProcessing(buttons: Button<IVkButton>[]): IVkButtonObject 
             index++;
         } else {
             if (object[GROUP_NAME] !== undefined) {
-                delete object[GROUP_NAME];
+                object[GROUP_NAME] = undefined;
             }
             if (groups[+groupOptions] === undefined) {
                 groups[+groupOptions] = index;

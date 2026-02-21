@@ -140,6 +140,7 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * Скомпилированное регулярное выражение
      */
     regExp?: RegExp;
+    isRegExpString: boolean;
 }
 
 /**
@@ -251,7 +252,7 @@ export class CommandReg {
      * @param slots
      */
     isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
-        if (isRegex(slots, this.getCustomRegExp())) {
+        if (isRegex(slots)) {
             if (!isRegexLikelySafe(slots.source, true)) {
                 this[this.strictMode ? 'logError' : 'logWarn'](
                     `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
@@ -274,8 +275,9 @@ export class CommandReg {
             const correctSlots: TSlots | undefined = [];
             const errors: string[] | undefined = [];
             slots.forEach((slot) => {
-                const slotStr = isRegex(slot, this.getCustomRegExp()) ? slot.source : slot;
-                if (isRegexLikelySafe(slotStr, isRegex(slot, this.getCustomRegExp()))) {
+                const isReg = isRegex(slot);
+                const slotStr = isReg ? slot.source : slot;
+                if (isRegexLikelySafe(slotStr, isReg)) {
                     correctSlots.push(slot);
                 } else {
                     errors.push(slotStr);
@@ -373,6 +375,7 @@ export class CommandReg {
                     const command = this.commands.get(this.#noFullGroups.name);
                     if (command) {
                         command.regExp = undefined;
+                        command.isRegExpString = false;
                         this.commands.set(this.#noFullGroups.name, command);
                     }
                 }
@@ -598,6 +601,7 @@ export class CommandReg {
                 isPattern: false,
                 cb: cb as ICommandParam['cb'],
                 regExp: undefined,
+                isRegExpString: false,
                 __$groupName: commandName,
             });
             return;
@@ -631,7 +635,7 @@ export class CommandReg {
             this.#addRegexpInGroup(commandName, correctSlots, false);
             for (let i = 0; i < slots.length; i++) {
                 const slot = slots[i];
-                if (isRegex(slot, this.getCustomRegExp())) {
+                if (isRegex(slot)) {
                     const res = this.isDangerRegex(slot);
                     if (res.status && this.strictMode) {
                         correctSlots.push(slot);
@@ -659,6 +663,7 @@ export class CommandReg {
                 isPattern,
                 cb: cb as ICommandParam['cb'],
                 regExp,
+                isRegExpString: typeof regExp !== 'string',
                 __$groupName: groupName,
             });
         }
@@ -682,7 +687,7 @@ export class CommandReg {
                 }
             }
             command?.slots?.forEach((slot) => {
-                if (!isRegex(slot, this.getCustomRegExp())) {
+                if (!isRegex(slot)) {
                     this.#exactMatchMap.delete(slot);
                 }
             });

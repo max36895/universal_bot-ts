@@ -163,9 +163,13 @@ export abstract class BasePlatform<TQuery = unknown>
      * метод может возвращать `{ ok: true }` или аналог.
      *
      * @param controller - контроллер с готовым ответом
+     * @param stateData - данные для локального хранилища
      * @returns ответ в формате, понятном платформе
      */
-    abstract getContent(controller: BotController): TContent;
+    abstract getContent(
+        controller: BotController,
+        stateData?: Record<string, unknown> | null,
+    ): TContent;
 
     /**
      * Формирует ответ с оценкой
@@ -189,8 +193,7 @@ export abstract class BasePlatform<TQuery = unknown>
     send(userId: string | number, controllerOrText: BotController | string): TContent | boolean {
         let controller: BotController;
         if (typeof controllerOrText === 'string') {
-            controller = new BaseBotController();
-            controller.setAppContext(this.appContext as AppContext);
+            controller = new BaseBotController(this.appContext as AppContext);
             controller.text = controllerOrText;
         } else {
             controller = controllerOrText;

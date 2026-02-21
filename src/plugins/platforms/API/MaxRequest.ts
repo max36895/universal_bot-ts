@@ -157,14 +157,14 @@ export class MaxRequest {
                     } else {
                         attachment.push(params.attachments);
                     }
-                    delete params.attachments;
+                    params.attachments = undefined;
                 }
                 if (params.keyboard !== undefined) {
                     attachment.push({
                         type: 'inline_keyboard',
                         payload: params.keyboard,
                     });
-                    delete params.keyboard;
+                    params.keyboard = undefined;
                 }
 
                 this.#request.post.attachment = attachment;

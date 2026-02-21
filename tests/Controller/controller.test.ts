@@ -4,8 +4,7 @@ import { AppContext } from '../../src';
 const appContext = new AppContext();
 
 describe('Controller', () => {
-    const uController = new MyController();
-    uController.setAppContext(appContext);
+    const uController = new MyController(appContext);
 
     it('MyController default intents', () => {
         expect(uController.testIntents()).toEqual(appContext.platformParams.intents);
