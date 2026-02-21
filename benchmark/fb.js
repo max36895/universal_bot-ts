@@ -178,7 +178,6 @@ async function fallbackTest() {
 // 3. Запуск всех тестов
 // ───────────────────────────────────────
 async function runAllTests() {
-    const isWin = process.platform === 'win32';
     await fallbackTest();
     // Позволяем сохранить данные в файловую бд
     await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -973,7 +973,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 botController.userData.oldIntentName = botController.thisIntentName;
             }
         } else {
-            if (botController.userData?.oldIntentName !== undefined) {
+            if (botController.userData.oldIntentName !== undefined) {
                 userDataLength--;
                 delete botController.userData.oldIntentName;
             }
@@ -990,7 +990,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         ) {
             if (this.#appContext.database.adapter) {
                 stateData =
-                    botController.state && Object.keys(botController.state)
+                    botController.state && Object.keys(botController.state).length
                         ? botController.state
                         : botController.userData;
             } else {
