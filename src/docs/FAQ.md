@@ -82,7 +82,7 @@ const bot = new Bot()
     .start('localhost', 3000);
 ```
 
-Подробнее об изменениях можно прочитать [тут](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_next-releace)
+Подробнее об изменениях можно прочитать [тут](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_next-release)
 
 ### Как перейти с 2.1.x на 2.2.x?
 

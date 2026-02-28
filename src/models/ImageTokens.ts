@@ -13,13 +13,13 @@ export interface IImageModelState {
      * Уникальный идентификатор, используемый для ссылки на изображение в API различных платформ.
      * @example "photo123456789" для Telegram, "123456789" для VK
      */
-    imageToken: string;
+    imageToken: string | null;
     /**
      * Расположение изображения (url/директория).
      * Может быть URL-адресом изображения или путем к локальному файлу.
      * @example "https://example.com/image.jpg" или "/path/to/local/image.jpg"
      */
-    path: string;
+    path: string | null;
     /**
      * Тип платформы.
      * Определяет, для какой платформы предназначено изображение.
@@ -53,23 +53,6 @@ export class ImageTokens extends Model<IImageModelState> {
     private readonly TABLE_NAME = 'ImageTokens';
 
     /**
-     * Идентификатор/токен изображения.
-     * Уникальный идентификатор, используемый для ссылки на изображение в API платформы.
-     */
-    public imageToken: string | null;
-
-    /**
-     * Расположение изображения (url/директория).
-     * Может быть URL-адресом изображения или путем к локальному файлу.
-     */
-    public path: string | null;
-
-    /**
-     * Тип приложения, для которого загружена картинка.
-     */
-    public platform: string;
-
-    /**
      * Описание изображения (Не обязательное поле).
      * Используется как подпись к изображению в некоторых платформах.
      */
@@ -85,6 +68,53 @@ export class ImageTokens extends Model<IImageModelState> {
         this.path = null;
         this.platform = 'unknown';
         this.caption = null;
+    }
+
+    /**
+     * Идентификатор/токен изображения.
+     * Уникальный идентификатор, используемый для ссылки на изображение в API платформы.
+     */
+    get imageToken(): string {
+        return this.state.imageToken as string;
+    }
+
+    /**
+     * Устанавливает идентификатор/токен изображения.
+     * @param imageToken
+     */
+    set imageToken(imageToken: string | null) {
+        this.state.imageToken = imageToken;
+    }
+
+    /**
+     * Расположение изображения (url/директория).
+     * Может быть URL-адресом изображения или путем к локальному файлу.
+     */
+    get path(): string {
+        return this.state.path as string;
+    }
+
+    /**
+     * Устанавливает расположение изображения (url/директория).
+     * @param path
+     */
+    set path(path: string | null) {
+        this.state.path = path;
+    }
+
+    /**
+     * Тип приложения, для которого загружена картинка.
+     */
+    get platform(): string {
+        return this.state.platform as string;
+    }
+
+    /**
+     * Устанавливает тип приложения, для которого загружена картинка.
+     * @param platform
+     */
+    set platform(platform: string) {
+        this.state.platform = platform;
     }
 
     /**

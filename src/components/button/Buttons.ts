@@ -1,4 +1,4 @@
-import { Button } from './Button';
+import { IButtonType, getButton, getLinkButton } from './Button';
 import { IButtonOptions } from './interfaces/IButton';
 import { AppContext, TButtonProcessing } from '../../core';
 
@@ -18,10 +18,19 @@ export type TButtonPayload = Record<string, unknown> | string;
  */
 export class Buttons {
     /**
+     * Константа для создания кнопки в виде ссылки (сайджест).
+     */
+    public static readonly B_LINK: boolean = false;
+
+    /**
+     * Константа для создания кнопки в виде интерактивной кнопки.
+     */
+    public static readonly B_BTN: boolean = true;
+    /**
      * Массив объектов Button, представляющих все кнопки в коллекции.
      * @see Button
      */
-    public buttons: Button[];
+    public buttons: IButtonType[];
 
     /**
      * Контекст приложения.
@@ -80,15 +89,10 @@ export class Buttons {
         hide: boolean = false,
         options: IButtonOptions = {},
     ): this {
-        let button: Button | null = new Button();
-        button.setAppContext(this.#appContext);
-        if (hide === Button.B_LINK) {
-            if (!button.initLink(title, url, payload, options)) {
-                button = null;
-            }
-        } else if (!button.initBtn(title, url, payload, options)) {
-            button = null;
-        }
+        const button =
+            hide === Buttons.B_LINK
+                ? getLinkButton(this.#appContext, title, url, payload, options)
+                : getButton(this.#appContext, title, url, payload, options);
         if (button) {
             this.buttons.push(button);
         }
@@ -119,7 +123,7 @@ export class Buttons {
         payload: TButtonPayload = '',
         options: IButtonOptions = {},
     ): this {
-        return this.#add(title, url, payload, Button.B_BTN, options);
+        return this.#add(title, url, payload, Buttons.B_BTN, options);
     }
 
     /**
@@ -146,7 +150,7 @@ export class Buttons {
         payload: TButtonPayload = '',
         options: IButtonOptions = {},
     ): this {
-        return this.#add(title, url, payload, Button.B_LINK, options);
+        return this.#add(title, url, payload, Buttons.B_LINK, options);
     }
 
     /**
@@ -157,7 +161,7 @@ export class Buttons {
     public getButtons<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,
     ): T | null {
-        return buttonProcessing(this.buttons as Button<TType>[]);
+        return buttonProcessing(this.buttons as IButtonType<TType>[]);
     }
 
     /**

@@ -1,4 +1,4 @@
-import { Button } from '../../../index';
+import { IButtonType } from '../../../index';
 
 import { ITelegramKeyboard, ITelegramInlineKeyboard } from './interfaces/ITelegramPlatform';
 
@@ -6,7 +6,7 @@ import { ITelegramKeyboard, ITelegramInlineKeyboard } from './interfaces/ITelegr
  * Получение кнопок в формате Telegram
  * @param buttons Кнопки, которые необходимо отобразить
  */
-export function buttonProcessing(buttons: Button[]): ITelegramKeyboard | null {
+export function buttonProcessing(buttons: IButtonType[]): ITelegramKeyboard | null {
     let object: ITelegramKeyboard = {};
     const inlines: ITelegramInlineKeyboard[] = [];
     const reply: string[] = [];

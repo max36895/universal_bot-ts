@@ -1,10 +1,10 @@
-import { Text, Button } from '../../../index';
+import { Text, IButtonType } from '../../../index';
 import { IAlisaButton, IAlisaButtonCard } from './interfaces/IAlisaPlatform';
 
 /**
  * Создание кнопки в формате Алисы
  */
-function _getButton(button: Button, isCard: boolean): IAlisaButtonCard | IAlisaButton | null {
+function _getButton(button: IButtonType, isCard: boolean): IAlisaButtonCard | IAlisaButton | null {
     const title = Text.resize(button.title || '', 64);
     if (title) {
         let object: IAlisaButtonCard | IAlisaButton;
@@ -35,7 +35,7 @@ function _getButton(button: Button, isCard: boolean): IAlisaButtonCard | IAlisaB
  * @param isCard флаг принадлежности кнопок к карточке
  */
 export function buttonProcessing(
-    buttons: Button[],
+    buttons: IButtonType[],
     isCard: boolean = false,
 ): IAlisaButton[] | IAlisaButtonCard | null {
     const objects: IAlisaButton[] = [];

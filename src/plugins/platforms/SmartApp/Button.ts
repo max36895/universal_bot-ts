@@ -1,4 +1,4 @@
-import { Text, Button } from '../../../index';
+import { Text, IButtonType } from '../../../index';
 
 import {
     ISberSmartAppSuggestionButton,
@@ -11,7 +11,7 @@ import {
  * @param isCard флаг принадлежности кнопок к карточке
  */
 export function buttonProcessing(
-    buttons: Button[],
+    buttons: IButtonType[],
     isCard: boolean = false,
 ): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction {
     const objects: ISberSmartAppSuggestionButton[] = [];

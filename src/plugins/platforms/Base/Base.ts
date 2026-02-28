@@ -59,6 +59,13 @@ export abstract class BasePlatform<TQuery = unknown>
 
     protected _token?: string;
     protected _platformOptions?: IOptions;
+    /**
+     * Определят лимит платформы.
+     * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
+     * В случае если у платформы нет ограничений, можно указать 0 или null.
+     * По умолчанию null
+     */
+    limit: number | null = null;
 
     /**
      * Контекст приложения

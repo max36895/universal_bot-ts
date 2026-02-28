@@ -6,6 +6,7 @@ import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VIBER } from './constants';
 import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
+
 /**
  * Адаптер для мессенджера Viber.
  *
@@ -24,6 +25,7 @@ import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
 export class Adapter extends BasePlatform<IViberContent | string> {
     platformName = T_VIBER;
     isVoice = false;
+    limit = 30;
 
     init(appContext: AppContext): void {
         super.init(appContext);

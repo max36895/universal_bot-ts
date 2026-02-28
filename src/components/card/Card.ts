@@ -1,6 +1,6 @@
 import { Buttons, TButton } from '../button';
 import { BotController } from '../../controller';
-import { Image, initButton } from '../image/Image';
+import { getImage, IImageType, initButton } from '../image/Image';
 import { AppContext, TCardProcessing } from '../../core';
 
 /**
@@ -48,7 +48,7 @@ export class Card {
      * card.addImage('product.jpg', 'Название товара', 'Описание товара');
      * ```
      */
-    public images: Image[];
+    public images: IImageType[];
 
     /**
      * Кнопки элемента карточки.
@@ -260,8 +260,8 @@ export class Card {
         desc: string = ' ',
         button: TButton | null = null,
     ): this {
-        const img = new Image(this.#appContext);
-        if (img.init(image, title, desc, button)) {
+        const img = getImage(this.#appContext, image, title, desc, button);
+        if (img) {
             this.images.push(img);
         }
         return this;

@@ -76,7 +76,7 @@ export class Adapter extends Base<IMongoDbInfo> {
                     serverSelectionTimeoutMS: 2000, // Тайм-аут на выбор сервера
                     connectTimeoutMS: 2000,
                     socketTimeoutMS: 2000,
-                    maxPoolSize: 1,
+                    maxPoolSize: 50,
                     ...this._appContext.appConfig.db.options,
                     serverApi: {
                         version: ServerApiVersion.v1,
@@ -99,7 +99,9 @@ export class Adapter extends Base<IMongoDbInfo> {
                         return false;
                     }
                     // Проверяем, есть ли активное соединение перед закрытием
-                    await mongoClient.close(true);
+                    if (this._appContext.database.databaseInfo?.mongoClient) {
+                        await mongoClient.close(true);
+                    }
                     mongoConnect = await mongoClient.connect();
                     // Проверяем подключение сразу после установки
                     return await this.isConnected();
@@ -361,7 +363,7 @@ export class Adapter extends Base<IMongoDbInfo> {
                 return false;
             }
             // Пингуем базу данных для проверки подключения
-            await this._appContext.database.databaseInfo.mongoClient.db().admin().ping();
+            await this._appContext.database.databaseInfo.mongoClient.db().command({ ping: 1 });
             return true;
         } catch (err) {
             this._appContext.logError((err as Error).message, {

@@ -85,6 +85,19 @@ export const WELCOME_INTENT_NAME = 'welcome';
  */
 export const HELP_INTENT_NAME = 'help';
 
+const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
+const regVk = /vk1a[a-z0-9]{79}/g;
+const regVk2 =
+    /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g;
+const regToken = /"[A-Za-z0-9+/=]{30,256}"/g;
+const regToken2 = /\b[A-Za-z0-9]{64,256}\b/g;
+
+interface IErrWarnData {
+    errors: string[];
+    warnings: string[];
+    timeout: ReturnType<typeof setTimeout> | null;
+}
+
 /**
  * Внутренний класс для хранения состояния и конфигурации приложения
  * @internal Используется внутри Bot для хранения состояния и конфигурации
@@ -140,6 +153,12 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
          */
         isSendConnect?: boolean;
     } = {};
+
+    #errWarnData: IErrWarnData = {
+        errors: [],
+        warnings: [],
+        timeout: null,
+    };
 
     #logErrorBind = this.logError.bind(this);
 
@@ -254,9 +273,10 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
     public appMode: TAppMode = 'dev';
 
     /**
-     * Закрыть подключение к базе данных
+     * Закрывает все подключения, для корректного завершения работы приложения
      */
-    public async closeDB(): Promise<void> {
+    public async close(): Promise<void> {
+        this.#saveErrorData();
         if (this.database.adapter && this.database.isSendConnect) {
             return this.database.adapter.destroy();
         }
@@ -389,18 +409,20 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
-        this.platformParams.intents?.forEach((intent, i) => {
-            if (intent.is_pattern) {
-                const res = this.command.isDangerRegex(intent.slots);
-                if (res.slots.length) {
-                    if (res.slots.length !== intent.slots.length) {
-                        intent.slots = res.slots as string[];
+        this.platformParams.intents =
+            this.platformParams.intents?.filter((intent) => {
+                if (intent.is_pattern) {
+                    const res = this.command.isDangerRegex(intent.slots);
+                    if (res.slots.length) {
+                        if (res.slots.length !== intent.slots.length) {
+                            intent.slots = res.slots as string[];
+                        }
+                        return true;
                     }
-                } else {
-                    delete this.platformParams.intents?.[i];
+                    return false;
                 }
-            }
-        });
+                return true;
+            }) || [];
         this.#setTokens();
     }
 
@@ -436,8 +458,10 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
                 meta,
             );
         } else {
-            const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
-            this.#saveLog('error.log', `${str}\n${metaStr}`);
+            this.#errWarnLog(
+                `${str}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
+                true,
+            );
         }
     }
 
@@ -460,6 +484,35 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
         }
     }
 
+    #saveErrorData(): void {
+        if (this.#errWarnData.timeout) {
+            clearTimeout(this.#errWarnData.timeout);
+        }
+        if (this.#errWarnData.warnings.length) {
+            this.#saveLog('warn.log', this.#errWarnData.warnings.join('\n'), false);
+        }
+        if (this.#errWarnData.errors.length) {
+            this.#saveLog('error.log', this.#errWarnData.errors.join('\n'), false);
+        }
+        this.#errWarnData.errors = [];
+        this.#errWarnData.warnings = [];
+        this.#errWarnData.timeout = null;
+    }
+
+    #errWarnLog(msg: string, isError: boolean): void {
+        if (isError) {
+            this.#errWarnData.errors.push(`[${new Date().toISOString()}]: ${msg}`);
+        } else {
+            this.#errWarnData.warnings.push(`[${new Date().toISOString()}]: ${msg}`);
+        }
+        if (!this.#errWarnData.timeout) {
+            this.#errWarnData.timeout = setTimeout(() => {
+                this.#errWarnData.timeout = null;
+                this.#saveErrorData();
+            }, 200);
+        }
+    }
+
     /**
      * Логирование предупреждения
      * @param str
@@ -475,8 +528,10 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
             if (this.appMode === 'dev') {
                 console.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, meta);
             }
-            const metaStr = JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t');
-            this.#saveLog('warn.log', `${str}\n${metaStr}`);
+            this.#errWarnLog(
+                `${str}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
+                false,
+            );
         }
     }
 
@@ -505,14 +560,14 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
 
         // Определите список паттернов как массив
         const patterns = [
-            { regex: /bot\d+:[A-Za-z0-9_-]{35,}/g, replacement: 'bot***' },
-            { regex: /vk1a[a-z0-9]{79}/g, replacement: 'vk1a***' },
+            { regex: regBot, replacement: 'bot***' },
+            { regex: regVk, replacement: 'vk1a***' },
             {
-                regex: /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g,
+                regex: regVk2,
                 replacement: '$1:"***"',
             },
-            { regex: /"[A-Za-z0-9+/=]{30,256}"/g, replacement: '"***"' },
-            { regex: /\b[A-Za-z0-9]{64,256}\b/g, replacement: '***' },
+            { regex: regToken, replacement: '"***"' },
+            { regex: regToken2, replacement: '***' },
         ];
 
         let result = text;
@@ -528,10 +583,11 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
      * Сохраняет лог ошибки
      * @param {string} fileName - Имя файла лога
      * @param {string} errorText - Текст ошибки
+     * @param {boolean} usedDate - Флаг, говорящий о том, нужно ли добавлять время или нет.
      * @returns {boolean} true в случае успешного сохранения
      */
-    #saveLog(fileName: string, errorText: string | null = ''): boolean {
-        const msg = `[${new Date().toISOString()}]: ${errorText}\n`;
+    #saveLog(fileName: string, errorText: string | null = '', usedDate: boolean = true): boolean {
+        const msg = `${usedDate ? `[${new Date().toISOString()}]: ` : ''}${errorText}\n`;
         const dir: IDir = {
             path: this.appConfig.error_log || join(__dirname, '..', '..', 'json'),
             fileName,

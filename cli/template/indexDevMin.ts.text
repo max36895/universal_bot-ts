@@ -25,5 +25,5 @@ bot.addCommand(FALLBACK_COMMAND, [], (_, botController) => {
   }
 });
 
-bot.setDevMode(true);
+bot.setAppMode('dev');
 bot.test();

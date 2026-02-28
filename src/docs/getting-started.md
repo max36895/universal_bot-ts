@@ -257,8 +257,8 @@ console.log('Команда:', this.userCommand);
 // В конфигурации
 bot.setAppConfig({
     error_log: './logs',
-    isDevMode: true,
 });
+bot.setAppMode('dev');
 ```
 
 ### 🔐 Безопасность и ReDoS

@@ -6,7 +6,7 @@
 import { AppContext } from '../AppContext';
 import { BotController } from '../../controller';
 import { IncomingMessage, ServerResponse } from 'node:http';
-import { Button, Buttons, Image, ISound } from '../../components';
+import { IButtonType, Buttons, IImageType, ISound } from '../../components';
 import { IModelRes, TQueryCb, IQuery, IQueryData } from '../../models';
 
 /**
@@ -260,6 +260,14 @@ export interface IPlatformAdapter<TQuery = any> extends IPlugin {
      * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
      */
     send(userId: string | number, controllerOrText: BotController | string): unknown | boolean;
+
+    /**
+     * Определят лимит платформы.
+     * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
+     * В случае если у платформы нет ограничений, можно указать 0 или null.
+     * По умолчанию null
+     */
+    limit: number | null;
 }
 
 /**
@@ -404,11 +412,18 @@ export interface IPlatform {
  *
  * @param buttons - массив кнопок в общем формате
  * @returns результат в формате, понятном платформе
+ * @example
+ * ```ts
+ * function buttonProcessing(buttons) {
+ *     let result = ...
+ *     return result;
+ * }
+ * ```
  */
 export type TButtonProcessing<
     TResult = unknown,
     TType = Record<string, unknown> | string | null,
-> = (buttons: Button<TType>[]) => TResult;
+> = (buttons: IButtonType<TType>[]) => TResult;
 
 /**
  * Данные для формирования карточки (галерея, кнопки, заголовок).
@@ -423,7 +438,7 @@ export interface ICardInfo {
     /**
      * Массив изображений для карточки(ек).
      */
-    images: Image[];
+    images: IImageType[];
     /**
      * Кнопки, привязанные к карточке.
      */

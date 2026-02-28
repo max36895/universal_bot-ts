@@ -25,6 +25,7 @@ import { TelegramRequest } from '../API';
 export class Adapter extends BasePlatform<string | ITelegramContent> {
     platformName = T_TELEGRAM;
     isVoice = false;
+    limit = 30;
 
     init(appContext: AppContext): void {
         super.init(appContext);

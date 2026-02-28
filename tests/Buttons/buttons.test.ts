@@ -1,4 +1,4 @@
-import { Button, Buttons, AppContext } from '../../src';
+import { Buttons, AppContext } from '../../src';
 import {
     AlisaButton,
     AlisaCard,
@@ -8,6 +8,7 @@ import {
     ViberButton,
     VkButton,
 } from '../../src/plugins';
+import { getButton } from '../../src/components/button/Button';
 
 const DEFAULT_URL = 'https://test.ru';
 
@@ -26,25 +27,23 @@ describe('Buttons test', () => {
     });
 
     it('Button utm text', () => {
-        const button = new Button();
-        button.setAppContext(appContext);
         appContext.platformParams.utm_text = null;
-        button.initBtn('btn', 'https://google.com');
-        expect(button.url).toEqual(
+        let button = getButton(appContext, 'btn', 'https://google.com');
+        expect(button?.url).toEqual(
             'https://google.com?utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
         );
 
-        button.initBtn('btn', 'https://google.com?utm_source=test');
-        expect(button.url).toEqual('https://google.com?utm_source=test');
+        button = getButton(appContext, 'btn', 'https://google.com?utm_source=test');
+        expect(button?.url).toEqual('https://google.com?utm_source=test');
 
-        button.initBtn('btn', 'https://google.com?data=test');
-        expect(button.url).toEqual(
+        button = getButton(appContext, 'btn', 'https://google.com?data=test');
+        expect(button?.url).toEqual(
             'https://google.com?data=test&utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
         );
 
         appContext.platformParams.utm_text = 'my_utm_text';
-        button.initBtn('btn', 'https://google.com');
-        expect(button.url).toEqual('https://google.com?my_utm_text');
+        button = getButton(appContext, 'btn', 'https://google.com');
+        expect(button?.url).toEqual('https://google.com?my_utm_text');
     });
 
     it('Get buttons Alisa', () => {

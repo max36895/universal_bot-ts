@@ -1,4 +1,4 @@
-import { Button, ICardInfo, Text, BotController } from '../../../index';
+import { IButtonType, ICardInfo, Text, BotController } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { MarusiaRequest } from '../API';
@@ -20,7 +20,7 @@ import {
  * Возвращает кнопки для кнопок в нужном для Алисы виде
  * @param buttons Кнопки для отображения
  */
-function marusiaCardButton(buttons: Button[]): IMarusiaButtonCard {
+function marusiaCardButton(buttons: IButtonType[]): IMarusiaButtonCard {
     return buttonProcessing(buttons, true) as IMarusiaButtonCard;
 }
 /**
@@ -77,7 +77,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     for (let i = 0; i < images.length; i++) {
         const image = images[i];
         let button: IMarusiaButtonCard | null =
-            image.button.getButtons<IMarusiaButtonCard>(marusiaCardButton);
+            image.button?.getButtons<IMarusiaButtonCard>(marusiaCardButton) || null;
         if (!button?.text) {
             button = null;
         }
@@ -126,9 +126,9 @@ export async function cardProcessing(
             }
             if (cardInfo.images[0].imageToken) {
                 let button: IMarusiaButtonCard | null =
-                    cardInfo.images[0].button.getButtons(marusiaCardButton);
+                    cardInfo.images[0].button?.getButtons(marusiaCardButton) || null;
                 if (!button?.text) {
-                    button = cardInfo.buttons.getButtons(marusiaCardButton);
+                    button = cardInfo.buttons.getButtons(marusiaCardButton) || null;
                 }
                 const object: IMarusiaBigImage = {
                     type: MARUSIA_CARD_BIG_IMAGE,

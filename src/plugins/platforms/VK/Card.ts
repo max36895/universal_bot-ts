@@ -80,7 +80,7 @@ export async function cardProcessing(
                             description: image.desc,
                             photo_id: image.imageToken.replace('photo', ''),
                         };
-                        const button = image.button.getButtons<IVkButtonObject, IVkButton>(
+                        const button = image.button?.getButtons<IVkButtonObject, IVkButton>(
                             buttonProcessing,
                         );
                         if (button?.buttons?.length) {
@@ -93,7 +93,7 @@ export async function cardProcessing(
                             description: image.desc,
                             photo_id: image.imageToken.replace('photo', ''),
                         };
-                        const button = image.button.getButtons<IVkButtonObject, IVkButton>(
+                        const button = image.button?.getButtons<IVkButtonObject, IVkButton>(
                             buttonProcessing,
                         );
                         /*

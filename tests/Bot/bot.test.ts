@@ -681,7 +681,7 @@ describe('Bot', () => {
                 return Promise.reject('test');
             });
             await bot.run(T_ALISA, getContent('error_test', 2));
-            expect(metricCount).toBe(4);
+            expect(metricCount).toBe(6);
             expect(errorCount).toBe(1);
             expect(errorMessage).toBe(
                 'BotController: Произошла ошибка при обработке команды "error", ошибка: "test"',

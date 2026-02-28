@@ -1,9 +1,9 @@
-import { ICardInfo, Text, Image } from '../../../index';
+import { ICardInfo, Text, IImageType } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { IViberCard, IViberButtonObject } from './interfaces/IViberPlatform';
 
-function getElement(image: Image, countImage: number = 1): IViberCard {
+function getElement(image: IImageType, countImage: number = 1): IViberCard {
     if (!image.imageToken) {
         if (Text.isUrl(image.imageDir || '')) {
             image.imageToken = image.imageDir;
@@ -18,7 +18,7 @@ function getElement(image: Image, countImage: number = 1): IViberCard {
         element.Image = image.imageToken;
     }
     const btn: IViberButtonObject | null =
-        image.button.getButtons<IViberButtonObject>(buttonProcessing);
+        image.button?.getButtons<IViberButtonObject>(buttonProcessing) || null;
     if (btn?.Buttons !== undefined) {
         element = { ...element, ...btn.Buttons[0] };
         element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;

@@ -25,6 +25,7 @@ import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform'
 export class Adapter extends BasePlatform<string | IMaxRequestContent> {
     platformName = T_MAX_APP;
     isVoice = false;
+    limit = 30;
 
     init(appContext: AppContext): void {
         super.init(appContext);

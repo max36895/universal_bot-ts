@@ -73,8 +73,7 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
 }
 
 /**
- * @class Image
- * Класс для обработки и отображения изображений в различных платформах.
+ * Интерфейс для обработки и отображения изображений в различных платформах.
  *
  * Основные возможности:
  * - Управление изображениями и их метаданными
@@ -82,37 +81,8 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
  * - Настройка отображения текста (заголовок и описание)
  * - Добавление кнопок и действий
  * - Гибкая настройка параметров отображения
- *
- * @example
- * ```ts
- * // Создание изображения из URL
- * const image = new Image(appContext);
- * image.init(
- *     'https://example.com/image.jpg',
- *     'Заголовок изображения',
- *     'Описание изображения',
- *     { title: 'Нажми меня', url: 'https://example.com' }
- * );
- *
- * // Создание изображения из файла
- * const localImage = new Image(appContext);
- * localImage.init(
- *     '/path/to/image.jpg',
- *     'Локальное изображение',
- *     'Описание локального изображения'
- * );
- *
- * // Создание изображения с токеном
- * const tokenImage = new Image(appContext);
- * tokenImage.isToken = true;
- * tokenImage.init(
- *     'image_token_123',
- *     'Изображение по токену',
- *     'Описание изображения по токену'
- * );
- * ```
  */
-export class Image<TImageParams extends IImageParams = IImageParams> {
+export interface IImageType<TImageParams extends IImageParams = IImageParams> {
     /**
      * Кнопки для обработки действий с изображением.
      * Зависит от типа приложения и платформы.
@@ -121,12 +91,12 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * @see Buttons
      * @example
      * ```ts
-     * const image = new Image(appContext);
+     * const image = getImage(...);
      * image.button.addBtn('Нажми меня', 'https://example.com');
      * image.button.addBtn('Другая кнопка', null, { action: 'custom' });
      * ```
      */
-    public button: Buttons;
+    button?: Buttons;
 
     /**
      * Заголовок изображения.
@@ -135,11 +105,11 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * @type {string}
      * @example
      * ```ts
-     * const image = new Image(appContext);
+     * const image = getImage(...);
      * image.title = 'Название товара';
      * ```
      */
-    public title: string;
+    title: string;
 
     /**
      * Описание изображения.
@@ -148,11 +118,11 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * @type {string}
      * @example
      * ```ts
-     * const image = new Image(appContext);
+     * const image = getImage(...);
      * image.desc = 'Подробное описание товара';
      * ```
      */
-    public desc: string;
+    desc: string;
 
     /**
      * Идентификатор изображения.
@@ -161,11 +131,11 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * @type {string | null}
      * @example
      * ```ts
-     * const image = new Image(appContext);
+     * const image = getImage(...);
      * image.imageToken = 'image_token_123';
      * ```
      */
-    public imageToken: string | null;
+    imageToken: string | null;
 
     /**
      * Путь к изображению.
@@ -174,28 +144,13 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * @type {string | null}
      * @example
      * ```ts
-     * const image = new Image(appContext);
+     * const image = getImage(...);
      * image.imageDir = 'https://example.com/image.jpg';
      * // или
      * image.imageDir = '/path/to/image.jpg';
      * ```
      */
-    public imageDir: string | null;
-
-    /**
-     * Флаг использования токена.
-     * Если true, то imageDir используется как идентификатор.
-     *
-     * @type {boolean}
-     * @default false
-     * @example
-     * ```ts
-     * const image = new Image(appContext);
-     * image.isToken = true;
-     * image.init('image_token_123', 'Заголовок', 'Описание');
-     * ```
-     */
-    public isToken: boolean;
+    imageDir: string | null;
 
     /**
      * Дополнительные параметры изображения.
@@ -204,7 +159,7 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * @type {IImageParams}
      * @example
      * ```ts
-     * const image = new Image(appContext);
+     * const image = getImage(...);
      * image.params = {
      *     titleTypeface: 'headline2',
      *     titleText_color: 'default',
@@ -213,112 +168,88 @@ export class Image<TImageParams extends IImageParams = IImageParams> {
      * };
      * ```
      */
-    public params: TImageParams;
+    params: TImageParams;
+}
 
-    /**
-     * Конструктор класса Image.
-     * Инициализирует все свойства значениями по умолчанию.
-     *
-     * @param {AppContext} appContext - Контекст приложения.
-     * ⚠️ Обычно НЕ создаётся вручную — автоматически передаётся через контроллер
-     * @param {string | null} image - Путь к изображению или токен
-     * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton | null} [button=null] - Кнопки для изображения
-     */
-    public constructor(
-        appContext: AppContext,
-        image: string | null = null,
-        title: string = '',
-        desc: string = ' ',
-        button: TButton | null = null,
-    ) {
-        this.button = new Buttons(appContext);
-        this.title = title;
-        this.desc = desc;
-        this.imageToken = null;
-        this.imageDir = null;
-        this.isToken = false;
-        this.params = {} as TImageParams;
-        this.init(image, title, desc, button);
+/**
+ * Инициализация изображения.
+ * Устанавливает основные параметры изображения и проверяет их корректность.
+ *
+ * Процесс работы:
+ * 1. Проверяет тип изображения (токен или путь):
+ *    - Если isToken=true, использует image как токен
+ *    - Иначе проверяет валидность URL или файла
+ * 2. Устанавливает заголовок и описание:
+ *    - Если заголовок пустой, возвращает false
+ *    - Если описание пустое, устанавливает пробел
+ * 3. Добавляет кнопки, если они есть:
+ *    - Поддерживает строковые кнопки
+ *    - Поддерживает объекты кнопок
+ *
+ * @param {AppContext} [appContext] - Контекст приложения
+ * @param {string | null} image - Путь к изображению или токен
+ * @param {string} title - Заголовок изображения
+ * @param {string} [desc=' '] - Описание изображения
+ * @param {TButton | null} [button=null] - Кнопки для изображения
+ * @param {boolean} isToken - Флаг, говорящий о том, что явно передается токен
+ * @returns {IImageType | null} объект если инициализация успешна, null в противном случае
+ *
+ * @example
+ * ```ts
+ * // Инициализация с URL
+ * getImage(
+ *     'https://example.com/image.jpg',
+ *     'Заголовок',
+ *     'Описание',
+ *     { title: 'Кнопка', url: 'https://example.com' },
+ *     appContext
+ * );
+ *
+ * // Инициализация с простой кнопкой
+ * getImage(
+ *     'https://example.com/image.jpg',
+ *     'Заголовок',
+ *     'Описание',
+ *     'Текст кнопки',
+ *     appContext
+ * );
+ * ```
+ */
+export function getImage(
+    appContext: AppContext,
+    image: string | null,
+    title: string,
+    desc: string = ' ',
+    button: TButton | null = null,
+    isToken: boolean = false,
+): IImageType | null {
+    const res: IImageType = {
+        imageToken: null,
+        imageDir: null,
+        title: '',
+        desc: '',
+        params: {},
+    };
+    if (isToken) {
+        res.imageToken = image;
+    } else if (image && (Text.isUrl(image) || isFile(image))) {
+        res.imageDir = image;
+        res.imageToken = null;
+    } else {
+        res.imageToken = image;
     }
-
-    /**
-     * Инициализация изображения.
-     * Устанавливает основные параметры изображения и проверяет их корректность.
-     *
-     * Процесс работы:
-     * 1. Проверяет тип изображения (токен или путь):
-     *    - Если isToken=true, использует image как токен
-     *    - Иначе проверяет валидность URL или файла
-     * 2. Устанавливает заголовок и описание:
-     *    - Если заголовок пустой, возвращает false
-     *    - Если описание пустое, устанавливает пробел
-     * 3. Добавляет кнопки, если они есть:
-     *    - Поддерживает строковые кнопки
-     *    - Поддерживает объекты кнопок
-     *
-     * @param {string | null} image - Путь к изображению или токен
-     * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton | null} [button=null] - Кнопки для изображения
-     * @returns {boolean} true если инициализация успешна, false в противном случае
-     *
-     * @example
-     * ```ts
-     * const image = new Image(appContext);
-     *
-     * // Инициализация с URL
-     * image.init(
-     *     'https://example.com/image.jpg',
-     *     'Заголовок',
-     *     'Описание',
-     *     { title: 'Кнопка', url: 'https://example.com' }
-     * );
-     *
-     * // Инициализация с токеном
-     * image.isToken = true;
-     * image.init(
-     *     'image_token_123',
-     *     'Заголовок',
-     *     'Описание'
-     * );
-     *
-     * // Инициализация с простой кнопкой
-     * image.init(
-     *     'https://example.com/image.jpg',
-     *     'Заголовок',
-     *     'Описание',
-     *     'Текст кнопки'
-     * );
-     * ```
-     */
-    public init(
-        image: string | null,
-        title: string,
-        desc: string = ' ',
-        button: TButton | null = null,
-    ): boolean {
-        if (this.isToken) {
-            this.imageToken = image;
-        } else if (image && (Text.isUrl(image) || isFile(image))) {
-            this.imageDir = image;
-            this.imageToken = null;
+    if (title) {
+        res.title = title;
+        if (!desc) {
+            res.desc = ' ';
         } else {
-            this.imageToken = image;
+            res.desc = desc;
         }
-        if (title) {
-            this.title = title;
-            if (!desc) {
-                this.desc = ' ';
-            } else {
-                this.desc = desc;
-            }
-            if (button) {
-                initButton(button, this.button);
-            }
-            return true;
+        if (button) {
+            res.button = new Buttons(appContext);
+            initButton(button, res.button);
         }
-        return false;
+        return res;
     }
+    return null;
 }

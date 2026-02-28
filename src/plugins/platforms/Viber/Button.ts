@@ -1,4 +1,4 @@
-import { Button } from '../../../index';
+import { IButtonType } from '../../../index';
 import { IViberButton, IViberButtonObject } from './interfaces/IViberPlatform';
 
 /**
@@ -106,7 +106,7 @@ export const T_NONE = 'none';
  * Получение кнопок в формате Viber
  * @param buttons Кнопки, которые необходимо отобразить
  */
-export function buttonProcessing(buttons: Button[]): IViberButtonObject | null {
+export function buttonProcessing(buttons: IButtonType[]): IViberButtonObject | null {
     let object: IViberButtonObject | null = null;
     const buttonsResult: IViberButton[] = [];
     buttons.forEach((button) => {

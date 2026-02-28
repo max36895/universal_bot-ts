@@ -219,7 +219,7 @@ export class Navigation<ElementType = TElementType> {
      * ```
      */
     public numberPage(text: string): boolean {
-        const data = /((-|)\d) страни/imu.exec(text);
+        const data = /((-|)\d+) страни/imu.exec(text);
         if (data) {
             this.thisPage = +data[1] - 1;
             this._validatePage();
@@ -350,7 +350,7 @@ export class Navigation<ElementType = TElementType> {
         }
 
         let number: number | null = null;
-        const data = /(\d)/imu.exec(text);
+        const data = /(\d+)/imu.exec(text);
         if (data) {
             number = +data[0][0];
         }
@@ -425,6 +425,9 @@ export class Navigation<ElementType = TElementType> {
     public getPageNav(isNumber: boolean = false): string[] {
         const maxPage: number = this.getMaxPage();
         this._validatePage(maxPage);
+        if (maxPage === 1) {
+            return ['[1]'];
+        }
         const buttons: string[] = [];
         if (isNumber) {
             let index: number = this.thisPage - 2;

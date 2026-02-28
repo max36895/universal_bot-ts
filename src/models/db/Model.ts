@@ -11,7 +11,6 @@
 import { IDataValue, IModelRes, IModelRules, TQueryCb } from '../interface';
 import { IQueryData, IQuery, getQueryData, TKey } from './QueryData';
 import { AppContext, IDbResult } from '../../core';
-import { ProxyUtils } from './ProxyUtils';
 
 export interface IModelState {
     [key: string]: any;
@@ -176,10 +175,6 @@ export abstract class Model<TState extends IModelState> {
             primaryKeyName: this.getId(),
             rules: this.rules(),
         };
-        Object.keys(this.attributeLabels()).forEach((key) => {
-            this.state[key as keyof TState] = undefined;
-        });
-        return ProxyUtils(this);
     }
 
     /**
@@ -330,7 +325,7 @@ export abstract class Model<TState extends IModelState> {
      * Инициализирует параметры запроса.
      * Подготавливает данные для сохранения или обновления
      */
-    private _initData(): void {
+    #initData(): void {
         // Не назвать через "#", так как есть proxy
         this.validate();
         const idName = this.queryData.primaryKeyName;
@@ -363,7 +358,7 @@ export abstract class Model<TState extends IModelState> {
      * @returns Promise с результатом операции
      */
     public async save(isNew: boolean = false): Promise<boolean> {
-        this._initData();
+        this.#initData();
         if (this._appContext.database.adapter) {
             return await this._appContext.database.adapter.save(this.queryData, isNew);
         }
@@ -382,7 +377,7 @@ export abstract class Model<TState extends IModelState> {
      * @returns Promise с результатом операции
      */
     public async update(): Promise<boolean> {
-        this._initData();
+        this.#initData();
         if (this._appContext.database.adapter) {
             return await this._appContext.database.adapter.update(this.queryData);
         }

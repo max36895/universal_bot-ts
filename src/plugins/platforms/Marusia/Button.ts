@@ -1,10 +1,13 @@
-import { Text, Button } from '../../../index';
+import { Text, IButtonType } from '../../../index';
 import { IMarusiaButtonCard, IMarusiaButton } from './interfaces/IMarusiaPlatform';
 
 /**
  * Создание кнопки в формате Маруси
  */
-function _getButton(button: Button, isCard: boolean): IMarusiaButtonCard | IMarusiaButton | null {
+function _getButton(
+    button: IButtonType,
+    isCard: boolean,
+): IMarusiaButtonCard | IMarusiaButton | null {
     const title = Text.resize(button.title || '', 64);
     if (title) {
         let object: IMarusiaButtonCard | IMarusiaButton;
@@ -35,7 +38,7 @@ function _getButton(button: Button, isCard: boolean): IMarusiaButtonCard | IMaru
  * @param isCard флаг принадлежности кнопок к карточке
  */
 export function buttonProcessing(
-    buttons: Button[],
+    buttons: IButtonType[],
     isCard: boolean = false,
 ): IMarusiaButton[] | IMarusiaButtonCard | null {
     const objects: IMarusiaButton[] = [];

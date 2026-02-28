@@ -152,7 +152,6 @@ export class Nlu {
      * Регулярное выражение для поиска email адресов.
      * Поддерживает стандартный формат email.
      *
-     * @type {RegExp}
      * @example
      * ```ts
      * // Находит адреса вида:
@@ -161,13 +160,12 @@ export class Nlu {
      * // user-name@domain.com
      * ```
      */
-    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/i;
+    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/gi;
 
     /**
      * Регулярное выражение для поиска телефонных номеров.
      * Поддерживает различные форматы записи номеров.
      *
-     * @type {RegExp}
      * @example
      * ```ts
      * // Находит номера вида:
@@ -176,13 +174,12 @@ export class Nlu {
      * // 89991234567
      * ```
      */
-    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/imu;
+    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/gimu;
 
     /**
      * Регулярное выражение для поиска URL-ссылок.
      * Поддерживает HTTP и HTTPS протоколы.
      *
-     * @type {RegExp}
      * @example
      * ```ts
      * // Находит ссылки вида:
@@ -190,7 +187,7 @@ export class Nlu {
      * // https://example.com/path
      * ```
      */
-    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/imu;
+    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/gimu;
 
     /**
      * Тип сущности: ФИО.
@@ -723,10 +720,10 @@ export class Nlu {
      * ```
      */
     public static getLink(query: string): INluResult<string[] | null> {
-        const links = Nlu.LINK_REGEX.exec(query);
+        const matches = [...query.matchAll(Nlu.LINK_REGEX)].map((m) => m[0]);
         return {
-            status: !!links,
-            result: links,
+            status: matches.length > 0,
+            result: matches.length ? matches : null,
         };
     }
 
@@ -746,10 +743,10 @@ export class Nlu {
      * ```
      */
     public static getPhone(query: string): INluResult<string[] | null> {
-        const phones = Nlu.PHONE_REGEX.exec(query);
+        const matches = [...query.matchAll(Nlu.PHONE_REGEX)].map((m) => m[0]);
         return {
-            status: !!phones,
-            result: phones,
+            status: matches.length > 0,
+            result: matches.length ? matches : null,
         };
     }
 
@@ -769,10 +766,10 @@ export class Nlu {
      * ```
      */
     public static getEMail(query: string): INluResult<string[] | null> {
-        const emails = Nlu.EMAIL_REGEX.exec(query);
+        const matches = [...query.matchAll(Nlu.EMAIL_REGEX)].map((m) => m[0]);
         return {
-            status: !!emails,
-            result: emails,
+            status: matches.length > 0,
+            result: matches.length ? matches : null,
         };
     }
 }

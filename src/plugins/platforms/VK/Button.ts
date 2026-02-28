@@ -1,4 +1,4 @@
-import { Button } from '../../../index';
+import { Buttons, IButtonType } from '../../../index';
 import { IVkButton, IVkButtonObject } from './interfaces/IVkPlatform';
 
 /**
@@ -62,13 +62,13 @@ function _validateVkPayload(payload: unknown): string {
  * Получение кнопок в формате ВК
  * @param buttons Кнопки, которые необходимо отобразить
  */
-export function buttonProcessing(buttons: Button<IVkButton>[]): IVkButtonObject | null {
+export function buttonProcessing(buttons: IButtonType<IVkButton>[]): IVkButtonObject | null {
     const groups: number[] = [];
     const finalButtons: IVkButton[] | IVkButton[][] = [];
     let index = 0;
     buttons.forEach((button) => {
         if (button.type === null) {
-            if (button.hide === Button.B_LINK) {
+            if (button.hide === Buttons.B_LINK) {
                 button.type = VK_TYPE_LINK;
             } else {
                 button.type = VK_TYPE_TEXT;

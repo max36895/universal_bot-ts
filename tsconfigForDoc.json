@@ -20,6 +20,7 @@
         "baseUrl": ".",
         "paths": {
             "umbot/plugins": ["src/plugins"],
+            "umbot/middleware": ["src/middleware"],
             "umbot/test": ["src/test"],
             "umbot/build": ["src/build"],
             "umbot/preload": ["src/Preload"],

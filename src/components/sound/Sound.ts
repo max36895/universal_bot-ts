@@ -3,6 +3,8 @@ import { TSoundProcessing } from '../../core';
 import { BotController } from '../../controller';
 import { isPromise } from '../../utils/isPromise';
 
+const regReplace = /((?:^|\s)#\w+#(?:\s|$))/g;
+
 /**
  * @class Sound
  * Класс для обработки и воспроизведения звуков в различных платформах.
@@ -46,7 +48,7 @@ import { isPromise } from '../../utils/isPromise';
  * import { Sound } from './components/sound/Sound';
  *
  * // Создание экземпляра
- * const sound = new Sound(appContext);
+ * const sound = new Sound();
  *
  * // Использование своих звуков
  * sound.sounds = [
@@ -134,12 +136,10 @@ export class Sound {
             }
             if (typeof stringRes === 'string') {
                 return (
-                    stringRes.includes('#')
-                        ? stringRes.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '')
-                        : stringRes
+                    stringRes.includes('#') ? stringRes.replace(regReplace, ' ').trim() : stringRes
                 ) as TResult;
             }
-            return res;
+            return stringRes;
         }
         return text as TResult;
     }

@@ -161,7 +161,7 @@ export class EchoController extends BotController {
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
 - [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples.md)
 - [Список изменений](https://github.com/max36895/universal_bot-ts/blob/main/CHANGELOG.md)
-- [Что ждать в следующем релизе](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_next-releace)
+- [Что ждать в следующем релизе](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_next-release)
 
 ## 🛠 Инструменты разработчика
 

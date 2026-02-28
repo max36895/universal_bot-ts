@@ -17,7 +17,7 @@ import { isPromise } from '../utils/isPromise';
 
 /*
  * magick
- * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать,
+ * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать.
  * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты
  */
 const DEFAULT_FALLBACK_COMMAND = FALLBACK_COMMAND;
@@ -458,24 +458,27 @@ export abstract class BotController<
 
     /**
      * Пользовательское локальное хранилище.
-     * Используется в платформах, которые поддерживают локальное сохранение данных.
-     *
-     * Принцип работы
-     * Состояние будет работать только в том случае, если выполнена нужная настройка
+     * Используется для временного хранения данных, специфичных для текущего диалога.
+     * Работает только при включённой опции `isLocalStorage: true` в конфигурации.
      * bot.setAppConfig({
      *    isLocalStorage: true,
      * });
      *
-     * Если настроена работа с базой данных, то механизм работы будет следующим:
-     * 1. Если настроен userData и не настроен state, то данные будет сохранены в платформу.
-     * 2. Если настроен userData и state, то данные из userData сохранятся в базу данных, а state сохранится в платформу.
+     * **Правила синхронизации с базой данных (если подключена):**
+     * - Если заполнены и `userData`, и `state`:
+     *   - `userData` сохраняется в БД,
+     *   - `state` сохраняется в локальное хранилище платформы.
+     * - Если заполнен только `userData` (а `state` пуст или равен `userData`):
+     *   - данные сохраняются только в БД (состояние платформы не обновляется).
+     * - Если заполнен только `state`:
+     *   - данные сохраняются только в локальное хранилище.
      *
-     * Если у вас хранятся данные в платформе и базе данных:
-     * 1. Если есть данные из платформы и данные из бд, то данные из базы попадут в userData, а данные от платформы в state.
-     * 2. Если есть только данные от платформы, то эти данные запишутся и в userData и в state. Подобное сделано для удобства при разработке, при этом, в момент сохранение, если state === userData, то сохранение в базу происходить не будет.
-     * 3. Если есть данные только от БД, то данные запишутся в userData
+     * **При загрузке данных:**
+     * 1. Если есть данные из локального хранилища и из БД, они попадают соответственно в `state` и `userData`.
+     * 2. Если есть только данные из хранилища, они копируются и в `userData`, и в `state` (для удобства).
+     * 3. Если есть только данные из БД, они записываются в `userData`.
      *
-     * @see userData — для постоянного хранения данных
+     * @see {@link userData} — для постоянного хранения данных пользователя.
      *
      * @example
      * ```ts
@@ -667,6 +670,7 @@ export abstract class BotController<
         this.appContext = appContext || new AppContext();
         this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
     }
+
     /**
      * Компонент для отображения различных кнопок пользователю.
      * Позволяет создавать интерактивные элементы управления в приложении.
@@ -760,6 +764,7 @@ export abstract class BotController<
         }
         return this.#card;
     }
+
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы карточки или нет
      * @returns
@@ -767,6 +772,7 @@ export abstract class BotController<
     isCardInit(): boolean {
         return !!this.#card;
     }
+
     /**
      * Компонент для работы со звуками.
      * Позволяет добавлять звуковые эффекты и музыку. Используется вместе с tts.
@@ -779,6 +785,7 @@ export abstract class BotController<
         }
         return this.#sound;
     }
+
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы звуки или нет
      * @returns
@@ -786,6 +793,7 @@ export abstract class BotController<
     isSoundInit(): boolean {
         return !!this.#sound;
     }
+
     /**
      * Обработанный NLU (Natural Language Understanding).
      * Содержит результаты обработки естественного языка, как правило, данные заполняются самой платформой.
@@ -798,11 +806,12 @@ export abstract class BotController<
         }
         return this.#nlu;
     }
+
     /**
      * Флаг возвращающий информацию о том, были ли инициализирован nlu или нет
      * @returns
      */
-    isNlunit(): boolean {
+    isNluInit(): boolean {
         return !!this.#nlu;
     }
 
@@ -828,9 +837,15 @@ export abstract class BotController<
      * Очищает все временные данные необходимые для отправки ответа.
      */
     public clearStoreData(): void {
-        this.buttons.clear();
-        this.card.clear();
-        this.nlu.setNlu({});
+        if (this.#buttons) {
+            this.buttons.clear();
+        }
+        if (this.#card) {
+            this.card.clear();
+        }
+        if (this.#nlu) {
+            this.nlu.setNlu({});
+        }
         this.text = '';
         this.tts = null;
         this.userId = null;
@@ -1116,26 +1131,33 @@ export abstract class BotController<
      * @param command
      */
     #commandExecute(commandName: string, command?: ICommandParam): void | Promise<void> {
+        const errorCb = (e: Error | Record<string, unknown>): void => {
+            this.appContext.logError(
+                `BotController: Произошла ошибка при обработке команды "${commandName}", ошибка: "${e}"`,
+                {
+                    e,
+                },
+            );
+            this.text = 'Произошла ошибка. Попробуйте позже.';
+        };
         try {
             if (command) {
                 const res = command?.cb?.(this.userCommand as string, this);
                 if (isPromise(res)) {
-                    return res.then((result) => {
-                        if (result) {
-                            this.text = result;
-                        }
-                    });
+                    return res
+                        .then((result) => {
+                            if (result) {
+                                this.text = result;
+                            }
+                        })
+                        .catch(errorCb);
                 }
                 if (res) {
                     this.text = res;
                 }
             }
         } catch (e) {
-            this.appContext.logError(
-                `BotController: Ошибка в команде ${commandName === DEFAULT_FALLBACK_COMMAND ? 'FALLBACK_COMMAND' : commandName}:`,
-                e as Record<string, unknown>,
-            );
-            this.text = 'Произошла ошибка. Попробуйте позже.';
+            errorCb(e as Record<string, unknown>);
         }
     }
 
@@ -1146,7 +1168,7 @@ export abstract class BotController<
      * @param isStep
      */
     protected _actionMetric(
-        commandName: string,
+        commandName: string | null,
         isCommand: boolean = false,
         isStep: boolean = false,
     ): void {
@@ -1273,7 +1295,7 @@ export abstract class BotController<
                         break;
                 }
 
-                this._actionMetric(intent as string);
+                this._actionMetric(intent);
             }
         } else {
             return commandResult;

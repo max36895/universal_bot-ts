@@ -54,11 +54,10 @@
 
 #### Методы
 
-| Метод     | Параметры                                                | Возвращаемое значение | Описание               |
-| --------- | -------------------------------------------------------- | --------------------- | ---------------------- |
-| addImage  | imageToken: string, title?: string, description?: string | Card                  | Добавление изображения |
-| setTitle  | text: string                                             | Card                  | Добавление заголовка   |
-| addFooter | text: string                                             | Card                  | Добавление подвала     |
+| Метод    | Параметры                                                | Возвращаемое значение | Описание               |
+| -------- | -------------------------------------------------------- | --------------------- | ---------------------- |
+| addImage | imageToken: string, title?: string, description?: string | Card                  | Добавление изображения |
+| setTitle | text: string                                             | Card                  | Добавление заголовка   |
 
 ### Sound
 
@@ -134,7 +133,7 @@ class MyController extends BotController {
 
             case 'about':
                 this.text = 'Это пример бота на umbot';
-                this.card.setTitle('О приложении').addImage('image_token').addFooter('Версия 1.0');
+                this.card.setTitle('О приложении').addImage('image_token');
                 break;
 
             default:
@@ -226,8 +225,7 @@ class CardController extends BotController {
                 // Создание карточки
                 this.card
                     .setTitle('Заголовок карточки')
-                    .addImage('image_token', 'Описание изображения')
-                    .addFooter('Подвал карточки');
+                    .addImage('image_token', 'Описание изображения');
                 this.text = 'Вот ваша карточка:';
                 break;
         }

@@ -308,7 +308,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * Первая совпавшая команда выполняется.
      *
-     * @param {string} commandName - Уникальный имя команды (например, `'greeting'`). Используется для логирования и отладки.
+     * @param {string} commandName - Уникальное имя команды (например, `'greeting'`). Используется для логирования и отладки.
      * @param {TSlots} slots - Массив шаблонов для сопоставления:
      *   - Если элемент — строка → ищется как подстрока (`text.includes(...)`).
      *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
@@ -457,6 +457,26 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *     ctx.text = 'Извините, вход запрещён.';
      *     ctx.thisIntentName = 'goodbye'; // переходим к другому шагу
      *   }
+     * });
+     * ```
+     * @example
+     * ```ts
+     * // Пример многошаговой формы
+     * bot.addCommand('order', ['заказать'], (_, ctx) => {
+     *     ctx.text = 'Введите ваше имя:';
+     *     ctx.thisIntentName = 'step_name';
+     * });
+     *
+     * bot.addStep('step_name', (ctx) => {
+     *     ctx.userData.name = ctx.userCommand;
+     *     ctx.text = `Приятно познакомиться, ${ctx.userData.name}! Теперь введите email:`;
+     *     ctx.thisIntentName = 'step_email';
+     * });
+     *
+     * bot.addStep('step_email', (ctx) => {
+     *     ctx.userData.email = ctx.userCommand;
+     *     ctx.text = `Заказ оформлен! Имя: ${ctx.userData.name}, Email: ${ctx.userData.email}`;
+     *     ctx.thisIntentName = null; // сбрасываем шаг
      * });
      * ```
      */
@@ -961,7 +981,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
         if (
             botController.tts === null &&
-            this.#appContext.platforms[botController.appType as string].isVoice
+            this.#appContext.platforms[botController.appType as string]?.isVoice
         ) {
             botController.tts = botController.text;
         }
@@ -1493,8 +1513,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
         this.#appContext.log('Получен сигнал завершения. Выполняется graceful shutdown...');
 
         await this.close();
-
-        await this.#appContext.closeDB();
         this.#appContext.command.clearCommands();
         this.#appContext.command.clearSteps();
         Text.clearCache();
@@ -1509,11 +1527,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     #readRequestData(req: IncomingMessage): Promise<string> {
         return new Promise((resolve, reject) => {
-            let data = '';
+            const chunks: Buffer[] = [];
             req.on('data', (chunk: Buffer) => {
-                data += chunk.toString();
+                chunks.push(chunk);
             });
-            req.on('end', () => resolve(data));
+            req.on('end', () => resolve(Buffer.concat(chunks).toString()));
             req.on('error', reject);
         });
     }
@@ -1541,7 +1559,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#serverInst.close();
             this.#serverInst = undefined;
         }
-        await this.#appContext.closeDB();
+        await this.#appContext.close();
     }
 
     /**

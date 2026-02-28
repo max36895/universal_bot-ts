@@ -1,4 +1,4 @@
-import { Button, ICardInfo, Image } from '../../../index';
+import { IButtonType, ICardInfo, IImageType } from '../../../index';
 import { buttonProcessing } from './Button';
 import {
     ISberSmartAppCardItem,
@@ -10,12 +10,12 @@ import {
 } from './interfaces/ISmartAppPlatform';
 
 function buttonCardProcessing(
-    buttons: Button[],
+    buttons: IButtonType[],
 ): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction {
     return buttonProcessing(buttons, true);
 }
 
-function getOneElement(image: Image<ISberSmartImageParam>): ISberSmartAppCardItem[] {
+function getOneElement(image: IImageType<ISberSmartImageParam>): ISberSmartAppCardItem[] {
     const res: ISberSmartAppCardItem[] = [];
     if (image.imageDir) {
         res.push({
@@ -55,7 +55,7 @@ function getOneElement(image: Image<ISberSmartImageParam>): ISberSmartAppCardIte
             },
         });
     }
-    const button = image.button.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
+    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
     if (button) {
         res.push({
             type: 'text_cell_view',
@@ -76,7 +76,7 @@ function getOneElement(image: Image<ISberSmartImageParam>): ISberSmartAppCardIte
 }
 
 function getCardItem(
-    image: Image<ISberSmartImageParam>,
+    image: IImageType<ISberSmartImageParam>,
     showOne: boolean = false,
 ): ISberSmartAppCardItem | ISberSmartAppCardItem[] {
     if (showOne) {
@@ -125,7 +125,7 @@ function getCardItem(
             },
         };
     }
-    const button = image.button.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
+    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
     if (button) {
         cardItem.bottom_text ??= {
             text: image.title,
@@ -149,7 +149,7 @@ export function cardProcessing(cardInfo: ICardInfo): ISberSmartAppItem | null {
                 type: 'list_card',
             };
             card.cells = getCardItem(
-                cardInfo.images[0] as Image<ISberSmartImageParam>,
+                cardInfo.images[0] as IImageType<ISberSmartImageParam>,
                 true,
             ) as ISberSmartAppCardItem[];
             return { card };
@@ -175,7 +175,7 @@ export function cardProcessing(cardInfo: ICardInfo): ISberSmartAppItem | null {
             }
             cardInfo.images.forEach((image) => {
                 (card as Required<ISberSmartAppCard>).cells.push(
-                    getCardItem(image as Image<ISberSmartImageParam>) as ISberSmartAppCardItem,
+                    getCardItem(image as IImageType<ISberSmartImageParam>) as ISberSmartAppCardItem,
                 );
             });
             return { card };

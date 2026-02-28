@@ -25,6 +25,7 @@ import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPl
 export class Adapter extends BasePlatform<string | IVkRequestContent> {
     platformName = T_VK;
     isVoice = false;
+    limit = 30;
 
     init(appContext: AppContext): void {
         super.init(appContext);

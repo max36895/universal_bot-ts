@@ -1,4 +1,4 @@
-import { Button } from '../../../index';
+import { IButtonType } from '../../../index';
 
 import { IMaxButtonObject, IMaxButton } from './interfaces/IMaxPlatform';
 
@@ -6,7 +6,7 @@ import { IMaxButtonObject, IMaxButton } from './interfaces/IMaxPlatform';
  * Получение кнопок в формате Max
  * @param buttons Кнопки, которые необходимо отобразить
  */
-export function buttonProcessing(buttons: Button[]): IMaxButtonObject {
+export function buttonProcessing(buttons: IButtonType[]): IMaxButtonObject {
     const finalButtons: IMaxButton[] = [];
     buttons.forEach((button) => {
         let object: IMaxButton = {

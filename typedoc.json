@@ -4,6 +4,7 @@
         "src/build.ts",
         "cli",
         "src/plugins.ts",
+        "src/middleware.ts",
         "src/test.ts",
         "src/Preload.ts",
         "src/docs"

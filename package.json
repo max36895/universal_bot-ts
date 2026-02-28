@@ -59,6 +59,9 @@
             "plugins": [
                 "./dist/plugins.d.ts"
             ],
+            "middleware": [
+                "./dist/middleware.d.ts"
+            ],
             "utils": [
                 "./dist/utils/index.d.ts"
             ]
@@ -80,6 +83,10 @@
         "./plugins": {
             "types": "./dist/plugins.d.ts",
             "default": "./dist/plugins.js"
+        },
+        "./middleware": {
+            "types": "./dist/middleware.d.ts",
+            "default": "./dist/middleware.js"
         },
         "./utils": {
             "types": "./dist/utils/index.d.ts",

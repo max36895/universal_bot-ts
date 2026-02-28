@@ -13,13 +13,13 @@ export interface ISoundModelState {
      * Уникальный идентификатор, используемый для ссылки на звуковой файл в API различных платформ.
      * @example "doc123456789" для VK, "file_id_123456" для Telegram
      */
-    soundToken: string;
+    soundToken: string | null;
     /**
      * Путь к файлу.
      * Может быть URL-адресом звукового файла или путем к локальному файлу.
      * @example "/path/to/audio.mp3" или "https://example.com/audio.mp3"
      */
-    path: string;
+    path: string | null;
     /**
      * Тип платформы.
      * Определяет, для какой платформы предназначен звуковой файл.
@@ -53,28 +53,6 @@ export class SoundTokens extends Model<ISoundModelState> {
     private readonly TABLE_NAME = 'SoundTokens';
 
     /**
-     * Константы для определения типа платформы.
-     * Используются для указания, для какой платформы предназначен звуковой файл.
-     */
-
-    /**
-     * Идентификатор/токен звукового файла.
-     * Уникальный идентификатор, используемый для ссылки на звуковой файл в API платформы.
-     */
-    public soundToken: string | null;
-
-    /**
-     * Расположение звукового файла (url/директория).
-     * Может быть URL-адресом звукового файла или путем к локальному файлу.
-     */
-    public path: string | null;
-
-    /**
-     * Тип приложения, для которого загружен звуковой файл.
-     */
-    public platform: string;
-
-    /**
      * Флаг, указывающий, что передается содержимое файла.
      * Если true, то path содержит содержимое файла, а не путь к нему.
      * @defaultValue false
@@ -91,6 +69,56 @@ export class SoundTokens extends Model<ISoundModelState> {
         this.path = null;
         this.platform = 'unknown';
         this.isAttachContent = false;
+    }
+
+    /**
+     * Идентификатор звукового файла.
+     * Уникальный идентификатор, используемый для ссылки на звуковой файл в API различных платформ.
+     * @example "doc123456789" для VK, "file_id_123456" для Telegram
+     */
+    get soundToken(): string {
+        return this.state.soundToken as string;
+    }
+
+    /**
+     * Устанавливает идентификатор звукового файла.
+     * @param soundToken
+     */
+    set soundToken(soundToken: string | null) {
+        this.state.soundToken = soundToken;
+    }
+
+    /**
+     * Путь к файлу.
+     * Может быть URL-адресом звукового файла или путем к локальному файлу.
+     * @example "/path/to/audio.mp3" или "https://example.com/audio.mp3"
+     */
+    get path(): string {
+        return this.state.path as string;
+    }
+
+    /**
+     * Устанавливает путь к файлу.
+     * @param path
+     */
+    set path(path: string | null) {
+        this.state.path = path;
+    }
+
+    /**
+     * Тип платформы.
+     * Определяет, для какой платформы предназначен звуковой файл.
+     */
+    get platform(): string {
+        return this.state.platform as string;
+    }
+
+    /**
+     * Устанавливает тип платформы.
+     * @param platform
+     */
+    set platform(platform: string) {
+        this.state.platform = platform;
     }
 
     /**

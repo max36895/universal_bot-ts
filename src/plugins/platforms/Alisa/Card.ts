@@ -1,4 +1,4 @@
-import { Button, ICardInfo, Text, BotController } from '../../../index';
+import { IButtonType, ICardInfo, Text, BotController } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { YandexImageRequest } from '../API';
@@ -22,7 +22,7 @@ import {
  * Возвращает кнопки для кнопок в нужном для Алисы виде
  * @param buttons Кнопки для отображения
  */
-export function alisaCardButton(buttons: Button[]): IAlisaButtonCard {
+export function alisaCardButton(buttons: IButtonType[]): IAlisaButtonCard {
     return buttonProcessing(buttons, true) as IAlisaButtonCard;
 }
 
@@ -77,7 +77,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     for (let i = 0; i < images.length; i++) {
         const image = images[i];
         let button: IAlisaButtonCard | null = null;
-        if (!cardInfo.usedGallery) {
+        if (!cardInfo.usedGallery && image.button) {
             button = image.button.getButtons<IAlisaButtonCard>(alisaCardButton);
             if (!button?.text) {
                 button = null;
@@ -129,7 +129,7 @@ export async function cardProcessing(
             }
             if (cardInfo.images[0].imageToken) {
                 let button: IAlisaButtonCard | null =
-                    cardInfo.images[0].button.getButtons(alisaCardButton);
+                    cardInfo.images[0].button?.getButtons(alisaCardButton) || null;
                 if (!button?.text) {
                     button = cardInfo.buttons.getButtons(alisaCardButton);
                 }
