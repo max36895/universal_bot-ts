@@ -1,5 +1,4 @@
 import { getImage, AppContext } from '../../src';
-import * as console from 'node:console';
 
 const appContext = new AppContext();
 describe('image', () => {
