@@ -49,7 +49,7 @@
   требовалось обращаться к нужной константе из платформы.
 - Оптимизирована логика обработки tts. Сейчас дополнительная обработка tts происходит тогда, когда это действительно
   необходимо.
-- В `Buttons` удалены полу `btns` и `links`, вместо них стоит использовать `addBtn` и `addLink`.
+- В `Buttons` удалены поля `btns` и `links`, вместо них стоит использовать `addBtn` и `addLink`.
 - Произведена внутренняя оптимизация логики фреймворка, благодаря чему удалось получить увеличение производительности
   при поиске команд в худшем случае в среднем на 10%. Также улучшена общая производительность обработки команд в среднем
   на 15-22% для текстовых команд и на 10-18% для регулярных выражений. Потребление памяти уменьшилось на 20-25%.
@@ -347,27 +347,15 @@
 Создание бета-версии
 
 [master]: https://github.com/max36895/universal_bot-ts/compare/v2.1.0...master
-
 [2.1.0]: https://github.com/max36895/universal_bot-ts/compare/v2.0.0...v2.1.0
-
 [2.0.0]: https://github.com/max36895/universal_bot-ts/compare/v1.1.8...v2.0.0
-
 [1.1.8]: https://github.com/max36895/universal_bot-ts/compare/v1.1.6...v1.1.8
-
 [1.1.6]: https://github.com/max36895/universal_bot-ts/compare/v1.1.5...v1.1.6
-
 [1.1.5]: https://github.com/max36895/universal_bot-ts/compare/v1.1.4...v1.1.5
-
 [1.1.4]: https://github.com/max36895/universal_bot-ts/compare/v1.1.3...v1.1.4
-
 [1.1.3]: https://github.com/max36895/universal_bot-ts/compare/v1.1.2...v1.1.3
-
 [1.1.2]: https://github.com/max36895/universal_bot-ts/compare/v1.1.1...v1.1.2
-
 [1.1.1]: https://github.com/max36895/universal_bot-ts/compare/v1.1.0...v1.1.1
-
 [1.1.0]: https://github.com/max36895/universal_bot-ts/compare/v1.0.0...v1.1.0
-
 [1.0.0]: https://github.com/max36895/universal_bot-ts/compare/v0.9.0-beta...v1.0.0
-
 [0.9.0-beta]: https://github.com/max36895/universal_bot-ts/releases/tag/v0.9.0-beta
