@@ -2,7 +2,7 @@ import { Navigation } from '../../src';
 
 describe('Navigation tests', () => {
     let navigation: Navigation<number | { id: number; title: string }>;
-    let elements: any = null;
+    let elements: (number | { id: number; title: string })[] = [];
 
     beforeEach(() => {
         navigation = new Navigation();
@@ -64,7 +64,7 @@ describe('Navigation tests', () => {
                 title: `привет${i}`,
             });
         }
-        elements[3].title = 'приветствую тебя мир';
+        (elements[3] as { id: number; title: string }).title = 'приветствую тебя мир';
 
         selectedElement = navigation.selectedElement(elements, '2');
         expect(selectedElement).toEqual({ id: 2, title: 'привет1' });

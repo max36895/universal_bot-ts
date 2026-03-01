@@ -7,16 +7,16 @@
  * - Проверки схожести текстов
  * - Работы с окончаниями слов
  */
-import { getRegExp, isRegex } from './RegExp';
+import { getRegExp, isRegex, TPatternRegExp as PatternItem } from './RegExp';
 import { rand, similarText } from './util';
 import os from 'os';
 
 /**
- * Тип для поиска совпадений в тексте
- * Может быть строкой или массивом строк
+ * Тип для поиска совпадений в тексте.
+ * Может быть строкой или массивом строк.
  *
  * @example
- * ```typescript
+ * ```ts
  * const pattern: TPattern = 'привет';
  * const patterns: TPattern = ['привет', 'здравствуйте'];
  * ```
@@ -24,15 +24,11 @@ import os from 'os';
 export type TPattern = string | readonly string[];
 
 /**
- * Тип для регулярного выражения
- */
-type PatternItem = string | RegExp;
-/**
- * Тип для поиска совпадений в тексте с учетом регулярных выражений
- * Может быть строкой или массивом строк
+ * Тип для поиска совпадений в тексте с учетом регулярных выражений.
+ * Может быть строкой или массивом строк.
  *
  * @example
- * ```typescript
+ * ```ts
  * const pattern: TPattern = /привет/;
  * const patterns: TPattern = ['привет', /здравствуйте/];
  * ```
@@ -43,7 +39,7 @@ export type TPatternReg = PatternItem | readonly PatternItem[];
  * Интерфейс результата проверки схожести текстов
  *
  * @example
- * ```typescript
+ * ```ts
  * const result: ITextSimilarity = {
  *   status: true,
  *   index: 0,
@@ -122,7 +118,7 @@ const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|
  * - Проверки схожести текстов
  *
  * @example
- * ```typescript
+ * ```ts
  * // Обрезка текста
  * Text.resize('Длинный текст', 5); // -> 'Длин...'
  *
@@ -158,7 +154,7 @@ export class Text {
      * @returns {string} Обрезанный текст
      *
      * @example
-     * ```typescript
+     * ```ts
      * Text.resize('Длинный текст', 5); // -> 'Длин...'
      * Text.resize('Длинный текст', 5, false); // -> 'Длинн'
      * ```
@@ -191,7 +187,7 @@ export class Text {
      * @returns {boolean} true, если строка является URL-адресом
      *
      * @example
-     * ```typescript
+     * ```ts
      * Text.isUrl('https://example.com'); // -> true
      * Text.isUrl('не url'); // -> false
      * ```
@@ -222,7 +218,7 @@ export class Text {
      * - "подтверждаю"/"подтверждаю"
      *
      * @example
-     * ```typescript
+     * ```ts
      * Text.isSayTrue('да, согласен'); // -> true
      * Text.isSayTrue('нет, не согласен'); // -> false
      * ```
@@ -247,7 +243,7 @@ export class Text {
      * - "не"
      *
      * @example
-     * ```typescript
+     * ```ts
      * Text.isSayFalse('нет, не хочу'); // -> true
      * Text.isSayFalse('да, хочу'); // -> false
      * ```
@@ -265,31 +261,33 @@ export class Text {
      * @param {TPattern} patterns - Шаблоны для поиска
      * @param {string} text - Проверяемый текст
      * @param {boolean} useDirectRegExp - Использовать исходные RegExp напрямую без нормализации и кэширования
+     * @param {RegExpConstructor} customReg - Произвольный обработчик для регулярных выражений
      * @returns {boolean} true, если найдено совпадение с одним из шаблонов
      */
     static #isSayPattern(
         patterns: TPatternReg,
         text: string,
         useDirectRegExp: boolean = false,
+        customReg: RegExpConstructor | undefined = undefined,
     ): boolean {
         if (!text) {
             return false;
         }
-        let pattern: string | RegExp;
+        let pattern: PatternItem;
         if (Array.isArray(patterns)) {
             const newPatterns: string[] = [];
-            for (const patternBase of patterns) {
+            for (let i = 0; i < patterns.length; i++) {
+                const patternBase = patterns[i];
                 if (isRegex(patternBase)) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
-                        : Text.#getCachedRegex(patternBase);
+                        : Text.#getCachedRegex(patternBase, customReg);
                     if (cachedRegex.global) {
                         // На случай если кто-то задал флаг g, сбрасываем lastIndex,
                         // так как это может привести к не корректному результату
                         cachedRegex.lastIndex = 0;
                     }
                     const res = cachedRegex.test(text);
-                    //console.log(cachedRegex);
                     if (res) {
                         return res;
                     }
@@ -304,25 +302,28 @@ export class Text {
                 return false;
             }
         } else {
-            pattern = patterns as string | RegExp;
+            pattern = patterns as PatternItem;
         }
 
         const cachedRegex =
-            useDirectRegExp && isRegex(pattern) ? pattern : Text.#getCachedRegex(pattern);
+            useDirectRegExp && isRegex(pattern)
+                ? pattern
+                : Text.#getCachedRegex(pattern, customReg);
         return cachedRegex.test(text);
     }
 
     /**
      * Проверяет наличие совпадений в тексте
      *
-     * @param {TPattern} find - Искомый текст или массив текстов
+     * @param {TPatternReg} find - Искомый текст или массив текстов
      * @param {string} text - Исходный текст для поиска
      * @param {boolean} [isPattern=false] - Использовать ли регулярные выражения
      * @param {boolean} [useDirectRegExp=false] - Использовать исходные RegExp напрямую без нормализации и кэширования. Стоит использовать только в крайних случаях.
+     * @param {RegExpConstructor} [customReg=undefined] - Произвольная реализация для обработки регулярных выражений
      * @returns {boolean} true, если найдено совпадение
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Поиск подстроки
      * Text.isSayText('привет', 'привет мир'); // -> true
      *
@@ -338,11 +339,12 @@ export class Text {
         text: string,
         isPattern: boolean = false,
         useDirectRegExp: boolean = false,
+        customReg: RegExpConstructor | undefined = undefined,
     ): boolean {
         if (!text) return false;
 
         if (isPattern) {
-            return Text.#isSayPattern(find, text, useDirectRegExp);
+            return Text.#isSayPattern(find, text, useDirectRegExp, customReg);
         }
 
         const oneFind = Array.isArray(find) && find.length === 1 ? find[0] : find;
@@ -353,20 +355,21 @@ export class Text {
             }
             return text === oneFind || text.includes(oneFind);
         } else if (isRegex(oneFind)) {
-            return this.#isSayPattern(oneFind, text, useDirectRegExp);
+            return this.#isSayPattern(oneFind, text, useDirectRegExp, customReg);
         }
 
         // Оптимизированный вариант для массива: early return + includes
-        for (const value of find as PatternItem[]) {
+        for (let i = 0; i < (find as TPatternReg[]).length; i++) {
+            const value = (find as TPatternReg[])[i];
             if (isRegex(value)) {
-                if (this.#isSayPattern(value, text, useDirectRegExp)) {
+                if (this.#isSayPattern(value, text, useDirectRegExp, customReg)) {
                     return true;
                 }
             } else {
                 if (text.length < value.length) {
                     continue;
                 }
-                if (text === value || text.includes(value)) {
+                if (text === value || text.includes(value as string)) {
                     return true;
                 }
             }
@@ -378,9 +381,13 @@ export class Text {
      * Получает или создает регулярное выражение из кэша
      *
      * @param {string} pattern - Шаблон регулярного выражения
+     * @param {RegExpConstructor} customReg - Произвольный обработчик для регулярных выражений
      * @returns {RegExp} Скомпилированное регулярное выражение
      */
-    static #getCachedRegex(pattern: string | RegExp): RegExp {
+    static #getCachedRegex(
+        pattern: PatternItem,
+        customReg: RegExpConstructor | undefined = undefined,
+    ): RegExp {
         const key = typeof pattern === 'string' ? pattern : `${pattern.flags}@@${pattern.source}`;
         const cache = Text.#regexCache.get(key);
         let regex = cache?.regex;
@@ -396,23 +403,21 @@ export class Text {
                 }
             }
             if (typeof pattern === 'string') {
-                regex = getRegExp(pattern);
+                regex = getRegExp(pattern, 'ium', customReg);
                 Text.#regexCache.set(pattern, {
                     cReq: 1,
                     regex,
                 });
             } else {
-                regex = getRegExp(pattern);
+                regex = getRegExp(pattern, 'ium', customReg);
                 Text.#regexCache.set(key, {
                     cReq: 1,
                     regex,
                 });
             }
-        } else {
-            if (cache) {
-                cache.cReq++;
-                Text.#regexCache.set(key, cache);
-            }
+        } else if (cache) {
+            cache.cReq++;
+            Text.#regexCache.set(key, cache);
         }
         return regex;
     }
@@ -432,13 +437,16 @@ export class Text {
      * @returns {string} Выбранная строка
      *
      * @example
-     * ```typescript
+     * ```ts
      * Text.getText('привет'); // -> 'привет'
      * Text.getText(['привет', 'здравствуйте']); // -> случайная строка из массива
      * ```
      */
-    public static getText(str: TPattern): string {
-        return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
+    public static getText(str?: TPattern): string {
+        if (str) {
+            return Array.isArray(str) ? str[rand(0, str.length - 1)] : (str as string);
+        }
+        return '';
     }
 
     /**
@@ -461,7 +469,7 @@ export class Text {
      * @returns {string | null} Выбранное окончание или null, если не найдено
      *
      * @example
-     * ```typescript
+     * ```ts
      * const titles = ['яблоко', 'яблока', 'яблок'];
      * Text.getEnding(1, titles); // -> 'яблоко'
      * Text.getEnding(2, titles); // -> 'яблока'
@@ -497,7 +505,7 @@ export class Text {
      * @returns {ITextSimilarity} Результат сравнения текстов
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Сравнение с одним текстом
      * Text.textSimilarity('привет', 'привт', 80);
      * // -> {

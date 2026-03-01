@@ -37,21 +37,41 @@ npx umbot <команда> [параметры]
 
 #### Простое создание
 
+Для быстрого создания приложения, выполните следующую команду
+
 ```bash
-umbot create my-bot-project
+npx umbot create my-bot-project
+```
+
+После выполнения команды, приложение успешно создастся, и останется только выполнить команду:
+
+```bash
+npm i
+npm run build
+npm start
 ```
 
 #### Создание с конфигурацией
 
+Для быстрого создания приложения с дополнительными настройками, выполните следующую команду
+
 ```bash
-umbot create config.json
+npx umbot create config.json
+```
+
+После выполнения команды, приложение успешно создастся, и останется только выполнить команду:
+
+```bash
+npm i
+npm run build
+npm start
 ```
 
 ## Конфигурация проекта
 
 ### Структура конфигурационного файла
 
-```typescript
+```ts
 interface ProjectConfig {
     // Название проекта (обязательное поле)
     name: string;
@@ -88,9 +108,6 @@ interface ProjectConfig {
     "type": "quiz",
     "mode": "dev",
     "path": "./bots/quiz",
-    "params": {
-        "viber_token": "token"
-    },
     "config": {
         "json": "./data",
         "error_log": "./logs",
@@ -100,6 +117,11 @@ interface ProjectConfig {
             "user": "",
             "pass": "",
             "database": ""
+        },
+        "tokens": {
+            "alisa": {
+                "token": "token"
+            }
         }
     },
     "isEnv": true

@@ -1,9 +1,12 @@
 import { BotTest, IBotTestParams } from '../../../src/test';
+import { fullPlatforms, FileAdapter } from '../../../src/plugins';
 import skillStorageConfig from '../../config/skillStorageConfig';
 import skillAuthParam from '../../config/skillAuthParam';
 import { AuthController } from './controller/AuthController';
 
 const bot = new BotTest();
+bot.use(fullPlatforms);
+bot.use(new FileAdapter());
 bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillAuthParam());
 bot.initBotController(AuthController);

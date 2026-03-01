@@ -1,5 +1,7 @@
 import { AppContext, UsersData, isFile, unlink } from '../../src';
 
+import { FileAdapter, MongoAdapter, T_ALISA } from '../../src/plugins';
+
 interface IData {
     userId?: string;
     meta?: string;
@@ -15,6 +17,8 @@ describe('Db file connect', () => {
     const userData = new UsersData(appContext);
 
     beforeEach(() => {
+        const fileAdapter = new FileAdapter();
+        fileAdapter.init(appContext);
         appContext.platformParams.utm_text = '';
         appContext.appConfig.json = __dirname;
         data = {
@@ -47,7 +51,7 @@ describe('Db file connect', () => {
                 },
             },
         };
-        appContext.saveJson(FILE_NAME, data);
+        appContext.saveFileData(FILE_NAME, data);
     });
     afterEach(() => {
         userData.destroy();
@@ -55,17 +59,17 @@ describe('Db file connect', () => {
 
     it('Where string', async () => {
         let query = '`userId`="userId1"';
-        let uData = (await userData.where(query)).data;
+        let uData = (await userData.where(query)).data as Record<string, unknown>[];
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId1);
 
         query = '`userId`="userId13" AND `meta`="user meta 1"';
-        uData = (await userData.where(query)).data;
+        uData = (await userData.where(query)).data as Record<string, unknown>[];
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId13);
 
         query = '`meta`="user meta 1"';
-        uData = (await userData.where(query)).data;
+        uData = (await userData.where(query)).data as Record<string, unknown>[];
         expect(uData.length === 2).toBe(true);
         expect(uData[0]).toEqual(data.userId1);
         expect(uData[1]).toEqual(data.userId13);
@@ -77,7 +81,7 @@ describe('Db file connect', () => {
         let query: IData = {
             userId: 'userId1',
         };
-        let uData = (await userData.where(query)).data;
+        let uData = (await userData.where(query)).data as Record<string, unknown>[];
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId1);
 
@@ -85,14 +89,14 @@ describe('Db file connect', () => {
             userId: 'userId13',
             meta: 'user meta 1',
         };
-        uData = (await userData.where(query)).data;
+        uData = (await userData.where(query)).data as Record<string, unknown>[];
         expect(uData.length === 1).toBe(true);
         expect(uData[0]).toEqual(data.userId13);
 
         query = {
             meta: 'user meta 1',
         };
-        uData = (await userData.where(query)).data;
+        uData = (await userData.where(query)).data as Record<string, unknown>[];
         expect(uData.length === 2).toBe(true);
         expect(uData[0]).toEqual(data.userId1);
         expect(uData[1]).toEqual(data.userId13);
@@ -177,7 +181,9 @@ describe('Db is MongoDb', () => {
     let isConnected: boolean;
 
     beforeEach(async () => {
-        appContext.setIsSaveDb(true);
+        const mongoAdapter = new MongoAdapter();
+        mongoAdapter.init(appContext);
+        //appContext.setIsSaveDb(true);
         appContext.setAppConfig({
             db: {
                 host: 'mongodb://127.0.0.1:27017/',
@@ -189,6 +195,7 @@ describe('Db is MongoDb', () => {
                     socketTimeoutMS: 500,
                 },
             },
+            tokens: {},
         });
         appContext.setLogger({
             error: () => {
@@ -202,7 +209,8 @@ describe('Db is MongoDb', () => {
         if (usersData) {
             await usersData.destroy();
         }
-        appContext.setIsSaveDb(false);
+        appContext.setAppConfig({ db: undefined, tokens: {} });
+        //appContext.setIsSaveDb(false);
     }, MONGO_TIMEOUT);
 
     it(
@@ -226,7 +234,7 @@ describe('Db is MongoDb', () => {
             // Если БД недоступна, пропускаем тест
             if (isCon) {
                 usersData.userId = 'test';
-                usersData.type = UsersData.T_ALISA;
+                usersData.platform = T_ALISA;
                 usersData.data = {};
                 usersData.meta = {};
 
@@ -246,7 +254,7 @@ describe('Db is MongoDb', () => {
             // Если БД недоступна, пропускаем тест
             if (isCon) {
                 usersData.userId = 'test';
-                usersData.type = UsersData.T_ALISA;
+                usersData.platform = T_ALISA;
                 usersData.data = 'data';
                 usersData.meta = {};
 
@@ -266,7 +274,7 @@ describe('Db is MongoDb', () => {
             // Если БД недоступна, пропускаем тест
             if (isCon) {
                 usersData.userId = 'test';
-                usersData.type = UsersData.T_ALISA;
+                usersData.platform = T_ALISA;
                 usersData.data = 'data';
                 usersData.meta = {};
 

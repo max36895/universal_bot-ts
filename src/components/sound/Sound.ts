@@ -1,22 +1,9 @@
-import { TemplateSoundTypes } from './types/TemplateSoundTypes';
-import { AlisaSound } from './types/AlisaSound';
-import { TelegramSound } from './types/TelegramSound';
-import { VkSound } from './types/VkSound';
-import { ViberSound } from './types/ViberSound';
 import { ISound } from './interfaces';
-import { MarusiaSound } from './types/MarusiaSound';
-import {
-    AppContext,
-    T_ALISA,
-    T_MARUSIA,
-    T_SMARTAPP,
-    T_TELEGRAM,
-    T_USER_APP,
-    T_VIBER,
-    T_VK,
-    T_MAXAPP,
-    TAppType,
-} from '../../core/AppContext';
+import { TSoundProcessing } from '../../core';
+import { BotController } from '../../controller';
+import { isPromise } from '../../utils/isPromise';
+
+const regReplace = /((?:^|\s)#\w+#(?:\s|$))/g;
 
 /**
  * @class Sound
@@ -57,7 +44,7 @@ import {
  * - Длительность: до 3 минут
  *
  * @example
- * ```typescript
+ * ```ts
  * import { Sound } from './components/sound/Sound';
  *
  * // Создание экземпляра
@@ -92,7 +79,7 @@ export class Sound {
      * @type {boolean}
      * @default true
      * @example
-     * ```typescript
+     * ```ts
      * // Использовать стандартные звуки
      * sound.isUsedStandardSound = true;
      *
@@ -103,34 +90,12 @@ export class Sound {
     public isUsedStandardSound: boolean;
 
     /**
-     * Контекст приложения.
-     */
-    #appContext: AppContext;
-
-    /**
      * Конструктор класса Sound.
      * Инициализирует пустой массив звуков и включает использование стандартных звуков.
-     *
-     * @example
-     * ```typescript
-     * const sound = new Sound();
-     * // sound.sounds = []
-     * // sound.isUsedStandardSound = true
-     * ```
      */
-    public constructor(appContext: AppContext) {
+    public constructor() {
         this.sounds = [];
         this.isUsedStandardSound = true;
-        this.#appContext = appContext;
-    }
-
-    /**
-     * Устанавливает контекст приложения
-     * @param appContext
-     */
-    public setAppContext(appContext: AppContext): Sound {
-        this.#appContext = appContext;
-        return this;
     }
 
     /**
@@ -143,71 +108,39 @@ export class Sound {
      * 4. Применяет звуки к тексту
      *
      * @param {string | null} text - Исходный текст для обработки
-     * @param {TAppType} appType - Тип приложения
-     * @param {TemplateSoundTypes | null} [userSound=null] - Пользовательский класс для обработки звуков
-     * @returns {Promise<any>} Текст с встроенными звуками или исходный текст
-     *
-     * @example
-     * ```typescript
-     * const sound = new Sound();
-     * sound.sounds = [
-     *     { key: 'mySound', sounds: ['my_sound'] },
-     * ];
-     * const result = await sound.getSounds('mySound', 'alice');
-     * // my_sound
-     * ```
+     * @param soundProcessing
+     * @param controller
      */
-    public async getSounds(
+    public async getSounds<TResult = unknown>(
         text: string | null,
-        appType: TAppType | null,
-        userSound: TemplateSoundTypes | null = null,
-    ): Promise<any> {
+        soundProcessing: TSoundProcessing<TResult>,
+        controller: BotController,
+    ): Promise<TResult> {
         if (!text) {
-            return '';
+            return '' as TResult;
         }
-        let sound: any = null;
-        switch (appType) {
-            case T_ALISA:
-                sound = new AlisaSound(this.#appContext);
-                sound.isUsedStandardSound = this.isUsedStandardSound;
-                break;
-
-            case T_MARUSIA:
-                sound = new MarusiaSound(this.#appContext);
-                sound.isUsedStandardSound = this.isUsedStandardSound;
-                break;
-
-            case T_VK:
-                sound = new VkSound(this.#appContext);
-                break;
-
-            case T_TELEGRAM:
-                sound = new TelegramSound(this.#appContext);
-                break;
-
-            case T_VIBER:
-                sound = new ViberSound(this.#appContext);
-                break;
-
-            case T_SMARTAPP:
-                sound = null;
-                break;
-
-            case T_MAXAPP:
-                sound = null;
-                break;
-
-            case T_USER_APP:
-                sound = userSound;
-                break;
-        }
-        if (sound) {
-            const res = await sound.getSounds(this.sounds, text);
-            if (res) {
-                return res.includes('#') ? res.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '') : res;
+        const res = soundProcessing(
+            {
+                text,
+                usedStandardSound: this.isUsedStandardSound,
+                sounds: this.sounds,
+            },
+            controller,
+        );
+        if (res) {
+            let stringRes;
+            if (isPromise(res)) {
+                stringRes = await res;
+            } else {
+                stringRes = res;
             }
-            return res;
+            if (typeof stringRes === 'string') {
+                return (
+                    stringRes.includes('#') ? stringRes.replace(regReplace, ' ').trim() : stringRes
+                ) as TResult;
+            }
+            return stringRes;
         }
-        return text;
+        return text as TResult;
     }
 }

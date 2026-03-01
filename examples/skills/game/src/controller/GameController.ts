@@ -7,8 +7,6 @@ interface IGameControllerExample {
 
 /**
  * Пример с игрой в математику.
- *
- * Class GameController
  */
 export class GameController extends BotController {
     constructor() {

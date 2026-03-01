@@ -1,62 +1,55 @@
-import { TemplateCardTypes, Buttons } from '../../../../../src';
-import { UserButton } from './UserButton';
+import { ICardInfo, Text, BotController } from '../../../../../src';
+import { buttonProcessing, IButton } from './UserButton';
 
-export class UserCard extends TemplateCardTypes {
+/**
+ * Интерфейс для карточки
+ */
+export interface ICard {
     /**
-     * Получение массива для отображения карточки/изображения
-     *
-     * @param isOne True, если отобразить только 1 картинку.
-     * @return {Promise<Object[]>}
+     * Отображаемые изображения
      */
-    public async getCard(isOne: boolean): Promise<object | object[]> {
-        let object: object[] = [];
-        let countImage = this.images.length;
-        if (countImage > 7) {
-            countImage = 7;
+    images: string[];
+    /**
+     * Кнопка, которая отобразится под изображением
+     */
+    button?: IButton;
+    /**
+     * Заголовок для изображения. Максимум 128 символов
+     */
+    caption?: string;
+}
+
+/**
+ * Получение карточки в нужном формате
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложение. Стоит использовать когда необходима работа с бд или дополнительным контекстом
+ * @returns
+ */
+export function cardProcessing(cardInfo: ICardInfo, controller: BotController): ICard | null {
+    if (cardInfo.showOne) {
+        if (cardInfo.images[0].imageDir) {
+            return {
+                images: [cardInfo.images[0].imageDir],
+                caption: Text.resize(cardInfo.images[0].title, 128),
+                button: cardInfo.images[0].button.getButtons(buttonProcessing)?.[0],
+            };
         }
-        const userButton = new UserButton();
-        if (countImage) {
-            if (countImage === 1 || isOne) {
-                if (!this.images[0].imageToken) {
-                    if (this.images[0].imageDir) {
-                        this.images[0].imageToken = this.images[0].imageDir;
-                    }
-                }
-                if (this.images[0].imageToken) {
-                    /*
-                     * Заполняем object необходимыми данными
-                     */
-                    // Получаем возможные кнопки у карточки
-                    const btn = this.images[0].button.getButtons(
-                        Buttons.T_USER_APP_BUTTONS,
-                        userButton,
-                    );
-                    if (btn) {
-                        // Добавляем кнопки к карточке
-                        object = Object.assign({}, object, btn[0]);
-                    }
-                }
-            } else {
-                this.images.forEach((image) => {
-                    if (!image.imageToken) {
-                        if (image.imageDir) {
-                            image.imageToken = image.imageDir;
-                        }
-                    }
-                    const element = {};
-                    /*
-                     * Заполняем element необходимыми данными
-                     */
-                    // Получаем возможные кнопки у карточки
-                    const btn = image.button.getButtons(Buttons.T_USER_APP_BUTTONS, userButton);
-                    if (btn) {
-                        // Добавляем кнопки к карточке
-                        object = Object.assign({}, object, btn[0]);
-                    }
-                    object.push(element);
-                });
-            }
-        }
-        return object;
+        return null;
     }
+    const result: ICard = {
+        images: [],
+    };
+    cardInfo.images.forEach((image) => {
+        if (cardInfo.images[0].imageDir) {
+            result.images.push(cardInfo.images[0].imageDir);
+        }
+    });
+    if (result.images.length) {
+        result.button = cardInfo.buttons.getButtons(buttonProcessing)?.[0];
+        if (cardInfo.title) {
+            result.caption = Text.resize(cardInfo.title, 128);
+        }
+        return result;
+    }
+    return null;
 }

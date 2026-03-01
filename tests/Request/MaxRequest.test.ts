@@ -11,7 +11,7 @@ jest.mock('fs', () => ({
 }));
 
 import { AppContext } from '../../src';
-import { MaxRequest } from '../../src/api/MaxRequest';
+import { MaxRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,7 +19,7 @@ describe('MaxRequest', () => {
     let max: MaxRequest;
 
     beforeEach(() => {
-        appContext.platformParams.max_token = 'test-max-token';
+        appContext.appConfig.tokens.max_app = { token: 'test-max-token' };
         max = new MaxRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
         appContext.logError = jest.fn();
@@ -142,7 +142,7 @@ describe('MaxRequest', () => {
     });
 
     it('should return null if no token', async () => {
-        appContext.platformParams.max_token = undefined;
+        appContext.appConfig.tokens.max_app = { token: undefined };
         const localMax = new MaxRequest(appContext);
         const result = await localMax.messagesSend(12345, 'Hi');
         expect(result).toBeNull();

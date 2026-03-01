@@ -1,8 +1,9 @@
 import { IAppConfig } from '../../src';
+import { join } from 'node:path';
 
 export default function (): IAppConfig {
     return {
-        json: __dirname + '/../json',
-        error_log: __dirname + '/../errors',
+        json: join(__dirname, '..', 'json'),
+        error_log: join(__dirname, '..', 'errors'),
     };
 }

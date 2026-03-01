@@ -6,13 +6,15 @@
 
 ```ts
 // Глобальный middleware (для всех платформ)
+import { T_ALISA } from 'umbot/plugins';
+
 bot.use(async (ctx, next) => {
     console.log('Запрос:', ctx.appContext.appType);
     await next(); // обязательно вызвать next() для продолжения
 });
 
 // Для конкретной платформы
-bot.use('alisa', async (ctx, next) => {
+bot.use(T_ALISA, async (ctx, next) => {
     if (!ctx.appContext.requestObject?.session?.user_id) {
         ctx.text = 'Некорректный запрос';
         ctx.isEnd = true;

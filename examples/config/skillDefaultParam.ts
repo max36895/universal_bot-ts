@@ -2,7 +2,6 @@ import { IAppParam } from '../../src';
 
 export default function (): IAppParam {
     return {
-        telegram_token: '',
         intents: [
             {
                 name: 'by',

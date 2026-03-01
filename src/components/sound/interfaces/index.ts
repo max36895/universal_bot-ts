@@ -6,10 +6,10 @@
  * в ответ на определенные ключевые слова или события.
  *
  * @example
- * ```typescript
+ * ```ts
  * // Пример определения звука приветствия
  * const greetingSound: ISound = {
- *     key: "greeting",
+ *     key: "#greeting#",
  *     sounds: [
  *         "alisa_sounds/greeting_1",
  *         "alisa_sounds/greeting_2"
@@ -18,12 +18,26 @@
  *
  * // Пример определения звука ошибки
  * const errorSound: ISound = {
- *     key: "error",
+ *     key: "#error#",
  *     sounds: ["alisa_sounds/error"]
  * };
  * ```
  */
 export interface ISound {
+    /**
+     * Ключ. Рекомендуется ключи формировать в следующем виде: "#my_key#"
+     */
+    key: string;
+    /**
+     * Звуки, соответствующие ключу
+     */
+    sounds: string[];
+}
+
+/**
+ * Интерфейс для звуковых эффектов
+ */
+export interface IEffect {
     /**
      * Ключ
      */
@@ -31,5 +45,5 @@ export interface ISound {
     /**
      * Звуки, соответствующие ключу
      */
-    sounds: string[];
+    effect: string;
 }

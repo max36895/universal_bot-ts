@@ -4,10 +4,12 @@
  * Time: {{time}}
  */
 import { Bot, FALLBACK_COMMAND } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
 
 const bot = new Bot();
+bot.use(fullPlatforms);
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
 
@@ -22,5 +24,5 @@ bot.addCommand(FALLBACK_COMMAND, [], (_, botController) => {
   }
 });
 
-bot.setDevMode(true);
+bot.setAppMode('dev');
 bot.start({{hostname}}, {{port}});

@@ -4,6 +4,7 @@
  * Time: {{time}}
  */
 import { run } from 'umbot/build';
+import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
 import { __className__Controller } from './controller/__className__Controller';
@@ -12,6 +13,7 @@ const config = {
     appConfig: {{name}}Config(),
     appParam: {{name}}Params(),
     controller: __className__Controller
+    plugins: [fullPlatforms, new FileAdapter()] // Замените FileAdapter на свой адаптер для работы с базой данных
 };
 const mode = 'dev';// Режим работы приложения. (prod, dev, dev-online)
 run(config, mode);

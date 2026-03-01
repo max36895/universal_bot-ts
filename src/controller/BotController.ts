@@ -1,24 +1,28 @@
 /**
  * Модуль контроллера - основной компонент для обработки бизнес-логики бота
  */
-import { Buttons } from '../components/button';
-import { Card } from '../components/card';
-import { Sound } from '../components/sound';
-import { Nlu } from '../components/nlu';
-import { Text } from '../utils/standard/Text';
+import { Buttons, Card, Sound, Nlu } from '../components';
+import { Text, getRegExp, isRegex } from '../utils';
 import {
     AppContext,
     FALLBACK_COMMAND,
     HELP_INTENT_NAME,
     IAppIntent,
     ICommandParam,
-    T_ALISA,
-    T_MARUSIA,
     WELCOME_INTENT_NAME,
     TAppType,
     EMetric,
-} from '../core/AppContext';
-import { getRegExp, isRegex } from '../utils/standard/RegExp';
+} from '../core';
+import { isPromise } from '../utils/isPromise';
+
+/*
+ * magick
+ * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать.
+ * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты
+ */
+const DEFAULT_FALLBACK_COMMAND = FALLBACK_COMMAND;
+const DEFAULT_HELP_INTENT_NAME = HELP_INTENT_NAME;
+const DEFAULT_WELCOME_INTENT_NAME = WELCOME_INTENT_NAME;
 
 /**
  * Тип статуса операции
@@ -31,7 +35,7 @@ import { getRegExp, isRegex } from '../utils/standard/RegExp';
  * - null: операция не выполнялась
  *
  * @example
- * ```typescript
+ * ```ts
  * const status: TStatus = true; // операция успешна
  * const status: TStatus = false; // операция с ошибкой
  * const status: TStatus = null; // операция не выполнялась
@@ -40,7 +44,7 @@ import { getRegExp, isRegex } from '../utils/standard/RegExp';
 export type TStatus = true | false | null;
 
 /**
- * Интерфейс для событий пользователя
+ * Интерфейс событий пользователя
  * Содержит информацию о различных действиях пользователя в приложении
  *
  * @remarks
@@ -49,12 +53,12 @@ export type TStatus = true | false | null;
  * - Оценку приложения
  *
  * @example
- * ```typescript
+ * ```ts
  * const userEvent: IUserEvent = {
- *   auth: {
+ *   auth: { // Событие авторизации
  *     status: true // пользователь успешно авторизовался
  *   },
- *   rating: {
+ *   rating: { // Событие с оценкой
  *     status: true,
  *     value: 5 // пользователь поставил оценку 5
  *   }
@@ -99,19 +103,20 @@ export interface IUserEvent {
 }
 
 /**
- * Интерфейс для хранения пользовательских данных
- * Расширяемый интерфейс для хранения любых дополнительных данных
+ * Интерфейс для пользовательских данных
+ * Расширяемый интерфейс для любых дополнительных данных, которые будут сохранены в БД/Локальное хранилище
  *
  * @remarks
- * Базовые поля:
- * - oldIntentName: название предыдущего интента
+ * Базовое поле:
+ * - oldIntentName: название предыдущего интента. Актуально для случаев, когда в приложении есть какая-то последовательность действий.
+ * Также данное значение можно использовать при регистрации обработчика на шаг(bot.step('...', ()=>{...})).
  *
  * Дополнительные поля могут быть добавлены через:
  * 1. Расширение интерфейса (extends)
- * 2. Индексную сигнатуру [key: string]: unknown
+ * 2. Индексную сигнатуру [key: string]: unknown. Не рекомендуется к использованию, так как в таком случае, теряются преимущества ts
  *
  * @example
- * ```typescript
+ * ```ts
  * // Способ 1: Расширение интерфейса
  * interface MyUserData extends IUserData {
  *   name: string;
@@ -148,11 +153,11 @@ export interface IUserEvent {
 export interface IUserData {
     /**
      * Название предыдущего интента.
-     * Используется для отслеживания контекста диалога
+     * Используется для отслеживания контекста диалога, и реализации механизма для последовательного прохождения сценария приложения
      *
      * @example
-     * ```typescript
-     * this.oldIntentName = 'greeting';
+     * ```ts
+     * this.userData.oldIntentName = 'greeting';
      * ```
      */
     oldIntentName?: string;
@@ -165,19 +170,71 @@ export interface IUserData {
 }
 
 /**
- * Абстрактный класс контроллера бота
- * Предоставляет базовый функционал для обработки пользовательских запросов
+ * Интерфейс для пользовательских данных, хранящихся в локальном хранилище
+ * Расширяемый интерфейс для любых дополнительных данных, которые будут сохранены в Локальное хранилище
+ */
+export interface IPlatformData {
+    /**
+     * Дополнительные данные.
+     * Может содержать любые поля, специфичные для приложения
+     */
+    [key: string]: unknown;
+}
+
+/**
+ * Дополнительные опции для платформ
+ */
+export interface IPlatformOptions {
+    /**
+     * Текст ошибки
+     */
+    error?: string;
+    /**
+     * Время начало обработки запроса
+     */
+    timeStart?: number;
+    /**
+     * Флаг говорящий о том, что результат выполнения приложения бы получен при обработке запроса
+     */
+    sendInInit?: string | object | null;
+
+    /**
+     * Поле куда должны сохраниться пользовательские данные
+     */
+    stateName?: string;
+    /**
+     * Флаг, говорящий о том, что в приложении может использоваться локальное хранилище платформы
+     */
+    isState?: boolean;
+    /**
+     * Флаг, говорящий о том, что приложение использует локальное хранилище платформы
+     */
+    usedLocalStorage?: boolean;
+    /**
+     * Информация о сессии пользователя
+     */
+    session?: object;
+
+    /**
+     * Идентификатор приложения
+     */
+    appId?: string;
+}
+
+/**
+ * Базовый класс контроллера приложения.
+ * Предоставляет базовый функционал для обработки пользовательских запросов.
  *
  * @remarks
  * Основные возможности:
  * - Обработка пользовательских команд и интентов
  * - Управление состоянием диалога
  * - Работа с UI компонентами (кнопки, карточки)
- * - Поддержка различных платформ (Алиса, Маруся, Telegram и др.)
  * - Управление пользовательскими данными
  *
  * @example
- * ```typescript
+ * ```ts
+ * import { BotController } from 'umbot';
  * // Определение пользовательских данных
  * interface MyUserData extends IUserData {
  *   score: number;
@@ -215,10 +272,6 @@ export interface IUserData {
  *             theme: 'light'
  *           }
  *         };
- *
- *         // Добавление звука
- *         this.sound.add('welcome.mp3');
- *
  *         return;
  *       }
  *
@@ -227,13 +280,6 @@ export interface IUserData {
  *         this.text = 'Я могу помочь вам с...';
  *         this.buttons.addBtn('Назад');
  *         return;
- *       }
- *
- *       // Обработка NLU
- *       const nluResult = this.nlu.getIntent();
- *       if (nluResult) {
- *         // Обработка интента
- *         this.text = `Вы сказали: ${nluResult}`;
  *       }
  *
  *       // Обработка пользовательских событий
@@ -254,162 +300,113 @@ export interface IUserData {
  *   }
  * }
  * ```
- *
- * @class BotController
- * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
  */
-export abstract class BotController<TUserData extends IUserData = IUserData> {
-    /**
-     * Локальное хранилище с данными. Используется в случаях, когда нужно сохранить данные пользователя, но userData приложением не поддерживается.
-     * В случае если данные хранятся в userData и store, пользователю вернется информация из userData.
-     */
-    public store: Record<string, unknown> | undefined;
-    /**
-     * Компонент для отображения кнопок пользователю.
-     * Позволяет создавать интерактивные элементы управления
-     *
-     * @see Buttons
-     * @example
-     * ```typescript
-     * this.buttons
-     *   .addBtn('Помощь')
-     *   .addBtn('Выход');
-     * ```
-     */
-    public buttons: Buttons;
+export abstract class BotController<
+    TUserData extends IUserData = IUserData,
+    TPlatformState extends IPlatformData = IPlatformData,
+> {
+    #buttons: Buttons | undefined;
+    #card: Card | undefined;
+    #nlu: Nlu | undefined;
+    #sound: Sound | undefined;
 
     /**
-     * Компонент для отображения карточек пользователю
-     * Позволяет создавать визуальные элементы с изображениями и текстом
-     *
-     * @see Card
-     * @example
-     * ```typescript
-     * this.card
-     *   .addImage('url/to/image.jpg', 'Заголовок', 'Описание')
-     * ```
-     */
-    public card: Card;
-
-    /**
-     * Текст, отображаемый пользователю
-     * Основной способ коммуникации с пользователем
+     * Текст, который будет отображен пользователю.
+     * Основной способ коммуникации с пользователем, так как именно этот текст пользователь увидит в интерфейсе.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.text = 'Привет! Чем могу помочь?';
      * ```
      */
     public text: string = '';
 
     /**
-     * Текст для преобразования в речь.
-     * Используется для голосовых ассистентов
-     *
-     * @remarks
-     * Для не голосовых платформ текст будет преобразован в речь
-     * через Yandex SpeechKit и отправлен как аудио сообщение
+     * Текст, который пользователь может услышать.
+     * Для голосовых платформ, озвучка будет произведена силами самой платформы, для не голосовых платформ, поведение зависит непосредственно от реализации адаптера.
+     * Так для некоторых стандартных адаптеров, в случае заполнения поля и указания токена yandex SpeechKit, будет отправлен запрос на преобразование текста в аудиофайл, после чего аудиофайл будет отправлен пользователю.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.tts = 'Привет! Я голосовой ассистент.';
      * ```
      */
     public tts: string | null = null;
 
     /**
-     * Обработанный NLU (Natural Language Understanding)
-     * Содержит результаты обработки естественного языка
-     *
-     * @see Nlu
-     */
-    public nlu: Nlu;
-
-    /**
-     * Компонент для работы со звуками.
-     * Позволяет добавлять звуковые эффекты и музыку
-     *
-     * @see Sound
-     */
-    public sound: Sound;
-
-    /**
-     * Идентификатор пользователя
-     * Уникальный идентификатор для каждого пользователя
+     * Уникальный идентификатор пользователя.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.userId = 'user_123';    // Telegram (string)
      * this.userId = 123456789;     // VK (number)
-     * this.userId = null;          // не авторизован
+     * this.userId = null;          // не удалось получить информацию
      * ```
      */
     public userId: string | number | null = null;
 
     /**
-     * Пользовательский токен авторизации
-     * Используется для авторизованных запросов (например, в Алисе)
+     * Пользовательский токен авторизации.
+     * Используется для авторизованных запросов (например, в Алисе).
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
      * ```
      */
     public userToken: string | null = null;
 
     /**
-     * Метаданные пользователя
-     * Дополнительная информация о пользователе
+     * Дополнительная информация о пользователе.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.userMeta = {
      *   timezone: 'Europe/Moscow',
      *   locale: 'ru-RU'
      * };
      * ```
      */
-    public userMeta: any = null;
+    public userMeta: object | null = null;
 
     /**
-     * ID сообщения
-     * Используется для определения начала нового диалога
+     * ID сообщения.
+     * Используется для определения начала нового диалога.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.messageId = 12345;
      * ```
      */
     public messageId: number | string | null = null;
 
     /**
-     * Запрос пользователя в нижнем регистре
-     * Нормализованный текст запроса
+     * Запрос пользователя в нижнем регистре.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.userCommand = 'привет бот';
      * ```
      */
     public userCommand: string | null = null;
 
     /**
-     * Оригинальный запрос пользователя
-     * Текст запроса без изменений
+     * Оригинальный запрос пользователя.
+     * Текст запроса без изменений, включая регистр и знаки препинания.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.originalUserCommand = 'Привет, бот!';
      * ```
      */
     public originalUserCommand: string | null = null;
 
     /**
-     * Дополнительные параметры запроса
-     * Может содержать любые дополнительные данные
+     * Дополнительные параметры запроса.
+     * Может содержать любые дополнительные данные полученные от платформы.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.payload = {
      *   source: 'mobile',
      *   version: '1.0'
@@ -419,14 +416,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public payload: object | string | null | undefined = null;
 
     /**
-     * Пользовательские данные
-     * Хранятся в базе данных или файле
-     *
-     * @remarks
-     * Тип хранения зависит от параметра appContext.isSaveDb
+     * Пользовательские данные, который были сохранены.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.userData = {
      *   name: 'John',
      *   preferences: {
@@ -438,23 +431,23 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public userData: TUserData = {} as TUserData;
 
     /**
-     * Флаг необходимости авторизации
-     * Определяет, требуется ли авторизация пользователя
+     * Флаг необходимости авторизации.
+     * Определяет, требуется ли авторизация пользователя или нет.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.isAuth = true; // требуется авторизация
      * ```
      */
     public isAuth: boolean = false;
 
     /**
-     * Статус пользовательских событий
-     * Содержит информацию об авторизации и оценке
+     * Пользовательские событий.
+     * Содержит информацию об авторизации или оценке.
      *
      * @see IUserEvent
      * @example
-     * ```typescript
+     * ```ts
      * this.userEvents = {
      *   auth: { status: true },
      *   rating: { status: true, value: 5 }
@@ -464,94 +457,112 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     public userEvents: IUserEvent | null = null;
 
     /**
-     * Пользовательское локальное хранилище
-     * Используется для Алисы, Маруси и Сбера
+     * Пользовательское локальное хранилище.
+     * Используется для временного хранения данных, специфичных для текущего диалога.
+     * Работает только при включённой опции `isLocalStorage: true` в конфигурации.
+     * bot.setAppConfig({
+     *    isLocalStorage: true,
+     * });
+     *
+     * **Правила синхронизации с базой данных (если подключена):**
+     * - Если заполнены и `userData`, и `state`:
+     *   - `userData` сохраняется в БД,
+     *   - `state` сохраняется в локальное хранилище платформы.
+     * - Если заполнен только `userData` (а `state` пуст или равен `userData`):
+     *   - данные сохраняются только в БД (состояние платформы не обновляется).
+     * - Если заполнен только `state`:
+     *   - данные сохраняются только в локальное хранилище.
+     *
+     * **При загрузке данных:**
+     * 1. Если есть данные из локального хранилища и из БД, они попадают соответственно в `state` и `userData`.
+     * 2. Если есть только данные из хранилища, они копируются и в `userData`, и в `state` (для удобства).
+     * 3. Если есть только данные из БД, они записываются в `userData`.
+     *
+     * @see {@link userData} — для постоянного хранения данных пользователя.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.state = {
      *   lastIntent: 'greeting',
      *   step: 1
      * };
      * ```
      */
-    public state: object | string | null = null;
+    public state: TPlatformState | null = null;
 
     /**
-     * Флаг наличия экрана
-     * Определяет, доступен ли экран пользователю
+     * Определяет, с колонки пользователь запустил приложение или с устройства с экраном.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.isScreen = true; // экран доступен
      * ```
      */
     public isScreen: boolean = false;
 
     /**
-     * Флаг завершения сессии
-     * Определяет, нужно ли завершить диалог
+     * Флаг, определяющий необходимость завершения диалога. Актуально когда необходимо принудительно завершить диалог с пользователем.
+     * Поддержка работы флага зависит от платформы.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.isEnd = true; // завершить диалог
      * ```
      */
     public isEnd: boolean = false;
 
     /**
-     * Флаг необходимости отправки запроса к API
-     * Используется для Vk и Telegram
+     * Флаг необходимости отправки запроса к API. Как правило, данный флаг стоит использовать для чат-ботов.
      *
      * @remarks
-     * Если true, все запросы уже отправлены в логике приложения
+     * Если указано true, значит все необходимые запросы уже отправлены в логике приложения, и дополнительно пользователю ничего отправлять не нужно.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.isSend = true; // запросы уже отправлены
      * ```
      */
     public isSend: boolean = false;
 
     /**
-     * Полученный запрос
-     * Содержит оригинальный объект запроса
+     * Полученный запрос от платформы.
+     * Содержит оригинальный объект запроса.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.requestObject = {
      *   command: 'start',
      *   payload: { source: 'mobile' }
      * };
      * ```
      */
-    public requestObject: object | string | null = null;
+    public requestObject: Record<string, unknown> | string | unknown | null = null;
 
     /**
      * Название текущего интента.
-     * Определяет текущее состояние диалога
+     * Определяет следующий шаг диалога.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.thisIntentName = 'help';
      * ```
      */
     public thisIntentName: string | null = null;
 
     /**
-     * Эмоция для голосового ответа
-     * Используется для голосовых ассистентов
+     * Эмоция для голосового ответа.
+     * Используется для платформ, которые поддерживают данное поведение.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.emotion = 'good';
      * ```
      */
     public emotion: string | null = null;
 
     /**
-     * Стиль обращения к пользователю
-     * Определяет формальность общения
+     * Стиль обращения к пользователю.
+     * Определяет формальность общения, используется для платформ, которые поддерживают данное поведение.
      *
      * @remarks
      * Возможные значения:
@@ -560,75 +571,281 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * - null: стиль не определен
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.appeal = 'official'; // официальное обращение
      * ```
      */
     public appeal: 'official' | 'no_official' | null = null;
 
     /**
-     * Флаг отправки запроса на оценку
-     * Определяет, нужно ли запросить оценку у пользователя
+     * Флаг отправки запроса на оценку.
+     * Определяет, нужно ли запросить оценку у пользователя.
+     * Используется для платформ, которые поддерживают данное поведение.
      *
      * @example
-     * ```typescript
+     * ```ts
      * this.isSendRating = true; // запросить оценку
      * ```
      */
     public isSendRating: boolean = false;
 
     /**
-     * Название предыдущего интента.
-     * Используется для отслеживания контекста диалога
+     * Название предыдущего интента/команды, полученное из `userData.oldIntentName`.
+     * Используется для отслеживания контекста диалога.
+     *
+     *@remarks
+     * **КАК ЭТО РАБОТАЕТ:**
+     * 1. В конце обработки каждого запроса, `this.thisIntentName` сохраняется в `userData.oldIntentName`
+     * 2. При следующем запросе это значение копируется в `this.oldIntentName`
+     * 3. Используется для определения, с какого шага продолжить диалог
+     *
+     * **ТИПИЧНОЕ ИСПОЛЬЗОВАНИЕ:**
+     * - Возврат к предыдущему шагу
+     * - Многошаговые формы ("вернуться назад")
+     * - Диалоги с контекстом
+     * - Использование в шагах `bot.addStep()`
      *
      * @example
-     * ```typescript
-     * this.oldIntentName = 'greeting';
+     * ```ts
+     * // Пример: Многошаговая регистрация
+     * class RegistrationBot extends BotController {
+     *   public action(intentName: string | null): void {
+     *     // Определяем на каком шаге находимся
+     *     const previousStep = this.oldIntentName;
+     *
+     *     if (previousStep === 'enter_name') {
+     *       // Пользователь только что ввел имя, спрашиваем email
+     *       this.userData.name = this.userCommand;
+     *       this.text = 'Отлично! Теперь введите ваш email:';
+     *       this.thisIntentName = 'enter_email'; // Сохранится для следующего шага
+     *     } else if (previousStep === 'enter_email') {
+     *       // Пользователь ввел email, завершаем регистрацию
+     *       this.userData.email = this.userCommand;
+     *       this.text = 'Регистрация завершена!';
+     *     }
+     *   }
+     * }
+     *
+     * // Пример: Кнопка "Назад"
+     * if (intentName === 'back') {
+     *   // Возвращаемся к предыдущему шагу
+     *   switch(this.oldIntentName) {
+     *     case 'product_list':
+     *       this.text = 'Выберите категорию:';
+     *       break;
+     *     case 'category_list':
+     *       this.text = 'Добро пожаловать!';
+     *       break;
+     *   }
+     * }
      * ```
      */
     public oldIntentName: string | null = null;
 
     /**
-     * Контекст приложения
+     * Контекст приложения.
      */
     public appContext: AppContext;
 
+    /**
+     * Платформа от которой был получен запрос.
+     */
     public appType: TAppType | null = null;
 
     /**
-     * Создает новый экземпляр контроллера.
-     * Инициализирует все необходимые компоненты
+     * Дополнительные опции платформы.
+     * ⚠️ Внутреннее свойство. Заполняется адаптером платформы.
+     * Не предназначено для прямого использования в пользовательском коде.
      */
-    constructor() {
+    public platformOptions: IPlatformOptions = {};
+
+    #getCustomRegExp: RegExpConstructor | undefined;
+
+    /**
+     * Создает новый экземпляр контроллера.
+     * Инициализирует все необходимые компоненты.
+     */
+    constructor(appContext?: AppContext) {
         // Для корректности выставляем контекст по умолчанию.
-        this.appContext = new AppContext();
-        this.buttons = new Buttons(this.appContext);
-        this.card = new Card(this.appContext);
-        this.sound = new Sound(this.appContext);
-        this.nlu = new Nlu();
+        this.appContext = appContext || new AppContext();
+        this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
     }
 
     /**
-     * Устанавливает контекст приложения
+     * Компонент для отображения различных кнопок пользователю.
+     * Позволяет создавать интерактивные элементы управления в приложении.
+     *
+     * @remarks
+     * ## 🎯 ТИПИЧНОЕ ИСПОЛЬЗОВАНИЕ:
+     * - Навигация по меню
+     * - Быстрые ответы (Да/Нет)
+     * - Выбор из вариантов
+     * - Быстрое действие/команда
+     *
+     *
+     * @see Buttons
+     * @example
+     * ```ts
+     * this.buttons
+     *   .addBtn('Помощь')
+     *   .addBtn('Выход');
+     * ```
+     */
+    get buttons(): Buttons {
+        if (!this.#buttons) {
+            this.#buttons = new Buttons(this.appContext);
+        }
+        return this.#buttons;
+    }
+
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализированы кнопки или нет
+     * @returns
+     */
+    isButtonsInit(): boolean {
+        return !!this.#buttons;
+    }
+
+    /**
+     * Компонент для отображения карточек пользователю.
+     * Позволяет создавать визуальные элементы с изображениями и текстом.
+     * Также при указании нескольких изображений, они автоматически преобразуются в карточку.
+     *
+     * @remarks
+     * ## 🎯 КОГДА ИСПОЛЬЗОВАТЬ:
+     * - Каталог товаров/услуг
+     * - Галерея изображений
+     * - Карточки статей/новостей
+     * - Навигация
+     *
+     * @see Card
+     * @example
+     ```ts
+     * // КАТАЛОГ ТОВАРОВ (интернет-магазин):
+     * this.text = 'Популярные товары:';
+     * this.card
+     *   .addImage(
+     *     'https://example.com/iphone.jpg',
+     *     'iPhone 15 Pro',
+     *     '99 990 ₽\nЭкран 6.1", процессор A17 Pro'
+     *   )
+     *   .addButton('Купить')
+     *
+     *   .addImage(
+     *     'https://example.com/macbook.jpg',
+     *     'MacBook Air M2',
+     *     '124 990 ₽\n13.6", 8ГБ RAM, 256ГБ SSD'
+     *   )
+     *   .addButton('Купить');
+     *
+     * // ГАЛЕРЕЯ ФОТОГРАФИЙ:
+     * this.text = 'Наши работы:';
+     * this.card
+     *   .addImage('photo1.jpg', 'Свадьба', 'Иван и Мария')
+     *   .addImage('photo2.jpg', 'Выпускной', 'Школа №123')
+     *   .addImage('photo3.jpg', 'Корпоратив', 'Компания "Рога и копыта"');
+     *
+     * // КАРТОЧКИ НОВОСТЕЙ:
+     * this.card
+     *   .addImage(
+     *     'news1.jpg',
+     *     'Новое обновление бота',
+     *     'Добавлена оплата картой и доставка',
+     *     {
+     *         title: 'Перейти',
+     *         url: 'https://example.com/news/1'
+     *     }
+     *   )
+     * ```
+     */
+    get card(): Card {
+        if (!this.#card) {
+            this.#card = new Card(this.appContext);
+        }
+        return this.#card;
+    }
+
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализированы карточки или нет
+     * @returns
+     */
+    isCardInit(): boolean {
+        return !!this.#card;
+    }
+
+    /**
+     * Компонент для работы со звуками.
+     * Позволяет добавлять звуковые эффекты и музыку. Используется вместе с tts.
+     *
+     * @see Sound
+     */
+    get sound(): Sound {
+        if (!this.#sound) {
+            this.#sound = new Sound();
+        }
+        return this.#sound;
+    }
+
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализированы звуки или нет
+     * @returns
+     */
+    isSoundInit(): boolean {
+        return !!this.#sound;
+    }
+
+    /**
+     * Обработанный NLU (Natural Language Understanding).
+     * Содержит результаты обработки естественного языка, как правило, данные заполняются самой платформой.
+     *
+     * @see Nlu
+     */
+    get nlu(): Nlu {
+        if (!this.#nlu) {
+            this.#nlu = new Nlu();
+        }
+        return this.#nlu;
+    }
+
+    /**
+     * Флаг возвращающий информацию о том, были ли инициализирован nlu или нет
+     * @returns
+     */
+    isNluInit(): boolean {
+        return !!this.#nlu;
+    }
+
+    /**
+     * Устанавливает контекст приложения.
      * @param appContext
      */
     public setAppContext(appContext: AppContext): this {
         if (appContext) {
             this.appContext = appContext;
-            this.buttons.setAppContext(appContext);
-            this.card.setAppContext(appContext);
-            this.sound.setAppContext(appContext);
+            this.#getCustomRegExp = this.appContext.command.getCustomRegExp();
+            if (this.#buttons) {
+                this.#buttons.setAppContext(appContext);
+            }
+            if (this.#card) {
+                this.#card.setAppContext(appContext);
+            }
         }
         return this;
     }
 
     /**
-     * Очищает все временные данные необходимы для отправки ответа.
+     * Очищает все временные данные необходимые для отправки ответа.
      */
     public clearStoreData(): void {
-        this.buttons.clear();
-        this.card.clear();
-        this.nlu.setNlu({});
+        if (this.#buttons) {
+            this.buttons.clear();
+        }
+        if (this.#card) {
+            this.card.clear();
+        }
+        if (this.#nlu) {
+            this.nlu.setNlu({});
+        }
         this.text = '';
         this.tts = null;
         this.userId = null;
@@ -654,105 +871,166 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Возвращает список доступных интентов.
-     * Определяет все возможные команды и их обработчики
+     * Возвращает список всех зарегистрированных интентов.
      *
      * @returns {IAppIntent[]} Массив интентов
-     *
-     * @example
-     * ```typescript
-     * const intents = BotController._intents();
-     * // [
-     * //   { name: 'greeting', slots: ['привет', 'здравствуйте'] },
-     * //   { name: 'help', slots: ['помощь', 'справка'] }
-     * // ]
-     * ```
      */
     protected _intents(): IAppIntent[] {
         return this.appContext?.platformParams.intents || [];
     }
 
     /**
-     * Определяет интент по тексту запроса.
-     * Сопоставляет текст с доступными интентами
+     * Находит нужный интент по тексту запроса.
      *
      * @param {string | null} text - Текст запроса
      * @returns {string | null} Название интента или null
-     *
-     * @example
-     * ```typescript
-     * const intent = BotController._getIntent('привет');
-     * // 'greeting'
-     * ```
      */
     protected _getIntent(text: string | null): string | null {
         if (!text) {
             return null;
         }
-        const start = performance.now();
+        const start = this.appContext.usedMetric ? performance.now() : 0;
         const intents: IAppIntent[] = this._intents();
-        for (const intent of intents) {
-            if (Text.isSayText(intent.slots || [], text, intent.is_pattern || false)) {
-                this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
-                    intent,
-                    status: true,
-                });
+        for (let i = 0; i < intents.length; i++) {
+            const intent = intents[i];
+            if (
+                Text.isSayText(
+                    intent.slots || [],
+                    text,
+                    intent.is_pattern || false,
+                    false,
+                    this.#getCustomRegExp,
+                )
+            ) {
+                if (this.appContext.usedMetric) {
+                    this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
+                        intent,
+                        status: true,
+                    });
+                }
                 return intent.name;
             }
         }
-        this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
-            status: false,
-        });
-        return null;
-    }
-
-    #sendCustomCommandResolver(startTimer: number): string | null {
-        if (this.appContext.customCommandResolver) {
-            const res = this.appContext.customCommandResolver(
-                this.userCommand as string,
-                this.appContext.commands,
-            );
-            const command = res ? this.appContext.commands.get(res) : null;
-            if (res && command) {
-                this.#commandExecute(res, command);
-                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
-                    res,
-                    status: true,
-                });
-            } else {
-                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
-                    status: false,
-                });
-            }
-            return res;
+        if (this.appContext.usedMetric) {
+            this.appContext.logMetric(EMetric.GET_INTENT, performance.now() - start, {
+                status: false,
+            });
         }
         return null;
     }
 
     /**
-     * Получает команду из запроса пользователя
-     * Извлекает команду из текста запроса
-     *
-     * @returns {string | null} Команда или null
-     *
-     * @example
-     * ```typescript
-     * const command = this._getCommand();
-     * // 'start'
-     * ```
+     * Запуск кастомной обработки команд.
+     * @param startTimer
+     * @private
      */
-    protected _getCommand(): string | null {
+    #sendCustomCommandResolver(startTimer: number): void | null | Promise<void> {
+        if (this.appContext.command.customCommandResolver) {
+            const res = this.appContext.command.customCommandResolver(
+                this.userCommand as string,
+                this.appContext.commands,
+            );
+            const cb = (result: string | null): void | Promise<void> => {
+                const command = result ? this.appContext.commands.get(res as string) : null;
+                if (result && command) {
+                    const res = this.#commandExecute(result, command);
+                    if (res) {
+                        return res.then(() => {
+                            if (this.appContext?.usedMetric) {
+                                this.appContext.logMetric(
+                                    EMetric.GET_COMMAND,
+                                    performance.now() - startTimer,
+                                    {
+                                        result,
+                                        status: true,
+                                    },
+                                );
+                            }
+                        });
+                    }
+                    if (this.appContext?.usedMetric) {
+                        this.appContext.logMetric(
+                            EMetric.GET_COMMAND,
+                            performance.now() - startTimer,
+                            {
+                                result,
+                                status: true,
+                            },
+                        );
+                    }
+                } else if (this.appContext?.usedMetric) {
+                    this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
+                        status: false,
+                    });
+                }
+            };
+            if (isPromise(res)) {
+                return res.then(cb);
+            }
+            return cb(res);
+        }
+        return null;
+    }
+
+    #commandCb(commandName: string, command: ICommandParam, start: number): void | Promise<void> {
+        if (!command) {
+            return;
+        }
+        const ex = this.#commandExecute(commandName, command);
+        if (ex) {
+            return ex
+                .then(() => {
+                    if (this.appContext?.usedMetric) {
+                        this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                            commandName,
+                            status: true,
+                        });
+                    }
+                    this._actionMetric(commandName, true);
+                })
+                .catch((err) => {
+                    this.appContext.logError(
+                        `BotController: Произошла ошибка при обработке команды "${commandName}", ошибка: "${err}"`,
+                        {
+                            err,
+                        },
+                    );
+                });
+        }
+        if (this.appContext?.usedMetric) {
+            this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                commandName,
+                status: true,
+            });
+        }
+        this._actionMetric(commandName, true);
+    }
+
+    /**
+     * Извлекает нужную команду из запроса.
+     *
+     * @returns {string | null} найденная команда или null если не удалось найти команду
+     */
+    protected _getCommand(): void | null | Promise<void> {
         if (!this.userCommand || !this.appContext?.commands) {
             return null;
         }
-        const start = performance.now();
-        if (this.appContext.customCommandResolver) {
+        const start = this.appContext?.usedMetric ? performance.now() : 0;
+        if (this.appContext.command.customCommandResolver) {
             return this.#sendCustomCommandResolver(start);
         }
+        const tCommandName = this.appContext.command.getExactMatchCommand(this.userCommand);
+        if (tCommandName) {
+            const command = this.appContext.commands.get(tCommandName);
+            if (command) {
+                return this.#commandCb(tCommandName, command, start);
+            }
+        }
+
         let contCount = 0;
-        const commandsLength = this.appContext.commands.size;
+        const useDirectRegExp = this.appContext.commands.size < 500;
         for (const [commandName, command] of this.appContext.commands) {
-            if (commandName === FALLBACK_COMMAND || !command || contCount !== 0) {
+            if (commandName === DEFAULT_FALLBACK_COMMAND || !command || contCount !== 0) {
                 if (contCount) {
                     contCount--;
                 }
@@ -767,19 +1045,23 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                     contCount = groups.commands.length - 1;
                     const gRegExp = groups.regExp;
                     if (gRegExp) {
-                        const reg = isRegex(gRegExp) ? gRegExp : getRegExp(gRegExp);
+                        const reg = isRegex(gRegExp)
+                            ? gRegExp
+                            : getRegExp(gRegExp, 'ium', this.#getCustomRegExp);
                         const match = reg.exec(this.userCommand);
                         if (match) {
                             // Находим первую совпавшую подгруппу (index в массиве parts)
                             for (const key in match.groups) {
-                                if (typeof match.groups[key] !== 'undefined') {
+                                if (match.groups[key] !== undefined) {
                                     const commandName = groups.commands[+key.slice(1)];
                                     if (commandName && this.appContext.commands.has(commandName)) {
-                                        this.#commandExecute(
+                                        return this.#commandCb(
                                             commandName,
-                                            this.appContext.commands.get(commandName),
+                                            this.appContext.commands.get(
+                                                commandName,
+                                            ) as ICommandParam,
+                                            start,
                                         );
-                                        return commandName;
                                     }
                                 }
                             }
@@ -793,32 +1075,35 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
                     command.regExp || command.slots,
                     this.userCommand,
                     command.isPattern || false,
-                    typeof command.regExp !== 'string' || commandsLength < 500,
+                    command.isRegExpString || useDirectRegExp,
+                    this.#getCustomRegExp,
                 )
             ) {
-                this.#commandExecute(commandName, command);
-                this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
-                    commandName,
-                    status: true,
-                });
-                return commandName;
+                return this.#commandCb(commandName, command, start);
             }
         }
-        this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
-            status: false,
-        });
+        if (this.appContext?.usedMetric) {
+            this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
+                status: false,
+            });
+        }
         return null;
     }
 
     /**
-     * Абстрактный метод для обработки пользовательских команд и интентов.
-     * Должен быть реализован в дочерних классах
+     * Метод для обработки пользовательских команд и интентов.
+     * Используется для более глубокой логики приложения, например можно использовать в качестве логирования, если все обработчики реализованы через команды.
+     * Либо использовать в качестве обработки команд, что не рекомендуется, так как из-за подобного подхода, размер метода может быть большим.
+     *
+     * Метод необходимо обязательно реализовать в дочерних классах.
      *
      * @param {string | null} intentName - Название интента или команды
      * @param {boolean} [isCommand=false] - Флаг, указывающий что это команда
+     * @param {boolean} [isStep=false] - Флаг, указывающий что это шаг
      *
      * @example
-     * ```typescript
+     * ```ts
+     * // Пример с обработкой интентов
      * class MyController extends BotController {
      *   public action(intentName: string | null): void {
      *     if (intentName === 'greeting') {
@@ -829,103 +1114,191 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      *     }
      *   }
      * }
+     *
+     * // Пример с логированием
+     * class MyController extends BotController {
+     *   public action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
+     *     console.log(`Прошли по ${isCommand ? 'команде' : isStep ? 'шагу' : 'интенту'} с именем: ${intentName}`);
+     *   }
+     * }
      * ```
      */
-    abstract action(intentName: string | null, isCommand?: boolean): void;
+    abstract action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void;
 
     /**
-     * Выполнение нужной команды
+     * Выполнение команды.
      * @param commandName
      * @param command
      */
-    #commandExecute(commandName: string, command?: ICommandParam): void {
+    #commandExecute(commandName: string, command?: ICommandParam): void | Promise<void> {
+        const errorCb = (e: Error | Record<string, unknown>): void => {
+            this.appContext.logError(
+                `BotController: Произошла ошибка при обработке команды "${commandName}", ошибка: "${e}"`,
+                {
+                    e,
+                },
+            );
+            this.text = 'Произошла ошибка. Попробуйте позже.';
+        };
         try {
             if (command) {
                 const res = command?.cb?.(this.userCommand as string, this);
+                if (isPromise(res)) {
+                    return res
+                        .then((result) => {
+                            if (result) {
+                                this.text = result;
+                            }
+                        })
+                        .catch(errorCb);
+                }
                 if (res) {
                     this.text = res;
                 }
             }
         } catch (e) {
-            this.appContext.logError(
-                `Ошибка в команде ${commandName === FALLBACK_COMMAND ? 'FALLBACK_COMMAND' : commandName}:`,
-                e as Record<string, unknown>,
-            );
-            this.text = 'Произошла ошибка. Попробуйте позже.';
+            errorCb(e as Record<string, unknown>);
         }
     }
 
     /**
-     * Запуск обработки пользовательских команд с учетом метрик
+     * Запуск обработки пользовательских команд с учетом метрик.
      * @param commandName
      * @param isCommand
+     * @param isStep
      */
-    protected _actionMetric(commandName: string, isCommand: boolean = false): void {
-        const start = performance.now();
-        this.action(commandName, isCommand);
-        this.appContext.logMetric(EMetric.ACTION, performance.now() - start, {
-            commandName,
-            platform: this.appType,
-            isCommand,
-        });
+    protected _actionMetric(
+        commandName: string | null,
+        isCommand: boolean = false,
+        isStep: boolean = false,
+    ): void {
+        const start = this.appContext?.usedMetric ? performance.now() : 0;
+        this.action(commandName, isCommand, isStep);
+        if (this.appContext?.usedMetric) {
+            this.appContext.logMetric(EMetric.ACTION, performance.now() - start, {
+                commandName,
+                platform: this.appType,
+                isCommand,
+            });
+        }
     }
 
     /**
-     * Запускает обработку запроса.
-     * Определяет тип запроса и вызывает соответствующий обработчик
-     *
-     * @example
-     * ```typescript
-     * this.run();
-     * // Обрабатывает запрос и формирует ответ
-     * ```
+     * Обработка зарегистрированных шагов.
+     * @private
      */
-    public run(): void {
-        const commandResult = this._getCommand();
-        if (commandResult) {
-            this._actionMetric(commandResult, true);
-        } else {
-            let intent: string | null = this._getIntent(this.userCommand);
-            if (!intent && this.appContext?.commands.has(FALLBACK_COMMAND)) {
-                const command = this.appContext.commands.get(FALLBACK_COMMAND);
-                if (command) {
-                    this.#commandExecute(FALLBACK_COMMAND, command);
-                    this._actionMetric(FALLBACK_COMMAND, true);
+    #stepResolver(): void | null | Promise<void> {
+        if (this.appContext.steps.size) {
+            const intents = this.nlu.getIntents();
+            for (const [stepName, step] of this.appContext.steps) {
+                if (stepName === this.oldIntentName || intents?.[stepName]) {
+                    const res = step.cb(this);
+                    if (res) {
+                        return res.then(() => {
+                            this._actionMetric(stepName, false, true);
+                        });
+                    }
+                    this._actionMetric(stepName, false, true);
+                    return;
                 }
-            } else {
-                if (
-                    intent === null &&
-                    this.originalUserCommand &&
-                    this.userCommand !== this.originalUserCommand
-                ) {
-                    intent = this._getIntent(this.originalUserCommand.toLowerCase());
-                }
-                if (intent === null && this.messageId === 0) {
-                    intent = WELCOME_INTENT_NAME;
-                }
-                /*
-                 * Для стандартных действий параметры заполняются автоматически. Есть возможность переопределить их в action() по названию действия
-                 */
-                switch (intent) {
-                    case WELCOME_INTENT_NAME:
-                        this.text = Text.getText(
-                            this.appContext?.platformParams.welcome_text || '',
-                        );
-                        break;
-
-                    case HELP_INTENT_NAME:
-                        this.text = Text.getText(this.appContext?.platformParams.help_text || '');
-                        break;
-                }
-
-                this._actionMetric(intent as string);
             }
         }
-        if (
-            this.tts === null &&
-            (this.appContext?.appType === T_ALISA || this.appContext?.appType === T_MARUSIA)
-        ) {
-            this.tts = this.text;
+        return null;
+    }
+
+    /**
+     * Основной метод обработки запроса, вызываемый автоматически фреймворком.
+     *
+     * @remarks
+     * **КРАТКИЙ ОБЗОР РАБОТЫ:**
+     * 1. Пользователь отправляет сообщение → платформа → Bot.run()
+     * 2. `run()` определяет тип запроса (команда/интент/шаг)
+     * 3. Вызывается ваш метод `action()` с результатом
+     * 4. Вы заполняете поля ответа (`text`, `buttons`, `card`)
+     * 5. Bot отправляет ответ пользователю
+     *
+     * **ЧТО НЕ НУЖНО ДЕЛАТЬ:**
+     * - ❌ Не вызывайте `run()` вручную в своем коде
+     * - ❌ Не переопределяйте этот метод
+     * - ✅ Переопределяйте только метод `action()` для своей логики
+     *
+     * **ПОСЛЕДОВАТЕЛЬНОСТЬ ОБРАБОТКИ ВНУТРИ run():**
+     * ```
+     * run()
+     *   ├── Шаг 1: Проверяет есть ли активный шаг
+     *   │     → Если есть → вызывает action(stepName, false, true)
+     *   ├── Шаг 2: Ищет команду
+     *   │     → Если нашел → вызывает action(commandName, true, false)
+     *   ├── Шаг 3: Ищет интент
+     *   │     → Если нашел → вызывает action(intentName, false, false)
+     *   └── Шаг 4: Если ничего не нашел → Fallback команда
+     * ```
+     *
+     * @example
+     * ```ts
+     * // ВАШ КОД (контроллер):
+     * class MyController extends BotController {
+     *   public action(intentName: string | null): void {
+     *     // Ваша логика здесь
+     *     this.text = "Ответ пользователю";
+     *   }
+     * }
+     *
+     * // КОД ФРЕЙМВОРКА (не ваш):
+     * // Когда приходит запрос от пользователя:
+     * const controller = new MyController();
+     * {...}; // Наполняет контроллер данными. Как правило, этим занимается адаптер платформы
+     * await controller.run(); // Автоматически вызывает ваш action()
+     * const response = ...; // Адаптер формирует ответ в зависимости от состояния контроллера
+     * ```
+     *
+     * @returns {void | Promise<void>} Может быть асинхронным
+     * @internal Используется только внутри фреймворка
+     */
+    public run(): void | Promise<void> {
+        const stepResult = this.#stepResolver();
+        if (stepResult !== null) {
+            return stepResult;
+        }
+        const commandResult = this._getCommand();
+        if (commandResult === null) {
+            let intent: string | null = this._getIntent(this.userCommand);
+            const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
+            if (!intent && fallbackCommand) {
+                const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
+                this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+                return res;
+            } else {
+                // if (
+                //     intent === null &&
+                //     this.originalUserCommand &&
+                //     this.userCommand !== this.originalUserCommand
+                // ) {
+                //     // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
+                //     // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
+                //     intent = this._getIntent(this.originalUserCommand.toLowerCase());
+                // }
+                if (intent === null && this.messageId === 0) {
+                    intent = DEFAULT_WELCOME_INTENT_NAME;
+                }
+                /*
+                 * Для стандартных действий параметры заполняются автоматически.
+                 * Есть возможность переопределить их в action() по названию действия
+                 */
+                switch (intent) {
+                    case DEFAULT_WELCOME_INTENT_NAME:
+                        this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                        break;
+
+                    case DEFAULT_HELP_INTENT_NAME:
+                        this.text = Text.getText(this.appContext.platformParams.help_text);
+                        break;
+                }
+
+                this._actionMetric(intent);
+            }
+        } else {
+            return commandResult;
         }
     }
 }

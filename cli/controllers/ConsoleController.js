@@ -2,7 +2,7 @@
 const CreateController = require(__dirname + '/CreateController').create;
 const utils = require(__dirname + '/../utils').utils;
 
-const VERSION = '2.2.0';
+const VERSION = '3.0.0';
 
 function getFlags(argv) {
     const flags = [];
@@ -36,6 +36,7 @@ DB_NAME=bot_db`,
 /**
  * Консольный скрипт, позволяющий создать пустой проект.
  * @param param
+ * @param argv
  */
 function main(
     param = { appName: null, command: null, mode: 'prod', hostname: 'localhost', port: 3000 },

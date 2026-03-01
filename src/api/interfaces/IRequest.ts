@@ -10,7 +10,7 @@
  * @template T - Тип данных, ожидаемых в ответе от сервера
  *
  * @example
- * ```typescript
+ * ```ts
  * // Пример использования с типом User
  * interface User {
  *   id: number;
@@ -41,7 +41,6 @@ export interface IRequestSend<T> {
 
     /**
      * Данные, полученные от сервера
-     * @type {T | null}
      * - null - в случае ошибки или отсутствия данных
      * - T - данные в формате, указанном в типе
      */

@@ -11,7 +11,7 @@
  * Типы данных для валидации полей модели
  *
  * @example
- * ```typescript
+ * ```ts
  * const type: TModelRulesType = 'string'; // для текстовых полей
  * const type: TModelRulesType = 'integer'; // для целых чисел
  * const type: TModelRulesType = 'date'; // для дат
@@ -20,11 +20,15 @@
  */
 export type TModelRulesType = 'text' | 'string' | 'integer' | 'date' | 'int' | 'bool';
 
+export interface IDataValue {
+    [key: string]: unknown;
+}
+
 /**
  * Интерфейс для описания правил валидации полей модели
  *
  * @example
- * ```typescript
+ * ```ts
  * const rules: IModelRules = {
  *   name: ['username', 'nickname'],
  *   type: 'string',
@@ -42,18 +46,18 @@ export interface IModelRules {
      * Массив названий полей, к которым применяются правила
      *
      * @example
-     * ```typescript
+     * ```ts
      * name: ['username', 'email'] // правила применяются к полям username и email
      * ```
      */
     name: string[];
 
     /**
-     * Тип данных поля
+     * Тип данных поля.
      * Определяет формат и правила валидации
      *
      * @example
-     * ```typescript
+     * ```ts
      * type: 'string' // текстовое поле
      * type: 'integer' // целочисленное поле
      * ```
@@ -65,7 +69,7 @@ export interface IModelRules {
      * Используется для ограничения длины строковых полей
      *
      * @example
-     * ```typescript
+     * ```ts
      * max: 100 // максимальная длина строки 100 символов
      * ```
      */
@@ -76,7 +80,7 @@ export interface IModelRules {
  * Интерфейс для описания результата выполнения операции с моделью
  *
  * @example
- * ```typescript
+ * ```ts
  * // Успешный результат
  * const success: IModelRes = {
  *   status: true,
@@ -90,7 +94,7 @@ export interface IModelRules {
  * };
  * ```
  */
-export interface IModelRes {
+export interface IModelRes<TModelData = IDataValue> {
     /**
      * Статус выполнения операции
      * true - операция выполнена успешно
@@ -103,23 +107,44 @@ export interface IModelRes {
      * Присутствует только при status = false
      *
      * @example
-     * ```typescript
+     * ```ts
      * error: 'Invalid input data'
      * error: 'Database connection failed'
      * ```
      */
-    error?: string;
+    error?: string | Error;
 
     /**
-     * Результат выполнения операции
-     * Присутствует только при status = true
+     * Результат выполнения операции.
+     * Присутствует только при status = true.
      * Может содержать любые данные в зависимости от операции
      *
      * @example
-     * ```typescript
+     * ```ts
      * data: { id: 1, name: 'John' } // результат запроса пользователя
      * data: [1, 2, 3] // список идентификаторов
      * ```
      */
-    data?: any;
+    data?: TModelData | TModelData[];
 }
+
+/**
+ * Тип функции обратного вызова для выполнения запросов к базе данных
+ *
+ * @example
+ * ```ts
+ * const queryCallback: TQueryCb = async (client, db) => {
+ *   const collection = db.collection('users');
+ *   const result = await collection.find({}).toArray();
+ *   return { status: true, data: result };
+ * };
+ * ```
+ *
+ * @param client - Клиент MongoDB для выполнения запросов
+ * @param db - Экземпляр базы данных MongoDB
+ * @returns Promise с результатом выполнения запроса
+ */
+export type TQueryCb<TClient = unknown, TDB = unknown> = (
+    client: TClient,
+    db: TDB,
+) => Promise<IModelRes>;

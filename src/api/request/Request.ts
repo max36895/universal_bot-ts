@@ -3,10 +3,10 @@
  * Предоставляет функционал для работы с различными типами запросов и ответов
  */
 import { httpBuildQuery, IGetParams, isFile } from '../../utils';
-import { IRequestSend } from '../interfaces';
 import { AppContext, EMetric, THttpClient } from '../../core';
-import fs from 'fs';
+import { IRequestSend } from '../interfaces/IRequest';
 import { basename } from 'path';
+import fs from 'fs';
 
 /**
  * Класс для отправки HTTP-запросов.
@@ -20,23 +20,10 @@ export class Request {
         'Content-Type': 'multipart/form-data',
     };
 
-    /** Заголовок для RSS/XML контента */
-    public static readonly HEADER_RSS_XML: Record<string, string> = {
-        'Content-Type': 'application/rss+xml',
-    };
-
     /** Заголовок для JSON контента */
     public static readonly HEADER_AP_JSON: Record<string, string> = {
         'Content-Type': 'application/json',
     };
-
-    /** Заголовок для XML контента */
-    public static readonly HEADER_AP_XML: Record<string, string> = {
-        'Content-Type': 'application/xml',
-    };
-
-    /** Заголовок для сжатого контента */
-    public static readonly HEADER_GZIP: Record<string, string> = { 'Content-Encoding': 'gzip' };
 
     /** URL для отправки запроса */
     public url: string | null;
@@ -45,7 +32,7 @@ export class Request {
     public get: IGetParams | null;
 
     /** POST-параметры запроса */
-    public post: any;
+    public post: Record<string, unknown> | null | FormData;
 
     /** HTTP-заголовки запроса */
     public header: HeadersInit | null;
@@ -82,7 +69,7 @@ export class Request {
     public isConvertJson: boolean;
 
     /**
-     * Понимает что возвращается бинарный ответ
+     * Флаг, указывающий, что ожидается бинарный ответ
      */
     public isBinaryResponse: boolean = false;
 
@@ -177,13 +164,15 @@ export class Request {
     async #run<T>(): Promise<T | string | null> {
         if (this.url) {
             try {
-                const start = performance.now();
+                const start = this.#appContext?.usedMetric ? performance.now() : 0;
                 const response = await this.#getHttpClient()(this._getUrl(), this._getOptions());
-                this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
-                    url: this.url,
-                    method: this.customRequest || 'POST',
-                    status: response.status || 0,
-                });
+                if (this.#appContext?.usedMetric) {
+                    this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
+                        url: this.url,
+                        method: this.customRequest || 'POST',
+                        status: response.status || 0,
+                    });
+                }
                 if (response.ok) {
                     if (this.isConvertJson) {
                         return await response.json();
@@ -193,7 +182,7 @@ export class Request {
                     }
                     return await response.text();
                 }
-                this.#error = 'Не удалось получить данные с ' + this.url;
+                this.#error = `Не удалось получить данные с "${this.url}". Статус: ${response.status}`;
             } catch (e) {
                 this.#error = e as Error;
             }

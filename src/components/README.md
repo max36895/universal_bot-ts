@@ -44,7 +44,7 @@
 
 ##### Базовая навигация
 
-```typescript
+```ts
 import { Navigation } from 'umbot';
 
 const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -58,7 +58,7 @@ console.log(showElements); // -> [1,2,3,4,5]
 
 ##### Навигация с командами
 
-```typescript
+```ts
 import { Navigation } from 'umbot';
 
 const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -80,7 +80,7 @@ console.log(showElements); // -> [1,2,3,4,5]
 
 ##### Работа с текущей страницей
 
-```typescript
+```ts
 import { Navigation } from 'umbot';
 
 const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -101,7 +101,7 @@ console.log(nav.thisPage); // -> 0
 
 ##### Работа со сложными объектами
 
-```typescript
+```ts
 import { Navigation } from 'umbot';
 
 interface MenuItem {

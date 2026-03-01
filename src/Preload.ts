@@ -1,26 +1,84 @@
+/**
+ * Модуль для предзагрузки данных.
+ * Стоит использовать в случаях, когда необходимо заранее предзагрузить ресурсы для различных платформ.
+ * Актуально для платформ, у которых есть ограничение на время выполнения, так как загрузка ресурса может занимать продолжительное время.
+ * @packageDocumentation
+ * @module preload
+ */
 import { ImageTokens, SoundTokens } from './models';
+import { AppContext, TAppType } from './core';
 import {
-    AppContext,
-    TAppType,
+    MarusiaRequest,
+    YandexImageRequest,
+    YandexSoundRequest,
     T_ALISA,
     T_MARUSIA,
-    T_MAXAPP,
-    T_TELEGRAM,
     T_VK,
+    T_MAX_APP,
+    T_TELEGRAM,
     T_VIBER,
-} from './core';
-import { MarusiaRequest, YandexImageRequest, YandexSoundRequest } from './api';
+    AlisaCard,
+    MarusiaCard,
+    VkCard,
+    TelegramCard,
+    MaxCard,
+    AlisaSound,
+    MarusiaSound,
+    TelegramSound,
+    VkSound,
+} from './plugins';
+import { BaseBotController, BotController } from './controller';
+
+interface IImageMap {
+    [T_ALISA]: any;
+    [T_MARUSIA]: any;
+    [T_VK]: any;
+    [T_MAX_APP]: any;
+    [T_TELEGRAM]: any;
+}
+
+const IMAGE_MAP: IImageMap = {
+    [T_ALISA]: AlisaCard,
+    [T_MARUSIA]: MarusiaCard,
+    [T_VK]: VkCard,
+    [T_MAX_APP]: MaxCard,
+    [T_TELEGRAM]: TelegramCard,
+};
+
+interface ISoundMap {
+    [T_ALISA]: any;
+    [T_MARUSIA]: any;
+    [T_VK]: any;
+    [T_TELEGRAM]: any;
+}
+
+const SOUND_MAP: ISoundMap = {
+    [T_ALISA]: AlisaSound,
+    [T_MARUSIA]: MarusiaSound,
+    [T_VK]: VkSound,
+    [T_TELEGRAM]: TelegramSound,
+};
+
+/**
+ * Дополнительные опции для предзагрузчика
+ */
+export interface IOptions {
+    /**
+     * Пользователь телеграм, которому будет отправлено изображение для получения токена
+     */
+    telegramUseId?: string | number;
+}
 
 /**
  * Класс, предназначенный для предварительной загрузки медиаресурсов (изображений, звуков) для различных платформ.
  *
  * Этот класс позволяет загрузить файлы на серверы платформ и закэшировать их токены *до* начала обработки
- * пользовательских запросов, что помогает избежать превышения лимита времени библиотеки (1 секунда) при
+ * пользовательских запросов, что помогает время обработки пользовательского запроса при
  * первичной отправке медиафайлов в ответе.
  *
  * @example
  * // В точке входа приложения (например, index.ts)
- * import { Preload } from 'umbot';
+ * import { Preload } from 'umbot/preload';
  *
  * // Предположим, appContext уже инициализирован
  * const preload = new Preload(appContext);
@@ -45,6 +103,7 @@ import { MarusiaRequest, YandexImageRequest, YandexSoundRequest } from './api';
  */
 export class Preload {
     private _appContext: AppContext | undefined;
+    private readonly _controller: BotController;
 
     /**
      * Создает экземпляр класса Preload.
@@ -54,6 +113,7 @@ export class Preload {
      */
     constructor(appContext?: AppContext) {
         this.setAppContext(appContext);
+        this._controller = new BaseBotController(appContext as AppContext);
     }
 
     /**
@@ -63,6 +123,7 @@ export class Preload {
      */
     public setAppContext(appContext?: AppContext): void {
         this._appContext = appContext;
+        this._controller.setAppContext(appContext as AppContext);
     }
 
     /**
@@ -75,36 +136,36 @@ export class Preload {
     protected _getPlatforms(platforms?: TAppType[]): TAppType[] {
         const result: TAppType[] = [];
         if (this._appContext) {
-            const platformParams = this._appContext.platformParams;
+            const platformParams = this._appContext.appConfig.tokens;
             // Проверяем наличие токенов для каждой платформы
-            if (platformParams.yandex_token) {
+            if (platformParams.alisa?.token) {
                 if (!platforms || platforms.includes(T_ALISA)) {
                     result.push(T_ALISA);
                 }
             }
-            if (platformParams.marusia_token) {
+            if (platformParams.marusia?.token) {
                 if (!platforms || platforms.includes(T_MARUSIA)) {
                     result.push(T_MARUSIA);
                 }
             }
-            if (platformParams.vk_token) {
+            if (platformParams.vk?.token) {
                 if (!platforms || platforms.includes(T_VK)) {
                     result.push(T_VK);
                 }
             }
-            if (platformParams.telegram_token) {
+            if (platformParams.telegram?.token) {
                 if (!platforms || platforms.includes(T_TELEGRAM)) {
                     result.push(T_TELEGRAM);
                 }
             }
-            if (platformParams.viber_token) {
+            if (platformParams.viber?.token) {
                 if (!platforms || platforms.includes(T_VIBER)) {
                     result.push(T_VIBER);
                 }
             }
-            if (platformParams.max_token) {
-                if (!platforms || platforms.includes(T_MAXAPP)) {
-                    result.push(T_MAXAPP);
+            if (platformParams.max?.token) {
+                if (!platforms || platforms.includes(T_MAX_APP)) {
+                    result.push(T_MAX_APP);
                 }
             }
         }
@@ -118,19 +179,18 @@ export class Preload {
      * @returns {number | undefined} Тип изображения для `ImageTokens` или `undefined`, если платформа не поддерживается
      *                               или не требует предзагрузки (например, Telegram).
      */
-    protected _getImageType(platform: TAppType): number | undefined {
+    protected _getImageType(platform: TAppType): string | undefined {
         switch (platform) {
             case T_ALISA:
-                return ImageTokens.T_ALISA;
+                return T_ALISA;
             case T_MARUSIA:
-                return ImageTokens.T_MARUSIA;
+                return T_MARUSIA;
             case T_VK:
-                return ImageTokens.T_VK;
-            case T_MAXAPP:
-                return ImageTokens.T_MAXAPP;
+                return T_VK;
+            case T_MAX_APP:
+                return T_MAX_APP;
             case T_TELEGRAM:
-                // Telegram отправляет файлы напрямую, предзагрузка не требуется.
-                break;
+                return T_TELEGRAM;
         }
         return undefined;
     }
@@ -142,17 +202,16 @@ export class Preload {
      * @returns {number | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается
      *                               или не требует предзагрузки (например, Telegram).
      */
-    protected _getSoundType(platform: TAppType): number | undefined {
+    protected _getSoundType(platform: TAppType): string | undefined {
         switch (platform) {
             case T_ALISA:
-                return SoundTokens.T_ALISA;
+                return T_ALISA;
             case T_MARUSIA:
-                return SoundTokens.T_MARUSIA;
+                return T_MARUSIA;
             case T_VK:
-                return SoundTokens.T_VK;
+                return T_VK;
             case T_TELEGRAM:
-                // Telegram отправляет аудио напрямую, предзагрузка не требуется.
-                break;
+                return T_TELEGRAM;
         }
         return undefined;
     }
@@ -176,7 +235,7 @@ export class Preload {
             images.forEach((image) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getImageType(platform);
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         const removePromise = (async (): Promise<boolean> => {
                             try {
                                 const tokenRecord = await imageTokensModel.where({
@@ -248,7 +307,7 @@ export class Preload {
             sounds.forEach((sound) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getSoundType(platform);
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         const removePromise = (async (): Promise<boolean> => {
                             try {
                                 // Аналогично removeImages, но для SoundTokens
@@ -310,24 +369,43 @@ export class Preload {
      *
      * @param {string[]} images - Массив путей к файлам изображений для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
+     * @param opts - Дополнительные опции для загрузки. Так как в телеграм не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
      * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном изображения
      *                                        или `null` в случае ошибки или если платформа не поддерживается.
      */
-    public loadImages(images: string[], platforms?: TAppType[]): Promise<string | null>[] {
+    public loadImages(
+        images: string[],
+        platforms?: TAppType[],
+        opts?: IOptions,
+    ): Promise<string | null>[] {
         const allowedPlatforms = this._getPlatforms(platforms);
         const promises: Promise<string | null>[] = [];
         if (allowedPlatforms.length && this._appContext) {
             // Создаем один экземпляр ImageTokens и переиспользуем его
-            const imageToken = new ImageTokens(this._appContext as AppContext);
+            const imageToken = new ImageTokens(this._appContext);
             images.forEach((image) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getImageType(platform);
                     // Проверяем, что тип определен перед установкой
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         imageToken.path = image;
-                        imageToken.type = type;
-                        // Добавляем промис в массив
-                        promises.push(imageToken.getToken());
+                        imageToken.platform = type;
+                        if (type === T_TELEGRAM) {
+                            if (opts?.telegramUseId) {
+                                this._controller.userId = opts.telegramUseId;
+                                promises.push(
+                                    TelegramCard.getTokenInDB(this._controller, image, ''),
+                                );
+                            }
+                        } else {
+                            // Добавляем промис в массив
+                            promises.push(
+                                IMAGE_MAP[type as keyof IImageMap].getValueInDB(
+                                    this._controller,
+                                    image,
+                                ),
+                            );
+                        }
                     }
                 });
             });
@@ -343,24 +421,41 @@ export class Preload {
      *
      * @param {string[]} sounds - Массив путей к файлам звуков для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
+     * @param opts - Дополнительные опции для загрузки. Так как в телеграм не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
      * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном звука
      *                                        или `null` в случае ошибки или если платформа не поддерживается.
      */
-    public loadSounds(sounds: string[], platforms?: TAppType[]): Promise<string | null>[] {
+    public loadSounds(
+        sounds: string[],
+        platforms?: TAppType[],
+        opts?: IOptions,
+    ): Promise<string | null>[] {
         const allowedPlatforms = this._getPlatforms(platforms);
         const promises: Promise<string | null>[] = [];
         if (allowedPlatforms.length && this._appContext) {
             // Создаем один экземпляр SoundTokens и переиспользуем его
-            const soundToken = new SoundTokens(this._appContext as AppContext);
+            const soundToken = new SoundTokens(this._appContext);
             sounds.forEach((sound) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getSoundType(platform);
                     // Проверяем, что тип определен перед установкой
-                    if (typeof type !== 'undefined') {
+                    if (type !== undefined) {
                         soundToken.path = sound;
-                        soundToken.type = type;
-                        // Добавляем промис в массив
-                        promises.push(soundToken.getToken());
+                        soundToken.platform = type;
+                        if (type === T_TELEGRAM) {
+                            if (opts?.telegramUseId) {
+                                this._controller.userId = opts.telegramUseId;
+                                promises.push(TelegramSound.getSoundInDB(this._controller, sound));
+                            }
+                        } else {
+                            // Добавляем промис в массив
+                            promises.push(
+                                SOUND_MAP[type as keyof ISoundMap].getSoundInDB(
+                                    this._controller,
+                                    sound,
+                                ),
+                            );
+                        }
                     }
                 });
             });

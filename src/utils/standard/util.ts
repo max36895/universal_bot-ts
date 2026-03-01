@@ -9,15 +9,14 @@
  */
 import * as fs from 'fs';
 import * as readline from 'readline';
-import { IDir, TLoggerCb } from '../../core/AppContext';
-
-let _lcsBuffer: Int32Array = new Int32Array(1024);
+import { TLoggerCb } from '../../core/interfaces/ILogger';
+import { IDir } from '../../core/interfaces/IAppContext';
 
 /**
  * Интерфейс для GET-параметров
  *
  * @example
- * ```typescript
+ * ```ts
  * const params: IGetParams = {
  *   name: 'John',
  *   age: '25'
@@ -36,7 +35,7 @@ export interface IGetParams {
  * @returns {number} Случайное целое число из диапазона [min, max]
  *
  * @example
- * ```typescript
+ * ```ts
  * rand(1, 10); // -> случайное число от 1 до 10
  * rand(0, 1); // -> 0 или 1
  * ```
@@ -54,7 +53,7 @@ export function rand(min: number, max: number): number {
  * @returns {number} Процент схожести от 0 до 100
  *
  * @example
- * ```typescript
+ * ```ts
  * similarText('привет', 'привт'); // -> ~90
  * similarText('hello', 'world'); // -> ~20
  * similarText('same', 'same'); // -> 100
@@ -70,10 +69,7 @@ export function similarText(first: string, second: string): number {
 
     // Helper function to calculate LCS length using dynamic programming
     const lcsLength = (shorter: string, longer: string): number => {
-        if (_lcsBuffer.length < longer.length + 1) {
-            _lcsBuffer = new Int32Array(longer.length + 1);
-        }
-        const dp = _lcsBuffer;
+        const dp = new Int32Array(longer.length + 1);
         dp.fill(0, 0, longer.length + 1);
 
         for (let i = 0; i < shorter.length; i++) {
@@ -101,7 +97,7 @@ export function similarText(first: string, second: string): number {
  * @template T - Тип данных, возвращаемых при успешной операции
  *
  * @example
- * ```typescript
+ * ```ts
  * const result: FileOperationResult<string> = {
  *   success: true,
  *   data: 'file content'
@@ -155,7 +151,7 @@ function looksLikeFilePath(str: string): boolean {
  * @returns {boolean} true, если файл существует и это файл, иначе false
  *
  * @example
- * ```typescript
+ * ```ts
  * isFile('path/to/file.txt'); // -> true
  * isFile('path/to/directory'); // -> false
  * isFile('nonexistent.txt'); // -> false
@@ -177,7 +173,7 @@ export function isFile(file: string): boolean {
  * @returns {FileOperationResult<fs.Stats>} Результат операции с информацией о файле
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = getFileInfo('file.txt');
  * if (result.success) {
  *   console.log(result.data.size); // размер файла
@@ -206,7 +202,7 @@ export function getFileInfo(fileName: string): FileOperationResult<fs.Stats> {
  * @returns {FileOperationResult<string>} Результат операции с содержимым файла
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = fread('file.txt');
  * if (result.success) {
  *   console.log(result.data); // содержимое файла
@@ -231,14 +227,14 @@ export function fread(fileName: string): FileOperationResult<string> {
  * Записывает данные в файл
  *
  * @param {string} fileName - Путь к файлу
- * @param {string | Buffer} fileContent - Содержимое для записи
+ * @param {string | Uint8Array} fileContent - Содержимое для записи
  * @param {'w' | 'a'} [mode='w'] - Режим записи:
  *   - 'w' - перезапись файла
  *   - 'a' - добавление в конец файла
  * @returns {FileOperationResult<void>} Результат операции записи
  *
  * @example
- * ```typescript
+ * ```ts
  * // Перезапись файла
  * fwrite('file.txt', 'new content');
  *
@@ -275,7 +271,7 @@ export function fwrite(
  * @returns {FileOperationResult<void>} Результат операции удаления
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = unlink('file.txt');
  * if (result.success) {
  *   console.log('File deleted successfully');
@@ -303,7 +299,7 @@ export function unlink(fileName: string): FileOperationResult<void> {
  * @returns {boolean} true, если директория существует, иначе false
  *
  * @example
- * ```typescript
+ * ```ts
  * isDir('path/to/directory'); // -> true
  * isDir('nonexistent/dir'); // -> false
  * ```
@@ -324,7 +320,7 @@ export function isDir(path: string): boolean {
  * @returns {FileOperationResult<void>} Результат операции создания директории
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = mkdir('new/directory');
  * if (result.success) {
  *   console.log('Directory created successfully');
@@ -421,7 +417,7 @@ export function saveData(
  * @returns {string} URL-строка запроса
  *
  * @example
- * ```typescript
+ * ```ts
  * const params = {
  *   name: 'John Doe',
  *   age: '25'
@@ -450,7 +446,7 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
  * @returns {Promise<string>} Промис с введенной строкой
  *
  * @example
- * ```typescript
+ * ```ts
  * // В консоли:
  * // > Enter your name: John
  * const name = await stdin(); // -> 'John'

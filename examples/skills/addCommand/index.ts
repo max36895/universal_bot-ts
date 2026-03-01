@@ -1,8 +1,11 @@
 import { BotTest } from '../../../src/test';
+import { fullPlatforms, FileAdapter } from '../../../src/plugins';
 import skillDefaultConfig from '../../config/skillDefaultConfig';
 import { StandardController } from './controller/StandardController';
 
 const bot = new BotTest();
+bot.use(fullPlatforms); // Подключаем обработку для всех доступных платформ
+bot.use(new FileAdapter()); // Подключаем файловую базу данных
 bot.setAppConfig(skillDefaultConfig());
 bot.initBotController(StandardController);
 
@@ -32,13 +35,25 @@ bot.addCommand('list', ['список', 'галер'], (_, botController) => {
 bot.addCommand('save', ['сохрани', 'save'], () => {
     return 'Сохранил!';
 });
+
+bot.addCommand('reg', [/^\d+$/], (userCommand, bController) => {
+    bController.text = `Вы ввели число "${userCommand}"`;
+});
+
+// Добавляем команду для выхода
+bot.addCommand('exit', ['пока'], (_, bController) => {
+    bController.isEnd = true;
+    bController.text = 'Пока, пока!';
+});
+
 // Добавляем команду для повторения
 bot.addCommand(
-    'replay',
-    ['*'],
+    '*',
+    [],
     (userCommand) => {
         return userCommand;
     },
     true,
 );
+
 bot.test();
