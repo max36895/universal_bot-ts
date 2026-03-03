@@ -19,7 +19,6 @@ import {
     EMetric,
 } from '../core/AppContext';
 import { getRegExp, isRegex } from '../utils/standard/RegExp';
-import * as console from 'node:console';
 
 /**
  * Тип статуса операции

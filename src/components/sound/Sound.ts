@@ -107,7 +107,15 @@ export class Sound {
      */
     #appContext: AppContext;
 
+    /**
+     * Идентификатор пользователя
+     * @deprecated
+     */
     public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     * @deprecated
+     */
     public appId: string | null = null;
 
     /**

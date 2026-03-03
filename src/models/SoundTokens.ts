@@ -99,7 +99,15 @@ export class SoundTokens extends Model<ISoundModelState> {
      */
     public isAttachContent: boolean;
 
+    /**
+     * Идентификатор пользователя
+     * @deprecated
+     */
     public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     * @deprecated
+     */
     public appId: string | null = null;
 
     /**

@@ -36,7 +36,6 @@ import {
 } from './AppContext';
 import { IDbControllerModel } from '../models';
 import { Text } from '../utils';
-import * as console from 'node:console';
 
 /**
  * Тип для режима работы приложения

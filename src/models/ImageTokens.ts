@@ -95,7 +95,15 @@ export class ImageTokens extends Model<IImageModelState> {
      */
     public caption: string | null;
 
+    /**
+     * Идентификатор пользователя
+     * @deprecated
+     */
     public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     * @deprecated
+     */
     public appId: string | null = null;
 
     /**
