@@ -107,6 +107,9 @@ export class Sound {
      */
     #appContext: AppContext;
 
+    public userId: string | number | null = null;
+    public appId: string | null = null;
+
     /**
      * Конструктор класса Sound.
      * Инициализирует пустой массив звуков и включает использование стандартных звуков.
@@ -202,6 +205,8 @@ export class Sound {
                 break;
         }
         if (sound) {
+            sound.userId = this.userId;
+            sound.appId = this.appId;
             const res = await sound.getSounds(this.sounds, text);
             if (res) {
                 return res.includes('#') ? res.replace(/((?:^|\s)#\w+#(?:\s|$))/g, '') : res;

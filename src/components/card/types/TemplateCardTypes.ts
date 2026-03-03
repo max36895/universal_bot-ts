@@ -83,6 +83,9 @@ export abstract class TemplateCardTypes {
      */
     protected _appContext: AppContext;
 
+    public userId: string | number | null = null;
+    public appId: string | null = null;
+
     /**
      * Создает новый экземпляр карточки.
      * Инициализирует все поля значениями по умолчанию.

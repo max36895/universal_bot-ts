@@ -42,7 +42,7 @@ export class YandexSoundRequest extends YandexRequest {
         appContext: AppContext,
     ) {
         super(oauth, appContext);
-        this.skillId = skillId || appContext.platformParams.app_id || null;
+        this.skillId = skillId || null;
         this._request.url = STANDARD_URL;
     }
 

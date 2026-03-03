@@ -95,6 +95,9 @@ export class ImageTokens extends Model<IImageModelState> {
      */
     public caption: string | null;
 
+    public userId: string | number | null = null;
+    public appId: string | null = null;
+
     /**
      * Конструктор класса ImageTokens.
      * Инициализирует все поля значениями по умолчанию.
@@ -207,7 +210,7 @@ export class ImageTokens extends Model<IImageModelState> {
     private async _handleExistingToken(type: number): Promise<string> {
         if (type === ImageTokens.T_TELEGRAM && this.imageToken) {
             await new TelegramRequest(this._appContext).sendPhoto(
-                this._appContext.platformParams.user_id as string,
+                this.userId as string,
                 this.imageToken,
                 this.caption || undefined,
             );
@@ -218,7 +221,7 @@ export class ImageTokens extends Model<IImageModelState> {
     private async _uploadToAlisa(path: string): Promise<string | null> {
         const yImage = new YandexImageRequest(
             this._appContext.platformParams.yandex_token || null,
-            this._appContext.platformParams.app_id || null,
+            this.appId || null,
             this._appContext,
         );
 
@@ -261,9 +264,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     private async _uploadToVk(path: string): Promise<string | null> {
         const api = new VkRequest(this._appContext);
-        const server = await api.photosGetMessagesUploadServer(
-            this._appContext.platformParams.user_id as string,
-        );
+        const server = await api.photosGetMessagesUploadServer(this.userId as string);
         if (!server?.upload_url) {
             return null;
         }
@@ -297,11 +298,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     private async _uploadToTelegram(path: string): Promise<string | null> {
         const api = new TelegramRequest(this._appContext);
-        const photo = await api.sendPhoto(
-            this._appContext.platformParams.user_id as string,
-            path,
-            this.caption || undefined,
-        );
+        const photo = await api.sendPhoto(this.userId as string, path, this.caption || undefined);
 
         if (photo?.ok && photo.result?.photo?.file_id) {
             this.imageToken = photo.result.photo.file_id;

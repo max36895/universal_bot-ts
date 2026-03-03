@@ -83,6 +83,8 @@ export class VkSound extends TemplateSoundTypes {
                         let sText: string | null = Text.getText(sound.sounds);
                         if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens(this._appContext);
+                            sModel.userId = this.userId;
+                            sModel.appId = this.appId;
                             sModel.type = SoundTokens.T_VK;
                             sModel.path = sText;
                             sText = await sModel.getToken();
@@ -101,6 +103,8 @@ export class VkSound extends TemplateSoundTypes {
             let sText = null;
             if (content) {
                 const sModel = new SoundTokens(this._appContext);
+                sModel.userId = this.userId;
+                sModel.appId = this.appId;
                 sModel.type = SoundTokens.T_VK;
                 sModel.isAttachContent = true;
                 sModel.path = content.fileName;

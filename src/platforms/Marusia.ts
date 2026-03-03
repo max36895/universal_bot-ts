@@ -169,7 +169,7 @@ export class Marusia extends TemplateTypeModel {
             this.controller.userMeta = content.meta || [];
             this.controller.messageId = this._session.message_id;
 
-            this.appContext.platformParams.app_id = this._session.skill_id;
+            this.appContext.platformParams.app_id = this.controller.appId = this._session.skill_id;
             this.controller.isScreen =
                 typeof this.controller.userMeta.interfaces.screen !== 'undefined';
             return true;

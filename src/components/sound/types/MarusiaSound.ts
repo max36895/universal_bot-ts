@@ -390,6 +390,8 @@ export class MarusiaSound extends TemplateSoundTypes {
                          */
                         if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens(this._appContext);
+                            sModel.userId = this.userId;
+                            sModel.appId = this.appId;
                             sModel.type = SoundTokens.T_MARUSIA;
                             sModel.path = sText;
                             sText = `<speaker audio_vk_id="${await sModel.getToken()}">`;

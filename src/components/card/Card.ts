@@ -238,6 +238,9 @@ export class Card {
      */
     #appContext: AppContext;
 
+    public userId: string | number | null = null;
+    public appId: string | null = null;
+
     /**
      * Создает новый экземпляр карточки.
      * Инициализирует все поля значениями по умолчанию.
@@ -511,6 +514,8 @@ export class Card {
                 break;
         }
         if (card) {
+            card.userId = this.userId;
+            card.appId = this.appId;
             card.isUsedGallery = this.isUsedGallery;
             card.images = this.images;
             card.button = this.button;

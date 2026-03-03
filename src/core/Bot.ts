@@ -36,6 +36,7 @@ import {
 } from './AppContext';
 import { IDbControllerModel } from '../models';
 import { Text } from '../utils';
+import * as console from 'node:console';
 
 /**
  * Тип для режима работы приложения
@@ -782,7 +783,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 userData.meta = botController.userMeta;
             }
         }
-
         const content = await this.#getAppContent(botController, botClass, appType);
         if (isLocalStorage) {
             await botClass.setLocalStorage(botController.userData);

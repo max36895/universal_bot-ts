@@ -1039,6 +1039,8 @@ export class AppContext {
                     this.logError(
                         (res.error as string) + '. Также не удалось получить данные из process.env',
                     );
+                } else {
+                    this.#envVars = correctEnvValue;
                 }
             }
         }

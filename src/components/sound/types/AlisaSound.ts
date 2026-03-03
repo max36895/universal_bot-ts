@@ -575,6 +575,8 @@ export class AlisaSound extends TemplateSoundTypes {
                          */
                         if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens(this._appContext);
+                            sModel.userId = this.userId;
+                            sModel.appId = this.appId;
                             sModel.type = SoundTokens.T_ALISA;
                             sModel.path = sText;
                             sText = `<speaker audio="${await sModel.getToken()}">`;

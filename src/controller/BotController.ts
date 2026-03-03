@@ -19,6 +19,7 @@ import {
     EMetric,
 } from '../core/AppContext';
 import { getRegExp, isRegex } from '../utils/standard/RegExp';
+import * as console from 'node:console';
 
 /**
  * Тип статуса операции
@@ -345,6 +346,10 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * ```
      */
     public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     */
+    public appId: string | null = null;
 
     /**
      * Пользовательский токен авторизации
@@ -881,6 +886,12 @@ export abstract class BotController<TUserData extends IUserData = IUserData> {
      * ```
      */
     public run(): void {
+        // todo для исправления проблем с race condition. Решено нормально в 3 версии
+        this.card.userId = this.userId;
+        this.card.appId = this.appId;
+        this.sound.userId = this.userId;
+        this.sound.appId = this.appId;
+
         const commandResult = this._getCommand();
         if (commandResult) {
             this._actionMetric(commandResult, true);

@@ -68,10 +68,7 @@ export class ViberSound extends TemplateSoundTypes {
                 if (sound) {
                     if (typeof sound.sounds !== 'undefined' && typeof sound.key !== 'undefined') {
                         const sText = Text.getText(sound.sounds);
-                        new ViberRequest(this._appContext).sendFile(
-                            <string>this._appContext.platformParams.user_id,
-                            sText,
-                        );
+                        new ViberRequest(this._appContext).sendFile(<string>this.userId, sText);
                     }
                 }
             });

@@ -50,6 +50,9 @@ export abstract class TemplateSoundTypes {
      */
     protected _appContext: AppContext;
 
+    public userId: string | number | null = null;
+    public appId: string | null = null;
+
     constructor(appContext: AppContext) {
         this._appContext = appContext;
     }

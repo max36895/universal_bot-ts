@@ -81,12 +81,14 @@ export class TelegramSound extends TemplateSoundTypes {
                         let sText: string | null = Text.getText(sound.sounds);
                         if (isFile(sText) || Text.isUrl(sText)) {
                             const sModel = new SoundTokens(this._appContext);
+                            sModel.userId = this.userId;
+                            sModel.appId = this.appId;
                             sModel.type = SoundTokens.T_TELEGRAM;
                             sModel.path = sText;
                             sText = await sModel.getToken();
                         } else {
                             await new TelegramRequest(this._appContext).sendAudio(
-                                this._appContext.platformParams.user_id as TTelegramChatId,
+                                this.userId as TTelegramChatId,
                                 sText,
                             );
                         }
@@ -103,7 +105,7 @@ export class TelegramSound extends TemplateSoundTypes {
             const content = await speechKit.getTts(text);
             if (content) {
                 await new TelegramRequest(this._appContext).sendAudio(
-                    this._appContext.platformParams.user_id as TTelegramChatId,
+                    this.userId as TTelegramChatId,
                     content.fileName,
                 );
                 unlink(content.fileName);

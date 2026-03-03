@@ -197,7 +197,7 @@ export class Alisa extends TemplateTypeModel {
                 this.#setState(content.state);
             }
 
-            this.appContext.platformParams.app_id = this._session.skill_id;
+            this.appContext.platformParams.app_id = this.controller.appId = this._session.skill_id;
             this.controller.isScreen =
                 typeof this.controller.userMeta.interfaces.screen !== 'undefined';
             /*

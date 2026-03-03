@@ -57,6 +57,8 @@ export class TelegramCard extends TemplateCardTypes {
                 if (!image.imageToken) {
                     if (image.imageDir) {
                         const mImage = new ImageTokens(this._appContext);
+                        mImage.userId = this.userId;
+                        mImage.appId = this.appId;
                         mImage.type = ImageTokens.T_TELEGRAM;
                         mImage.caption = image.desc;
                         mImage.path = image.imageDir;
@@ -64,7 +66,7 @@ export class TelegramCard extends TemplateCardTypes {
                     }
                 } else {
                     await new TelegramRequest(this._appContext).sendPhoto(
-                        this._appContext.platformParams.user_id as TTelegramChatId,
+                        this.userId as TTelegramChatId,
                         image.imageToken,
                         image.desc,
                     );
