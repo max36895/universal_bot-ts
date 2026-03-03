@@ -62,6 +62,8 @@ export class MaxAppCard extends TemplateCardTypes {
             if (!this.images[0].imageToken) {
                 if (this.images[0].imageDir) {
                     const mImage = new ImageTokens(this._appContext);
+                    mImage.userId = this.userId;
+                    mImage.appId = this.appId;
                     mImage.type = ImageTokens.T_MAXAPP;
                     mImage.path = this.images[0].imageDir;
                     this.images[0].imageToken = await mImage.getToken();
@@ -80,6 +82,8 @@ export class MaxAppCard extends TemplateCardTypes {
                 if (!image.imageToken) {
                     if (image.imageDir) {
                         const mImage = new ImageTokens(this._appContext);
+                        mImage.userId = this.userId;
+                        mImage.appId = this.appId;
                         mImage.type = ImageTokens.T_MAXAPP;
                         mImage.path = image.imageDir;
                         image.imageToken = await mImage.getToken();

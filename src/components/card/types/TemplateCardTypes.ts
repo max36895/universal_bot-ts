@@ -84,6 +84,17 @@ export abstract class TemplateCardTypes {
     protected _appContext: AppContext;
 
     /**
+     * Идентификатор пользователя
+     * @deprecated
+     */
+    public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     * @deprecated
+     */
+    public appId: string | null = null;
+
+    /**
      * Создает новый экземпляр карточки.
      * Инициализирует все поля значениями по умолчанию.
      * @example

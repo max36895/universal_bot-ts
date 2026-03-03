@@ -170,7 +170,7 @@ export class DB {
                     serverSelectionTimeoutMS: 2000, // Таймаут на выбор сервера
                     connectTimeoutMS: 2000,
                     socketTimeoutMS: 2000,
-                    maxPoolSize: 1,
+                    maxPoolSize: 50,
                     ...this.appContext?.appConfig.db?.options,
                     serverApi: {
                         version: ServerApiVersion.v1,

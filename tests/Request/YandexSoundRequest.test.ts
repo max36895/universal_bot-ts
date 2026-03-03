@@ -21,7 +21,7 @@ describe('YandexSoundRequest', () => {
     beforeEach(() => {
         appContext.platformParams.app_id = 'skill-456';
         appContext.platformParams.yandex_token = 'oauth-token';
-        soundApi = new YandexSoundRequest(null, null, appContext);
+        soundApi = new YandexSoundRequest(null, 'skill-456', appContext);
         (global.fetch as jest.Mock).mockClear();
     });
 

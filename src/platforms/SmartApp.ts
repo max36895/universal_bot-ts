@@ -189,7 +189,8 @@ export class SmartApp extends TemplateTypeModel {
 
             this.controller.userMeta = content.payload.meta || {};
 
-            this.appContext.platformParams.app_id = content.payload.app_info.applicationId;
+            this.appContext.platformParams.app_id = this.controller.appId =
+                content.payload.app_info.applicationId;
             if (content.payload.device.capabilities && content.payload.device.capabilities.screen) {
                 this.controller.isScreen = content.payload.device.capabilities.screen.available;
             } else {

@@ -21,7 +21,7 @@ describe('YandexImageRequest', () => {
     beforeEach(() => {
         appContext.platformParams.app_id = 'skill-123';
         appContext.platformParams.yandex_token = 'oauth-token';
-        imageApi = new YandexImageRequest(null, null, appContext);
+        imageApi = new YandexImageRequest(null, 'skill-123', appContext);
         (global.fetch as jest.Mock).mockClear();
     });
 

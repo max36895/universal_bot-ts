@@ -239,6 +239,17 @@ export class Card {
     #appContext: AppContext;
 
     /**
+     * Идентификатор пользователя
+     * @deprecated
+     */
+    public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     * @deprecated
+     */
+    public appId: string | null = null;
+
+    /**
      * Создает новый экземпляр карточки.
      * Инициализирует все поля значениями по умолчанию.
      * @example
@@ -511,6 +522,8 @@ export class Card {
                 break;
         }
         if (card) {
+            card.userId = this.userId;
+            card.appId = this.appId;
             card.isUsedGallery = this.isUsedGallery;
             card.images = this.images;
             card.button = this.button;

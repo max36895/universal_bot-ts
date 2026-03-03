@@ -100,6 +100,17 @@ export class SoundTokens extends Model<ISoundModelState> {
     public isAttachContent: boolean;
 
     /**
+     * Идентификатор пользователя
+     * @deprecated
+     */
+    public userId: string | number | null = null;
+    /**
+     * Идентификатор приложения
+     * @deprecated
+     */
+    public appId: string | null = null;
+
+    /**
      * Конструктор класса SoundTokens.
      * Инициализирует все поля значениями по умолчанию.
      */
@@ -212,7 +223,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     private async _handleExistingToken(type: number): Promise<string> {
         if (type === SoundTokens.T_TELEGRAM && this.soundToken) {
             await new TelegramRequest(this._appContext).sendAudio(
-                this._appContext?.platformParams.user_id as string,
+                this.userId as string,
                 this.soundToken as string,
             );
             return this.soundToken;
@@ -223,7 +234,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     private async _uploadToAlisa(path: string | null): Promise<string | null> {
         const yImage = new YandexSoundRequest(
             this._appContext?.platformParams.yandex_token || null,
-            this._appContext?.platformParams.app_id || null,
+            this.appId || null,
             this._appContext,
         );
         let res: IYandexRequestDownloadSound | null = null;
@@ -273,7 +284,7 @@ export class SoundTokens extends Model<ISoundModelState> {
         if (path) {
             const vkApi = new VkRequest(this._appContext);
             const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
-                this._appContext?.platformParams.user_id as string,
+                this.userId as string,
                 'audio_message',
             );
             if (uploadServerResponse) {
@@ -295,7 +306,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     private async _uploadToTelegram(path: string | null): Promise<string | null> {
         if (path) {
             const sound = await new TelegramRequest(this._appContext).sendAudio(
-                this._appContext?.platformParams.user_id as string,
+                this.userId as string,
                 path,
             );
             if (sound && sound.ok && sound.result.audio) {
