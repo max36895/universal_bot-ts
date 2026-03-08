@@ -30,11 +30,11 @@ import {
 import { BaseBotController, BotController } from './controller';
 
 interface IImageMap {
-    [T_ALISA]: any;
-    [T_MARUSIA]: any;
-    [T_VK]: any;
-    [T_MAX_APP]: any;
-    [T_TELEGRAM]: any;
+    [T_ALISA]: typeof AlisaCard;
+    [T_MARUSIA]: typeof MarusiaCard;
+    [T_VK]: typeof VkCard;
+    [T_MAX_APP]: typeof MaxCard;
+    [T_TELEGRAM]: typeof TelegramCard;
 }
 
 const IMAGE_MAP: IImageMap = {
@@ -46,10 +46,10 @@ const IMAGE_MAP: IImageMap = {
 };
 
 interface ISoundMap {
-    [T_ALISA]: any;
-    [T_MARUSIA]: any;
-    [T_VK]: any;
-    [T_TELEGRAM]: any;
+    [T_ALISA]: typeof AlisaSound;
+    [T_MARUSIA]: typeof MarusiaSound;
+    [T_VK]: typeof VkSound;
+    [T_TELEGRAM]: typeof TelegramSound;
 }
 
 const SOUND_MAP: ISoundMap = {
@@ -64,7 +64,7 @@ const SOUND_MAP: ISoundMap = {
  */
 export interface IOptions {
     /**
-     * Пользователь телеграм, которому будет отправлено изображение для получения токена
+     * Пользователь Telegram, которому будет отправлено изображение для получения токена
      */
     telegramUseId?: string | number;
 }
@@ -73,7 +73,7 @@ export interface IOptions {
  * Класс, предназначенный для предварительной загрузки медиаресурсов (изображений, звуков) для различных платформ.
  *
  * Этот класс позволяет загрузить файлы на серверы платформ и закэшировать их токены *до* начала обработки
- * пользовательских запросов, что помогает время обработки пользовательского запроса при
+ * пользовательских запросов, что помогает сократить время обработки пользовательского запроса при
  * первичной отправке медиафайлов в ответе.
  *
  * @example
@@ -369,7 +369,7 @@ export class Preload {
      *
      * @param {string[]} images - Массив путей к файлам изображений для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @param opts - Дополнительные опции для загрузки. Так как в телеграм не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
+     * @param opts - Дополнительные опции для загрузки. Так как в Telegram не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
      * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном изображения
      *                                        или `null` в случае ошибки или если платформа не поддерживается.
      */
@@ -394,15 +394,16 @@ export class Preload {
                             if (opts?.telegramUseId) {
                                 this._controller.userId = opts.telegramUseId;
                                 promises.push(
-                                    TelegramCard.getTokenInDB(this._controller, image, ''),
+                                    TelegramCard.getImageInDB(this._controller, image, ''),
                                 );
                             }
                         } else {
                             // Добавляем промис в массив
                             promises.push(
-                                IMAGE_MAP[type as keyof IImageMap].getValueInDB(
+                                IMAGE_MAP[type as keyof IImageMap].getImageInDB(
                                     this._controller,
                                     image,
+                                    '',
                                 ),
                             );
                         }

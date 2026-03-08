@@ -13,7 +13,7 @@ import { IQueryData, IQuery, getQueryData, TKey } from './QueryData';
 import { AppContext, IDbResult } from '../../core';
 
 export interface IModelState {
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 /**
@@ -276,12 +276,12 @@ export abstract class Model<TState extends IModelState> {
                         index
                     ] as TState[keyof TState];
                 } else if (data[i] === undefined) {
-                    this.state[index] = '' as TState[keyof TState];
+                    this.state[index] = undefined;
                 } else {
-                    this.state[index] = data[i] as TState[keyof TState];
+                    this.state[index] = data[i] as TState[typeof index];
                 }
             } else {
-                this.state[index] = '' as TState[keyof TState];
+                this.state[index] = undefined;
             }
             i++;
         }

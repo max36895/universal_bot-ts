@@ -1,13 +1,13 @@
 import { IModelRules } from './interface';
 
-import { Model } from './db/Model';
+import { IModelState, Model } from './db/Model';
 import { AppContext } from '../core';
 
 /**
  * Интерфейс для внутреннего состояния модели звуковых файлов.
  * Определяет структуру данных для хранения информации о звуковых файлах в базе данных.
  */
-export interface ISoundModelState {
+export interface ISoundModelState extends IModelState {
     /**
      * Идентификатор звукового файла.
      * Уникальный идентификатор, используемый для ссылки на звуковой файл в API различных платформ.

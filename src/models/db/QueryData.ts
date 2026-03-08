@@ -40,7 +40,7 @@ export interface IQueryData {
      * }
      * ```
      */
-    [key: string]: any | string | number;
+    [key: string]: unknown | string | number;
 }
 
 const DATA_REG = /`([^`]+)`\s*=\s*(?:"([^"]*)"|(\S+))/gim;

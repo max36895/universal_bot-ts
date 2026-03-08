@@ -54,7 +54,7 @@ const FORCE_DELAY_SAVE_TIME = 60 * 1000 * 3;
  * Адаптер для файловой базы данных.
  * Стоит использовать только для быстрого старта, либо для приложений, у которых объем базы не будет превышать 250мб.
  */
-export class Adapter extends Base<IFileDbInfo> {
+export class FileAdapter extends Base<IFileDbInfo> {
     /**
      * Формат базы данных
      */
@@ -68,8 +68,9 @@ export class Adapter extends Base<IFileDbInfo> {
     constructor() {
         super();
     }
+
     connect(): Promise<boolean> | boolean {
-        // TODO костыль, но нужно как-то предварительно загрузить содержимое файлов, иначе потом будет читаться много раз сразу.
+        // TODO костыль, но нужно как-то предварительно загрузить содержимое файлов, иначе под нагрузкой может 1 файл прочитаться несколько раз сразу, либо прочитаться во время выполнения. Лучше пусть будет так, чем приложение упадет при запросе.
         this.getFileData('UsersData');
         this.getFileData('SoundTokens');
         this.getFileData('ImageTokens');
@@ -177,6 +178,7 @@ export class Adapter extends Base<IFileDbInfo> {
             }
         }
     }
+
     /**
      * Выполняет UPDATE-запрос.
      * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
@@ -251,7 +253,7 @@ export class Adapter extends Base<IFileDbInfo> {
         content: TFileData = {},
     ): IModelRes {
         const whereKey = where[selectData.primaryKeyName as string];
-        if (content[whereKey]) {
+        if ((typeof whereKey === 'string' || typeof whereKey === 'number') && content[whereKey]) {
             if (Object.keys(where).length === 1) {
                 return {
                     status: true,
@@ -278,6 +280,7 @@ export class Adapter extends Base<IFileDbInfo> {
             };
         }
     }
+
     /**
      * Выполняет SELECT-запрос.
      *

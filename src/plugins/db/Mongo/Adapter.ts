@@ -36,7 +36,7 @@ interface IMongoDbInfo extends IDatabaseInfo {
 /**
  * Адаптер для работы с базой данной mongodb
  */
-export class Adapter extends Base<IMongoDbInfo> {
+export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Формат базы данных
      */
@@ -302,7 +302,7 @@ export class Adapter extends Base<IMongoDbInfo> {
                         }
                         element[data] = this.escapeString(element[data] as string);
                     } else {
-                        element[data] = +element[data];
+                        element[data] = +(element[data] as number);
                     }
                 });
             });

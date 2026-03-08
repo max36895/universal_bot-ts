@@ -99,10 +99,8 @@ export enum EMetric {
     MIDDLEWARE = 'umbot_middleware_duration_ms',
     START_WEBHOOK = 'umbot_request_start',
     END_WEBHOOK = 'umbot_request_duration_ms',
-    DB_SAVE = 'umbot_db_save_ms',
     DB_UPDATE = 'umbot_db_update_ms',
     DB_INSERT = 'umbot_db_insert_ms',
-    DB_QUERY = 'umbot_db_query_ms',
     DB_REMOVE = 'umbot_db_remove_ms',
     DB_SELECT = 'umbot_db_select_ms',
 }
@@ -200,7 +198,7 @@ export interface IAppIntent {
      * // Регулярное выражение для чисел
      * slots: ['\\b\\d{3}\\b']
      *
-     * // Строки + регулярки в одном слоте
+     * // Строки + RegExp в одном слоте
      * slots: ['привет', /\b\+7\s?\d{3}\b/]
      * ```
      */
@@ -392,7 +390,7 @@ export interface IAppParam {
  * Общий интерфейс для плагина-объекта с методом `getData`.
  * `TArgs` — кортеж типов аргументов, `TResult` — тип возвращаемого значения.
  */
-export interface IAppPlugin<TArgs extends unknown[] = any, TResult = any> {
+export interface IAppPlugin<TArgs extends unknown[] = unknown[], TResult = unknown> {
     /**
      * Основной метод плагина. Вызывается с аргументами, зависящими от типа плагина.
      */
@@ -402,16 +400,22 @@ export interface IAppPlugin<TArgs extends unknown[] = any, TResult = any> {
 /**
  * Альтернативный способ задать плагин — через функцию.
  */
-export type IAppPluginFn<TArgs extends unknown[] = any, TResult = any> = (
+export type IAppPluginFn<TArgs extends unknown[] = unknown[], TResult = unknown> = (
     ...args: TArgs
 ) => TResult;
 
 /**
  * Общий тип, который объединяет IAppPlugin и IAppPluginFn
  */
-export type TAppPluginData<TArgs extends unknown[] = any, TResult = any> =
+export type TAppPluginData<TArgs extends unknown[] = unknown[], TResult = unknown> =
     | IAppPlugin<TArgs, TResult>
     | IAppPluginFn<TArgs, TResult>;
+
+type AnyPluginData =
+    | TAppPluginData<[key: string, ...params: unknown[]], string> // i18n
+    | TAppPluginData<[text: string, platformNlu: INlu, platform: string, request: unknown], INlu> // nlu
+    | TAppPluginData<[], RegExpConstructor> // regExp
+    | TAppPluginData<unknown[], unknown>;
 
 /**
  * Реестр плагинов приложения.
@@ -509,5 +513,5 @@ export interface TAppPlugin {
      * Произвольные пользовательские плагины.
      * Каждый — либо объект с `getData`, либо функция.
      */
-    [name: string]: TAppPluginData | undefined;
+    [name: string]: AnyPluginData | undefined;
 }

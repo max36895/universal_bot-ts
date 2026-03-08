@@ -495,7 +495,7 @@ export interface ISberSmartAppUuId {
 }
 
 /**
- * Запрос вебхука
+ * Запрос webhook`а
  * Полный формат входящего запроса
  */
 export interface ISberSmartAppWebhookRequest {
@@ -1086,7 +1086,7 @@ export interface ISberSmartAppResponsePayload {
 }
 
 /**
- * Ответ вебхука
+ * Ответ webhook`а
  * Полный формат ответа смартапа
  */
 export interface ISberSmartAppWebhookResponse {

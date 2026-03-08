@@ -98,26 +98,23 @@ function init<TButtonPayload = TBtnPayload>(
  * @example
  * ```ts
  * // Простая ссылка
- * const button1 = new Button();
- * button1.initLink('Перейти на сайт', 'https://example.com');
+ * const button1 = getButton('Перейти на сайт', 'https://example.com');
  *
  * // Ссылка с UTM-метками
- * const button2 = new Button();
- * button2.initLink('Купить', 'https://shop.com/product', null, {
+ * const button2 = getButton('Купить', 'https://shop.com/product', null, {
  *   utmSource: 'bot',
  *   utmMedium: 'button',
  *   utmCampaign: 'spring_sale'
  * });
  *
  * // Ссылка с дополнительными данными
- * const button3 = new Button();
- * button3.initLink('Подробнее', 'https://example.com/article', {
+ * const button3 = getButton('Подробнее', 'https://example.com/article', {
  *   action: 'read',
  *   article_id: 123
  * });
  * ```
  *
- * @returns {IButtonType | null} Вернется объект если кнопка добавлена, и null в случае если переданы не корректные настройки для кнопки
+ * @returns {IButtonType | null} Вернется объект, если кнопка добавлена, и null в случае если переданы некорректные настройки для кнопки
  */
 export function getLinkButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,
@@ -142,7 +139,7 @@ export function getLinkButton<TButtonPayload = TBtnPayload>(
  * - utmMedium: тип рекламного канала
  * - utmCampaign: название рекламной кампании
  *
- * @returns {IButtonType | null} Вернется объект если кнопка добавлена, и null в случае если переданы не корректные настройки для кнопки.
+ * @returns {IButtonType | null} Вернется объект, если кнопка добавлена, и null в случае если переданы некорректные настройки для кнопки.
  */
 export function getButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,

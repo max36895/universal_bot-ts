@@ -38,7 +38,7 @@ export class GameController extends BotController {
 
     protected game(): void {
         if (this.userData.example) {
-            if (this.userData.result == this.userCommand) {
+            if (this.userData.result + '' === this.userCommand) {
                 this.text = 'Молодец! Это правильный ответ! Сколько будет: \n';
                 this.userData = this._getExample();
             } else {

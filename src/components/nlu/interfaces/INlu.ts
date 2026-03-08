@@ -31,9 +31,9 @@ export interface IBaseEntities {
  */
 export interface IBaseNlu {
     /** Массив слов из фразы пользователя */
-    tokens?: string[];
+    tokens?: string[] | unknown;
     /** Массив найденных именованных сущностей */
-    entities?: IBaseEntities[];
+    entities?: IBaseEntities[] | unknown;
     /**
      * Распознанные намерения пользователя.
      * Каждый интент содержит слоты с параметрами
@@ -237,7 +237,7 @@ export interface INluThisUser {
     /**
      * Имя пользователя
      */
-    username: string | null;
+    username?: string | null;
     /**
      * Фамилия пользователя
      */

@@ -40,8 +40,7 @@ function getExample(): IGameControllerExample {
 
 function game(botController: BotController<IGameControllerExample>): void {
     if (botController.userData.example) {
-        // @ts-ignore
-        if (botController.userData.result == botController.userCommand) {
+        if (botController.userData.result + '' == botController.userCommand) {
             botController.text = 'Молодец! Это правильный ответ! Сколько будет: \n';
             botController.userData = getExample();
         } else {

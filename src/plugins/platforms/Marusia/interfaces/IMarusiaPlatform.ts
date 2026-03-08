@@ -10,6 +10,8 @@
  * - Компоненты интерфейса (кнопки, карточки, изображения)
  */
 
+import { INlu } from '../../../../components';
+
 /**
  * Интерфейс для именованных сущностей в запросе.
  * Используется для извлечения структурированных данных из текста пользователя
@@ -47,13 +49,11 @@ export interface IMarusiaEntities {
  * Интерфейс для обработки естественного языка (NLU).
  * Содержит результаты анализа текста пользователя
  */
-export interface IMarusiaNlu {
+export interface IMarusiaNlu extends INlu {
     /** Массив слов из фразы пользователя */
     tokens?: string[];
     /** Массив найденных именованных сущностей */
     entities?: IMarusiaEntities[];
-    /** Распознанные намерения пользователя */
-    intents?: object;
 }
 
 /**
@@ -186,7 +186,7 @@ export interface IMarusiaRequest {
 }
 
 /**
- * Интерфейс для вебхук-запроса.
+ * Интерфейс для webhook-запроса.
  * Полный формат входящего запроса от Маруси
  */
 export interface IMarusiaWebhookRequest {
@@ -393,7 +393,7 @@ export interface IMarusiaSessionResponse {
 }
 
 /**
- * Интерфейс для вебхук-ответа
+ * Интерфейс для webhook-ответа
  * Полный формат исходящего ответа для Маруси
  */
 export interface IMarusiaWebhookResponse {

@@ -15,15 +15,17 @@ import {
     IMarusiaWebhookResponse,
     IMarusiaRequestMeta,
 } from './interfaces/IMarusiaPlatform';
+import { initUserCommand } from '../Base/utils';
 
 type TState = 'user_state_update' | 'session_state';
 
 /**
- * Адаптер для Маруси.
+ * Адаптер для создания навыков Маруси на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от Маруси.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от Маруси,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Telegram или VK).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -34,8 +36,24 @@ type TState = 'user_state_update' | 'session_state';
  * Подключается как любой другой адаптер: `bot.use(new MarusiaAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { MarusiaAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new MarusiaAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для Маруси';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
+export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest> {
     platformName = T_MARUSIA;
 
     init(appContext: AppContext): void {
@@ -67,28 +85,13 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
     }
 
     /**
-     * Инициализирует команду пользователя.
+     * Инициализирует команду пользователя от Маруси.
      * Обрабатывает различные типы запросов и сохраняет команду в контроллере
      * @param request Объект запроса от пользователя
      * @param controller Контроллер приложения
      */
     #initUserCommand(request: IMarusiaRequest, controller: BotController): void {
-        if (request.type === 'SimpleUtterance') {
-            controller.userCommand = request.command.trim() || '';
-            controller.originalUserCommand = request.original_utterance.trim() || '';
-        } else {
-            if (typeof request.payload === 'string') {
-                controller.userCommand = request.payload;
-                controller.originalUserCommand = request.payload;
-            } else {
-                controller.userCommand = request.command?.trim() || '';
-                controller.originalUserCommand = request.original_utterance?.trim() || '';
-            }
-            controller.payload = request.payload;
-        }
-        if (!controller.userCommand) {
-            controller.userCommand = controller.originalUserCommand;
-        }
+        initUserCommand(request, controller);
     }
 
     /**
@@ -120,7 +123,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
                         return true;
                     }
                     controller.platformOptions.error =
-                        'MarusiaAdapter:setQueryData(): Переданы не корректные данные!';
+                        'MarusiaAdapter:setQueryData(): Переданы некорректные данные!';
                     return false;
                 }
 
@@ -132,7 +135,7 @@ export class Adapter extends BasePlatform<string | IMarusiaWebhookRequest> {
 
                 controller.platformOptions.session = query.session;
                 controller.userId = query.session.user_id as string;
-                controller.nlu.setNlu(query.request.nlu || null);
+                controller.nlu.setNlu(query.request.nlu || {});
 
                 controller.userMeta = query.meta || {};
                 controller.messageId = query.session.message_id;

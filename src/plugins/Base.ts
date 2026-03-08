@@ -1,4 +1,4 @@
-import { AppContext, IPlugin } from '../index';
+import { AppContext, IDatabaseInfo, IPlugin } from '../index';
 
 /**
  * Базовый класс для реализации плагинов.
@@ -10,5 +10,5 @@ export abstract class BasePlugin implements IPlugin {
      * Вызывается один раз при подключении через `bot.use()`.
      * @param appContext Контекст приложения
      */
-    abstract init(appContext: AppContext<unknown>): void;
+    abstract init(appContext: AppContext<IDatabaseInfo, unknown>): void;
 }

@@ -11,8 +11,7 @@ import { IViberButton, IViberButtonObject } from './interfaces/IViberPlatform';
  * const viberButton = new ViberButton();
  *
  * // Создание кнопки-ответа
- * const replyButton = new Button();
- * replyButton.initBtn('Ответить', '', null, {
+ * const replyButton = getButton('Ответить', '', null, {
  *     ActionType: ViberButton.T_REPLY,
  *     ActionBody: 'custom_payload'
  * });
@@ -31,8 +30,7 @@ export const T_REPLY = 'reply';
  * const viberButton = new ViberButton();
  *
  * // Создание кнопки-ссылки
- * const linkButton = new Button();
- * linkButton.initBtn('Открыть сайт', 'https://example.com', null, {
+ * const linkButton = getButton('Открыть сайт', 'https://example.com', null, {
  *     ActionType: ViberButton.T_OPEN_URL,
  *     ActionBody: 'https://example.com'
  * });
@@ -51,8 +49,7 @@ export const T_OPEN_URL = 'open-url';
  * const viberButton = new ViberButton();
  *
  * // Создание кнопки выбора локации
- * const locationButton = new Button();
- * locationButton.initBtn('Выбрать адрес', '', null, {
+ * const locationButton = getButton('Выбрать адрес', '', null, {
  *     ActionType: ViberButton.T_LOCATION_PICKER,
  *     ActionBody: 'location_payload'
  * });
@@ -71,8 +68,7 @@ export const T_LOCATION_PICKER = 'location-picker';
  * const viberButton = new ViberButton();
  *
  * // Создание кнопки шаринга телефона
- * const phoneButton = new Button();
- * phoneButton.initBtn('Поделиться телефоном', '', null, {
+ * const phoneButton = getButton('Поделиться телефоном', '', null, {
  *     ActionType: ViberButton.T_SHARE_PHONE,
  *     ActionBody: 'phone_payload'
  * });
@@ -91,11 +87,10 @@ export const T_SHARE_PHONE = 'share-phone';
  * const viberButton = new ViberButton();
  *
  * // Создание информационной кнопки
- * const infoButton = new Button();
- * infoButton.initBtn('Информация', '', null, {
+ * const infoButton = getButton('Информация', '', null, {
  *     ActionType: ViberButton.T_NONE,
  *     TextSize: 'small',
- *     TextColor: '#666666'
+ *     TextColor: '#cccccc'
  * });
  * viberButton.buttons = [infoButton];
  * ```

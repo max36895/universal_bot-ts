@@ -8,11 +8,12 @@ import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/
 import { TelegramRequest } from '../API';
 
 /**
- * Адаптер для мессенджера Telegram.
+ * Адаптер для создания ботов для мессенджера Telegram на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от Telegram.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера Telegram,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Алисы или Маруси).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -21,8 +22,24 @@ import { TelegramRequest } from '../API';
  * Подключается как любой другой адаптер: `bot.use(new TelegramAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { TelegramAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new TelegramAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для Telegram';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<string | ITelegramContent> {
+export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
     platformName = T_TELEGRAM;
     isVoice = false;
     limit = 30;

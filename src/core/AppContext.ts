@@ -126,11 +126,11 @@ interface IErrWarnData {
  * const appContext = bot.getAppContext(); // если нужен прямой доступ
  * ```
  */
-export class AppContext<TDbInfo = IDatabaseInfo> {
+export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     /**
      * Список подключенных платформ
      */
-    platforms: IPlatform = {};
+    platforms: IPlatform<TQuery> = {};
 
     /**
      * Список подключенных плагинов
@@ -202,7 +202,7 @@ export class AppContext<TDbInfo = IDatabaseInfo> {
     #envVars: IEnvConfig | undefined;
 
     /**
-     * Кастомный логгер приложения
+     * Кастомный logger приложения
      */
     #logger: ILogger | null = null;
 

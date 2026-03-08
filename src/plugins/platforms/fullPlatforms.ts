@@ -10,7 +10,8 @@ function fullPlatforms(appContext: AppContext): void {
     adapters.forEach((adapter) => {
         const platformAdapter = new adapter.adapter();
         platformAdapter.init(appContext);
-        appContext.platforms[platformAdapter.platformName] = platformAdapter;
+        appContext.platforms[platformAdapter.platformName] =
+            platformAdapter as AppContext['platforms']['pl'];
     });
 }
 

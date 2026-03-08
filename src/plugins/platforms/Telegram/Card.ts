@@ -10,7 +10,7 @@ import { T_TELEGRAM } from './constants';
  * @param path Путь до картинки
  * @param caption Заголовок для картинки
  */
-export async function getTokenInDB(
+export async function getImageInDB(
     controller: BotController,
     path: string,
     caption: string,
@@ -57,7 +57,7 @@ export async function cardProcessing(
         try {
             if (!image.imageToken) {
                 if (image.imageDir) {
-                    image.imageToken = await getTokenInDB(
+                    image.imageToken = await getImageInDB(
                         controller,
                         image.imageDir,
                         Text.resize(image.desc, 1024),

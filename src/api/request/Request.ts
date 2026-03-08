@@ -9,7 +9,7 @@ import { basename } from 'path';
 import fs from 'fs';
 
 /**
- * Класс для отправки HTTP-запросов.
+ * Класс для отправки HTTP-запросов к API различных платформ. Используется внутри адаптеров для взаимодействия с внешними сервисами.
  * Поддерживает различные типы запросов, заголовки и отправку файлов
  *
  * @class Request
@@ -21,7 +21,7 @@ export class Request {
     };
 
     /** Заголовок для JSON контента */
-    public static readonly HEADER_AP_JSON: Record<string, string> = {
+    public static readonly HEADER_JSON: Record<string, string> = {
         'Content-Type': 'application/json',
     };
 
@@ -234,7 +234,7 @@ export class Request {
         if (post) {
             options.body = post;
             options.method = this.customRequest || 'POST';
-            options.headers = this.header || Request.HEADER_AP_JSON;
+            options.headers = this.header || Request.HEADER_JSON;
         }
         if (this.header) {
             options.headers = this.header;

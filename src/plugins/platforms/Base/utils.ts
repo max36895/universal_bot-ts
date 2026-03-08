@@ -4,6 +4,7 @@ import { ISoundInfo } from '../../../core';
 import { Text } from '../../../utils';
 import { replaceSound } from '../Alisa/Sound';
 import { IEffect, ISound } from '../../../components';
+import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
 /**
  * Тип для обработки запроса для загрузки изображения
@@ -144,4 +145,29 @@ export function defaultSoundProcessing(
         }
     }
     return res;
+}
+
+/**
+ * Базовая функция, которая инициализирует команду пользователя.
+ * Обрабатывает различные типы запросов и сохраняет команду в контроллере
+ * @param request Объект запроса от пользователя
+ * @param controller Контроллер приложения
+ */
+export function initUserCommand(request: IAlisaRequest, controller: BotController): void {
+    if (request.type === 'SimpleUtterance') {
+        controller.userCommand = request.command.trim() || '';
+        controller.originalUserCommand = request.original_utterance.trim() || '';
+    } else {
+        if (typeof request.payload === 'string') {
+            controller.userCommand = request.payload;
+            controller.originalUserCommand = request.payload;
+        } else {
+            controller.userCommand = request.command?.trim() || '';
+            controller.originalUserCommand = request.original_utterance?.trim() || '';
+        }
+        controller.payload = request.payload;
+    }
+    if (!controller.userCommand) {
+        controller.userCommand = controller.originalUserCommand;
+    }
 }

@@ -16,6 +16,7 @@ import {
     IAlisaWebhookResponse,
 } from './interfaces/IAlisaPlatform';
 import { T_ALISA, VERSION } from './constants';
+import { initUserCommand } from '../Base/utils';
 
 interface IState {
     user_state_update: object;
@@ -24,11 +25,12 @@ interface IState {
 }
 
 /**
- * Адаптер для Алисы.
+ * Адаптер для создания навыков Алисы (Яндекс.Диалоги) на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от Алисы.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от Алисы,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Telegram или VK).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -39,8 +41,24 @@ interface IState {
  * Подключается как любой другой адаптер: `bot.use(new AlisaAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { AlisaAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new AlisaAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для Алисы';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
+export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     platformName = T_ALISA;
 
     init(appContext: AppContext): void {
@@ -74,28 +92,13 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
     }
 
     /**
-     * Инициализирует команду пользователя.
+     * Инициализирует команду пользователя от Алисы.
      * Обрабатывает различные типы запросов и сохраняет команду в контроллере
      * @param request Объект запроса от пользователя
      * @param controller Контроллер приложения
      */
     #initUserCommand(request: IAlisaRequest, controller: BotController): void {
-        if (request.type === 'SimpleUtterance') {
-            controller.userCommand = request.command.trim() || '';
-            controller.originalUserCommand = request.original_utterance.trim() || '';
-        } else {
-            if (typeof request.payload === 'string') {
-                controller.userCommand = request.payload;
-                controller.originalUserCommand = request.payload;
-            } else {
-                controller.userCommand = request.command?.trim() || '';
-                controller.originalUserCommand = request.original_utterance?.trim() || '';
-            }
-            controller.payload = request.payload;
-        }
-        if (!controller.userCommand) {
-            controller.userCommand = controller.originalUserCommand;
-        }
+        initUserCommand(request, controller);
     }
 
     /**
@@ -151,7 +154,7 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
                         return true;
                     }
                     controller.platformOptions.error =
-                        'AlisaAdapter.setQueryData(): Переданы не корректные данные для авторизации!';
+                        'AlisaAdapter.setQueryData(): Переданы некорректные данные для авторизации!';
                     return false;
                 }
 
@@ -264,7 +267,10 @@ export class Adapter extends BasePlatform<string | IAlisaWebhookRequest> {
     }
 
     /**
-     * Состояние доступно, если в запросе присутствует `state`.
+     * Проверяет, присутствует ли сохранённое состояние в запросе.
+     *
+     * @param controller - контроллер бота
+     * @returns `true`, если состояние есть (не null)
      */
     isLocalStorage(controller: BotController): boolean {
         return controller.state !== null;

@@ -1,13 +1,13 @@
 import { IModelRules } from './interface';
 
-import { Model } from './db/Model';
+import { IModelState, Model } from './db/Model';
 import { AppContext } from '../core';
 
 /**
  * Интерфейс для внутреннего состояния модели изображений.
  * Определяет структуру данных для хранения информации об изображениях в базе данных.
  */
-export interface IImageModelState {
+export interface IImageModelState extends IModelState {
     /**
      * Идентификатор/токен изображения.
      * Уникальный идентификатор, используемый для ссылки на изображение в API различных платформ.

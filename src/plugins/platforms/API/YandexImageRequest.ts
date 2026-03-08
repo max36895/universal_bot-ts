@@ -82,7 +82,7 @@ export class YandexImageRequest extends YandexRequest {
     public async downloadImageUrl(imageUrl: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
             this._request.url = this.#getImagesUrl();
-            this._request.header = Request.HEADER_AP_JSON;
+            this._request.header = Request.HEADER_JSON;
             this._request.post = { url: imageUrl };
             const query = await this.call<IYandexRequestDownloadImageRequest>();
             if (query?.image?.id === undefined) {

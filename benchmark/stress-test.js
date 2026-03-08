@@ -477,7 +477,7 @@ async function fallbackTest() {
         // Создаем случайный текст, которого точно нет в командах
         const randomText = crypto.randomBytes(20).toString('hex');
         const startReq = performance.now();
-        await bot.run('alisa', mockRequest(randomText));
+        await bot.run(T_ALISA, mockRequest(randomText));
         results.push(performance.now() - startReq);
     }
 

@@ -28,7 +28,7 @@ function marusiaCardButton(buttons: IButtonType[]): IMarusiaButtonCard {
  * @param controller Контроллер приложения
  * @param path Путь до картинки
  */
-export async function getValueInDB(
+export async function getImageInDB(
     controller: BotController,
     path: string,
 ): Promise<string | null> {
@@ -83,7 +83,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
         }
         if (!image.imageToken) {
             if (image.imageDir) {
-                image.imageToken = await getValueInDB(controller, image.imageDir);
+                image.imageToken = await getImageInDB(controller, image.imageDir);
             }
         }
         const item: IMarusiaImage = {
@@ -118,7 +118,7 @@ export async function cardProcessing(
             if (!cardInfo.images[0].imageToken) {
                 if (cardInfo.images[0].imageDir) {
                     // eslint-disable-next-line require-atomic-updates
-                    cardInfo.images[0].imageToken = await getValueInDB(
+                    cardInfo.images[0].imageToken = await getImageInDB(
                         controller,
                         cardInfo.images[0].imageDir,
                     );

@@ -8,11 +8,12 @@ import { T_VK } from './constants';
 import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPlatform';
 
 /**
- * Адаптер для мессенджера Vk.
+ * Адаптер для создания ботов для мессенджера VK на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от VK.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера VK,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Алисы или Маруси).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -21,8 +22,24 @@ import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPl
  * Подключается как любой другой адаптер: `bot.use(new VkAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { VkAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new VkAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для ВК';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<string | IVkRequestContent> {
+export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     platformName = T_VK;
     isVoice = false;
     limit = 30;

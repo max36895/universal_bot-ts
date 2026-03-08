@@ -14,11 +14,12 @@ import {
 } from './interfaces/ISmartAppPlatform';
 
 /**
- * Адаптер для Сбер.SmartApp.
+ * Адаптер для создания навыков Сбер.SmartApp на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от SmartApp.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от SmartApp,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Telegram или VK).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -27,8 +28,24 @@ import {
  * Подключается как любой другой адаптер: `bot.use(new SmartAppAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { SmartAppAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new SmartAppAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для Smart.app';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> {
+export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookRequest> {
     platformName = T_SMART_APP;
 
     isPlatformOnQuery(
@@ -77,9 +94,9 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
             case 'SERVER_ACTION':
             case 'RUN_APP':
                 controller.payload = content.payload?.server_action?.parameters;
-                if (typeof controller.payload === 'string') {
+                /*if (typeof controller.payload === 'string') {
                     controller.userCommand = controller.originalUserCommand = controller.payload;
-                }
+                }*/
                 if (content.messageName === 'RUN_APP') {
                     controller.messageId = 0;
                     controller.originalUserCommand = controller.userCommand;
@@ -229,7 +246,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
 
     /**
      * Формирует ответ с оценкой навыка
-     * @returns {Promise<ISberSmartAppWebhookResponse>} Объект ответа для вебхука
+     * @returns {Promise<ISberSmartAppWebhookResponse>} Объект ответа для webhook`а
      */
     public getRatingContext(controller: BotController): ISberSmartAppWebhookResponse {
         return {
@@ -264,7 +281,7 @@ export class Adapter extends BasePlatform<string | ISberSmartAppWebhookRequest> 
         controller: BotController,
     ): Promise<IRequestSend<unknown>> {
         const request = new Request(controller.appContext);
-        request.header = Request.HEADER_AP_JSON;
+        request.header = Request.HEADER_JSON;
         request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${controller.userId}`;
         request.post = data as Record<string, unknown>;
         return await request.send();

@@ -5,7 +5,7 @@ import { FileAdapter, MongoAdapter, T_ALISA } from '../../src/plugins';
 interface IData {
     userId?: string;
     meta?: string;
-    data?: any;
+    data?: Record<string, unknown>;
 }
 
 const FILE_NAME = 'UsersData.json';
@@ -13,7 +13,7 @@ const MONGO_TIMEOUT = 3000; // 3 секунды для операций с Mongo
 const appContext = new AppContext();
 
 describe('Db file connect', () => {
-    let data: any;
+    let data: Record<string, Record<string, unknown>>;
     const userData = new UsersData(appContext);
 
     beforeEach(() => {

@@ -1,27 +1,15 @@
-// stress-test.js
-// Запуск: node --expose-gc stress-test.js
+// fallback.js
+// Запуск: node --expose-gc fb.js
 
-const { Bot, BotController, rand, unlink, Text } = require('../dist/index');
+const { Bot, unlink } = require('../dist/index');
 
 const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');
 
 const FileDBAdapter = FileAdapter;
 const crypto = require('node:crypto');
-const os = require('node:os');
 const { join } = require('node:path');
-const { eventLoopUtilization } = require('node:perf_hooks').performance;
 
 const COMMAND_COUNT = 1000;
-
-class StressController extends BotController {
-    action(intentName) {
-        if (intentName?.startsWith('cmd_')) {
-            this.text = `OK: ${intentName}`;
-        } else {
-            this.text = 'fallback';
-        }
-    }
-}
 
 const PHRASES = [
     'привет',
@@ -39,17 +27,6 @@ const PHRASES = [
     'настройки',
     'обновить',
 ];
-
-function getAvailableMemoryMB() {
-    const free = os.freemem();
-    // Оставляем 50 МБ на систему и Node.js рантайм
-    return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
-}
-
-function predictMemoryUsage(commandCount) {
-    // Базовое потребление + 0.4 КБ на команду + запас
-    return 15 + (commandCount * 0.4) / 1024 + 50; // в МБ
-}
 
 function setupCommands(bot, count) {
     bot.clearCommands();
@@ -82,28 +59,9 @@ function mockRequest(text) {
     });
 }
 
-let errorsBot = [];
 const bot = new Bot(T_ALISA);
 bot.setAppConfig({
-    // Когда используется локальное хранилище, скорость обработки выше.
-    // Связанно с тем что не нужно создавать бд файл с большим количеством пользователей и очень частой записью/обращением.
-    // Получается так, что подключение к бд может снизить показатель RPS, но даже несмотря на данный факт, скорость работы остается на довольно высоком уровне.
-    // Данное значение можно поменять на false и убедиться в этом. Также важно учитывать что при 1 запуске база будет пустой, но по мере теста может заполниться до 70_000+ записей
     isLocalStorage: true,
-});
-bot.initBotController(StressController);
-const metric = {};
-bot.setLogger({
-    error: (msg) => {
-        errorsBot.push(msg);
-        console.error(msg);
-    },
-    warn: (msg) => {
-        // чтобы не писался файл с предупреждениями
-        errorsBot.push(msg);
-        console.warn(msg);
-    },
-    /*metric: (name, time) => {         if (!metric[name]) {             metric[name] = {                 name: name,                 count: 0,                 time: 0,             };         }         if (typeof time === 'number') {             metric[name].count++;             metric[name].time += time;         }     },*/
 });
 bot.use(fullPlatforms);
 // Не будем подключать адаптер бд если храним данные внутри самой платформы
@@ -120,29 +78,6 @@ bot.addCommand('help', ['/help'], (_, bt) => {
 bot.addCommand('*', ['*'], (_, bt) => {
     bt.text = 'hello my friend';
 });
-
-async function run() {
-    let text;
-    const pos = rand(0, 3) % 3;
-    if (pos === 0) {
-        text = 'привет_0';
-    } else if (pos === 1) {
-        text = `помощь_2`;
-    } else {
-        text = `удалить_3`;
-    }
-
-    text += ' ' + crypto.randomBytes(20).toString('hex');
-    return bot.run(T_ALISA, mockRequest(text));
-}
-
-function getMemoryMB() {
-    return Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-}
-
-function validateResult(result) {
-    return result?.response?.text;
-}
 
 // Тест с fallback (*) командой
 async function fallbackTest() {
@@ -174,9 +109,6 @@ async function fallbackTest() {
     return rps;
 }
 
-// ───────────────────────────────────────
-// 3. Запуск всех тестов
-// ───────────────────────────────────────
 async function runAllTests() {
     await fallbackTest();
     // Позволяем сохранить данные в файловую бд

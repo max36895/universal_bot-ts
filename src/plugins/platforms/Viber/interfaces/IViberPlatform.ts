@@ -390,7 +390,7 @@ export interface IViberButtonObject {
  *     Columns: 6, // Максимальная ширина
  *     Rows: 6,    // Максимальная высота
  *     Image: 'https://example.com/image.jpg',
- *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#666>Описание</font>',
+ *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#ccc>Описание</font>',
  *     ActionType: 'reply',  // Обязательное поле
  *     ActionBody: 'card_action'  // Обязательное поле
  * };
@@ -400,7 +400,7 @@ export interface IViberButtonObject {
  *     Columns: 6,
  *     Rows: 6,
  *     Image: 'https://example.com/image.jpg',
- *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#666>Описание</font>',
+ *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#ccc>Описание</font>',
  *     ActionType: 'reply',
  *     ActionBody: 'button_action',
  *     Buttons: [{

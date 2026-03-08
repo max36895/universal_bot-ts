@@ -1,10 +1,10 @@
-import { Adapter as AlisaAdapter } from './Alisa/Adapter';
-import { Adapter as MarusiaAdapter } from './Marusia/Adapter';
-import { Adapter as VkAdapter } from './VK/Adapter';
-import { Adapter as MaxAdapter } from './Max/Adapter';
-import { Adapter as TelegramAdapter } from './Telegram/Adapter';
-import { Adapter as SmartAppAdapter } from './SmartApp/Adapter';
-import { Adapter as ViberAdapter } from './Viber/Adapter';
+import { AlisaAdapter } from './Alisa/Adapter';
+import { MarusiaAdapter } from './Marusia/Adapter';
+import { VkAdapter } from './VK/Adapter';
+import { MaxAdapter } from './Max/Adapter';
+import { TelegramAdapter } from './Telegram/Adapter';
+import { SmartAppAdapter } from './SmartApp/Adapter';
+import { ViberAdapter } from './Viber/Adapter';
 
 /**
  * Список всех доступных платформ из коробки.

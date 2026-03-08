@@ -9,7 +9,7 @@
  * - Состояния (IAlisaRequestState)
  * - Компоненты интерфейса (кнопки, карточки, изображения)
  */
-import { IPlatformData } from '../../../../index';
+import { INlu, IPlatformData } from '../../../../index';
 
 /**
  * Интерфейс для именованных сущностей в запросе.
@@ -67,7 +67,7 @@ export interface IAlisaEntities {
  * Интерфейс для обработки естественного языка (NLU)
  * Содержит результаты анализа текста пользователя
  */
-export interface IAlisaNlu {
+export interface IAlisaNlu extends INlu {
     /** Массив слов из фразы пользователя */
     tokens?: string[];
     /** Массив найденных именованных сущностей */
@@ -94,7 +94,7 @@ export interface IAlisaNlu {
      * }
      * ```
      */
-    intents?: object;
+    intents?: INlu['intents'];
 }
 
 /**
@@ -280,7 +280,7 @@ export interface IAlisaRequest {
 }
 
 /**
- * Интерфейс для вебхук-запроса.
+ * Интерфейс для webhook-запроса.
  * Полный формат входящего запроса от Алисы
  */
 export interface IAlisaWebhookRequest {
@@ -551,7 +551,7 @@ export interface IAlisaResponse {
 }
 
 /**
- * Интерфейс для вебхук-ответа.
+ * Интерфейс для webhook-ответа.
  * Полный формат исходящего ответа для Алисы
  */
 export interface IAlisaWebhookResponse {

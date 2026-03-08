@@ -451,7 +451,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
     const start = performance.now();
     try {
-        await bot.run('alisa', content);
+        await bot.run(T_ALISA, content);
     } catch (e) {
         /* ignore */
     }
@@ -459,7 +459,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
     const start2 = performance.now();
     try {
-        await bot.run('alisa', getContent(testCommand));
+        await bot.run(T_ALISA, getContent(testCommand));
     } catch (e) {
         /* ignore */
     }

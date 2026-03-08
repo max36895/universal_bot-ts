@@ -193,7 +193,7 @@ export interface IViberGetUserDetails extends IViberApi {
 }
 
 /**
- * Интерфейс с параметрами настройки вебхука
+ * Интерфейс с параметрами настройки webhook`а
  *
  * @example
  * ```ts

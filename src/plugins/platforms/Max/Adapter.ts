@@ -8,11 +8,12 @@ import { T_MAX_APP } from './constants';
 import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform';
 
 /**
- * Адаптер для мессенджера MAX.
+ * Адаптер для создания ботов для мессенджера MAX на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от MAX.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера MAX,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Алисы или Маруси).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -21,8 +22,24 @@ import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform'
  * Подключается как любой другой адаптер: `bot.use(new MaxAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { MaxAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new MaxAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для MAX';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<string | IMaxRequestContent> {
+export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
     platformName = T_MAX_APP;
     isVoice = false;
     limit = 30;

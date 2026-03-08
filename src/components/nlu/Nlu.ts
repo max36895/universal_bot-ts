@@ -432,7 +432,7 @@ export class Nlu {
      * });
      * ```
      */
-    public setNlu(nlu: any, isClearCache: boolean = false): void {
+    public setNlu(nlu: INlu, isClearCache: boolean = false): void {
         this.#nlu = nlu;
         if (isClearCache) {
             this.#cachedData.clear();
@@ -451,7 +451,7 @@ export class Nlu {
             return (this.#cachedData.get(type) as T[]) || null;
         }
         let data: (object | number)[] | null = null;
-        if (this.#nlu.entities) {
+        if (Array.isArray(this.#nlu.entities)) {
             this.#nlu.entities.forEach((entity) => {
                 if (entity.type !== undefined && entity.type === type) {
                     data ??= [];

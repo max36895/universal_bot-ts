@@ -8,11 +8,12 @@ import { T_VIBER } from './constants';
 import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
 
 /**
- * Адаптер для мессенджера Viber.
+ * Адаптер для создания ботов для мессенджера Viber на TypeScript.
  *
- * Автоматически обрабатывает только те запросы, которые прошли проверку
- * через {@link isPlatformOnQuery} — т.е. действительно пришли от Viber.
- * Не влияет на обработку запросов от других платформ.
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера Viber,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Алисы или Маруси).
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
@@ -21,8 +22,24 @@ import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
  * Подключается как любой другой адаптер: `bot.use(new ViberAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
+ * @example
+ * // Простейший навык, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { ViberAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new ViberAdapter())
+ *     .addCommand('start', ['привет'], (ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для Viber';
+ *     });
+ *
+ * bot.start();
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
  */
-export class Adapter extends BasePlatform<IViberContent | string> {
+export class ViberAdapter extends BasePlatform<IViberContent | string> {
     platformName = T_VIBER;
     isVoice = false;
     limit = 30;

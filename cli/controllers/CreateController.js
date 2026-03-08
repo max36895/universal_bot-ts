@@ -175,7 +175,7 @@ class CreateController {
      * @param {string} type Тип проекта
      * @private
      */
-    _getConfigFile(path, type) {
+    _getConfigFile(path) {
         console.log('Создается файл с конфигурацией приложения: ...');
         const configFile = `${this.#path}/src/config/{{name}}Config.ts`;
         let configContent;
@@ -315,7 +315,7 @@ class CreateController {
      * Форматирует проект через prettier
      */
     format() {
-        exec(`prettier.cmd --write ${this.#path}`, (error, stdout, stderr) => {
+        exec(`prettier.cmd --write ${this.#path}`, (error) => {
             if (error) {
                 console.error(`exec error: ${error}`);
             }

@@ -124,7 +124,7 @@ export type TPlugin = IPlugin | IPluginFn;
  * Обеспечивает унификацию обработки запросов от разных платформ.
  * Реализуется как плагин (`IPlugin`) и регистрируется в боте.
  */
-export interface IPlatformAdapter<TQuery = any> extends IPlugin {
+export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     /**
      * Определяет, принадлежит ли входящий запрос данной платформе.
      *
@@ -232,7 +232,7 @@ export interface IPlatformAdapter<TQuery = any> extends IPlugin {
      */
     isVoice: boolean;
     /**
-     * Генерирует пример запроса для тестирования.
+     * Генерирует пример входящего запроса для локального тестирования навыка/бота.
      *
      * Используется в инструментах отладки и авто-тестах.
      *
@@ -400,8 +400,8 @@ export interface IDatabaseInfo {
  *
  * Ключ — имя платформы (например, `'telegram'`), значение — её адаптер.
  */
-export interface IPlatform {
-    [name: string]: IPlatformAdapter;
+export interface IPlatform<TQuery = unknown> {
+    [name: string]: IPlatformAdapter<TQuery>;
 }
 
 /**

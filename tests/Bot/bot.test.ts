@@ -92,8 +92,8 @@ function getContent(query: string, count = 0, state: object = {}): string {
     });
 }
 
-let saveSpy: any;
-let updateSpy: any;
+let saveSpy: ReturnType<typeof jest.spyOn>;
+let updateSpy: ReturnType<typeof jest.spyOn>;
 describe('Bot', () => {
     let bot: TestBot;
 

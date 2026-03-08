@@ -3,6 +3,8 @@ import { IModelRes, IModelRules } from './interface';
 import { IModelState, Model } from './db/Model';
 import { IDbResult, AppContext } from '../core';
 
+type TMetaType = Record<string, unknown> | string | null | undefined;
+type TDataType = string | Record<string, unknown> | null | undefined;
 /**
  * Интерфейс для внутреннего состояния модели пользовательских данных.
  * Определяет структуру данных для хранения информации о пользователях в базе данных.
@@ -20,7 +22,7 @@ export interface IUserDataModelState extends IModelState {
      * настройки, временные метки и т.д.
      * @example { "lastVisit": "2024-03-20T12:00:00Z", "usageCount": 42 }
      */
-    meta: Record<string, unknown> | string | null;
+    meta: TMetaType;
     /**
      * Пользовательские данные в JSON.
      * Содержит основное состояние пользователя, например, прогресс в игре,
@@ -138,7 +140,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * - Дополнительная информация
      * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
-    get meta(): any {
+    get meta(): TMetaType {
         return this.state.meta;
     }
 
@@ -146,7 +148,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * Устанавливает метаданные пользователя.
      * @param meta
      */
-    set meta(meta: any) {
+    set meta(meta: TMetaType) {
         this.state.meta = meta;
     }
 
@@ -159,7 +161,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * - Другие пользовательские данные
      * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
-    get data(): any {
+    get data(): TDataType {
         return this.state.data;
     }
 
@@ -167,7 +169,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * Устанавливает основные данные пользователя.
      * @param data
      */
-    set data(data: any) {
+    set data(data: TDataType) {
         this.state.data = data;
     }
 
@@ -284,10 +286,10 @@ export class UsersData extends Model<IUserDataModelState> {
      * ```
      */
     public validate(): void {
-        if (typeof this.meta !== 'string') {
+        if (this.meta && typeof this.meta !== 'string') {
             this.meta = this.safeStringify(this.meta);
         }
-        if (typeof this.data !== 'string') {
+        if (this.data && typeof this.data !== 'string') {
             this.data = this.safeStringify(this.data);
         }
         super.validate();

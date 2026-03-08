@@ -10,7 +10,7 @@ import { T_VK } from './constants';
  * @param controller Контроллер приложения
  * @param path Путь до картинки
  */
-export async function getTokenInDB(
+export async function getImageInDB(
     controller: BotController,
     path: string,
 ): Promise<string | null> {
@@ -54,7 +54,7 @@ export async function cardProcessing(
             if (!cardInfo.images[0].imageToken) {
                 if (cardInfo.images[0].imageDir) {
                     // eslint-disable-next-line require-atomic-updates
-                    cardInfo.images[0].imageToken = await getTokenInDB(
+                    cardInfo.images[0].imageToken = await getImageInDB(
                         controller,
                         cardInfo.images[0].imageDir,
                     );
@@ -70,7 +70,7 @@ export async function cardProcessing(
                 const image = cardInfo.images[i];
                 if (!image.imageToken) {
                     if (image.imageDir) {
-                        image.imageToken = await getTokenInDB(controller, image.imageDir);
+                        image.imageToken = await getImageInDB(controller, image.imageDir);
                     }
                 }
                 if (image.imageToken) {

@@ -27,8 +27,8 @@ export class Buttons {
      */
     public static readonly B_BTN: boolean = true;
     /**
-     * Массив объектов Button, представляющих все кнопки в коллекции.
-     * @see Button
+     * Массив объектов IButtonType, представляющих все кнопки в коллекции.
+     * @see IButtonType
      */
     public buttons: IButtonType[];
 
