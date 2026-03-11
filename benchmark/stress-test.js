@@ -4,6 +4,7 @@
 const { Bot, BotController, Alisa, T_ALISA, rand, unlink, Text } = require('./../dist/index');
 const crypto = require('node:crypto');
 const os = require('node:os');
+const { join } = require('node:path');
 const { eventLoopUtilization } = require('node:perf_hooks').performance;
 
 class StressController extends BotController {
@@ -90,12 +91,16 @@ bot.setAppConfig({
     isLocalStorage: true,
 });
 bot.initBotController(StressController);
+const metric = {};
 bot.setLogger({
     error: (msg) => {
         errorsBot.push(msg);
+        console.error(msg);
     },
-    warn: () => {
+    warn: (msg) => {
         // чтобы не писался файл с предупреждениями
+        errorsBot.push(msg);
+        console.warn(msg);
     },
 });
 const COMMAND_COUNT = 1000;
@@ -152,7 +157,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
                         const result = await run();
                         const latencyMs = Number(process.hrtime.bigint() - start) / 1e6;
                         if (!validateResult(result)) {
-                            throw new Error('Некорректный результат');
+                            throw new Error(result);
                         }
                         allLatencies.push(latencyMs);
                         return { ok: true, latencyMs };
@@ -177,8 +182,9 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
     const avg = allLatencies.length
         ? allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length
         : 0;
-    const p95Index = Math.floor(allLatencies.length * 0.95);
-    const p95 = allLatencies.length ? [...allLatencies].sort((a, b) => a - b)[p95Index] : 0;
+    const sorted = [...allLatencies].sort((a, b) => a - b);
+    const p95Index = Math.ceil(sorted.length * 0.95) - 1;
+    const p95 = sorted[p95Index] || 0;
 
     console.log(`✅ Успешно: ${allLatencies.length}`);
     console.log(`❌ Ошибок: ${errors.length}`);
@@ -218,9 +224,9 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
     global.gc();
 
     const memStart = getMemoryMB();
-    const start = process.hrtime.bigint();
+    const start = performance.now();
 
-    const predicted = predictMemoryUsage(count * COMMAND_COUNT);
+    const predicted = predictMemoryUsage(COMMAND_COUNT);
     const available = getAvailableMemoryMB();
     if (predicted > available * 0.9) {
         console.log(
@@ -238,7 +244,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
             (async () => {
                 iter++;
                 const mem = getMemoryMB();
-                const predicted = predictMemoryUsage(count * COMMAND_COUNT);
+                const predicted = predictMemoryUsage(COMMAND_COUNT);
                 const available = getAvailableMemoryMB();
                 // Если уже занимаем много памяти, то не позволяем запускать процессы еще.
                 if (mem > 3700 || predicted > available * 0.9) {
@@ -260,13 +266,14 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
 
     try {
         const results = await Promise.all(promises);
+        const totalMs = Number(performance.now() - start);
         const eluAfter = eventLoopUtilization(eluBefore);
-        const invalid = results.filter((r) => !validateResult(r));
+        const invalid = results.filter((r) => {
+            return !validateResult(r);
+        });
         if (invalid.length > 0) {
             throw new Error(`Получено ${invalid.length} некорректных результатов`);
         }
-
-        const totalMs = Number(process.hrtime.bigint() - start) / 1e6;
         const memEnd = getMemoryMB();
 
         console.log(`✅ Успешно: ${results.length}`);
@@ -275,6 +282,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
             console.log(errorsBot.slice(0, 3));
         }
         console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
+        console.log(`   Время на 1 команду: ${(totalMs / count).toFixed(6)} мс`);
         console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
 
         console.log(`📊 Event Loop Utilization:`);
@@ -302,27 +310,11 @@ async function testMaxRPS(durationSeconds = 10) {
 
     const startTime = Date.now();
     let totalRequests = 0;
-    const results = [];
 
     // Запускаем непрерывный поток запросов
     while (Date.now() - startTime < durationSeconds * 1000) {
-        const batchSize = 100; // Размер пачки
-        const promises = [];
-
-        for (let i = 0; i < batchSize; i++) {
-            promises.push(run());
-        }
-
-        const batchStart = performance.now();
-        await Promise.all(promises);
-        const batchTime = performance.now() - batchStart;
-
-        totalRequests += batchSize;
-        results.push({
-            batch: batchSize,
-            time: batchTime,
-            rps: batchSize / (batchTime / 1000),
-        });
+        await run();
+        totalRequests++;
     }
 
     const totalTime = (Date.now() - startTime) / 1000;
@@ -330,8 +322,8 @@ async function testMaxRPS(durationSeconds = 10) {
 
     console.log(`Всего запросов: ${totalRequests}`);
     console.log(`Общее время: ${totalTime.toFixed(2)} сек`);
+    console.log(`В среднем на 1 запрос: ${(totalTime / totalRequests).toFixed(6)} мс`);
     console.log(`Средний RPS: ${avgRPS.toFixed(0)}`);
-    console.log(`Максимальный RPS в пачке: ${Math.max(...results.map((r) => r.rps)).toFixed(0)}`);
 
     return avgRPS;
 }
@@ -341,6 +333,7 @@ async function realisticTest() {
         '🧪 Реалистичный тест который эмулирует работу приложения в условиях сервера\n' +
             '(получение запроса -> привод его к корректному виду -> логика приложения -> отдача результата)',
     );
+    const start = performance.now();
 
     const iterations = 10000;
     const results = [];
@@ -373,7 +366,7 @@ async function realisticTest() {
         };
 
         // 2. Эмулируем приход запроса на сервер
-        const jsonString = JSON.stringify(requestObj);
+        const jsonString = JSON.stringify(JSON.parse(JSON.stringify(requestObj)));
 
         // 3. Эмулируем получение запроса на сервер
         const parsedRequest = JSON.parse(jsonString);
@@ -391,11 +384,13 @@ async function realisticTest() {
         results.push(duration);
     }
 
+    const totalTime = performance.now() - start;
     const avg = results.reduce((a, b) => a + b, 0) / results.length;
-    const rps = 1000 / avg;
+    const rps = (iterations / totalTime) * 1000;
 
     console.log(`   Итераций: ${iterations}`);
     console.log(`   Среднее время: ${avg.toFixed(2)} мс`);
+    console.log(`   Общее время: ${totalTime.toFixed(6)} мс`);
     console.log(`   Реалистичный RPS: ${rps.toFixed(0)}`);
 
     return rps;
@@ -429,13 +424,13 @@ async function realCommandsTest() {
     }
 
     const totalTime = performance.now() - start;
-    const avgTime = totalTime / iterations;
-    const rps = 1000 / avgTime;
+    const avgTime = iterations / totalTime;
+    const rps = 1000 * avgTime;
 
     console.log(`   Команд в боте: ${commandCount}`);
     console.log(`   Запросов: ${iterations}`);
-    console.log(`   Общее время: ${totalTime.toFixed(0)} мс`);
-    console.log(`   Среднее время: ${avgTime.toFixed(3)} мс`);
+    console.log(`   Общее время: ${totalTime.toFixed(1)} мс`);
+    console.log(`   Среднее время: ${avgTime.toFixed(6)} мс`);
     console.log(`   RPS: ${rps.toFixed(0)}`);
 
     return rps;
@@ -449,8 +444,8 @@ async function fallbackTest() {
     );
 
     const results = [];
-    const iterations = 5000;
-
+    const iterations = 50000;
+    const start = performance.now();
     for (let i = 0; i < iterations; i++) {
         // Создаем случайный текст, которого точно нет в командах
         const randomText = crypto.randomBytes(20).toString('hex');
@@ -459,11 +454,13 @@ async function fallbackTest() {
         results.push(performance.now() - startReq);
     }
 
+    const totalTime = performance.now() - start;
     const avg = results.reduce((a, b) => a + b, 0) / results.length;
-    const rps = 1000 / avg;
+    const rps = (iterations / totalTime) * 1000;
 
     console.log(`   Fallback запросов: ${iterations}`);
-    console.log(`   Среднее время: ${avg.toFixed(3)} мс`);
+    console.log(`   Общее время: ${totalTime.toFixed(2)} мс`);
+    console.log(`   Среднее время: ${avg.toFixed(6)} мс`);
     console.log(`   RPS: ${rps.toFixed(0)}`);
 
     return rps;
@@ -476,7 +473,7 @@ async function runAllTests() {
     const isWin = process.platform === 'win32';
     console.log('🚀 Запуск стресс-тестов для метода Bot.run()\n');
     // Тест 1: нормальная нагрузка
-    const normal = await normalLoadTest(200, 2);
+    const normal = await normalLoadTest(200, 1e3);
     if (!normal.success) {
         console.warn('⚠️  Нормальный тест завершился с ошибками');
     }
@@ -487,29 +484,36 @@ async function runAllTests() {
         console.warn('⚠️  Burst-тест (100) завершился с ошибками');
     }
     errorsBot = [];
-    const burst500 = await burstTest(500);
-    if (!burst500.success) {
-        console.warn('⚠️  Burst-тест (500) завершился с ошибками');
+    const burst1000 = await burstTest(1000);
+    if (!burst1000.success) {
+        console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
     }
     errorsBot = [];
-    if (burst500.success) {
-        const startCount = 500;
-        for (let i = 2; i <= 20; i++) {
-            const burst = await burstTest(startCount * i);
-            if (!burst.success || RPS[RPS.length - 1] < startCount * i) {
+    if (burst1000.success) {
+        const startCount = 1000;
+        for (let i = 1; i <= 20; i++) {
+            const burst = await burstTest(startCount * i * 3);
+            if (!burst.success || RPS[RPS.length - 1] < startCount * i * 3) {
                 // Вывод текста о том, что тест завершился с ошибками не корректно, так как это не соответствует действительности
                 //console.warn(`⚠️ Burst-тест (${startCount * i}) завершился с ошибками`);
                 break;
             }
         }
     }
+    console.log('');
     await realCommandsTest();
+    console.log('');
     await fallbackTest();
+    console.log('');
     await realisticTest();
-    await testMaxRPS(10);
-
+    console.log('');
+    await testMaxRPS(3);
+    console.log('');
+    await testMaxRPS(15);
+    console.log('');
+    // Позволяем сохранить данные в файловую бд
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    unlink(__dirname + '/../json/UsersData.json');
+    unlink(join(__dirname, '..', 'json', 'UsersData.json'));
     // на windows nodeJS работает не очень хорошо, из-за чего можем вылететь за пределы потребляемой памяти(более 4gb, хотя на unix этот показатель в районе 400мб)
     if (isWin) {
         console.log(
@@ -518,7 +522,9 @@ async function runAllTests() {
         );
     }
     console.log('\n🏁 Тестирование завершено.');
-    console.log('Ваше приложение с текущей конфигурацией сможет выдержать следующую нагрузку:');
+    console.log(
+        'Ваше приложение с текущей конфигурацией сможет выдержать примерно следующую нагрузку:',
+    );
     const daySeconds = 60 * 60 * 24;
     rps = Math.floor(
         RPS.reduce((acc, value) => {
@@ -527,21 +533,33 @@ async function runAllTests() {
     );
     console.log(`    - RPS из теста: ${rps}`);
     console.log(
-        `    - Количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {
+        `    - Примерное количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {
             maximumSignificantDigits: 3,
             notation: 'compact',
             compactDisplay: 'short',
         }).format(rps * daySeconds)}`,
     );
-    console.log('В худшем случае если есть какая-то относительно тяжелая логика в приложении');
-    console.log(`    - RPS равен 70% от того что показал тест: ${Math.floor(rps * 0.7)}`);
+    console.log('');
     console.log(
-        `    - Количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {
-            maximumSignificantDigits: 3,
-            notation: 'compact',
-            compactDisplay: 'short',
-        }).format(rps * 0.7 * daySeconds)}`,
+        '⚠️ Важно: данный тест измеряет производительность только ядра фреймворка в изолированной среде.\n' +
+            'В реальном production-сценарии итоговый RPS будет ниже из-за внешних факторов:\n' +
+            '   • Ограничения сетевого стека (порты, TCP-соединения, обработка входящих запросов)\n' +
+            '   • Накладные расходы HTTP-сервера (парсинг заголовков, тело запроса, сериализация ответа)\n' +
+            '   • Время передачи данных между сервером и фреймворком\n' +
+            '   • Работа с базой данных или внешними API (сетевые задержки, время выполнения запросов)\n' +
+            '   • Фоновая нагрузка на сервер (другие процессы, сборка мусора, дисковая подсистема)\n' +
+            '\n' +
+            'Результаты теста показывают потенциал ядра — но не отражают полную цепочку обработки запроса в бою.',
     );
+
+    console.log('');
+    console.log('Информация по метрикам');
+    console.log(`| ${'Имя метрики'.padEnd(32)} | Среднее время выполнения | Количество вызовов |`);
+    Object.keys(metric).forEach((key) => {
+        console.log(
+            `| ${key.padEnd(32)} | ${(metric[key].time / metric[key].count).toString().padEnd(24)} | ${metric[key].count.toString().padEnd(18)} |`,
+        );
+    });
 }
 
 // ───────────────────────────────────────
@@ -549,6 +567,6 @@ async function runAllTests() {
 // ───────────────────────────────────────
 runAllTests().catch((err) => {
     console.error('❌ Критическая ошибка при запуске тестов:', err);
-    unlink(__dirname + '/../json/UsersData.json');
+    unlink(join(__dirname, '..', 'json', 'UsersData.json'));
     process.exit(1);
 });

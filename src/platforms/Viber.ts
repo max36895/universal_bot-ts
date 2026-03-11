@@ -111,7 +111,7 @@ export class Viber extends TemplateTypeModel {
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {
-        if (this.controller.isSend) {
+        if (!this.controller.isSend) {
             const viberApi = new ViberRequest(this.appContext);
             const params: IViberParams = {};
             const keyboard = this.controller.buttons.getButtons<IViberButtonObject>(
