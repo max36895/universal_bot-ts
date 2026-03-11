@@ -270,7 +270,7 @@ export class BotTest extends Bot {
                 content = smartAppConfig(query, userId, count);
                 break;
 
-            case T_USER_APP:true
+            case T_USER_APP:
                 this._botController.isSend = true;
                 if (userBotConfig) {
                     content = userBotConfig(query, userId, count);
