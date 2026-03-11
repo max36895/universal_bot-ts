@@ -103,7 +103,7 @@ export class Vk extends TemplateTypeModel {
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {
-        if (this.controller.isSend) {
+        if (!this.controller.isSend) {
             const keyboard = this.controller.buttons.getButtonJson(Buttons.T_VK_BUTTONS);
             const params: IVkParams = {};
             if (keyboard) {

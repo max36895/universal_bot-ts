@@ -246,31 +246,31 @@ export class BotTest extends Bot {
                 break;
 
             case T_VK:
-                this._botController.isSend = false;
+                this._botController.isSend = true;
                 content = vkConfig(query, userId, count);
                 break;
 
             case T_TELEGRAM:
-                this._botController.isSend = false;
+                this._botController.isSend = true;
                 content = telegramConfig(query, userId, count);
                 break;
 
             case T_VIBER:
-                this._botController.isSend = false;
+                this._botController.isSend = true;
                 content = viberConfig(query, userId);
                 break;
 
             case T_MAXAPP:
-                this._botController.isSend = false;
+                this._botController.isSend = true;
                 content = maxAppConfig(query, userId, count);
                 break;
 
             case T_SMARTAPP:
-                this._botController.isSend = false;
+                this._botController.isSend = true;
                 content = smartAppConfig(query, userId, count);
                 break;
 
-            case T_USER_APP:
+            case T_USER_APP:true
                 this._botController.isSend = true;
                 if (userBotConfig) {
                     content = userBotConfig(query, userId, count);

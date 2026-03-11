@@ -79,7 +79,7 @@ export class Telegram extends TemplateTypeModel {
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {
-        if (this.controller.isSend) {
+        if (!this.controller.isSend) {
             const telegramApi = new TelegramRequest(this.appContext);
             const params: ITelegramParams = {};
             const keyboard = this.controller.buttons.getButtonJson(Buttons.T_TELEGRAM_BUTTONS);

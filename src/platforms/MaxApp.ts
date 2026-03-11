@@ -94,7 +94,7 @@ export class MaxApp extends TemplateTypeModel {
      * @see TemplateTypeModel.getContext() Смотри тут
      */
     public async getContext(): Promise<string> {
-        if (this.controller.isSend) {
+        if (!this.controller.isSend) {
             const keyboard = this.controller.buttons.getButtons(Buttons.T_MAX_BUTTONS);
             const params: IMaxParams = {};
             if (keyboard) {
