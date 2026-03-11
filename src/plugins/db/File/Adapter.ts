@@ -139,6 +139,11 @@ export class FileAdapter extends Base<IFileDbInfo> {
         this.setCachedFileData(tableName, cachedData);
     }
 
+    #isForbiddenKey(key: string): boolean {
+        const forbidden = ['__proto__', 'constructor', 'prototype'];
+        return forbidden.includes(key);
+    }
+
     /**
      * Сохраняет данные
      * @param tableName Название таблицы
@@ -190,6 +195,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
         if (select) {
             const idVal = select[updateData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
+                if (this.#isForbiddenKey(idVal)) {
+                    this._appContext?.logError(`Попытка использовать запрещённый ключ: ${idVal}`);
+                    return false;
+                }
                 if (data[idVal] !== undefined) {
                     data[idVal] = { ...data[idVal], ...update };
                     this.#update(updateData.tableName);
@@ -210,6 +219,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
         if (insert) {
             const idVal = insert[insertData.primaryKeyName as string] as string;
             if (idVal) {
+                if (this.#isForbiddenKey(idVal)) {
+                    this._appContext?.logError(`Попытка использовать запрещённый ключ: ${idVal}`);
+                    return false;
+                }
                 data[idVal] = insert;
                 this.#update(insertData.tableName);
                 return true;
@@ -228,6 +241,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
         if (remove) {
             const idVal = remove[removeData.primaryKeyName as string] as string;
             if (idVal !== undefined) {
+                if (this.#isForbiddenKey(idVal)) {
+                    this._appContext?.logError(`Попытка использовать запрещённый ключ: ${idVal}`);
+                    return false;
+                }
                 if (data[idVal] !== undefined) {
                     delete data[idVal];
                     this.#update(removeData.tableName);

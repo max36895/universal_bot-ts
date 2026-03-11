@@ -97,7 +97,7 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
     }
 
     async getContent(controller: BotController): Promise<string> {
-        if (controller.isSend) {
+        if (!controller.skipAutoReply) {
             const keyboard = controller.isButtonsInit()
                 ? controller.buttons.getButtons<IMaxButtonObject>(buttonProcessing)
                 : null;

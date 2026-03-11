@@ -55,7 +55,7 @@ export class MaxRequest {
         this.#error = null;
         this.#request.post = {};
         this.#appContext = appContext;
-        if (appContext.appConfig.tokens[T_MAX_APP].token) {
+        if (appContext.appConfig.tokens[T_MAX_APP]?.token) {
             this.initToken(appContext.appConfig.tokens[T_MAX_APP].token);
         }
     }

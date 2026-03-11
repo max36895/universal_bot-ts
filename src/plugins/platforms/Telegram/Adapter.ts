@@ -99,7 +99,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
     }
 
     async getContent(controller: BotController): Promise<string> {
-        if (controller.isSend) {
+        if (!controller.skipAutoReply) {
             const telegramApi = new TelegramRequest(controller.appContext);
             const params: ITelegramParams = {};
             const keyboard = controller.buttons.getButtonJson(buttonProcessing);

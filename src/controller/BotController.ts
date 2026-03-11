@@ -530,10 +530,10 @@ export abstract class BotController<
      *
      * @example
      * ```ts
-     * this.isSend = true; // запросы уже отправлены
+     * this.skipAutoReply = true; // запросы уже отправлены
      * ```
      */
-    public isSend: boolean = false;
+    public skipAutoReply: boolean = false;
 
     /**
      * Полученный запрос от платформы.
@@ -872,7 +872,7 @@ export abstract class BotController<
         this.state = null;
         this.isScreen = false;
         this.isEnd = false;
-        this.isSend = false;
+        this.skipAutoReply = false;
         this.requestObject = null;
         this.oldIntentName = null;
         this.thisIntentName = null;

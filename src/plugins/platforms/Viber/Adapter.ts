@@ -117,7 +117,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
     }
 
     async getContent(controller: BotController): Promise<string> {
-        if (controller.isSend) {
+        if (!controller.skipAutoReply) {
             const viberApi = new ViberRequest(controller.appContext);
             const params: IViberParams = {};
             const keyboard = controller.isButtonsInit()

@@ -121,14 +121,14 @@ export class VkRequest {
         this._request.maxTimeQuery = 5500;
         this.isAttachContent = false;
         this._appContext = appContext;
-        if (appContext.appConfig.tokens[T_VK].api_version) {
+        if (appContext.appConfig.tokens[T_VK]?.api_version) {
             this.#vkApiVersion = appContext.appConfig.tokens[T_VK].api_version;
         } else {
             this.#vkApiVersion = VK_API_VERSION;
         }
         this.token = null;
         this._error = null;
-        if (appContext.appConfig.tokens[T_VK].token) {
+        if (appContext.appConfig.tokens[T_VK]?.token) {
             this.initToken(appContext.appConfig.tokens[T_VK].token);
         }
     }

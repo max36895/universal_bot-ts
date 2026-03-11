@@ -1,4 +1,4 @@
-import { Text, BotController, AppContext } from '../../../index';
+import { Text, BotController, AppContext, IButtonType } from '../../../index';
 import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
@@ -216,9 +216,14 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                     response.card = undefined;
                 }
             }
-            response.buttons = controller.isButtonsInit()
-                ? (controller.buttons.getButtons(buttonProcessing) as IAlisaButton[])
-                : [];
+            if (controller.isButtonsInit()) {
+                const fn = (buttons: IButtonType[]): IAlisaButton[] | null => {
+                    return buttonProcessing(buttons, false, this.appContext) as IAlisaButton[];
+                };
+                response.buttons = controller.buttons.getButtons(fn);
+            } else {
+                response.buttons = [];
+            }
         }
         return response;
     }

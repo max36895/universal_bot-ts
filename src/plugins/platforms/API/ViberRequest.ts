@@ -55,7 +55,7 @@ export class ViberRequest {
         this.token = null;
         this.#error = null;
         this.#appContext = appContext;
-        if (appContext.appConfig.tokens[T_VIBER].token) {
+        if (appContext.appConfig.tokens[T_VIBER]?.token) {
             this.initToken(appContext.appConfig.tokens[T_VIBER].token);
         }
         this.#request.post = {};

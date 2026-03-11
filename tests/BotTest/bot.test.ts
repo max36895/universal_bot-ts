@@ -18,6 +18,7 @@ class TestBotController extends BotController {
     }
 
     action(intentName: string | null, isCommand?: boolean): void {
+        this.skipAutoReply = true;
         if (isCommand) {
             this.userData.cool = true;
             return;

@@ -138,7 +138,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     }
 
     async getContent(controller: BotController): Promise<string> {
-        if (controller.isSend) {
+        if (!controller.skipAutoReply) {
             const keyboard = controller.isButtonsInit()
                 ? controller.buttons.getButtonJson(buttonProcessing)
                 : null;

@@ -216,7 +216,7 @@ export class BotTest extends Bot {
             this.appType = appType;
         }
         if (!this.getAppContext().platforms[appType].isVoice) {
-            this._botController.isSend = false;
+            this._botController.skipAutoReply = false;
         }
         return this.getAppContext().platforms[appType].getQueryExample(query, userId, count, state);
     }
