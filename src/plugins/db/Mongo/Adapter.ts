@@ -34,7 +34,7 @@ interface IMongoDbInfo extends IDatabaseInfo {
 }
 
 /**
- * Адаптер для работы с базой данной mongodb
+ * Адаптер для работы с базой данных mongodb
  */
 export class MongoAdapter extends Base<IMongoDbInfo> {
     /**

@@ -1,4 +1,12 @@
-import { AppContext, Bot, BotController, IPlatformData, IUserData, UsersData } from '../../src';
+import {
+    AppContext,
+    Bot,
+    BotController,
+    IPlatformData,
+    IUserData,
+    unlinkSync,
+    UsersData,
+} from '../../src';
 import {
     T_ALISA,
     AlisaAdapter,
@@ -99,6 +107,9 @@ describe('Bot', () => {
 
     beforeEach(() => {
         bot = new TestBot();
+        bot.setLogger({
+            error: () => {},
+        });
         bot.use(new FileAdapter());
         saveSpy = jest.spyOn(UsersData.prototype, 'save').mockResolvedValue(Promise.resolve(true));
         updateSpy = jest
@@ -109,6 +120,7 @@ describe('Bot', () => {
     afterEach(() => {
         jest.resetAllMocks();
         bot.close();
+        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
     });
 
     describe('setPlatformParams', () => {

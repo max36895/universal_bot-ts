@@ -122,7 +122,7 @@ export class VkRequest {
         this.isAttachContent = false;
         this._appContext = appContext;
         if (appContext.appConfig.tokens[T_VK]?.api_version) {
-            this.#vkApiVersion = appContext.appConfig.tokens[T_VK].api_version;
+            this.#vkApiVersion = appContext.appConfig.tokens[T_VK].api_version as string;
         } else {
             this.#vkApiVersion = VK_API_VERSION;
         }

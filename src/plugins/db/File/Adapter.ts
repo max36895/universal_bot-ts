@@ -1,5 +1,12 @@
 import { Base } from '../Base/Base';
-import { IQueryData, IQuery, IModelRes, fread, getFileInfo, IDatabaseInfo } from '../../../index';
+import {
+    IQueryData,
+    IQuery,
+    IModelRes,
+    IDatabaseInfo,
+    getFileInfoSync,
+    freadSync,
+} from '../../../index';
 
 type TFileData = Record<string, Record<string, unknown>>;
 
@@ -47,7 +54,7 @@ type IFileData = { [key: string]: IFileInfo };
 
 // Сохраняем данные не чаще 1 раза в 500мс
 const LAZY_DELAY_SAVE_TIME = 500;
-// Принудительно сохраняем данные каждые 3 минут. Актуально для случаев, когда идет постоянная нагрузка на сервер.
+// Принудительно сохраняем данные каждые 3 минуты. Актуально для случаев, когда идет постоянная нагрузка на сервер.
 const FORCE_DELAY_SAVE_TIME = 60 * 1000 * 3;
 
 /**
@@ -384,7 +391,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
 
         const fileInfo = this.getCachedFileData(tableName).isFileRead
             ? null
-            : getFileInfo(file).data;
+            : getFileInfoSync(file).data;
         if (fileInfo?.isFile()) {
             // При размере базы более 400мб, может произойти падение приложения.
             if (fileInfo.size > 3.6e8) {
@@ -403,7 +410,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
                 const fileData =
                     cachedFileData && cachedFileData.version >= fileInfo.mtimeMs && !isForce
                         ? cachedFileData.data
-                        : (fread(file).data as string);
+                        : (freadSync(file).data as string);
 
                 const data = typeof fileData === 'string' ? JSON.parse(fileData) : fileData;
                 this.setCachedFileData(tableName, {

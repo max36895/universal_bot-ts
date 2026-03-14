@@ -9,6 +9,10 @@ jest.mock('fs', () => ({
     ...jest.requireActual('fs'),
     readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
+jest.mock('fs/promises', () => ({
+    ...jest.requireActual('fs/promises'),
+    readFile: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
 import { VkRequest } from '../../src/plugins';
@@ -163,7 +167,7 @@ describe('VkRequest', () => {
     });
 
     it('should return null if no token', async () => {
-        appContext.appConfig.tokens.vk = { token: null };
+        appContext.appConfig.tokens.vk = { token: undefined };
         const localVk = new VkRequest(appContext);
         const result = await localVk.messagesSend(12345, 'Hi');
         expect(result).toBeNull();

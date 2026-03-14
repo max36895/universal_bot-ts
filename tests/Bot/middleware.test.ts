@@ -1,4 +1,4 @@
-import { Bot } from '../../src';
+import { Bot, unlinkSync } from '../../src';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
 
@@ -52,6 +52,7 @@ describe('Middleware', () => {
     });
     afterAll(() => {
         bot.close();
+        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
     });
 
     it('should call global middleware', async () => {

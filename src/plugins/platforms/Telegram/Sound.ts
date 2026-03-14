@@ -55,7 +55,7 @@ export async function soundProcessing(
             if (sound) {
                 if (sound.sounds !== undefined && sound.key !== undefined) {
                     let sText: string | null = Text.getText(sound.sounds);
-                    if (isFile(sText) || Text.isUrl(sText)) {
+                    if ((await isFile(sText)) || Text.isUrl(sText)) {
                         sText = await getSoundInDB(controller, sText);
                     } else {
                         await new TelegramRequest(controller.appContext).sendAudio(
@@ -73,7 +73,7 @@ export async function soundProcessing(
     }
     if (text) {
         const speechKit = new YandexSpeechKit(
-            controller.appContext.appConfig.tokens[T_TELEGRAM].speech_kit_token,
+            controller.appContext.appConfig.tokens[T_TELEGRAM].speech_kit_token + '',
             controller.appContext,
         );
         const content = await speechKit.getTts(text);

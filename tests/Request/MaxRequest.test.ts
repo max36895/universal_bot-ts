@@ -9,9 +9,13 @@ jest.mock('fs', () => ({
     ...jest.requireActual('fs'),
     readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
+jest.mock('fs/promises', () => ({
+    ...jest.requireActual('fs/promises'),
+    readFile: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
-import { MaxRequest } from '../../src/plugins';
+import { IMaxButtonObject, MaxRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -97,8 +101,8 @@ describe('MaxRequest', () => {
     });
 
     it('should send message with inline keyboard', async () => {
-        const keyboard = {
-            buttons: [[{ type: 'callback', text: 'OK', payload: 'ok' }]],
+        const keyboard: IMaxButtonObject = {
+            buttons: [{ type: 'callback', text: 'OK', payload: 'ok' }],
         };
 
         (global.fetch as jest.Mock).mockResolvedValueOnce({

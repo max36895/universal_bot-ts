@@ -6,7 +6,7 @@ import { httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { AppContext, EMetric, THttpClient } from '../../core';
 import { IRequestSend } from '../interfaces/IRequest';
 import { basename } from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
 
 /**
  * Класс для отправки HTTP-запросов к API различных платформ. Используется внутри адаптеров для взаимодействия с внешними сервисами.
@@ -165,7 +165,10 @@ export class Request {
         if (this.url) {
             try {
                 const start = this.#appContext?.usedMetric ? performance.now() : 0;
-                const response = await this.#getHttpClient()(this._getUrl(), this._getOptions());
+                const response = await this.#getHttpClient()(
+                    this._getUrl(),
+                    await this._getOptions(),
+                );
                 if (this.#appContext?.usedMetric) {
                     this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
                         url: this.url,
@@ -197,7 +200,7 @@ export class Request {
      *
      * @returns {RequestInit|undefined} Параметры запроса
      */
-    protected _getOptions(): RequestInit | undefined {
+    protected async _getOptions(): Promise<RequestInit | undefined> {
         const options: RequestInit = {};
 
         if (this.maxTimeQuery) {
@@ -206,8 +209,8 @@ export class Request {
 
         let post: BodyInit | null = null;
         if (this.attach) {
-            if (isFile(this.attach)) {
-                const formData = this.getAttachFile(this.attach, this.attachName);
+            if (await isFile(this.attach)) {
+                const formData = await this.getAttachFile(this.attach, this.attachName);
                 if (!formData) {
                     this.#error = `Не удалось прочитать файл: ${this.attach}`;
                     return;
@@ -259,11 +262,17 @@ export class Request {
      * @param filePath
      * @param fileName
      */
-    public addAttachFile(formData: FormData, filePath: string, fileName?: string): void {
-        const fileResult = fs.readFileSync(filePath);
-        if (fileResult) {
+    public async addAttachFile(
+        formData: FormData,
+        filePath: string,
+        fileName?: string,
+    ): Promise<void> {
+        try {
+            const fileResult = await fs.readFile(filePath);
             const fileBlob = new Blob([fileResult]);
             formData.append(fileName || 'file', fileBlob, basename(filePath));
+        } catch (error) {
+            this.#appContext?.logError(`Ошибка чтения файла: "${filePath}"`, { error });
         }
     }
 
@@ -274,18 +283,13 @@ export class Request {
      * @param {string} [fileName] - Имя файла
      * @returns {FormData|null} FormData с файлом или null в случае ошибки
      */
-    public getAttachFile(filePath: string, fileName?: string): FormData | null {
+    public async getAttachFile(filePath: string, fileName?: string): Promise<FormData | null> {
         try {
             const formData = new FormData();
-            this.addAttachFile(formData, filePath, fileName);
+            await this.addAttachFile(formData, filePath, fileName);
             return formData;
         } catch (e) {
-            if (this.#appContext?.logError) {
-                this.#appContext?.logError(
-                    'Ошибка при чтении файла:',
-                    e as Record<string, unknown>,
-                );
-            }
+            this.#appContext?.logError('Ошибка при чтении файла:', e as Record<string, unknown>);
         }
         return null;
     }

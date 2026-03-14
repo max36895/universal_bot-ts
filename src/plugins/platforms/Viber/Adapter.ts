@@ -1,5 +1,5 @@
 import { AppContext, BotController } from '../../../index';
-import { ViberRequest, IViberParams } from '../API';
+import { ViberRequest, IViberParams, IViberSender } from '../API';
 import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
@@ -130,7 +130,9 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
 
             await viberApi.sendMessage(
                 <string>controller.userId,
-                controller.appContext.appConfig.tokens[this.platformName].sender,
+                controller.appContext.appConfig.tokens[this.platformName].sender as
+                    | string
+                    | IViberSender,
                 controller.text,
                 params,
             );

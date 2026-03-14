@@ -8,11 +8,15 @@ import {
     IYandexRequestDownloadImagesRequest,
 } from './interfaces';
 import { AppContext, Request } from '../../../index';
+import path from 'path';
+
 /**
  * Адрес, на который будет отправляться запрос
  *
  */
 const STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
+
+const ALLOWED_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 /**
  * Класс отвечающий за загрузку изображений в навык Алисы.
@@ -109,6 +113,13 @@ export class YandexImageRequest extends YandexRequest {
      */
     public async downloadImageFile(imageDir: string): Promise<IYandexRequestDownloadImage | null> {
         if (this.skillId) {
+            const ext = path.extname(imageDir).toLowerCase();
+            if (!ALLOWED_IMAGE_EXT.includes(ext)) {
+                this._log(
+                    `downloadImageFile() Недопустимый тип файла: ${ext}. Ожидаются изображения.`,
+                );
+                return null;
+            }
             this._request.url = this.#getImagesUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = imageDir;

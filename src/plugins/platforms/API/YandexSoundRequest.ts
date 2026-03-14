@@ -8,6 +8,9 @@ import {
     IYandexSoundsCheckOutPlaceRequest,
 } from './interfaces';
 import { AppContext, Request } from '../../../index';
+import path from 'path';
+
+const ALLOWED_AUDIO_EXT = ['.mp3', '.ogg', '.opus', '.wav', '.m4a', '.aac'];
 /**
  * Адрес, на который будет отправляться запрос
  */
@@ -85,6 +88,13 @@ export class YandexSoundRequest extends YandexRequest {
      */
     public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound | null> {
         if (this.skillId) {
+            const ext = path.extname(soundDir).toLowerCase();
+            if (!ALLOWED_AUDIO_EXT.includes(ext)) {
+                this._log(
+                    `downloadSoundFile() Недопустимый тип файла: ${ext}. Ожидаются аудиофайлы.`,
+                );
+                return null;
+            }
             this._request.url = this.#getSoundsUrl();
             this._request.header = Request.HEADER_FORM_DATA;
             this._request.attach = soundDir;

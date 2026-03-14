@@ -32,14 +32,14 @@ function printScenarioBlock(items) {
 
     const rep = byState.middle || byState.low || byState.high;
     if (rep) {
-        log(`  ├─ Память до запуска: ${memResult(rep.startMemory)}`);
-        log(`  ├─ Память после первого запуска: ${memResult(rep.afterRunMemory)}`);
-        log(`  ├─ Прирост памяти (первый запуск): +${memResult(rep.memoryIncrease)}`);
+        console.log(`  ├─ Память до запуска: ${memResult(rep.startMemory)}`);
+        console.log(`  ├─ Память после первого запуска: ${memResult(rep.afterRunMemory)}`);
+        console.log(`  ├─ Прирост памяти (первый запуск): +${memResult(rep.memoryIncrease)}`);
         const memPerCmd =
             (parseFloat(rep.afterRunMemory) - parseFloat(rep.startMemory)) / rep.count;
-        log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
+        console.log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
         const timePerCmd = rep.duration / rep.count;
-        log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
+        console.log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
     }
 
     const low = byState.low;
@@ -50,10 +50,10 @@ function printScenarioBlock(items) {
         const speedup =
             ((parseFloat(low.duration) - parseFloat(low.duration2)) / parseFloat(low.duration)) *
             100;
-        log(
+        console.log(
             `  ├─ Время первого запуска для самого лучшего исхода (команда в начале): ${low.duration} мс`,
         );
-        log(
+        console.log(
             `  ├─ Время повторного запуска для лучшего исхода: ${low.duration2} мс (ускорение: ${speedup >= 0 ? '+' : ''}${speedup.toFixed(1)}%)`,
         );
     }
@@ -62,10 +62,10 @@ function printScenarioBlock(items) {
             ((parseFloat(middle.duration) - parseFloat(middle.duration2)) /
                 parseFloat(middle.duration)) *
             100;
-        log(
+        console.log(
             `  ├─ Время первого запуска для среднего исхода (команда в середине): ${middle.duration} мс`,
         );
-        log(
+        console.log(
             `  ├─ Время повторного запуска для среднего исхода: ${middle.duration2} мс (ускорение: ${speedup >= 0 ? '+' : ''}${speedup.toFixed(1)}%)`,
         );
     }
@@ -73,10 +73,10 @@ function printScenarioBlock(items) {
         const speedup =
             ((parseFloat(high.duration) - parseFloat(high.duration2)) / parseFloat(high.duration)) *
             100;
-        log(
+        console.log(
             `  ├─ Время первого запуска для худшего исхода (команда не найдена): ${high.duration} мс`,
         );
-        log(
+        console.log(
             `  └─ Время повторного запуска для худшего исхода: ${high.duration2} мс (ускорение: ${speedup >= 0 ? '+' : ''}${speedup.toFixed(1)}%)`,
         );
     }
@@ -94,12 +94,12 @@ function printSummary(results) {
         .sort((a, b) => a - b);
     for (const count of sortedCounts) {
         const items = byCount[count];
-        log(`\nКоличество команд: ${count.toLocaleString('ru-RU')}`);
-        log('────────────────────────────────────────────────────────────');
+        console.log(`\nКоличество команд: ${count.toLocaleString('ru-RU')}`);
+        console.log('────────────────────────────────────────────────────────────');
 
         const noRegItems = items.filter((r) => !r.useReg);
         if (noRegItems.length > 0) {
-            log('Без регулярных выражений:');
+            console.log('Без регулярных выражений:');
             printScenarioBlock(noRegItems);
         }
 
@@ -113,7 +113,7 @@ function printSummary(results) {
         for (const { key, label } of complexities) {
             const subset = regItems.filter((r) => r.regState === key);
             if (subset.length > 0) {
-                log(`С регулярными выражениями (сложность: ${key} — ${label}):`);
+                console.log(`С регулярными выражениями (сложность: ${key} — ${label}):`);
                 printScenarioBlock(subset);
             }
         }
@@ -121,9 +121,9 @@ function printSummary(results) {
 }
 
 function printFinalSummary(results) {
-    log('\n\n' + '='.repeat(130));
-    log('ИТОГОВАЯ СВОДКА ПО ПРОИЗВОДИТЕЛЬНОСТИ (первый → повторный запуск)');
-    log('='.repeat(130));
+    console.log('\n\n' + '='.repeat(130));
+    console.log('ИТОГОВАЯ СВОДКА ПО ПРОИЗВОДИТЕЛЬНОСТИ (первый → повторный запуск)');
+    console.log('='.repeat(130));
 
     const byCount = {};
     for (const item of results) {
@@ -150,8 +150,8 @@ function printFinalSummary(results) {
             noRegItems.reduce((sum, r) => sum + parseFloat(r.memoryIncreaseFromStart), 0) /
             noRegItems.length;
 
-        log(`\nИТОГОВАЯ СВОДКА (Количество команд: ${count.toLocaleString('ru-RU')})`);
-        log('─'.repeat(123));
+        console.log(`\nИТОГОВАЯ СВОДКА (Количество команд: ${count.toLocaleString('ru-RU')})`);
+        console.log('─'.repeat(123));
         const header =
             'Сценарий'.padEnd(17) +
             ' | ' +
@@ -164,8 +164,8 @@ function printFinalSummary(results) {
             'Худший + 2 запуск'.padStart(25) +
             ' | ' +
             '< 1s'.padStart(4);
-        log(header);
-        log('─'.repeat(123));
+        console.log(header);
+        console.log('─'.repeat(123));
 
         // --- Эталон ---
         const memBaselineStr = `${memResult(baselineMemAvg.toFixed(2))} (+0.0%)`;
@@ -199,7 +199,7 @@ function printFinalSummary(results) {
                 ? 'Нет'
                 : 'Да';
 
-        log(
+        console.log(
             'Без regex ЭТАЛОН'.padEnd(17) +
                 ' | ' +
                 memBaselineStr.padStart(18) +
@@ -256,7 +256,7 @@ function printFinalSummary(results) {
             const anyOver1s = regSubset.some((r) => parseFloat(r.duration) >= 1000);
             const over1s = anyOver1s ? 'Нет' : 'Да';
 
-            log(
+            console.log(
                 labels[complexity].padEnd(17) +
                     ' | ' +
                     memStr.padStart(18) +
@@ -321,17 +321,6 @@ function getContent(query, count = 0) {
 
 const status = [];
 
-function log(str) {
-    console.log(str);
-}
-
-let maxRegCount = 0;
-
-// Отдаем корректную регулярку для теста
-function getRegex(regex, state, count, step) {
-    return regex;
-}
-
 // сам тест
 async function runTest(count = 1000, useReg = false, state = 'middle', regState = 'middle') {
     const res = { state, regState: useReg ? regState : '', useReg, count };
@@ -358,24 +347,18 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         },
     });
 
-    maxRegCount = 0;
     for (let j = 0; j < count; j++) {
         let command;
         if (useReg) {
             switch (regState) {
                 case 'low':
-                    command = getRegex(`${j} страниц`, state, count, j);
+                    command = `${j} страниц`;
                     break;
                 case 'middle':
-                    command = getRegex(`(\\d\\d-\\d\\d-\\d\\d_ref_${j}_)`, state, count, j);
+                    command = `(\\d\\d-\\d\\d-\\d\\d_ref_${j}_)`;
                     break;
                 case 'high':
-                    command = getRegex(
-                        `напомни для user_${j} ([^\\d]+) в (\\d{1,2}:\\d{2})`,
-                        state,
-                        count,
-                        j,
-                    );
+                    command = `напомни для user_${j} ([^\\d]+) в (\\d{1,2}:\\d{2})`;
                     break;
                 default:
                     command = `команда_${j}_`;
@@ -488,8 +471,8 @@ function getAvailableMemoryMB() {
 }
 
 function predictMemoryUsage(commandCount) {
-    // Базовое потребление + 0.5 КБ на команду + запас
-    return 15 + (commandCount * 0.5) / 1024 + 50; // в МБ
+    // Максимальное потребление примерно 1.3 КБ на команду(округляем до 2) + запас под nodejs и логику
+    return 15 + (commandCount * 2) / 1024 + 50; // в МБ
 }
 
 // --- Запуск ---

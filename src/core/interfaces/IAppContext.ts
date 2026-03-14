@@ -220,7 +220,10 @@ export interface ITokenPlatform {
     /**
      * Токены, и дополнительная информация(например секреты), которые необходимы для корректной работы указанной платформы.
      */
-    [platformName: string]: Record<string, string>;
+    [platformName: string]: {
+        token?: string;
+        [name: string]: string | number | undefined;
+    };
 }
 
 /**

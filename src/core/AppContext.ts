@@ -541,12 +541,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param {any} data - Данные для сохранения
      * @returns {boolean} true в случае успешного сохранения
      */
-    public saveFileData(fileName: string, data: unknown): boolean {
+    public saveFileData(fileName: string, data: unknown): Promise<boolean> {
         const dir: IDir = {
             path: this.appConfig.json || join(__dirname, '..', '..', 'json'),
             fileName: fileName,
         };
-        return saveData(dir, JSON.stringify(data), undefined, true, this.#logErrorBind);
+        return saveData(dir, JSON.stringify(data), undefined, this.#logErrorBind);
     }
 
     /**
@@ -586,7 +586,11 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param {boolean} usedDate - Флаг, говорящий о том, нужно ли добавлять время или нет.
      * @returns {boolean} true в случае успешного сохранения
      */
-    #saveLog(fileName: string, errorText: string | null = '', usedDate: boolean = true): boolean {
+    #saveLog(
+        fileName: string,
+        errorText: string | null = '',
+        usedDate: boolean = true,
+    ): Promise<boolean> {
         const msg = `${usedDate ? `[${new Date().toISOString()}]: ` : ''}${errorText}\n`;
         const dir: IDir = {
             path: this.appConfig.error_log || join(__dirname, '..', '..', 'json'),
@@ -595,6 +599,6 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (this.appMode === 'dev') {
             console.error(msg);
         }
-        return saveData(dir, this.#maskSecrets(msg), 'a', false, this.#logErrorBind);
+        return saveData(dir, this.#maskSecrets(msg), 'a', this.#logErrorBind);
     }
 }

@@ -58,6 +58,8 @@ export type TRunResult = object | string;
 
 export * from './interfaces/IBot';
 
+const MAX_REQUEST_SIZE = 1024 * 1024 * 2;
+
 /**
  * Функция для обработки следующего шага в цепочке промежуточных функций
  */
@@ -92,10 +94,10 @@ interface IAppConnectStatus {
 }
 
 /**
- * Универсальный, кросплатформенный фреймворк для создания ботов и голосовых навыков на TypeScript.
+ * Мультиплатформенный фреймворк для создания чат-ботов и голосовых навыков с единой бизнес-логикой под различные платформы на TypeScript.
  *
  * **`Bot` — главный класс**, управляющий всем жизненным циклом приложения:
- * регистрацией платформ (Алиса, Telegram, VK, Маруся и др.), обработкой входящих запросов,
+ * регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.), обработкой входящих запросов,
  * маршрутизацией команд, middleware, работой с базой данных, логированием и метриками.
  *
  * Фреймворк построен на **адаптерах** — каждый адаптер отвечает за преобразование
@@ -152,7 +154,7 @@ interface IAppConnectStatus {
  * bot.setPlatformParams({
  *   intents: [{
  *     name: 'greeting',
- *     slots: ['привет', 'здравствуйте']
+ *     slots: ['привет', 'здравствуй']
  *   }]
  * });
  *
@@ -1275,6 +1277,41 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
+    #isWebhookError(
+        req: IncomingMessage,
+        res: ServerResponse,
+        responseCb?: TBotResponseCb,
+    ): boolean {
+        if (req.method !== 'POST') {
+            send(
+                req,
+                res,
+                {
+                    statusCode: 400,
+                    body: 'Bad Request',
+                    defaultSend,
+                },
+                responseCb,
+            );
+            return true;
+        }
+        const contentLength = req.headers['content-length'];
+        if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
+            send(
+                req,
+                res,
+                {
+                    statusCode: 413,
+                    body: 'Request entity too large',
+                    defaultSend,
+                },
+                responseCb,
+            );
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Обрабатывает входящий webhook-запрос от поддерживаемой платформы (Telegram, VK, Алиса и др.).
      * Метод автоматически распознаёт платформу по заголовкам или телу запроса и делегирует обработку
@@ -1341,17 +1378,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
         res: ServerResponse,
         responseCb?: TBotResponseCb,
     ): Promise<void> {
-        if (req.method !== 'POST') {
-            return send(
-                req,
-                res,
-                {
-                    statusCode: 400,
-                    body: 'Bad Request',
-                    defaultSend,
-                },
-                responseCb,
-            );
+        if (this.#isWebhookError(req, res, responseCb)) {
+            return;
         }
         let appType: string | null = null;
         try {
@@ -1534,8 +1562,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
     #readRequestData(req: IncomingMessage): Promise<string> {
         return new Promise((resolve, reject) => {
             const chunks: Buffer[] = [];
+            let totalLength = 0;
             req.on('data', (chunk: Buffer) => {
                 chunks.push(chunk);
+                totalLength += chunk.length;
+                if (totalLength > MAX_REQUEST_SIZE) {
+                    req.destroy(new Error('Request too large'));
+                    reject(new Error('Request too large'));
+                }
             });
             req.on('end', () => resolve(Buffer.concat(chunks).toString()));
             req.on('error', reject);

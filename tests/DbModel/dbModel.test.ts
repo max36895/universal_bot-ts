@@ -1,22 +1,20 @@
-import { AppContext, UsersData, isFile, unlink } from '../../src';
+import { AppContext, UsersData, isFileSync, unlinkSync, IQueryData } from '../../src';
 
 import { FileAdapter, MongoAdapter, T_ALISA } from '../../src/plugins';
-
-interface IData {
-    userId?: string;
-    meta?: string;
-    data?: Record<string, unknown>;
-}
 
 const FILE_NAME = 'UsersData.json';
 const MONGO_TIMEOUT = 3000; // 3 секунды для операций с MongoDB
 const appContext = new AppContext();
+appContext.setLogger({
+    error: () => {},
+    warn: () => {},
+});
 
 describe('Db file connect', () => {
     let data: Record<string, Record<string, unknown>>;
     const userData = new UsersData(appContext);
 
-    beforeEach(() => {
+    beforeEach(async () => {
         const fileAdapter = new FileAdapter();
         fileAdapter.init(appContext);
         appContext.platformParams.utm_text = '';
@@ -51,10 +49,11 @@ describe('Db file connect', () => {
                 },
             },
         };
-        appContext.saveFileData(FILE_NAME, data);
+        await appContext.saveFileData(FILE_NAME, data);
     });
     afterEach(() => {
         userData.destroy();
+        unlinkSync(__dirname + '/' + FILE_NAME);
     });
 
     it('Where string', async () => {
@@ -78,7 +77,7 @@ describe('Db file connect', () => {
         expect((await userData.where(query)).status).toBe(false);
     });
     it('Where object', async () => {
-        let query: IData = {
+        let query: IQueryData = {
             userId: 'userId1',
         };
         let uData = (await userData.where(query)).data as Record<string, unknown>[];
@@ -120,7 +119,7 @@ describe('Db file connect', () => {
         expect(await userData.whereOne(query)).toBe(false);
     });
     it('Where one Object', async () => {
-        let query: IData = {
+        let query: IQueryData = {
             userId: 'userId1',
         };
         expect(await userData.whereOne(query)).toBe(true);
@@ -170,9 +169,9 @@ describe('Db file connect', () => {
     });
 
     it('Delete file db', () => {
-        expect(isFile(__dirname + '/' + FILE_NAME)).toBe(true);
-        unlink(__dirname + '/' + FILE_NAME);
-        expect(isFile(__dirname + '/' + FILE_NAME)).toBe(false);
+        expect(isFileSync(__dirname + '/' + FILE_NAME)).toBe(true);
+        unlinkSync(__dirname + '/' + FILE_NAME);
+        expect(isFileSync(__dirname + '/' + FILE_NAME)).toBe(false);
     });
 });
 

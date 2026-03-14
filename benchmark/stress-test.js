@@ -47,8 +47,8 @@ function getAvailableMemoryMB() {
 }
 
 function predictMemoryUsage(commandCount) {
-    // Базовое потребление + 0.4 КБ на команду + запас
-    return 15 + (commandCount * 0.4) / 1024 + 50; // в МБ
+    // Базовое потребление примерно 2КБ на команду + запас
+    return 15 + (commandCount * 2) / 1024 + 50; // в МБ
 }
 
 function setupCommands(bot, count) {

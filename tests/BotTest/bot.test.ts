@@ -1,4 +1,4 @@
-import { BotController, TAppType, SoundConstants } from '../../src';
+import { BotController, TAppType, SoundConstants, unlinkSync } from '../../src';
 import { BotTest } from '../../src/core/BotTest';
 import {
     T_ALISA,
@@ -101,6 +101,9 @@ let bot: TestBot;
 describe('umbot', () => {
     beforeAll(() => {
         bot = new TestBot();
+        bot.setLogger({
+            error: () => {},
+        });
         bot.use(fullPlatforms);
         bot.use(fileAdapter);
         bot.setPlatformParams({
@@ -146,6 +149,7 @@ describe('umbot', () => {
         fileAdapter.setCachedFileData('UserData', undefined);
         bot.close();
         jest.resetAllMocks();
+        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
     });
 
     describe('run bot test', () => {

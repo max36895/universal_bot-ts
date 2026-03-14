@@ -1,5 +1,5 @@
 import { Buttons, TButton } from '../button';
-import { Text, isFile } from '../../utils';
+import { Text, isFileSync } from '../../utils';
 import { AppContext } from '../../core';
 
 /**
@@ -232,7 +232,7 @@ export function getImage(
     };
     if (isToken) {
         res.imageToken = image;
-    } else if (image && (Text.isUrl(image) || isFile(image))) {
+    } else if (image && (Text.isUrl(image) || isFileSync(image))) {
         res.imageDir = image;
         res.imageToken = null;
     } else {
