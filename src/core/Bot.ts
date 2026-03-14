@@ -1,64 +1,37 @@
-import { TBotAuth, TBotContent } from './interfaces/IBot';
-import { BaseBotController, BotController, IUserData } from '../controller';
-import { TemplateTypeModel } from '../platforms/TemplateTypeModel';
+import { IAppConfig, IAppParam, TAppType, EMetric, TAppMode } from './interfaces/IAppContext';
 import {
-    Telegram,
-    Viber,
-    Marusia,
-    Vk,
-    SmartApp,
-    MaxApp,
-    Alisa,
-    IAlisaWebhookResponse,
-    IMarusiaWebhookResponse,
-} from '../platforms';
-import { UsersData } from '../models/UsersData';
-import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
-import {
-    AppContext,
-    IAppConfig,
-    IAppParam,
-    T_ALISA,
-    T_MARUSIA,
-    T_MAXAPP,
-    T_SMARTAPP,
-    T_TELEGRAM,
-    T_USER_APP,
-    T_VIBER,
-    T_VK,
-    TAppType,
-    ICommandParam,
-    ILogger,
-    TSlots,
-    T_AUTO,
-    EMetric,
-    TCommandResolver,
-} from './AppContext';
-import { IDbControllerModel } from '../models';
-import { Text } from '../utils';
+    IBotResponse,
+    IBotResponseState,
+    IPlatformAdapter,
+    IPluginFn,
+    TBotAuth,
+    TBotContent,
+    TBotResponseCb,
+    TCommandGroupMode,
+    TPlugin,
+} from './interfaces/IBot';
 
-/**
- * Тип для режима работы приложения
- * dev - разработка, prod - продакшн, strict_prod - строгий продакшн
- */
-export type TAppMode = 'dev' | 'prod' | 'strict_prod';
+import { ICommandParam, TSlots, TCommandResolver, IStepParam } from './utils/CommandReg';
+import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
+import { BaseBotController, BotController, IPlatformData, IUserData } from '../controller';
+import { AppContext, T_AUTO } from './AppContext';
+import { UsersData } from '../models';
+import { ILogger } from './interfaces/ILogger';
+import { Text, isPromise } from '../utils';
 
 /**
  * Тип для класса контроллера бота
  */
-export type TBotControllerClass<T extends IUserData = IUserData> = new () => BotController<T>;
-/**
- *  Тип для класса модели кастомного типа бота
- */
-export type TTemplateTypeModelClass = new (appContext: AppContext) => TemplateTypeModel;
+export type TBotControllerClass<T extends IUserData = IUserData> = new (
+    appContext: AppContext,
+) => BotController<T>;
+
 /**
  * Результат выполнения бота - ответ, который будет отправлен пользователю
  * Может быть ответом для Алисы, Маруси или текстовым сообщением
  *
- * @typedef {IAlisaWebhookResponse | IMarusiaWebhookResponse | string} TRunResult
- *
  * @example
- * ```typescript
+ * ```ts
  * // Ответ для Алисы
  * const alisaResponse: TRunResult = {
  *   response: {
@@ -81,36 +54,11 @@ export type TTemplateTypeModelClass = new (appContext: AppContext) => TemplateTy
  * const textResponse: TRunResult = 'Привет!';
  * ```
  */
-export type TRunResult = IAlisaWebhookResponse | IMarusiaWebhookResponse | string;
+export type TRunResult = object | string;
 
 export * from './interfaces/IBot';
 
-/**
- * Внутренний интерфейс для хранения информации о классе бота и его типе
- * Используется для определения подходящего обработчика запросов
- *
- * @interface IBotBotClassAndType
- *
- * @example
- * ```typescript
- * const botInfo: IBotBotClassAndType = {
- *   botClass: new Telegram(),
- *   type: T_TELEGRAM
- * };
- * ```
- */
-export interface IBotBotClassAndType {
-    /**
-     * Класс для обработки запросов конкретной платформы
-     * @type {TemplateTypeModel | null}
-     */
-    botClass: TemplateTypeModel | null;
-    /**
-     * Тип платформы (T_ALISA, T_VK и т.д.)
-     * @type {number | null}
-     */
-    platformType: number | null;
-}
+const MAX_REQUEST_SIZE = 1024 * 1024 * 2;
 
 /**
  * Функция для обработки следующего шага в цепочке промежуточных функций
@@ -121,49 +69,123 @@ export type MiddlewareNext = () => Promise<void>;
  */
 export type MiddlewareFn = (ctx: BotController, next: MiddlewareNext) => void | Promise<void>;
 
+function defaultSend(res: ServerResponse, state: IBotResponse): void {
+    res.statusCode = state.statusCode;
+    const isBodyString = typeof state.body === 'string';
+    res.setHeader('Content-Type', isBodyString ? 'text/plain' : 'application/json');
+    res.end(isBodyString ? state.body : JSON.stringify(state.body));
+}
+
+function send(
+    req: IncomingMessage,
+    res: ServerResponse,
+    state: IBotResponseState,
+    responseCb?: TBotResponseCb,
+): void {
+    if (responseCb) {
+        return responseCb(req, res, state);
+    }
+    return defaultSend(res, state);
+}
+
+interface IAppConnectStatus {
+    isConnecting: boolean;
+    status?: Promise<boolean> | boolean;
+}
+
 /**
- * Основной класс для работы с ботом
- * Отвечает за инициализацию, конфигурацию и запуск бота
- * Поддерживает различные платформы: Алиса, Маруся, Telegram, VK, Viber и др.
+ * Мультиплатформенный фреймворк для создания чат-ботов и голосовых навыков с единой бизнес-логикой под различные платформы на TypeScript.
  *
- * @class Bot
- * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
+ * **`Bot` — главный класс**, управляющий всем жизненным циклом приложения:
+ * регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.), обработкой входящих запросов,
+ * маршрутизацией команд, middleware, работой с базой данных, логированием и метриками.
  *
- * @example
- * Создание простого бота:
- * ```typescript
+ * Фреймворк построен на **адаптерах** — каждый адаптер отвечает за преобразование
+ * специфичного для платформы запроса в унифицированный `BotController`, который
+ * содержит всю информацию о пользователе, текст команды, NLU, состояние и методы ответа
+ * (кнопки, карточки, TTS). Вы пишете **один код**, а фреймворк доставляет его
+ * на все поддерживаемые платформы.
+ *
+ * ## 📖 КРАТКОЕ РУКОВОДСТВО
+ *
+ * 1. **Создайте бота:** `const bot = new Bot();`
+ * 2. **Настройте токены:** `bot.setAppConfig({ tokens: { telegram: {token: '...'}} });`
+ * 3. **Добавьте логику при необходимости:** `bot.initBotController(MyController);`
+ * 4. **Добавьте команды:** `bot.addCommand('start', ['старт'], handler);`
+ * 5. **Запустите:** `bot.start();`
+ *
+ * ## 🎯 Ключевые возможности
+ *  * - ✅ **Поддержка множества платформ** через подключаемые адаптеры (Алиса, Telegram, VK, Маруся и др.)
+ *  * - ✅ **Единая логика** для ботов и голосовых навыков
+ *  * - ✅ **Мощная система команд и интентов** с поддержкой регулярных выражений
+ *  * - ✅ **Управление состоянием диалога** (шаги) и пользовательскими данными
+ *  * - ✅ **Встроенная работа с БД** (MongoDB через плагины)
+ *  * - ✅ **Middleware и плагины** для расширения функциональности
+ *  * - ✅ **Гибкая настройка** (режимы разработки/продакшена, защита от ReDoS, кастомные резолверы команд)
+ *  * - ✅ **Логирование и метрики** для отладки и мониторинга
+ *
+ * ## 🚀 БЫСТРЫЙ СТАРТ
+ * Создание простого Telegram бота
+ * ```ts
+ * import { Bot } from 'umbot';
+ *
+ * // 1. Создаем бота для Telegram
+ * const bot = new Bot();
+ *
+ * // 2. Настраиваем токен (рекомендуется через .env файл)
+ * bot.setAppConfig({
+ *   env: 'local'
+ * });
+ *
+ * // 3. Добавляем команды
+ * bot.addCommand('help', ['помощь', 'справка'], (cmd, controller) => {
+ *   controller.text = 'Я могу:\n• Приветствовать\n• Помогать\n• И многое другое!';
+ * });
+ *
+ * // 4. Запускаем сервер
+ * bot.start('localhost', 3000);
+ *
+ * // 5. Настройте webhook в Telegram: https://api.telegram.org/bot{YOUR_TOKEN}/setWebhook?url=https://ваш-домен/webhook
+ * ```
+ *
+ * Создание простого бота со своим контроллером:
+ * ```ts
  * const bot = new Bot();
  * bot.setPlatformParams({
  *   intents: [{
  *     name: 'greeting',
- *     slots: ['привет', 'здравствуйте']
+ *     slots: ['привет', 'здравствуй']
  *   }]
  * });
+ *
+ * class MyController extends BotController {
+ *   public action(intentName: string | null): void {
+ *     if (intentName === 'greeting') {
+ *       this.text = 'Привет! Я ваш бот 🤖';
+ *       this.buttons
+ *         .addBtn('Помощь')
+ *         .addBtn('Настройки');
+ *     }
+ *   }
+ * }
+ *
  * bot.initBotController(MyController);
  * ```
- *
- * @example
  * Использование с базой данных:
- * ```typescript
+ * ```ts
+ * import { Bot } from 'umbot'
+ * import { MongoAdapter } from 'umbot/plugins'
  * const bot = new Bot();
- * bot.setAppConfig({
- *   db: {
+ * bot.use(new MongoAdapter({
  *     host: 'localhost',
  *     database: 'bot_db',
  *     user: 'user',
  *     pass: 'password'
- *   }
- * });
+ *   }));
  * ```
  *
- * @example
- * Создание бота для Telegram:
- * ```typescript
- * const bot = new Bot(T_TELEGRAM);
- * bot.setPlatformParams({
- *   telegram_token: 'YOUR_BOT_TOKEN'
- * });
- * ```
+ * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
+ * @see BotController
  */
 export class Bot<TUserData extends IUserData = IUserData> {
     /** Экземпляр HTTP-сервера */
@@ -200,9 +222,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Тип платформы по умолчанию
      */
     #defaultAppType: TAppType | 'auto' = 'auto';
+    // Чтобы не дублировать повторное подключение к базе.
+    readonly #appConnectStatus: IAppConnectStatus = {
+        isConnecting: false,
+    };
 
-    readonly #globalMiddlewares: MiddlewareFn[] = [];
-    readonly #platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
+    #globalMiddlewares: MiddlewareFn[] = [];
+    #platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
 
     /**
      * Получение корректного контроллера
@@ -222,12 +248,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Создает новый экземпляр бота
      *
      * @param {TAppType} [type] - Тип платформы (по умолчанию автоопределение)
-     * @param {BotController} [botController] - Контроллер с логикой
+     * @param {TBotControllerClass} [botController] - Контроллер с логикой
      *
      * @throws {Error} Если не удалось инициализировать бота
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Создание бота для Telegram
      * const bot = new Bot(T_TELEGRAM, MyController);
      *
@@ -236,6 +262,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * // Создание бота для Алисы
      * const bot = new Bot(T_ALISA, MyController);
+     *
+     * // Создание бота по умолчанию
+     * const bot = new Bot();
      * ```
      */
     constructor(type?: TAppType, botController?: TBotControllerClass<TUserData>) {
@@ -250,18 +279,24 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     public set appType(appType: TAppType | 'auto') {
         this.#defaultAppType = appType;
-        if (appType === 'auto') {
-            this.#appContext.appType = null;
-        } else {
-            this.#appContext.appType = appType;
-        }
     }
 
     /**
-     * Возвращает тип платформы
+     * Возвращает установленный тип приложения.
      */
-    public get appType(): TAppType | 'auto' {
+    public get appType(): string {
         return this.#defaultAppType;
+    }
+
+    /**
+     * Задает режим работы с регулярным выражениями.
+     * При значении auto, регулярные выражения будут группироваться в группу, благодаря чему уменьшается время обработки. Логика начинает отрабатывать после того, как добавили более 300 команд.
+     * При значении no-group, группировка регулярных выражений производиться не будет, из-за чего каждое регулярное выражение будет обрабатываться отдельно. Указывать данное значение стоит в том случае, если вы получаете сильную деградацию при обработке групп.
+     * При значении group, все регулярные выражения будут добавляться в группу. Перед использованием данного значения, перепроверьте производительность, так как при группировке определенных регулярных выражений, производительность может быть ниже.
+     * @param mode - Определяет режим работы с регулярными выражениями.
+     */
+    public setCommandGroupMode(mode: TCommandGroupMode): void {
+        this.#appContext.command.setCommandGroupMode(mode);
     }
 
     /**
@@ -273,48 +308,58 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Добавляет команду для обработки пользовательских запросов
+     * Регистрирует команду — обработчик, срабатывающий при совпадении входящего текста с одним из шаблонов.
      *
-     * @param {string} commandName - Уникальный идентификатор команды
-     * @param {TSlots} slots - Триггеры для активации команды
+     * Поиск команд оптимизирован:
+     * 1. Сначала проверяется точное совпадение
+     * 2. Если точного совпадения нет — выполняется последовательный перебор в порядке регистрации
+     *
+     * Первая совпавшая команда выполняется.
+     *
+     * @param {string} commandName - Уникальное имя команды (например, `'greeting'`). Используется для логирования и отладки.
+     * @param {TSlots} slots - Массив шаблонов для сопоставления:
      *   - Если элемент — строка → ищется как подстрока (`text.includes(...)`).
      *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
      *   - Параметр `isPattern` учитывается **только если в `slots` нет RegExp**.
      *   - При наличии хотя бы одного `RegExp`, `isPattern = false` игнорируется, и каждый элемент
      *     обрабатывается согласно своему типу.
-     * @param {ICommandParam['cb']} cb - Функция-обработчик команды
-     * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
+     * @param {ICommandParam['cb']} cb - Обработчик команды. Принимает:
+     *   - `text` — исходный текст от пользователя;
+     *   - `controller` — экземпляр `BotController` для формирования ответа (кнопки, текст, шаги, данные и т.д.);
+     *
+     *   Поддерживает `async`.
+     * @param {boolean} isPattern - Если `true` и в `slots` **нет RegExp**, все строки преобразуются в регулярные выражения.
+     *                   ⚠️ Используйте с осторожностью: возможен ReDoS. Все RegExp проверяются на уязвимости.
      *
      * @example
-     * Простая команда со словами:
-     * ```typescript
-     * appContext.addCommand(
+     * Простая текстовая команда:
+     * ```ts
+     * bot.addCommand(
      *   'greeting',
      *   ['привет', 'здравствуй'],
      *   (cmd, ctrl) => {
-     *     if (ctrl) ctrl.text = 'Здравствуйте!';
+     *     ctrl.text = 'Здравствуйте!';
      *   }
      * );
      * ```
      *
      * @example
      * Команда с регулярными выражениями:
-     * ```typescript
-     * // Обработка чисел от 1 до 999
+     * ```ts
+     * // Обработка чисел от 0 до 999
      * bot.addCommand(
      *   'number',
-     *   ['\\b([1-9]|[1-9][0-9]|[1-9][0-9][0-9])\\b'],
+     *   ['\\b(\\d{0,3})\\b'],
      *   (cmd, ctrl) => {
-     *     if (ctrl) ctrl.text = `Вы ввели число: ${cmd}`;
+     *     ctrl.text = `Вы ввели число: ${cmd}`;
      *   },
      *   true  // включаем поддержку регулярных выражений
      * );
      * ```
-     * Библиотека проверяет регулярные выражения на ReDoS и логирует предупреждения по необходимости
      *
      * @example
      * Команда с доступом к состоянию:
-     * ```typescript
+     * ```ts
      * bot.addCommand(
      *   'stats',
      *   ['статистика'],
@@ -333,110 +378,255 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * );
      * ```
      *
+     * @example
+     * // Асинхронная команда (работа с API):
+     * ```ts
+     * bot.addCommand('weather', ['погода'], async (text, controller) => {
+     *   const weather = await fetch('https://api.weather.com');
+     *   controller.text = `Погода: ${await weather.text()}`;
+     * });
+     * ```
+     *
+     * @example
+     * // Fallback: срабатывает, если ни одна команда не подошла:
+     * ```ts
+     * bot.addCommand('*', [], (text, controller) => {
+     *   controller.text = `Извините, я не понял "${text}". Скажите "помощь" для списка команд.`;
+     * });
+     * ```
+     *
      * @remarks
-     * - Команды обрабатываются в порядке добавления
-     * - При isPattern=true используются регулярные выражения JavaScript
-     * - В callback доступен весь функционал BotController
-     * - Можно использовать async функции в callback
+     * Поиск команд оптимизирован:
+     * 1. Сначала проверяется точное совпадение
+     * 2. Если точного совпадения нет — выполняется последовательный перебор
+     *
+     * При регистрации более 300 команд с регулярными выражениями
+     * фреймворк автоматически объединяет их в группы для повышения производительности.
+     *
+     * При isPattern=true используются регулярные выражения JavaScript
+     * В callback доступен весь функционал BotController
+     * Можно использовать async функции в callback
      */
     public addCommand<TBotController extends BotController = BotController>(
         commandName: string,
         slots: TSlots,
-        cb?: ICommandParam<TBotController>['cb'],
+        cb: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): this {
-        this.#appContext.addCommand(commandName, slots, cb, isPattern);
+        this.#appContext.command.addCommand(commandName, slots, cb, isPattern);
         return this;
     }
 
     /**
-     * Удаляет команду
+     * Удаляет зарегистрированную команду по имени
      * @param commandName - Имя команды
      */
     public removeCommand(commandName: string): this {
-        this.#appContext.removeCommand(commandName);
+        this.#appContext.command.removeCommand(commandName);
         return this;
     }
 
     /**
-     * Удаляет все команды
+     * Удаляет **все** зарегистрированные команды
+     *
+     * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
+     * > Используйте с осторожностью (например, при перезагрузке логики бота).
      */
     public clearCommands(): this {
-        this.#appContext.clearCommands();
+        this.#appContext.command.clearCommands();
         return this;
     }
 
     /**
-     * Устанавливает режим разработки
-     * @param {boolean} isDevMode - Флаг включения режима разработки
-     * @remarks В режиме разработки в консоль выводятся все ошибки и предупреждения
+     * Регистрирует обработчик для именованного шага диалога.
+     *
+     * Шаг — это часть **многошагового сценария** (например: "регистрация", "оформление заказа").
+     * После вызова `ctx.thisIntentName = 'myStep'` в команде или другом шаге,
+     * следующее сообщение пользователя будет обработано этим обработчиком.
+     *
+     * > 💡 Обработчик получает полный `BotController`, как и в командах:
+     * > доступны `this.text`, `this.userData`, `this.buttons` и т.д.
+     *
+     * @param stepName — Уникальное имя шага (например, `'enter_email'`).
+     * @param handler — Функция, вызываемая при получении сообщения в этом шаге.
+     * @returns Текущий экземпляр `Bot` (для цепочки вызовов).
+     *
+     * @example
+     * ```ts
+     * bot.addCommand('start', ['начать'], (_, ctx) => {
+     *      ctx.text = 'Готовы начать приключение?';
+     *      ctx.buttons.addBtn('Да').addBtn('Нет');
+     *      ctx.thisIntentName = 'confirm';
+     * });
+     * bot.addStep('confirm', (ctx) => {
+     *   if (ctx.userCommand === 'да') {
+     *     ctx.text = 'Отлично! Добро пожаловать.';
+     *   } else {
+     *     ctx.text = 'Извините, вход запрещён.';
+     *     ctx.thisIntentName = 'goodbye'; // переходим к другому шагу
+     *   }
+     * });
+     * ```
+     * @example
+     * ```ts
+     * // Пример многошаговой формы
+     * bot.addCommand('order', ['заказать'], (_, ctx) => {
+     *     ctx.text = 'Введите ваше имя:';
+     *     ctx.thisIntentName = 'step_name';
+     * });
+     *
+     * bot.addStep('step_name', (ctx) => {
+     *     ctx.userData.name = ctx.userCommand;
+     *     ctx.text = `Приятно познакомиться, ${ctx.userData.name}! Теперь введите email:`;
+     *     ctx.thisIntentName = 'step_email';
+     * });
+     *
+     * bot.addStep('step_email', (ctx) => {
+     *     ctx.userData.email = ctx.userCommand;
+     *     ctx.text = `Заказ оформлен! Имя: ${ctx.userData.name}, Email: ${ctx.userData.email}`;
+     *     ctx.thisIntentName = null; // сбрасываем шаг
+     * });
+     * ```
      */
-    public setDevMode(isDevMode: boolean): this {
-        this.#appContext.setDevMode(isDevMode);
+    public addStep<TBotController extends BotController = BotController>(
+        stepName: string,
+        handler: IStepParam<TBotController>['cb'],
+    ): this {
+        this.#appContext.command.addStep(stepName, handler);
+        return this;
+    }
+
+    /**
+     * Удаляет зарегистрированный шаг по имени.
+     *
+     * После удаления шаг больше не будет обрабатываться, даже если активен у пользователя.
+     * (Рекомендуется завершать активные сценарии через `ctx.clearStep()` перед удалением.)
+     *
+     * @param stepName — Имя шага для удаления.
+     * @returns Текущий экземпляр `Bot`.
+     */
+    public removeStep(stepName: string): this {
+        this.#appContext.command.removeStep(stepName);
+        return this;
+    }
+
+    /**
+     * Удаляет **все** зарегистрированные шаги.
+     *
+     * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
+     * > Используйте с осторожностью (например, при перезагрузке логики бота).
+     *
+     * @returns Текущий экземпляр `Bot`.
+     */
+    public clearSteps(): this {
+        this.#appContext.command.clearSteps();
+        return this;
+    }
+
+    /**
+     * Удаляет **все** зарегистрированные платформы, плагины и middleware службы.
+     *
+     * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
+     * > Используйте с осторожностью (например, при перезагрузке логики бота).
+     *
+     * @returns Текущий экземпляр `Bot`.
+     */
+    public clearUse(): this {
+        this.#appContext.platforms = {};
+        this.#globalMiddlewares = [];
+        this.#platformMiddlewares = {};
+        this.#appContext.plugins = {};
         return this;
     }
 
     /**
      * Устанавливает режим работы приложения
+     *
+     * @param {'dev' | 'prod' | 'strict_prod'} appMode - Режим работы:
+     * - 'dev': подробные логи, отладочная информация, отключена проверка ReDoS
+     * - 'prod': минимальные логи, производительность, НО небезопасные RegExp всё равно регистрируются
+     * - 'strict_prod': строгая проверка безопасности — любая RegExp с потенциальным ReDoS отклоняется с ошибкой
+     *
+     * ⚠️ ВАЖНО: В продакшене всегда используйте 'strict_prod' для защиты от атак через регулярные выражения.
+     * Режим 'prod' оставлен для обратной совместимости, но небезопасен.
+     *
+     * @example
+     * // Для продакшена (обязательно!)
+     * bot.setAppMode('strict_prod');
+     *
+     * // Для разработки
+     * bot.setAppMode('dev');
      * @param appMode
      */
     public setAppMode(appMode: TAppMode): this {
-        switch (appMode) {
-            case 'dev':
-                this.setDevMode(true);
-                break;
-            case 'strict_prod':
-                this.setDevMode(false);
-                this.#appContext.strictMode = true;
-                break;
-            default:
-                this.setDevMode(false);
-                this.#appContext.strictMode = false;
-        }
+        this.#appContext.appMode = appMode;
+        this.#appContext.command.strictMode = appMode === 'strict_prod';
         return this;
     }
 
     /**
-     * Установка пользовательского обработчика команд.
-     * @param resolver
-     * @remarks
-     * По умолчанию `umbot` использует линейный поиск с поддержкой подстрок и регулярных выражений.
-     * Это обеспечивает простоту, предсказуемость и соответствие поведению других платформ (порядок регистрации важен).
+     * Позволяет заменить встроенный механизм сопоставления команд на **кастомный алгоритм поиска**.
      *
-     * Однако при числе команд >1000 или в условиях высокой нагрузки вы можете **подключить собственный алгоритм поиска**:
+     *  По умолчанию `umbot` использует **оптимизированный поиск**:
+     *  1. Сначала проверяется точное совпадение
+     *  2. Если точного совпадения нет — выполняется последовательный перебор с поддержкой:
+     *      - подстрок (`includes`),
+     *      - простых регулярных выражений.
      *
+     * Это обеспечивает **предсказуемость**, **простоту отладки** и **соответствие поведению большинства платформ**:
+     * первая совпавшая команда (в порядке регистрации) — выигрывает.
+     *
+     * Однако при:
+     * - количестве команд >1000,
+     * - высокой нагрузке (>1000 RPS),
+     * - необходимости в fuzzy-поиске или сложной маршрутизации,
+     * вы можете подключить оптимизированный resolver.
+     *
+     * @param resolver - Функция вида `(userText: string, commands: Map<string, ICommand>) => string | null`.
+     *                    Должна вернуть имя команды или `null`, если совпадений нет.
+     *
+     * @example
      * ```ts
-     * const bot = new Bot();
-     * bot.setCustomCommandResolver((userCommand, commands) => {
-     *   // Пример: возврат команды по хэшу (ваши правила)
+     * // Пример: кэширование частых запросов
+     * const cache = new Map<string, string | null>();
+     * bot.setCustomCommandResolver((text, commands) => {
+     *   if (cache.has(text)) return cache.get(text)!;
+     *
      *   for (const [name, cmd] of commands) {
-     *     if (cmd.slots.some(slot => userCommand.includes(slot as string))) {
+     *     if (cmd.slots && cmd.slots.some(slot => typeof slot === 'string' && text.includes(slot))) {
+     *       cache.set(text, name);
      *       return name;
      *     }
      *   }
+     *   cache.set(text, null);
      *   return null;
      * });
      * ```
-     * 💡 Рекомендации:
      *
-     * Сохраняйте порядок перебора, если он критичен для вашей логики
-     * Используйте кэширование (Map<string, string>) для часто встречающихся фраз
-     * Для fuzzy-поиска рассмотрите fuse.js или natural
-     * При использовании регулярных выражений — не забывайте про защиту от ReDoS
+     * @remarks
+     * **Рекомендации при реализации resolver'а:**
+     * - Сохраняйте **порядок регистрации команд**, если логика зависит от приоритета.
+     * - Используйте **кэширование** для часто встречающихся фраз (но учитывайте потребление памяти).
+     * - Для fuzzy-поиска — рассмотрите `fuse.js`, `natural` или trie-структуры.
+     * - При работе с регулярными выражениями **обязательно проверяйте их на ReDoS**.
+     * - Избегайте тяжёлых синхронных операций — они блокируют event loop.
      */
     public setCustomCommandResolver(resolver: TCommandResolver): this {
-        this.#appContext.customCommandResolver = resolver;
+        this.#appContext.command.customCommandResolver = resolver;
         return this;
     }
 
     /**
-     * Задает конфигурацию приложения
-     * Устанавливает настройки бота, включая интенты, базу данных и другие параметры
+     * Задаёт **инфраструктурную конфигурацию** приложения: подключение к БД, загрузку `.env`, и другие
+     * настройки, связанные с окружением выполнения (а не с бизнес-логикой бота).
+     *
+     * > 🔒 **Безопасность**: никогда не храните секреты (пароли, токены, API-ключи) прямо в коде.
+     * > Всегда используйте `.env`-файлы или переменные окружения.
      *
      * @param {IAppConfig} config - Конфигурация приложения
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Конфигурация с базой данных
      * bot.setAppConfig({
      *   db: {
@@ -450,13 +640,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
-     * ```typescript
+     * ```ts
      * bot.setAppConfig({
      *     env: './.env', // путь до файла
      * });
      * ```
      */
-    public setAppConfig(config: IAppConfig): this {
+    public setAppConfig(config: Partial<IAppConfig>): this {
         if (config) {
             this.#appContext.setAppConfig(config);
         }
@@ -464,33 +654,51 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Возвращает контекст приложения
+     * Возвращает контекст приложения — центральный объект для расширенной настройки фреймворка.
+     *
+     * **Когда использовать:**
+     * - Замена HTTP-клиента: `bot.getAppContext().httpClient = customFetch`
+     * - Доступ к зарегистрированным адаптерам: `bot.getAppContext().platforms`
+     * - Настройка метрик и логирования
+     *
+     * **Пример:**
+     * ```ts
+     * // Добавление таймаутов к запросам
+     * const customFetch: THttpClient = async (url, init) => {
+     *   const controller = new AbortController();
+     *   const timeout = setTimeout(() => controller.abort(), 5000);
+     *   return fetch(url, { ...init, signal: controller.signal });
+     * };
+     *
+     * bot.getAppContext().httpClient = customFetch;
+     *
+     * ⚠️ Важно: Не модифицируйте внутренние поля контекста напрямую (например, commands, steps). Используйте публичные методы addCommand(), addStep().
      */
     public getAppContext(): AppContext {
         return this.#appContext;
     }
 
     /**
-     * Задает параметры для платформ
-     * Устанавливает дополнительные параметры для работы бота
+     * Задаёт параметры, управляющие **логикой бота** на всех платформах.
+     *
+     * Сюда входят:
+     * - список интентов по умолчанию (`help`, `welcome` и др.),
+     * - тексты ответов по умолчанию (`welcome_text`, `help_text`, `empty_text`),
+     * - другие настройки, не зависящие от конкретной платформы
      *
      * @param {IAppParam} params - Параметры платформы
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Базовая настройка
      * bot.setPlatformParams({
      *   intents: [{
      *     name: 'help',
      *     slots: ['помощь', 'справка']
      *   }],
-     * });
-     *
-     * @remarks
-     * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
-     * ```typescript
-     * bot.setAppConfig({
-     *     env: './.env', // путь до файла
+     *   welcome_text: 'Привет! Я ваш бот.',
+     *   help_text: 'Скажите "помощь", чтобы увидеть команды.',
+     *   empty_text: 'Извините, я не понял.'
      * });
      * ```
      */
@@ -502,97 +710,24 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
-     * Определяет тип платформы и возвращает соответствующий класс для обработки
+     * Устанавливает контроллер, метод `action()` которого вызывается **после обработки каждого запроса** —
+     * независимо от того, была ли распознана команда, активен ли шаг сценария, или обработан базовый интент.
      *
-     * @param {TAppType | null} [appType] - Тип платформы
-     * @param {TTemplateTypeModelClass | null} [userBotClass] - Пользовательский класс бота
-     * @returns {IBotBotClassAndType} Объект с типом платформы и классом обработчика
-     * @throws {Error} Если не удалось определить тип приложения
+     * Метод `action()` получает флаги `isCommand` и `isStep`, чтобы вы могли:
+     * - добавить общую логику (аналитика, логирование, трассировка);
+     * - модифицировать ответ глобально (например, добавить рекламу, кнопку "Оценить");
+     * - применить кросс-функциональные правила (rate limiting, мутации текста и т.д.);
      *
-     * @remarks
-     * Метод определяет тип платформы на основе appType и возвращает соответствующий класс:
-     * - T_ALISA → Alisa
-     * - T_VK → Vk
-     * - T_Max → Max
-     * - T_TELEGRAM → Telegram
-     * - T_VIBER → Viber
-     * - T_MARUSIA → Marusia
-     * - T_SMARTAPP → SmartApp
-     * - T_USER_APP → Пользовательский класс
-     */
-    protected _getBotClassAndType(
-        appType: TAppType | null,
-        userBotClass: TTemplateTypeModelClass | null = null,
-    ): IBotBotClassAndType {
-        let botClass: TemplateTypeModel | null = null;
-        let platformType: number | null = null;
-
-        switch (appType) {
-            case T_ALISA:
-                botClass = new Alisa(this.#appContext);
-                platformType = UsersData.T_ALISA;
-                break;
-
-            case T_VK:
-                botClass = new Vk(this.#appContext);
-                platformType = UsersData.T_VK;
-                break;
-
-            case T_TELEGRAM:
-                botClass = new Telegram(this.#appContext);
-                platformType = UsersData.T_TELEGRAM;
-                break;
-
-            case T_VIBER:
-                botClass = new Viber(this.#appContext);
-                platformType = UsersData.T_VIBER;
-                break;
-
-            case T_MARUSIA:
-                botClass = new Marusia(this.#appContext);
-                platformType = UsersData.T_MARUSIA;
-                break;
-
-            case T_SMARTAPP:
-                botClass = new SmartApp(this.#appContext);
-                platformType = UsersData.T_SMART_APP;
-                break;
-
-            case T_MAXAPP:
-                botClass = new MaxApp(this.#appContext);
-                platformType = UsersData.T_MAX_APP;
-                break;
-
-            case T_USER_APP:
-                if (userBotClass) {
-                    botClass = new userBotClass(this.#appContext);
-                    platformType = UsersData.T_USER_APP;
-                }
-                break;
-        }
-        return { botClass, platformType };
-    }
-
-    /**
-     * Устанавливает контроллер с базой данных
-     * @param dbController
-     */
-    public setUserDbController(dbController: IDbControllerModel | undefined): this {
-        this.#appContext.userDbController = dbController;
-        if (this.#appContext.userDbController) {
-            this.#appContext.userDbController.setAppContext(this.#appContext);
-        }
-        return this;
-    }
-
-    /**
-     * Инициализирует контроллер с бизнес-логикой бота
-     * Устанавливает контроллер, который будет обрабатывать команды и формировать ответы
+     * > 💡 **Рекомендация**: основную бизнес-логику размещайте в командах (`addCommand`) и шагах (`addStep`),
+     * > а в `action()` — только **сквозную** логику, которую не хочется дублировать.
      *
-     * @param {BotController<TUserData>} fn - Контроллер бота
+     * Контроллер по умолчанию уже обрабатывает интенты `welcome`, `help` и `fallback`,
+     * но вы можете заменить его, если нужно кастомное поведение.
+     *
+     * @param {BotController<TUserData>} fn - Экземпляр контроллера, наследующий `BotController<TUserData>`
      *
      * @example
-     * ```typescript
+     * ```ts
      * class MyController extends BotController {
      *   public action(intentName: string): void {
      *     switch (intentName) {
@@ -606,19 +741,34 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   }
      * }
      *
-     * bot.initBotController(new MyController());
+     * bot.initBotController(MyController);
+     * ```
+     *
+     * @example
+     * ```ts
+     * // Добавление рекламы ко всем ответам
+     * class MyController extends BotController {
+     *   public action(
+     *     intentName: string | null,
+     *     isCommand: boolean = false,
+     *     isStep: boolean = false
+     *   ): void {
+     *     // Добавим кнопку "Подписаться" везде, кроме шагов
+     *     if (!isStep) {
+     *       this.buttons.addBtn('Подписаться на рассылку', 'https://example.com');
+     *     }
+     *
+     *     // Логирование
+     *     console.log(`Обработано: ${isCommand ? 'команда' : isStep ? 'шаг' : 'интент'} – ${intentName}`);
+     *   }
+     * }
+     *
+     * bot.initBotController(MyController);
      * ```
      */
-    public initBotController(fn: TBotControllerClass<TUserData> | BotController<TUserData>): this {
+    public initBotController(fn: TBotControllerClass<TUserData>): this {
         if (fn) {
-            if (fn instanceof BotController) {
-                this.#appContext.logWarn(
-                    'Bot:initBotController() Передача экземпляра BotController устарела и будет удалена в будущих версиях. Вместо этого передавайте класс контроллера (например, MyController без new)',
-                );
-                this.#botControllerClass = fn.constructor as TBotControllerClass<TUserData>;
-            } else {
-                this.#botControllerClass = fn;
-            }
+            this.#botControllerClass = fn;
         }
         return this;
     }
@@ -631,7 +781,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param {TBotContent} content - Контент запроса
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Установка текстового сообщения
      * bot.setContent('Привет!');
      *
@@ -661,172 +811,170 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Определяет тип приложения по заголовкам или телу запроса
      * @param uBody - Тело запроса
      * @param headers - Заголовки запроса
-     * @param userBotClass - Пользовательский класс бота
      */
-    #getAppType(
-        uBody: any,
-        headers?: Record<string, unknown>,
-        userBotClass: TTemplateTypeModelClass | null = null,
-    ): TAppType {
+    #getAppType(uBody: unknown, headers?: Record<string, unknown>): TAppType | null {
         if (!this.#defaultAppType || this.#defaultAppType === T_AUTO) {
-            // 1. Заголовки — самый надёжный способ
-            if (headers?.['x-ya-dialogs-request-id']) {
-                return T_ALISA;
-            } else if (headers?.['x-marusia-request-id']) {
-                return T_MARUSIA;
-            } else if (headers?.['x-viber-content-signature']) {
-                return T_VIBER;
-            } else if (headers?.['x-sber-smartapp-signature']) {
-                return T_SMARTAPP;
-            }
-            const body = typeof uBody === 'string' ? JSON.parse(uBody) : uBody;
-            if (!body) {
-                this.#appContext.logWarn(
-                    'Bot:_getAppType: Пустое тело запроса. Используется fallback на Алису.',
-                );
-                return T_ALISA;
-            } else if (body.request && body.version && body.session) {
-                if (body.meta?.client_id?.includes('MailRu')) {
-                    return T_MARUSIA;
-                } else if (body.meta?.client_id?.includes('yandex.searchplugin')) {
-                    return T_ALISA;
-                } else if (body.session.application?.application_id) {
+            if (this.#appContext.platforms) {
+                for (const platformName in this.#appContext.platforms) {
                     if (
-                        body.session.application?.application_id ===
-                        body.session.application?.application_id.toLowerCase()
+                        this.#appContext.platforms[platformName].isPlatformOnQuery(uBody, headers)
                     ) {
-                        return T_MARUSIA;
-                    } else {
-                        return T_ALISA;
+                        return this.#appContext.platforms[platformName].platformName;
                     }
-                } else {
-                    this.#appContext.logWarn(
-                        'Bot:_getAppType: Не удалось однозначно определить платформу (Алиса/Маруся). Используется fallback на Алису.',
-                    );
-                    return T_ALISA;
                 }
-            } else if (body.message_token && body.message) {
-                return T_VIBER;
-            } else if (body.uuid && body.payload?.app_info) {
-                return T_SMARTAPP;
-            } else if (body?.message?.chat?.id || body?.callback_query) {
-                // 2. Telegram: токен в URL или теле
-                return T_TELEGRAM;
-            } else if (body?.type === 'message_new' && body?.object?.message) {
-                // 3. VK: объект с типом "message_new" и т.д.
-                return T_VK;
-            } else if (body?.meta?.projectName && body?.request?.payload) {
-                // 4. MAX: проверка по структуре (у MAX есть уникальное поле)
-                return T_MAXAPP;
-            } else {
-                if (userBotClass) {
-                    return T_USER_APP;
-                }
-                this.#appContext.logWarn(
-                    'Bot:_getAppType: Неизвестный формат запроса. Используется fallback на Алису.',
-                );
-                return T_ALISA;
             }
+            return null;
         } else {
             return this.#defaultAppType;
         }
     }
 
+    #initNLU(botController: BotController<TUserData>): void {
+        if (this.#appContext.plugins.nlu) {
+            const nlu =
+                typeof this.#appContext.plugins.nlu === 'function'
+                    ? this.#appContext.plugins.nlu(
+                          botController.userCommand || botController.originalUserCommand || '',
+                          botController.nlu.getNluValue(),
+                          botController.appType as string,
+                          botController.requestObject,
+                      )
+                    : this.#appContext.plugins.nlu.getData(
+                          botController.userCommand || botController.originalUserCommand || '',
+                          botController.nlu.getNluValue(),
+                          botController.appType as string,
+                          botController.requestObject,
+                      );
+            botController.nlu.setNlu(nlu, true);
+        }
+    }
+
+    /* eslint-disable require-atomic-updates*/
     /**
      * Запуск логики приложения
      * @param botController - Контроллер бота
      * @param botClass - Класс бота, который будет подготавливать корректный ответ в зависимости от платформы
      * @param appType - Тип приложения
-     * @param platformType - Тип приложения
      */
     async #runApp(
         botController: BotController<TUserData>,
-        botClass: TemplateTypeModel,
+        botClass: IPlatformAdapter,
         appType: TAppType,
-        platformType: number | null,
     ): Promise<TRunResult> {
-        if (botClass.sendInInit) {
-            return await botClass.sendInInit;
+        if (botController.platformOptions.sendInInit) {
+            return botController.platformOptions.sendInInit as TRunResult;
+        }
+        const dbAdapter = this.#appContext.database.adapter;
+        if (dbAdapter && !this.#appContext.database.isSendConnect) {
+            if (this.#appConnectStatus.isConnecting) {
+                if (isPromise(this.#appConnectStatus.status)) {
+                    await this.#appConnectStatus.status;
+                }
+            } else {
+                this.#appConnectStatus.isConnecting = true;
+                const res = (this.#appConnectStatus.status = dbAdapter.connect());
+                if (isPromise(res)) {
+                    await res;
+                }
+                this.#appContext.database.isSendConnect = res as boolean;
+            }
         }
         const userData = new UsersData(this.#appContext);
         botController.userId = userData.escapeString(botController.userId as string | number);
-        if (platformType) {
-            userData.type = platformType;
+        if (botClass.platformName) {
+            userData.platform = botClass.platformName;
         }
-
-        const isLocalStorage: boolean = !!(
-            this.#appContext.appConfig.isLocalStorage && botClass.isLocalStorage()
-        );
-
+        botController.platformOptions.usedLocalStorage = botClass.isLocalStorage(botController);
+        const isLocalStorage: boolean =
+            this.#appContext.appConfig.isLocalStorage &&
+            botController.platformOptions.usedLocalStorage;
         let isNewUser = true;
+        let localStateData = botClass.getLocalStorage(botController);
+        if (isPromise(localStateData)) {
+            localStateData = await localStateData;
+        }
         if (isLocalStorage) {
-            botClass.isUsedLocalStorage = isLocalStorage;
-            // eslint-disable-next-line require-atomic-updates
-            botController.userData = (await botClass.getLocalStorage()) as TUserData;
+            botController.userData = localStateData as TUserData;
         } else {
-            const query = {
-                userId: userData.escapeString(botController.userId),
-            };
-            if (this.#auth) {
-                query.userId = userData.escapeString(botController.userToken as string);
+            if (botController.platformOptions.usedLocalStorage) {
+                botController.state = localStateData as IPlatformData;
             }
-
-            if (await userData.whereOne(query)) {
-                // eslint-disable-next-line require-atomic-updates
-                botController.userData = userData.data;
-                isNewUser = false;
-            } else {
-                // eslint-disable-next-line require-atomic-updates
-                botController.userData = {} as TUserData;
-                userData.userId = botController.userId;
-                userData.meta = botController.userMeta;
+            if (dbAdapter && !this.#appContext.appConfig.isLocalStorage) {
+                const query = {
+                    userId: botController.userId,
+                };
+                if (this.#auth) {
+                    query.userId = userData.escapeString(botController.userToken as string);
+                }
+                if (await userData.whereOne(query)) {
+                    botController.userData = userData.data as TUserData;
+                    isNewUser = false;
+                } else {
+                    if (!botController.userData) {
+                        botController.userData = {} as TUserData;
+                    }
+                    userData.userId = botController.userId;
+                    userData.meta = botController.userMeta as Record<string, unknown>;
+                }
             }
         }
+        this.#initNLU(botController);
         const content = await this.#getAppContent(botController, botClass, appType);
-        if (isLocalStorage) {
-            await botClass.setLocalStorage(botController.userData);
-        } else {
+        if (
+            dbAdapter &&
+            !(
+                isLocalStorage &&
+                (!botController.state || botController.state === botController.userData)
+            )
+        ) {
+            userData.userId = botController.userId;
             userData.data = botController.userData;
-
             if (isNewUser) {
-                userData.save(true).then((res) => {
+                await userData.save(true).then((res) => {
                     if (!res) {
                         this.#appContext.logError(
-                            `Bot:run(): Не удалось сохранить данные для пользователя: ${botController.userId}.`,
+                            `Bot:run(): Не удалось сохранить данные для пользователя: "${botController.userId}".`,
                         );
                     }
+                    return res;
                 });
             } else {
-                userData.update().then((res) => {
+                await userData.update().then((res) => {
                     if (!res) {
                         this.#appContext.logError(
-                            `Bot:run(): Не удалось обновить данные для пользователя: ${botController.userId}.`,
+                            `Bot:run(): Не удалось обновить данные для пользователя: "${botController.userId}".`,
                         );
                     }
                 });
             }
         }
-
-        const error = botClass.getError();
-        if (error) {
-            this.#appContext.logError(error);
+        if (botController.platformOptions.error) {
+            this.#appContext.logError(botController.platformOptions.error);
         }
-        //userData.destroy();
         this._clearState(botController);
         return content;
     }
 
+    /* eslint-enable require-atomic-updates*/
+
     async #getAppContent(
         botController: BotController<TUserData>,
-        botClass: TemplateTypeModel,
+        botClass: IPlatformAdapter,
         appType: TAppType,
-    ): Promise<string> {
+    ): Promise<string | object> {
         if (
             !botController.oldIntentName &&
             botController.userData &&
             botController.userData.oldIntentName
         ) {
             botController.oldIntentName = botController.userData.oldIntentName;
+        } else if (
+            !botController.oldIntentName &&
+            botController.state &&
+            typeof botController.state === 'object' &&
+            botController.state.oldIntentName
+        ) {
+            botController.oldIntentName = botController.state.oldIntentName as string;
         }
 
         const shouldProceed =
@@ -834,21 +982,65 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 ? await this.#runMiddlewares(botController, appType)
                 : true;
         if (shouldProceed) {
-            botController.run();
-        }
-        if (botController.thisIntentName !== null && botController.userData) {
-            botController.userData.oldIntentName = botController.thisIntentName;
-        } else {
-            delete botController.userData?.oldIntentName;
-        }
-        let content: any;
-        if (botController.isSendRating) {
-            content = await botClass.getRatingContext();
-        } else {
-            if (botController.store && JSON.stringify(botController.userData) === '{}') {
-                botController.userData = botController.store as TUserData;
+            const res = botController.run();
+            if (res) {
+                await res;
             }
-            content = await botClass.getContext();
+        }
+        if (
+            botController.tts === null &&
+            this.#appContext.platforms[botController.appType as string]?.isVoice
+        ) {
+            botController.tts = botController.text;
+        }
+        let userDataLength = Object.keys(botController.userData).length;
+        if (botController.thisIntentName !== null) {
+            if (botController.state && userDataLength === 0) {
+                botController.state.oldIntentName = botController.thisIntentName;
+            } else {
+                botController.userData.oldIntentName = botController.thisIntentName;
+            }
+        } else {
+            if (botController.userData.oldIntentName !== undefined) {
+                userDataLength--;
+                delete botController.userData.oldIntentName;
+            }
+            if (botController.state) {
+                delete botController.state.oldIntentName;
+            }
+        }
+        let content: string | object;
+
+        let stateData;
+        if (
+            this.#appContext.appConfig.isLocalStorage &&
+            botController.platformOptions.usedLocalStorage
+        ) {
+            if (this.#appContext.database.adapter) {
+                stateData =
+                    botController.state && Object.keys(botController.state).length
+                        ? botController.state
+                        : botController.userData;
+            } else {
+                stateData = userDataLength ? botController.userData : botController.state;
+            }
+        } else if (botController.state && Object.keys(botController.state).length) {
+            stateData = botController.state;
+        }
+
+        if (botController.isSendRating) {
+            content = botClass.getRatingContext(botController);
+        } else {
+            if (botController.state && userDataLength === 0) {
+                botController.userData = botController.state as TUserData;
+            }
+            content = botClass.getContent(botController, stateData);
+        }
+        if (botController.platformOptions.usedLocalStorage) {
+            const res = botClass.setLocalStorage(stateData, botController);
+            if (res) {
+                await res;
+            }
         }
         return content;
     }
@@ -869,9 +1061,17 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   await next();
      * });
      *
+     * @param fn - Middleware-функция
+     * @returns Текущий экземпляр `Bot` для цепочки вызовов
+     */
+    use(fn: MiddlewareFn): this;
+
+    /**
+     * Регистрирует middleware, вызываемый только для указанной платформы.
+     *
      * @example
      * // Только для Алисы
-     * bot.use('alisa', async (ctx, next) => {
+     * bot.use(T_ALISA, async (ctx, next) => {
      *   if (!ctx.appContext.requestObject?.session?.user_id) {
      *     ctx.text = 'Некорректный запрос';
      *     ctx.isEnd = true;
@@ -881,23 +1081,57 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   await next();
      * });
      *
-     * @param fn - Middleware-функция
-     * @returns Текущий экземпляр `Bot` для цепочки вызовов
-     */
-    use(fn: MiddlewareFn): this;
-
-    /**
-     * Регистрирует middleware, вызываемый только для указанной платформы.
-     *
      * @param platform - Идентификатор платформы (`alisa`, `telegram`, `vk`, и т.д.)
      * @param fn - Middleware-функция
      * @returns Текущий экземпляр `Bot`
      */
     use(platform: TAppType, fn: MiddlewareFn): this;
 
-    use(arg1: TAppType | MiddlewareFn, arg2?: MiddlewareFn): this {
+    /**
+     * Регистрирует плагин — объект, расширяющий функциональность приложения.
+     *
+     * Плагин может быть как функцией, так и классом.
+     * Если он реализован как метод, то должен быть указан флаг isPlugin.
+     * В случае когда используется класс, то должен быть реализован метод `init(appContext: AppContext)`
+     *
+     * @param plugin — Объект плагина, совместимый с `TPlugin`.
+     * @returns Текущий экземпляр `Bot`.
+     *
+     * @example
+     * import {AlisaAdapter} from 'umbot/plugins'
+     * bot.use(new AlisaAdapter());
+     */
+    use(plugin: TPlugin): this;
+
+    /**
+     * Регистрирует middleware или плагин (например, адаптер платформы).
+     *
+     * Поддерживаются три варианта:
+     * - `use(middleware)` — глобальный middleware для всех платформ.
+     * - `use(platform, middleware)` — middleware только для указанной платформы.
+     * - `use(plugin)` — подключает плагин (объект с `init()` или функцию с `isPlugin: true`).
+     *
+     * Middleware имеет доступ к `BotController` и может:
+     * - модифицировать контекст (`text`, `userData`, `buttons` и т.д.),
+     * - прервать обработку (если не вызвать `next()`),
+     * - выполнять логирование, проверки, tracing и др.
+     *
+     * Плагин получает `AppContext` при инициализации и может регистрировать
+     * middleware, команды или другую логику.
+     *
+     * Метод поддерживает цепочку вызовов.
+     */
+    use(arg1: TAppType | MiddlewareFn | TPlugin, arg2?: MiddlewareFn): this {
         if (typeof arg1 === 'function') {
-            this.#globalMiddlewares.push(arg1);
+            if ((arg1 as IPluginFn).isPlugin) {
+                (arg1 as IPluginFn)(this.#appContext);
+            } else {
+                this.#globalMiddlewares.push(arg1 as MiddlewareFn);
+            }
+            return this;
+        }
+        if (typeof arg1 !== 'string') {
+            arg1.init(this.#appContext);
         } else if (arg2) {
             this.#platformMiddlewares[arg1] ??= [];
             this.#platformMiddlewares[arg1].push(arg2);
@@ -912,17 +1146,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     async #runMiddlewares(controller: BotController, appType: TAppType): Promise<boolean> {
         if (appType) {
-            const start = performance.now();
-            const middlewares = [
-                ...this.#globalMiddlewares,
-                ...(this.#platformMiddlewares[appType] || []),
-            ];
+            if (
+                this.#globalMiddlewares.length === 0 &&
+                !this.#platformMiddlewares[appType]?.length
+            ) {
+                return true;
+            }
 
-            if (middlewares.length === 0) return true;
+            const start = this.#appContext.usedMetric ? performance.now() : 0;
 
             let index = 0;
             let isEnd = false;
             try {
+                let middlewares = this.#globalMiddlewares;
                 const next = async (): Promise<void> => {
                     if (index < middlewares.length) {
                         const mw = middlewares[index++];
@@ -931,23 +1167,28 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         isEnd = true;
                     }
                 };
-
                 // Запускаем цепочку
                 await next();
+                if (isEnd && this.#platformMiddlewares[appType]?.length) {
+                    isEnd = false;
+                    index = 0;
+                    middlewares = this.#platformMiddlewares[appType];
+                    await next();
+                }
             } catch (err) {
                 this.#appContext.logError(
-                    `Bot:_runMiddlewares: Ошибка в middleware: ${(err as Error).message}`,
+                    `Bot:runMiddlewares: Ошибка при обработке middleware: ${(err as Error).message}`,
                     {
                         error: err,
                     },
                 );
-                isEnd = false;
+                // isEnd = false;
             }
-            this.#appContext.logMetric(EMetric.MIDDLEWARE, performance.now() - start, {
-                platform: appType,
-            });
-            // eslint-disable-next-line require-atomic-updates
-            middlewares.length = 0;
+            if (this.#appContext.usedMetric) {
+                this.#appContext.logMetric(EMetric.MIDDLEWARE, performance.now() - start, {
+                    platform: appType,
+                });
+            }
             return isEnd;
         }
         return true;
@@ -955,34 +1196,39 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     #$botController: BotController<TUserData> | null = null;
 
+    /**
+     * Установка контроллера. Используется только для тестирования
+     * @param botController
+     * @protected
+     */
     protected _setBotController(botController: BotController<TUserData>): void {
         this.#$botController = botController;
     }
 
     /**
-     * Запускает обработку запроса.
-     * Выполняет основную логику бота и возвращает результат
+     * Выполняет непосредственную обработку входящего запроса бота.
+     * Этот метод **не запускает HTTP-сервер** и **не обрабатывает HTTP-запросы напрямую** —
+     * он принимает уже распарсенные данные и возвращает результат обработки.
      *
-     * @param {TTemplateTypeModelClass | null} [userBotClass] - Пользовательский класс бота
-     * @param {TAppType | null} [appType] - Тип приложения. Если не указан, будет определен автоматически
-     * @param {string} [content] - Контент запроса. Если не указан, будет взят из this._content
-     * @returns {Promise<TRunResult>} Результат выполнения бота
-     * @throws
+     * Обычно вызывается **внутри {@link webhookHandle}**, но может использоваться напрямую,
+     * если вы реализуете собственный обработчик запросов, тестируете логику бота
+     * или запускаете бота вне HTTP-контекста (например, из консоли или очереди сообщений).
+     *
+     * @param {TAppType | null} [appType] - Тип приложения. Если не указан, будет определен автоматически в зависимости от запроса.
+     * @param {string | object} [content] - Входные данные для обработки (например, текст сообщения или объект запроса).
+     * @returns {Promise<TRunResult>} Результат обработки запроса
+     * @throws {Error} Если не удаётся определить платформу или отсутствуют данные для обработки.
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Обработка запроса
      * const result = await bot.run();
      * console.log(result);
-     *
-     * // Обработка с пользовательским классом
-     * const result = await bot.run(MyBotClass);
      * ```
      */
     public async run(
-        userBotClass: TTemplateTypeModelClass | null = null,
         appType: TAppType | null = null,
-        content: string | null = null,
+        content: string | object | null = null,
     ): Promise<TRunResult> {
         if (!this.#botControllerClass) {
             const errMsg =
@@ -990,138 +1236,291 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.logError(errMsg);
             throw new Error(errMsg);
         }
-        const botController = this.#$botController || new this.#botControllerClass();
+        let correctContent = this._content || content;
+        if (correctContent && typeof correctContent === 'string') {
+            correctContent = JSON.parse(correctContent);
+        }
+        let botController: BotController<TUserData, IPlatformData>;
+        if (this.#$botController) {
+            botController = this.#$botController;
+            botController.setAppContext(this.#appContext);
+        } else {
+            botController = new this.#botControllerClass(this.#appContext);
+        }
         botController.setAppContext(this.#appContext);
-        let cAppType: TAppType = appType || T_ALISA;
-        if (!appType) {
-            cAppType = this.#getAppType(this._content || content, undefined, userBotClass);
-        }
-        if (this.#appContext.appType) {
-            cAppType = this.#appContext.appType;
-        }
+        const cAppType: TAppType | null = appType || this.#getAppType(correctContent);
         botController.appType = cAppType;
-
-        const { botClass, platformType } = this._getBotClassAndType(cAppType, userBotClass);
+        const botClass = cAppType ? this.#appContext.platforms[cAppType] : null;
         if (botClass) {
-            if (botController.userToken === null) {
-                botController.userToken = this.#auth;
+            if (!correctContent) {
+                const msg = `Для платформы "${cAppType}", передано пустое содержимое, корректно обработать запрос невозможно.`;
+                this.#appContext.logError(msg);
+                throw new Error(msg);
             }
-            botClass.updateTimeStart();
-            if (await botClass.init(this._content || content, botController)) {
-                return await this.#runApp(botController, botClass, cAppType, platformType);
+            botController.userToken ??= this.#auth;
+
+            botClass.updateTimeStart(botController);
+            let res = botClass.setQueryData(correctContent, botController);
+            if (isPromise(res)) {
+                res = await res;
+            }
+            if (res) {
+                return await this.#runApp(botController, botClass, cAppType as string);
             } else {
-                this.#appContext.logError(botClass.getError() as string);
-                throw new Error(botClass.getError() || '');
+                this.#appContext.logError(botController.platformOptions.error as string);
+                throw new Error(botController.platformOptions.error || '');
             }
         } else {
-            const msg = 'Не удалось определить тип приложения!';
+            const msg = 'Не удалось определить платформу, от которой пришел запрос.';
             this.#appContext.logError(msg);
             throw new Error(msg);
         }
     }
 
+    #isWebhookError(
+        req: IncomingMessage,
+        res: ServerResponse,
+        responseCb?: TBotResponseCb,
+    ): boolean {
+        if (req.method !== 'POST') {
+            send(
+                req,
+                res,
+                {
+                    statusCode: 400,
+                    body: 'Bad Request',
+                    defaultSend,
+                },
+                responseCb,
+            );
+            return true;
+        }
+        const contentLength = req.headers['content-length'];
+        if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
+            send(
+                req,
+                res,
+                {
+                    statusCode: 413,
+                    body: 'Request entity too large',
+                    defaultSend,
+                },
+                responseCb,
+            );
+            return true;
+        }
+        return false;
+    }
+
     /**
-     * Обрабатывает входящий webhook-запрос от любой поддерживаемой платформы.
+     * Обрабатывает входящий webhook-запрос от поддерживаемой платформы (Telegram, VK, Алиса и др.).
+     * Метод автоматически распознаёт платформу по заголовкам или телу запроса и делегирует обработку
+     * соответствующему адаптеру. Ответ отправляется автоматически через переданный объект `res`.
+     *
      * @param req - Объект входящего запроса (IncomingMessage или совместимый)
      * @param res - Объект ответа (ServerResponse или совместимый)
-     * @param userBotClass - Пользовательский класс бота
+     * @param responseCb - Callback, для пользовательской обработки ответа пользователю. Стоит использовать в том случае, если есть необходимость переопределить стандартный ответ фреймворка.
+     * Если передан, ВЫ ДОЛЖНЫ вызвать res.end() самостоятельно.
+     * Без колбэка фреймворк автоматически завершит ответ через res.end().
      *
      * @example
-     * ```typescript
-     * // Express
+     * ```ts
+     * // Использование с Express
      * import express from 'express';
      * const app = express();
-     * app.use(express.json({ type: '*\/*' })); // важно для Алисы/Сбера
+     * app.use(express.json());
      *
-     * const bot = new Bot('alisa');
-     * bot.initBotController(MyController);
-     * bot.setAppConfig({...});
+     * const bot = new Bot();
      *
      * app.post('/webhook', (req, res) => bot.webhookHandle(req, res));
+     * ```
+     * @example
+     * // Использование с встроенным HTTP-сервером Node.js
+     * import { createServer } from 'http';
+     *
+     * const bot = new Bot();
+     * const server = createServer((req, res) => {
+     *   if (req.method === 'POST' && req.url === '/webhook') {
+     *     bot.webhookHandle(req, res);
+     *   } else {
+     *     res.statusCode = 404;
+     *     res.end();
+     *   }
+     * });
+     * server.listen(3000);
+     * @example
+     * ```ts
+     * // Пример с переопределением ответа
+     * import { createServer } from 'http';
+     *
+     * const bot = new Bot();
+     * const server = createServer((req, res) => {
+     *   if (req.method === 'POST' && req.url === '/webhook') {
+     *     // В случае если вернулся статус отличный от 200, вернет содержимое какой-то страницы.
+     *     bot.webhookHandle(req, res, (_reg: IncomingMessage, _res: ServerResponse, state: IBotResponseState) => {
+     *          if (state.statusCode === 200) {
+     *              return state.defaultSend(_res, state);
+     *          }
+     *          res.statusCode = 200;
+     *          res.end(...);// Какое-то содержимое страницы
+     *     });
+     *   } else {
+     *     res.statusCode = 404;
+     *     res.end();
+     *   }
+     * });
+     * server.listen(3000);
+     *
      * ```
      */
     public async webhookHandle(
         req: IncomingMessage,
         res: ServerResponse,
-        userBotClass: TTemplateTypeModelClass | null = null,
+        responseCb?: TBotResponseCb,
     ): Promise<void> {
-        const send = (statusCode: number, body: string | object): void => {
-            res.statusCode = statusCode;
-            res.setHeader(
-                'Content-Type',
-                typeof body === 'string' ? 'text/plain' : 'application/json',
-            );
-            res.end(typeof body === 'string' ? body : JSON.stringify(body));
-        };
-
-        if (req.method !== 'POST') {
-            return send(400, 'Bad Request');
+        if (this.#isWebhookError(req, res, responseCb)) {
+            return;
         }
-
+        let appType: string | null = null;
         try {
-            this.#appContext.logMetric(EMetric.START_WEBHOOK, Date.now(), {});
-            const start = performance.now();
+            if (this.#appContext.usedMetric) {
+                this.#appContext.logMetric(EMetric.START_WEBHOOK, Date.now(), {});
+            }
+            const startTimer = this.#appContext.usedMetric ? performance.now() : 0;
             const data = await this.#readRequestData(req);
             const query = JSON.parse(data) as string | null;
-
             if (!query) {
-                return send(400, 'Empty request');
+                return send(
+                    req,
+                    res,
+                    {
+                        statusCode: 400,
+                        body: 'Empty request',
+                        defaultSend,
+                    },
+                    responseCb,
+                );
             }
-
             if (req.headers?.authorization) {
                 this.#auth = req.headers.authorization.replace('Bearer ', '');
             }
 
-            const appType = this.#getAppType(query, req.headers, userBotClass);
-            const result = await this.run(userBotClass, appType, query);
+            appType = this.#getAppType(query, req.headers);
+            const result = await this.run(appType, query);
             const statusCode = result === 'notFound' ? 404 : 200;
-            this.#appContext.logMetric(EMetric.END_WEBHOOK, performance.now() - start, {
-                appType,
-                success: statusCode === 200,
-            });
-            return send(statusCode, result);
+            if (this.#appContext.usedMetric) {
+                this.#appContext.logMetric(EMetric.END_WEBHOOK, performance.now() - startTimer, {
+                    appType,
+                    success: statusCode === 200,
+                });
+            }
+            return send(
+                req,
+                res,
+                {
+                    statusCode,
+                    body: result,
+                    defaultSend,
+                },
+                responseCb,
+            );
         } catch (error) {
             if (error instanceof SyntaxError) {
-                this.#appContext.logError(`Bot:webhookHandle(): Syntax Error: ${error.message}`, {
-                    file: 'Bot:webhookHandle()',
-                    error,
-                });
-                return send(400, 'Invalid JSON');
+                this.#appContext.logError(
+                    `Bot:webhookHandle(): Невозможно распарсить тело запроса как JSON. Убедитесь, что платформа "${appType}" отправляет корректные данные: ${error.message}`,
+                    {
+                        file: 'Bot:webhookHandle()',
+                        error,
+                    },
+                );
+                return send(
+                    req,
+                    res,
+                    {
+                        statusCode: 400,
+                        body: 'Invalid JSON',
+                        defaultSend,
+                    },
+                    responseCb,
+                );
             }
-            this.#appContext.logError(`Bot:webhookHandle(): Server error: ${error}`, {
-                error,
-            });
-            return send(500, 'Internal Server Error');
+            this.#appContext.logError(
+                `Bot:webhookHandle(): Произошла ошибка при работе приложения для платформы "${appType}": ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+                {
+                    error,
+                },
+            );
+            return send(
+                req,
+                res,
+                {
+                    statusCode: 500,
+                    body: 'Internal Server Error',
+                    defaultSend,
+                },
+                responseCb,
+            );
         }
     }
 
     /**
-     * Запускает HTTP-сервер для обработки запросов.
-     * Создает сервер на указанном хосте и порту
+     * Запускает встроенный HTTP-сервер на указанном хосте и порту для приёма webhook-запросов
+     * от поддерживаемых платформ. Сервер использует нативный `http.createServer`.
+     *
+     * Метод возвращает экземпляр `http.Server`, что позволяет, например, корректно
+     * остановить сервер или добавить обработчики событий (`'listening'`, `'error'` и т.д.).
+     *
+     * Если требуется интеграция с фреймворком (например, Express, Fastify и др.),
+     * рекомендуется использовать {@link webhookHandle} как middleware-обработчик.
+     *
+     * @see webhookHandle
      *
      * @param {string} hostname - Имя хоста
      * @param {number} port - Порт
-     * @param {TTemplateTypeModelClass | null} [userBotClass] - Пользовательский класс бота
+     * @param responseCb - Callback, для пользовательской обработки ответа пользователю. Стоит использовать в том случае, если есть необходимость переопределить стандартный ответ фреймворка.
      *
      * @example
-     * ```typescript
-     * // Запуск сервера на localhost:3000
-     * bot.start('localhost', 3000);
+     * ```ts
+     * // Запуск встроенного сервера
+     * const bot = new Bot();
+     * bot.start('0.0.0.0', 8080);
      *
-     * // Запуск с пользовательским классом
-     * bot.start('localhost', 3000, MyBotClass);
+     * // Интеграция с Express (вместо встроенного сервера)
+     * import express from 'express';
+     * import { Bot } from 'umbot';
+     *
+     * const bot = new Bot();
+     * const app = express();
+     * app.use(express.json());
+     * app.post('/webhook', (req, res) => bot.webhookHandle(req, res));
+     *
+     * app.listen(3000, () => {
+     *   console.log('Bot listening on port 3000');
+     * });
+     * ```
+     * ```ts
+     * // Пример с переопределением ответа
+     * const bot = new Bot();
+     * // В случае если вернулся статус отличный от 200, вернет содержимое какой-то страницы.
+     * bot.start('0.0.0.0', 8080, (reg: IncomingMessage, _res: ServerResponse, state: IBotResponseState) => {
+     *      if (state.statusCode === 200) {
+     *          return state.defaultSend(_res, state);
+     *      }
+     *      res.statusCode = 200;
+     *      res.end(...);// Какое-то содержимое страницы
+     * });
      * ```
      */
     public start(
         hostname: string = 'localhost',
         port: number = 3000,
-        userBotClass: TTemplateTypeModelClass | null = null,
+        responseCb?: TBotResponseCb,
     ): Server {
         this.close();
 
         this.#serverInst = createServer(
             async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-                return this.webhookHandle(req, res, userBotClass);
+                return this.webhookHandle(req, res, responseCb);
             },
         );
 
@@ -1140,13 +1539,16 @@ export class Bot<TUserData extends IUserData = IUserData> {
         return this.#serverInst;
     }
 
+    /**
+     * Вызывается при завершении приложения через комбинацию клавиш
+     * @private
+     */
     async #gracefulShutdown(): Promise<void> {
         this.#appContext.log('Получен сигнал завершения. Выполняется graceful shutdown...');
 
-        await this.close(); // закрывает HTTP-сервер
-
-        await this.#appContext.closeDB();
-        this.#appContext.clearCommands();
+        await this.close();
+        this.#appContext.command.clearCommands();
+        this.#appContext.command.clearSteps();
         Text.clearCache();
 
         this.#appContext.log('Graceful shutdown завершён.');
@@ -1159,23 +1561,37 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     #readRequestData(req: IncomingMessage): Promise<string> {
         return new Promise((resolve, reject) => {
-            let data = '';
+            const chunks: Buffer[] = [];
+            let totalLength = 0;
             req.on('data', (chunk: Buffer) => {
-                data += chunk.toString();
+                chunks.push(chunk);
+                totalLength += chunk.length;
+                if (totalLength > MAX_REQUEST_SIZE) {
+                    req.destroy(new Error('Request too large'));
+                    reject(new Error('Request too large'));
+                }
             });
-            req.on('end', () => resolve(data));
+            req.on('end', () => resolve(Buffer.concat(chunks).toString()));
             req.on('error', reject);
         });
     }
 
     /**
-     * Закрывает HTTP-сервер.
-     * Освобождает ресурсы и завершает работу сервера.
+     * Корректно завершает работу встроенного HTTP-сервера (если он был запущен через {@link start}).
+     * Ожидает завершения всех текущих запросов, освобождает сетевые ресурсы и отменяет
+     * все активные асинхронные операции, связанные с жизненным циклом бота.
+     *
+     * Метод безопасен для повторного вызова.
+     *
+     * @returns {Promise<void>} Завершается, когда сервер остановлен и все ресурсы освобождены.
      *
      * @example
-     * ```typescript
-     * // Закрытие сервера
-     * bot.close();
+     * ```ts
+     * const bot = new Bot();
+     * bot.start('localhost', 3000);
+     *
+     * // ... позже, при завершении приложения
+     * await bot.close();
      * ```
      */
     public async close(): Promise<void> {
@@ -1183,6 +1599,27 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#serverInst.close();
             this.#serverInst = undefined;
         }
-        await this.#appContext.closeDB();
+        await this.#appContext.close();
+    }
+
+    /**
+     * Отправка текста пользователю
+     * Этот метод используется для активных рассылок — когда бот инициирует диалог первым (например, уведомление).
+     * В методе реализована механика преобразования текстового значения `controllerOrText` в контроллер, а также базовый механизм для отправки ответа.
+     *
+     * Если платформа не поддерживает возможность начать диалог самостоятельно, то вернется false
+     * @param userId Ид пользователя, которому нужно отправить сообщение
+     * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
+     * @param platform Платформа, на которую необходимо отправить запрос
+     */
+    public async send(
+        userId: string | number,
+        controllerOrText: BotController | string,
+        platform: TAppType,
+    ): Promise<unknown | boolean> {
+        if (this.#appContext.platforms?.[platform]) {
+            return this.#appContext.platforms[platform].send(userId, controllerOrText);
+        }
+        return false;
     }
 }

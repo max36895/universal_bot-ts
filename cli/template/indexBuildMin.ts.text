@@ -5,6 +5,7 @@
  */
 import { run } from 'umbot/build';
 import { FALLBACK_COMMAND, Bot } from 'umbot';
+import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
 
@@ -22,7 +23,8 @@ const config = {
             botController.text = 'Я вас не понял. Скажите "привет".';
           }
         });
-    }
+    },
+    plugins: [fullPlatforms, new FileAdapter()] // Замените FileAdapter на свой адаптер для работы с базой данных
 };
 const mode = 'dev';// Режим работы приложения. (prod, dev, dev-online)
 run(config, mode);

@@ -1,0 +1,12 @@
+TELEGRAM_TOKEN=your-telegram-token
+VK_TOKEN=your-vk-token
+VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
+VIBER_TOKEN=your-viber-token
+YANDEX_TOKEN=your-alisa-token
+MARUSIA_TOKEN=your-marusia-token
+MAX_TOKEN=your-max-token
+
+DB_HOST=localhost
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=bot_db

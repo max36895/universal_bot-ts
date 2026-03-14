@@ -2,15 +2,15 @@ import { BotTest, IBotTestParams } from '../../../src/test';
 import skillStorageConfig from '../../config/skillStorageConfig';
 import skillDefaultParam from '../../config/skillDefaultParam';
 import { UserAppController } from './controller/UserAppController';
-import { UserApp } from './UserTemplate/Controller/UserApp';
-import userDataConfig from './UserTemplate/userDataConfig';
+import { UserAdapter } from './UserTemplate/Adapter/UserAdapter';
 
 const bot = new BotTest();
+bot.use(new UserAdapter()); // Подключаем пользовательский адаптер для платформы
 bot.setAppConfig(skillStorageConfig());
 bot.setPlatformParams(skillDefaultParam());
 bot.initBotController(UserAppController);
 
-//bot.run(userApp);
+// bot.run();
 /**
  * Отображаем ответ навыка и хранилище в консоли.
  */
@@ -18,7 +18,5 @@ const params: IBotTestParams = {
     isShowResult: true,
     isShowStorage: false,
     isShowTime: true,
-    userBotClass: UserApp,
-    userBotConfig: userDataConfig,
 };
 bot.test(params);

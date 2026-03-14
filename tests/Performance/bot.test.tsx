@@ -1,4 +1,5 @@
-import { Bot, BotController, Alisa, T_ALISA, AlisaSound, Text } from '../../src';
+import { Bot, BotController, SoundConstants, Text } from '../../src';
+import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { performance } from 'node:perf_hooks';
 
 // Базовое потребление памяти не должно превышать 500кб
@@ -123,6 +124,8 @@ describe('umbot', () => {
 
     beforeEach(() => {
         bot = new TestBot();
+        bot.use(new AlisaAdapter());
+        bot.use(new FileAdapter());
     });
 
     afterEach(() => {
@@ -139,10 +142,10 @@ describe('umbot', () => {
                     bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.setAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                     bot.setContent(getContent('0'.repeat(i * 2)));
-                    await bot.run(Alisa);
+                    await bot.run();
                 });
             });
         }
@@ -154,10 +157,10 @@ describe('umbot', () => {
                     bot.setPlatformParams({
                         intents: [{ name: 'btn', slots: ['кнопка'] }],
                     });
-                    bot.setAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                     bot.setContent(getContent('0'.repeat(i) + ` кнопка ${''.repeat(i * 2)}`));
-                    await bot.run(Alisa);
+                    await bot.run();
                 });
             });
         }
@@ -169,10 +172,10 @@ describe('umbot', () => {
                 bot.setPlatformParams({
                     intents: [{ name: 'image', slots: ['картинка'] }],
                 });
-                bot.setAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(Alisa);
+                await bot.run();
             });
         });
         it(`Отображение карточки с 1 изображением и кнопкой`, async () => {
@@ -182,10 +185,10 @@ describe('umbot', () => {
                 bot.setPlatformParams({
                     intents: [{ name: 'image_btn', slots: ['картинка_с_кнопкой'] }],
                 });
-                bot.setAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(Alisa);
+                await bot.run();
             });
         });
         it(`Отображение галереи из 1 изображения.`, async () => {
@@ -195,10 +198,10 @@ describe('umbot', () => {
                 bot.setPlatformParams({
                     intents: [{ name: 'card', slots: ['картинка'] }],
                 });
-                bot.setAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(Alisa);
+                await bot.run();
             });
         });
         it(`Отображение галереи из 5 изображений.`, async () => {
@@ -208,10 +211,10 @@ describe('umbot', () => {
                 bot.setPlatformParams({
                     intents: [{ name: 'cardX', slots: ['картинка'] }],
                 });
-                bot.setAppConfig({ isLocalStorage: true });
+                bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                 bot.setContent(getContent('картинка'));
-                await bot.run(Alisa);
+                await bot.run();
             });
         });
 
@@ -224,13 +227,13 @@ describe('umbot', () => {
                     bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.setAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true, tokens: {} });
                     bot.addCommand('sound', ['звук'], (_, botController) => {
-                        botController.tts = ` ${AlisaSound.S_AUDIO_GAME_WIN} `.repeat(i);
+                        botController.tts = ` ${SoundConstants.S_AUDIO_GAME_WIN} `.repeat(i);
                     });
 
                     bot.setContent(getContent('звук'));
-                    await bot.run(Alisa);
+                    await bot.run();
                     bot.removeCommand('sound');
                 });
             });
@@ -243,7 +246,7 @@ describe('umbot', () => {
                     bot.setPlatformParams({
                         intents: [],
                     });
-                    bot.setAppConfig({ isLocalStorage: true });
+                    bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                     bot.addCommand('sound', ['звук'], (_, botController) => {
                         botController.tts = ``;
@@ -264,7 +267,7 @@ describe('umbot', () => {
                     });
 
                     bot.setContent(getContent('звук'));
-                    await bot.run(Alisa);
+                    await bot.run();
                     bot.removeCommand('sound');
                 });
             });
@@ -287,10 +290,10 @@ describe('umbot', () => {
                         bot.setPlatformParams({
                             intents,
                         });
-                        bot.setAppConfig({ isLocalStorage: true });
+                        bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
                         bot.setContent(getContent(`команда${i / 2}`));
-                        await bot.run(Alisa);
+                        await bot.run();
                     },
                     BASE_DURATION,
                     BASE_MEMORY_USED + i * 3,
@@ -306,14 +309,14 @@ describe('umbot', () => {
                         bot.setPlatformParams({
                             intents: [],
                         });
-                        bot.setAppConfig({ isLocalStorage: true });
+                        bot.setAppConfig({ isLocalStorage: true, tokens: {} });
                         for (let j = 0; j < i * 100; j++) {
                             bot.addCommand(`cmd_${j}`, [`команда${j}`], (_, botController) => {
                                 botController.text = `cmd_${j}`;
                             });
                         }
 
-                        await bot.run(Alisa, T_ALISA, getContent(`команда${i / 2}`));
+                        await bot.run(T_ALISA, getContent(`команда${i / 2}`));
                     },
                     BASE_DURATION,
                     /*

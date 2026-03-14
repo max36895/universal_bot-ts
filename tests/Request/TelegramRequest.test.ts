@@ -9,9 +9,13 @@ jest.mock('fs', () => ({
     ...jest.requireActual('fs'),
     readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
+jest.mock('fs/promises', () => ({
+    ...jest.requireActual('fs/promises'),
+    readFile: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
-import { TelegramRequest } from '../../src/api/TelegramRequest';
+import { TelegramRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,7 +23,9 @@ describe('TelegramRequest', () => {
     let telegram: TelegramRequest;
 
     beforeEach(() => {
-        appContext.platformParams.telegram_token = '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11';
+        appContext.appConfig.tokens.telegram = {
+            token: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+        };
         telegram = new TelegramRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
         appContext.logError = jest.fn(); // для проверки логирования
@@ -126,7 +132,7 @@ describe('TelegramRequest', () => {
         const result = await telegram.sendPoll(12345, 'Q?', ['Only one']);
         expect(result).toBeNull();
         expect(appContext.logError).toHaveBeenCalledWith(
-            expect.stringContaining('Недостаточное количество вариантов'),
+            expect.stringContaining('Платформа ожидает от 2 - 10 вариантов'),
             expect.objectContaining({}),
         );
     });
@@ -144,7 +150,7 @@ describe('TelegramRequest', () => {
     });
 
     it('should return null if no token provided', async () => {
-        appContext.platformParams.telegram_token = undefined;
+        appContext.appConfig.tokens.telegram = { token: undefined };
         const localTelegram = new TelegramRequest(appContext);
         const result = await localTelegram.sendMessage(12345, 'Hi');
         expect(result).toBeNull();

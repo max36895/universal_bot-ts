@@ -9,9 +9,13 @@ jest.mock('fs', () => ({
     ...jest.requireActual('fs'),
     readFileSync: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
 }));
+jest.mock('fs/promises', () => ({
+    ...jest.requireActual('fs/promises'),
+    readFile: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+}));
 
 import { AppContext } from '../../src';
-import { YandexImageRequest } from '../../src/api/YandexImageRequest';
+import { YandexImageRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
 
@@ -19,8 +23,7 @@ describe('YandexImageRequest', () => {
     let imageApi: YandexImageRequest;
 
     beforeEach(() => {
-        appContext.platformParams.app_id = 'skill-123';
-        appContext.platformParams.yandex_token = 'oauth-token';
+        appContext.appConfig.tokens.alisa = { token: 'oauth-token' };
         imageApi = new YandexImageRequest(null, 'skill-123', appContext);
         (global.fetch as jest.Mock).mockClear();
     });

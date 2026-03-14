@@ -13,7 +13,7 @@
 С той лишь разницей, что нужно использовать класс `BotTest` вместо `Bot`.
 
 ```ts
-import { BotTest } from 'umbot/dist/test';
+import { BotTest } from 'umbot/test';
 
 const bot = new BotTest();
 bot.test(); // запускает интерактивную консоль

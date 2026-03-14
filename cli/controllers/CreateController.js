@@ -1,6 +1,6 @@
 'use strict';
-const fs = require('fs');
-const { exec } = require('child_process');
+const fs = require('node:fs');
+const { exec } = require('node:child_process');
 const utils = require(__dirname + '/../utils').utils;
 
 /**
@@ -123,7 +123,7 @@ class CreateController {
             const maxReplace = replace.length - 1;
             find.forEach((f, i) => {
                 let r = replace[i];
-                if (typeof r === 'undefined') {
+                if (r === undefined) {
                     r = replace[maxReplace];
                 }
                 res = res.replace(new RegExp(f, 'g'), r);
@@ -175,7 +175,7 @@ class CreateController {
      * @param {string} type Тип проекта
      * @private
      */
-    _getConfigFile(path, type) {
+    _getConfigFile(path) {
         console.log('Создается файл с конфигурацией приложения: ...');
         const configFile = `${this.#path}/src/config/{{name}}Config.ts`;
         let configContent;
@@ -233,7 +233,9 @@ class CreateController {
      * @private
      */
     _create(type = CreateController.T_DEFAULT) {
-        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) !== -1) {
+        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) === -1) {
+            console.warn('Не удалось создать проект!');
+        } else {
             const standardPath = __dirname + '/../template';
             const srcPath = `${this.#path}/src`;
             if (!utils.isDir(srcPath)) {
@@ -296,8 +298,6 @@ class CreateController {
             }
 
             console.log(`Проект успешно создан, и находится в директории: ${this.#path}`);
-        } else {
-            console.warn('Не удалось создать проект!');
         }
     }
 
@@ -315,10 +315,9 @@ class CreateController {
      * Форматирует проект через prettier
      */
     format() {
-        exec(`prettier.cmd --write ${this.#path}`, (error, stdout, stderr) => {
+        exec(`prettier.cmd --write ${this.#path}`, (error) => {
             if (error) {
                 console.error(`exec error: ${error}`);
-                return;
             }
         });
     }

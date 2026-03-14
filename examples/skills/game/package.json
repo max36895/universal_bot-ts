@@ -18,10 +18,10 @@
     },
     "devDependencies": {
         "tslint": "^5.18.0",
-        "typescript": "^4.0.3",
+        "typescript": "^5.9.3",
         "umbot": "*"
     },
     "dependencies": {
-        "@types/node": "^16.11.18"
+        "@types/node": "^20.0.0"
     }
 }

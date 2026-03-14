@@ -8,7 +8,7 @@ import {
     INluResult,
     INluThisUser,
 } from './interfaces/INlu';
-import { Text } from '../../utils/standard/Text';
+import { Text } from '../../utils';
 
 /**
  * @class Nlu
@@ -21,7 +21,7 @@ import { Text } from '../../utils/standard/Text';
  * - Кэширование результатов для оптимизации производительности
  *
  * Платформенные ограничения:
- * - Яндекс.Алиса: полная поддержка всех сущностей
+ * - Алиса: полная поддержка всех сущностей
  * - Маруся: ограниченная поддержка геолокации
  * - VK: базовая поддержка через регулярные выражения
  * - Telegram: базовая поддержка через регулярные выражения
@@ -53,30 +53,30 @@ import { Text } from '../../utils/standard/Text';
  * - Ссылки: "https://example.com", "www.site.ru"
  *
  * @example
- * ```typescript
+ * ```ts
  * import { Nlu } from './components/nlu/Nlu';
  *
  * const nlu = new Nlu();
  *
  * // Извлечение имени
  * const fio = nlu.getFio();
- * if (fio && fio.tokens.length > 0) {
- *   console.log('Имя:', fio.tokens[0].value.first_name);
- *   console.log('Фамилия:', fio.tokens[0].value.last_name);
+ * if (fio.status) {
+ *   console.log('Имя:', fio.result[0].first_name);
+ *   console.log('Фамилия:', fio.result[0].last_name);
  * }
  *
  * // Извлечение даты и времени
  * const datetime = nlu.getDateTime();
- * if (datetime && datetime.tokens.length > 0) {
- *   const date = datetime.tokens[0].value;
+ * if (datetime.status) {
+ *   const date = datetime.result[0];
  *   console.log('Дата:', date.year, date.month, date.day);
  *   console.log('Время:', date.hour, date.minute);
  * }
  *
  * // Извлечение геолокации
  * const geo = nlu.getGeo();
- * if (geo && geo.tokens.length > 0) {
- *   const location = geo.tokens[0].value;
+ * if (geo.status) {
+ *   const location = geo.result[0];
  *   console.log('Город:', location.city);
  *   console.log('Страна:', location.country);
  *   console.log('Координаты:', location.latitude, location.longitude);
@@ -92,18 +92,18 @@ import { Text } from '../../utils/standard/Text';
  *
  * // Поиск контактной информации
  * const phones = Nlu.getPhone('Позвоните мне по номеру +7 (999) 123-45-67');
- * if (phones.tokens.length > 0) {
- *   console.log('Телефон:', phones.tokens[0]);
+ * if (phones.status) {
+ *   console.log('Телефон:', phones.result[0]);
  * }
  *
  * const emails = Nlu.getEMail('Мой email: user@example.com');
- * if (emails.tokens.length > 0) {
- *   console.log('Email:', emails.tokens[0]);
+ * if (emails.status) {
+ *   console.log('Email:', emails.result[0]);
  * }
  *
  * const links = Nlu.getLink('Посетите наш сайт https://example.com');
- * if (links.tokens.length > 0) {
- *   console.log('Ссылка:', links.tokens[0]);
+ * if (links.status) {
+ *   console.log('Ссылка:', links.result[0]);
  * }
  * ```
  */
@@ -122,7 +122,7 @@ export class Nlu {
      *
      * @type {Map<string, unknown[] | null>}
      * @example
-     * ```typescript
+     * ```ts
      * // Пример содержимого кэша после обработки запроса
      * {
      *     'YANDEX.FIO': [{
@@ -146,51 +146,48 @@ export class Nlu {
      * }
      * ```
      */
-    #cachedData: Map<string, unknown[] | null> = new Map();
+    readonly #cachedData: Map<string, unknown[] | null> = new Map();
 
     /**
      * Регулярное выражение для поиска email адресов.
      * Поддерживает стандартный формат email.
      *
-     * @type {RegExp}
      * @example
-     * ```typescript
+     * ```ts
      * // Находит адреса вида:
      * // user@domain.com
      * // user.name@domain.com
      * // user-name@domain.com
      * ```
      */
-    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/i;
+    private static readonly EMAIL_REGEX = /\b[\w._+-]+@[\w._+-]+\.[a-zA-Z]{2,}\b/gi;
 
     /**
      * Регулярное выражение для поиска телефонных номеров.
      * Поддерживает различные форматы записи номеров.
      *
-     * @type {RegExp}
      * @example
-     * ```typescript
+     * ```ts
      * // Находит номера вида:
      * // +7 (999) 123-45-67
      * // 8-999-123-45-67
      * // 89991234567
      * ```
      */
-    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/imu;
+    private static readonly PHONE_REGEX = /([\d\-() ]{4,}\d)|((?:\+|\d)[\d\-() ]{9,}\d)/gimu;
 
     /**
      * Регулярное выражение для поиска URL-ссылок.
      * Поддерживает HTTP и HTTPS протоколы.
      *
-     * @type {RegExp}
      * @example
-     * ```typescript
+     * ```ts
      * // Находит ссылки вида:
      * // http://example.com
      * // https://example.com/path
      * ```
      */
-    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/imu;
+    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/gimu;
 
     /**
      * Тип сущности: ФИО.
@@ -198,7 +195,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const fio = nlu.getFio();
      * if (fio.status) {
      *     console.log(fio.result[0].first_name); // "Иван"
@@ -227,10 +224,10 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const geo = nlu.getGeo();
-     * if (geo && geo.tokens.length > 0) {
-     *     const location = geo.tokens[0].value;
+     * if (geo.status) {
+     *     const location = geo.result[0];
      *     console.log('Страна:', location.country);
      *     console.log('Город:', location.city);
      *     console.log('Улица:', location.street);
@@ -261,7 +258,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const dateTime = nlu.getDateTime();
      * if (dateTime.status) {
      *     const date = dateTime.result[0];
@@ -305,7 +302,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const numbers = nlu.getNumber();
      * if (numbers.status) {
      *     numbers.result.forEach(number => {
@@ -335,7 +332,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * // Проверка на согласие
      * if (nlu.isIntentConfirm()) {
      *     console.log('Пользователь согласился');
@@ -361,7 +358,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * // Проверка на отказ
      * if (nlu.isIntentReject()) {
      *     console.log('Пользователь отказался');
@@ -381,7 +378,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * if (nlu.isIntentHelp()) {
      *     console.log('Пользователь запросил помощь');
      * }
@@ -395,7 +392,7 @@ export class Nlu {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * if (nlu.isIntentRepeat()) {
      *     console.log('Пользователь просит повторить');
      * }
@@ -406,35 +403,25 @@ export class Nlu {
     /**
      * Конструктор класса Nlu.
      * Инициализирует пустой объект NLU и кэш данных.
-     *
-     * @example
-     * ```typescript
-     * const nlu = new Nlu();
-     * // nlu._nlu = {}
-     * // nlu._cachedData = new Map()
-     * ```
      */
     public constructor() {
         this.#nlu = {};
     }
 
     /**
-     * Сериализует входные данные NLU в стандартный формат.
-     *
-     * @param {any} nlu - Входные данные NLU
-     * @returns {INlu} Обработанные данные NLU
+     * Возвращает объект nlu, который был обработан платформой, либо заполнен из плагина
      */
-    protected _serializeNlu(nlu: any): INlu {
-        // todo Придумать обработку для nlu. Возможно стоит дать возможность указать свой обработчик
-        return <INlu>nlu;
+    public getNluValue(): INlu {
+        return this.#nlu;
     }
 
     /**
      * Устанавливает данные NLU и очищает кэш.
      *
      * @param {any} nlu - Данные NLU для обработки
+     * @param {boolean} isClearCache - Флаг, говорящий о том, что нужно сбросить кэш
      * @example
-     * ```typescript
+     * ```ts
      * nlu.setNlu({
      *     entities: [
      *         {
@@ -445,9 +432,11 @@ export class Nlu {
      * });
      * ```
      */
-    public setNlu(nlu: any): void {
-        this.#nlu = this._serializeNlu(nlu);
-        this.#cachedData.clear();
+    public setNlu(nlu: INlu, isClearCache: boolean = false): void {
+        this.#nlu = nlu;
+        if (isClearCache) {
+            this.#cachedData.clear();
+        }
     }
 
     /**
@@ -455,27 +444,17 @@ export class Nlu {
      * Использует кэш для оптимизации повторных запросов.
      *
      * @param {string} type - Тип данных для извлечения
-     * @returns {T[] | null} Массив найденных сущностей или null
-     * @example
-     * ```typescript
-     * // Внутренний метод, не предназначен для прямого использования
-     * // Используйте публичные методы класса:
-     * const fio = nlu.getFio();
-     * const geo = nlu.getGeo();
-     * const dateTime = nlu.getDateTime();
-     * ```
+     * @returns Массив найденных сущностей или null
      */
     #getData<T = object>(type: string): T[] | null {
         if (this.#cachedData.has(type)) {
             return (this.#cachedData.get(type) as T[]) || null;
         }
         let data: (object | number)[] | null = null;
-        if (this.#nlu.entities) {
+        if (Array.isArray(this.#nlu.entities)) {
             this.#nlu.entities.forEach((entity) => {
-                if (typeof entity.type !== 'undefined' && entity.type === type) {
-                    if (data === null) {
-                        data = [];
-                    }
+                if (entity.type !== undefined && entity.type === type) {
+                    data ??= [];
                     data.push(entity.value);
                 }
             });
@@ -489,7 +468,7 @@ export class Nlu {
      *
      * @returns {INluThisUser | null} Информация о пользователе или null
      * @example
-     * ```typescript
+     * ```ts
      * const user = nlu.getUserName();
      * if (user) {
      *     console.log('ID пользователя:', user.user_id);
@@ -507,10 +486,10 @@ export class Nlu {
      *
      * @returns {INluResult<INluFIO[]>} Результат поиска ФИО
      * @example
-     * ```typescript
+     * ```ts
      * const fio = nlu.getFio();
-     * if (fio && fio.tokens.length > 0) {
-     *     const person = fio.tokens[0].value;
+     * if (fio.status) {
+     *     const person = fio.result[0];
      *     console.log('Имя:', person.first_name);
      *     console.log('Фамилия:', person.last_name);
      *     console.log('Отчество:', person.patronymic_name);
@@ -531,10 +510,10 @@ export class Nlu {
      *
      * @returns {INluResult<INluGeo[]>} Результат поиска геолокации
      * @example
-     * ```typescript
+     * ```ts
      * const geo = nlu.getGeo();
-     * if (geo && geo.tokens.length > 0) {
-     *     const location = geo.tokens[0].value;
+     * if (geo.status) {
+     *     const location = geo.result[0];
      *     console.log('Страна:', location.country);
      *     console.log('Город:', location.city);
      *     console.log('Улица:', location.street);
@@ -557,10 +536,10 @@ export class Nlu {
      *
      * @returns {INluResult<INluDateTime[]>} Результат поиска даты и времени
      * @example
-     * ```typescript
+     * ```ts
      * const dateTime = nlu.getDateTime();
-     * if (dateTime && dateTime.tokens.length > 0) {
-     *     const dt = dateTime.tokens[0].value;
+     * if (dateTime.status) {
+     *     const dt = dateTime.result[0];
      *     if (dt.year) console.log('Год:', dt.year);
      *     if (dt.month) console.log('Месяц:', dt.month);
      *     if (dt.day) console.log('День:', dt.day);
@@ -584,10 +563,10 @@ export class Nlu {
      *
      * @returns {INluResult<number[]>} Результат поиска чисел
      * @example
-     * ```typescript
+     * ```ts
      * const number = nlu.getNumber();
-     * if (number && number.tokens.length > 0) {
-     *     const value = number.tokens[0].value;
+     * if (number.status) {
+     *     const value = number.result[0];
      *     console.log('Число:', value);
      *     // Проверка типа числа
      *     if (Number.isInteger(value)) {
@@ -613,7 +592,7 @@ export class Nlu {
      * @param {string} [userCommand=''] - Текст для проверки
      * @returns {boolean} true если найден интент согласия
      * @example
-     * ```typescript
+     * ```ts
      * if (nlu.isIntentConfirm('да, согласен')) {
      *     console.log('Пользователь согласился');
      * }
@@ -633,7 +612,7 @@ export class Nlu {
      * @param {string} [userCommand=''] - Текст для проверки
      * @returns {boolean} true если найден интент отказа
      * @example
-     * ```typescript
+     * ```ts
      * if (nlu.isIntentReject('нет, не хочу')) {
      *     console.log('Пользователь отказался');
      * }
@@ -652,7 +631,7 @@ export class Nlu {
      *
      * @returns {boolean} true если найден интент помощи
      * @example
-     * ```typescript
+     * ```ts
      * if (nlu.isIntentHelp()) {
      *     console.log('Пользователь запросил помощь');
      * }
@@ -667,7 +646,7 @@ export class Nlu {
      *
      * @returns {boolean} true если найден интент повтора
      * @example
-     * ```typescript
+     * ```ts
      * if (nlu.isIntentRepeat()) {
      *     console.log('Пользователь просит повторить');
      * }
@@ -682,7 +661,7 @@ export class Nlu {
      *
      * @returns {INluIntents | null} Объект с интентами или null
      * @example
-     * ```typescript
+     * ```ts
      * const intents = nlu.getIntents();
      * if (intents) {
      *     // Проверка наличия конкретного интента
@@ -710,7 +689,7 @@ export class Nlu {
      * @param {string} intentName - Имя интента
      * @returns {INluIntent | null} Интент или null
      * @example
-     * ```typescript
+     * ```ts
      * const intent = nlu.getIntent('YANDEX.CONFIRM');
      * if (intent) {
      *     console.log(intent.slots); // { ... }
@@ -731,20 +710,20 @@ export class Nlu {
      * @param {string} query - Текст для поиска
      * @returns {INluResult<string[]>} Результат поиска ссылок
      * @example
-     * ```typescript
+     * ```ts
      * const links = Nlu.getLink('Посетите https://example.com и http://test.ru');
-     * if (links && links.tokens.length > 0) {
-     *     links.tokens.forEach(link => {
+     * if (links.status) {
+     *     links.result.forEach(link => {
      *         console.log('Найдена ссылка:', link);
      *     });
      * }
      * ```
      */
-    public static getLink(query: string): INluResult<string[]> {
-        const links = query.match(Nlu.LINK_REGEX);
+    public static getLink(query: string): INluResult<string[] | null> {
+        const matches = [...query.matchAll(Nlu.LINK_REGEX)].map((m) => m[0]);
         return {
-            status: !!links,
-            result: links,
+            status: matches.length > 0,
+            result: matches.length ? matches : null,
         };
     }
 
@@ -754,20 +733,20 @@ export class Nlu {
      * @param {string} query - Текст для поиска
      * @returns {INluResult<string[]>} Результат поиска телефонов
      * @example
-     * ```typescript
+     * ```ts
      * const phones = Nlu.getPhone('Позвоните по номеру +7 (999) 123-45-67 или 8-800-555-35-35');
-     * if (phones && phones.tokens.length > 0) {
-     *     phones.tokens.forEach(phone => {
+     * if (phones.status) {
+     *     phones.result.forEach(phone => {
      *         console.log('Найден телефон:', phone);
      *     });
      * }
      * ```
      */
-    public static getPhone(query: string): INluResult<string[]> {
-        const phones = query.match(Nlu.PHONE_REGEX);
+    public static getPhone(query: string): INluResult<string[] | null> {
+        const matches = [...query.matchAll(Nlu.PHONE_REGEX)].map((m) => m[0]);
         return {
-            status: !!phones,
-            result: phones,
+            status: matches.length > 0,
+            result: matches.length ? matches : null,
         };
     }
 
@@ -777,20 +756,20 @@ export class Nlu {
      * @param {string} query - Текст для поиска
      * @returns {INluResult<string[]>} Результат поиска email
      * @example
-     * ```typescript
+     * ```ts
      * const emails = Nlu.getEMail('Напишите на email@example.com или support@test.ru');
-     * if (emails && emails.tokens.length > 0) {
-     *     emails.tokens.forEach(email => {
+     * if (emails.status) {
+     *     emails.result.forEach(email => {
      *         console.log('Найден email:', email);
      *     });
      * }
      * ```
      */
-    public static getEMail(query: string): INluResult<string[]> {
-        const emails = query.match(Nlu.EMAIL_REGEX);
+    public static getEMail(query: string): INluResult<string[] | null> {
+        const matches = [...query.matchAll(Nlu.EMAIL_REGEX)].map((m) => m[0]);
         return {
-            status: !!emails,
-            result: emails,
+            status: matches.length > 0,
+            result: matches.length ? matches : null,
         };
     }
 }

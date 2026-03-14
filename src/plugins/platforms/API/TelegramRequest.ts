@@ -1,0 +1,499 @@
+import {
+    ITelegramMedia,
+    ITelegramParams,
+    ITelegramResult,
+    TTelegramChatId,
+} from '../Telegram/interfaces/ITelegramPlatform';
+import { AppContext, Request, Text } from '../../../index';
+import { T_TELEGRAM } from '../Telegram/constants';
+import { getErrorMsg, getErrorToken } from './constants';
+
+/**
+ * Базовый URL для всех методов Telegram API
+ */
+const API_ENDPOINT = 'https://api.telegram.org/bot';
+
+/**
+ * Класс для взаимодействия с API Telegram
+ * Предоставляет методы для отправки сообщений, файлов и других типов контента
+ * @see (https://core.telegram.org/bots/api) Смотри тут
+ *
+ * @example
+ * ```ts
+ * import { TelegramRequest } from './api/TelegramRequest';
+ *
+ * // Создание экземпляра
+ * const telegram = new TelegramRequest();
+ * telegram.initToken('your-bot-token');
+ *
+ * // Отправка простого сообщения
+ * await telegram.sendMessage(12345, 'Привет!');
+ *
+ * // Отправка форматированного сообщения
+ * await telegram.sendMessage(12345,
+ *   '*Жирный текст* и _курсив_\n' +
+ *   '[Ссылка](https://example.com)\n' +
+ *   '`code` и ```pre```',
+ *   { parse_mode: 'Markdown' }
+ * );
+ *
+ * // Отправка сообщения с клавиатурой
+ * const keyboard = {
+ *   keyboard: [[
+ *     { text: 'Кнопка 1' },
+ *     { text: 'Кнопка 2' }
+ *   ]],
+ *   resize_keyboard: true,
+ *   one_time_keyboard: true
+ * };
+ *
+ * await telegram.sendMessage(12345, 'Выберите:', {
+ *   reply_markup: JSON.stringify(keyboard)
+ * });
+ *
+ * // Отправка файлов
+ * await telegram.sendPhoto(12345, 'photo.jpg', 'Описание фото');
+ * await telegram.sendDocument(12345, 'document.pdf');
+ * await telegram.sendAudio(12345, 'audio.mp3', {
+ *   title: 'Название',
+ *   performer: 'Исполнитель'
+ * });
+ * ```
+ */
+export class TelegramRequest {
+    /**
+     * Экземпляр класса для выполнения HTTP-запросов
+     *
+     */
+    readonly #request: Request;
+
+    /**
+     * Текст последней возникшей ошибки
+     *
+     */
+    #error: object | string | null | undefined;
+
+    /**
+     * Токен доступа к Telegram API
+     */
+    public token: string | null;
+
+    /**
+     * Контекст приложения.
+     */
+    readonly #appContext: AppContext;
+
+    /**
+     * Создает экземпляр класса для работы с API Telegram
+     * Устанавливает токен из конфигурации приложения, если он доступен
+     */
+    public constructor(appContext: AppContext) {
+        this.#request = new Request(appContext);
+        this.#request.maxTimeQuery = 5500;
+        this.token = null;
+        this.#error = null;
+        this.#appContext = appContext;
+        if (appContext.appConfig.tokens[T_TELEGRAM]?.token !== undefined) {
+            this.initToken(appContext.appConfig.tokens[T_TELEGRAM].token);
+        }
+    }
+
+    /**
+     * Инициализирует токен доступа к Telegram API
+     * @param token Токен для доступа к API
+     */
+    public initToken(token: string | null): void {
+        this.token = token;
+    }
+
+    /**
+     * Формирует URL для отправки запроса
+     * @returns Полный URL для API запроса
+     *
+     */
+    protected _getUrl(): string {
+        return `${API_ENDPOINT}${this.#appContext.appConfig.tokens[T_TELEGRAM].token}/`;
+    }
+
+    /**
+     * Подготавливает данные для отправки файла
+     * @param type Тип отправляемого файла
+     * @param file Путь к файлу или его содержимое
+     *
+     */
+    #initPostFile(type: string, file: string | ITelegramMedia[]): void {
+        this.#request.post = {};
+        if (type === 'media' && typeof file !== 'string') {
+            const formData = new FormData();
+            const media: ITelegramMedia[] = [];
+            file.forEach((item, index) => {
+                const key = `photo${index}`;
+                let mediaItem = item.media;
+                if (item.media.includes('attach://')) {
+                    this.#request.addAttachFile(formData, item.media.replace('attach://', ''), key);
+                    mediaItem = `attach://${key}`;
+                }
+                media.push({
+                    type: item.type,
+                    media: mediaItem,
+                });
+            });
+            formData.append('media', JSON.stringify(media));
+            this.#request.post = formData;
+        } else if (Text.isUrl(file as string)) {
+            this.#request.post[type] = file;
+        } else {
+            this.#request.attach = file as string;
+            this.#request.attachName = type;
+        }
+    }
+
+    /**
+     * Отправляет запрос к Telegram API
+     * @param method Название метода API
+     * @param userId ID пользователя или чата
+     * @returns Результат выполнения метода или null при ошибке
+     */
+    public async call(
+        method: string,
+        userId: TTelegramChatId | null = null,
+    ): Promise<ITelegramResult | null> {
+        if (userId) {
+            if (this.#request.post instanceof FormData) {
+                this.#request.post.append('chat_id', userId.toString());
+            } else {
+                // @ts-ignore
+                this.#request.post.chat_id = userId;
+            }
+        }
+        if (this.token) {
+            if (method) {
+                const data = await this.#request.send<ITelegramResult>(this._getUrl() + method);
+                if (data.status && data.data) {
+                    if (!data.data.ok) {
+                        this.#error = data;
+                        this.#log('call() Запрос к платформе завершился с ошибкой.');
+                        return null;
+                    }
+                    return data.data;
+                }
+                this.#log(data.err);
+            }
+        } else {
+            this.#log(getErrorToken(T_TELEGRAM, 'call'));
+        }
+        return null;
+    }
+
+    /**
+     * Санитизировать текст сообщения
+     * @param text
+     * @param parseMode
+     *
+     */
+    #sanitizeTelegramMessage(text: string, parseMode?: string): string {
+        if (parseMode === 'HTML') {
+            // Экранирование HTML сущностей
+            return text
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+        return text;
+    }
+
+    /**
+     * Отправляет текстовое сообщение
+     * @param chatId ID чата или пользователя
+     * @param message Текст сообщения
+     * @param params Дополнительные параметры:
+     * - parse_mode: формат текста
+     *   - Markdown: *жирный*, _курсив_, [ссылка](https://example.com), `код`, ```pre```
+     *   - HTML: <b>жирный</b>, <i>курсив</i>, <a href="https://example.com">ссылка</a>, <code>код</code>, <pre>pre</pre>
+     * - disable_web_page_preview: отключить предпросмотр ссылок
+     * - disable_notification: отключить уведомление
+     * - reply_to_message_id: ID сообщения для ответа
+     * - reply_markup: клавиатура в JSON формате
+     *   - keyboard: обычная клавиатура
+     *   - inline_keyboard: встроенная клавиатура
+     *   - remove_keyboard: удалить клавиатуру
+     *   - force_reply: форсировать ответ
+     *
+     * @example
+     * ```ts
+     * // Простое сообщение
+     * await telegram.sendMessage(12345, 'Привет!');
+     *
+     * // Форматированное сообщение
+     * await telegram.sendMessage(12345,
+     *   '<b>Жирный</b> и <i>курсив</i>\n' +
+     *   '<a href="https://example.com">Ссылка</a>\n' +
+     *   '<code>code</code>',
+     *   { parse_mode: 'HTML' }
+     * );
+     *
+     * // Сообщение с обычной клавиатурой
+     * const keyboard = {
+     *   keyboard: [[
+     *     { text: 'Кнопка 1' },
+     *     { text: 'Кнопка 2' }
+     *   ]],
+     *   resize_keyboard: true
+     * };
+     * await telegram.sendMessage(12345, 'Выберите:', {
+     *   reply_markup: JSON.stringify(keyboard)
+     * });
+     *
+     * // Сообщение с inline-клавиатурой
+     * const inlineKeyboard = {
+     *   inline_keyboard: [[{
+     *     text: 'Кнопка',
+     *     callback_data: 'button_1'
+     *   }]]
+     * };
+     * await telegram.sendMessage(12345, 'Нажмите:', {
+     *   reply_markup: JSON.stringify(inlineKeyboard)
+     * });
+     * ```
+     *
+     * @returns Информация об отправленном сообщении или null при ошибке
+     */
+    public sendMessage(
+        chatId: TTelegramChatId,
+        message: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        const safeMessage = this.#sanitizeTelegramMessage(message, params?.parse_mode);
+        this.#request.post = {
+            chat_id: chatId,
+            text: safeMessage,
+        };
+        if (params) {
+            this.#request.post = { ...params, ...this.#request.post };
+        }
+        return this.call('sendMessage');
+    }
+
+    /**
+     * Отправляет опрос
+     * @param chatId ID чата или пользователя
+     * @param question Текст вопроса
+     * @param options Массив вариантов ответов (2-10 вариантов)
+     * @param params Дополнительные параметры:
+     * - is_anonymous: анонимный опрос (по умолчанию true)
+     * - type: тип опроса
+     *   - 'regular': обычный опрос (по умолчанию)
+     *   - 'quiz': викторина с одним правильным ответом
+     * - allows_multiple_answers: разрешить несколько ответов (только для regular)
+     * - correct_option_id: ID правильного ответа (0-9, только для quiz)
+     * - explanation: пояснение правильного ответа (только для quiz)
+     * - explanation_parse_mode: формат пояснения (HTML/Markdown)
+     * - open_period: время в секундах, когда опрос активен
+     * - close_date: дата закрытия опроса (Unix timestamp)
+     * - is_closed: закрыть опрос сразу
+     *
+     * @example
+     * ```ts
+     * // Обычный опрос
+     * await telegram.sendPoll(12345,
+     *   'Любимый цвет?',
+     *   ['Красный', 'Синий', 'Зеленый'],
+     *   { allows_multiple_answers: true }
+     * );
+     *
+     * // Викторина
+     * await telegram.sendPoll(12345,
+     *   'Столица России?',
+     *   ['Санкт-Петербург', 'Москва', 'Новосибирск'],
+     *   {
+     *     type: 'quiz',
+     *     correct_option_id: 1,
+     *     explanation: 'Москва - столица России с 1918 года',
+     *     explanation_parse_mode: 'HTML'
+     *   }
+     * );
+     * ```
+     *
+     * @returns Информация об отправленном опросе или null при ошибке
+     */
+    public sendPoll(
+        chatId: TTelegramChatId,
+        question: string,
+        options: string[],
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> | null {
+        this.#request.post = {
+            chat_id: chatId,
+            question,
+        };
+        let isSend = true;
+        if (options) {
+            const countOptions = options.length;
+            if (countOptions > 1) {
+                if (countOptions > 10) {
+                    this.#request.post.options = options.slice(0, 10);
+                } else {
+                    this.#request.post.options = options;
+                }
+            } else {
+                isSend = false;
+            }
+        }
+        if (isSend) {
+            if (params) {
+                this.#request.post = { ...params, ...this.#request.post };
+            }
+            return this.call('sendPoll');
+        } else {
+            this.#log(
+                'sendPoll() Указано недостаточное количество вариантов. Платформа ожидает от 2 - 10 вариантов, указано ' +
+                    (options?.length || 0),
+            );
+            return null;
+        }
+    }
+
+    /**
+     * Отправляет фотографию
+     * @param userId ID чата или пользователя
+     * @param file Путь к файлу или его содержимое
+     * Поддерживаемые форматы:
+     * - JPEG, JPG, PNG, GIF, WEBP
+     * - Максимальный размер: 10MB
+     * - Максимальное разрешение: 10000x10000
+     * @param desc Подпись к фотографии
+     * @param params Дополнительные параметры:
+     * - caption: подпись к фото (0-1024 символа)
+     * - caption: подпись к фото
+     * - parse_mode: формат текста
+     * - disable_notification: отключить уведомление
+     * - reply_to_message_id: ID сообщения для ответа
+     * - reply_markup: клавиатура в JSON
+     * @returns Информация об отправленной фотографии или null при ошибке
+     */
+    public sendPhoto(
+        userId: TTelegramChatId,
+        file: string,
+        desc: string | null = null,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        this.#request.post ??= {};
+        this.#initPostFile('photo', file);
+        if (desc) {
+            (this.#request.post as Record<string, unknown>).caption = desc;
+        }
+        if (params) {
+            this.#request.post = { ...params, ...this.#request.post };
+        }
+        return this.call('sendPhoto', userId);
+    }
+
+    /**
+     * Отправляет документ
+     * @param userId ID чата или пользователя
+     * @param file Путь к файлу или его содержимое
+     * @param params Дополнительные параметры:
+     * - caption: подпись к документу
+     * - parse_mode: формат текста
+     * - disable_notification: отключить уведомление
+     * - reply_to_message_id: ID сообщения для ответа
+     * - reply_markup: клавиатура в JSON
+     * @returns Информация об отправленном документе или null при ошибке
+     */
+    public sendDocument(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        this.#initPostFile('document', file);
+        if (params) {
+            this.#request.post = { ...params, ...this.#request.post };
+        }
+        return this.call('sendDocument', userId);
+    }
+
+    /**
+     * Отправляет аудиофайл
+     * @param userId ID чата или пользователя
+     * @param file Путь к файлу или его содержимое
+     * @param params Дополнительные параметры:
+     * - caption: подпись к аудио
+     * - parse_mode: формат текста
+     * - duration: длительность в секундах
+     * - performer: исполнитель
+     * - title: название
+     * - disable_notification: отключить уведомление
+     * - reply_to_message_id: ID сообщения для ответа
+     * - reply_markup: клавиатура в JSON
+     * @returns Информация об отправленном аудио или null при ошибке
+     */
+    public sendAudio(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        this.#initPostFile('audio', file);
+        if (params) {
+            this.#request.post = { ...params, ...this.#request.post };
+        }
+        return this.call('sendAudio', userId);
+    }
+
+    /**
+     * Отправляет видео
+     * @param userId ID чата или пользователя
+     * @param file Путь к файлу или его содержимое
+     * @param params Дополнительные параметры:
+     * - caption: подпись к видео
+     * - parse_mode: формат текста
+     * - duration: длительность в секундах
+     * - width: ширина
+     * - height: высота
+     * - disable_notification: отключить уведомление
+     * - reply_to_message_id: ID сообщения для ответа
+     * - reply_markup: клавиатура в JSON
+     * @returns Информация об отправленном видео или null при ошибке
+     */
+    public sendVideo(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        this.#initPostFile('video', file);
+        if (params) {
+            this.#request.post = { ...params, ...this.#request.post };
+        }
+        return this.call('sendVideo', userId);
+    }
+
+    /**
+     * Отправляет группу медиа
+     * @param userId ID чата или пользователя
+     * @param media Массив объектов ITelegramMedia
+     * @param params Дополнительные параметры:
+     */
+    public sendMediaGroup(
+        userId: TTelegramChatId,
+        media: ITelegramMedia[],
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        this.#initPostFile('media', media);
+        if (params) {
+            this.#request.post = { ...this.#request.post, ...params };
+        }
+        return this.call('sendMediaGroup', userId);
+    }
+
+    /**
+     * Записывает информацию об ошибках в лог-файл
+     * @param error Текст ошибки для логирования
+     *
+     */
+    #log(error: string = ''): void {
+        this.#appContext.logError(getErrorMsg(error, 'TelegramRequest', this.#request.url), {
+            error: this.#error,
+        });
+    }
+}

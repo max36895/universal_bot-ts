@@ -8,16 +8,17 @@
  * - Взаимодействия с консолью
  */
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as readline from 'readline';
-import { IDir, TLoggerCb } from '../../core/AppContext';
-
-let _lcsBuffer: Int32Array = new Int32Array(1024);
+import { TLoggerCb } from '../../core/interfaces/ILogger';
+import { IDir } from '../../core/interfaces/IAppContext';
+import { join } from 'node:path';
 
 /**
  * Интерфейс для GET-параметров
  *
  * @example
- * ```typescript
+ * ```ts
  * const params: IGetParams = {
  *   name: 'John',
  *   age: '25'
@@ -36,7 +37,7 @@ export interface IGetParams {
  * @returns {number} Случайное целое число из диапазона [min, max]
  *
  * @example
- * ```typescript
+ * ```ts
  * rand(1, 10); // -> случайное число от 1 до 10
  * rand(0, 1); // -> 0 или 1
  * ```
@@ -54,7 +55,7 @@ export function rand(min: number, max: number): number {
  * @returns {number} Процент схожести от 0 до 100
  *
  * @example
- * ```typescript
+ * ```ts
  * similarText('привет', 'привт'); // -> ~90
  * similarText('hello', 'world'); // -> ~20
  * similarText('same', 'same'); // -> 100
@@ -70,10 +71,7 @@ export function similarText(first: string, second: string): number {
 
     // Helper function to calculate LCS length using dynamic programming
     const lcsLength = (shorter: string, longer: string): number => {
-        if (_lcsBuffer.length < longer.length + 1) {
-            _lcsBuffer = new Int32Array(longer.length + 1);
-        }
-        const dp = _lcsBuffer;
+        const dp = new Int32Array(longer.length + 1);
         dp.fill(0, 0, longer.length + 1);
 
         for (let i = 0; i < shorter.length; i++) {
@@ -101,7 +99,7 @@ export function similarText(first: string, second: string): number {
  * @template T - Тип данных, возвращаемых при успешной операции
  *
  * @example
- * ```typescript
+ * ```ts
  * const result: FileOperationResult<string> = {
  *   success: true,
  *   data: 'file content'
@@ -149,35 +147,35 @@ function looksLikeFilePath(str: string): boolean {
 }
 
 /**
- * Проверяет существование файла
+ * Синхронно проверяет существование файла
  *
  * @param {string} file - Путь к проверяемому файлу
  * @returns {boolean} true, если файл существует и это файл, иначе false
  *
  * @example
- * ```typescript
+ * ```ts
  * isFile('path/to/file.txt'); // -> true
  * isFile('path/to/directory'); // -> false
  * isFile('nonexistent.txt'); // -> false
  * ```
  */
-export function isFile(file: string): boolean {
+export function isFileSync(file: string): boolean {
     // Если в тексте нет точки, значит это явно не файл
     if (looksLikeFilePath(file)) {
-        const fileInfo = getFileInfo(file);
+        const fileInfo = getFileInfoSync(file);
         return (fileInfo.success && fileInfo.data?.isFile()) || false;
     }
     return false;
 }
 
 /**
- * Возвращает информацию о файле
+ * Синхронно возвращает информацию о файле
  *
  * @param {string} fileName - Путь к файлу
  * @returns {FileOperationResult<fs.Stats>} Результат операции с информацией о файле
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = getFileInfo('file.txt');
  * if (result.success) {
  *   console.log(result.data.size); // размер файла
@@ -187,7 +185,7 @@ export function isFile(file: string): boolean {
  * }
  * ```
  */
-export function getFileInfo(fileName: string): FileOperationResult<fs.Stats> {
+export function getFileInfoSync(fileName: string): FileOperationResult<fs.Stats> {
     try {
         const stats = fs.lstatSync(fileName);
         return { success: true, data: stats };
@@ -200,13 +198,13 @@ export function getFileInfo(fileName: string): FileOperationResult<fs.Stats> {
 }
 
 /**
- * Читает содержимое файла
+ * Синхронно читает содержимое файла
  *
  * @param {string} fileName - Путь к файлу
  * @returns {FileOperationResult<string>} Результат операции с содержимым файла
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = fread('file.txt');
  * if (result.success) {
  *   console.log(result.data); // содержимое файла
@@ -215,7 +213,7 @@ export function getFileInfo(fileName: string): FileOperationResult<fs.Stats> {
  * }
  * ```
  */
-export function fread(fileName: string): FileOperationResult<string> {
+export function freadSync(fileName: string): FileOperationResult<string> {
     try {
         const content = fs.readFileSync(fileName, 'utf-8');
         return { success: true, data: content };
@@ -228,17 +226,17 @@ export function fread(fileName: string): FileOperationResult<string> {
 }
 
 /**
- * Записывает данные в файл
+ * Синхронно записывает данные в файл
  *
  * @param {string} fileName - Путь к файлу
- * @param {string | Buffer} fileContent - Содержимое для записи
+ * @param {string | Uint8Array} fileContent - Содержимое для записи
  * @param {'w' | 'a'} [mode='w'] - Режим записи:
  *   - 'w' - перезапись файла
  *   - 'a' - добавление в конец файла
  * @returns {FileOperationResult<void>} Результат операции записи
  *
  * @example
- * ```typescript
+ * ```ts
  * // Перезапись файла
  * fwrite('file.txt', 'new content');
  *
@@ -246,7 +244,7 @@ export function fread(fileName: string): FileOperationResult<string> {
  * fwrite('file.txt', 'additional content', 'a');
  * ```
  */
-export function fwrite(
+export function fwriteSync(
     fileName: string,
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
@@ -269,13 +267,13 @@ export function fwrite(
 }
 
 /**
- * Удаляет файл
+ * Синхронно удаляет файл
  *
  * @param {string} fileName - Путь к файлу
  * @returns {FileOperationResult<void>} Результат операции удаления
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = unlink('file.txt');
  * if (result.success) {
  *   console.log('File deleted successfully');
@@ -284,7 +282,7 @@ export function fwrite(
  * }
  * ```
  */
-export function unlink(fileName: string): FileOperationResult<void> {
+export function unlinkSync(fileName: string): FileOperationResult<void> {
     try {
         fs.unlinkSync(fileName);
         return { success: true };
@@ -297,18 +295,18 @@ export function unlink(fileName: string): FileOperationResult<void> {
 }
 
 /**
- * Проверяет существование директории
+ * Синхронно проверяет существование директории
  *
  * @param {string} path - Путь к директории
  * @returns {boolean} true, если директория существует, иначе false
  *
  * @example
- * ```typescript
+ * ```ts
  * isDir('path/to/directory'); // -> true
  * isDir('nonexistent/dir'); // -> false
  * ```
  */
-export function isDir(path: string): boolean {
+export function isDirSync(path: string): boolean {
     try {
         return fs.existsSync(path);
     } catch {
@@ -317,14 +315,14 @@ export function isDir(path: string): boolean {
 }
 
 /**
- * Создает директорию
+ * Синхронно создает директорию
  *
  * @param {string} path - Путь к создаваемой директории
  * @param {fs.Mode} [mask='0774'] - Маска прав доступа
  * @returns {FileOperationResult<void>} Результат операции создания директории
  *
  * @example
- * ```typescript
+ * ```ts
  * const result = mkdir('new/directory');
  * if (result.success) {
  *   console.log('Directory created successfully');
@@ -333,7 +331,7 @@ export function isDir(path: string): boolean {
  * }
  * ```
  */
-export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult<void> {
+export function mkdirSync(path: string, mask: fs.Mode = '0774'): FileOperationResult<void> {
     try {
         fs.mkdirSync(path, mask);
         return { success: true };
@@ -346,25 +344,213 @@ export function mkdir(path: string, mask: fs.Mode = '0774'): FileOperationResult
 }
 
 /**
+ * Синхронно сохраняет данные в файл
+ * @param {IDir} dir - Объект с путем и названием файла
+ * @param {string} data - Сохраняемые данные
+ * @param {string} mode - Режим записи
+ * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
+ * @returns {boolean} true в случае успешного сохранения
+ */
+export function saveDataSync(
+    dir: IDir,
+    data: string,
+    mode?: string,
+    errorLogger?: TLoggerCb,
+): boolean {
+    if (!isDirSync(dir.path)) {
+        mkdirSync(dir.path);
+    }
+    try {
+        JSON.parse(data);
+    } catch (e) {
+        errorLogger?.(
+            `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}", так как данные не в json формате. Ошибка: ${(e as Error).message}`,
+            {
+                error: e,
+                data,
+                mode,
+            },
+        );
+    }
+    const res = fwriteSync(join(dir.path, dir.fileName), data, mode);
+    if (!res.success) {
+        errorLogger?.(
+            `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${res.error}`,
+            {
+                error: res.error,
+                data,
+                mode,
+            },
+        );
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Синхронно возвращает информацию о файле
+ *
+ * @param {string} fileName - Путь к файлу
+ * @returns {FileOperationResult<fs.Stats>} Результат операции с информацией о файле
+ *
+ * @example
+ * ```ts
+ * const result = getFileInfo('file.txt');
+ * if (result.success) {
+ *   console.log(result.data.size); // размер файла
+ *   console.log(result.data.mtime); // время последнего изменения
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
+ */
+export async function getFileInfo(fileName: string): Promise<FileOperationResult<fs.Stats>> {
+    try {
+        const stats = await fsPromises.stat(fileName);
+        return { success: true, data: stats };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Unknown error'),
+        };
+    }
+}
+
+/**
+ * Синхронно проверяет существование файла
+ *
+ * @param {string} file - Путь к проверяемому файлу
+ * @returns {boolean} true, если файл существует и это файл, иначе false
+ *
+ * @example
+ * ```ts
+ * isFile('path/to/file.txt'); // -> true
+ * isFile('path/to/directory'); // -> false
+ * isFile('nonexistent.txt'); // -> false
+ * ```
+ */
+export async function isFile(file: string): Promise<boolean> {
+    // Если в тексте нет точки, значит это явно не файл
+    if (looksLikeFilePath(file)) {
+        const fileInfo = await getFileInfo(file);
+        return (fileInfo.success && fileInfo.data?.isFile()) || false;
+    }
+    return false;
+}
+
+/**
+ * Проверяет существование директории
+ * @param path - Путь к директории
+ * @returns Promise<boolean> - true если директория существует
+ */
+export async function isDir(path: string): Promise<boolean> {
+    try {
+        const stat = await fsPromises.stat(path);
+        return stat.isDirectory();
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Создает директорию
+ * @param path - Путь к создаваемой директории
+ * @param mask - Маска прав доступа
+ * @returns Promise с результатом операции
+ */
+export async function mkdir(path: string, mask?: fs.Mode): Promise<FileOperationResult<void>> {
+    try {
+        await fsPromises.mkdir(path, mask);
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to create directory'),
+        };
+    }
+}
+
+/**
+ * Читает файл
+ * @param fileName - Путь к файлу
+ * @returns Promise с результатом операции
+ */
+export async function fread(fileName: string): Promise<FileOperationResult<string>> {
+    try {
+        const content = await fsPromises.readFile(fileName, 'utf-8');
+        return { success: true, data: content };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to read file'),
+        };
+    }
+}
+
+/**
+ * Записывает данные в файл
+ * @param fileName - Путь к файлу
+ * @param fileContent - Содержимое для записи
+ * @param mode - Режим записи: 'w' - перезапись, 'a' - добавление
+ * @returns Promise с результатом операции
+ */
+export async function fwrite(
+    fileName: string,
+    fileContent: string | Uint8Array,
+    mode: 'w' | 'a' | string = 'w',
+): Promise<FileOperationResult<void>> {
+    try {
+        if (mode === 'w') {
+            const tmpPath = `${fileName}.tmp`;
+            await fsPromises.writeFile(tmpPath, fileContent);
+            await fsPromises.rename(tmpPath, fileName);
+        } else {
+            await fsPromises.appendFile(fileName, fileContent);
+        }
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to write file'),
+        };
+    }
+}
+
+/**
+ * Удаляет файл
+ * @param fileName - Путь к файлу
+ * @returns Promise с результатом операции
+ */
+export async function unlink(fileName: string): Promise<FileOperationResult<void>> {
+    try {
+        await fsPromises.unlink(fileName);
+        return { success: true };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error : new Error('Failed to delete file'),
+        };
+    }
+}
+
+/**
  * Сохраняет данные в файл
  * @param {IDir} dir - Объект с путем и названием файла
  * @param {string} data - Сохраняемые данные
  * @param {string} mode - Режим записи
- * @param {boolean} isSync - Режим записи синхронная/асинхронная. По умолчанию синхронная
  * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
-export function saveData(
+export async function saveData(
     dir: IDir,
     data: string,
     mode?: string,
-    isSync: boolean = true,
     errorLogger?: TLoggerCb,
-): boolean {
-    if (!isDir(dir.path)) {
-        mkdir(dir.path);
+): Promise<boolean> {
+    if (!(await isDir(dir.path))) {
+        await mkdir(dir.path);
     }
-    if (isSync) {
+    if (data.startsWith('{')) {
         try {
             JSON.parse(data);
         } catch (e) {
@@ -377,38 +563,18 @@ export function saveData(
                 },
             );
         }
-        const res = fwrite(`${dir.path}/${dir.fileName}`, data, mode);
-        if (!res.success) {
-            errorLogger?.(
-                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${res.error}`,
-                {
-                    error: res.error,
-                    data,
-                    mode,
-                },
-            );
-            return false;
-        }
-    } else {
-        fs.writeFile(
-            `${dir.path}/${dir.fileName}`,
-            data,
+    }
+    const res = await fwrite(join(dir.path, dir.fileName), data, mode);
+    if (!res.success) {
+        errorLogger?.(
+            `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${res.error}`,
             {
-                flag: mode || 'w',
-            },
-            (err) => {
-                if (err) {
-                    errorLogger?.(
-                        `[saveLog]Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}". Ошибка: ${(err as Error).message}`,
-                        {
-                            error: err,
-                            data,
-                            mode,
-                        },
-                    );
-                }
+                error: res.error,
+                data,
+                mode,
             },
         );
+        return false;
     }
     return true;
 }
@@ -421,7 +587,7 @@ export function saveData(
  * @returns {string} URL-строка запроса
  *
  * @example
- * ```typescript
+ * ```ts
  * const params = {
  *   name: 'John Doe',
  *   age: '25'
@@ -450,7 +616,7 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
  * @returns {Promise<string>} Промис с введенной строкой
  *
  * @example
- * ```typescript
+ * ```ts
  * // В консоли:
  * // > Enter your name: John
  * const name = await stdin(); // -> 'John'

@@ -1,20 +1,20 @@
-import { IQueryData, QueryData } from '../../src/models/db';
+import { IQueryData, getQueryData } from '../../src';
 
 describe('queryData', () => {
     it('getQueryData', () => {
-        let result: IQueryData | null = QueryData.getQueryData('');
+        let result: IQueryData | null = getQueryData('');
         expect(result === null).toBe(true);
 
-        result = QueryData.getQueryData('`test`=512');
+        result = getQueryData('`test`=512');
         expect({ test: 512 }).toEqual(result);
 
-        result = QueryData.getQueryData('`test`="test"');
+        result = getQueryData('`test`="test"');
         expect({ test: 'test' }).toEqual(result);
 
-        result = QueryData.getQueryData('`test1`=512 `test2`="test"');
+        result = getQueryData('`test1`=512 `test2`="test"');
         expect({ test1: 512, test2: 'test' }).toEqual(result);
 
-        result = QueryData.getQueryData('`test`=512 ');
+        result = getQueryData('`test`=512 ');
         expect({ test: 512 }).toEqual(result);
     });
 });

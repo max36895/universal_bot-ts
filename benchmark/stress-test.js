@@ -1,11 +1,17 @@
 // stress-test.js
 // Запуск: node --expose-gc stress-test.js
 
-const { Bot, BotController, Alisa, T_ALISA, rand, unlink, Text } = require('./../dist/index');
+const { Bot, BotController, rand, unlink, Text } = require('../dist/index');
+
+const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');
+
+const FileDBAdapter = FileAdapter;
 const crypto = require('node:crypto');
 const os = require('node:os');
 const { join } = require('node:path');
 const { eventLoopUtilization } = require('node:perf_hooks').performance;
+
+const COMMAND_COUNT = 1000;
 
 class StressController extends BotController {
     action(intentName) {
@@ -41,8 +47,8 @@ function getAvailableMemoryMB() {
 }
 
 function predictMemoryUsage(commandCount) {
-    // Базовое потребление + 0.4 КБ на команду + запас
-    return 15 + (commandCount * 0.4) / 1024 + 50; // в МБ
+    // Базовое потребление примерно 2КБ на команду + запас
+    return 15 + (commandCount * 2) / 1024 + 50; // в МБ
 }
 
 function setupCommands(bot, count) {
@@ -102,8 +108,25 @@ bot.setLogger({
         errorsBot.push(msg);
         console.warn(msg);
     },
+    /*metric: (name, time) => {
+        if (!metric[name]) {
+            metric[name] = {
+                name: name,
+                count: 0,
+                time: 0,
+            };
+        }
+        if (typeof time === 'number') {
+            metric[name].count++;
+            metric[name].time += time;
+        }
+    },*/
 });
-const COMMAND_COUNT = 1000;
+bot.use(fullPlatforms);
+// Не будем подключать адаптер бд если храним данные внутри самой платформы
+if (!bot.getAppContext().appConfig.isLocalStorage) {
+    bot.use(new FileDBAdapter());
+}
 setupCommands(bot, COMMAND_COUNT);
 bot.addCommand('start', ['/start'], (_, bt) => {
     bt.text = 'start';
@@ -118,12 +141,16 @@ bot.addCommand('*', ['*'], (_, bt) => {
 async function run() {
     let text;
     const pos = rand(0, 3) % 3;
-    if (pos === 0) text = 'привет_0';
-    else if (pos === 1) text = `помощь_12`;
-    else text = `удалить_751154`;
+    if (pos === 0) {
+        text = 'привет_0';
+    } else if (pos === 1) {
+        text = `помощь_2`;
+    } else {
+        text = `удалить_3`;
+    }
 
-    text += '_' + crypto.randomBytes(20).toString('hex');
-    return bot.run(Alisa, T_ALISA, mockRequest(text));
+    text += ' ' + crypto.randomBytes(20).toString('hex');
+    return bot.run(T_ALISA, mockRequest(text));
 }
 
 function getMemoryMB() {
@@ -372,7 +399,7 @@ async function realisticTest() {
         const parsedRequest = JSON.parse(jsonString);
 
         // 4. Запускаем логику приложения
-        const result = await bot.run(Alisa, T_ALISA, JSON.stringify(parsedRequest));
+        const result = await bot.run(T_ALISA, JSON.stringify(parsedRequest));
 
         // 5. Подготавливает корректный ответ на запрос
         const responseJson = JSON.stringify(result);
@@ -419,7 +446,7 @@ async function realCommandsTest() {
     const batchSize = 100;
     for (let i = 0; i < iterations; i += batchSize) {
         const batch = requests.slice(i, i + batchSize);
-        const promises = batch.map((req) => bot.run(Alisa, T_ALISA, req));
+        const promises = batch.map((req) => bot.run(T_ALISA, req));
         await Promise.all(promises);
     }
 
@@ -450,7 +477,7 @@ async function fallbackTest() {
         // Создаем случайный текст, которого точно нет в командах
         const randomText = crypto.randomBytes(20).toString('hex');
         const startReq = performance.now();
-        await bot.run(Alisa, T_ALISA, mockRequest(randomText));
+        await bot.run(T_ALISA, mockRequest(randomText));
         results.push(performance.now() - startReq);
     }
 

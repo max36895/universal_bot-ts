@@ -1,11 +1,11 @@
 import { BotController } from '../../src/controller';
-import { IAppIntent } from '../../src';
+import { AppContext, IAppIntent } from '../../src';
 
 export class MyController extends BotController {
     actionName?: string;
 
-    constructor() {
-        super();
+    constructor(appContext: AppContext) {
+        super(appContext);
     }
 
     action(intentName: string): void {

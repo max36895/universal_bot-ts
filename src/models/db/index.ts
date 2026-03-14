@@ -8,7 +8,7 @@
  * - Контроля доступа к данным
  *
  * @example
- * ```typescript
+ * ```ts
  * import { DB, Model, DbControllerMongoDb } from './models/db';
  *
  * // Подключение к MongoDB
@@ -28,11 +28,5 @@
  * const userController = new DbControllerMongoDb(db, UserModel);
  * ```
  */
-export * from './DB';
 export * from './Model';
-export * from './Sql';
 export * from './QueryData';
-export * from './DbController';
-export * from './DbControllerModel';
-export * from './DbControllerFile';
-export * from './DbControllerMongoDb';

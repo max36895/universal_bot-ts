@@ -1,4 +1,6 @@
-import { Bot, IAlisaWebhookResponse, T_ALISA } from '../../src';
+import { Bot, unlinkSync } from '../../src';
+import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
+import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
 
 function getContent(query: string, count = 0): string {
     return JSON.stringify({
@@ -35,8 +37,22 @@ function getContent(query: string, count = 0): string {
 describe('Middleware', () => {
     let bot: Bot;
 
-    beforeEach(() => {
+    beforeAll(() => {
         bot = new Bot();
+        bot.use(new AlisaAdapter());
+        bot.use(new FileAdapter());
+    });
+    beforeEach(() => {
+        bot.use(new AlisaAdapter());
+    });
+    afterEach(() => {
+        bot.clearSteps();
+        bot.clearCommands();
+        bot.clearUse();
+    });
+    afterAll(() => {
+        bot.close();
+        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
     });
 
     it('should call global middleware', async () => {
@@ -103,7 +119,6 @@ describe('Middleware', () => {
 
         bot.setContent(getContent('test'));
         await bot.run();
-
-        expect(order).toEqual([1, 2, 3, 4]);
+        expect(order).toEqual([1, 4, 2, 3]);
     });
 });

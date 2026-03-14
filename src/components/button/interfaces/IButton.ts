@@ -5,7 +5,7 @@
  * @typedef {any} TButtonPayload
  *
  * @example
- * ```typescript
+ * ```ts
  * // Простой payload с действием
  * const payload: TButtonPayload = { action: 'click' };
  *
@@ -21,7 +21,6 @@
  * };
  * ```
  */
-export type TButtonPayload = any;
 
 /**
  * @interface IButtonOptions
@@ -31,14 +30,7 @@ export type TButtonPayload = any;
  * Поддерживает как общие опции, так и специфичные для конкретных платформ.
  *
  * @example
- * ```typescript
- * // Общие опции для всех платформ
- * const options: IButtonOptions = {
- *     _group: 'navigation',
- *     color: 'primary',
- *     size: 'large'
- * };
- *
+ * ```ts
  * // Специфичные опции для VK
  * const vkOptions: IButtonOptions = {
  *     _group: 'vk_buttons',
@@ -64,7 +56,7 @@ export interface IButtonOptions {
      *
      * @type {string | number}
      * @example
-     * ```typescript
+     * ```ts
      * // Группировка кнопок навигации
      * const options: IButtonOptions = {
      *     _group: 'nav_buttons'
@@ -77,6 +69,18 @@ export interface IButtonOptions {
      * ```
      */
     _group?: string | number;
+    /**
+     * Источник перехода
+     */
+    utmSource?: string;
+    /**
+     * Тип рекламного канала
+     */
+    utmMedium?: string;
+    /**
+     * Название рекламной кампании
+     */
+    utmCampaign?: string;
 
     /**
      * Дополнительные опции для кнопки.
@@ -84,7 +88,7 @@ export interface IButtonOptions {
      *
      * @type {any}
      * @example
-     * ```typescript
+     * ```ts
      * // Настройка кнопки для VK
      * const options: IButtonOptions = {
      *     color: 'primary',
@@ -99,18 +103,17 @@ export interface IButtonOptions {
      * };
      * ```
      */
-    [name: string]: any;
+    [name: string]: unknown;
 }
 
 /**
- * @interface IButton
  * Интерфейс для определения структуры кнопки.
  *
  * Определяет основные свойства кнопки, которые используются на всех платформах.
  * Поддерживает различные типы кнопок: текстовые, ссылки, с payload и т.д.
  *
  * @example
- * ```typescript
+ * ```ts
  * // Создание простой текстовой кнопки
  * const button: IButton = {
  *     title: 'Нажми меня',
@@ -141,11 +144,10 @@ export interface IButton {
     /**
      * Заголовок кнопки.
      * Основной текст, отображаемый на кнопке.
-     * Используется на всех платформах.
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const button: IButton = {
      *     title: 'Нажми меня'
      * };
@@ -160,7 +162,7 @@ export interface IButton {
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const button: IButton = {
      *     text: 'Нажми меня'
      * };
@@ -171,11 +173,10 @@ export interface IButton {
     /**
      * URL для перехода при нажатии на кнопку.
      * Используется для кнопок-ссылок.
-     * Поддерживается на всех платформах.
      *
      * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const button: IButton = {
      *     title: 'Перейти на сайт',
      *     url: 'https://example.com'
@@ -191,7 +192,7 @@ export interface IButton {
      *
      * @type {TButtonPayload}
      * @example
-     * ```typescript
+     * ```ts
      * // Простой payload
      * const button: IButton = {
      *     title: 'Добавить в корзину',
@@ -219,7 +220,7 @@ export interface IButton {
      * };
      * ```
      */
-    payload?: TButtonPayload;
+    payload?: object;
 
     /**
      * Дополнительные параметры кнопки.
@@ -228,16 +229,7 @@ export interface IButton {
      *
      * @type {IButtonOptions}
      * @example
-     * ```typescript
-     * // Общие настройки
-     * const button: IButton = {
-     *     title: 'Нажми меня',
-     *     options: {
-     *         color: 'primary',
-     *         size: 'large'
-     *     }
-     * };
-     *
+     * ```ts
      * // Платформо-специфичные настройки
      * const button: IButton = {
      *     title: 'Отправить контакт',
@@ -260,7 +252,7 @@ export interface IButton {
  * @typedef {string | IButton} TButton
  *
  * @example
- * ```typescript
+ * ```ts
  * // Кнопка как строка (упрощенный вариант)
  * const simpleButton: TButton = 'Нажми меня';
  *

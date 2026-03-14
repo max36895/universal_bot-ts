@@ -36,7 +36,7 @@
  * #### Примеры использования
  *
  * 1. **Стандартная навигация**
- * ```typescript
+ * ```ts
  * import { Navigation } from './standard/Navigation';
  *
  * const elements: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -49,7 +49,7 @@
  * ```
  *
  * 2. **Навигация с командами**
- * ```typescript
+ * ```ts
  * import { Navigation } from './standard/Navigation';
  *
  * const elements: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -66,7 +66,7 @@
  * ```
  *
  * 3. **Управление текущей страницей**
- * ```typescript
+ * ```ts
  * import { Navigation } from './standard/Navigation';
  *
  * const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -85,7 +85,7 @@
  * ```
  *
  * 4. **Выбор элемента из списка**
- * ```typescript
+ * ```ts
  * import { Navigation } from './standard/Navigation';
  *
  * const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -99,7 +99,7 @@
  * ```
  *
  * 5. **Работа с объектами**
- * ```typescript
+ * ```ts
  * import { Navigation } from './standard/Navigation';
  *
  * interface MenuItem {
