@@ -1,6 +1,6 @@
 /**
- * Модуль для тестирования бота.
- * Предоставляет инструменты для отладки и тестирования функциональности бота
+ * Модуль для тестирования вашего приложения.
+ * Предоставляет инструменты для отладки и тестирования функциональности итогового приложения
  */
 import { TAppType } from './interfaces/IAppContext';
 
@@ -10,18 +10,18 @@ import { stdin } from '../utils/';
 import { performance } from 'node:perf_hooks';
 
 /**
- * Функция для получения конфигурации пользовательского бота
+ * Функция для получения конфигурации пользовательского приложения
  *
  * @callback TUserBotConfigCb
  * @param {string} query - Пользовательский запрос
  * @param {string} userId - Идентификатор пользователя
  * @param {number} count - Номер сообщения в диалоге
- * @returns {any} Конфигурация для пользовательского бота
+ * @returns {any} Конфигурация для пользовательского приложения
  */
 export type TUserBotConfigCb = (query: string, userId: string, count: number) => unknown;
 
 /**
- * Параметры для тестирования бота.
+ * Параметры для тестирования приложения.
  * Определяют поведение и отображение результатов тестирования
  */
 export interface IBotTestParams {
@@ -96,7 +96,7 @@ export class BotTest extends Bot {
     }
 
     /**
-     * Запускает интерактивное тестирование бота.
+     * Запускает интерактивное тестирование приложения.
      * Позволяет вводить команды и получать ответы в консоли.
      * Также, если не задан `setAppMode` равный `strict_prod`, то режим автоматически выставится в `dev`
      *
@@ -176,7 +176,7 @@ export class BotTest extends Bot {
                 const endTime: number = performance.now() - timeStart;
                 console.log(`Время выполнения: ${endTime.toFixed(3)}мс`);
             }
-            console.log(`\nОтвет бота: > ${strRes}`);
+            console.log(`\nОтвет: > ${strRes}`);
 
             if (this._botController.isEnd) {
                 isEnd = true;

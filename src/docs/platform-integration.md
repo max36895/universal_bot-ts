@@ -65,7 +65,7 @@ bot.setAppConfig({
     error_log: './logs', // Директория для логов
     isLocalStorage: true, // Использование локального хранилища
 });
-bot.start(); // Запуск приложения
+bot.start('localhost', 3000); // Запуск приложения
 ```
 
 ## Создание навыков для Яндекс.Алисы
@@ -176,7 +176,7 @@ class TelegramController extends BotController {
                 .addBtn('Помощь', null, { command: 'help' });
 
             // Отправка изображения
-            this.card.addImage('image_url', 'Описание изображения');
+            this.card.addImage('image_url', ' ', 'Описание изображения');
         }
     }
 }
@@ -563,7 +563,7 @@ app.listen(3000, () => {
 
 ```ts
 // Отправка сообщения пользователю в Telegram
-const success = bot.send('123456789', 'Привет! Это рассылка.', T_TELEGRAM);
+const success = await bot.send('123456789', 'Привет! Это рассылка.', T_TELEGRAM);
 ```
 
 ## Лучшие практики

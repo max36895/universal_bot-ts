@@ -228,7 +228,7 @@ export interface IPlatformOptions {
  * Вы наследуетесь от `BotController`, переопределяете метод {@link action} и получаете доступ ко всем инструментам:
  * кнопкам, карточкам, состоянию диалога, пользовательским данным, NLU и многому другому.
  *
- * Адаптеры платформ (например, {@link Adapter} для Алисы) автоматически наполняют контроллер данными,
+ * Адаптеры платформ (например, `AlisaAdapter`) автоматически наполняют контроллер данными,
  * вызывают метод {@link run}, а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
  *
  * **Ключевая особенность:** вся логика вашего навыка или бота описывается в одном месте – в методе `action()`.
@@ -1001,7 +1001,7 @@ export abstract class BotController<
                 })
                 .catch((err) => {
                     this.appContext.logError(
-                        `BotController: Произошла ошибка при обработке команды "${commandName}", ошибка: "${err}"`,
+                        `BotController: Произошла ошибка во время обработки команды "${commandName}". Текст ошибки: "${err}"`,
                         {
                             err,
                         },
@@ -1149,7 +1149,7 @@ export abstract class BotController<
     #commandExecute(commandName: string, command?: ICommandParam): void | Promise<void> {
         const errorCb = (e: Error | Record<string, unknown>): void => {
             this.appContext.logError(
-                `BotController: Произошла ошибка при обработке команды "${commandName}", ошибка: "${e}"`,
+                `BotController: Произошла ошибка во время обработки команды "${commandName}". Текст ошибки: "${e}"`,
                 {
                     e,
                 },

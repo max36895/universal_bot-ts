@@ -1,4 +1,4 @@
-import { IAppParam } from '../../src';
+import { IAppParam } from 'umbot';
 
 export default function (): IAppParam {
     return {

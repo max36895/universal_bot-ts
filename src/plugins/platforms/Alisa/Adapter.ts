@@ -47,12 +47,12 @@ interface IState {
  * import { AlisaAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new AlisaAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
+ *     .use(new AlisaAdapter('YOUR_OAUTH_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
  *         ctx.text = 'Привет! Я твой первый навык для Алисы';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController

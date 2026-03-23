@@ -1,4 +1,4 @@
-import { BotTest, IBotTestParams } from '../../../src/test';
+import { BotTest, IBotTestParams } from 'umbot/test';
 import skillStorageConfig from '../../config/skillStorageConfig';
 import skillDefaultParam from '../../config/skillDefaultParam';
 import { UserAppController } from './controller/UserAppController';

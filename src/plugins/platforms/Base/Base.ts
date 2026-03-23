@@ -23,9 +23,9 @@ export interface IOptions {
 }
 
 export const EMPTY_QUERY_ERROR =
-    'Получено пустое тело запроса от платформы, дальнейшая корректная работа не возможно. Скорей всего запрос пришел не от платформы.';
+    'Получено пустое тело запроса от платформы, дальнейшая корректная работа невозможна. Скорее всего запрос пришел не от платформы.';
 export const EMPTY_CONTEXT_ERROR =
-    'Не указан контекст приложения, дальнейшая работа приложения не доступна. Проверьте корректность настройки приложения.';
+    'Не указан контекст приложения, дальнейшая работа приложения невозможна. Проверьте корректность настройки приложения.';
 
 /**
  * Базовый адаптер для создания навыков/ботов для собственной платформы (WeChat, WhatsApp, Slack и др.).
@@ -64,7 +64,7 @@ export abstract class BasePlatform<TQuery = unknown>
     protected _token?: string;
     protected _platformOptions?: IOptions;
     /**
-     * Определят лимит платформы.
+     * Определяет лимит платформы.
      * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
      * В случае если у платформы нет ограничений, можно указать 0 или null.
      * По умолчанию null
@@ -152,14 +152,15 @@ export abstract class BasePlatform<TQuery = unknown>
      * Обрабатывает входящий запрос и заполняет контроллер данными.
      *
      * Обязательно установите:
-     * - `controller.text` — текст сообщения пользователя
+     * - `controller.userCommand` и `controller.originalUserCommand` — текст сообщения пользователя
      * - `controller.userId` — уникальный ID пользователя
-     * - `controller.platform` = this.platformName
+     * - `controller.appType` = this.platformName
      *
      * Опционально:
-     * - `controller.intent` — если платформа присылает интент
-     * - `controller.entities` — извлечённые сущности
-     * - `controller.session` — данные сессии
+     * - `controller.userToken` — если платформа присылает токен авторизации
+     * - `controller.userMeta` — если платформа присылает метаданные
+     * - `controller.state` — если платформа поддерживает локальное хранилище
+     * - `controller.nlu` — если платформа присылает NLU/интенты (через `controller.nlu.setNlu(...)`)
      *
      * @returns `false`, если запрос повреждён или не может быть обработан; иначе `true`
      * @param query Запрос от платформы
@@ -251,7 +252,7 @@ export abstract class BasePlatform<TQuery = unknown>
             controller.platformOptions.error = `${this.constructor.name}:getContent(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
         } else if (timeEnd >= this.WARMING_TIME_REQUEST) {
             this.appContext?.logWarn(
-                `${this.constructor.name}:getContent(): Время ответа составило: ${timeEnd / 1000} сек, рекомендуется проверить нагрузку на сервер, либо корректность работы самого навыка.`,
+                `${this.constructor.name}:getContent(): Время ответа составило: ${timeEnd / 1000} сек, рекомендуется проверить нагрузку на сервер, и корректность работы самого приложения.`,
             );
         }
     }

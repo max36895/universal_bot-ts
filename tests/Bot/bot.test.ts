@@ -696,7 +696,7 @@ describe('Bot', () => {
             expect(metricCount).toBe(6);
             expect(errorCount).toBe(1);
             expect(errorMessage).toBe(
-                'BotController: Произошла ошибка при обработке команды "error", ошибка: "test"',
+                'BotController: Произошла ошибка во время обработки команды "error". Текст ошибки: "test"',
             );
         });
     });
@@ -722,7 +722,7 @@ describe('Bot', () => {
 
             bot.addCommand('redos', [/.*/], () => {});
             expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: .*',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: .*',
             );
             expect(errorMessage).toBe(undefined);
             warmMessage = undefined;
@@ -746,7 +746,7 @@ describe('Bot', () => {
             // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos4', [/(a*)*/], () => {});
             expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a*)*',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a*)*',
             );
             expect(errorMessage).toBe(undefined);
             warmMessage = undefined;
@@ -756,7 +756,7 @@ describe('Bot', () => {
             // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos5', [/(a|a+)+/], () => {});
             expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a|a+)+',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a|a+)+',
             );
             expect(errorMessage).toBe(undefined);
             warmMessage = undefined;
@@ -765,7 +765,7 @@ describe('Bot', () => {
             // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
             expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a+){10,1000}',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a+){10,1000}',
             );
             expect(errorMessage).toBe(undefined);
 
@@ -792,7 +792,7 @@ describe('Bot', () => {
 
             bot.addCommand('redos', [/.*/], () => {});
             expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: .*',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: .*',
             );
             expect(warmMessage).toBe(undefined);
             warmMessage = undefined;
@@ -815,7 +815,7 @@ describe('Bot', () => {
             // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos4', [/(a*)*/], () => {});
             expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a*)*',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a*)*',
             );
             expect(warmMessage).toBe(undefined);
             warmMessage = undefined;
@@ -824,7 +824,7 @@ describe('Bot', () => {
             // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos5', [/(a|a+)+/], () => {});
             expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a|a+)+',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a|a+)+',
             );
             expect(warmMessage).toBe(undefined);
             warmMessage = undefined;
@@ -833,7 +833,7 @@ describe('Bot', () => {
             // eslint-disable-next-line security/detect-unsafe-regex
             bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
             expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение, проверьте его корректность: (a+){10,1000}',
+                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a+){10,1000}',
             );
             expect(warmMessage).toBe(undefined);
 

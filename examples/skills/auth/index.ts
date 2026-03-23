@@ -1,5 +1,5 @@
-import { BotTest, IBotTestParams } from '../../../src/test';
-import { fullPlatforms, FileAdapter } from '../../../src/plugins';
+import { BotTest, IBotTestParams } from 'umbot/test';
+import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 import skillStorageConfig from '../../config/skillStorageConfig';
 import skillAuthParam from '../../config/skillAuthParam';
 import { AuthController } from './controller/AuthController';

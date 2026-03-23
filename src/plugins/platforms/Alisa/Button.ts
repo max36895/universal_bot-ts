@@ -31,7 +31,7 @@ function _getButton(
                 object.payload = button.payload;
             } else {
                 appContext?.logWarn(
-                    `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} bytes). Он будет проигнорирован.`,
+                    `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Он будет проигнорирован.`,
                 );
             }
         }

@@ -1,4 +1,4 @@
-import { IAppConfig } from '../../src';
+import { IAppConfig } from 'umbot';
 import { join } from 'node:path';
 
 export default function (): IAppConfig {

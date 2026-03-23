@@ -328,12 +328,14 @@ export class UsersData extends Model<IUserDataModelState> {
             try {
                 this.data = JSON.parse(this.data);
             } catch (e) {
-                this._appContext?.logError(`UserData:init() Ошибка при парсинге данных`, {
-                    error: e,
-                    data: this.data,
-                });
+                this._appContext?.logError(
+                    `UserData:init() Произошла ошибка при обработке данных. Скорей всего данные повреждены.`,
+                    {
+                        error: e,
+                        data: this.data,
+                    },
+                );
             }
         }
-        //}
     }
 }

@@ -34,12 +34,12 @@ import {
  * import { SmartAppAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new SmartAppAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
- *         ctx.text = 'Привет! Я твой первый навык для Smart.app';
+ *     .use(new SmartAppAdapter('YOUR_SMARTAPP_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
+ *         ctx.text = 'Привет! Я твой первый навык для SmartApp';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController

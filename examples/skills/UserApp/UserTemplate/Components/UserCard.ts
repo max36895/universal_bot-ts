@@ -1,4 +1,4 @@
-import { ICardInfo, Text, BotController } from '../../../../../src';
+import { ICardInfo, Text, BotController } from 'umbot';
 import { buttonProcessing, IButton } from './UserButton';
 
 /**

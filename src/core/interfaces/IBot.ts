@@ -262,7 +262,7 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     send(userId: string | number, controllerOrText: BotController | string): unknown | boolean;
 
     /**
-     * Определят лимит платформы.
+     * Определяет лимит платформы.
      * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
      * В случае если у платформы нет ограничений, можно указать 0 или null.
      * По умолчанию null

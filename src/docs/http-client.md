@@ -30,5 +30,5 @@ ctx.httpClient = async (input, init) => {
     }
 };
 
-bot.start();
+bot.start('localhost', 3000);
 ```

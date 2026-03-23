@@ -2,12 +2,11 @@
 // Запуск: node --expose-gc stress-test.js
 
 const { Bot, BotController, rand, unlink, Text } = require('../dist/index');
-
 const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');
 
 const FileDBAdapter = FileAdapter;
-const crypto = require('node:crypto');
 const os = require('node:os');
+const crypto = require('node:crypto');
 const { join } = require('node:path');
 const { eventLoopUtilization } = require('node:perf_hooks').performance;
 
@@ -541,7 +540,7 @@ async function runAllTests() {
     // Позволяем сохранить данные в файловую бд
     await new Promise((resolve) => setTimeout(resolve, 1000));
     unlink(join(__dirname, '..', 'json', 'UsersData.json'));
-    // на windows nodeJS работает не очень хорошо, из-за чего можем вылететь за пределы потребляемой памяти(более 4gb, хотя на unix этот показатель в районе 400мб)
+    // на windows nodeJS работает не очень хорошо, из-за чего можем вылететь за пределы потребляемой памяти
     if (isWin) {
         console.log(
             '⚠️ Внимание: Node.js на Windows работает менее эффективно, чем на Unix-системах (Linux/macOS). Это может приводить к высокому потреблению памяти и замедлению обработки под нагрузкой.\n' +
@@ -579,14 +578,18 @@ async function runAllTests() {
             'Результаты теста показывают потенциал ядра — но не отражают полную цепочку обработки запроса в бою.',
     );
 
-    console.log('');
-    console.log('Информация по метрикам');
-    console.log(`| ${'Имя метрики'.padEnd(32)} | Среднее время выполнения | Количество вызовов |`);
-    Object.keys(metric).forEach((key) => {
+    if (Object.keys(metric).length) {
+        console.log('');
+        console.log('Информация по метрикам');
         console.log(
-            `| ${key.padEnd(32)} | ${(metric[key].time / metric[key].count).toString().padEnd(24)} | ${metric[key].count.toString().padEnd(18)} |`,
+            `| ${'Имя метрики'.padEnd(32)} | Среднее время выполнения | Количество вызовов |`,
         );
-    });
+        Object.keys(metric).forEach((key) => {
+            console.log(
+                `| ${key.padEnd(32)} | ${(metric[key].time / metric[key].count).toString().padEnd(24)} | ${metric[key].count.toString().padEnd(18)} |`,
+            );
+        });
+    }
 }
 
 // ───────────────────────────────────────

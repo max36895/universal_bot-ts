@@ -255,7 +255,7 @@ export class CommandReg {
         if (isRegex(slots)) {
             if (!isRegexLikelySafe(slots.source, true)) {
                 this[this.strictMode ? 'logError' : 'logWarn'](
-                    `Найдено небезопасное регулярное выражение, проверьте его корректность: ${slots.source}`,
+                    `Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: ${slots.source}`,
                     {},
                 );
                 if (this.strictMode) {
@@ -609,7 +609,7 @@ export class CommandReg {
         const size = this.commands.size;
         if (size === 1e4 || size === 5e4 || size === 1e5) {
             this.logWarn(
-                `Задано более ${this.commands.size} команд, скорей всего команды задаются через цикл, который отработал не корректно. Проверьте корректность работы приложения, а также добавленные команды.`,
+                `Задано ${this.commands.size} команд, скорее всего команды задаются через цикл, который возможно отработал некорректно. Проверьте корректность работы приложения, а также корректность добавленных команд.`,
             );
         }
         let correctSlots: TSlots = this.strictMode ? [] : slots;
@@ -645,7 +645,7 @@ export class CommandReg {
                     if (tCommandName) {
                         if (tCommandName !== commandName) {
                             this.logError(
-                                `Для команды "${commandName}", используется та же активационная фраза что и для команды "${tCommandName}". Проверьте корректность регистрации команд.`,
+                                `Команда с названием "${commandName}" уже создавалась ранее. Проверьте корректность регистрации команды`,
                             );
                         }
                     } else {

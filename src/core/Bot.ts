@@ -20,14 +20,14 @@ import { ILogger } from './interfaces/ILogger';
 import { Text, isPromise } from '../utils';
 
 /**
- * Тип для класса контроллера бота
+ * Тип для класса контроллера приложения
  */
 export type TBotControllerClass<T extends IUserData = IUserData> = new (
     appContext: AppContext,
 ) => BotController<T>;
 
 /**
- * Результат выполнения бота - ответ, который будет отправлен пользователю
+ * Результат выполнения запроса от платформы - ответ, который будет отправлен пользователю
  * Может быть ответом для Алисы, Маруси или текстовым сообщением
  *
  * @example
@@ -97,8 +97,13 @@ interface IAppConnectStatus {
  * Мультиплатформенный фреймворк для создания чат-ботов и голосовых навыков с единой бизнес-логикой под различные платформы на TypeScript.
  *
  * **`Bot` — главный класс**, управляющий всем жизненным циклом приложения:
- * регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.), обработкой входящих запросов,
- * маршрутизацией команд, middleware, работой с базой данных, логированием и метриками.
+ *  - регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.);
+ *  - обработкой входящих запросов;
+ *  - маршрутизацией команд;
+ *  - middleware;
+ *  - работой с базой данных;
+ *  - логированием
+ *  - метриками.
  *
  * Фреймворк построен на **адаптерах** — каждый адаптер отвечает за преобразование
  * специфичного для платформы запроса в унифицированный `BotController`, который
@@ -108,7 +113,7 @@ interface IAppConnectStatus {
  *
  * ## 📖 КРАТКОЕ РУКОВОДСТВО
  *
- * 1. **Создайте бота:** `const bot = new Bot();`
+ * 1. **Создайте приложение:** `const bot = new Bot();`
  * 2. **Настройте токены:** `bot.setAppConfig({ tokens: { telegram: {token: '...'}} });`
  * 3. **Добавьте логику при необходимости:** `bot.initBotController(MyController);`
  * 4. **Добавьте команды:** `bot.addCommand('start', ['старт'], handler);`
@@ -128,6 +133,7 @@ interface IAppConnectStatus {
  * Создание простого Telegram бота
  * ```ts
  * import { Bot } from 'umbot';
+ * import { botPlatforms } from 'umbot/plugins';
  *
  * // 1. Создаем бота для Telegram
  * const bot = new Bot();
@@ -137,15 +143,18 @@ interface IAppConnectStatus {
  *   env: 'local'
  * });
  *
- * // 3. Добавляем команды
+ * // 3. Говорим приложению, что нужно поддерживать только платформы для чат-ботов
+ * bot.use(botPlatforms);
+ *
+ * // 4. Добавляем команды
  * bot.addCommand('help', ['помощь', 'справка'], (cmd, controller) => {
  *   controller.text = 'Я могу:\n• Приветствовать\n• Помогать\n• И многое другое!';
  * });
  *
- * // 4. Запускаем сервер
+ * // 5. Запускаем сервер
  * bot.start('localhost', 3000);
  *
- * // 5. Настройте webhook в Telegram: https://api.telegram.org/bot{YOUR_TOKEN}/setWebhook?url=https://ваш-домен/webhook
+ * // 6. Настройте webhook в Telegram: https://api.telegram.org/bot{YOUR_TOKEN}/setWebhook?url=https://ваш-домен/webhook
  * ```
  *
  * Создание простого бота со своим контроллером:
@@ -933,7 +942,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 await userData.save(true).then((res) => {
                     if (!res) {
                         this.#appContext.logError(
-                            `Bot:run(): Не удалось сохранить данные для пользователя: "${botController.userId}".`,
+                            `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${botController.userId}".`,
                         );
                     }
                     return res;
@@ -942,7 +951,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 await userData.update().then((res) => {
                     if (!res) {
                         this.#appContext.logError(
-                            `Bot:run(): Не удалось обновить данные для пользователя: "${botController.userId}".`,
+                            `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}".`,
                         );
                     }
                 });
@@ -1177,7 +1186,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 }
             } catch (err) {
                 this.#appContext.logError(
-                    `Bot:runMiddlewares: Ошибка при обработке middleware: ${(err as Error).message}`,
+                    `Bot:runMiddlewares: Произошла ошибка при обработке middleware. Текст ошибки: ${(err as Error).message}`,
                     {
                         error: err,
                     },
@@ -1232,7 +1241,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     ): Promise<TRunResult> {
         if (!this.#botControllerClass) {
             const errMsg =
-                'Не определен класс с логикой приложения. Укажите класс с логикой, передав его в метод initBotController';
+                'Не определен класс с логикой приложения. Укажите класс контроллер, передав его в метод initBotController';
             this.#appContext.logError(errMsg);
             throw new Error(errMsg);
         }
@@ -1271,7 +1280,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 throw new Error(botController.platformOptions.error || '');
             }
         } else {
-            const msg = 'Не удалось определить платформу, от которой пришел запрос.';
+            const msg =
+                'Не удалось определить платформу, от которой пришел запрос. Дальнейшая обработка невозможна.';
             this.#appContext.logError(msg);
             throw new Error(msg);
         }

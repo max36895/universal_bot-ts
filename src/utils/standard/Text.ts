@@ -284,7 +284,7 @@ export class Text {
                         : Text.#getCachedRegex(patternBase, customReg);
                     if (cachedRegex.global) {
                         // На случай если кто-то задал флаг g, сбрасываем lastIndex,
-                        // так как это может привести к не корректному результату
+                        // так как это может привести к некорректному результату
                         cachedRegex.lastIndex = 0;
                     }
                     const res = cachedRegex.test(text);

@@ -1,5 +1,5 @@
-import { BotController, AppContext, IDatabaseInfo } from '../../../../../src';
-import { BasePlatformAdapter, TContent } from '../../../../../src/plugins';
+import { BotController, AppContext, IDatabaseInfo } from 'umbot';
+import { BasePlatformAdapter, TContent } from 'umbot/plugins';
 import { buttonProcessing } from '../Components/UserButton';
 import { cardProcessing } from '../Components/UserCard';
 

@@ -1,5 +1,5 @@
-import { BotTest, IBotTestParams } from '../../../src/test';
-import { fullPlatforms } from '../../../src/plugins';
+import { BotTest, IBotTestParams } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 import skillStorageConfig from '../../config/skillStorageConfig';
 import skillDefaultParam from '../../config/skillDefaultParam';
 import { LocalStorageController } from './controller/LocalStorageController';

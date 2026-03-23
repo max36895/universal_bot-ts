@@ -1,5 +1,5 @@
-import { IModelRes, IQuery, IQueryData, TQueryCb } from '../../../../src/models';
-import { BaseDbAdapter } from '../../../../src/plugins';
+import { IModelRes, IQuery, IQueryData, TQueryCb } from 'umbot';
+import { BaseDbAdapter } from 'umbot/plugins';
 
 type IData = Record<string, Record<string, unknown>>;
 

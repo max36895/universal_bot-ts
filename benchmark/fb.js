@@ -2,7 +2,6 @@
 // Запуск: node --expose-gc fb.js
 
 const { Bot, unlink } = require('../dist/index');
-
 const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');
 
 const FileDBAdapter = FileAdapter;

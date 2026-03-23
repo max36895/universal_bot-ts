@@ -28,12 +28,12 @@ import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
  * import { ViberAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new ViberAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
- *         ctx.text = 'Привет! Я твой первый навык для Viber';
+ *     .use(new ViberAdapter('YOUR_VIBER_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
+ *         ctx.text = 'Привет! Я твой первый бот для Viber';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController

@@ -28,12 +28,12 @@ import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPl
  * import { VkAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new VkAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
- *         ctx.text = 'Привет! Я твой первый навык для ВК';
+ *     .use(new VkAdapter('YOUR_VK_TOKEN', { vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN' }))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
+ *         ctx.text = 'Привет! Я твой первый бот для ВК';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController

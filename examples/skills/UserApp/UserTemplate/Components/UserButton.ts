@@ -1,4 +1,4 @@
-import { Text, Button } from '../../../../../src';
+import { Text, Button } from 'umbot';
 
 /**
  * Свой формат для кнопок

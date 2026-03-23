@@ -1,6 +1,6 @@
-import { BotTest } from '../../../src/test';
-import { Text } from '../../../src/utils';
-import { fullPlatforms } from '../../../src/plugins';
+import { BotTest } from 'umbot/test';
+import { Text } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
 import skillDefaultConfig from '../../config/skillStorageConfig';
 
 const bot = new BotTest();

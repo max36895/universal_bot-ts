@@ -24,7 +24,7 @@ npm install umbot
 
 #### Базовый вариант
 
-Для базового варианта создадим контроллер нашего бота
+Для базового варианта создадим контроллер нашего приложения
 
 ```ts
 import { Bot, BotController, WELCOME_INTENT_NAME } from 'umbot';
@@ -51,7 +51,7 @@ class MyController extends BotController {
     }
 }
 
-// Инициализируем бота
+// Инициализируем приложение
 const bot = new Bot();
 bot.use(fullPlatforms);
 
@@ -141,7 +141,7 @@ this.buttons
 this.card
     .addImage('image.jpg') // Добавить изображение
     .setTitle('Заголовок') // Добавить заголовок
-    .addDescription('Описание'); // Добавить описание
+    .setDescription('Описание'); // Добавить описание
 ```
 
 #### Управление состоянием

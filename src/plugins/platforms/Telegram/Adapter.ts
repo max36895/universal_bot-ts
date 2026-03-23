@@ -28,12 +28,12 @@ import { TelegramRequest } from '../API';
  * import { TelegramAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new TelegramAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
- *         ctx.text = 'Привет! Я твой первый навык для Telegram';
+ *     .use(new TelegramAdapter('YOUR_BOT_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
+ *         ctx.text = 'Привет! Я твой первый бот для Telegram';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController
@@ -77,7 +77,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
 
                 if (query.message !== undefined) {
                     controller.userId = query.message.chat.id;
-                    controller.userCommand = query.message.text.toLowerCase().trim();
+                    controller.userCommand = query.message.text?.toLowerCase()?.trim() || '';
                     controller.originalUserCommand = query.message.text;
                     controller.messageId = query.message.message_id;
 

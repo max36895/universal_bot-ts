@@ -42,12 +42,12 @@ type TState = 'user_state_update' | 'session_state';
  * import { MarusiaAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new MarusiaAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
+ *     .use(new MarusiaAdapter('YOUR_MARUSIA_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
  *         ctx.text = 'Привет! Я твой первый навык для Маруси';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController

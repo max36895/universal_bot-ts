@@ -28,12 +28,12 @@ import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform'
  * import { MaxAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new MaxAdapter())
- *     .addCommand('start', ['привет'], (ctx) => {
- *         ctx.text = 'Привет! Я твой первый навык для MAX';
+ *     .use(new MaxAdapter('YOUR_MAX_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
+ *         ctx.text = 'Привет! Я твой первый бот для MAX';
  *     });
  *
- * bot.start();
+ * bot.start('localhost', 3000);
  *
  * @see Bot
  * @see BotController

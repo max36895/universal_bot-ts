@@ -1,5 +1,5 @@
-import { BotTest } from '../../../src/test';
-import { fullPlatforms } from '../../../src/plugins';
+import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 import skillDefaultConfig from '../../config/skillDefaultConfig';
 import { StandardController } from './controller/StandardController';
 
