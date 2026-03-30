@@ -39,10 +39,8 @@ export function cardProcessing(cardInfo: ICardInfo): IViberCard[] | IViberCard {
     }
     if (countImage) {
         if (countImage === 1 || cardInfo.showOne) {
-            if (!cardInfo.images[0].imageToken) {
-                if (cardInfo.images[0].imageDir) {
-                    cardInfo.images[0].imageToken = cardInfo.images[0].imageDir;
-                }
+            if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
+                cardInfo.images[0].imageToken = cardInfo.images[0].imageDir;
             }
             if (cardInfo.images[0].imageToken) {
                 return getElement(cardInfo.images[0]);

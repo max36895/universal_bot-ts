@@ -224,27 +224,19 @@ export function getImage(
     isToken: boolean = false,
 ): IImageType | null {
     const res: IImageType = {
-        imageToken: null,
+        imageToken: image,
         imageDir: null,
         title: '',
         desc: '',
         params: {},
     };
-    if (isToken) {
-        res.imageToken = image;
-    } else if (image && (Text.isUrl(image) || isFileSync(image))) {
+    if (!isToken && image && (Text.isUrl(image) || isFileSync(image))) {
         res.imageDir = image;
         res.imageToken = null;
-    } else {
-        res.imageToken = image;
     }
     if (title) {
         res.title = title;
-        if (!desc) {
-            res.desc = ' ';
-        } else {
-            res.desc = desc;
-        }
+        res.desc = desc || ' ';
         if (button) {
             res.button = new Buttons(appContext);
             initButton(button, res.button);

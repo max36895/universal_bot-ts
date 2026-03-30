@@ -1,5 +1,6 @@
 import { IButtonType } from '../../../index';
 import { IViberButton, IViberButtonObject } from './interfaces/IViberPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Тип кнопки для отправки ответа
@@ -104,7 +105,7 @@ export const T_NONE = 'none';
 export function buttonProcessing(buttons: IButtonType[]): IViberButtonObject | null {
     let object: IViberButtonObject | null = null;
     const buttonsResult: IViberButton[] = [];
-    buttons.forEach((button) => {
+    getCorrectButtons(buttons, 6).forEach((button) => {
         let btn: IViberButton = {
             Text: button.title,
         };

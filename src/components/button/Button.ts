@@ -2,7 +2,10 @@ import { IButtonOptions } from './interfaces/IButton';
 import { Text } from '../../utils';
 import { AppContext } from '../../core';
 
-type TBtnPayload = Record<string, unknown> | string | null;
+/**
+ * Базовый тип для задания placeholder для кнопок
+ */
+export type TBtnPayload = Record<string, unknown> | string | null;
 
 /**
  * Интерфейс для кнопок
@@ -58,7 +61,7 @@ function init<TButtonPayload = TBtnPayload>(
     options: IButtonOptions = {},
 ): IButtonType<TButtonPayload> | null {
     let res: IButtonType<TButtonPayload> | null = null;
-    if (title || title === '') {
+    if (title !== null) {
         res = {
             title,
             type: null,

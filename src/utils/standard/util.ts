@@ -163,7 +163,7 @@ export function isFileSync(file: string): boolean {
     // Если в тексте нет точки, значит это явно не файл
     if (looksLikeFilePath(file)) {
         const fileInfo = getFileInfoSync(file);
-        return (fileInfo.success && fileInfo.data?.isFile()) || false;
+        return !!(fileInfo.success && fileInfo.data?.isFile());
     }
     return false;
 }
@@ -433,7 +433,7 @@ export async function isFile(file: string): Promise<boolean> {
     // Если в тексте нет точки, значит это явно не файл
     if (looksLikeFilePath(file)) {
         const fileInfo = await getFileInfo(file);
-        return (fileInfo.success && fileInfo.data?.isFile()) || false;
+        return !!(fileInfo.success && fileInfo.data?.isFile());
     }
     return false;
 }

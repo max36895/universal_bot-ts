@@ -4,6 +4,7 @@ import {
     ISberSmartAppSuggestionButton,
     ISberSmartAppCardAction,
 } from './interfaces/ISmartAppPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Получение кнопок в формате SmartApp
@@ -34,7 +35,7 @@ export function buttonProcessing(
             }
         }
     } else {
-        buttons.forEach((button) => {
+        getCorrectButtons(buttons, 8).forEach((button) => {
             const title = Text.resize(button.title || '', 64);
             if (title) {
                 const object: ISberSmartAppSuggestionButton = {

@@ -120,6 +120,7 @@ describe('Bot', () => {
     afterEach(() => {
         jest.resetAllMocks();
         bot.close();
+        bot.clearCommands();
         unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
     });
 
@@ -169,7 +170,7 @@ describe('Bot', () => {
                 warn: () => {},
             });
             await expect(bot.run()).rejects.toThrow(
-                'Не удалось определить платформу, от которой пришел запрос.',
+                'Пришел не корректный запрос в котором передано пустое содержимое, дальнейшая обработка невозможна.',
             );
         });
 
@@ -195,7 +196,7 @@ describe('Bot', () => {
         it('should throw error if botClass is set and init is unsuccessful', async () => {
             bot.initBotController(TestBotController);
             const error =
-                'Для платформы "alisa", передано пустое содержимое, корректно обработать запрос невозможно';
+                'Для платформы "alisa" передано пустое содержимое, дальнейшая обработка невозможна.';
             bot.setLogger({
                 error: (_: string) => {},
                 warn: () => {},
@@ -866,7 +867,7 @@ describe('Bot', () => {
             }
             res = (await bot.run(T_ALISA, getContent('hello', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('hello');
-            bot.addCommand('my', ['by'], (_, botC) => {
+            bot.addCommand('my2', ['by'], (_, botC) => {
                 botC.text = 'by';
             });
             res = (await bot.run(T_ALISA, getContent('by', 2))) as IAlisaWebhookResponse;
@@ -900,7 +901,7 @@ describe('Bot', () => {
             }
             res = (await bot.run(T_ALISA, getContent('hello', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('hello');
-            bot.addCommand('my', ['by'], (_, botC) => {
+            bot.addCommand('my2', ['by'], (_, botC) => {
                 botC.text = 'by';
             });
             res = (await bot.run(T_ALISA, getContent('by', 2))) as IAlisaWebhookResponse;

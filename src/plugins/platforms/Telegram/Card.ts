@@ -4,6 +4,7 @@ import { TelegramRequest } from '../API';
 import { ITelegramMedia, TTelegramChatId } from './interfaces/ITelegramPlatform';
 import { getImageToken } from '../Base/utils';
 import { T_TELEGRAM } from './constants';
+
 /**
  * Получение токена, необходимого для отображения картинок в карточке Телеграм
  * @param controller Контроллер приложения
@@ -84,29 +85,21 @@ export async function cardProcessing(
         object = [];
         for (let i = 0; i < cardInfo.images.length; i++) {
             const image = cardInfo.images[i];
-            try {
-                let field: string | null = null;
-                if (!image.imageToken) {
-                    if (image.imageDir) {
-                        field = `attach://${image.imageDir}`;
-                    }
+            let field: string | null;
+            if (!image.imageToken) {
+                if (image.imageDir) {
+                    field = `attach://${image.imageDir}`;
                 } else {
-                    field = image.imageToken;
+                    continue;
                 }
-                if (field) {
-                    object.push({
-                        type: 'photo',
-                        media: field,
-                        caption: Text.resize(image.desc, 200),
-                    });
-                }
-            } catch (e) {
-                // Логируем ошибку, но не прерываем цикл
-                controller.appContext.logError(
-                    `Telegram:cardProcessing(): Произошла ошибка при загрузке изображения для Telegram`,
-                    { error: e },
-                );
+            } else {
+                field = image.imageToken;
             }
+            object.push({
+                type: 'photo',
+                media: field,
+                caption: Text.resize(image.desc, 200),
+            });
         }
     }
 

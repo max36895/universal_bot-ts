@@ -1,5 +1,6 @@
 import { Buttons, IButtonType } from '../../../index';
 import { IVkButton, IVkButtonObject } from './interfaces/IVkPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Поле для группировки
@@ -66,13 +67,9 @@ export function buttonProcessing(buttons: IButtonType<IVkButton>[]): IVkButtonOb
     const groups: number[] = [];
     const finalButtons: IVkButton[] | IVkButton[][] = [];
     let index = 0;
-    buttons.forEach((button) => {
+    getCorrectButtons(buttons).forEach((button) => {
         if (button.type === null) {
-            if (button.hide === Buttons.B_LINK) {
-                button.type = VK_TYPE_LINK;
-            } else {
-                button.type = VK_TYPE_TEXT;
-            }
+            button.type = button.hide === Buttons.B_LINK ? VK_TYPE_LINK : VK_TYPE_TEXT;
         }
         let object: IVkButton = {
             action: {

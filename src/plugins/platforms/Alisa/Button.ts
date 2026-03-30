@@ -1,5 +1,6 @@
 import { Text, IButtonType, AppContext } from '../../../index';
 import { IAlisaButton, IAlisaButtonCard } from './interfaces/IAlisaPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Создание кнопки в формате Алисы
@@ -60,7 +61,7 @@ export function buttonProcessing(
             return _getButton(buttons[0], isCard, appContext);
         }
     } else {
-        buttons.forEach((button) => {
+        getCorrectButtons(buttons).forEach((button) => {
             const object: IAlisaButton | null = _getButton(button, isCard, appContext);
             if (object) {
                 objects.push(object);

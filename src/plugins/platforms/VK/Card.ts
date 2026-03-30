@@ -5,6 +5,7 @@ import { VkRequest } from '../API';
 import { getImageToken } from '../Base/utils';
 import { IVkButton, IVkButtonObject, IVkCard, IVkCardElement } from './interfaces/IVkPlatform';
 import { T_VK } from './constants';
+
 /**
  * Получение токена, необходимого для отображения картинок в карточке ВК
  * @param controller Контроллер приложения
@@ -37,6 +38,51 @@ export async function getImageInDB(
     });
 }
 
+async function getElements(
+    cardInfo: ICardInfo,
+    controller: BotController,
+): Promise<IVkCardElement[]> {
+    const elements = [];
+    for (let i = 0; i < cardInfo.images.length; i++) {
+        const image = cardInfo.images[i];
+        if (!image.imageToken && image.imageDir) {
+            image.imageToken = await getImageInDB(controller, image.imageDir);
+        }
+        if (!image.imageToken) {
+            return elements;
+        }
+        if (cardInfo.usedGallery) {
+            const element: IVkCardElement = {
+                title: image.title,
+                description: image.desc,
+                photo_id: image.imageToken.replace('photo', ''),
+            };
+            const button = image.button?.getButtons<IVkButtonObject, IVkButton>(buttonProcessing);
+            if (button?.buttons?.length) {
+                element.buttons = button.buttons.slice(0, 3) as IVkButton[];
+            }
+            elements.push(element);
+        } else {
+            const element: IVkCardElement = {
+                title: image.title,
+                description: image.desc,
+                photo_id: image.imageToken.replace('photo', ''),
+            };
+            const button = image.button?.getButtons<IVkButtonObject, IVkButton>(buttonProcessing);
+            /*
+             * У карточки в любом случае должна быть хоть одна кнопка.
+             * Максимальное количество кнопок 3
+             */
+            if (button?.one_time) {
+                element.buttons = button.buttons.splice(0, 3) as IVkButton[];
+                element.action = { type: 'open_photo' };
+                elements.push(element);
+            }
+        }
+    }
+    return elements;
+}
+
 /**
  * Получает карточку для отображения в VK.
  * @param cardInfo Информация о карточке
@@ -51,63 +97,19 @@ export async function cardProcessing(
     const countImage = cardInfo.images.length;
     if (countImage) {
         if (countImage === 1 || cardInfo.showOne) {
-            if (!cardInfo.images[0].imageToken) {
-                if (cardInfo.images[0].imageDir) {
-                    // eslint-disable-next-line require-atomic-updates
-                    cardInfo.images[0].imageToken = await getImageInDB(
-                        controller,
-                        cardInfo.images[0].imageDir,
-                    );
-                }
+            if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
+                // eslint-disable-next-line require-atomic-updates
+                cardInfo.images[0].imageToken = await getImageInDB(
+                    controller,
+                    cardInfo.images[0].imageDir,
+                );
             }
             if (cardInfo.images[0].imageToken) {
                 object.push(cardInfo.images[0].imageToken);
                 return object;
             }
         } else {
-            const elements = [];
-            for (let i = 0; i < cardInfo.images.length; i++) {
-                const image = cardInfo.images[i];
-                if (!image.imageToken) {
-                    if (image.imageDir) {
-                        image.imageToken = await getImageInDB(controller, image.imageDir);
-                    }
-                }
-                if (image.imageToken) {
-                    if (cardInfo.usedGallery) {
-                        const element: IVkCardElement = {
-                            title: image.title,
-                            description: image.desc,
-                            photo_id: image.imageToken.replace('photo', ''),
-                        };
-                        const button = image.button?.getButtons<IVkButtonObject, IVkButton>(
-                            buttonProcessing,
-                        );
-                        if (button?.buttons?.length) {
-                            element.buttons = button.buttons.slice(0, 3) as IVkButton[];
-                        }
-                        elements.push(element);
-                    } else {
-                        const element: IVkCardElement = {
-                            title: image.title,
-                            description: image.desc,
-                            photo_id: image.imageToken.replace('photo', ''),
-                        };
-                        const button = image.button?.getButtons<IVkButtonObject, IVkButton>(
-                            buttonProcessing,
-                        );
-                        /*
-                         * У карточки в любом случае должна быть хоть одна кнопка.
-                         * Максимальное количество кнопок 3
-                         */
-                        if (button?.one_time) {
-                            element.buttons = button.buttons.splice(0, 3) as IVkButton[];
-                            element.action = { type: 'open_photo' };
-                            elements.push(element);
-                        }
-                    }
-                }
-            }
+            const elements = await getElements(cardInfo, controller);
             if (elements.length) {
                 return {
                     type: 'carousel',

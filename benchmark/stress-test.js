@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { join } = require('node:path');
 const { eventLoopUtilization } = require('node:perf_hooks').performance;
 
-const COMMAND_COUNT = 1000;
+const COMMAND_COUNT = process.argv.at(-1) === 'lite' ? 5 : 1000;
 
 class StressController extends BotController {
     action(intentName) {
@@ -46,8 +46,8 @@ function getAvailableMemoryMB() {
 }
 
 function predictMemoryUsage(commandCount) {
-    // Базовое потребление примерно 2КБ на команду + запас
-    return 15 + (commandCount * 2) / 1024 + 50; // в МБ
+    // Эмпирически: ~6.5 КБ на команду + базовый оверхед
+    return 55 + (commandCount * 6.5) / 1024;
 }
 
 function setupCommands(bot, count) {
@@ -156,6 +156,10 @@ function getMemoryMB() {
     return Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
 }
 
+function getMemoryRSSMB() {
+    return Math.round(process.memoryUsage().rss / 1024 / 1024);
+}
+
 function validateResult(result) {
     return result?.response?.text;
 }
@@ -172,6 +176,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
     const allLatencies = [];
     const errors = [];
     const memStart = getMemoryMB();
+    const rssStart = getMemoryRSSMB();
 
     for (let round = 0; round < iterations; round++) {
         const promises = [];
@@ -205,6 +210,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
 
     const eluAfter = eventLoopUtilization(eluBefore);
     const memEnd = getMemoryMB();
+    const rssEnd = getMemoryRSSMB();
     const avg = allLatencies.length
         ? allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length
         : 0;
@@ -225,6 +231,7 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
     console.log(`🕒 Среднее время: ${avg.toFixed(2)} мс`);
     console.log(`📈 p95 latency: ${p95.toFixed(2)} мс`);
     console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+    console.log(`💾 rss: ${rssStart} → ${rssEnd} MB (+${rssEnd - rssStart})`);
 
     console.log(`📊 Event Loop Utilization:`);
     console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
@@ -250,6 +257,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
     global.gc();
 
     const memStart = getMemoryMB();
+    const rssStart = getMemoryRSSMB();
     const start = performance.now();
 
     const predicted = predictMemoryUsage(COMMAND_COUNT);
@@ -301,6 +309,8 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
             throw new Error(`Получено ${invalid.length} некорректных результатов`);
         }
         const memEnd = getMemoryMB();
+        const rssEnd = getMemoryRSSMB();
+        const rps = (results.length / (totalMs / 1000)).toFixed(0);
 
         console.log(`✅ Успешно: ${results.length}`);
         console.log(`❌ Ошибок Bot: ${errorsBot.length}`);
@@ -309,7 +319,9 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
         }
         console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
         console.log(`   Время на 1 команду: ${(totalMs / count).toFixed(6)} мс`);
+        console.log(`   RPS: ${rps} запросов/сек`);
         console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+        console.log(`   Rss: ${rssStart} → ${rssEnd} MB (+${rssEnd - rssStart})`);
 
         console.log(`📊 Event Loop Utilization:`);
         console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
@@ -329,27 +341,46 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
     }
 }
 
-async function testMaxRPS(durationSeconds = 10) {
+// Раз в какое время писать лог с потреблением ресурсов
+const LOG_DURATION = 60 * 30 * 1000;
+
+async function sequentialThroughputTest(durationSeconds = 10) {
     console.log(
-        `\n📊 Тест максимального RPS (${durationSeconds} секунд)\nПокажет сколько запросов смогло обработаться за ${durationSeconds} секунд`,
+        `\n📊 Тест последовательной пропускной способности (${durationSeconds} секунд)\nПокажет сколько запросов может обработать один поток за ${durationSeconds} секунд`,
     );
 
     const startTime = Date.now();
+    const headStart = getMemoryMB();
+    const rssStart = getMemoryRSSMB();
     let totalRequests = 0;
 
     // Запускаем непрерывный поток запросов
     while (Date.now() - startTime < durationSeconds * 1000) {
         await run();
         totalRequests++;
+        const dur = Date.now() - startTime;
+        if (dur > 1 && dur % LOG_DURATION === 0) {
+            const thisMem = getMemoryMB();
+            const thisRSS = getMemoryRSSMB();
+            console.log(
+                `Используется памяти:\n --- на начало теста: ${headStart}MB\n --- текущее        : ${thisMem}MB\n --- разницы        : ${thisMem - headStart}MB\nRSS:\n --- на начало теста: ${rssStart}MB\n --- текущее        : ${thisRSS}MB\n --- разницы        : ${thisRSS - rssStart}MB\n`,
+            );
+        }
     }
-
     const totalTime = (Date.now() - startTime) / 1000;
+    const totalMem = getMemoryMB() - headStart;
+    const totalRss = getMemoryRSSMB() - rssStart;
     const avgRPS = totalRequests / totalTime;
 
     console.log(`Всего запросов: ${totalRequests}`);
     console.log(`Общее время: ${totalTime.toFixed(2)} сек`);
-    console.log(`В среднем на 1 запрос: ${(totalTime / totalRequests).toFixed(6)} мс`);
-    console.log(`Средний RPS: ${avgRPS.toFixed(0)}`);
+    console.log(`В среднем на 1 запрос: ${((totalTime / totalRequests) * 1000).toFixed(6)} мс`);
+    console.log(
+        `Средняя пропускная способность (последовательно): ${avgRPS.toFixed(0)} запросов/сек`,
+    );
+    console.log(`RSS: ${totalRss}MB`);
+    console.log(`Потребление памяти: ${totalMem}MB`);
+    console.log(`В среднем на 1 запрос: ${((totalMem / totalRequests) * 1024).toFixed(6)}KB`);
 
     return avgRPS;
 }
@@ -422,46 +453,6 @@ async function realisticTest() {
     return rps;
 }
 
-async function realCommandsTest() {
-    console.log('🧪 Тест со всеми командами');
-
-    const commandCount = bot.getAppContext().commands.size;
-    const iterations = 10000;
-
-    // Создаем 10000 запросов, равномерно распределенных по командам
-    const requests = [];
-    for (let i = 0; i < iterations; i++) {
-        const cmdIndex = i % commandCount;
-        const phrase = `${Text.getText(PHRASES)}_${cmdIndex}`;
-        requests.push(mockRequest(phrase));
-    }
-
-    // Перемешиваем
-    requests.sort(() => Math.random() - 0.5);
-
-    const start = performance.now();
-
-    // Обрабатываем пачками
-    const batchSize = 100;
-    for (let i = 0; i < iterations; i += batchSize) {
-        const batch = requests.slice(i, i + batchSize);
-        const promises = batch.map((req) => bot.run(T_ALISA, req));
-        await Promise.all(promises);
-    }
-
-    const totalTime = performance.now() - start;
-    const avgTime = iterations / totalTime;
-    const rps = 1000 * avgTime;
-
-    console.log(`   Команд в боте: ${commandCount}`);
-    console.log(`   Запросов: ${iterations}`);
-    console.log(`   Общее время: ${totalTime.toFixed(1)} мс`);
-    console.log(`   Среднее время: ${avgTime.toFixed(6)} мс`);
-    console.log(`   RPS: ${rps.toFixed(0)}`);
-
-    return rps;
-}
-
 // Тест с fallback (*) командой
 async function fallbackTest() {
     console.log(
@@ -487,9 +478,66 @@ async function fallbackTest() {
     console.log(`   Fallback запросов: ${iterations}`);
     console.log(`   Общее время: ${totalTime.toFixed(2)} мс`);
     console.log(`   Среднее время: ${avg.toFixed(6)} мс`);
-    console.log(`   RPS: ${rps.toFixed(0)}`);
+    console.log(`   Пропускная способность (последовательно): ${rps.toFixed(0)} запросов/сек`);
 
     return rps;
+}
+
+async function parallelFallbackTest(count = 30000, timeoutMs = 10_000) {
+    global.gc();
+
+    const memStart = getMemoryMB();
+    const rssStart = getMemoryRSSMB();
+    const start = performance.now();
+    const eluBefore = eventLoopUtilization();
+
+    const promises = new Array(count).fill().map(() =>
+        Promise.race([
+            (async () => {
+                const randomText = crypto.randomBytes(20).toString('hex');
+                return await bot.run(T_ALISA, mockRequest(randomText));
+            })(),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`Таймаут ${timeoutMs} мс`)), timeoutMs),
+            ),
+        ]),
+    );
+
+    try {
+        const results = await Promise.all(promises);
+        const totalMs = Number(performance.now() - start);
+        const eluAfter = eventLoopUtilization(eluBefore);
+        const invalid = results.filter((r) => !validateResult(r));
+        if (invalid.length > 0) {
+            throw new Error(`Получено ${invalid.length} некорректных результатов`);
+        }
+        const memEnd = getMemoryMB();
+        const rssEnd = getMemoryRSSMB();
+        const rps = (results.length / (totalMs / 1000)).toFixed(0);
+
+        console.log(`\n🔥 Fallback burst-тест: ${count} параллельных вызовов`);
+        console.log(`✅ Успешно: ${results.length}`);
+        console.log(`❌ Ошибок Bot: ${errorsBot.length}`);
+        if (errorsBot.length) console.log(errorsBot.slice(0, 3));
+        console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
+        console.log(`   Время на 1 команду: ${(totalMs / count).toFixed(6)} мс`);
+        console.log(`   RPS: ${rps} запросов/сек`);
+        console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+        console.log(`   Rss: ${rssStart} → ${rssEnd} MB (+${rssEnd - rssStart})`);
+        console.log(`📊 Event Loop Utilization:`);
+        console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
+        console.log(`   idle:  ${eluAfter.idle.toFixed(2)} ms`);
+        console.log(`   Utilization: ${(eluAfter.utilization * 100).toFixed(1)}%`);
+
+        global.gc();
+        return { success: errorsBot.length === 0, duration: totalMs, memDelta: memEnd - memStart };
+    } catch (err) {
+        const memEnd = getMemoryMB();
+        console.error(`💥 Ошибка:`, err.message || err);
+        console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+        global.gc();
+        return { success: false, error: err.message || err, memDelta: memEnd - memStart };
+    }
 }
 
 // ───────────────────────────────────────
@@ -515,10 +563,12 @@ async function runAllTests() {
         console.warn('⚠️  Burst-тест (1000) завершился с ошибками');
     }
     errorsBot = [];
+    let maxCommand = 1000;
     if (burst1000.success) {
         const startCount = 1000;
         for (let i = 1; i <= 20; i++) {
             const burst = await burstTest(startCount * i * 3);
+            maxCommand = startCount * i * 3;
             if (!burst.success || RPS[RPS.length - 1] < startCount * i * 3) {
                 // Вывод текста о том, что тест завершился с ошибками не корректно, так как это не соответствует действительности
                 //console.warn(`⚠️ Burst-тест (${startCount * i}) завершился с ошибками`);
@@ -526,17 +576,39 @@ async function runAllTests() {
             }
         }
     }
+
     console.log('');
-    await realCommandsTest();
+    await parallelFallbackTest(Math.floor(maxCommand / 1.6));
     console.log('');
     await fallbackTest();
+
     console.log('');
     await realisticTest();
     console.log('');
-    await testMaxRPS(3);
+    await sequentialThroughputTest(3);
     console.log('');
-    await testMaxRPS(15);
+    await sequentialThroughputTest(15);
     console.log('');
+
+    // Для долгого теста запускаем тест на 1 минуту и на 48 часов
+    if (process.argv.at(-1) === 'long') {
+        await sequentialThroughputTest(60);
+        console.log('');
+        global.gc();
+        await new Promise((resolve) => {
+            setTimeout(resolve, 1000);
+        });
+        global.gc();
+        await new Promise((resolve) => {
+            setTimeout(resolve, 100);
+        });
+        global.gc();
+
+        // Запускаем стресс тест на полную. Выжимаем тест на 48 часов.
+        // Тест не должен упасть из-за нехватки ресурсов, а также потребление памяти должно быть в пределах нормы и не превышать 50мб
+        await sequentialThroughputTest(60 * 60 * 48);
+        console.log('');
+    }
     // Позволяем сохранить данные в файловую бд
     await new Promise((resolve) => setTimeout(resolve, 1000));
     unlink(join(__dirname, '..', 'json', 'UsersData.json'));
@@ -557,7 +629,7 @@ async function runAllTests() {
             return acc + value;
         }, 0) / RPS.length,
     );
-    console.log(`    - RPS из теста: ${rps}`);
+    console.log(`    - средний RPS из burst тестов: ${rps}`);
     console.log(
         `    - Примерное количество запросов в сутки: ${new Intl.NumberFormat('ru-Ru', {
             maximumSignificantDigits: 3,

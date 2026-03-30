@@ -22,7 +22,7 @@ import {
 /**
  * Интерфейс для сохранения информации работы базы данных
  */
-interface IMongoDbInfo extends IDatabaseInfo {
+export interface IMongoDbInfo extends IDatabaseInfo {
     /**
      * Клиент подключения
      */

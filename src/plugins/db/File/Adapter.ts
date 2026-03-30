@@ -8,14 +8,17 @@ import {
     freadSync,
 } from '../../../index';
 
-type TFileData = Record<string, Record<string, unknown>>;
+/**
+ * Тип для данных, которые хранятся в файловой базе данных
+ */
+export type TFileData = Record<string, Record<string, unknown>>;
 
 /**
  * Интерфейс для хранения информации о файле
  *
  * @interface IFileInfo
  */
-interface IFileInfo {
+export interface IDBFileInfo {
     /**
      * Содержимое файла в виде строки
      */
@@ -40,8 +43,11 @@ interface IFileInfo {
     isFileRead: boolean;
 }
 
-interface IFileDbInfo extends IDatabaseInfo {
-    [tableName: string]: IFileInfo;
+/**
+ * Интерфейс для хранения всех данных из файловой базы данных
+ */
+export interface IFileDbInfo extends IDatabaseInfo {
+    [tableName: string]: IDBFileInfo;
 }
 
 /**
@@ -50,7 +56,7 @@ interface IFileDbInfo extends IDatabaseInfo {
  *
  * @type {Object.<string, IFileInfo>}
  */
-type IFileData = { [key: string]: IFileInfo };
+export type IDBFileData = { [key: string]: IDBFileInfo };
 
 // Сохраняем данные не чаще 1 раза в 500мс
 const LAZY_DELAY_SAVE_TIME = 500;
@@ -70,7 +76,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * Для локального сохранения, на случай если AppContext не доступен
      * @private
      */
-    #cachedFileData: IFileData = {};
+    #cachedFileData: IDBFileData = {};
 
     constructor() {
         super();
@@ -90,7 +96,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * @param tableName Имя таблицы
      * @param data Сохраняемые данные
      */
-    setCachedFileData(tableName: string, data: IFileInfo | undefined): void {
+    setCachedFileData(tableName: string, data: IDBFileInfo | undefined): void {
         if (this._appContext.database.databaseInfo) {
             if (data === undefined) {
                 // @ts-ignore
@@ -115,7 +121,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * Получение всех данных из базы
      * @param tableName Имя таблицы
      */
-    getCachedFileData(tableName: string): IFileInfo {
+    getCachedFileData(tableName: string): IDBFileInfo {
         if (this._appContext?.database.databaseInfo) {
             if (!this._appContext.database.databaseInfo[tableName]) {
                 this._appContext.database.databaseInfo[tableName] = {
@@ -137,10 +143,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * @param data Данные для сохранения
      * @private
      */
-    #setCachedFileData<T extends keyof IFileInfo = keyof IFileInfo>(
+    #setCachedFileData<T extends keyof IDBFileInfo = keyof IDBFileInfo>(
         tableName: string,
         field: T,
-        data: IFileInfo[T],
+        data: IDBFileInfo[T],
     ): void {
         const cachedData = this.getCachedFileData(tableName);
         cachedData[field] = data;
@@ -284,21 +290,21 @@ export class FileAdapter extends Base<IFileDbInfo> {
                     status: true,
                     data: isOne ? content[whereKey] : [content[whereKey]],
                 };
-            } else {
-                let isSelected = false;
-                for (const data in where) {
-                    if (Object.hasOwn(content[whereKey], data) && Object.hasOwn(where, data)) {
-                        isSelected = content[whereKey][data] === where[data];
-                        if (!isSelected) {
-                            break;
-                        }
-                    }
-                }
-                return {
-                    status: isSelected,
-                    data: isOne ? content[whereKey] : [content[whereKey]],
-                };
             }
+            for (const data in where) {
+                if (
+                    !Object.hasOwn(content[whereKey], data) ||
+                    content[whereKey][data] !== where[data]
+                ) {
+                    return {
+                        status: false,
+                    };
+                }
+            }
+            return {
+                status: true,
+                data: isOne ? content[whereKey] : [content[whereKey]],
+            };
         } else {
             return {
                 status: false,
@@ -328,18 +334,14 @@ export class FileAdapter extends Base<IFileDbInfo> {
                 return this.#selectInPrimaryKey(selectData, where, isOne, content);
             }
             for (const key in content) {
-                let isSelected = null;
-
+                let allMatch = true;
                 for (const data in where) {
-                    if (Object.hasOwn(content[key], data) && Object.hasOwn(where, data)) {
-                        isSelected = content[key][data] === where[data];
-                        if (isSelected === false) {
-                            break;
-                        }
+                    if (!Object.hasOwn(content[key], data) || content[key][data] !== where[data]) {
+                        allMatch = false;
+                        break;
                     }
                 }
-
-                if (isSelected) {
+                if (allMatch) {
                     if (isOne) {
                         result = content[key];
                         return {
@@ -408,10 +410,19 @@ export class FileAdapter extends Base<IFileDbInfo> {
             }
             const getFileData = (isForce: boolean = false): TFileData => {
                 const cachedFileData = this.getCachedFileData(tableName);
-                const fileData =
-                    cachedFileData && cachedFileData.version >= fileInfo.mtimeMs && !isForce
-                        ? cachedFileData.data
-                        : (freadSync(file).data as string);
+                let fileData;
+                if (cachedFileData && cachedFileData.version >= fileInfo.mtimeMs && !isForce) {
+                    fileData = cachedFileData.data;
+                } else {
+                    const readResult = freadSync(file);
+                    if (!readResult.success) {
+                        this._appContext?.logError(
+                            `Не удалось прочитать файл "${file}". Ошибка: ${readResult.error}`,
+                        );
+                        return {};
+                    }
+                    fileData = readResult.data;
+                }
 
                 const data = typeof fileData === 'string' ? JSON.parse(fileData) : fileData;
                 this.setCachedFileData(tableName, {

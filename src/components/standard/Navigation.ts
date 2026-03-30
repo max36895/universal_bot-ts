@@ -369,37 +369,38 @@ export class Navigation<ElementType = TElementType> {
         };
 
         for (let i = start; i < end; i++) {
-            if (this.elements[i] !== undefined) {
-                if (index === number) {
-                    return this.elements[i];
-                }
+            if (this.elements[i] === undefined) {
+                continue;
+            }
+            if (index === number) {
+                return this.elements[i];
+            }
 
-                const elementsTypeof = typeof this.elements[i];
+            const elementsTypeof = typeof this.elements[i];
 
-                if (keys === null || elementsTypeof === 'string') {
-                    const r = Text.textSimilarity(this.elements[i] + '', text, 75);
-                    setMaxElement(i, r);
-                } else if (elementsTypeof === 'object') {
-                    if (typeof keys === 'object') {
-                        keys.forEach((key) => {
-                            const value = (this.elements[i] as Record<string, string>)[key];
-                            if (value) {
-                                const r = Text.textSimilarity(value, text, 75);
-                                setMaxElement(i, r);
-                            }
-                        });
-                    } else {
-                        const value = (this.elements[i] as Record<string, string>)[keys];
+            if (keys === null || elementsTypeof === 'string') {
+                const r = Text.textSimilarity(this.elements[i] + '', text, 75);
+                setMaxElement(i, r);
+            } else if (elementsTypeof === 'object') {
+                if (typeof keys === 'object') {
+                    keys.forEach((key) => {
+                        const value = (this.elements[i] as Record<string, string>)[key];
                         if (value) {
                             const r = Text.textSimilarity(value, text, 75);
                             setMaxElement(i, r);
                         }
+                    });
+                } else {
+                    const value = (this.elements[i] as Record<string, string>)[keys];
+                    if (value) {
+                        const r = Text.textSimilarity(value, text, 75);
+                        setMaxElement(i, r);
                     }
                 }
-                index++;
-                if (maxPercent > 90) {
-                    return selectElement;
-                }
+            }
+            index++;
+            if (maxPercent > 90) {
+                return selectElement;
             }
         }
         return selectElement;
@@ -430,10 +431,7 @@ export class Navigation<ElementType = TElementType> {
         }
         const buttons: string[] = [];
         if (isNumber) {
-            let index: number = this.thisPage - 2;
-            if (index < 0) {
-                index = 0;
-            }
+            const index: number = Math.max(this.thisPage - 2, 0);
             let count: number = 0;
             if (index === 1) {
                 buttons.push('1');

@@ -2,6 +2,25 @@ import { IModelRules } from './interface';
 
 import { IModelState, Model } from './db/Model';
 import { AppContext } from '../core';
+import { TKey } from './db';
+
+const RULES: IModelRules[] = [
+    {
+        name: ['imageToken', 'path'],
+        type: 'string',
+        max: 150,
+    },
+    {
+        name: ['platform'],
+        type: 'string',
+    },
+];
+
+const ATTRS_LABEL = {
+    imageToken: 'ID',
+    path: 'Image path',
+    platform: 'Platform name',
+};
 
 /**
  * Интерфейс для внутреннего состояния модели изображений.
@@ -70,6 +89,10 @@ export class ImageTokens extends Model<IImageModelState> {
         this.caption = null;
     }
 
+    protected getId(): TKey {
+        return 'imageToken';
+    }
+
     /**
      * Идентификатор/токен изображения.
      * Уникальный идентификатор, используемый для ссылки на изображение в API платформы.
@@ -132,17 +155,7 @@ export class ImageTokens extends Model<IImageModelState> {
      * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
-        return [
-            {
-                name: ['imageToken', 'path'],
-                type: 'string',
-                max: 150,
-            },
-            {
-                name: ['platform'],
-                type: 'string',
-            },
-        ];
+        return RULES;
     }
 
     /**
@@ -152,10 +165,6 @@ export class ImageTokens extends Model<IImageModelState> {
      * @return {IImageModelState} Объект с метками атрибутов
      */
     public attributeLabels(): IImageModelState {
-        return {
-            imageToken: 'ID',
-            path: 'Image path',
-            platform: 'Platform name',
-        };
+        return ATTRS_LABEL;
     }
 }

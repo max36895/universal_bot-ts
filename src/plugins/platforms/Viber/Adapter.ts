@@ -75,44 +75,45 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
     }
 
     async setQueryData(query: IViberContent, controller: BotController): Promise<boolean> {
-        if (this.appContext) {
-            if (query) {
-                controller.requestObject = query;
-
-                if (query.message) {
-                    switch (query.event) {
-                        case 'conversation_started':
-                            if (query.user) {
-                                controller.userId = query.user.id;
-
-                                controller.userCommand = '';
-                                controller.messageId = 0;
-
-                                this.appContext.appConfig.tokens[this.platformName].api_version =
-                                    (query.user.api_version || 2) as unknown as string;
-                                this.setNlu(controller, query.sender.name || '');
-                            }
-                            return true;
-
-                        case 'message':
-                            controller.userId = query.sender.id;
-                            controller.userCommand = query.message.text.toLowerCase().trim();
-                            controller.originalUserCommand = query.message.text;
-                            controller.messageId = query.message_token;
-
-                            this.appContext.appConfig.tokens[this.platformName].api_version = (query
-                                .sender.api_version || 2) as unknown as string;
-
-                            this.setNlu(controller, query.sender.name || '');
-                            return true;
-                    }
-                }
-            } else {
-                controller.platformOptions.error = `ViberAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
-            }
-        } else {
+        if (!this.appContext) {
             console.error(`ViberAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
+            return false;
         }
+        if (!query) {
+            controller.platformOptions.error = `ViberAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
+            return false;
+        }
+        controller.requestObject = query;
+
+        if (query.message) {
+            switch (query.event) {
+                case 'conversation_started':
+                    if (query.user) {
+                        controller.userId = query.user.id;
+
+                        controller.userCommand = '';
+                        controller.messageId = 0;
+
+                        this.appContext.appConfig.tokens[this.platformName].api_version =
+                            query.user.api_version || 2;
+                        this.setNlu(controller, query.sender.name);
+                    }
+                    return true;
+
+                case 'message':
+                    controller.userId = query.sender.id;
+                    controller.userCommand = query.message.text.toLowerCase().trim();
+                    controller.originalUserCommand = query.message.text;
+                    controller.messageId = query.message_token;
+
+                    this.appContext.appConfig.tokens[this.platformName].api_version = (query.sender
+                        .api_version || 2) as unknown as string;
+
+                    this.setNlu(controller, query.sender.name);
+                    return true;
+            }
+        }
+
         return false;
     }
 
@@ -158,7 +159,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
      * @param userName Полное имя пользователя
      * @protected
      */
-    protected setNlu(controller: BotController, userName: string): void {
+    protected setNlu(controller: BotController, userName: string = ''): void {
         const name = userName.split(' ');
         const thisUser = {
             username: name[0] || null,

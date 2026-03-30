@@ -212,7 +212,10 @@ export abstract class Model<TState extends IModelState> {
         if (this._appContext.database.adapter) {
             return this._appContext.database.adapter.escapeString(text);
         }
-        return text.toString();
+        if (text) {
+            return text.toString();
+        }
+        return '';
     }
 
     /**

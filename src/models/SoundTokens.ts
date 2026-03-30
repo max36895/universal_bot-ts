@@ -2,6 +2,25 @@ import { IModelRules } from './interface';
 
 import { IModelState, Model } from './db/Model';
 import { AppContext } from '../core';
+import { TKey } from './db';
+
+const RULES: IModelRules[] = [
+    {
+        name: ['soundToken', 'path'],
+        type: 'string',
+        max: 150,
+    },
+    {
+        name: ['platform'],
+        type: 'string',
+    },
+];
+
+const ATTRS_LABEL = {
+    soundToken: 'ID',
+    path: 'Sound path',
+    platform: 'Platform name',
+};
 
 /**
  * Интерфейс для внутреннего состояния модели звуковых файлов.
@@ -71,6 +90,10 @@ export class SoundTokens extends Model<ISoundModelState> {
         this.isAttachContent = false;
     }
 
+    protected getId(): TKey {
+        return 'soundToken';
+    }
+
     /**
      * Идентификатор звукового файла.
      * Уникальный идентификатор, используемый для ссылки на звуковой файл в API различных платформ.
@@ -136,17 +159,7 @@ export class SoundTokens extends Model<ISoundModelState> {
      * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
-        return [
-            {
-                name: ['soundToken', 'path'],
-                type: 'string',
-                max: 150,
-            },
-            {
-                name: ['platform'],
-                type: 'string',
-            },
-        ];
+        return RULES;
     }
 
     /**
@@ -156,10 +169,6 @@ export class SoundTokens extends Model<ISoundModelState> {
      * @return {ISoundModelState} Объект с метками атрибутов
      */
     public attributeLabels(): ISoundModelState {
-        return {
-            soundToken: 'ID',
-            path: 'Sound path',
-            platform: 'Platform name',
-        };
+        return ATTRS_LABEL;
     }
 }

@@ -2,9 +2,40 @@ import { IModelRes, IModelRules } from './interface';
 
 import { IModelState, Model } from './db/Model';
 import { IDbResult, AppContext } from '../core';
+import { TKey } from './db';
 
-type TMetaType = Record<string, unknown> | string | null | undefined;
-type TDataType = string | Record<string, unknown> | null | undefined;
+const RULES: IModelRules[] = [
+    {
+        name: ['userId'],
+        type: 'string',
+        max: 250,
+    },
+    {
+        name: ['meta', 'data'],
+        type: 'text',
+    },
+    {
+        name: ['platformName'],
+        type: 'string',
+    },
+];
+
+const ATTRS_LABEL = {
+    userId: 'ID',
+    meta: 'User meta data',
+    data: 'User Data',
+    platform: 'Platform Name',
+};
+
+/**
+ * Тип для мета-данных
+ */
+export type TMetaType = Record<string, unknown> | string | null | undefined;
+/**
+ * Тип для возвращаемых данных
+ */
+export type TDataType = string | Record<string, unknown> | null | undefined;
+
 /**
  * Интерфейс для внутреннего состояния модели пользовательских данных.
  * Определяет структуру данных для хранения информации о пользователях в базе данных.
@@ -114,6 +145,10 @@ export class UsersData extends Model<IUserDataModelState> {
         };
     }
 
+    protected getId(): TKey {
+        return 'userId';
+    }
+
     /**
      * Уникальный идентификатор пользователя.
      * Может быть строкой или числом в зависимости от платформы.
@@ -204,21 +239,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
-        return [
-            {
-                name: ['userId'],
-                type: 'string',
-                max: 250,
-            },
-            {
-                name: ['meta', 'data'],
-                type: 'text',
-            },
-            {
-                name: ['platformName'],
-                type: 'string',
-            },
-        ];
+        return RULES;
     }
 
     /**
@@ -228,12 +249,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @return {IUserDataModelState} Описания атрибутов
      */
     public attributeLabels(): IUserDataModelState {
-        return {
-            userId: 'ID',
-            meta: 'User meta data',
-            data: 'User Data',
-            platform: 'Platform Name',
-        };
+        return ATTRS_LABEL;
     }
 
     /**

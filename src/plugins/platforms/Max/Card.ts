@@ -61,10 +61,8 @@ export async function cardProcessing(
         const elements = [];
         for (let i = 0; i < cardInfo.images.length; i++) {
             const image = cardInfo.images[i];
-            if (!image.imageToken) {
-                if (image.imageDir) {
-                    image.imageToken = await getImageInDB(controller, image.imageDir);
-                }
+            if (!image.imageToken && image.imageDir) {
+                image.imageToken = await getImageInDB(controller, image.imageDir);
             }
             if (image.imageToken) {
                 elements.push(image.imageToken);

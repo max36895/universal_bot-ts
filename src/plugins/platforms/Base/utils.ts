@@ -3,13 +3,13 @@ import { BotController } from '../../../controller';
 import { ISoundInfo } from '../../../core';
 import { Text } from '../../../utils';
 import { replaceSound } from '../Alisa/Sound';
-import { IEffect, ISound } from '../../../components';
+import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
 /**
  * Тип для обработки запроса для загрузки изображения
  */
-type TImageCallback = (model: ImageTokens) => Promise<string | null>;
+export type TImageCallback = (model: ImageTokens) => Promise<string | null>;
 
 /**
  * Возвращает токен для изображения.
@@ -44,7 +44,7 @@ export async function getImageToken(
 /**
  * Тип для обработки запроса для загрузки аудио
  */
-type TSoundCallback = (model: SoundTokens) => Promise<string | null>;
+export type TSoundCallback = (model: SoundTokens) => Promise<string | null>;
 
 /**
  * Возвращает токен для аудио.
@@ -134,12 +134,14 @@ export function defaultSoundProcessing(
     if (updSounds.length) {
         for (let i = 0; i < updSounds.length; i++) {
             const sound = updSounds[i];
-            if (typeof sound === 'object') {
-                if (sound.sounds !== undefined && sound.key !== undefined) {
-                    const sText: string = Text.getText(sound.sounds);
-                    if (sText) {
-                        res = replaceSound(sound.key, sText, res);
-                    }
+            if (
+                typeof sound === 'object' &&
+                sound.sounds !== undefined &&
+                sound.key !== undefined
+            ) {
+                const sText: string = Text.getText(sound.sounds);
+                if (sText) {
+                    res = replaceSound(sound.key, sText, res);
                 }
             }
         }
@@ -170,4 +172,19 @@ export function initUserCommand(request: IAlisaRequest, controller: BotControlle
     if (!controller.userCommand) {
         controller.userCommand = controller.originalUserCommand;
     }
+}
+
+/**
+ * Возвращает корректный массив кнопок с учетом лимита
+ * @param buttons
+ * @param limit
+ */
+export function getCorrectButtons<TButton = IButtonType>(
+    buttons: TButton[],
+    limit: number = 10,
+): TButton[] {
+    if (buttons && buttons.length > limit) {
+        return buttons.slice(0, limit);
+    }
+    return buttons;
 }

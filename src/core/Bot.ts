@@ -2,6 +2,7 @@ import { IAppConfig, IAppParam, TAppType, EMetric, TAppMode } from './interfaces
 import {
     IBotResponse,
     IBotResponseState,
+    IDatabaseAdapter,
     IPlatformAdapter,
     IPluginFn,
     TBotAuth,
@@ -92,6 +93,37 @@ interface IAppConnectStatus {
     isConnecting: boolean;
     status?: Promise<boolean> | boolean;
 }
+
+/**
+ * Тип для кастомного обработчика определения платформы.
+ *
+ * Позволяет разработчику взять на себя определение типа платформы для входящего запроса.
+ * Обработчик выполняется **до** встроенного автоопределения через адаптеры.
+ *
+ * @param query - Тело запроса (обычно объект, может быть строкой, если запрос не распарсен).
+ * @param headers - HTTP-заголовки запроса (если доступны).
+ * @param detect - Функция, вызывающая стандартный механизм определения платформы
+ *                 (перебор зарегистрированных адаптеров). Принимает те же параметры,
+ *                 что и резолвер, и возвращает имя платформы или `null`.
+ * @returns Имя платформы (строка) или `null`, если платформа не определена.
+ *
+ * @example
+ * ```ts
+ * bot.setPlatformResolver((query, headers, detect) => {
+ *   // Сначала пробуем стандартное определение
+ *   const platform = detect(query, headers);
+ *   if (platform === 'telegram' && headers?.['x-force-vk']) {
+ *     return 'vk';
+ *   }
+ *   return platform;
+ * });
+ * ```
+ */
+export type TPlatformResolver = (
+    query: unknown,
+    headers?: Record<string, unknown>,
+    detect?: (uBody: unknown, headers?: Record<string, unknown>) => TAppType | null,
+) => TAppType | null;
 
 /**
  * Мультиплатформенный фреймворк для создания чат-ботов и голосовых навыков с единой бизнес-логикой под различные платформы на TypeScript.
@@ -213,6 +245,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
     readonly #appContext: AppContext;
 
     /**
+     * кастомный обработчик для определения типа платформы.
+     */
+    #platformResolver: TPlatformResolver | null = null;
+
+    /**
      * Контроллер с бизнес-логикой приложения.
      * Обрабатывает команды и формирует ответы
      * @see BotControllerClass
@@ -304,16 +341,80 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * При значении group, все регулярные выражения будут добавляться в группу. Перед использованием данного значения, перепроверьте производительность, так как при группировке определенных регулярных выражений, производительность может быть ниже.
      * @param mode - Определяет режим работы с регулярными выражениями.
      */
-    public setCommandGroupMode(mode: TCommandGroupMode): void {
+    public setCommandGroupMode(mode: TCommandGroupMode): this {
         this.#appContext.command.setCommandGroupMode(mode);
+        return this;
+    }
+
+    /**
+     * Устанавливает кастомный обработчик для определения типа платформы.
+     *
+     * По умолчанию фреймворк определяет платформу автоматически, перебирая зарегистрированные адаптеры
+     * и вызывая их метод `isPlatformOnQuery`. Этот метод позволяет переопределить логику определения,
+     * что полезно в следующих случаях:
+     * - Нужно добавить поддержку кастомной платформы, не создавая адаптер.
+     * - Требуется изменить стандартное поведение для конкретного набора запросов
+     *   (например, по заголовкам или по содержимому запроса).
+     * - Необходимо выполнить какую-то логику до того, как запрос попадёт в адаптер.
+     *
+     * **Важно:** резолвер выполняется **до** вызова `isPlatformOnQuery` любого адаптера.
+     * Если резолвер возвращает строку (имя платформы), фреймворк использует это значение
+     * и не выполняет стандартное автоопределение. Если возвращает `null`, то запускается
+     * стандартный перебор адаптеров.
+     *
+     * В резолвер передаётся опциональная функция `detect`, которая вызывает встроенное
+     * автоопределение. Это позволяет, например, получить результат стандартного определения
+     * и затем скорректировать его.
+     *
+     * @param resolver - Функция, принимающая запрос, заголовки и опционально `detect`.
+     *                   Должна вернуть имя платформы (строка) или `null`.
+     * @returns Тот же экземпляр бота для цепочечных вызовов.
+     *
+     * @example
+     * // Простейший резолвер, который для всех запросов использует платформу 'alisa'
+     * bot.setPlatformResolver(() => 'alisa');
+     *
+     * @example
+     * // Резолвер, который вызывает стандартное определение и при необходимости
+     * // заменяет результат для конкретного заголовка.
+     * bot.setPlatformResolver((query, headers, detect) => {
+     *   const platform = detect?.(query, headers);
+     *   if (platform === 'telegram' && headers?.['x-force-vk']) {
+     *     return 'vk';
+     *   }
+     *   return platform;
+     * });
+     *
+     * @example
+     * // Полное переопределение: обработка запросов от собственного сервиса.
+     * bot.setPlatformResolver((query) => {
+     *   if (typeof query === 'object' && query?.source === 'my_service') {
+     *     return 'my_platform';
+     *   }
+     *   return null;
+     * });
+     *
+     * @remarks
+     * - Резолвер может быть асинхронным, если это необходимо. Для этого просто объявите
+     *   функцию как `async` и возвращайте `Promise<string | null>`. Фреймворк дождётся
+     *   результата перед продолжением.
+     * - Внутри резолвера можно модифицировать `query` или `headers`, если нужно повлиять
+     *   на дальнейшую обработку (например, добавить недостающие поля).
+     * - Если резолвер возвращает имя платформы, для которой нет зарегистрированного
+     *   адаптера, фреймворк выбросит ошибку. Убедитесь, что нужный адаптер подключен.
+     */
+    public setPlatformResolver(resolver: TPlatformResolver): this {
+        this.#platformResolver = resolver;
+        return this;
     }
 
     /**
      * Позволяет установить свою реализацию для логирования
      * @param logger
      */
-    public setLogger(logger: ILogger | null): void {
+    public setLogger(logger: ILogger | null): this {
         this.#appContext.setLogger(logger);
+        return this;
     }
 
     /**
@@ -816,26 +917,38 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
+    #defaultPlatformDetect(uBody: unknown, headers?: Record<string, unknown>): TAppType | null {
+        if (this.#defaultAppType && this.#defaultAppType !== T_AUTO) {
+            return this.#defaultAppType;
+        }
+
+        if (this.#appContext.platforms) {
+            for (const platformName in this.#appContext.platforms) {
+                if (this.#appContext.platforms[platformName].isPlatformOnQuery(uBody, headers)) {
+                    return this.#appContext.platforms[platformName].platformName;
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * Определяет тип приложения по заголовкам или телу запроса
      * @param uBody - Тело запроса
      * @param headers - Заголовки запроса
      */
     #getAppType(uBody: unknown, headers?: Record<string, unknown>): TAppType | null {
-        if (!this.#defaultAppType || this.#defaultAppType === T_AUTO) {
-            if (this.#appContext.platforms) {
-                for (const platformName in this.#appContext.platforms) {
-                    if (
-                        this.#appContext.platforms[platformName].isPlatformOnQuery(uBody, headers)
-                    ) {
-                        return this.#appContext.platforms[platformName].platformName;
-                    }
-                }
+        if (this.#platformResolver) {
+            const customType = this.#platformResolver(
+                uBody,
+                headers,
+                this.#defaultPlatformDetect.bind(this, uBody, headers),
+            );
+            if (customType !== null) {
+                return customType;
             }
-            return null;
-        } else {
-            return this.#defaultAppType;
         }
+        return this.#defaultPlatformDetect(uBody, headers);
     }
 
     #initNLU(botController: BotController<TUserData>): void {
@@ -858,21 +971,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
-    /* eslint-disable require-atomic-updates*/
-    /**
-     * Запуск логики приложения
-     * @param botController - Контроллер бота
-     * @param botClass - Класс бота, который будет подготавливать корректный ответ в зависимости от платформы
-     * @param appType - Тип приложения
-     */
-    async #runApp(
-        botController: BotController<TUserData>,
-        botClass: IPlatformAdapter,
-        appType: TAppType,
-    ): Promise<TRunResult> {
-        if (botController.platformOptions.sendInInit) {
-            return botController.platformOptions.sendInInit as TRunResult;
-        }
+    async #getDbAdapter(): Promise<IDatabaseAdapter | undefined> {
         const dbAdapter = this.#appContext.database.adapter;
         if (dbAdapter && !this.#appContext.database.isSendConnect) {
             if (this.#appConnectStatus.isConnecting) {
@@ -888,11 +987,28 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 this.#appContext.database.isSendConnect = res as boolean;
             }
         }
+        return dbAdapter;
+    }
+
+    /* eslint-disable require-atomic-updates*/
+    /**
+     * Запуск логики приложения
+     * @param botController - Контроллер бота
+     * @param botClass - Класс бота, который будет подготавливать корректный ответ в зависимости от платформы
+     * @param appType - Тип приложения
+     */
+    async #runApp(
+        botController: BotController<TUserData>,
+        botClass: IPlatformAdapter,
+        appType: TAppType,
+    ): Promise<TRunResult> {
+        if (botController.platformOptions.sendInInit) {
+            return botController.platformOptions.sendInInit as TRunResult;
+        }
+        const dbAdapter = await this.#getDbAdapter();
         const userData = new UsersData(this.#appContext);
         botController.userId = userData.escapeString(botController.userId as string | number);
-        if (botClass.platformName) {
-            userData.platform = botClass.platformName;
-        }
+        userData.platform = botClass.platformName;
         botController.platformOptions.usedLocalStorage = botClass.isLocalStorage(botController);
         const isLocalStorage: boolean =
             this.#appContext.appConfig.isLocalStorage &&
@@ -964,13 +1080,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         return content;
     }
 
-    /* eslint-enable require-atomic-updates*/
-
-    async #getAppContent(
-        botController: BotController<TUserData>,
-        botClass: IPlatformAdapter,
-        appType: TAppType,
-    ): Promise<string | object> {
+    #setOldIntentName(botController: BotController<TUserData>): void {
         if (
             !botController.oldIntentName &&
             botController.userData &&
@@ -985,6 +1095,70 @@ export class Bot<TUserData extends IUserData = IUserData> {
         ) {
             botController.oldIntentName = botController.state.oldIntentName as string;
         }
+    }
+
+    async #getPlatformContent(
+        botController: BotController<TUserData>,
+        botClass: IPlatformAdapter,
+    ): Promise<string | object> {
+        let userDataLength = Object.keys(botController.userData).length;
+        if (botController.thisIntentName !== null) {
+            if (botController.state && userDataLength === 0) {
+                botController.state.oldIntentName = botController.thisIntentName;
+            } else {
+                botController.userData.oldIntentName = botController.thisIntentName;
+            }
+        } else {
+            if (botController.userData.oldIntentName !== undefined) {
+                userDataLength--;
+                delete botController.userData.oldIntentName;
+            }
+            if (botController.state) {
+                delete botController.state.oldIntentName;
+            }
+        }
+        let stateData;
+        if (
+            this.#appContext.appConfig.isLocalStorage &&
+            botController.platformOptions.usedLocalStorage
+        ) {
+            if (this.#appContext.database.adapter) {
+                stateData =
+                    botController.state && Object.keys(botController.state).length
+                        ? botController.state
+                        : botController.userData;
+            } else {
+                stateData = userDataLength ? botController.userData : botController.state;
+            }
+        } else if (botController.state && Object.keys(botController.state).length) {
+            stateData = botController.state;
+        }
+        let content: string | object;
+        if (botController.isSendRating) {
+            content = botClass.getRatingContext(botController);
+        } else {
+            if (botController.state && userDataLength === 0) {
+                botController.userData = botController.state as TUserData;
+            }
+            content = botClass.getContent(botController, stateData);
+        }
+        if (botController.platformOptions.usedLocalStorage) {
+            const res = botClass.setLocalStorage(stateData, botController);
+            if (res) {
+                await res;
+            }
+        }
+        return content;
+    }
+
+    /* eslint-enable require-atomic-updates*/
+
+    async #getAppContent(
+        botController: BotController<TUserData>,
+        botClass: IPlatformAdapter,
+        appType: TAppType,
+    ): Promise<string | object> {
+        this.#setOldIntentName(botController);
 
         const shouldProceed =
             this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length
@@ -1002,56 +1176,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
         ) {
             botController.tts = botController.text;
         }
-        let userDataLength = Object.keys(botController.userData).length;
-        if (botController.thisIntentName !== null) {
-            if (botController.state && userDataLength === 0) {
-                botController.state.oldIntentName = botController.thisIntentName;
-            } else {
-                botController.userData.oldIntentName = botController.thisIntentName;
-            }
-        } else {
-            if (botController.userData.oldIntentName !== undefined) {
-                userDataLength--;
-                delete botController.userData.oldIntentName;
-            }
-            if (botController.state) {
-                delete botController.state.oldIntentName;
-            }
-        }
-        let content: string | object;
 
-        let stateData;
-        if (
-            this.#appContext.appConfig.isLocalStorage &&
-            botController.platformOptions.usedLocalStorage
-        ) {
-            if (this.#appContext.database.adapter) {
-                stateData =
-                    botController.state && Object.keys(botController.state).length
-                        ? botController.state
-                        : botController.userData;
-            } else {
-                stateData = userDataLength ? botController.userData : botController.state;
-            }
-        } else if (botController.state && Object.keys(botController.state).length) {
-            stateData = botController.state;
-        }
-
-        if (botController.isSendRating) {
-            content = botClass.getRatingContext(botController);
-        } else {
-            if (botController.state && userDataLength === 0) {
-                botController.userData = botController.state as TUserData;
-            }
-            content = botClass.getContent(botController, stateData);
-        }
-        if (botController.platformOptions.usedLocalStorage) {
-            const res = botClass.setLocalStorage(stateData, botController);
-            if (res) {
-                await res;
-            }
-        }
-        return content;
+        return this.#getPlatformContent(botController, botClass);
     }
 
     /**
@@ -1191,7 +1317,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         error: err,
                     },
                 );
-                // isEnd = false;
             }
             if (this.#appContext.usedMetric) {
                 this.#appContext.logMetric(EMetric.MIDDLEWARE, performance.now() - start, {
@@ -1249,23 +1374,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (correctContent && typeof correctContent === 'string') {
             correctContent = JSON.parse(correctContent);
         }
-        let botController: BotController<TUserData, IPlatformData>;
-        if (this.#$botController) {
-            botController = this.#$botController;
-            botController.setAppContext(this.#appContext);
-        } else {
-            botController = new this.#botControllerClass(this.#appContext);
+        if (!correctContent) {
+            const msg = `${appType ? `Для платформы "${appType}"` : 'Пришел не корректный запрос в котором'} передано пустое содержимое, дальнейшая обработка невозможна.`;
+            this.#appContext.logError(msg);
+            throw new Error(msg);
         }
+        const botController: BotController<TUserData, IPlatformData> =
+            this.#$botController || new this.#botControllerClass(this.#appContext);
         botController.setAppContext(this.#appContext);
-        const cAppType: TAppType | null = appType || this.#getAppType(correctContent);
-        botController.appType = cAppType;
-        const botClass = cAppType ? this.#appContext.platforms[cAppType] : null;
+        botController.appType = appType || this.#getAppType(correctContent);
+        const botClass = botController.appType
+            ? this.#appContext.platforms[botController.appType]
+            : null;
         if (botClass) {
-            if (!correctContent) {
-                const msg = `Для платформы "${cAppType}", передано пустое содержимое, корректно обработать запрос невозможно.`;
-                this.#appContext.logError(msg);
-                throw new Error(msg);
-            }
             botController.userToken ??= this.#auth;
 
             botClass.updateTimeStart(botController);
@@ -1274,7 +1395,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 res = await res;
             }
             if (res) {
-                return await this.#runApp(botController, botClass, cAppType as string);
+                return await this.#runApp(botController, botClass, botController.appType as string);
             } else {
                 this.#appContext.logError(botController.platformOptions.error as string);
                 throw new Error(botController.platformOptions.error || '');

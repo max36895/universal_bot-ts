@@ -40,7 +40,7 @@ module.exports = [
 
             'security/detect-object-injection': 'off', // много мест где не срабатывает ошибочно
             'security/detect-non-literal-fs-filename': 'off', // Пока отрубаем, так как ожидается что все пути задаст сам программист, и сделает это адекватно
-            'security/detect-unsafe-regex': 'warn',
+            'security/detect-unsafe-regex': 'error',
 
             '@typescript-eslint/explicit-function-return-type': 'warn',
             '@typescript-eslint/no-explicit-any': 'warn',
@@ -51,7 +51,7 @@ module.exports = [
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',
             'no-unused-vars': 'off', // Уже включено правило для ts, это правило для js, поэтому в реалиях ts будет много ошибочных срабатываний
-            'no-unused-private-class-members': 'warn',
+            'no-unused-private-class-members': 'error',
             'no-fallthrough': 'error',
             'no-eval': 'error',
             'no-implied-eval': 'error',
@@ -61,6 +61,8 @@ module.exports = [
             'no-param-reassign': 'warn',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
+            complexity: ['warn', { max: 20, variant: 'classic' }],
+            'max-depth': ['warn', { max: 4 }],
         },
     },
     {

@@ -1,5 +1,6 @@
 import { Text, IButtonType } from '../../../index';
 import { IMarusiaButtonCard, IMarusiaButton } from './interfaces/IMarusiaPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Создание кнопки в формате Маруси
@@ -47,7 +48,7 @@ export function buttonProcessing(
             return _getButton(buttons[0], isCard);
         }
     } else {
-        buttons.forEach((button) => {
+        getCorrectButtons(buttons).forEach((button) => {
             const object: IMarusiaButton | null = _getButton(button, isCard);
             if (object) {
                 objects.push(object);

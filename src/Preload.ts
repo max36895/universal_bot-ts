@@ -6,7 +6,7 @@
  * @module preload
  */
 import { ImageTokens, SoundTokens } from './models';
-import { AppContext, TAppType } from './core';
+import { AppContext, ITokenPlatform, TAppType } from './core';
 import {
     MarusiaRequest,
     YandexImageRequest,
@@ -57,6 +57,24 @@ const SOUND_MAP: ISoundMap = {
     [T_MARUSIA]: MarusiaSound,
     [T_VK]: VkSound,
     [T_TELEGRAM]: TelegramSound,
+};
+
+interface IPlatformMap {
+    [T_ALISA]: 'alisa';
+    [T_MARUSIA]: 'marusia';
+    [T_VK]: 'vk';
+    [T_TELEGRAM]: 'telegram';
+    [T_VIBER]: 'viber';
+    [T_MAX_APP]: 'max';
+}
+
+const PLATFORMS: IPlatformMap = {
+    [T_ALISA]: 'alisa',
+    [T_MARUSIA]: 'marusia',
+    [T_VK]: 'vk',
+    [T_TELEGRAM]: 'telegram',
+    [T_VIBER]: 'viber',
+    [T_MAX_APP]: 'max',
 };
 
 /**
@@ -138,36 +156,16 @@ export class Preload {
         if (this._appContext) {
             const platformParams = this._appContext.appConfig.tokens;
             // Проверяем наличие токенов для каждой платформы
-            if (platformParams.alisa?.token) {
-                if (!platforms || platforms.includes(T_ALISA)) {
-                    result.push(T_ALISA);
+            Object.keys(PLATFORMS).forEach((key) => {
+                if (
+                    platformParams[PLATFORMS[key as keyof IPlatformMap] as keyof ITokenPlatform]
+                        ?.token
+                ) {
+                    if (!platforms || platforms.includes(key)) {
+                        result.push(key);
+                    }
                 }
-            }
-            if (platformParams.marusia?.token) {
-                if (!platforms || platforms.includes(T_MARUSIA)) {
-                    result.push(T_MARUSIA);
-                }
-            }
-            if (platformParams.vk?.token) {
-                if (!platforms || platforms.includes(T_VK)) {
-                    result.push(T_VK);
-                }
-            }
-            if (platformParams.telegram?.token) {
-                if (!platforms || platforms.includes(T_TELEGRAM)) {
-                    result.push(T_TELEGRAM);
-                }
-            }
-            if (platformParams.viber?.token) {
-                if (!platforms || platforms.includes(T_VIBER)) {
-                    result.push(T_VIBER);
-                }
-            }
-            if (platformParams.max?.token) {
-                if (!platforms || platforms.includes(T_MAX_APP)) {
-                    result.push(T_MAX_APP);
-                }
-            }
+            });
         }
         return result;
     }

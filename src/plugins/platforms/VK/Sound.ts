@@ -51,16 +51,14 @@ export async function soundProcessing(
     if (sounds) {
         for (let i = 0; i < sounds.length; i++) {
             const sound = sounds[i];
-            if (sound) {
-                if (sound.sounds !== undefined && sound.key !== undefined) {
-                    let sText: string | null = Text.getText(sound.sounds);
-                    if ((await isFile(sText)) || Text.isUrl(sText)) {
-                        sText = await getSoundInDB(controller, sText);
-                    }
+            if (sound.sounds !== undefined && sound.key !== undefined) {
+                let sText: string | null = Text.getText(sound.sounds);
+                if (Text.isUrl(sText) || (await isFile(sText))) {
+                    sText = await getSoundInDB(controller, sText);
+                }
 
-                    if (sText) {
-                        data.push(sText);
-                    }
+                if (sText) {
+                    data.push(sText);
                 }
             }
         }

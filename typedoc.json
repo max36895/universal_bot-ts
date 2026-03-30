@@ -28,6 +28,7 @@
         "invalidLink": true,
         "notDocumented": false
     },
+    "lang": "ru",
     "navigationLinks": {
         "GitHub": "https://github.com/max36895/universal_bot-ts",
         "npm": "https://www.npmjs.com/package/umbot"

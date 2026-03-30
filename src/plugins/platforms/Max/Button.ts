@@ -1,6 +1,7 @@
 import { IButtonType } from '../../../index';
 
 import { IMaxButtonObject, IMaxButton } from './interfaces/IMaxPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Получение кнопок в формате Max
@@ -8,7 +9,7 @@ import { IMaxButtonObject, IMaxButton } from './interfaces/IMaxPlatform';
  */
 export function buttonProcessing(buttons: IButtonType[]): IMaxButtonObject {
     const finalButtons: IMaxButton[] = [];
-    buttons.forEach((button) => {
+    getCorrectButtons(buttons).forEach((button) => {
         let object: IMaxButton = {
             type: 'message',
             text: button.title as string,

@@ -23,6 +23,7 @@ import {
 function marusiaCardButton(buttons: IButtonType[]): IMarusiaButtonCard {
     return buttonProcessing(buttons, true) as IMarusiaButtonCard;
 }
+
 /**
  * Получение токена, необходимого для отображения картинок в карточке Марусе
  * @param controller Контроллер приложения
@@ -115,14 +116,12 @@ export async function cardProcessing(
     const countImage = cardInfo.images.length;
     if (countImage) {
         if (cardInfo.showOne) {
-            if (!cardInfo.images[0].imageToken) {
-                if (cardInfo.images[0].imageDir) {
-                    // eslint-disable-next-line require-atomic-updates
-                    cardInfo.images[0].imageToken = await getImageInDB(
-                        controller,
-                        cardInfo.images[0].imageDir,
-                    );
-                }
+            if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
+                // eslint-disable-next-line require-atomic-updates
+                cardInfo.images[0].imageToken = await getImageInDB(
+                    controller,
+                    cardInfo.images[0].imageDir,
+                );
             }
             if (cardInfo.images[0].imageToken) {
                 let button: IMarusiaButtonCard | null =

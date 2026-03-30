@@ -65,6 +65,4 @@ export { fullPlatforms } from './platforms/fullPlatforms';
 export { botPlatforms } from './platforms/botPlatforms';
 export { adapters } from './platforms/adapters';
 
-export { MongoAdapter } from './db/Mongo/Adapter';
-export { FileAdapter } from './db/File/Adapter';
-export { Base as BaseDbAdapter } from './db/Base/Base';
+export * from './db';

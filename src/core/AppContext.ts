@@ -522,16 +522,14 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (this.#logger?.warn) {
             this.#logger.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, {
                 ...meta,
-                trace: new Error().stack,
+                // Вроде не нужен trace для варнинга
+                //trace: new Error().stack,
             });
         } else {
             if (this.appMode === 'dev') {
                 console.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, meta);
             }
-            this.#errWarnLog(
-                `${str}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
-                false,
-            );
+            this.#errWarnLog(`${str}\n${JSON.stringify({ ...meta }, null, '\t')}`, false);
         }
     }
 

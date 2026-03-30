@@ -10,7 +10,7 @@ export interface IGroupData {
     commands: string[];
     regExp: RegExp | null | string;
 }
-
+const LIMIT_COMMANDS = [1e4, 5e4, 1e5];
 // Глобальные лимиты, возможно, можно вынести в конфигурацию
 let MAX_COUNT_FOR_GROUP = 0;
 let MAX_COUNT_FOR_REG = 0;
@@ -425,12 +425,12 @@ export class CommandReg {
             }
         } else {
             if (this.#noFullGroups) {
-                if (this.regexpGroup.has(this.#noFullGroups.name)) {
-                    const groupCommandCount =
-                        this.regexpGroup.get(this.#noFullGroups.name)?.commands?.length || 0;
-                    if (groupCommandCount < 2) {
-                        this.regexpGroup.delete(this.#noFullGroups.name);
-                    }
+                if (
+                    this.regexpGroup.has(this.#noFullGroups.name) &&
+                    ((this.regexpGroup.get(this.#noFullGroups.name) as IGroupData).commands
+                        .length || 0) < 2
+                ) {
+                    this.regexpGroup.delete(this.#noFullGroups.name);
                 }
                 this.#noFullGroups = null;
             }
@@ -595,6 +595,11 @@ export class CommandReg {
         cb: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): void {
+        if (this.commands.get(commandName)) {
+            this.logWarn(
+                `Команда с названием "${commandName === FALLBACK_COMMAND ? '* (fallback command)' : commandName}" уже создавалась ранее. Ранее созданная команда будет перезаписана. Рекомендуется проверить корректность регистрации команды`,
+            );
+        }
         if (commandName === FALLBACK_COMMAND) {
             this.commands.set(commandName, {
                 slots: undefined,
@@ -606,8 +611,9 @@ export class CommandReg {
             });
             return;
         }
+
         const size = this.commands.size;
-        if (size === 1e4 || size === 5e4 || size === 1e5) {
+        if (LIMIT_COMMANDS.includes(size)) {
             this.logWarn(
                 `Задано ${this.commands.size} команд, скорее всего команды задаются через цикл, который возможно отработал некорректно. Проверьте корректность работы приложения, а также корректность добавленных команд.`,
             );
@@ -642,13 +648,7 @@ export class CommandReg {
                         correctSlots.push(slot);
                     }
                     const tCommandName = this.#exactMatchMap.get(slot);
-                    if (tCommandName) {
-                        if (tCommandName !== commandName) {
-                            this.logError(
-                                `Команда с названием "${commandName}" уже создавалась ранее. Проверьте корректность регистрации команды`,
-                            );
-                        }
-                    } else {
+                    if (!tCommandName) {
                         this.#exactMatchMap.set(slot, commandName);
                     }
                 }

@@ -95,6 +95,24 @@ export class BotTest extends Bot {
         return super.initBotController(fn);
     }
 
+    #showInfo(
+        { isShowResult = false, isShowStorage = false, isShowTime = true }: IBotTestParams,
+        result: IResponse,
+        timeStart: number,
+    ): void {
+        if (isShowResult) {
+            console.log(`Ответ в формате платформы: > ${JSON.stringify(result)}`);
+        }
+        if (isShowStorage) {
+            console.log(`Данные в базе > ${JSON.stringify(this._botController.userData)}`);
+            console.log(`Данные в хранилище > ${JSON.stringify(this._botController.state)}`);
+        }
+        if (isShowTime) {
+            const endTime: number = performance.now() - timeStart;
+            console.log(`Время выполнения: ${endTime.toFixed(3)}мс`);
+        }
+    }
+
     /**
      * Запускает интерактивное тестирование приложения.
      * Позволяет вводить команды и получать ответы в консоли.
@@ -116,11 +134,7 @@ export class BotTest extends Bot {
      * });
      * ```
      */
-    public async test({
-        isShowResult = false,
-        isShowStorage = false,
-        isShowTime = true,
-    }: IBotTestParams = {}): Promise<void> {
+    public async test(params: IBotTestParams = {}): Promise<void> {
         let count: number = 0;
         let state: string | IUserData = {};
         let isEnd = false;
@@ -165,17 +179,7 @@ export class BotTest extends Bot {
                 strRes = this._botController.text;
             }
 
-            if (isShowResult) {
-                console.log(`Ответ для платформы: > ${JSON.stringify(result)}`);
-            }
-            if (isShowStorage) {
-                console.log(`Данные в базе > ${JSON.stringify(this._botController.userData)}`);
-                console.log(`Данные в хранилище > ${JSON.stringify(this._botController.state)}`);
-            }
-            if (isShowTime) {
-                const endTime: number = performance.now() - timeStart;
-                console.log(`Время выполнения: ${endTime.toFixed(3)}мс`);
-            }
+            this.#showInfo(params, result, timeStart);
             console.log(`\nОтвет: > ${strRes}`);
 
             if (this._botController.isEnd) {

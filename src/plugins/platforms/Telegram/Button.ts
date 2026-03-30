@@ -1,6 +1,7 @@
 import { IButtonType } from '../../../index';
 
 import { ITelegramKeyboard, ITelegramInlineKeyboard } from './interfaces/ITelegramPlatform';
+import { getCorrectButtons } from '../Base/utils';
 
 /**
  * Получение кнопок в формате Telegram
@@ -11,7 +12,7 @@ export function buttonProcessing(buttons: IButtonType[]): ITelegramKeyboard | nu
     const inlines: ITelegramInlineKeyboard[] = [];
     const reply: string[] = [];
 
-    buttons.forEach((button) => {
+    getCorrectButtons(buttons, 40).forEach((button) => {
         if (button.url) {
             const inline: ITelegramInlineKeyboard = {
                 text: button.title,

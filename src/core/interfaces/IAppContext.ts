@@ -338,12 +338,6 @@ export interface IAppParam {
     /**
      * Массив интентов (команд) приложения
      *
-     * @remarks
-     * При использовании регулярных выражений в slots:
-     * - Убедитесь, что выражение безопасно и не может вызвать ReDoS
-     * - Используйте ограниченные квантификаторы (например, {1,5} вместо *)
-     * - Избегайте сложных вложенных групп
-     * - Тестируйте выражения на различных входных данных
      *
      * @example
      * ```ts
@@ -414,7 +408,10 @@ export type TAppPluginData<TArgs extends unknown[] = unknown[], TResult = unknow
     | IAppPlugin<TArgs, TResult>
     | IAppPluginFn<TArgs, TResult>;
 
-type AnyPluginData =
+/**
+ * Тип для подключения любого пользовательского плагина.
+ */
+export type AnyPluginData =
     | TAppPluginData<[key: string, ...params: unknown[]], string> // i18n
     | TAppPluginData<[text: string, platformNlu: INlu, platform: string, request: unknown], INlu> // nlu
     | TAppPluginData<[], RegExpConstructor> // regExp

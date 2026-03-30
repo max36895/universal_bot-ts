@@ -14,6 +14,7 @@ import {
     EMetric,
 } from '../core';
 import { isPromise } from '../utils/isPromise';
+import { IGroupData } from '../core/utils/CommandReg';
 
 /*
  * magick
@@ -900,7 +901,7 @@ export abstract class BotController<
         if (!text) {
             return null;
         }
-        const start = this.appContext.usedMetric ? performance.now() : 0;
+        const start = this.#getStartMetric();
         const intents: IAppIntent[] = this._intents();
         for (let i = 0; i < intents.length; i++) {
             const intent = intents[i];
@@ -908,7 +909,7 @@ export abstract class BotController<
                 Text.isSayText(
                     intent.slots || [],
                     text,
-                    intent.is_pattern || false,
+                    intent.is_pattern,
                     false,
                     this.#getCustomRegExp,
                 )
@@ -1017,25 +1018,39 @@ export abstract class BotController<
         this._actionMetric(commandName, true);
     }
 
+    #getStartMetric(): number {
+        return this.appContext.usedMetric ? performance.now() : 0;
+    }
+
+    #getExactCommand(start: number): void | null | Promise<void> {
+        const tCommandName = this.appContext.command.getExactMatchCommand(
+            this.userCommand as string,
+        );
+        if (tCommandName) {
+            const command = this.appContext.commands.get(tCommandName);
+            if (command) {
+                return this.#commandCb(tCommandName, command, start);
+            }
+        }
+        return null;
+    }
+
     /**
      * Извлекает нужную команду из запроса.
      *
      * @returns {string | null} найденная команда или null если не удалось найти команду
      */
     protected _getCommand(): void | null | Promise<void> {
-        if (!this.userCommand || !this.appContext?.commands) {
+        if (!this.userCommand || !this.appContext.commands) {
             return null;
         }
-        const start = this.appContext?.usedMetric ? performance.now() : 0;
+        const start = this.#getStartMetric();
         if (this.appContext.command.customCommandResolver) {
             return this.#sendCustomCommandResolver(start);
         }
-        const tCommandName = this.appContext.command.getExactMatchCommand(this.userCommand);
-        if (tCommandName) {
-            const command = this.appContext.commands.get(tCommandName);
-            if (command) {
-                return this.#commandCb(tCommandName, command, start);
-            }
+        const exactCommand = this.#getExactCommand(start);
+        if (exactCommand !== null) {
+            return exactCommand;
         }
 
         let contCount = 0;
@@ -1052,40 +1067,21 @@ export abstract class BotController<
             }
             if (command.isPattern) {
                 const groups = this.appContext.regexpGroup.get(commandName);
+
                 if (groups) {
                     contCount = groups.commands.length - 1;
-                    const gRegExp = groups.regExp;
-                    if (gRegExp) {
-                        const reg = isRegex(gRegExp)
-                            ? gRegExp
-                            : getRegExp(gRegExp, 'ium', this.#getCustomRegExp);
-                        const match = reg.exec(this.userCommand);
-                        if (match) {
-                            // Находим первую совпавшую подгруппу (index в массиве parts)
-                            for (const key in match.groups) {
-                                if (match.groups[key] !== undefined) {
-                                    const commandName = groups.commands[+key.slice(1)];
-                                    if (commandName && this.appContext.commands.has(commandName)) {
-                                        return this.#commandCb(
-                                            commandName,
-                                            this.appContext.commands.get(
-                                                commandName,
-                                            ) as ICommandParam,
-                                            start,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                        continue;
+                    const groupRes = this.#searchCommandsInGroup(groups, this.userCommand, start);
+                    if (groupRes !== null) {
+                        return groupRes;
                     }
+                    continue;
                 }
             }
             if (
                 Text.isSayText(
                     command.regExp || command.slots,
                     this.userCommand,
-                    command.isPattern || false,
+                    command.isPattern,
                     command.isRegExpString || useDirectRegExp,
                     this.#getCustomRegExp,
                 )
@@ -1093,12 +1089,42 @@ export abstract class BotController<
                 return this.#commandCb(commandName, command, start);
             }
         }
-        if (this.appContext?.usedMetric) {
+        if (this.appContext.usedMetric) {
             this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - start, {
                 status: false,
             });
         }
         return null;
+    }
+
+    #searchCommandsInGroup(
+        groups: IGroupData,
+        userCommand: string,
+        startTimer: number,
+    ): void | null | Promise<void> {
+        if (!groups.regExp) {
+            return null;
+        }
+        const reg = isRegex(groups.regExp)
+            ? groups.regExp
+            : getRegExp(groups.regExp, 'ium', this.#getCustomRegExp);
+        const match = reg.exec(userCommand);
+        if (match) {
+            // Находим первую совпавшую подгруппу (index в массиве parts)
+            for (const key in match.groups) {
+                if (match.groups[key] !== undefined) {
+                    const commandName = groups.commands[+key.slice(1)];
+                    if (commandName && this.appContext.commands.has(commandName)) {
+                        return this.#commandCb(
+                            commandName,
+                            this.appContext.commands.get(commandName) as ICommandParam,
+                            startTimer,
+                        );
+                    }
+                }
+            }
+        }
+        return null; //continue;
     }
 
     /**

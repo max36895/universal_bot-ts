@@ -78,61 +78,61 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     }
 
     async setQueryData(query: IVkRequestContent, controller: BotController): Promise<boolean> {
-        if (this.appContext) {
-            if (query) {
-                controller.requestObject = query;
-                switch (query.type) {
-                    case 'confirmation':
-                        controller.platformOptions.sendInInit = this._platformOptions
-                            ?.vk_confirmation_token as string;
-                        return true;
-
-                    case 'message_new':
-                        if (query.object !== undefined) {
-                            const object: IVkRequestObject = query.object;
-                            controller.userId = object.message.from_id;
-                            controller.userCommand = object.message.text.toLowerCase().trim();
-                            controller.originalUserCommand = object.message.text.trim();
-                            controller.messageId = object.message.id;
-                            controller.payload = object.message.payload || null;
-                            const user = await new VkRequest(
-                                this.appContext as AppContext,
-                            ).usersGet(controller.userId);
-                            if (user) {
-                                const thisUser = {
-                                    username: null,
-                                    first_name: user.first_name || null,
-                                    last_name: user.last_name || null,
-                                };
-                                controller.nlu.setNlu({ thisUser });
-                            }
-                            return true;
-                        }
-                        return false;
-
-                    case 'message_event':
-                        if (query.object?.payload) {
-                            controller.userCommand =
-                                typeof query.object.payload === 'string'
-                                    ? query.object.payload
-                                    : JSON.stringify(query.object.payload);
-                            controller.userId = query.object.user_id as number;
-                            controller.payload = query.object.payload;
-                            controller.messageId = query.object.conversation_message_id || 0;
-                            return true;
-                        }
-                        return false;
-
-                    default:
-                        controller.platformOptions.error =
-                            'VkAdapter:setQueryData(): Некорректный тип данных!';
-                        break;
-                }
-            } else {
-                controller.platformOptions.error = `VkAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
-            }
-        } else {
+        if (!this.appContext) {
             console.error(`VkAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
+            return false;
+        }
+        if (!query) {
+            controller.platformOptions.error = `VkAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
+            return false;
+        }
+        controller.requestObject = query;
+        switch (query.type) {
+            case 'confirmation':
+                controller.platformOptions.sendInInit = this._platformOptions
+                    ?.vk_confirmation_token as string;
+                return true;
+
+            case 'message_new':
+                if (query.object !== undefined) {
+                    const object: IVkRequestObject = query.object;
+                    controller.userId = object.message.from_id;
+                    controller.userCommand = object.message.text.toLowerCase().trim();
+                    controller.originalUserCommand = object.message.text.trim();
+                    controller.messageId = object.message.id;
+                    controller.payload = object.message.payload || null;
+                    const user = await new VkRequest(this.appContext as AppContext).usersGet(
+                        controller.userId,
+                    );
+                    if (user) {
+                        const thisUser = {
+                            username: null,
+                            first_name: user.first_name || null,
+                            last_name: user.last_name || null,
+                        };
+                        controller.nlu.setNlu({ thisUser });
+                    }
+                    return true;
+                }
+                return false;
+
+            case 'message_event':
+                if (query.object?.payload) {
+                    controller.userCommand =
+                        typeof query.object.payload === 'string'
+                            ? query.object.payload
+                            : JSON.stringify(query.object.payload);
+                    controller.userId = query.object.user_id as number;
+                    controller.payload = query.object.payload;
+                    controller.messageId = query.object.conversation_message_id || 0;
+                    return true;
+                }
+                return false;
+
+            default:
+                controller.platformOptions.error =
+                    'VkAdapter:setQueryData(): Некорректный тип данных!';
+                break;
         }
         return false;
     }
