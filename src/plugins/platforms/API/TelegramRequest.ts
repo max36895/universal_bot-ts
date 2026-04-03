@@ -121,23 +121,28 @@ export class TelegramRequest {
      * @param file Путь к файлу или его содержимое
      *
      */
-    #initPostFile(type: string, file: string | ITelegramMedia[]): void {
+    async #initPostFile(type: string, file: string | ITelegramMedia[]): Promise<void> {
         this.#request.post = {};
         if (type === 'media' && typeof file !== 'string') {
             const formData = new FormData();
             const media: ITelegramMedia[] = [];
-            file.forEach((item, index) => {
+            for (let index = 0; index < file.length; index++) {
+                const item = file[index];
                 const key = `photo${index}`;
                 let mediaItem = item.media;
                 if (item.media.includes('attach://')) {
-                    this.#request.addAttachFile(formData, item.media.replace('attach://', ''), key);
+                    await this.#request.addAttachFile(
+                        formData,
+                        item.media.replace('attach://', ''),
+                        key,
+                    );
                     mediaItem = `attach://${key}`;
                 }
                 media.push({
                     type: item.type,
                     media: mediaItem,
                 });
-            });
+            }
             formData.append('media', JSON.stringify(media));
             this.#request.post = formData;
         } else if (Text.isUrl(file as string)) {
@@ -162,7 +167,7 @@ export class TelegramRequest {
             if (this.#request.post instanceof FormData) {
                 this.#request.post.append('chat_id', userId.toString());
             } else {
-                // @ts-ignore
+                this.#request.post ??= {};
                 this.#request.post.chat_id = userId;
             }
         }
@@ -373,14 +378,14 @@ export class TelegramRequest {
      * - reply_markup: клавиатура в JSON
      * @returns Информация об отправленной фотографии или null при ошибке
      */
-    public sendPhoto(
+    public async sendPhoto(
         userId: TTelegramChatId,
         file: string,
         desc: string | null = null,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
         this.#request.post ??= {};
-        this.#initPostFile('photo', file);
+        await this.#initPostFile('photo', file);
         if (desc) {
             (this.#request.post as Record<string, unknown>).caption = desc;
         }
@@ -402,12 +407,12 @@ export class TelegramRequest {
      * - reply_markup: клавиатура в JSON
      * @returns Информация об отправленном документе или null при ошибке
      */
-    public sendDocument(
+    public async sendDocument(
         userId: TTelegramChatId,
         file: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this.#initPostFile('document', file);
+        await this.#initPostFile('document', file);
         if (params) {
             this.#request.post = { ...params, ...this.#request.post };
         }
@@ -429,12 +434,12 @@ export class TelegramRequest {
      * - reply_markup: клавиатура в JSON
      * @returns Информация об отправленном аудио или null при ошибке
      */
-    public sendAudio(
+    public async sendAudio(
         userId: TTelegramChatId,
         file: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this.#initPostFile('audio', file);
+        await this.#initPostFile('audio', file);
         if (params) {
             this.#request.post = { ...params, ...this.#request.post };
         }
@@ -456,12 +461,12 @@ export class TelegramRequest {
      * - reply_markup: клавиатура в JSON
      * @returns Информация об отправленном видео или null при ошибке
      */
-    public sendVideo(
+    public async sendVideo(
         userId: TTelegramChatId,
         file: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this.#initPostFile('video', file);
+        await this.#initPostFile('video', file);
         if (params) {
             this.#request.post = { ...params, ...this.#request.post };
         }
@@ -474,12 +479,12 @@ export class TelegramRequest {
      * @param media Массив объектов ITelegramMedia
      * @param params Дополнительные параметры:
      */
-    public sendMediaGroup(
+    public async sendMediaGroup(
         userId: TTelegramChatId,
         media: ITelegramMedia[],
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        this.#initPostFile('media', media);
+        await this.#initPostFile('media', media);
         if (params) {
             this.#request.post = { ...this.#request.post, ...params };
         }

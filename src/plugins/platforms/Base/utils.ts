@@ -2,7 +2,6 @@ import { ImageTokens, SoundTokens } from '../../../models';
 import { BotController } from '../../../controller';
 import { ISoundInfo } from '../../../core';
 import { Text } from '../../../utils';
-import { replaceSound } from '../Alisa/Sound';
 import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
@@ -86,6 +85,61 @@ const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
  */
 export function getPause(text: string): string {
     return text.replace(PAUSE_REG, (_, ms: string) => `sil <[${ms}]>`);
+}
+
+/**
+ * Заменяет звуковой токен в тексте на соответствующий звук
+ *
+ * @param {string} key - Ключ звука для замены
+ * @param {string | string[]} value - Значение или массив значений для замены
+ * @param {string} text - Исходный текст
+ * @returns {string} - Текст с замененными звуками
+ *
+ * @example
+ * ```ts
+ * // Замена одиночного звука
+ * const text = replaceSound(
+ *     '#game_win#',
+ *     '<speaker audio="alice-sounds-game-win-1.opus">',
+ *     'Поздравляем #game_win# с победой!'
+ * );
+ *
+ * // Замена на массив звуков
+ * const text = replaceSound(
+ *     '#nature_rain#',
+ *     [
+ *         '<speaker audio="alice-sounds-nature-rain-1.opus">',
+ *         '<speaker audio="alice-sounds-nature-rain-2.opus">'
+ *     ],
+ *     'На улице #nature_rain# идет дождь'
+ * );
+ * ```
+ */
+export function replaceSound(key: string, value: string | string[], text: string): string {
+    if (text.includes(key)) {
+        return Text.textReplace(key, value, text);
+    }
+    return text;
+}
+
+/**
+ * Удаляет все звуковые токены из текста
+ *
+ * @param {string} text - Исходный текст
+ * @returns {string} - Текст без звуковых токенов
+ *
+ * @example
+ * ```ts
+ * // Удаление звуковых токенов
+ * const text = removeSound('Текст #game_win# без #nature_rain# звуков');
+ * // Результат: 'Текст без звуков'
+ * ```
+ */
+export function removeSound(text: string): string {
+    if (text.includes('speaker') || text.includes('sil')) {
+        return text.replace(/<speaker[^>]*>|sil\s*<\[\d+]>/gi, '');
+    }
+    return text;
 }
 
 /**

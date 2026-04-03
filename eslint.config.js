@@ -44,7 +44,7 @@ module.exports = [
 
             '@typescript-eslint/explicit-function-return-type': 'warn',
             '@typescript-eslint/no-explicit-any': 'warn',
-            '@typescript-eslint/ban-ts-comment': 'off', // Есть места которые так просто не поправить. В основном они связаны с post
+            '@typescript-eslint/ban-ts-comment': 'error',
 
             'require-atomic-updates': 'error',
             'max-lines-per-function': ['warn', { max: 100 }], // Меньшее значение мешает, из-за чего приходиться дробить метод, либо убирать логические разделения, благодаря которым удобнее читать код

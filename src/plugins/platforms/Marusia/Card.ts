@@ -116,6 +116,9 @@ export async function cardProcessing(
     const countImage = cardInfo.images.length;
     if (countImage) {
         if (cardInfo.showOne) {
+            if (!(cardInfo.title || cardInfo.images[0].title)) {
+                return null;
+            }
             if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
                 // eslint-disable-next-line require-atomic-updates
                 cardInfo.images[0].imageToken = await getImageInDB(
@@ -132,8 +135,8 @@ export async function cardProcessing(
                 const object: IMarusiaBigImage = {
                     type: MARUSIA_CARD_BIG_IMAGE,
                     image_id: cardInfo.images[0].imageToken,
-                    title: Text.resize(cardInfo.images[0].title, 128),
-                    description: Text.resize(cardInfo.images[0].desc, 256),
+                    title: Text.resize(cardInfo.images[0].title || cardInfo.title, 128),
+                    description: Text.resize(cardInfo.images[0].desc || cardInfo.description, 256),
                 };
                 if (button?.text) {
                     object.button = button;

@@ -211,6 +211,35 @@ describe('Card test', () => {
         );
     });
 
+    it('Get Alisa card set title', async () => {
+        const alisaCard = {
+            type: AlisaConstants.ALISA_CARD_BIG_IMAGE,
+            title: 'Запись 0',
+            description: 'Описание 0',
+            image_id: '123456',
+        };
+        botController.appType = T_ALISA;
+        defaultCard.addOneImage('123456', '', 'Описание 0');
+        defaultCard.setTitle('Запись 0');
+        expect(await defaultCard.getCards(AlisaCard.cardProcessing, botController)).toEqual(
+            alisaCard,
+        );
+    });
+    it('Get Alisa card set description', async () => {
+        const alisaCard = {
+            type: AlisaConstants.ALISA_CARD_BIG_IMAGE,
+            title: 'Запись 0',
+            description: 'Описание 0',
+            image_id: '123456',
+        };
+        botController.appType = T_ALISA;
+        defaultCard.addOneImage('123456', 'Запись 0', '');
+        defaultCard.setDescription('Описание 0');
+        expect(await defaultCard.getCards(AlisaCard.cardProcessing, botController)).toEqual(
+            alisaCard,
+        );
+    });
+
     it('Get Alisa gallery', async () => {
         defaultCard.isUsedGallery = true;
         botController.appType = T_ALISA;

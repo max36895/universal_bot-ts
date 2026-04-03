@@ -30,8 +30,11 @@ export type TPatternRegExp = string | RegExp;
  * @param regExp Регулярное выражение
  */
 export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
-    // @ts-ignore
-    return regExp && typeof regExp.test === 'function' && typeof regExp.exec === 'function';
+    return !!(
+        regExp &&
+        typeof (regExp as RegExp).test === 'function' &&
+        typeof (regExp as RegExp).exec === 'function'
+    );
 }
 
 /**

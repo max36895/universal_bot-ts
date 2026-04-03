@@ -50,7 +50,6 @@ export interface IImageModelState extends IModelState {
  * Модель для управления изображениями в различных платформах.
  * Предоставляет единый интерфейс для работы с изображениями в Алисе, ВКонтакте, Telegram, Марусе и тд.
  *
- * @class ImageTokens
  * @extends Model<IImageModelState>
  *
  * @example

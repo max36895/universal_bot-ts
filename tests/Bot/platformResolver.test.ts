@@ -12,6 +12,7 @@ class MockPlatformAdapter {
     isLocalStorage: jest.Mock;
     getLocalStorage: jest.Mock;
     setLocalStorage: jest.Mock;
+    destroy: jest.Mock;
     isVoice: boolean;
     limit: number | null;
     init: (appContext: AppContext) => void;
@@ -32,6 +33,7 @@ class MockPlatformAdapter {
         this.isLocalStorage = jest.fn();
         this.getLocalStorage = jest.fn();
         this.setLocalStorage = jest.fn();
+        this.destroy = jest.fn();
         this.isVoice = false;
         this.limit = null;
         this.init = (appContext: AppContext): void => {

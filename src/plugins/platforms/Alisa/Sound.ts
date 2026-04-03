@@ -1,4 +1,4 @@
-import { ISoundInfo, Text, ISound, BotController, SoundConstants, IEffect } from '../../../index';
+import { ISoundInfo, ISound, BotController, SoundConstants, IEffect } from '../../../index';
 import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
 import { T_ALISA } from './constants';
 import { YandexSoundRequest } from '../API';
@@ -302,61 +302,6 @@ const STANDARD_EFFECTS: IEffect[] = [
         effect: '<speaker effect="-">',
     },
 ];
-
-/**
- * Заменяет звуковой токен в тексте на соответствующий звук
- *
- * @param {string} key - Ключ звука для замены
- * @param {string | string[]} value - Значение или массив значений для замены
- * @param {string} text - Исходный текст
- * @returns {string} - Текст с замененными звуками
- *
- * @example
- * ```ts
- * // Замена одиночного звука
- * const text = AlisaSound.replaceSound(
- *     '#game_win#',
- *     '<speaker audio="alice-sounds-game-win-1.opus">',
- *     'Поздравляем #game_win# с победой!'
- * );
- *
- * // Замена на массив звуков
- * const text = AlisaSound.replaceSound(
- *     '#nature_rain#',
- *     [
- *         '<speaker audio="alice-sounds-nature-rain-1.opus">',
- *         '<speaker audio="alice-sounds-nature-rain-2.opus">'
- *     ],
- *     'На улице #nature_rain# идет дождь'
- * );
- * ```
- */
-export function replaceSound(key: string, value: string | string[], text: string): string {
-    if (text.includes(key)) {
-        return Text.textReplace(key, value, text);
-    }
-    return text;
-}
-
-/**
- * Удаляет все звуковые токены из текста
- *
- * @param {string} text - Исходный текст
- * @returns {string} - Текст без звуковых токенов
- *
- * @example
- * ```ts
- * // Удаление звуковых токенов
- * const text = AlisaSound.removeSound('Текст #game_win# без #nature_rain# звуков');
- * // Результат: 'Текст без звуков'
- * ```
- */
-export function removeSound(text: string): string {
-    if (text.includes('speaker') || text.includes('sil')) {
-        return text.replace(/<speaker[^>]*>|sil\s*<\[\d+]>/gi, '');
-    }
-    return text;
-}
 
 /**
  * Получение токена, необходимого для воспроизведения звуков в Алисе

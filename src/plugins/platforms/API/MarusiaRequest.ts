@@ -179,7 +179,7 @@ export class MarusiaRequest extends VkRequest {
      * }
      * ```
      *
-     * @returns {Promise<any>} Список изображений или null при ошибке
+     * @returns Список изображений или null при ошибке
      */
     public async marusiaGetPictures(): Promise<unknown> {
         return await this.call('marusia.getPictures');

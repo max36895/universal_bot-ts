@@ -3,7 +3,7 @@ import { getImage, AppContext } from '../../src';
 const appContext = new AppContext();
 describe('image', () => {
     it('Image init', () => {
-        expect(getImage(appContext, 'test', '')).toBe(null);
+        expect(getImage(appContext, '', '')).toBe(null);
 
         let image = getImage(appContext, 'test', 'title');
         expect(image?.title).toEqual('title');

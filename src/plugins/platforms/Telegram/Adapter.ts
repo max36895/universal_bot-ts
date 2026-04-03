@@ -8,7 +8,12 @@ import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/
 import { TelegramRequest } from '../API';
 
 /**
- * Адаптер для создания ботов для мессенджера Telegram на TypeScript.
+ * Адаптер, обеспечивающий поддержку платформы Telegram. Позволяет разрабатывать чат-ботов для Телеграм на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
+ *
+ * Подключение адаптера не требует изменения существующей бизнес-логики: после интеграции
+ * все команды и обработчики, написанные для umbot, автоматически становятся доступны для Telegram.
+ * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
+ * платформ (Telegram, VK, Алиса и др.) без дублирования кода.
  *
  * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера Telegram,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
@@ -23,7 +28,8 @@ import { TelegramRequest } from '../API';
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
  * @example
- * // Простейший навык, который отвечает на приветствие
+ * ```ts
+ * // Простейший бот для Telegram, который отвечает на приветствие
  * import { Bot } from 'umbot';
  * import { TelegramAdapter } from 'umbot/plugins';
  *
@@ -34,6 +40,7 @@ import { TelegramRequest } from '../API';
  *     });
  *
  * bot.start('localhost', 3000);
+ * ```
  *
  * @see Bot
  * @see BotController
@@ -43,6 +50,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
     platformName = T_TELEGRAM;
     isVoice = false;
     limit = 30;
+    signatureName = 'x-telegram-bot-api-secret-token';
 
     init(appContext: AppContext): void {
         super.init(appContext);

@@ -111,8 +111,6 @@ export class Nlu {
     /**
      * Массив с обработанными данными NLU.
      * Содержит все сущности, извлеченные из текста.
-     *
-     * @type {INlu}
      */
     #nlu: INlu;
 
@@ -120,7 +118,6 @@ export class Nlu {
      * Кэш данных для оптимизации повторных запросов.
      * Хранит результаты извлечения сущностей по их типам.
      *
-     * @type {Map<string, unknown[] | null>}
      * @example
      * ```ts
      * // Пример содержимого кэша после обработки запроса
@@ -193,7 +190,6 @@ export class Nlu {
      * Тип сущности: ФИО.
      * Используется для извлечения имен, фамилий и отчеств.
      *
-     * @type {string}
      * @example
      * ```ts
      * const fio = nlu.getFio();
@@ -222,7 +218,6 @@ export class Nlu {
      *    - "55.7558° N, 37.6173° E"
      *    - "55°45'20.9"N 37°37'02.2"E"
      *
-     * @type {string}
      * @example
      * ```ts
      * const geo = nlu.getGeo();
@@ -256,7 +251,6 @@ export class Nlu {
      *    - "каждый день в 9 утра"
      *    - "по выходным с 12 до 18"
      *
-     * @type {string}
      * @example
      * ```ts
      * const dateTime = nlu.getDateTime();
@@ -300,7 +294,6 @@ export class Nlu {
      *    - "пара", "дюжина"
      *    - "несколько", "много"
      *
-     * @type {string}
      * @example
      * ```ts
      * const numbers = nlu.getNumber();
@@ -330,7 +323,6 @@ export class Nlu {
      * - Готовность: "готов", "можно", "давай"
      * - Одобрение: "отлично", "супер", "класс"
      *
-     * @type {string}
      * @example
      * ```ts
      * // Проверка на согласие
@@ -356,7 +348,6 @@ export class Nlu {
      * - Несогласие: "не хочу", "не буду"
      * - Отмена: "стоп", "хватит", "прекрати"
      *
-     * @type {string}
      * @example
      * ```ts
      * // Проверка на отказ
@@ -376,7 +367,6 @@ export class Nlu {
      * Встроенный интент: Запрос помощи.
      * Используется для распознавания запросов о помощи.
      *
-     * @type {string}
      * @example
      * ```ts
      * if (nlu.isIntentHelp()) {
@@ -390,7 +380,6 @@ export class Nlu {
      * Встроенный интент: Повторение.
      * Используется для распознавания запросов повторить последний ответ.
      *
-     * @type {string}
      * @example
      * ```ts
      * if (nlu.isIntentRepeat()) {
@@ -418,8 +407,8 @@ export class Nlu {
     /**
      * Устанавливает данные NLU и очищает кэш.
      *
-     * @param {any} nlu - Данные NLU для обработки
-     * @param {boolean} isClearCache - Флаг, говорящий о том, что нужно сбросить кэш
+     * @param nlu - Данные NLU для обработки
+     * @param isClearCache - Флаг, говорящий о том, что нужно сбросить кэш
      * @example
      * ```ts
      * nlu.setNlu({

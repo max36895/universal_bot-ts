@@ -160,8 +160,7 @@ export class VkRequest {
                 this._request.post.v = this.#vkApiVersion;
                 if (!this._request.attach) {
                     // vk принимает post только в таком формате
-                    //@ts-ignore
-                    this._request.post = httpBuildQuery(
+                    this._request.postInString = httpBuildQuery(
                         this._request.post as Record<string, string>,
                     );
                 }

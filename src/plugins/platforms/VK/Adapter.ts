@@ -8,7 +8,12 @@ import { T_VK } from './constants';
 import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPlatform';
 
 /**
- * Адаптер для создания ботов для мессенджера VK на TypeScript.
+ * Адаптер, обеспечивающий поддержку платформы VK. Позволяет разрабатывать чат-ботов для мессенджера ВК на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
+ *
+ * Подключение адаптера не требует изменения существующей бизнес-логики: после интеграции
+ * все команды и обработчики, написанные для umbot, автоматически становятся доступны для VK.
+ * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
+ * платформ (Viber, VK, Алиса и др.) без дублирования кода.
  *
  * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера VK,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
@@ -23,7 +28,8 @@ import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPl
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
  * @example
- * // Простейший навык, который отвечает на приветствие
+ * ```ts
+ * // Простейший бот для VK, который отвечает на приветствие
  * import { Bot } from 'umbot';
  * import { VkAdapter } from 'umbot/plugins';
  *
@@ -34,6 +40,7 @@ import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPl
  *     });
  *
  * bot.start('localhost', 3000);
+ * ```
  *
  * @see Bot
  * @see BotController
@@ -43,6 +50,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     platformName = T_VK;
     isVoice = false;
     limit = 30;
+    signatureName = 'x-vk-signature';
 
     init(appContext: AppContext): void {
         super.init(appContext);

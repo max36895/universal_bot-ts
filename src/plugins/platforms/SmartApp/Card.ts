@@ -138,7 +138,7 @@ function getCardItem(
 }
 
 /**
- * Получает карточку для отображения в Сбер.SmartApp.
+ * Получает карточку для отображения в Сбер Салют (SmartApp).
  * @param cardInfo Информация о карточке
  */
 export function cardProcessing(cardInfo: ICardInfo): ISberSmartAppItem | null {

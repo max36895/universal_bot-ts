@@ -50,7 +50,6 @@ export interface ISoundModelState extends IModelState {
  * Модель для управления звуковыми файлами в различных платформах.
  * Предоставляет единый интерфейс для работы со звуковыми файлами в Алисе, ВКонтакте, Telegram, Марусе и тд.
  *
- * @class SoundTokens
  * @extends Model<ISoundModelState>
  *
  * @example

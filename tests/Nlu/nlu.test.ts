@@ -1,78 +1,77 @@
 import { Nlu, INlu } from '../../src';
-
+const nluContent: INlu = {
+    thisUser: {
+        username: 'name',
+        first_name: 'fn',
+        last_name: 'ln',
+    },
+    entities: [
+        {
+            type: Nlu.T_GEO,
+            tokens: {
+                start: 0,
+                end: 1,
+            },
+            value: {
+                city: 'city',
+            },
+        },
+        {
+            type: Nlu.T_NUMBER,
+            tokens: {
+                start: 0,
+                end: 1,
+            },
+            value: 512,
+        },
+        {
+            type: Nlu.T_FIO,
+            tokens: {
+                start: 0,
+                end: 1,
+            },
+            value: {
+                first_name: 'fn',
+            },
+        },
+        {
+            type: Nlu.T_DATETIME,
+            tokens: {
+                start: 0,
+                end: 1,
+            },
+            value: {
+                year: 2020,
+            },
+        },
+    ],
+    intents: {
+        custom: {
+            slots: {
+                name: {
+                    type: 'YANDEX.STRING',
+                    tokens: {
+                        start: 1,
+                        end: 2,
+                    },
+                    value: 'test',
+                },
+                action: {
+                    type: 'YANDEX.STRING',
+                    tokens: {
+                        start: 2,
+                        end: 4,
+                    },
+                    value: 'спит',
+                },
+            },
+        },
+    },
+};
 describe('Nlu test', () => {
     const nlu: Nlu = new Nlu();
 
     beforeEach(() => {
-        const nluContent: INlu = {
-            thisUser: {
-                username: 'name',
-                first_name: 'fn',
-                last_name: 'ln',
-            },
-            entities: [
-                {
-                    type: Nlu.T_GEO,
-                    tokens: {
-                        start: 0,
-                        end: 1,
-                    },
-                    value: {
-                        city: 'city',
-                    },
-                },
-                {
-                    type: Nlu.T_NUMBER,
-                    tokens: {
-                        start: 0,
-                        end: 1,
-                    },
-                    value: 512,
-                },
-                {
-                    type: Nlu.T_FIO,
-                    tokens: {
-                        start: 0,
-                        end: 1,
-                    },
-                    value: {
-                        first_name: 'fn',
-                    },
-                },
-                {
-                    type: Nlu.T_DATETIME,
-                    tokens: {
-                        start: 0,
-                        end: 1,
-                    },
-                    value: {
-                        year: 2020,
-                    },
-                },
-            ],
-            intents: {
-                custom: {
-                    slots: {
-                        name: {
-                            type: 'YANDEX.STRING',
-                            tokens: {
-                                start: 1,
-                                end: 2,
-                            },
-                            value: 'test',
-                        },
-                        action: {
-                            type: 'YANDEX.STRING',
-                            tokens: {
-                                start: 2,
-                                end: 4,
-                            },
-                            value: 'спит',
-                        },
-                    },
-                },
-            },
-        };
         nlu.setNlu(nluContent);
     });
 
@@ -150,5 +149,76 @@ describe('Nlu test', () => {
             },
         });
         expect(nlu.getIntent('test') === null).toBe(true);
+    });
+
+    it('isIntentConfirm', () => {
+        expect(nlu.isIntentConfirm('да')).toBe(true);
+        expect(nlu.isIntentConfirm('конечно')).toBe(true);
+        expect(nlu.isIntentConfirm('подтверждаю')).toBe(true);
+        expect(nlu.isIntentConfirm('подтверждаю')).toBe(true);
+        expect(nlu.isIntentConfirm('нет')).toBe(false);
+        expect(nlu.isIntentConfirm('неа')).toBe(false);
+        expect(nlu.isIntentConfirm('не')).toBe(false);
+        expect(nlu.isIntentConfirm('незнайка')).toBe(false);
+        const nluConfig: INlu = {
+            ...nluContent,
+            intents: {
+                [Nlu.T_INTENT_CONFIRM]: {
+                    slots: [],
+                },
+            },
+        };
+        nlu.setNlu(nluConfig);
+        expect(nlu.isIntentConfirm('нет')).toBe(true);
+    });
+    it('isIntentReject', () => {
+        expect(nlu.isIntentReject('да')).toBe(false);
+        expect(nlu.isIntentReject('конечно')).toBe(false);
+        expect(nlu.isIntentReject('подтверждаю')).toBe(false);
+        expect(nlu.isIntentReject('подтверждаю')).toBe(false);
+        expect(nlu.isIntentReject('нет')).toBe(true);
+        expect(nlu.isIntentReject('неа')).toBe(true);
+        expect(nlu.isIntentReject('не')).toBe(true);
+        expect(nlu.isIntentReject('незнайка')).toBe(false);
+        const nluConfig: INlu = {
+            ...nluContent,
+            intents: {
+                [Nlu.T_INTENT_REJECT]: {
+                    slots: [],
+                },
+            },
+        };
+        nlu.setNlu(nluConfig);
+        expect(nlu.isIntentConfirm('да')).toBe(true);
+    });
+
+    it('isIntentHelp', () => {
+        expect(nlu.isIntentHelp()).toBe(false);
+
+        const nluConfig: INlu = {
+            ...nluContent,
+            intents: {
+                [Nlu.T_INTENT_HELP]: {
+                    slots: [],
+                },
+            },
+        };
+        nlu.setNlu(nluConfig);
+        expect(nlu.isIntentHelp()).toBe(true);
+    });
+
+    it('isIntentRepeat', () => {
+        expect(nlu.isIntentRepeat()).toBe(false);
+
+        const nluConfig: INlu = {
+            ...nluContent,
+            intents: {
+                [Nlu.T_INTENT_REPEAT]: {
+                    slots: [],
+                },
+            },
+        };
+        nlu.setNlu(nluConfig);
+        expect(nlu.isIntentRepeat()).toBe(true);
     });
 });

@@ -95,8 +95,7 @@ export function buttonProcessing(buttons: IButtonType<IVkButton>[]): IVkButtonOb
         if (button.type === VK_TYPE_PAY) {
             object.hash = button.payload?.hash || null;
         }
-        // @ts-ignore
-        object = { ...object, ...button.options };
+        object = { ...object, ...button.options } as IVkButton;
         const groupOptions = button.options[GROUP_NAME];
         if (groupOptions === undefined) {
             finalButtons[index] = object;

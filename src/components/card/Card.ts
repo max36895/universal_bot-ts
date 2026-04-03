@@ -19,7 +19,6 @@ export class Card {
     /**
      * Заголовок элемента карточки.
      * Отображается в верхней части карточки.
-     * @type {string | null}
      * @example
      * ```ts
      * card.setTitle('Название товара');
@@ -30,7 +29,6 @@ export class Card {
     /**
      * Описание элемента карточки.
      * Отображается под заголовком.
-     * @type {string | null}
      * @example
      * ```ts
      * card.setDescription('Подробное описание товара');
@@ -41,8 +39,7 @@ export class Card {
     /**
      * Массив с изображениями или элементами карточки.
      * Каждый элемент может содержать изображение, заголовок, описание и кнопки.
-     * @type {Image[]}
-     * @see Image
+     * @see IImageType
      * @example
      * ```ts
      * card.addImage('product.jpg', 'Название товара', 'Описание товара');
@@ -53,7 +50,6 @@ export class Card {
     /**
      * Кнопки элемента карточки.
      * Используются для взаимодействия с пользователем.
-     * @type {Buttons}
      * @see Buttons
      * @example
      * ```ts
@@ -70,7 +66,6 @@ export class Card {
      * Определяет необходимость отображения только одного элемента карточки.
      * true - отображается только первый элемент
      * false - отображаются все элементы
-     * @type {boolean}
      * @example
      * ```ts
      * card.isOne = true; // Отобразить только первый элемент
@@ -82,7 +77,6 @@ export class Card {
      * Использование галереи изображений.
      * true - изображения отображаются в виде галереи
      * false - изображения отображаются как отдельные карточки
-     * @type {boolean}
      * @example
      * ```ts
      * card.isUsedGallery = true; // Включить режим галереи
@@ -104,7 +98,6 @@ export class Card {
      * Используйте ТОЛЬКО если:
      * - Вы точно знаете формат ответа целевой платформы
      * - Стандартные методы (`addImage()`, `addButton()`) не решают задачу
-     * @type {any}
      * @example
      * ```ts
      * card.template = {
@@ -304,6 +297,7 @@ export class Card {
                 buttons: this.button,
                 images: this.images,
                 title: this.title,
+                description: this.desc,
                 showOne: this.isOne,
             },
             controller,

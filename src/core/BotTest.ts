@@ -13,10 +13,10 @@ import { performance } from 'node:perf_hooks';
  * Функция для получения конфигурации пользовательского приложения
  *
  * @callback TUserBotConfigCb
- * @param {string} query - Пользовательский запрос
- * @param {string} userId - Идентификатор пользователя
- * @param {number} count - Номер сообщения в диалоге
- * @returns {any} Конфигурация для пользовательского приложения
+ * @param query - Пользовательский запрос
+ * @param userId - Идентификатор пользователя
+ * @param count - Номер сообщения в диалоге
+ * @returns Конфигурация для пользовательского приложения
  */
 export type TUserBotConfigCb = (query: string, userId: string, count: number) => unknown;
 
@@ -203,10 +203,10 @@ export class BotTest extends Bot {
      * Формирует конфигурацию для тестирования конкретной платформы.
      * Создает структуру данных, соответствующую формату выбранной платформы
      *
-     * @param {string} query - Пользовательский запрос
-     * @param {number} count - Номер сообщения в диалоге
-     * @param {object|string} state - Данные из хранилища
-     * @returns {any} Конфигурация для выбранной платформы
+     * @param query - Пользовательский запрос
+     * @param count - Номер сообщения в диалоге
+     * @param state - Данные из хранилища
+     * @returns Конфигурация для выбранной платформы
      *
      * @protected
      */

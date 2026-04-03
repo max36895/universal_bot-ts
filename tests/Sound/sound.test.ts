@@ -17,14 +17,14 @@ describe('sound', () => {
         expect(pUtils.getPause(SoundConstants.getPause(1000))).toEqual('sil <[1000]>');
     });
 
-    it('AlisaSound removeSound', () => {
+    it('pUtils.removeSound', () => {
         const speakAudio = '<speaker audio="alice-sounds-game-win-1.opus">';
         const speakEffect = '<speaker effect="alice-sounds-game-win-1.opus">';
         const pause = pUtils.getPause(SoundConstants.getPause(12));
-        expect(AlisaSound.removeSound(`${speakAudio}1${speakAudio}`)).toEqual('1');
-        expect(AlisaSound.removeSound(`${speakEffect}1${speakEffect}`)).toEqual('1');
-        expect(AlisaSound.removeSound(`${pause}1${pause}`)).toEqual('1');
-        expect(AlisaSound.removeSound(`${speakEffect}1${speakAudio}1${pause}`)).toEqual('11');
+        expect(pUtils.removeSound(`${speakAudio}1${speakAudio}`)).toEqual('1');
+        expect(pUtils.removeSound(`${speakEffect}1${speakEffect}`)).toEqual('1');
+        expect(pUtils.removeSound(`${pause}1${pause}`)).toEqual('1');
+        expect(pUtils.removeSound(`${speakEffect}1${speakAudio}1${pause}`)).toEqual('11');
     });
 
     it('getSounds', async () => {

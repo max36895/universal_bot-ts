@@ -120,11 +120,10 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * Функция-обработчик команды
      *
      * @param {string} userCommand - Текст команды пользователя
-     * @param {BotController} [botController] - Контроллер бота для управления ответом
+     * @param {BotController} [botController] - Контроллер с бизнес-логикой приложения для управления ответом
      * @returns {void | string} - Строка ответа или void
      *
-     * Если функция возвращает строку, она автоматически
-     * устанавливается как ответ бота.
+     * Если функция возвращает строку, она автоматически устанавливается как ответ для платформы.
      */
     cb: (
         userCommand: string,
@@ -166,7 +165,7 @@ export interface IStepParam<TBotController extends BotController = BotController
     /**
      * Функция-обработчик команды
      *
-     * @param {BotController} [botController] - Контроллер бота для управления ответом
+     * @param {BotController} [botController] - Контроллер с бизнес-логикой приложения для управления ответом
      */
     cb: (botController: TBotController) => void | Promise<void>;
 }
@@ -566,7 +565,7 @@ export class CommandReg {
      *     if (ctrl) {
      *       // Доступ к пользовательским данным
      *       const visits = ctrl.userData?.visits || 0;
-     *       ctrl.text = `Вы использовали бота ${visits} раз`;
+     *       ctrl.text = `Вы использовали приложение ${visits} раз`;
      *
      *       // Доступ к кнопкам и другим UI элементам
      *       ctrl.buttons
@@ -764,7 +763,7 @@ export class CommandReg {
      * Удаляет **все** зарегистрированные шаги.
      *
      * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
-     * > Используйте с осторожностью (например, при перезагрузке логики бота).
+     * > Используйте с осторожностью (например, при перезагрузке логики приложения).
      *
      * @returns Текущий экземпляр `Bot`.
      */

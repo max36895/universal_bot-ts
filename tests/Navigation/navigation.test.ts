@@ -17,6 +17,21 @@ describe('Navigation tests', () => {
         expect(navigation.getMaxPage(elements)).toEqual(3);
     });
 
+    it('Get page info in navigation', () => {
+        navigation.elements = elements;
+        expect(navigation.getPageInfo()).toEqual('1 страница из 2');
+        navigation.elements.push(11);
+        expect(navigation.getPageInfo()).toEqual('1 страница из 3');
+        navigation.thisPage = 1;
+        expect(navigation.getPageInfo()).toEqual('2 страница из 3');
+        navigation.thisPage = 2;
+        expect(navigation.getPageInfo()).toEqual('3 страница из 3');
+        navigation.thisPage = -12;
+        expect(navigation.getPageInfo()).toEqual('1 страница из 3');
+        navigation.thisPage = 12;
+        expect(navigation.getPageInfo()).toEqual('1 страница из 3');
+    });
+
     it('Get elements for navigation', () => {
         let tmpElements = navigation.getPageElements(elements, '');
         expect(tmpElements).toEqual([1, 2, 3, 4, 5]);

@@ -2,7 +2,6 @@ import { IVkCard } from '../../VK/interfaces/IVkPlatform';
 
 /**
  * Тип идентификатора получателя в VK
- * @typedef {(string | number)} TVkPeerId
  * - string: для публичных страниц и групп
  * - number: для пользователей и чатов
  */
@@ -10,7 +9,6 @@ export type TVkPeerId = string | number;
 
 /**
  * Тип документа в VK
- * @typedef {('doc' | 'audio_message' | 'graffiti')} TVkDocType
  * - doc: обычный документ
  * - audio_message: голосовое сообщение
  * - graffiti: граффити
@@ -36,7 +34,6 @@ export type TVkDocType = 'doc' | 'audio_message' | 'graffiti';
 export interface IVkApi<T = Record<string, unknown> | unknown> {
     /**
      * Ошибка, если таковая имеется
-     * @type {string}
      */
     error?: string;
 
@@ -62,25 +59,21 @@ export interface IVkApi<T = Record<string, unknown> | unknown> {
 export interface IVkUploadFile extends IVkApi {
     /**
      * Путь к файлу
-     * @type {string}
      */
     file: string;
 
     /**
      * Путь к фотографии
-     * @type {string}
      */
     photo: string;
 
     /**
      * Сервер для загрузки
-     * @type {string}
      */
     server: string;
 
     /**
      * Хэш для проверки загрузки
-     * @type {string}
      */
     hash: string;
 }
@@ -100,21 +93,18 @@ export interface IVkUploadFile extends IVkApi {
 export interface IVkParamsUsersGet {
     /**
      * ID пользователей или короткие адреса
-     * @type {string[]}
      * По умолчанию - ID текущего пользователя
      */
     user_ids: string[];
 
     /**
      * Поля профиля для получения
-     * @type {string[]}
      * Возможные значения: nickname, screen_name, sex, bdate, city, country, timezone, photo, photo_medium, photo_big, has_mobile, contacts, education, online, counters, relation, last_seen, activity, can_write_private_message, can_see_all_posts, can_post, universities
      */
     fields: string[];
 
     /**
      * Падеж для склонения имени и фамилии
-     * @type {string}
      * nom - именительный (по умолчанию)
      * gen - родительный
      * dat - дательный
@@ -168,20 +158,17 @@ export interface IVkParamsUsersGet {
 export interface IVkParams {
     /**
      * ID пользователя
-     * @type {number}
      * По умолчанию - текущий пользователь
      */
     user_id?: number;
 
     /**
      * Уникальный идентификатор для избежания повторной отправки сообщения
-     * @type {number}
      */
     random_id?: number;
 
     /**
      * ID получателя
-     * @type {number}
      * Для пользователя: ID пользователя
      * Для чата: 2000000000 + ID чата
      * Для сообщества: -ID сообщества
@@ -190,48 +177,41 @@ export interface IVkParams {
 
     /**
      * Короткий адрес пользователя
-     * @type {string}
      * Например, 'illarionov'
      */
     domain?: string;
 
     /**
      * ID беседы
-     * @type {number}
      */
     chat_id?: number;
 
     /**
-     * ID получателей сообщения
-     * @type {number[]}
+     * ID получателей сообщения.
      * Используется при создании новой беседы
      */
     user_ids?: number[];
 
     /**
-     * Текст сообщения
-     * @type {string}
+     * Текст сообщения.
      * Обязателен, если не указаны вложения
      */
     message?: string;
 
     /**
      * Географическая широта
-     * @type {number}
      * От -90 до 90 градусов
      */
     lat?: number;
 
     /**
      * Географическая долгота
-     * @type {number}
      * От -180 до 180 градусов
      */
     long?: number;
 
     /**
      * Список вложений
-     * @type {string[]}
      * Обязателен, если не указан текст сообщения
      * Формат: "<owner_id>_<media_id>"
      * Пример: "photo100172_166443618"
@@ -240,64 +220,54 @@ export interface IVkParams {
 
     /**
      * ID сообщения, на которое отвечаем
-     * @type {number}
      */
     reply_to?: number;
 
     /**
-     * ID пересылаемых сообщений
-     * @type {number[]}
-     * Разделяются запятой
+     * ID пересылаемых сообщений.
+     * Разделяются запятой.
      * Пример: "123,431,544"
      */
     forward_messages?: number[];
 
     /**
      * Параметры пересылки
-     * @type {string}
      */
     forward?: string;
 
     /**
      * ID стикера
-     * @type {number}
      */
     sticker_id?: number;
 
     /**
-     * ID группы
-     * @type {number}
+     * ID группы.
      * Для сообщений от имени группы
      */
     group_id?: number;
 
     /**
      * Клавиатура
-     * @type {string | object}
      */
     keyboard?: string | object;
 
     /**
      * Полезная нагрузка
-     * @type {string}
      */
     payload?: string;
 
     /**
      * Отключить разбор ссылок
-     * @type {boolean}
      */
     dont_parse_links?: boolean;
 
     /**
      * Отключить упоминания
-     * @type {boolean}
      */
     disable_mentions?: boolean;
 
     /**
      * Шаблон сообщения
-     * @type {any}
      */
     template?: string[] | IVkCard | string;
 }
@@ -316,19 +286,16 @@ export interface IVkParams {
 export interface IVkUsersIds {
     /**
      * ID получателя
-     * @type {number}
      */
     peer_id?: number;
 
     /**
      * ID сообщения
-     * @type {number}
      */
     message_id?: number;
 
     /**
      * Ошибка, если таковая имеется
-     * @type {any}
      */
     error?: unknown;
 }
@@ -352,7 +319,6 @@ export interface IVkUsersIds {
 export interface IVKSendMessage extends IVkApi<number> {
     /**
      * Массив идентификаторов пользователей
-     * @type {IVkUsersIds[]}
      */
     user_ids?: IVkUsersIds[];
 }
@@ -374,38 +340,32 @@ export interface IVKSendMessage extends IVkApi<number> {
 export interface IVkUsersGet extends IVkApi {
     /**
      * ID пользователя
-     * @type {number}
      */
     id: number;
 
     /**
      * Имя пользователя
-     * @type {string}
      */
     first_name: string;
 
     /**
      * Фамилия пользователя
-     * @type {string}
      */
     last_name: string;
 
     /**
      * Статус страницы
-     * @type {string}
      * Возвращается, если страница удалена или заблокирована
      */
     deactivated?: string;
 
     /**
      * Скрыт ли профиль настройками приватности
-     * @type {boolean}
      */
     is_closed: boolean;
 
     /**
      * Может ли текущий пользователь видеть профиль
-     * @type {boolean}
      * Актуально при is_closed = 1
      */
     can_access_closed: boolean;
@@ -428,19 +388,16 @@ export interface IVkUsersGet extends IVkApi {
 export interface IVkUploadServer extends IVkApi {
     /**
      * Адрес сервера для загрузки
-     * @type {string}
      */
     upload_url: string;
 
     /**
      * ID альбома
-     * @type {string}
      */
     album_id?: string;
 
     /**
      * ID сообщества
-     * @type {string}
      */
     group_id?: string;
 }
@@ -469,62 +426,52 @@ export interface IVkUploadServer extends IVkApi {
 export interface IVkPhotosSave extends IVkApi {
     /**
      * ID изображения
-     * @type {number}
      */
     id: number;
 
     /**
      * ID изображения
-     * @type {number}
      */
     pid: number;
 
     /**
      * ID альбома
-     * @type {number}
      */
     aid: number;
 
     /**
      * ID владельца изображения
-     * @type {number}
      */
     owner_id: number;
 
     /**
      * URL изображения
-     * @type {string}
      */
     src: string;
 
     /**
      * URL большой версии изображения
-     * @type {string}
      */
     src_big: string;
 
     /**
      * URL маленькой версии изображения
-     * @type {string}
      */
     src_small: string;
 
     /**
      * Дата загрузки
-     * @type {number}
      * Unix timestamp
      */
     created: number;
 
     /**
      * URL очень большой версии изображения
-     * @type {string}
      */
     src_xbig: string;
 
     /**
      * URL максимально большой версии изображения
-     * @type {string}
      */
     src_xxbig: string;
 }
@@ -543,13 +490,11 @@ export interface IVkPhotosSave extends IVkApi {
 interface IVkDocInfo {
     /**
      * ID документа
-     * @type {number}
      */
     id: number;
 
     /**
      * ID владельца документа
-     * @type {number}
      */
     owner_id: number;
 }
@@ -571,19 +516,16 @@ interface IVkDocInfo {
 export interface IVkGraffiti extends IVkDocInfo {
     /**
      * URL документа
-     * @type {string}
      */
     url: string;
 
     /**
      * Ширина изображения
-     * @type {number}
      */
     width: number;
 
     /**
      * Высота изображения
-     * @type {number}
      */
     height: number;
 }
@@ -604,25 +546,21 @@ export interface IVkGraffiti extends IVkDocInfo {
 export interface IVkAudioMessageInfo {
     /**
      * Длительность в секундах
-     * @type {number}
      */
     duration: number;
 
     /**
      * Массив значений для визуализации звука
-     * @type {number[]}
      */
     waleform: number[];
 
     /**
      * URL .ogg файла
-     * @type {string}
      */
     link_ogg?: string;
 
     /**
      * URL .mp3 файла
-     * @type {string}
      */
     link_mp3?: string;
 }
@@ -672,38 +610,32 @@ export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {}
 export interface IVkPreview {
     /**
      * Массив копий изображения
-     * @type {string[]}
      * Подробное описание структуры: https://vk.ru/dev/objects/photo_sizes
      */
     photo?: string[];
 
     /**
      * Данные о граффити
-     * @type {Object}
      */
     graffiti?: {
         /**
          * URL документа с граффити
-         * @type {string}
          */
         src: string;
 
         /**
          * Ширина изображения
-         * @type {number}
          */
         width: number;
 
         /**
          * Высота изображения
-         * @type {number}
          */
         height: number;
     };
 
     /**
      * Данные о голосовом сообщении
-     * @type {IVkAudioMessageInfo}
      */
     audio_message?: IVkAudioMessageInfo;
 }
@@ -735,38 +667,32 @@ export interface IVkPreview {
 export interface IVKDoc extends IVkDocInfo {
     /**
      * URL документа
-     * @type {string}
      */
     url: string;
 
     /**
      * Название документа
-     * @type {string}
      */
     title: string;
 
     /**
      * Размер в байтах
-     * @type {number}
      */
     size: number;
 
     /**
      * Расширение файла
-     * @type {string}
      */
     ext: string;
 
     /**
      * Дата добавления
-     * @type {number}
      * Unix timestamp
      */
     date: number;
 
     /**
      * Тип документа
-     * @type {number}
      * 1 - текстовый документ
      * 2 - архивы
      * 3 - gif
@@ -780,7 +706,6 @@ export interface IVKDoc extends IVkDocInfo {
 
     /**
      * Данные для предпросмотра
-     * @type {IVkPreview}
      */
     preview: IVkPreview;
 }
@@ -815,79 +740,67 @@ export interface IVKDoc extends IVkDocInfo {
 export interface IVkDocSave extends IVkDocInfo, IVkApi {
     /**
      * Тип документа
-     * @type {TVkDocType}
      */
     type: TVkDocType;
 
     /**
      * Данные о граффити
-     * @type {IVkGraffiti}
      */
     graffiti?: IVkGraffiti;
 
     /**
      * Данные о голосовом сообщении
-     * @type {IVkAudioMessage}
      */
     audio_message?: IVkAudioMessage;
 
     /**
      * Данные о документе
-     * @type {IVKDoc}
      */
     doc?: IVKDoc;
 
     /**
      * ID документа
-     * @type {number}
      */
     id: number;
 
     /**
      * URL документа
-     * @type {string}
      * Для граффити и документа
      */
     url: string;
 
     /**
      * Ширина изображения
-     * @type {number}
      * Для граффити
      */
     width?: number;
 
     /**
      * Высота изображения
-     * @type {number}
      * Для граффити
      */
     height?: number;
 
     /**
      * Длительность в секундах
-     * @type {number}
      * Для голосового сообщения
      */
     duration?: number;
 
     /**
      * Массив значений для визуализации звука
-     * @type {number[]}
      * Для голосового сообщения
      */
     waleform?: number[];
 
     /**
      * URL .ogg файла
-     * @type {string}
      * Для голосового сообщения
      */
     link_ogg?: string;
 
     /**
      * URL .mp3 файла
-     * @type {string}
      * Для голосового сообщения
      */
     link_mp3?: string;

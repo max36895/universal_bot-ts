@@ -41,7 +41,6 @@ export interface IImageParams {
      * Дополнительные параметры изображения.
      * Позволяет расширять интерфейс специфичными параметрами.
      *
-     * @type {any}
      * @example
      * ```ts
      * // Добавление пользовательских параметров
@@ -87,7 +86,6 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * Кнопки для обработки действий с изображением.
      * Зависит от типа приложения и платформы.
      *
-     * @type {Buttons}
      * @see Buttons
      * @example
      * ```ts
@@ -102,7 +100,6 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * Заголовок изображения.
      * Отображается над изображением.
      *
-     * @type {string}
      * @example
      * ```ts
      * const image = getImage(...);
@@ -115,7 +112,6 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * Описание изображения.
      * Отображается под изображением.
      *
-     * @type {string}
      * @example
      * ```ts
      * const image = getImage(...);
@@ -128,7 +124,6 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * Идентификатор изображения.
      * Используется для платформ, поддерживающих токены.
      *
-     * @type {string | null}
      * @example
      * ```ts
      * const image = getImage(...);
@@ -141,7 +136,6 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * Путь к изображению.
      * Может быть URL или путь к файлу.
      *
-     * @type {string | null}
      * @example
      * ```ts
      * const image = getImage(...);
@@ -156,7 +150,6 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * Дополнительные параметры изображения.
      * Настройки отображения для разных платформ.
      *
-     * @type {IImageParams}
      * @example
      * ```ts
      * const image = getImage(...);
@@ -234,9 +227,9 @@ export function getImage(
         res.imageDir = image;
         res.imageToken = null;
     }
-    if (title) {
-        res.title = title;
-        res.desc = desc || ' ';
+    if (image || title) {
+        res.title = title || '';
+        res.desc = desc || '';
         if (button) {
             res.button = new Buttons(appContext);
             initButton(button, res.button);

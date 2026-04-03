@@ -56,24 +56,24 @@
 
 1. Передать метод, который зарегистрирует все платформы
 
-```ts
-import { fullPlatforms } from 'umbot/plugins';
-import { Bot } from 'umbot';
+    ```ts
+    import { fullPlatforms } from 'umbot/plugins';
+    import { Bot } from 'umbot';
 
-const bot = new Bot();
-bot.use(fullPlatforms); // Подключаем все платформы
-```
+    const bot = new Bot();
+    bot.use(fullPlatforms); // Подключаем все платформы
+    ```
 
 2. Передать адаптер платформы
 
-```ts
-import { AlisaAdapter, MarusiaAdapter } from 'umbot/plugins';
-import { Bot } from 'umbot';
+    ```ts
+    import { AlisaAdapter, MarusiaAdapter } from 'umbot/plugins';
+    import { Bot } from 'umbot';
 
-const bot = new Bot();
-bot.use(new AlisaAdapter()); // Подключаем платформу для Алисы
-bot.use(new MarusiaAdapter()); // Подключаем платформу для Маруси
-```
+    const bot = new Bot();
+    bot.use(new AlisaAdapter()); // Подключаем платформу для Алисы
+    bot.use(new MarusiaAdapter()); // Подключаем платформу для Маруси
+    ```
 
 Адаптеры можно комбинировать — например, одновременно подключить Алису и Telegram-бота.
 

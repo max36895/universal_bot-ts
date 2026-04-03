@@ -33,6 +33,8 @@ export class Request {
 
     /** POST-параметры запроса */
     public post: Record<string, unknown> | null | FormData;
+    /** POST-параметры запроса в виде строки */
+    public postInString: string | null;
 
     /** HTTP-заголовки запроса */
     public header: HeadersInit | null;
@@ -89,6 +91,7 @@ export class Request {
         this.url = null;
         this.get = null;
         this.post = null;
+        this.postInString = null;
         this.header = null;
         this.attach = null;
         this.isAttachContent = false;
@@ -114,8 +117,8 @@ export class Request {
     /**
      * Отправляет HTTP-запрос
      *
-     * @param {string} [url] - URL для отправки запроса (если не указан, используется this.url)
-     * @returns {Promise<IRequestSend<T>>} Результат выполнения запроса
+     * @param url - URL для отправки запроса (если не указан, используется this.url)
+     * @returns  Результат выполнения запроса
      */
     public async send<T>(url: string | null = null): Promise<IRequestSend<T>> {
         if (url) {
@@ -127,6 +130,7 @@ export class Request {
         this.attachName = 'file';
         this.attach = null;
         this.post = null;
+        this.postInString = null;
         if (this.#error) {
             return { status: false, data: null, err: this.#error };
         }
@@ -159,7 +163,7 @@ export class Request {
     /**
      * Выполняет HTTP-запрос
      *
-     * @returns {Promise<T|string|null>} Ответ сервера или null в случае ошибки
+     * @returns Ответ сервера или null в случае ошибки
      */
     async #run<T>(): Promise<T | string | null> {
         if (this.url) {
@@ -226,11 +230,15 @@ export class Request {
                 this.#error = `Не удалось найти файл: ${this.attach}`;
                 return;
             }
-        } else if (this.post) {
-            if (typeof this.post !== 'string' && !(this.post instanceof FormData)) {
-                post = JSON.stringify(this.post);
+        } else if (this.post || this.postInString) {
+            if (this.postInString) {
+                post = this.postInString;
             } else {
-                post = this.post;
+                if (!(this.post instanceof FormData)) {
+                    post = JSON.stringify(this.post);
+                } else {
+                    post = this.post;
+                }
             }
         }
 
@@ -268,7 +276,7 @@ export class Request {
         fileName?: string,
     ): Promise<void> {
         try {
-            const fileResult = await fs.readFile(filePath);
+            const fileResult = (await fs.readFile(filePath)) as BufferSource;
             const fileBlob = new Blob([fileResult]);
             formData.append(fileName || 'file', fileBlob, basename(filePath));
         } catch (error) {

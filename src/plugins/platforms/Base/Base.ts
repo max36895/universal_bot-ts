@@ -6,6 +6,7 @@ import {
     BaseBotController,
     IDatabaseInfo,
 } from '../../../index';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
  * Тип ответа, который может вернуть адаптер после обработки запроса
@@ -28,7 +29,7 @@ export const EMPTY_CONTEXT_ERROR =
     'Не указан контекст приложения, дальнейшая работа приложения невозможна. Проверьте корректность настройки приложения.';
 
 /**
- * Базовый адаптер для создания навыков/ботов для собственной платформы (WeChat, WhatsApp, Slack и др.).
+ * Базовый адаптер для создания голосовых навыков и чат-ботов для собственной платформы (WeChat, WhatsApp, Slack и др.).
  *
  * Чтобы подключить другую платформу, которая не поставляется из коробки, унаследуйтесь от класса и реализуйте
  * все абстрактные методы. Адаптер автоматически зарегистрируется в системе
@@ -63,6 +64,12 @@ export abstract class BasePlatform<TQuery = unknown>
 
     protected _token?: string;
     protected _platformOptions?: IOptions;
+
+    /**
+     * Имя поля в заголовке запроса, по которому можно проверить корректность полученного запроса от платформы.
+     */
+    signatureName?: string;
+
     /**
      * Определяет лимит платформы.
      * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
@@ -101,7 +108,7 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
-     * Генерирует пример входящего запроса для локального тестирования навыка/бота.
+     * Генерирует пример входящего запроса для локального тестирования вашего приложения.
      * Позволяет эмулировать запрос от платформы с заданным текстом, ID пользователя, номером сообщения и состоянием.
      * Необходимо указывать для того, чтобы можно было корректно проверить работоспособность приложения.
      *
@@ -149,6 +156,34 @@ export abstract class BasePlatform<TQuery = unknown>
     abstract isPlatformOnQuery(query: TQuery, headers?: Record<string, unknown>): boolean;
 
     /**
+     * Проверяет полученный запрос от платформы на корректность.
+     * Из коробки проверка идет по sha256. Если по какой-то причине поведение по умолчанию не подходит, то просто переопределите метод.
+     * @param query
+     * @param headers
+     */
+    isCorrectQuery(query: TQuery, headers?: Record<string, unknown>): boolean {
+        if (this.appContext?.appConfig.tokens[this.platformName].token && this.signatureName) {
+            if (!headers?.[this.signatureName]) {
+                return false;
+            }
+
+            const token = this.appContext?.appConfig.tokens[this.platformName].token as string;
+            const payload = typeof query === 'string' ? query : JSON.stringify(query);
+            const expected = createHmac('sha256', token).update(payload).digest('hex');
+
+            try {
+                return timingSafeEqual(
+                    Buffer.from(headers[this.signatureName] as string),
+                    Buffer.from(expected),
+                );
+            } catch {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Обрабатывает входящий запрос и заполняет контроллер данными.
      *
      * Обязательно установите:
@@ -194,7 +229,7 @@ export abstract class BasePlatform<TQuery = unknown>
 
     /**
      * Отправка текста пользователю
-     * Этот метод используется для активных рассылок — когда бот инициирует диалог первым (например, уведомление).
+     * Этот метод используется для активных рассылок — когда голосовой навык или чат-бот инициирует диалог первым (например, уведомление).
      * В методе реализована механика преобразования текстового значения `controllerOrText` в контроллер, а также базовый механизм для отправки ответа.
      *
      * Переопределять данный метод не рекомендуется. Переопределить стоит только в том случае, если по каким-то технических условиям текущая реализация метода вам не подходит.

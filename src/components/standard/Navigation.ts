@@ -268,9 +268,9 @@ export class Navigation<ElementType = TElementType> {
      * автоматически изменяет `this.thisPage` (текущую страницу).
      *
      *
-     * @param {ElementType[]} elements Массив элементов для обработки
+     * @param elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
-     * @return {ElementType[]} Массив элементов текущей страницы
+     * @return Массив элементов текущей страницы
      * @example
      * ```ts
      * const elements = [
@@ -315,11 +315,11 @@ export class Navigation<ElementType = TElementType> {
      * Выбор элемента из списка по тексту или номеру.
      * Поддерживает поиск по тексту с учетом схожести и выбор по номеру
      *
-     * @param {ElementType[]} elements Массив элементов для обработки
+     * @param elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
      * @param {TKeys} keys Ключи для поиска по объектам
      * @param {number} thisPage Текущая страница
-     * @return {ElementType | null} Выбранный элемент или null
+     * @return Выбранный элемент или null
      * @example
      * ```ts
      * const elements = [
@@ -497,8 +497,8 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает максимальное количество страниц.
      * Вычисляет количество страниц на основе количества элементов
      *
-     * @param {ElementType[]} elements Массив элементов
-     * @return {number} Максимальное количество страниц
+     * @param elements Массив элементов
+     * @return Максимальное количество страниц
      * @example
      * ```ts
      * const elements = [

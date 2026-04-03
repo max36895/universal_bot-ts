@@ -38,8 +38,11 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Формат базы данных
      */
     dbFormat: string;
-    // @ts-ignore
-    protected _appContext: AppContext<TDbInfo>;
+    /**
+     * Контекст приложения
+     * @protected
+     */
+    protected _appContext: AppContext<TDbInfo> = new AppContext(); // Для подстраховки, на случай если кто-то забудет прокинуть
     /**
      * Дополнительные опции для работы базы данных
      */

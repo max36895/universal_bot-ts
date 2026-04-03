@@ -415,7 +415,7 @@ export type AnyPluginData =
     | TAppPluginData<[key: string, ...params: unknown[]], string> // i18n
     | TAppPluginData<[text: string, platformNlu: INlu, platform: string, request: unknown], INlu> // nlu
     | TAppPluginData<[], RegExpConstructor> // regExp
-    | TAppPluginData<unknown[], unknown>;
+    | TAppPluginData;
 
 /**
  * Реестр плагинов приложения.
@@ -431,7 +431,7 @@ export type AnyPluginData =
  *    class MyI18nPlugin implements IPlugin {
  *      init(appContext: AppContext<IDatabaseInfo>) {
  *        appContext.plugins['i18n'] = {
- *          getData(key: string, ...params: any[]): string {
+ *          getData(key: string, ...params: unknown[]): string {
  *            return `Translated: ${key}`;
  *          }
  *        };
@@ -440,14 +440,14 @@ export type AnyPluginData =
  *
  *    // Вариант 2: функция
  *    const myNluPlugin: IPluginFn = (appContext: AppContext) => {
- *      appContext.plugins['nlu'] = (input: string, ctx?: any) => ({
+ *      appContext.plugins['nlu'] = (text: string, ctx?: unknown) => ({
  *        intent: 'default',
  *        entities: {}
  *      });
  *    };
  *    myNluPlugin.isPlugin = true; // маркер обязательного наличия
  *
- * 2. Подключите плагин к боту:
+ * 2. Подключите плагин к приложению:
  *    bot.use(new MyI18nPlugin());
  *    // или
  *    bot.use(myNluPlugin);
@@ -456,15 +456,15 @@ export type AnyPluginData =
  *
  * - Плагин должен устанавливать значение в `appContext.plugins['имя']`.
  * - Имя может быть:
- *     • `i18n` — должен соответствовать сигнатуре `IAppPlugin<[string, ...any[]], string>` или `IAppPluginFn<[string, ...any[]], string>`
- *     • `nlu` — должен соответствовать `IAppPlugin<[string, any?], INlu>` или `IAppPluginFn<[string, any?], INlu>`
- *     • `regExp` — должен соответствовать `IAppPlugin<[], RegExpConstructor>` или `IAppPluginFn<[], RegExpConstructor>`
- *     • любое другое имя — произвольная сигнатура `(...args: any[]) => any`
+ *     • `i18n` — должен соответствовать сигнатуре `TAppPluginData<[key: string, ...params: unknown[]], string>`
+ *     • `nlu` — должен соответствовать `TAppPluginData<[text: string, platformNlu: INlu, platform: string, request: unknown], INlu>`
+ *     • `regExp` — должен соответствовать `TAppPluginData<[], RegExpConstructor>`
+ *     • любое другое имя — произвольная сигнатура `AnyPluginData`
  *
  * === Примеры корректных реализаций ===
  *
- * appContext.plugins['i18n'] = (key, ...params) => `Hello, ${params[0]}`;
- * appContext.plugins['nlu'] = (text, ctx) => ({ intent: 'greet', entities: {} });
+ * appContext.plugins['i18n'] = (key: string, ...params: unknown[]) => `Hello, ${params[0]}`;
+ * appContext.plugins['nlu'] = (text, platformNlu, platform, request) => ({ intent: 'greet', entities: {} });
  * appContext.plugins['regExp'] = () => RegExp;
  * appContext.plugins['custom'] = (a, b, c) => a + b + c;
  */

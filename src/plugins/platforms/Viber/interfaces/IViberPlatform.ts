@@ -140,7 +140,6 @@ export interface IViberButton {
     /**
      * Количество колонок, которые занимает кнопка.
      * Максимальное значение - 6.
-     * @type {number}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -154,7 +153,6 @@ export interface IViberButton {
     /**
      * Количество строк, которые занимает кнопка.
      * Максимальное значение - 2.
-     * @type {number}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -172,7 +170,6 @@ export interface IViberButton {
      * - open-url - открытие URL
      * - share-phone - поделиться номером телефона
      * - location-picker - выбор местоположения
-     * @type {string}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -188,7 +185,6 @@ export interface IViberButton {
      * Данные, которые будут отправлены при нажатии на кнопку.
      * Для кнопок типа reply - текст сообщения
      * Для кнопок типа open-url - URL для перехода
-     * @type {string | null}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -202,7 +198,6 @@ export interface IViberButton {
 
     /**
      * Текст, отображаемый на кнопке.
-     * @type {string | null}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -218,7 +213,6 @@ export interface IViberButton {
      * - small - маленький текст
      * - regular - обычный текст
      * - large - большой текст
-     * @type {string}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -235,7 +229,6 @@ export interface IViberButton {
      * - top - по верхнему краю
      * - middle - по центру
      * - bottom - по нижнему краю
-     * @type {string}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -252,7 +245,6 @@ export interface IViberButton {
      * - left - по левому краю
      * - center - по центру
      * - right - по правому краю
-     * @type {string}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -266,7 +258,6 @@ export interface IViberButton {
     /**
      * URL изображения для кнопки.
      * Изображение будет отображаться на кнопке.
-     * @type {string}
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -307,7 +298,6 @@ export interface IViberButton {
 export interface IViberButtonObject {
     /**
      * Определяет, будет ли использоваться стандартная высота кнопок.
-     * @type {boolean}
      * @example
      * ```ts
      * const keyboard: IViberButtonObject = {
@@ -321,7 +311,6 @@ export interface IViberButtonObject {
     /**
      * Цвет фона клавиатуры.
      * Может быть указан в формате HEX (#RRGGBB).
-     * @type {string}
      * @example
      * ```ts
      * const keyboard: IViberButtonObject = {
@@ -334,7 +323,6 @@ export interface IViberButtonObject {
 
     /**
      * Массив кнопок клавиатуры.
-     * @type {IViberButton[]}
      * @example
      * ```ts
      * const keyboard: IViberButtonObject = {
@@ -359,7 +347,6 @@ export interface IViberButtonObject {
 
     /**
      * Тип клавиатуры.
-     * @type {string}
      * @example
      * ```ts
      * const keyboard: IViberButtonObject = {

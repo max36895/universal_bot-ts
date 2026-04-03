@@ -9,12 +9,10 @@ const utils = require(__dirname + '/../utils').utils;
 class CreateController {
     /**
      * Создает пустой проект
-     * @type {string}
      */
     static T_DEFAULT = 'Default';
     /**
      * Создает викторину
-     * @type {string}
      */
     static T_QUIZ = 'Quiz';
 
@@ -172,7 +170,6 @@ class CreateController {
     /**
      * Создает файл конфигурации проекта
      * @param {string} path Путь к шаблонам
-     * @param {string} type Тип проекта
      * @private
      */
     _getConfigFile(path) {

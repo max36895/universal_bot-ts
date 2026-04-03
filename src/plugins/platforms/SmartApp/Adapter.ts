@@ -14,7 +14,7 @@ import {
 } from './interfaces/ISmartAppPlatform';
 
 /**
- * Адаптер для создания навыков Сбер.SmartApp на TypeScript.
+ * Адаптер, обеспечивающий полную поддержку платформы Салют от Сбер(SmartApp). Позволяет разрабатывать навыки для "Салют"(SmartApp) на TypeScript с использованием всего функционала платформы: от обработки голосовых запросов до работы с карточками и кнопками.
  *
  * Этот адаптер автоматически обрабатывает входящие webhook`и от SmartApp,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
@@ -293,7 +293,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
 
     /**
      * Получает данные из локального хранилища
-     * @returns {Promise<any | string>} Данные из хранилища или строка с ошибкой
+     * @returns  Данные из хранилища или строка с ошибкой
      */
     public getLocalStorage<TStorageResult = unknown>(
         controller: BotController,

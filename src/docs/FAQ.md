@@ -2,7 +2,7 @@
 
 ## Общие вопросы
 
-### Какой фреймворк выбрать для создания бота под Алису и Телеграм одновременно?
+### Какой фреймворк выбрать для создания навыка под Алису и бота Телеграм одновременно?
 
 **Ответ**: `umbot` — это мультиплатформенный фреймворк на TypeScript, который позволяет писать логику один раз и
 запускать её на 7+ платформах: Алиса, Маруся, Сбер, Telegram, VK, Viber, MAX.
@@ -12,13 +12,12 @@
 - ✅ Единый API для всех платформ
 - ✅ Автоматическая адаптация ответов под платформу
 - ✅ Встроенная защита от ReDoS и оптимизация памяти
-- ✅ Плагиная архитектура: подключай только нужное
+- ✅ Плагинная архитектура: подключай только нужное
 
 ### Что такое umbot?
 
-`umbot` — это мультиплатформенный фреймворк на TypeScript для создания чат-ботов и голосовых ассистентов. Позволяет
-писать
-код один раз и запускать на 7+ платформах: Алиса, Маруся, Сбер, Telegram, VK, Viber, MAX.
+`umbot` — это мультиплатформенный фреймворк на TypeScript для создания навыков для голосовых платформ и чат-ботов.
+Позволяет писать код один раз и запускать на 7+ платформах: Алиса, Маруся, Сбер, Telegram, VK, Viber, MAX.
 
 ### Какие требования к окружению?
 
@@ -41,7 +40,7 @@
 
 ### В чём разница между `addCommand` и интентом из `platformParams`?
 
-- **`addCommand`** — основной способ регистрации команд. Поддерживает колбэк, асинхронность и специфичную логику.
+- **`addCommand`** — основной способ регистрации команд. Поддерживает callback, асинхронность и специфичную логику.
   Выполняется **до** проверки интентов.
 - **Интенты** в `platformParams` используются для базовых действий (приветствие, помощь) и обрабатываются, только если
   ни одна команда не подошла.
@@ -64,6 +63,271 @@ ctx.text = `Привет, ${ctx.userData.name}!`;
 
 - `userData` сохраняется между сессиями (в БД или локальном хранилище).
 - `state` хранится только в рамках текущей сессии (поддерживается не всеми платформами).
+
+### Что такое плагин в umbot?
+
+Плагин в `umbot` — это модуль расширения функциональности, который регистрируется в контексте приложения (`AppContext`)
+и позволяет добавлять новую логику без изменения ядра фреймворка.
+**Интерфейс**: Плагин может быть реализован как класс с методом i`nit(appContext)` или как функция со свойством
+`isPlugin = true`.
+**Регистрация**: Плагины подключаются через метод `bot.use(plugin)`.
+**Встроенные типы**: В системе зарезервированы слоты для системных плагинов:
+
+- `i18n` — локализация;
+- `nlu` — обработка естественного языка;
+- `regExp` — кастомная реализация регулярных выражений.
+  Адаптеры: Платформы (Алиса, Telegram, VK и др.) и базы данных (MongoDB, файловая) в версии 3.0.0 также реализованы
+  через архитектуру плагинов/адаптеров.
+
+## Как использовать плагин?
+
+Подключение происходит в точке входа приложения через цепочку методов `use()`.
+Пример кода:
+
+```ts
+import { Bot } from 'umbot';
+import { fullPlatforms, MongoAdapter } from 'umbot/plugins';
+
+const bot = new Bot();
+
+// 1. Подключение готовых плагинов (платформы и БД)
+bot.use(fullPlatforms);
+bot.use(
+    new MongoAdapter({
+        /* конфиг */
+    }),
+);
+
+// 2. Подключение кастомного плагина (пример)
+const myPlugin = (appContext) => {
+    appContext.plugins['myPlugin'] = {
+        getData: (key) => `Value: ${key}`,
+    };
+};
+myPlugin.isPlugin = true; // Маркер, что это плагин
+
+bot.use(myPlugin);
+
+bot.start('localhost', 3000);
+```
+
+### Для чего использовать плагин?
+
+Плагин — это механизм расширения функциональности фреймворка без изменения его ядра. Он позволяет инкапсулировать логику
+в отдельные модули, которые можно подключать только когда это нужно.
+
+#### 🎯 Основные сценарии использования
+
+**Сценарий 1**: Модульная архитектура большого проекта
+**Проблема**: У вас есть приложение с разными функциями (статистика, задачи, админка), и весь код находится в одном
+файле → сложно поддерживать.
+**Решение**: Каждая функция оформляется как отдельный плагин.
+
+```ts
+// plugins/statistics.ts
+import { AppContext, Bot } from 'umbot';
+
+export class StatisticsPlugin {
+    init(appContext: AppContext, bot: Bot): void {
+        // Плагин регистрирует свои команды
+        bot.addCommand('stats', ['статистика', 'статы'], (_, controller) => {
+            controller.text = '📊 Статистика приложения...';
+        });
+
+        bot.addCommand('stats_reset', ['сброс статистики'], (_, controller) => {
+            controller.text = 'Статистика сброшена';
+        });
+    }
+
+    destroy(bot: Bot): void {
+        // При удалении плагина очищаем его команды
+        bot.removeCommand('stats');
+        bot.removeCommand('stats_reset');
+    }
+}
+
+// plugins/tasks.ts
+export class TasksPlugin {
+    init(appContext: AppContext, bot: Bot): void {
+        bot.addCommand('task_add', ['добавить задачу'], (_, controller) => {
+            controller.text = '📝 Новая задача создана';
+        });
+
+        bot.addCommand('task_list', ['список задач'], (_, controller) => {
+            controller.text = '📋 Список задач...';
+        });
+    }
+
+    destroy(bot: Bot): void {
+        bot.removeCommand('task_add');
+        bot.removeCommand('task_list');
+    }
+}
+```
+
+**Главное преимущество**: Вы можете собирать разные версии приложения из одних и тех же плагинов:
+
+```ts
+// index-lite.ts — только статистика
+import { Bot } from 'umbot';
+import { StatisticsPlugin } from './plugins/statistics';
+
+const bot = new Bot();
+bot.use(new StatisticsPlugin()); // Только статистика
+bot.start('localhost', 3000);
+
+// index-full.ts — статистика + задачи
+import { Bot } from 'umbot';
+import { StatisticsPlugin } from './plugins/statistics';
+import { TasksPlugin } from './plugins/tasks';
+
+const bot = new Bot();
+bot.use(new StatisticsPlugin());
+bot.use(new TasksPlugin()); // + Задачи
+bot.start('localhost', 3000);
+
+// index-admin.ts — всё + админка
+import { Bot } from 'umbot';
+import { StatisticsPlugin } from './plugins/statistics';
+import { TasksPlugin } from './plugins/tasks';
+import { AdminPlugin } from './plugins/admin';
+
+const bot = new Bot();
+bot.use(new StatisticsPlugin());
+bot.use(new TasksPlugin());
+bot.use(new AdminPlugin()); // + Админка
+bot.start('localhost', 3000);
+```
+
+**Сценарий 2**: Переиспользование кода между проектами
+**Проблема**: У вас 5 разных платформ, и в каждом нужна одинаковая логика (например, команда /help или обработка
+платежей).
+**Решение**: Создаёте плагин один раз → подключаете везде.
+
+```ts
+// plugins/help-system.ts
+import { AppContext, Bot, HELP_INTENT_NAME } from 'umbot';
+
+export class HelpPlugin {
+    init(appContext: AppContext, bot: Bot): void {
+        bot.addCommand(HELP_INTENT_NAME, ['помощь', 'help', 'справка'], (_, controller) => {
+            controller.text =
+                '🤖 Доступные команды:\n' +
+                '• /stats — статистика\n' +
+                '• /tasks — задачи\n' +
+                '• /settings — настройки';
+            controller.buttons.addBtn('📊 Статистика').addBtn('⚙️ Настройки');
+        });
+    }
+
+    destroy(bot: Bot): void {
+        bot.removeCommand(HELP_INTENT_NAME);
+    }
+}
+```
+
+```ts
+// Проект 1: Бот для Telegram
+import { Bot } from 'umbot';
+import { HelpPlugin } from './plugins/help-system';
+import { TelegramAdapter } from 'umbot/plugins';
+
+const bot = new Bot();
+bot.use(new TelegramAdapter());
+bot.use(new HelpPlugin()); // ✅ Готовая помощь
+bot.start('localhost', 3000);
+
+// Проект 2: Навык для Алисы
+import { Bot } from 'umbot';
+import { HelpPlugin } from './plugins/help-system';
+import { AlisaAdapter } from 'umbot/plugins';
+
+const bot = new Bot();
+bot.use(new AlisaAdapter());
+bot.use(new HelpPlugin()); // ✅ Та же помощь, работает везде
+bot.start('localhost', 3000);
+```
+
+**Сценарий 3**: Динамическое включение/выключение функций
+**Проблема**: Нужно временно отключить функционал (например, на время технических работ).
+**Решение**: Плагин можно удалить из приложения.
+
+```ts
+import { Bot } from 'umbot';
+import { PaymentPlugin } from './plugins/payment';
+import { MaintenancePlugin } from './plugins/maintenance';
+
+const bot = new Bot();
+bot.use(new PaymentPlugin());
+
+// Во время технических работ:
+bot.clearUse(); // Удаляем все плагины
+bot.use(new MaintenancePlugin()); // Добавляем заглушку
+
+// После восстановления:
+bot.clearUse();
+bot.use(new PaymentPlugin()); // Возвращаем функционал
+```
+
+**Сценарий 4**: Интеграция со сторонними сервисами
+**Проблема**: Нужно подключить внешнее API (например, CRM, базу знаний, платежную систему).
+**Решение**: Плагин инкапсулирует всю логику интеграции.
+
+```ts
+// plugins/crm-integration.ts
+import { AppContext, Bot } from 'umbot';
+
+export class CrmPlugin {
+    private crmClient: any;
+
+    init(appContext: AppContext, bot: Bot): void {
+        // Инициализация клиента CRM
+        this.crmClient = new CrmClient(appContext.appConfig.crm);
+
+        // Регистрируем команды для работы с CRM
+        bot.addCommand('crm_client', ['клиент', 'карточка клиента'], async (_, controller) => {
+            const client = await this.crmClient.getClient(controller.userId);
+            controller.text = `👤 Клиент: ${client.name}`;
+        });
+
+        bot.addCommand('crm_order', ['заказ', 'история заказов'], async (_, controller) => {
+            const orders = await this.crmClient.getOrders(controller.userId);
+            controller.text = `📦 Заказы: ${orders.length}`;
+        });
+    }
+
+    destroy(bot: Bot): void {
+        bot.removeCommand('crm_client');
+        bot.removeCommand('crm_order');
+        this.crmClient?.disconnect();
+    }
+}
+```
+
+#### 📊 Сравнение: с плагинами и без
+
+| Критерий                | Без плагинов             | С плагинами                        |
+| ----------------------- | ------------------------ | ---------------------------------- |
+| Структура кода          | Всё в одном файле        | Модульная, по функциям             |
+| Повторное использование | Копипаст между проектами | Один плагин → много проектов       |
+| Тестирование            | Тестировать всё вместе   | Тестировать каждый плагин отдельно |
+| Масштабирование         | Сложно добавлять новое   | Просто подключить новый плагин     |
+| Отключение функций      | Нужно комментировать код | bot.clearUse() + новый плагин      |
+| Командная разработка    | Конфликты в одном файле  | Каждый работает в своём плагине    |
+
+#### ✅ Итог: когда использовать плагины
+
+| Ситуация                           | Использовать плагин |
+| ---------------------------------- | ------------------- |
+| Большая кодовая база (>1000 строк) | ✅ Да               |
+| Несколько проектов с общей логикой | ✅ Да               |
+| Нужно включать/выключать функции   | ✅ Да               |
+| Интеграция со сторонними API       | ✅ Да               |
+| Командная разработка               | ✅ Да               |
+
+Плагины превращают разработку приложения в конструктор: вы подключаете только те функции, которые нужны конкретному
+продукту,
+и можете легко переиспользовать код между проектами.
 
 ## Установка и настройка
 
@@ -257,8 +521,8 @@ bot.setAppConfig({
     isLocalStorage: true, // говорим что данные сохраняются в локальное хранилище платформы
 });
 
-bot.addCommand('test', ['сохранить'], (_, cBot) => {
-    cBot.userData = {}; // Сохраняем данные в хранилище платформы.
+bot.addCommand('test', ['сохранить'], (_, ctx) => {
+    ctx.userData = {}; // Сохраняем данные в хранилище платформы.
     // Ваша логика
 });
 ```
@@ -324,9 +588,42 @@ bot.use(new TelegramPlatform(telegramToken)).use(new VkPlatform(vkToken));
 - Тип кнопок: Для голосовых платформ (Алиса, Маруся) кнопки-ссылки (addLink) отображаются как сайджесты, а
   интерактивные (addBtn) — как обычные кнопки.
 
+### Мне нужна только одна платформа, подойдет ли мне umbot?
+
+Да, и вот почему.
+
+`umbot` — это не «мультиплатформенная надстройка», а полноценный фреймворк, который даёт преимущества уже на первом
+проекте, даже если вы никогда не планируете добавлять другие каналы.
+
+Что вы получите, используя `umbot` для одной платформы:
+
+- Чистую архитектуру — разделение бизнес-логики и транспортного слоя. Код становится понятнее и легче поддерживается.
+- Избавление от дублирования внутри проекта — единый способ обработки команд, состояний, кнопок и карточек.
+- Встроенное управление состоянием — данные пользователя сохраняются автоматически (локально или в БД).
+- UI-компоненты из коробки — кнопки, карточки, изображения, звуки, TTS — единый API для всех поддерживаемых платформ.
+- Безопасность — защита от ReDoS, строгий режим для production.
+- Готовность к будущему — если через год бизнес попросит добавить Telegram или Марусю, вам не придётся переписывать
+  ядро. Просто подключите ещё один адаптер.
+
+**Пример для одной платформы (только Алиса):**
+
+```ts
+import { Bot, BotController } from 'umbot';
+import { AlisaAdapter } from 'umbot/plugins'; // адаптер для Алисы
+
+const bot = new Bot();
+bot.use(new AlisaAdapter()); // вместо fullPlatforms
+// ... вся остальная логика остаётся без изменений
+```
+
+Никакого оверхеда — вы используете ровно то, что нужно. Фреймворк не заставляет вас подключать лишние платформы.
+
+**Итог**: umbot не только подходит для одной платформы, но и делает разработку на одной платформе более структурированной,
+безопасной и готовой к масштабированию. Попробуйте — и вы увидите, что код стал чище, а времени на рутину уходит меньше.
+
 ## Отладка и тестирование
 
-### Как протестировать бота локально?
+### Как протестировать приложение локально?
 
 Используйте класс `BotTest`:
 
@@ -478,7 +775,7 @@ app.post('/webhook', (req, res) => {
 });
 ```
 
-Это позволяет интегрировать бота в существующее приложение.
+Это позволяет интегрировать приложение в существующее webhook.
 
 ### Как добавить поддержку i18n?
 
@@ -487,7 +784,7 @@ app.post('/webhook', (req, res) => {
 class MyI18nPlugin implements IPlugin {
     init(appContext: AppContext<IDatabaseInfo>) {
         appContext.plugins['i18n'] = {
-            getData(key: string, ...params: any[]): string {
+            getData(key: string, ...params: unknown[]): string {
                 return `Translated: ${key}`;
             },
         };
@@ -496,7 +793,7 @@ class MyI18nPlugin implements IPlugin {
 
 // Вариант 2: функция
 const myNluPlugin: IPluginFn = (appContext: AppContext) => {
-    appContext.plugins['i18n'] = (input: string, ctx?: any) => ({
+    appContext.plugins['i18n'] = (input: string, ctx?: unknown) => ({
         intent: 'default',
         entities: {},
     });

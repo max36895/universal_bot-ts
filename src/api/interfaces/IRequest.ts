@@ -33,7 +33,6 @@
 export interface IRequestSend<T> {
     /**
      * Статус выполнения запроса
-     * @type {boolean}
      * - true - запрос выполнен успешно
      * - false - произошла ошибка при выполнении запроса
      */
@@ -47,8 +46,7 @@ export interface IRequestSend<T> {
     data: T | null;
 
     /**
-     * Описание ошибки
-     * @type {string}
+     * Описание ошибки.
      * Присутствует только в случае неуспешного выполнения запроса
      */
     err?: string;

@@ -47,16 +47,14 @@ export interface IDBFileInfo {
  * Интерфейс для хранения всех данных из файловой базы данных
  */
 export interface IFileDbInfo extends IDatabaseInfo {
-    [tableName: string]: IDBFileInfo;
+    [tableName: string]: IDBFileInfo | undefined;
 }
 
 /**
  * Тип для кэширования данных из файлов
  * Ключ - путь к файлу, значение - информация о файле
- *
- * @type {Object.<string, IFileInfo>}
  */
-export type IDBFileData = { [key: string]: IDBFileInfo };
+export type IDBFileData = { [key: string]: IDBFileInfo | undefined };
 
 // Сохраняем данные не чаще 1 раза в 500мс
 const LAZY_DELAY_SAVE_TIME = 500;
@@ -99,7 +97,6 @@ export class FileAdapter extends Base<IFileDbInfo> {
     setCachedFileData(tableName: string, data: IDBFileInfo | undefined): void {
         if (this._appContext.database.databaseInfo) {
             if (data === undefined) {
-                // @ts-ignore
                 this._appContext.database.databaseInfo[tableName] = undefined;
             } else {
                 const timeOutId = this._appContext.database.databaseInfo[tableName]?.timeOutId;
@@ -110,7 +107,6 @@ export class FileAdapter extends Base<IFileDbInfo> {
                 }
             }
         } else if (data === undefined) {
-            // @ts-ignore
             this.#cachedFileData[tableName] = undefined;
         } else {
             this.#cachedFileData[tableName] = data;
@@ -133,7 +129,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
             return this._appContext.database.databaseInfo[tableName];
         }
         this.#cachedFileData ??= {};
-        return this.#cachedFileData[tableName];
+        return this.#cachedFileData[tableName] as IDBFileInfo;
     }
 
     /**

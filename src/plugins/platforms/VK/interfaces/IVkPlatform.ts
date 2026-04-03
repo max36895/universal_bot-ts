@@ -137,7 +137,6 @@ export interface IVkButtonObject {
      * Определяет, будет ли клавиатура скрыта после нажатия на кнопку.
      * true - клавиатура скроется после нажатия
      * false - клавиатура останется видимой
-     * @type {boolean}
      * @example
      * ```ts
      * const keyboard: IVkButtonObject = {
@@ -151,7 +150,6 @@ export interface IVkButtonObject {
     /**
      * Массив кнопок или массив массивов кнопок.
      * Каждый внутренний массив представляет собой строку кнопок.
-     * @type {IVkButton[] | IVkButton[][] | any}
      * @example
      * ```ts
      * const keyboard: IVkButtonObject = {
@@ -205,7 +203,6 @@ export interface IVkButtonAction {
      * - location - кнопка геолокации
      * - vkpay - кнопка оплаты
      * - open_app - кнопка открытия приложения
-     * @type {string}
      * @example
      * ```ts
      * const action: IVkButtonAction = {
@@ -219,7 +216,6 @@ export interface IVkButtonAction {
     /**
      * URL для перехода при нажатии на кнопку.
      * Используется только для кнопок типа open_link.
-     * @type {string}
      * @example
      * ```ts
      * const action: IVkButtonAction = {
@@ -233,7 +229,6 @@ export interface IVkButtonAction {
 
     /**
      * Текст, отображаемый на кнопке.
-     * @type {string | null}
      * @example
      * ```ts
      * const action: IVkButtonAction = {
@@ -247,7 +242,6 @@ export interface IVkButtonAction {
     /**
      * Дополнительные данные, передаваемые при нажатии на кнопку.
      * Могут быть строкой или объектом.
-     * @type {string | object}
      * @example
      * ```ts
      * const action: IVkButtonAction = {
@@ -285,7 +279,6 @@ export interface IVkButton {
     /**
      * Действие кнопки.
      * Определяет тип действия и его параметры.
-     * @type {IVkButtonAction}
      * @example
      * ```ts
      * const button: IVkButton = {
@@ -305,7 +298,6 @@ export interface IVkButton {
      * - secondary - вторичная кнопка (белая)
      * - negative - отрицательная кнопка (красная)
      * - positive - положительная кнопка (зеленая)
-     * @type {string}
      * @example
      * ```ts
      * const button: IVkButton = {
@@ -319,7 +311,6 @@ export interface IVkButton {
     /**
      * Хеш кнопки.
      * Используется для верификации кнопки.
-     * @type {string}
      * @example
      * ```ts
      * const button: IVkButton = {
@@ -333,7 +324,6 @@ export interface IVkButton {
     /**
      * Дополнительные данные кнопки.
      * Могут содержать любую информацию.
-     * @type {any}
      * @example
      * ```ts
      * const button: IVkButton = {
@@ -349,7 +339,6 @@ export interface IVkButton {
     /**
      * Идентификатор группы кнопки.
      * Используется для группировки кнопок.
-     * @type {any}
      * @example
      * ```ts
      * const button: IVkButton = {
@@ -404,7 +393,6 @@ export interface IVkCardElement {
      * - Поддерживает эмодзи
      * - Отображается жирным шрифтом
      *
-     * @type {string}
      * @example
      * ```ts
      * title: 'Название товара'
@@ -422,11 +410,9 @@ export interface IVkCardElement {
      * - Поддерживает переносы строк
      * - Может содержать ссылки
      *
-     * @type {string}
      * @example
      * ```ts
-     * description: 'Подробное описание товара'
-     * description: 'Цена: 1000 руб.\nДоставка: бесплатно'
+     * description = 'Цена: 1000 руб.\nДоставка: бесплатно'
      * ```
      */
     description: string;
@@ -440,7 +426,6 @@ export interface IVkCardElement {
      * - Фотография должна быть загружена в ВКонтакте
      * - Поддерживает различные форматы изображений
      *
-     * @type {string}
      * @example
      * ```ts
      * photo_id: '123456789'
@@ -458,7 +443,6 @@ export interface IVkCardElement {
      * - Каждая кнопка может иметь свое действие
      * - Кнопки отображаются в нижней части карточки
      *
-     * @type {IVkButton[]}
      * @example
      * ```ts
      * // Кнопки с разными действиями
@@ -484,7 +468,6 @@ export interface IVkCardElement {
      * - Может открывать фотографию или выполнять другие действия
      * - Работает независимо от кнопок
      *
-     * @type {{ type: string }}
      * @example
      * ```ts
      * // Открыть фотографию
@@ -564,7 +547,6 @@ export interface IVkCard {
      * - Галерея: элементы отображаются в сетке
      * - Тип определяет способ отображения элементов
      *
-     * @type {string}
      * @example
      * ```ts
      * // Карусель товаров
@@ -585,7 +567,6 @@ export interface IVkCard {
      * - Каждый элемент имеет свои настройки
      * - Элементы отображаются в зависимости от типа карточки
      *
-     * @type {IVkCardElement[]}
      * @example
      * ```ts
      * // Элементы карусели

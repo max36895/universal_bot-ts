@@ -1,10 +1,9 @@
 import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from 'umbot';
 
 /**
- * Пример, позволяющий сохранить данные в локальном хранилище.
- * Локальное хранилище работает только для Алисы. Во всех других ботах, будет использована база данных.
+ * Пример, пользовательским контроллером
  *
- * Class LocalStorageController
+ * Class UserAppController
  */
 export class UserAppController extends BotController {
     constructor() {

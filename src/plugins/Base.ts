@@ -1,4 +1,4 @@
-import { AppContext, IDatabaseInfo, IPlugin } from '../index';
+import { AppContext, Bot, IPlugin } from '../index';
 
 /**
  * Базовый класс для реализации плагинов.
@@ -9,6 +9,16 @@ export abstract class BasePlugin implements IPlugin {
      * Метод инициализации плагина.
      * Вызывается один раз при подключении через `bot.use()`.
      * @param appContext Контекст приложения
+     * @param bot Основной класс приложения
      */
-    abstract init(appContext: AppContext<IDatabaseInfo, unknown>): void;
+    abstract init(appContext: AppContext, bot: Bot): void;
+
+    /**
+     * Метод, который вызывается при уничтожении плагина.
+     * В данном методе можно добавить отписку, либо выполнить другие действия.
+     * @param _bot Основной класс приложения
+     */
+    destroy(_bot: Bot): void {
+        // todo Ваша логика
+    }
 }

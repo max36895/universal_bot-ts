@@ -15,7 +15,6 @@ import { IVkApi } from './IVkApi';
 export interface IMarusiaApiPictureUpdateLink extends IVkApi {
     /**
      * Адрес сервера для загрузки изображения
-     * @type {string}
      * URL-адрес, на который нужно отправить изображение
      */
     picture_upload_link: string;
@@ -37,13 +36,11 @@ export interface IMarusiaApiPictureUpdateLink extends IVkApi {
 export interface IMarusiaApiSavePicture extends IVkApi {
     /**
      * Идентификатор приложения
-     * @type {number}
      * Уникальный ID приложения в Марусе
      */
     app_id: number;
     /**
      * Идентификатор изображения
-     * @type {string}
      * Уникальный ID загруженного изображения
      */
     photo_id: string;
@@ -69,7 +66,6 @@ export type IMarusiaApiRemove = IVkApi<number>;
 export interface IMarusiaApiAudioUpdateLink extends IVkApi {
     /**
      * Адрес сервера для загрузки аудио
-     * @type {string}
      * URL-адрес, на который нужно отправить аудиофайл
      */
     audio_upload_link: string;
@@ -91,13 +87,11 @@ export interface IMarusiaApiAudioUpdateLink extends IVkApi {
 export interface IMarusiaApiCreateAudio extends IVkApi {
     /**
      * Идентификатор аудио
-     * @type {string}
      * Уникальный ID загруженного аудиофайла
      */
     id: string;
     /**
      * Название аудио
-     * @type {string}
      * Отображаемое название аудиофайла
      */
     title: string;

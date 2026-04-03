@@ -24,6 +24,7 @@
             "umbot/test": ["src/test"],
             "umbot/build": ["src/build"],
             "umbot/preload": ["src/Preload"],
+            "umbot/docs": ["src/docs"],
             "umbot/*": ["src/*"]
         },
         "types": ["node", "jest"],

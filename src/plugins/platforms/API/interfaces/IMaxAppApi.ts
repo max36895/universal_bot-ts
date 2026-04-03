@@ -62,13 +62,11 @@ export type TMaxUploadFile = 'image' | 'video' | 'audio' | 'file';
 export interface IMaxUploadFile {
     /**
      * URL для загрузки файла
-     * @type {string}
      */
     url: string;
 
     /**
      * Видео- или аудио-токен для отправки сообщения
-     * @type {string}
      */
     token?: string;
 }

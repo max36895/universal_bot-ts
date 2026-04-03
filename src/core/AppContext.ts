@@ -1,7 +1,5 @@
 /**
- * Основной класс приложения для создания мультиплатформенных чат-ботов*
- *
- * Основной класс приложения для создания мультиплатформенных чат-ботов
+ * Основной класс приложения для создания мультиплатформенных приложений, которое будет работать с голосовыми навыками и чат-ботами одновременно.
  *
  * Предоставляет функциональность для:
  * - Управления конфигурацией приложения
@@ -228,7 +226,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         empty_text: 'Извините, но я вас не понимаю',
         intents: [
             { name: WELCOME_INTENT_NAME, slots: ['привет', 'здравст'] },
-            { name: HELP_INTENT_NAME, slots: ['помощ', 'что ты умеешь'] },
+            { name: HELP_INTENT_NAME, slots: ['помощь', 'что ты умеешь'] },
         ],
         utm_text: null,
     };
@@ -535,9 +533,9 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Сохраняет данные в JSON файл
-     * @param {string} fileName - Имя файла
-     * @param {any} data - Данные для сохранения
-     * @returns {boolean} true в случае успешного сохранения
+     * @param fileName - Имя файла
+     * @param data - Данные для сохранения
+     * @returns true в случае успешного сохранения
      */
     public saveFileData(fileName: string, data: unknown): Promise<boolean> {
         const dir: IDir = {

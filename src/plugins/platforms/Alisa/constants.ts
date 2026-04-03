@@ -14,7 +14,6 @@ export const T_ALISA = 'alisa';
  * - Поддерживает заголовок и описание
  * - Может содержать кнопку действия
  *
- * @type {string}
  * @example
  * ```ts
  * const card = new AlisaCard();
@@ -34,7 +33,6 @@ export const ALISA_CARD_BIG_IMAGE = 'BigImage';
  * - Поддерживает кнопки для каждого элемента
  * - Имеет общий заголовок и кнопку в футере
  *
- * @type {string}
  * @example
  * ```ts
  * const card = new AlisaCard();
@@ -54,7 +52,6 @@ export const ALISA_CARD_ITEMS_LIST = 'ItemsList';
  * - Помогает оптимизировать производительность
  * - Улучшает пользовательский опыт
  *
- * @type {number}
  * @example
  * ```ts
  * const maxImages = AlisaCard.ALISA_MAX_IMAGES; // 5
@@ -73,7 +70,6 @@ export const ALISA_MAX_IMAGES = 5;
  * - Оптимизирует загрузку и отображение
  * - Улучшает производительность
  *
- * @type {number}
  * @example
  * ```ts
  * const maxGalleryImages = AlisaCard.ALISA_MAX_GALLERY_IMAGES; // 7

@@ -79,8 +79,7 @@ export class MaxRequest {
         }
         (this.#request.header as Record<string, string>).Authorization = accessToken;
         this.#request.post ??= {};
-        // @ts-ignore
-        this.#request.post.access_token = this.token;
+        (this.#request.post as Record<string, unknown>).access_token = this.token;
     }
 
     /**
@@ -116,8 +115,7 @@ export class MaxRequest {
             this.#request.isAttachContent = this.isAttachContent;
             this.#request.header = Request.HEADER_FORM_DATA;
             this.#request.post ??= {};
-            // @ts-ignore
-            this.#request.post.type = type;
+            (this.#request.post as Record<string, unknown>).type = type;
             this.#setAccessToken(this.token);
             const data = await this.#request.send<IMaxUploadFile>(MAX_API_ENDPOINT + 'uploads');
             if (data.status && data.data) {

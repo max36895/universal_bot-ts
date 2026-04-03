@@ -132,7 +132,6 @@ export interface ITelegramContent {
 
 /**
  * Типы вопросов для опросов в Telegram
- * @typedef {('quiz' | 'regular')} TTelegramQuestionType
  * - quiz: опрос с правильным ответом
  * - regular: обычный опрос без правильного ответа
  */
@@ -140,7 +139,6 @@ export type TTelegramQuestionType = 'quiz' | 'regular';
 
 /**
  * Тип идентификатора чата в Telegram
- * @typedef {(string | number)} TTelegramChatId
  * - string: для публичных каналов (channelname)
  * - number: для приватных чатов и групп
  */
@@ -152,7 +150,6 @@ export type TTelegramChatId = string | number;
 export interface ITelegramMedia {
     /**
      * Тип медиафайла
-     * @type {string}
      * Возможные значения: "photo", "document", "audio", "video"
      */
     type: string;
@@ -192,168 +189,144 @@ export interface ITelegramMedia {
 export interface ITelegramParams {
     /**
      * Уникальный идентификатор целевого чата или имя пользователя целевого канала
-     * @type {TTelegramChatId}
      * - Для приватных чатов: числовой ID
      * - Для каналов: channelname
      */
     chat_id?: TTelegramChatId;
 
     /**
-     * Текст отправляемого сообщения
-     * @type {string}
+     * Текст отправляемого сообщения.
      * 1-4096 символов после синтаксического анализа сущностей
      */
     text?: string;
 
     /**
-     * Режим форматирования текста
-     * @type {string}
+     * Режим форматирования текста.
      * Поддерживает Markdown или HTML для форматирования текста
      */
     parse_mode?: string;
 
     /**
-     * Отключает предварительный просмотр ссылок
-     * @type {boolean}
+     * Отключает предварительный просмотр ссылок.
      * @defaultValue false
      */
     disable_web_page_preview?: boolean;
 
     /**
-     * Отправляет сообщение без звука
-     * @type {boolean}
+     * Отправляет сообщение без звука.
      * @defaultValue false
      */
     disable_notification?: boolean;
 
     /**
      * ID сообщения, на которое отвечаем
-     * @type {number}
      */
     reply_to_message_id?: number;
 
     /**
-     * Дополнительные опции интерфейса
-     * @type {string}
+     * Дополнительные опции интерфейса.
      * JSON-сериализованный объект для клавиатуры и других элементов управления
      */
     reply_markup?: string;
 
     // Параметры для опросов
     /**
-     * Вопрос для опроса
-     * @type {string}
+     * Вопрос для опроса.
      * 1-255 символов
      */
     question?: string;
 
     /**
-     * Варианты ответов для опроса
-     * @type {any}
+     * Варианты ответов для опроса.
      * JSON-сериализованный список из 2-10 строк по 1-100 символов
      */
     options?: Record<string, unknown>;
 
     /**
-     * Флаг анонимности опроса
-     * @type {boolean}
+     * Флаг анонимности опроса.
      * @defaultValue true
      */
     is_anonymous?: boolean;
 
     /**
      * Тип опроса
-     * @type {TTelegramQuestionType}
      * @defaultValue "regular"
      */
     type?: TTelegramQuestionType;
 
     /**
      * Разрешает множественный выбор в опросе
-     * @type {boolean}
      * @defaultValue false
      * @remarks Не работает для опросов типа "quiz"
      */
     allows_multiple_answers?: boolean;
 
     /**
-     * ID правильного варианта ответа
-     * @type {number}
+     * ID правильного варианта ответа.
      * Требуется только для опросов типа "quiz"
      */
     correct_option_id?: number;
 
     /**
-     * Флаг закрытия опроса
-     * @type {boolean}
+     * Флаг закрытия опроса.
      * @defaultValue false
      */
     is_closed?: boolean;
 
     // Параметры для медиафайлов
     /**
-     * Фото для отправки
-     * @type {string}
+     * Фото для отправки.
      * file_id или URL для загрузки
      */
     photo?: string;
 
     /**
-     * Подпись к фотографии
-     * @type {string}
+     * Подпись к фотографии.
      * 0-1024 символа
      */
     caption?: string;
 
     /**
-     * Документ для отправки
-     * @type {string}
+     * Документ для отправки.
      * file_id или URL для загрузки
      */
     document?: string;
 
     /**
-     * Миниатюра документа
-     * @type {string}
+     * Миниатюра документа.
      * JPEG, < 200KB, размеры до 320x320
      */
     thumb?: string;
 
     /**
-     * Аудиофайл для отправки
-     * @type {string}
+     * Аудиофайл для отправки.
      * file_id или URL для загрузки
      */
     audio?: string;
 
     /**
      * Длительность аудио в секундах
-     * @type {number}
      */
     duration?: number;
 
     /**
      * Исполнитель аудио
-     * @type {string}
      */
     performer?: string;
 
     /**
      * Название аудиотрека
-     * @type {string}
      */
     title?: string;
 
     /**
-     * Видео для отправки
-     * @type {string}
+     * Видео для отправки.
      * file_id или URL для загрузки
      */
     video?: string;
 
     /**
      * Поддержка стриминга для видео
-     * @type {boolean}
      * @defaultValue false
      */
     supports_streaming?: boolean;
@@ -375,25 +348,21 @@ export interface ITelegramParams {
 export interface ITelegramFrom {
     /**
      * Идентификатор отправителя
-     * @type {number}
      */
     id: number;
 
     /**
      * Флаг, указывающий является ли отправитель ботом
-     * @type {boolean}
      */
     is_bot: boolean;
 
     /**
      * Имя отправителя
-     * @type {string}
      */
     first_name: string;
 
     /**
      * Никнейм отправителя
-     * @type {string}
      */
     username: string;
 }
@@ -415,31 +384,26 @@ export interface ITelegramFrom {
 export interface ITelegramChat {
     /**
      * Идентификатор чата
-     * @type {number}
      */
     id: number;
 
     /**
      * Имя пользователя
-     * @type {string}
      */
     first_name: string;
 
     /**
      * Фамилия пользователя
-     * @type {string}
      */
     last_name: string;
 
     /**
      * Никнейм пользователя
-     * @type {string}
      */
     username: string;
 
     /**
-     * Тип чата
-     * @type {string}
+     * Тип чата.
      * Возможные значения: "private", "group", "supergroup", "channel"
      */
     type: string;
@@ -469,66 +433,55 @@ export interface ITelegramChat {
 export interface ITelegramPoll {
     /**
      * Уникальный идентификатор опроса
-     * @type {string}
      */
     id: string;
 
     /**
      * Вопрос опроса
-     * @type {string}
      */
     question: string;
 
     /**
      * Варианты ответов
-     * @type {Array<{text: string, voter_count: number}>}
      */
     options: Array<{
         /**
          * Текст варианта ответа
-         * @type {string}
          */
         text: string;
         /**
          * Количество проголосовавших за этот вариант
-         * @type {number}
          */
         voter_count: number;
     }>;
 
     /**
      * Общее количество проголосовавших
-     * @type {number}
      */
     total_voter_count: number;
 
     /**
      * Флаг закрытия опроса
-     * @type {boolean}
      */
     is_closed: boolean;
 
     /**
      * Флаг анонимности опроса
-     * @type {boolean}
      */
     is_anonymous: boolean;
 
     /**
      * Тип опроса
-     * @type {TTelegramQuestionType}
      */
     type: TTelegramQuestionType;
 
     /**
      * Разрешение множественного выбора
-     * @type {boolean}
      */
     allows_multiple_answers: boolean;
 
     /**
-     * ID правильного варианта ответа
-     * @type {number}
+     * ID правильного варианта ответа.
      * Доступно только для закрытых опросов типа "quiz"
      */
     correct_option_id: number;
@@ -548,22 +501,19 @@ export interface ITelegramPoll {
  */
 export interface IFileInfo {
     /**
-     * Идентификатор файла
-     * @type {string}
+     * Идентификатор файла.
      * Может быть использован для повторной отправки файла
      */
     file_id: string;
 
     /**
-     * Уникальный идентификатор файла
-     * @type {string}
+     * Уникальный идентификатор файла.
      * Неизменный идентификатор файла
      */
     file_unique_id: string;
 
     /**
      * Размер файла в байтах
-     * @type {number}
      */
     file_size: number;
 }
@@ -585,13 +535,11 @@ export interface IFileInfo {
 export interface ITelegramPhoto extends IFileInfo {
     /**
      * Ширина изображения в пикселях
-     * @type {number}
      */
     width: number;
 
     /**
      * Высота изображения в пикселях
-     * @type {number}
      */
     height: number;
 }
@@ -613,13 +561,11 @@ export interface ITelegramPhoto extends IFileInfo {
 export interface ITelegramThumb extends IFileInfo {
     /**
      * Ширина миниатюры в пикселях
-     * @type {number}
      */
     width?: number;
 
     /**
      * Высота миниатюры в пикселях
-     * @type {number}
      */
     height?: number;
 }
@@ -648,19 +594,16 @@ export interface ITelegramThumb extends IFileInfo {
 export interface ITelegramDocument extends IFileInfo {
     /**
      * Оригинальное имя файла
-     * @type {string}
      */
     file_name: string;
 
     /**
      * MIME-тип файла
-     * @type {string}
      */
     mime_type: string;
 
     /**
      * Миниатюра документа
-     * @type {ITelegramThumb}
      */
     thumb: ITelegramThumb;
 }
@@ -691,31 +634,26 @@ export interface ITelegramDocument extends IFileInfo {
 export interface ITelegramAudio extends IFileInfo {
     /**
      * Оригинальное имя файла
-     * @type {string}
      */
     name: string;
 
     /**
      * MIME-тип файла
-     * @type {string}
      */
     mime_type: string;
 
     /**
      * Длительность аудио в секундах
-     * @type {number}
      */
     duration: number;
 
     /**
      * Исполнитель
-     * @type {string}
      */
     performer: string;
 
     /**
      * Миниатюра аудио
-     * @type {ITelegramThumb}
      */
     thumb: ITelegramThumb;
 }
@@ -748,13 +686,11 @@ export interface ITelegramAudio extends IFileInfo {
 export interface ITelegramVideo extends ITelegramAudio {
     /**
      * Ширина видео в пикселях
-     * @type {number}
      */
     width: number;
 
     /**
      * Высота видео в пикселях
-     * @type {number}
      */
     height: number;
 }
@@ -787,62 +723,52 @@ export interface ITelegramVideo extends ITelegramAudio {
 export interface ITelegramResultContent {
     /**
      * Идентификатор сообщения
-     * @type {number}
      */
     message_id: number;
 
     /**
      * Информация об отправителе
-     * @type {ITelegramFrom}
      */
     from: ITelegramFrom;
 
     /**
      * Информация о чате
-     * @type {ITelegramChat}
      */
     chat?: ITelegramChat;
 
     /**
-     * Дата отправки сообщения
-     * @type {number}
+     * Дата отправки сообщения.
      * Unix timestamp
      */
     date?: number;
 
     /**
      * Текст сообщения
-     * @type {string}
      */
     text?: string;
 
     /**
      * Информация об опросе
-     * @type {ITelegramPoll}
      */
     poll?: ITelegramPoll;
 
     /**
      * Информация о фотографии
-     * @type {ITelegramPhoto}
      */
     photo?: ITelegramPhoto;
 
     /**
      * Информация о документе
-     * @type {ITelegramDocument}
      */
     document?: ITelegramDocument;
 
     /**
      * Информация об аудиофайле
-     * @type {ITelegramAudio}
      */
     audio?: ITelegramAudio;
 
     /**
      * Информация о видеофайле
-     * @type {ITelegramVideo}
      */
     video?: ITelegramVideo;
 }
@@ -886,26 +812,22 @@ export interface ITelegramResultContent {
 export interface ITelegramResult {
     /**
      * Статус выполнения запроса
-     * @type {boolean}
      */
     ok: boolean;
 
     /**
      * Содержимое результата
-     * @type {ITelegramResultContent}
      */
     result: ITelegramResultContent;
 
     /**
-     * Код ошибки
-     * @type {number}
+     * Код ошибки.
      * Присутствует только в случае ошибки
      */
     error_code?: number;
 
     /**
-     * Описание ошибки
-     * @type {string}
+     * Описание ошибки.
      * Присутствует только в случае ошибки
      */
     description?: string;

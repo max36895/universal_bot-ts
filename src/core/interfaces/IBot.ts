@@ -8,16 +8,17 @@ import { BotController } from '../../controller';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { IButtonType, Buttons, IImageType, ISound } from '../../components';
 import { IModelRes, TQueryCb, IQuery, IQueryData } from '../../models';
+import { Bot } from '../Bot';
 
 /**
- * Тип содержимого запроса к боту
- * Определяет возможные форматы данных, которые могут быть переданы боту
+ * Тип содержимого запроса к голосовому навыку или боту
+ * Определяет возможные форматы данных, которые могут быть переданы навыку/боту
  *
  * @remarks
  * Возможные значения:
  * - string: JSON или текстовое содержимое запроса
  *   ```ts
- *   const content: TBotContent = '{"text": "Привет, бот!"}';
+ *   const content: TBotContent = '{"text": "Привет мир!"}';
  *   ```
  * - boolean: Флаг состояния запроса
  *   ```ts
@@ -96,16 +97,43 @@ export interface IPlugin {
      * Метод инициализации плагина.
      * Вызывается один раз при подключении через `bot.use()`.
      * @param appContext Контекст приложения
+     * @param bot Основной класс приложения
      */
-    init: (appContext: AppContext<IDatabaseInfo>) => void;
+    init: (appContext: AppContext, bot: Bot) => void;
+    /**
+     * Метод, который вызывается при уничтожении плагина.
+     * В данном методе можно добавить отписку, либо выполнить другие действия.
+     * @param bot Основной класс приложения
+     */
+    destroy: (bot: Bot) => void;
 }
+
+/**
+ * Возвращаемый результат после инициализации плагина.
+ * Возвращает либо void, либо функция, которая будет вызвана после уничтожения.
+ */
+export type TPluginFnResult = void | ((bot: Bot) => void);
 
 /**
  * Тип для плагина в виде функции.
  * Должен иметь свойство `isPlugin = true` для отличия от обычных функций.
  */
 export interface IPluginFn {
-    (appContext: AppContext): void;
+    /**
+     * Конструктор функции регистрации плагина
+     * @extends
+     * ```ts
+     * function myPlugin(appContext: AppContext, bot: Bot) {
+     *      // Какая-то ваша логика
+     *      return () => {
+     *          // Функция, которая будет вызвана при уничтожении.
+     *      }
+     * }
+     * ```
+     * @param appContext Контекст приложения
+     * @param bot Основной класс приложения
+     */
+    (appContext: AppContext, bot: Bot): TPluginFnResult;
 
     /**
      * Флаг, говорящий о том, что функция является плагином
@@ -119,10 +147,10 @@ export interface IPluginFn {
 export type TPlugin = IPlugin | IPluginFn;
 
 /**
- * Адаптер платформы (Telegram, Алиса, VK и др.).
+ * Интерфейс для адаптеров платформы (Алиса, Салют, Telegram, VK и др.).
  *
  * Обеспечивает унификацию обработки запросов от разных платформ.
- * Реализуется как плагин (`IPlugin`) и регистрируется в боте.
+ * Реализуется как плагин (`IPlugin`) и регистрируется в приложении.
  */
 export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     /**
@@ -144,6 +172,13 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * ```
      */
     isPlatformOnQuery: (query: TQuery, headers?: Record<string, unknown>) => boolean;
+    /**
+     * Проверяет полученный запрос от платформы на корректность.
+     * Реализация зависит от адаптера, как правило, в чувствительных платформах есть токен, который приходит с запросом, и желательно проверять что пришедший токен соответствует тому, что сохранен в настройках.
+     * @param query
+     * @param headers
+     */
+    isCorrectQuery: (query: TQuery, headers?: Record<string, unknown>) => boolean;
     /**
      * Инициализирует данные запроса в контроллере приложения.
      *
@@ -251,7 +286,7 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
 
     /**
      * Отправка текста пользователю
-     * Этот метод используется для активных рассылок — когда бот инициирует диалог первым (например, уведомление).
+     * Этот метод используется для активных рассылок — когда навык или бот инициирует диалог первым (например, уведомление).
      * В данном методе необходимо поддержать отправку результата пользователю.
      * Это необходимо для того, чтобы само приложение смогло продолжить диалог.
      *
@@ -301,7 +336,7 @@ export interface IDbResult<TValue = unknown> {
 /**
  * Адаптер для работы с базой данных.
  *
- * Обеспечивает унифицированный интерфейс для различных СУРБД (файловая, MongoDB, PostgreSQL и др.).
+ * Обеспечивает унифицированный интерфейс для различных СУБД (файловая, MongoDB, PostgreSQL и др.).
  * Все данные подключения и соединения хранятся в `AppContext` через `IDatabaseInfo`,
  * чтобы избежать повторного подключения при каждом запросе.
  */
@@ -313,7 +348,7 @@ export interface IDatabaseAdapter extends IPlugin {
      */
     close: (tableName: string) => void | Promise<void>;
     /**
-     * Вызывается при завершении работы бота или замене адаптера.
+     * Вызывается при завершении работы приложения или замене адаптера.
      * Используйте для закрытия соединений, сохранения данных и т.п.
      */
     destroy: () => void | Promise<void>;
@@ -447,6 +482,10 @@ export interface ICardInfo {
      * Заголовок карточки.
      */
     title: string | null;
+    /**
+     * Описание карточки
+     */
+    description: string | null;
     /**
      * Показывать только первую карточку.
      */
