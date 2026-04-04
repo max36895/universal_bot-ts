@@ -155,11 +155,16 @@
         "jest": "^30.3.0",
         "prettier": "^3.8.1",
         "ts-jest": "^29.4.6",
-        "typedoc": "^0.28.18",
-        "typescript": "^5.9.3"
+        "typedoc": "^0.28.18"
     },
     "peerDependencies": {
-        "mongodb": "^7.1.1"
+        "mongodb": "^7.1.1",
+        "typescript": ">=5.0.0 <7.0.0"
+    },
+    "peerDependenciesMeta": {
+        "typescript": {
+            "optional": true
+        }
     },
     "files": [
         "dist",

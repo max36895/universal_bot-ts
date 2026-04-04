@@ -1,6 +1,6 @@
 'use strict';
-const CreateController = require(__dirname + '/CreateController').create;
-const utils = require(__dirname + '/../utils').utils;
+const CreateController = require(__dirname + '/CreateController.js').create;
+const utils = require(__dirname + '/../utils.js').utils;
 
 const VERSION = '3.0.0';
 

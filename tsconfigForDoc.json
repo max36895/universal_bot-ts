@@ -1,13 +1,14 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "node16",
         "target": "es2023",
         "useDefineForClassFields": true,
-        "lib": ["es2023", "dom"],
-        "moduleResolution": "node",
+        "lib": ["es2023", "DOM"],
+        "moduleResolution": "node16",
         "removeComments": false,
+        "stripInternal": true,
         "sourceMap": false,
-        "allowJs": true,
+        "allowJs": false,
         "skipLibCheck": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
@@ -16,20 +17,13 @@
         "noFallthroughCasesInSwitch": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "outDir": "dist",
-        "baseUrl": ".",
-        "paths": {
-            "umbot/plugins": ["src/plugins"],
-            "umbot/middleware": ["src/middleware"],
-            "umbot/test": ["src/test"],
-            "umbot/build": ["src/build"],
-            "umbot/preload": ["src/Preload"],
-            "umbot/docs": ["src/docs"],
-            "umbot/*": ["src/*"]
-        },
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "declaration": true,
+        "declarationMap": true,
         "types": ["node", "jest"],
         "typeRoots": ["node_modules/@types"]
     },
-    "includes": ["src/**/*", "cli/**/*"],
-    "exclude": ["node_modules", "cli/template/**/*", "tests/**/*", "examples/**/*"]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "cli", "examples", "tests", "**/*.test.ts"]
 }

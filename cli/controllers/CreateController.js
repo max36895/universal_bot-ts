@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const { exec } = require('node:child_process');
-const utils = require(__dirname + '/../utils').utils;
+const utils = require(__dirname + '/../utils.js').utils;
 
 /**
  * Класс, создающий пустой проект, или шаблон для готового проекта.

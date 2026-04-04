@@ -55,7 +55,7 @@
  * npm umbot create project.json
  * ```
  */
-export * from './umbot';
-export * from './utils';
-export * from './controllers/ConsoleController';
-export * from './controllers/CreateController';
+export * from './umbot.js';
+export * from './utils.js';
+export * from './controllers/ConsoleController.js';
+export * from './controllers/CreateController.js';
