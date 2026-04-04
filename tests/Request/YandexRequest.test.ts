@@ -4,6 +4,10 @@ import { AppContext } from '../../src';
 import { YandexRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({
+    error: () => {},
+    warn: () => {},
+});
 
 describe('YandexRequest', () => {
     let yandex: YandexRequest;
@@ -12,6 +16,10 @@ describe('YandexRequest', () => {
         appContext.appConfig.tokens.alisa = { token: 'test-yandex-token' };
         yandex = new YandexRequest(null, appContext);
         (global.fetch as jest.Mock).mockClear();
+    });
+
+    afterEach(() => {
+        appContext.close();
     });
 
     it('should set OAuth header correctly', () => {

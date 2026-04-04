@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { AppContext, UsersData, isFileSync, unlinkSync, IQueryData } from '../../src';
 
 import { FileAdapter, MongoAdapter, T_ALISA } from '../../src/plugins';
@@ -10,15 +11,22 @@ appContext.setLogger({
     warn: () => {},
 });
 
+const FILE_PATH = join(__dirname, FILE_NAME);
+
 describe('Db file connect', () => {
     let data: Record<string, Record<string, unknown>>;
     const userData = new UsersData(appContext);
 
     beforeEach(async () => {
+        unlinkSync(FILE_PATH);
         const fileAdapter = new FileAdapter();
         fileAdapter.init(appContext);
         appContext.platformParams.utm_text = '';
         appContext.appConfig.json = __dirname;
+        appContext.setLogger({
+            error: () => {},
+            warn: () => {},
+        });
         data = {
             userId1: {
                 userId: 'userId1',
@@ -53,7 +61,8 @@ describe('Db file connect', () => {
     });
     afterEach(() => {
         userData.destroy();
-        unlinkSync(__dirname + '/' + FILE_NAME);
+        unlinkSync(FILE_PATH);
+        appContext.close();
     });
 
     it('Where string', async () => {

@@ -2,7 +2,7 @@
     "entryPoints": [
         "src/index.ts",
         "src/build.ts",
-        "cli",
+        "cli/index.ts",
         "src/plugins.ts",
         "src/middleware.ts",
         "src/test.ts",
@@ -11,7 +11,7 @@
     ],
     "entryPointStrategy": "resolve",
     "readme": "README.md",
-    "projectDocuments": ["src/docs/*", "cli/README.md"],
+    "projectDocuments": ["src/docs/**/*.md", "cli/README.md"],
     "name": "umbot",
     "out": "./docs/",
     "tsconfig": "tsconfigForDoc.json",

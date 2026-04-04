@@ -15,6 +15,7 @@ import {
     voicePlatforms,
 } from '../../src/plugins';
 import { Server } from 'http';
+import { join } from 'node:path';
 
 class MyReg extends RegExp {
     constructor(parent: RegExp | string, flags: string) {
@@ -121,7 +122,7 @@ describe('Bot', () => {
         jest.resetAllMocks();
         bot.close();
         bot.clearCommands();
-        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
+        unlinkSync(join(bot.getAppContext().appConfig.json, 'UsersData.json'));
     });
 
     describe('setPlatformParams', () => {

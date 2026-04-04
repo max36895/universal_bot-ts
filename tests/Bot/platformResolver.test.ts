@@ -64,6 +64,11 @@ describe('Bot.setPlatformResolver', () => {
         bot.use(mockAdapterA);
         bot.use(mockAdapterB);
 
+        bot.setLogger({
+            error: () => {},
+            warn: () => {},
+        });
+
         // Устанавливаем контроллер для выполнения run
         bot.initBotController(TestBotController);
 

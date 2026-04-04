@@ -1,6 +1,7 @@
 import { Bot, unlinkSync } from '../../src';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
+import { join } from 'node:path';
 
 function getContent(query: string, count = 0): string {
     return JSON.stringify({
@@ -39,6 +40,10 @@ describe('Middleware', () => {
 
     beforeAll(() => {
         bot = new Bot();
+        bot.setLogger({
+            error: () => {},
+            warn: () => {},
+        });
         bot.use(new AlisaAdapter());
         bot.use(new FileAdapter());
     });
@@ -52,7 +57,7 @@ describe('Middleware', () => {
     });
     afterAll(() => {
         bot.close();
-        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
+        unlinkSync(join(bot.getAppContext().appConfig.json, 'UsersData.json'));
     });
 
     it('should call global middleware', async () => {

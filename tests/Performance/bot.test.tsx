@@ -131,12 +131,16 @@ describe('umbot', () => {
 
     beforeEach(() => {
         bot = new TestBot();
+        bot.setLogger({
+            error: () => {},
+        });
         bot.use(new AlisaAdapter());
         bot.use(new FileAdapter());
     });
 
     afterEach(() => {
         bot.clearCommands();
+        bot.close();
         jest.resetAllMocks();
     });
     describe('run performance', () => {

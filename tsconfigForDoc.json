@@ -1,10 +1,10 @@
 {
     "compilerOptions": {
-        "module": "node16",
-        "target": "es2023",
+        "module": "Node16",
+        "target": "ES2023",
         "useDefineForClassFields": true,
-        "lib": ["es2023", "DOM"],
-        "moduleResolution": "node16",
+        "lib": ["ES2023", "DOM"],
+        "moduleResolution": "Node16",
         "removeComments": false,
         "stripInternal": true,
         "sourceMap": false,
@@ -22,8 +22,18 @@
         "declaration": true,
         "declarationMap": true,
         "types": ["node", "jest"],
-        "typeRoots": ["node_modules/@types"]
+        "typeRoots": ["node_modules/@types"],
+        "incremental": true,
+        "tsBuildInfoFile": "./dist/.tsbuildinfo.typedoc"
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "cli", "examples", "tests", "**/*.test.ts"]
+    "exclude": [
+        "node_modules",
+        "dist",
+        "cli",
+        "examples",
+        "tests",
+        "**/*.test.ts",
+        "**/node_modules/**"
+    ]
 }
