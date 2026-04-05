@@ -1,12 +1,15 @@
 // benchmark.js
 // Запуск: node --expose-gc  .\command.js
 
-const { Bot, BotController, Alisa, T_ALISA } = require('./../dist/index');
+const { Bot, BotController } = require('../dist/index');
+const { AlisaAdapter, T_ALISA } = require('../dist/plugins');
 const { performance } = require('node:perf_hooks');
 const os = require('node:os');
 
 function gc() {
-    global.gc();
+    if (global.gc) {
+        global.gc();
+    }
 }
 
 // --------------------------------------------------
@@ -29,14 +32,14 @@ function printScenarioBlock(items) {
 
     const rep = byState.middle || byState.low || byState.high;
     if (rep) {
-        log(`  ├─ Память до запуска: ${memResult(rep.startMemory)}`);
-        log(`  ├─ Память после первого запуска: ${memResult(rep.afterRunMemory)}`);
-        log(`  ├─ Прирост памяти (первый запуск): +${memResult(rep.memoryIncrease)}`);
+        console.log(`  ├─ Память до запуска: ${memResult(rep.startMemory)}`);
+        console.log(`  ├─ Память после первого запуска: ${memResult(rep.afterRunMemory)}`);
+        console.log(`  ├─ Прирост памяти (первый запуск): +${memResult(rep.memoryIncrease)}`);
         const memPerCmd =
             (parseFloat(rep.afterRunMemory) - parseFloat(rep.startMemory)) / rep.count;
-        log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
+        console.log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
         const timePerCmd = rep.duration / rep.count;
-        log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
+        console.log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
     }
 
     const low = byState.low;
@@ -47,10 +50,10 @@ function printScenarioBlock(items) {
         const speedup =
             ((parseFloat(low.duration) - parseFloat(low.duration2)) / parseFloat(low.duration)) *
             100;
-        log(
+        console.log(
             `  ├─ Время первого запуска для самого лучшего исхода (команда в начале): ${low.duration} мс`,
         );
-        log(
+        console.log(
             `  ├─ Время повторного запуска для лучшего исхода: ${low.duration2} мс (ускорение: ${speedup >= 0 ? '+' : ''}${speedup.toFixed(1)}%)`,
         );
     }
@@ -59,10 +62,10 @@ function printScenarioBlock(items) {
             ((parseFloat(middle.duration) - parseFloat(middle.duration2)) /
                 parseFloat(middle.duration)) *
             100;
-        log(
+        console.log(
             `  ├─ Время первого запуска для среднего исхода (команда в середине): ${middle.duration} мс`,
         );
-        log(
+        console.log(
             `  ├─ Время повторного запуска для среднего исхода: ${middle.duration2} мс (ускорение: ${speedup >= 0 ? '+' : ''}${speedup.toFixed(1)}%)`,
         );
     }
@@ -70,10 +73,10 @@ function printScenarioBlock(items) {
         const speedup =
             ((parseFloat(high.duration) - parseFloat(high.duration2)) / parseFloat(high.duration)) *
             100;
-        log(
+        console.log(
             `  ├─ Время первого запуска для худшего исхода (команда не найдена): ${high.duration} мс`,
         );
-        log(
+        console.log(
             `  └─ Время повторного запуска для худшего исхода: ${high.duration2} мс (ускорение: ${speedup >= 0 ? '+' : ''}${speedup.toFixed(1)}%)`,
         );
     }
@@ -91,12 +94,12 @@ function printSummary(results) {
         .sort((a, b) => a - b);
     for (const count of sortedCounts) {
         const items = byCount[count];
-        log(`\nКоличество команд: ${count.toLocaleString('ru-RU')}`);
-        log('────────────────────────────────────────────────────────────');
+        console.log(`\nКоличество команд: ${count.toLocaleString('ru-RU')}`);
+        console.log('────────────────────────────────────────────────────────────');
 
         const noRegItems = items.filter((r) => !r.useReg);
         if (noRegItems.length > 0) {
-            log('Без регулярных выражений:');
+            console.log('Без регулярных выражений:');
             printScenarioBlock(noRegItems);
         }
 
@@ -110,7 +113,7 @@ function printSummary(results) {
         for (const { key, label } of complexities) {
             const subset = regItems.filter((r) => r.regState === key);
             if (subset.length > 0) {
-                log(`С регулярными выражениями (сложность: ${key} — ${label}):`);
+                console.log(`С регулярными выражениями (сложность: ${key} — ${label}):`);
                 printScenarioBlock(subset);
             }
         }
@@ -118,9 +121,9 @@ function printSummary(results) {
 }
 
 function printFinalSummary(results) {
-    log('\n\n' + '='.repeat(130));
-    log('ИТОГОВАЯ СВОДКА ПО ПРОИЗВОДИТЕЛЬНОСТИ (первый → повторный запуск)');
-    log('='.repeat(130));
+    console.log('\n\n' + '='.repeat(130));
+    console.log('ИТОГОВАЯ СВОДКА ПО ПРОИЗВОДИТЕЛЬНОСТИ (первый → повторный запуск)');
+    console.log('='.repeat(130));
 
     const byCount = {};
     for (const item of results) {
@@ -147,8 +150,8 @@ function printFinalSummary(results) {
             noRegItems.reduce((sum, r) => sum + parseFloat(r.memoryIncreaseFromStart), 0) /
             noRegItems.length;
 
-        log(`\nИТОГОВАЯ СВОДКА (Количество команд: ${count.toLocaleString('ru-RU')})`);
-        log('─'.repeat(123));
+        console.log(`\nИТОГОВАЯ СВОДКА (Количество команд: ${count.toLocaleString('ru-RU')})`);
+        console.log('─'.repeat(123));
         const header =
             'Сценарий'.padEnd(17) +
             ' | ' +
@@ -161,8 +164,8 @@ function printFinalSummary(results) {
             'Худший + 2 запуск'.padStart(25) +
             ' | ' +
             '< 1s'.padStart(4);
-        log(header);
-        log('─'.repeat(123));
+        console.log(header);
+        console.log('─'.repeat(123));
 
         // --- Эталон ---
         const memBaselineStr = `${memResult(baselineMemAvg.toFixed(2))} (+0.0%)`;
@@ -196,7 +199,7 @@ function printFinalSummary(results) {
                 ? 'Нет'
                 : 'Да';
 
-        log(
+        console.log(
             'Без regex ЭТАЛОН'.padEnd(17) +
                 ' | ' +
                 memBaselineStr.padStart(18) +
@@ -253,7 +256,7 @@ function printFinalSummary(results) {
             const anyOver1s = regSubset.some((r) => parseFloat(r.duration) >= 1000);
             const over1s = anyOver1s ? 'Нет' : 'Да';
 
-            log(
+            console.log(
                 labels[complexity].padEnd(17) +
                     ' | ' +
                     memStr.padStart(18) +
@@ -271,9 +274,6 @@ function printFinalSummary(results) {
 }
 
 // --------------------------------------------------
-
-// Максимальное количество регулярных выражений для теста регулярок. При выходе за пределы лимита, будет использовано регулярное выражение заглушка.
-const MAX_REG_COUNT = 5000;
 
 // Контроллер для обработки
 class TestBotController extends BotController {
@@ -321,34 +321,6 @@ function getContent(query, count = 0) {
 
 const status = [];
 
-function log(str) {
-    console.log(str);
-}
-
-let maxRegCount = 0;
-
-// Отдаем корректную регулярку для теста
-function getRegex(regex, state, count, step) {
-    const mid = Math.round(count / 2);
-    if (
-        (state === 'low' && (step === 1 || step === 2)) ||
-        (state === 'middle' && step === mid) ||
-        (maxRegCount >= 0 && maxRegCount < MAX_REG_COUNT) ||
-        true
-    ) {
-        maxRegCount++;
-        return regex;
-    } else {
-        // Не совсем честный способ задания регулярных выражений, как поступить иначе не понятно.
-        // Будет много очень похожих регулярных выражений, из-за чего обработка будет медленной по понятной причине.
-        // Тут либо как-то рандомно генерировать регулярные выражение, либо использовать заглушку.
-        // Сценарий когда может быть более 10_000 команд сложно представить, тем более чтобы все регулярные выражения были уникальны.
-        // При 20_000 командах мы все еще укладываемся в ограничение при использовании нативного RegExp с использованием re2 укладываемся в лимит и при 200_000.
-        // Предварительный лимит на количество уникальных регулярных выражений составляет примерно 40_000 - 50_000 команд для regExp.
-        return `((\\d+)_ref_${step})`;
-    }
-}
-
 // сам тест
 async function runTest(count = 1000, useReg = false, state = 'middle', regState = 'middle') {
     const res = { state, regState: useReg ? regState : '', useReg, count };
@@ -362,7 +334,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     const bot = new Bot();
     bot.initBotController(TestBotController);
     bot.appType = T_ALISA;
-    const botClass = new Alisa(bot._appContext);
+    bot.use(new AlisaAdapter());
     bot.setAppConfig({ isLocalStorage: true });
     bot.setLogger({
         error: () => {
@@ -375,24 +347,18 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
         },
     });
 
-    maxRegCount = 0;
     for (let j = 0; j < count; j++) {
         let command;
         if (useReg) {
             switch (regState) {
                 case 'low':
-                    command = getRegex(`${j} страниц`, state, count, j);
+                    command = `${j} страниц`;
                     break;
                 case 'middle':
-                    command = getRegex(`(\\d\\d-\\d\\d-\\d\\d_ref_${j}_)`, state, count, j);
+                    command = `(\\d\\d-\\d\\d-\\d\\d_ref_${j}_)`;
                     break;
                 case 'high':
-                    command = getRegex(
-                        `напомни для user_${j} ([^\\d]+) в (\\d{1,2}:\\d{2})`,
-                        state,
-                        count,
-                        j,
-                    );
+                    command = `напомни для user_${j} ([^\\d]+) в (\\d{1,2}:\\d{2})`;
                     break;
                 default:
                     command = `команда_${j}_`;
@@ -468,16 +434,15 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
 
     const start = performance.now();
     try {
-        await bot.run(botClass, 'alisa', content);
+        await bot.run(T_ALISA, content);
     } catch (e) {
         /* ignore */
     }
     const duration = performance.now() - start;
 
-    bot.setContent(getContent(testCommand));
     const start2 = performance.now();
     try {
-        await bot.run(botClass);
+        await bot.run(T_ALISA, getContent(testCommand));
     } catch (e) {
         /* ignore */
     }
@@ -506,19 +471,16 @@ function getAvailableMemoryMB() {
 }
 
 function predictMemoryUsage(commandCount) {
-    // Базовое потребление + 0.5 КБ на команду + запас
-    return 15 + (commandCount * 0.5) / 1024 + 50; // в МБ
+    // Максимальное потребление примерно 1.3 КБ на команду(округляем до 2) + запас под nodejs и логику
+    return 15 + (commandCount * 2) / 1024 + 50; // в МБ
 }
 
 // --- Запуск ---
 async function start() {
     try {
         // Количество команд
-        const counts = [50, 250, 500, 1000, 2e3, 2e4, 5e4, 2e5, 1e6]; //, 2e6];
-        /* for (let i = 1; i < 1e4; i++) {
-            counts.push(2e6 + i * 5e5);
-        }*/
-        // Исход поиска(требуемая команда в начале списка, требуемая команда в середине списка, требуемая команда не найдена))
+        const counts = [50, 250, 500, 1000, 2e3, 2e4, 5e4, 2e5, 1e6];
+        // Исход поиска(требуемая команда в начале списка, требуемая команда в середине списка, требуемая команда не найдена)
         const states = ['low', 'middle', 'high'];
         // Сложность регулярных выражений (low — простая, middle — умеренная, high — сложная(субъективно))
         const regStates = ['low', 'middle', 'high'];
@@ -526,7 +488,7 @@ async function start() {
         console.log(
             '⚠️ Этот benchmark тестирует ЭКСТРЕМАЛЬНЫЕ сценарии (до 1 млн команд).\n' +
                 '   В реальных проектах редко используется более 1000 команд.\n' +
-                '   Результаты при >20 000 команд НЕ означают, что библиотека "медленная" —\n' +
+                '   Результаты при >20 000 команд НЕ означают, что фреймворк "медленный" —\n' +
                 '   это означает, что такую логику нужно архитектурно декомпозировать.',
         );
         // для чистоты запускаем gc
@@ -540,25 +502,25 @@ async function start() {
             console.log('');
             console.log('🔍 АНАЛИЗ РЕЗУЛЬТАТОВ');
             console.log('💡 Типичные production-проекты содержат:');
-            console.log('   • до 100 команд — простые навыки');
-            console.log('   • до 1 000 команд — сложные корпоративные боты');
+            console.log('   • до 50 команд — простые навыки');
+            console.log('   • до 500 команд — сложные корпоративные приложения');
             console.log('   • до 10 000 команд — крайне редко (требует архитектурного пересмотра)');
             console.log('');
 
-            const time250 = Math.max(
+            const time50 = Math.max(
                 ...status
                     .filter((item) => {
-                        return item.count === 250;
+                        return item.count === 50;
                     })
                     .map((item) => {
                         return +item.duration;
                     }),
             );
 
-            const time1k = Math.max(
+            const time500 = Math.max(
                 ...status
                     .filter((item) => {
-                        return item.count === 1e3;
+                        return item.count === 500;
                     })
                     .map((item) => {
                         return +item.duration;
@@ -577,25 +539,25 @@ async function start() {
 
             console.log(
                 '✅ Анализ производительности:\n' +
-                    `   • При 250 команд (типичный средний навык):\n` +
-                    `     — Худший сценарий: ${time250} мс\n` +
-                    `     — ${time250 <= 20 ? '🟢 Отлично: библиотека не будет узким местом' : time250 <= 150 ? '🟡 Хорошо: укладывается в гарантии платформы' : '⚠️ Внимание: время близко к лимиту. Проверьте, не связано ли это с нагрузкой на сервер (CPU, RAM, GC).'}\n` +
-                    `   • При 1 000 команд (типичный крупный навык):\n` +
-                    `     — Худший сценарий: ${time1k} мс\n` +
-                    `     — ${time1k <= 35 ? '🟢 Отлично: библиотека не будет узким местом' : time1k <= 200 ? '🟡 Хорошо: укладывается в гарантии платформы' : '⚠️ Внимание: время близко к лимиту. Проверьте, не связано ли это с нагрузкой на сервер (CPU, RAM, GC).'}\n` +
+                    `   • При 50 команд (типичный средний навык):\n` +
+                    `     — Худший сценарий: ${time50} мс\n` +
+                    `     — ${time50 <= 20 ? '🟢 Отлично: фреймворк не будет узким местом' : time50 <= 150 ? '🟡 Хорошо: укладывается в гарантии платформы' : '⚠️ Внимание: время близко к лимиту. Проверьте, не связано ли это с нагрузкой на сервер (CPU, RAM, GC).'}\n` +
+                    `   • При 500 команд (типичный крупный навык):\n` +
+                    `     — Худший сценарий: ${time500} мс\n` +
+                    `     — ${time500 <= 50 ? '🟢 Отлично: фреймворк не будет узким местом' : time500 <= 200 ? '🟡 Хорошо: укладывается в гарантии платформы' : '⚠️ Внимание: время близко к лимиту. Проверьте, не связано ли это с нагрузкой на сервер (CPU, RAM, GC).'}\n` +
                     `   • При 20 000 команд (экстремальный сценарий):\n` +
                     `     — Худший сценарий: ${time20k} мс\n` +
-                    `     — ${time20k <= 50 ? '🟢 Отлично: производительность в норме' : time20k <= 300 ? '🟡 Приемлемо: библиотека укладывается в 1 сек' : '⚠️ Внимание: время обработки велико, возможно стоит использовать re2 или задуматься о более производительной конфигурации сервера.'}\n` +
+                    `     — ${time20k <= 75 ? '🟢 Отлично: производительность в норме' : time20k <= 300 ? '🟡 Приемлемо: фреймворк укладывается в 1 сек' : '⚠️ Внимание: время обработки велико, возможно стоит использовать re2 или задуматься о более производительной конфигурации сервера.'}\n` +
                     '💡 Примечание:\n' +
                     '   — Платформы (Алиса, Сбер и др.) дают до 3 секунд на ответ.\n' +
-                    '   — `umbot` гарантирует ≤1 сек на свою логику при количестве команд до 20 000 (оставляя 2+ сек на ваш код).\n' +
+                    '   — В типичных сценариях (до 1 000 команд) внутренняя обработка umbot занимает менее 1 с при количестве команд до 10 000 (оставляя 2+ сек на ваш код).\n' +
                     '   — Всплески времени (например, 100–200 мс) могут быть вызваны сборкой мусора (GC) в Node.js — это нормально.\n' +
-                    '   — Если сервер слабый (1 ядро, 1 ГБ RAM), даже отличная библиотека не сможет компенсировать нехватку ресурсов.',
+                    '   — Если сервер слабый (1 ядро, 1 ГБ RAM), даже отличный фреймворк/библиотека не сможет компенсировать нехватку ресурсов.',
             );
             console.log('');
             console.log('⚠️ Рекомендация:');
             console.log('   Если вы планируете использовать >10 000 команд:');
-            console.log('   • Разбейте логику на поднавыки');
+            console.log('   • Разбейте логику на под навыки');
             console.log('   • Используйте параметризованные интенты вместо статических команд');
             console.log('   • Избегайте простых регулярных выражений в большом количестве');
             console.log(

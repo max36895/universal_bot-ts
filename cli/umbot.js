@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Универсальное приложение по созданию навыков и ботов.
- * Скрипт позволяет создавать шаблон для приложения.
- * @version 2.2.0
+ * cli универсального фреймворка umbot для создания голосовых навыков и чат-ботов для различных платформ.
+ * Скрипт позволяет создавать готовые шаблоны для вашего приложения.
+ * @version 3.0.0
  * @author Maxim-M maximco36895@yandex.ru
  * @module
  */
 
-const consoleController = require(__dirname + '/controllers/ConsoleController');
-const utils = require(__dirname + '/utils').utils;
+const consoleController = require(__dirname + '/controllers/ConsoleController.js');
+const utils = require(__dirname + '/utils.js').utils;
 
 const argv = process.argv;
 
@@ -19,7 +19,7 @@ if (argv[2]) {
     param.hostname = 'localhost';
     param.port = 3000;
     if (argv[3]) {
-        if (argv[3].indexOf('.json') !== -1) {
+        if (argv[3].incluses('.json')) {
             if (utils.isFile(argv[3])) {
                 const jsonParam = JSON.parse(utils.fread(argv[3]));
                 param.appName = jsonParam.name;

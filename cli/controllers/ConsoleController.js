@@ -1,8 +1,8 @@
 'use strict';
-const CreateController = require(__dirname + '/CreateController').create;
-const utils = require(__dirname + '/../utils').utils;
+const CreateController = require(__dirname + '/CreateController.js').create;
+const utils = require(__dirname + '/../utils.js').utils;
 
-const VERSION = '2.2.0';
+const VERSION = '3.0.0';
 
 function getFlags(argv) {
     const flags = [];
@@ -36,6 +36,7 @@ DB_NAME=bot_db`,
 /**
  * Консольный скрипт, позволяющий создать пустой проект.
  * @param param
+ * @param argv
  */
 function main(
     param = { appName: null, command: null, mode: 'prod', hostname: 'localhost', port: 3000 },
@@ -43,7 +44,7 @@ function main(
 ) {
     const infoText =
         'Доступные параметры:\n' +
-        '\n - create <project-name> [--minimal] [--prod] - Создать новый навык/бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
+        '\n - create <project-name> [--minimal] [--prod] - Создать новый голосовой навык/чат-бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
         '\n\t --minimal   Создать минимальную рабочую версию (1 файл). Работает только для стандартного шаблона.' +
         '\n\t --prod      Создать production-готовый проект (Docker, CI/CD)' +
         '\n - generateEnv - Сгенерировать файл .env' +
@@ -61,10 +62,15 @@ function main(
                 if (param.params && param.params.type) {
                     let paramType = param.params.type.toLowerCase();
                     paramType = paramType.substring(0, 1).toUpperCase() + paramType.substring(1);
-                    if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(paramType)) {
+                    if (
+                        [CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(paramType) !==
+                        -1
+                    ) {
                         type = paramType;
                     } else {
-                        throw new Exception('Указан не поддерживаемый тип для создания шаблона!');
+                        throw new Error(
+                            'Указан не поддерживаемый тип для создания шаблона приложения',
+                        );
                     }
                 }
                 let envContent = '';

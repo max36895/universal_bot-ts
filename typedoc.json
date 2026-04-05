@@ -1,7 +1,17 @@
 {
-    "entryPoints": ["src", "cli"],
-    "entryPointStrategy": "expand",
+    "entryPoints": [
+        "src/index.ts",
+        "src/build.ts",
+        "cli/index.ts",
+        "src/plugins.ts",
+        "src/middleware.ts",
+        "src/test.ts",
+        "src/Preload.ts",
+        "src/docs"
+    ],
+    "entryPointStrategy": "resolve",
     "readme": "README.md",
+    "projectDocuments": ["src/docs/**/*.md", "cli/README.md"],
     "name": "umbot",
     "out": "./docs/",
     "tsconfig": "tsconfigForDoc.json",
@@ -18,6 +28,7 @@
         "invalidLink": true,
         "notDocumented": false
     },
+    "lang": "en",
     "navigationLinks": {
         "GitHub": "https://github.com/max36895/universal_bot-ts",
         "npm": "https://www.npmjs.com/package/umbot"

@@ -1,4 +1,63 @@
-import { IAlisaNlu } from '../../../platforms/interfaces';
+/**
+ * Интерфейс для именованных сущностей в запросе.
+ * Используется для извлечения структурированных данных из текста пользователя
+ */
+export interface IBaseEntities {
+    /**
+     * Позиция сущности в массиве слов
+     * Нумерация начинается с 0
+     */
+    tokens?: {
+        /** Индекс первого слова сущности */
+        start: number;
+        /** Индекс первого слова после сущности */
+        end: number;
+    };
+
+    /**
+     * Тип именованной сущности
+     */
+    type: string;
+
+    /**
+     * Значение сущности
+     */
+    value: object | number;
+}
+
+/**
+ * Интерфейс для обработки естественного языка (NLU)
+ * Содержит результаты анализа текста пользователя
+ */
+export interface IBaseNlu {
+    /** Массив слов из фразы пользователя */
+    tokens?: string[] | unknown;
+    /** Массив найденных именованных сущностей */
+    entities?: IBaseEntities[] | unknown;
+    /**
+     * Распознанные намерения пользователя.
+     * Каждый интент содержит слоты с параметрами
+     *
+     * @example
+     * ```ts
+     * intents: {
+     *     "YANDEX.CONFIRM": {
+     *         slots: []
+     *     },
+     *     "YANDEX.REJECT": {
+     *         slots: []
+     *     },
+     *     "YANDEX.DATETIME": {
+     *         slots: [{
+     *             type: "YANDEX.DATETIME",
+     *             value: { year: 2024 }
+     *         }]
+     *     }
+     * }
+     * ```
+     */
+    intents?: object;
+}
 
 /**
  * @interface INluResult
@@ -7,7 +66,7 @@ import { IAlisaNlu } from '../../../platforms/interfaces';
  * @template T - Тип возвращаемого результата (по умолчанию object)
  *
  * @example
- * ```typescript
+ * ```ts
  * // Пример успешного результата
  * const successResult: INluResult<string> = {
  *     status: true,
@@ -37,7 +96,7 @@ export interface INluResult<T = object> {
  * Интерфейс результата поиска ФИО в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const fio: INluFIO = {
  *     first_name: "Иван",
  *     patronymic_name: "Иванович",
@@ -65,7 +124,7 @@ export interface INluFIO {
  * Интерфейс результата поиска геолокации в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const geo: INluGeo = {
  *     country: "Россия",
  *     city: "Москва",
@@ -102,7 +161,7 @@ export interface INluGeo {
  * Интерфейс результата поиска даты и времени в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const dateTime: INluDateTime = {
  *     year: 2024,
  *     month: 3,
@@ -166,7 +225,7 @@ export interface INluDateTime {
  * Интерфейс результата поиска информации о пользователе в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const user: INluThisUser = {
  *     username: "ivan_ivanov",
  *     first_name: "Иван",
@@ -178,7 +237,7 @@ export interface INluThisUser {
     /**
      * Имя пользователя
      */
-    username: string | null;
+    username?: string | null;
     /**
      * Фамилия пользователя
      */
@@ -194,14 +253,14 @@ export interface INluThisUser {
  * Интерфейс слота в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const slot: INluSlot = {
  *     type: "YANDEX.NUMBER",
  *     value: 42
  * };
  * ```
  */
-export interface INluSlot {
+export interface INluSlot<TNLU extends string | unknown = string | unknown> {
     /**
      * Тип значения слота
      */
@@ -210,7 +269,7 @@ export interface INluSlot {
     /**
      * Дополнительные свойства слота
      */
-    [name: string]: any;
+    [name: string]: TNLU | string | unknown;
 }
 
 /**
@@ -218,7 +277,7 @@ export interface INluSlot {
  * Интерфейс интентов в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const intents: INluIntents = {
  *     "YANDEX.CONFIRM": {
  *         slots: []
@@ -241,7 +300,7 @@ export interface INluIntents {
  * Интерфейс интента в NLU
  *
  * @example
- * ```typescript
+ * ```ts
  * const intent: INluIntent = {
  *     slots: [
  *         {
@@ -260,13 +319,10 @@ export interface INluIntent {
 }
 
 /**
- * @interface INlu
  * Основной интерфейс NLU
  *
- * @extends {IAlisaNlu}
- *
  * @example
- * ```typescript
+ * ```ts
  * const nlu: INlu = {
  *     thisUser: {
  *         username: "ivan_ivanov",
@@ -280,7 +336,7 @@ export interface INluIntent {
  * };
  * ```
  */
-export interface INlu extends IAlisaNlu {
+export interface INlu extends IBaseNlu {
     /**
      * Информация о пользователе
      */

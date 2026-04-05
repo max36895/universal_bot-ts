@@ -1,10 +1,10 @@
-import { ITextSimilarity, Text } from '../../utils/standard/Text';
+import { ITextSimilarity, Text } from '../../utils';
 
 /**
  * Тип элементов, по которым будет происходить навигация.
  * Может быть объектом, числом, строкой или любым другим типом.
  * @example
- * ```typescript
+ * ```ts
  * // Строковые элементы
  * const elements: TElementType[] = ['Элемент 1', 'Элемент 2', 'Элемент 3'];
  *
@@ -15,13 +15,13 @@ import { ITextSimilarity, Text } from '../../utils/standard/Text';
  * ];
  * ```
  */
-export type TElementType = Record<string, string> | number | string | any;
+export type TElementType = Record<string, string> | number | string | unknown;
 
 /**
  * Тип ключей для поиска по объектам.
  * Может быть строкой или массивом строк.
  * @example
- * ```typescript
+ * ```ts
  * // Одиночный ключ
  * const key: TKeys = 'name';
  *
@@ -43,7 +43,7 @@ export type TKeys = string | string[];
  * @class Navigation
  *
  * @example
- * ```typescript
+ * ```ts
  * // Создание экземпляра с максимальным количеством видимых элементов
  * const navigation = new Navigation<{id: number, name: string}>(3);
  *
@@ -89,7 +89,7 @@ export class Navigation<ElementType = TElementType> {
      * Дополняет или заменяет стандартные команды в зависимости от isUsedStandardText
      * @defaultValue []
      * @example
-     * ```typescript
+     * ```ts
      * navigation.nextText = ['следующая', 'продолжить'];
      * ```
      */
@@ -100,7 +100,7 @@ export class Navigation<ElementType = TElementType> {
      * Дополняет или заменяет стандартные команды в зависимости от isUsedStandardText
      * @defaultValue []
      * @example
-     * ```typescript
+     * ```ts
      * navigation.oldText = ['предыдущая', 'вернуться'];
      * ```
      */
@@ -129,7 +129,7 @@ export class Navigation<ElementType = TElementType> {
      * Создает экземпляр класса Navigation.
      * @param {number} maxVisibleElements Максимальное количество отображаемых элементов на странице
      * @example
-     * ```typescript
+     * ```ts
      * // Создание с 3 элементами на странице
      * const navigation = new Navigation(3);
      *
@@ -153,7 +153,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если обнаружена команда навигации вперед
      * @example
-     * ```typescript
+     * ```ts
      * const isNext = navigation.isNext('покажи дальше'); // true
      * const isNext = navigation.isNext('вернись назад'); // false
      * ```
@@ -175,7 +175,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если обнаружена команда навигации назад
      * @example
-     * ```typescript
+     * ```ts
      * const isOld = navigation.isOld('вернись назад'); // true
      * const isOld = navigation.isOld('покажи дальше'); // false
      * ```
@@ -197,7 +197,7 @@ export class Navigation<ElementType = TElementType> {
      * @param {number} maxPage Максимальное количество страниц
      */
     protected _validatePage(maxPage?: number): void {
-        const maxValue = typeof maxPage === 'undefined' ? this.getMaxPage() : maxPage;
+        const maxValue = maxPage ?? this.getMaxPage();
         if (this.thisPage >= maxValue) {
             this.thisPage = maxValue - 1;
         }
@@ -213,13 +213,13 @@ export class Navigation<ElementType = TElementType> {
      * @param {string} text Пользовательский запрос
      * @return {boolean} true если обнаружено указание страницы
      * @example
-     * ```typescript
+     * ```ts
      * const isNumberPage = navigation.numberPage('покажи 2 страницу'); // true
      * const isNumberPage = navigation.numberPage('следующая страница'); // false
      * ```
      */
     public numberPage(text: string): boolean {
-        const data = text.match(/((-|)\d) страни/imu);
+        const data = /((-|)\d+) страни/imu.exec(text);
         if (data) {
             this.thisPage = +data[1] - 1;
             this._validatePage();
@@ -264,11 +264,15 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает массив элементов текущей страницы.
      * Обрабатывает команды навигации и возвращает элементы в пределах maxVisibleElements
      *
-     * @param {ElementType[]} elements Массив элементов для обработки
+     * ⚠️ Внимание: При передаче `text` с командой навигации ("Дальше"/"Назад")
+     * автоматически изменяет `this.thisPage` (текущую страницу).
+     *
+     *
+     * @param elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
-     * @return {ElementType[]} Массив элементов текущей страницы
+     * @return Массив элементов текущей страницы
      * @example
-     * ```typescript
+     * ```ts
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' },
@@ -299,7 +303,7 @@ export class Navigation<ElementType = TElementType> {
         const end: number = start + this.maxVisibleElements;
         if (this.elements.length >= start) {
             for (let i = start; i < end; i++) {
-                if (typeof this.elements[i] !== 'undefined') {
+                if (this.elements[i] !== undefined) {
                     showElements.push(this.elements[i]);
                 }
             }
@@ -311,13 +315,13 @@ export class Navigation<ElementType = TElementType> {
      * Выбор элемента из списка по тексту или номеру.
      * Поддерживает поиск по тексту с учетом схожести и выбор по номеру
      *
-     * @param {ElementType[]} elements Массив элементов для обработки
+     * @param elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
      * @param {TKeys} keys Ключи для поиска по объектам
      * @param {number} thisPage Текущая страница
-     * @return {ElementType | null} Выбранный элемент или null
+     * @return Выбранный элемент или null
      * @example
-     * ```typescript
+     * ```ts
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' }
@@ -346,7 +350,7 @@ export class Navigation<ElementType = TElementType> {
         }
 
         let number: number | null = null;
-        const data = text.match(/(\d)/imu);
+        const data = /(\d+)/imu.exec(text);
         if (data) {
             number = +data[0][0];
         }
@@ -365,39 +369,38 @@ export class Navigation<ElementType = TElementType> {
         };
 
         for (let i = start; i < end; i++) {
-            if (typeof this.elements[i] !== 'undefined') {
-                if (index === number) {
-                    return this.elements[i];
-                }
+            if (this.elements[i] === undefined) {
+                continue;
+            }
+            if (index === number) {
+                return this.elements[i];
+            }
 
-                const elementsTypeof = typeof this.elements[i];
+            const elementsTypeof = typeof this.elements[i];
 
-                if (keys === null || elementsTypeof === 'string') {
-                    const r = Text.textSimilarity(this.elements[i] + '', text, 75);
-                    setMaxElement(i, r);
-                } else {
-                    if (elementsTypeof === 'object') {
-                        if (typeof keys === 'object') {
-                            keys.forEach((key) => {
-                                const value = (this.elements[i] as any)[key] as string;
-                                if (value) {
-                                    const r = Text.textSimilarity(value, text, 75);
-                                    setMaxElement(i, r);
-                                }
-                            });
-                        } else {
-                            const value = (this.elements[i] as any)[keys];
-                            if (value) {
-                                const r = Text.textSimilarity(value, text, 75);
-                                setMaxElement(i, r);
-                            }
+            if (keys === null || elementsTypeof === 'string') {
+                const r = Text.textSimilarity(this.elements[i] + '', text, 75);
+                setMaxElement(i, r);
+            } else if (elementsTypeof === 'object') {
+                if (typeof keys === 'object') {
+                    keys.forEach((key) => {
+                        const value = (this.elements[i] as Record<string, string>)[key];
+                        if (value) {
+                            const r = Text.textSimilarity(value, text, 75);
+                            setMaxElement(i, r);
                         }
+                    });
+                } else {
+                    const value = (this.elements[i] as Record<string, string>)[keys];
+                    if (value) {
+                        const r = Text.textSimilarity(value, text, 75);
+                        setMaxElement(i, r);
                     }
                 }
-                index++;
-                if (maxPercent > 90) {
-                    return selectElement;
-                }
+            }
+            index++;
+            if (maxPercent > 90) {
+                return selectElement;
             }
         }
         return selectElement;
@@ -410,32 +413,25 @@ export class Navigation<ElementType = TElementType> {
      * @param {boolean} isNumber Включить команды с номерами страниц
      * @return {string[]} Массив команд навигации
      * @example
-     * ```typescript
+     * ```ts
      * // Получение базовых команд
      * const commands = navigation.getPageNav();
-     * // ['дальше', 'вперед', 'назад']
+     * // ['👈 Назад', 'Дальше 👉']
      *
      * // Получение команд с номерами страниц
      * const commands = navigation.getPageNav(true);
-     * // ['дальше', 'вперед', 'назад', '1 страница', '2 страница']
+     * // ['1', '2', '3']
      * ```
      */
     public getPageNav(isNumber: boolean = false): string[] {
         const maxPage: number = this.getMaxPage();
         this._validatePage(maxPage);
+        if (maxPage === 1) {
+            return ['[1]'];
+        }
         const buttons: string[] = [];
-        if (!isNumber) {
-            if (this.thisPage) {
-                buttons.push('👈 Назад');
-            }
-            if (this.thisPage + 1 < maxPage) {
-                buttons.push('Дальше 👉');
-            }
-        } else {
-            let index: number = this.thisPage - 2;
-            if (index < 0) {
-                index = 0;
-            }
+        if (isNumber) {
+            const index: number = Math.max(this.thisPage - 2, 0);
             let count: number = 0;
             if (index === 1) {
                 buttons.push('1');
@@ -458,6 +454,13 @@ export class Navigation<ElementType = TElementType> {
                     break;
                 }
             }
+        } else {
+            if (this.thisPage) {
+                buttons.push('👈 Назад');
+            }
+            if (this.thisPage + 1 < maxPage) {
+                buttons.push('Дальше 👉');
+            }
         }
         return buttons;
     }
@@ -468,14 +471,14 @@ export class Navigation<ElementType = TElementType> {
      *
      * @return {string} Информация о текущей странице
      * @example
-     * ```typescript
+     * ```ts
      * const info = navigation.getPageInfo();
      * // "Страница 1 из 3"
      * ```
      */
     public getPageInfo(): string {
         if (
-            typeof this.elements[this.thisPage * this.maxVisibleElements] === 'undefined' ||
+            this.elements[this.thisPage * this.maxVisibleElements] === undefined ||
             this.thisPage < 0
         ) {
             this.thisPage = 0;
@@ -494,10 +497,10 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает максимальное количество страниц.
      * Вычисляет количество страниц на основе количества элементов
      *
-     * @param {ElementType[]} elements Массив элементов
-     * @return {number} Максимальное количество страниц
+     * @param elements Массив элементов
+     * @return Максимальное количество страниц
      * @example
-     * ```typescript
+     * ```ts
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' },

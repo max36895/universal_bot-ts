@@ -18,7 +18,7 @@ import * as path from 'path';
  * Все поля являются опциональными и могут быть определены в файле .env
  *
  * @example
- * ```typescript
+ * ```ts
  * // Пример файла .env
  * TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
  * VK_TOKEN=vk1.a.1234567890abcdef
@@ -34,7 +34,7 @@ export interface IEnvConfig {
      * Используется для авторизации бота в Telegram
      *
      * @example
-     * ```typescript
+     * ```ts
      * TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
      * ```
      */
@@ -45,7 +45,7 @@ export interface IEnvConfig {
      * Используется для авторизации в VK API
      *
      * @example
-     * ```typescript
+     * ```ts
      * VK_TOKEN=vk1.a.1234567890abcdef
      * ```
      */
@@ -56,7 +56,7 @@ export interface IEnvConfig {
      * Используется для верификации запросов от VK
      *
      * @example
-     * ```typescript
+     * ```ts
      * VK_CONFIRMATION_TOKEN=abcdef123456
      * ```
      */
@@ -67,7 +67,7 @@ export interface IEnvConfig {
      * Используется для авторизации в Viber API
      *
      * @example
-     * ```typescript
+     * ```ts
      * VIBER_TOKEN=1234567890abcdef
      * ```
      */
@@ -78,7 +78,7 @@ export interface IEnvConfig {
      * Используется для авторизации в API Яндекс.Диалогов
      *
      * @example
-     * ```typescript
+     * ```ts
      * YANDEX_TOKEN=1234567890abcdef
      * ```
      */
@@ -89,7 +89,7 @@ export interface IEnvConfig {
      * Используется для авторизации в API Маруси
      *
      * @example
-     * ```typescript
+     * ```ts
      * MARUSIA_TOKEN=1234567890abcdef
      * ```
      */
@@ -99,7 +99,7 @@ export interface IEnvConfig {
      * Используется для авторизации в API MAX
      *
      * @example
-     * ```typescript
+     * ```ts
      * MAX_TOKEN=1234567890abcdef
      * ```
      */
@@ -110,7 +110,7 @@ export interface IEnvConfig {
      * Используется для авторизации в API Сбер SmartApp
      *
      * @example
-     * ```typescript
+     * ```ts
      * SMARTAPP_TOKEN=1234567890abcdef
      * ```
      */
@@ -126,7 +126,7 @@ export interface IEnvConfig {
      * - доменное имя
      *
      * @example
-     * ```typescript
+     * ```ts
      * DB_HOST=localhost
      * DB_HOST=127.0.0.1
      * DB_HOST=db.example.com
@@ -138,7 +138,7 @@ export interface IEnvConfig {
      * Имя пользователя для подключения к базе данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * DB_USER=root
      * ```
      */
@@ -152,7 +152,7 @@ export interface IEnvConfig {
      * и хранить их в безопасном месте
      *
      * @example
-     * ```typescript
+     * ```ts
      * DB_PASSWORD=my_secure_password
      * ```
      */
@@ -162,7 +162,7 @@ export interface IEnvConfig {
      * Название базы данных
      *
      * @example
-     * ```typescript
+     * ```ts
      * DB_NAME=myapp
      * ```
      */
@@ -201,7 +201,7 @@ export interface IEnvConfigStatus {
  * - Удаляет кавычки из значений
  *
  * @example
- * ```typescript
+ * ```ts
  * // Загрузка конфигурации
  * const config = loadEnvFile('.env');
  *

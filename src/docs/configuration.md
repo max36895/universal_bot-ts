@@ -12,7 +12,7 @@ bot.setAppConfig({ env: './.env' });
 
 Пример файла `.env`:
 
-```env
+```text
 TELEGRAM_TOKEN=your-telegram-token
 VK_TOKEN=your-vk-token
 VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
@@ -25,21 +25,16 @@ DB_PASSWORD=secure_password
 DB_NAME=bot_database
 ```
 
-В случае если при указании env сам файл не будет найден, то библиотека попробует получить все необходимые токены из
-process.env. Если и в таком случае информацию получить не получится, в лог файле будет выведено соответствующая ошибка.
+В случае если при указании env сам файл не будет найден, то фреймворк попробует получить все необходимые токены из
+process.env. Если и в таком случае информацию получить не получится, в лог-файле будет выведено соответствующее сообщение об ошибке.
 
 > Важно!
-> Никогда не коммитьте .env файлы в Git
+> Никогда не добавляйте .env файлы в репозиторий Git
 > Используйте разные токены для разработки и продакшена
 
 ### Вариант 2: Прямая передача в коде
 
-```typescript
-bot.setPlatformParams({
-    telegram_token: 'your-telegram-token',
-    vk_token: 'your-vk-token',
-});
-
+```ts
 bot.setAppConfig({
     db: {
         host: 'localhost',
@@ -47,9 +42,17 @@ bot.setAppConfig({
         password: 'secure_password',
         database: 'bot_database',
     },
+    tokens: {
+        telegram: {
+            token: 'your-telegram-token',
+        },
+        vk: {
+            token: 'your-vk-token',
+        },
+    },
 });
 ```
 
 Вы можете комбинировать оба подхода - значения из .env файла имеют приоритет над значениями, указанными в конфигурации.
 
-Рекомендуется хранить чувствительные данных в `.env` файле.
+Рекомендуется хранить чувствительные данные в `.env` файле.

@@ -1,4 +1,4 @@
-import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from '../../../../src';
+import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from 'umbot';
 
 /**
  * Стандартный пример приложения.
@@ -19,8 +19,6 @@ export class StandardController extends BotController {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btns = ['Пример кнопки галереи'];
-                this.buttons.links = ['Пример ссылки для изображения'];
                 break;
 
             case HELP_INTENT_NAME:

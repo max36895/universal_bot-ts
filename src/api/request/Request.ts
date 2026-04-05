@@ -3,13 +3,13 @@
  * Предоставляет функционал для работы с различными типами запросов и ответов
  */
 import { httpBuildQuery, IGetParams, isFile } from '../../utils';
-import { IRequestSend } from '../interfaces';
 import { AppContext, EMetric, THttpClient } from '../../core';
-import fs from 'fs';
+import { IRequestSend } from '../interfaces/IRequest';
 import { basename } from 'path';
+import fs from 'fs/promises';
 
 /**
- * Класс для отправки HTTP-запросов.
+ * Класс для отправки HTTP-запросов к API различных платформ. Используется внутри адаптеров для взаимодействия с внешними сервисами.
  * Поддерживает различные типы запросов, заголовки и отправку файлов
  *
  * @class Request
@@ -20,23 +20,10 @@ export class Request {
         'Content-Type': 'multipart/form-data',
     };
 
-    /** Заголовок для RSS/XML контента */
-    public static readonly HEADER_RSS_XML: Record<string, string> = {
-        'Content-Type': 'application/rss+xml',
-    };
-
     /** Заголовок для JSON контента */
-    public static readonly HEADER_AP_JSON: Record<string, string> = {
+    public static readonly HEADER_JSON: Record<string, string> = {
         'Content-Type': 'application/json',
     };
-
-    /** Заголовок для XML контента */
-    public static readonly HEADER_AP_XML: Record<string, string> = {
-        'Content-Type': 'application/xml',
-    };
-
-    /** Заголовок для сжатого контента */
-    public static readonly HEADER_GZIP: Record<string, string> = { 'Content-Encoding': 'gzip' };
 
     /** URL для отправки запроса */
     public url: string | null;
@@ -45,7 +32,9 @@ export class Request {
     public get: IGetParams | null;
 
     /** POST-параметры запроса */
-    public post: any;
+    public post: Record<string, unknown> | null | FormData;
+    /** POST-параметры запроса в виде строки */
+    public postInString: string | null;
 
     /** HTTP-заголовки запроса */
     public header: HeadersInit | null;
@@ -82,7 +71,7 @@ export class Request {
     public isConvertJson: boolean;
 
     /**
-     * Понимает что возвращается бинарный ответ
+     * Флаг, указывающий, что ожидается бинарный ответ
      */
     public isBinaryResponse: boolean = false;
 
@@ -102,6 +91,7 @@ export class Request {
         this.url = null;
         this.get = null;
         this.post = null;
+        this.postInString = null;
         this.header = null;
         this.attach = null;
         this.isAttachContent = false;
@@ -127,8 +117,8 @@ export class Request {
     /**
      * Отправляет HTTP-запрос
      *
-     * @param {string} [url] - URL для отправки запроса (если не указан, используется this.url)
-     * @returns {Promise<IRequestSend<T>>} Результат выполнения запроса
+     * @param url - URL для отправки запроса (если не указан, используется this.url)
+     * @returns  Результат выполнения запроса
      */
     public async send<T>(url: string | null = null): Promise<IRequestSend<T>> {
         if (url) {
@@ -140,6 +130,7 @@ export class Request {
         this.attachName = 'file';
         this.attach = null;
         this.post = null;
+        this.postInString = null;
         if (this.#error) {
             return { status: false, data: null, err: this.#error };
         }
@@ -172,18 +163,23 @@ export class Request {
     /**
      * Выполняет HTTP-запрос
      *
-     * @returns {Promise<T|string|null>} Ответ сервера или null в случае ошибки
+     * @returns Ответ сервера или null в случае ошибки
      */
     async #run<T>(): Promise<T | string | null> {
         if (this.url) {
             try {
-                const start = performance.now();
-                const response = await this.#getHttpClient()(this._getUrl(), this._getOptions());
-                this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
-                    url: this.url,
-                    method: this.customRequest || 'POST',
-                    status: response.status || 0,
-                });
+                const start = this.#appContext?.usedMetric ? performance.now() : 0;
+                const response = await this.#getHttpClient()(
+                    this._getUrl(),
+                    await this._getOptions(),
+                );
+                if (this.#appContext?.usedMetric) {
+                    this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
+                        url: this.url,
+                        method: this.customRequest || 'POST',
+                        status: response.status || 0,
+                    });
+                }
                 if (response.ok) {
                     if (this.isConvertJson) {
                         return await response.json();
@@ -193,7 +189,7 @@ export class Request {
                     }
                     return await response.text();
                 }
-                this.#error = 'Не удалось получить данные с ' + this.url;
+                this.#error = `Не удалось получить данные с "${this.url}". Статус: ${response.status}`;
             } catch (e) {
                 this.#error = e as Error;
             }
@@ -208,7 +204,7 @@ export class Request {
      *
      * @returns {RequestInit|undefined} Параметры запроса
      */
-    protected _getOptions(): RequestInit | undefined {
+    protected async _getOptions(): Promise<RequestInit | undefined> {
         const options: RequestInit = {};
 
         if (this.maxTimeQuery) {
@@ -217,8 +213,8 @@ export class Request {
 
         let post: BodyInit | null = null;
         if (this.attach) {
-            if (isFile(this.attach)) {
-                const formData = this.getAttachFile(this.attach, this.attachName);
+            if (await isFile(this.attach)) {
+                const formData = await this.getAttachFile(this.attach, this.attachName);
                 if (!formData) {
                     this.#error = `Не удалось прочитать файл: ${this.attach}`;
                     return;
@@ -234,18 +230,22 @@ export class Request {
                 this.#error = `Не удалось найти файл: ${this.attach}`;
                 return;
             }
-        } else if (this.post) {
-            if (typeof this.post !== 'string' && !(this.post instanceof FormData)) {
-                post = JSON.stringify(this.post);
+        } else if (this.post || this.postInString) {
+            if (this.postInString) {
+                post = this.postInString;
             } else {
-                post = this.post;
+                if (!(this.post instanceof FormData)) {
+                    post = JSON.stringify(this.post);
+                } else {
+                    post = this.post;
+                }
             }
         }
 
         if (post) {
             options.body = post;
             options.method = this.customRequest || 'POST';
-            options.headers = this.header || Request.HEADER_AP_JSON;
+            options.headers = this.header || Request.HEADER_JSON;
         }
         if (this.header) {
             options.headers = this.header;
@@ -270,11 +270,17 @@ export class Request {
      * @param filePath
      * @param fileName
      */
-    public addAttachFile(formData: FormData, filePath: string, fileName?: string): void {
-        const fileResult = fs.readFileSync(filePath);
-        if (fileResult) {
+    public async addAttachFile(
+        formData: FormData,
+        filePath: string,
+        fileName?: string,
+    ): Promise<void> {
+        try {
+            const fileResult = (await fs.readFile(filePath)) as BufferSource;
             const fileBlob = new Blob([fileResult]);
             formData.append(fileName || 'file', fileBlob, basename(filePath));
+        } catch (error) {
+            this.#appContext?.logError(`Ошибка чтения файла: "${filePath}"`, { error });
         }
     }
 
@@ -285,18 +291,13 @@ export class Request {
      * @param {string} [fileName] - Имя файла
      * @returns {FormData|null} FormData с файлом или null в случае ошибки
      */
-    public getAttachFile(filePath: string, fileName?: string): FormData | null {
+    public async getAttachFile(filePath: string, fileName?: string): Promise<FormData | null> {
         try {
             const formData = new FormData();
-            this.addAttachFile(formData, filePath, fileName);
+            await this.addAttachFile(formData, filePath, fileName);
             return formData;
         } catch (e) {
-            if (this.#appContext?.logError) {
-                this.#appContext?.logError(
-                    'Ошибка при чтении файла:',
-                    e as Record<string, unknown>,
-                );
-            }
+            this.#appContext?.logError('Ошибка при чтении файла:', e as Record<string, unknown>);
         }
         return null;
     }

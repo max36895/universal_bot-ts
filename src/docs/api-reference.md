@@ -1,38 +1,52 @@
 # API Reference
 
+Данный справочник содержит описание всех публичных классов, методов и интерфейсов фреймворка umbot. Для начала работы
+смотрите раздел 'Быстрый старт'.
+
 ## Основные классы
 
 ### BotController
 
-Основной класс для управления логикой бота. Предоставляет базовый функционал для обработки пользовательских запросов,
+Основной класс для управления логикой приложения. Предоставляет базовый функционал для обработки пользовательских запросов,
 управления состоянием и взаимодействия с различными платформами.
 
 #### Свойства
 
-| Свойство            | Тип                      | Описание                                         |
-| ------------------- | ------------------------ | ------------------------------------------------ |
-| text                | string                   | Текст ответа бота                                |
-| tts                 | string \| null           | Текст для преобразования в речь                  |
-| buttons             | Buttons                  | Управление кнопками интерфейса                   |
-| card                | Card                     | Управление карточками и галереями                |
-| nlu                 | Nlu                      | Обработка естественного языка                    |
-| sound               | Sound                    | Управление звуковыми эффектами                   |
-| userId              | string \| number \| null | Идентификатор пользователя                       |
-| userToken           | string \| null           | Токен авторизации пользователя                   |
-| userCommand         | string \| null           | Текущая команда пользователя (в нижнем регистре) |
-| originalUserCommand | string \| null           | Оригинальная команда пользователя                |
-| userData            | TUserData                | Пользовательские данные                          |
-| isAuth              | boolean                  | Статус авторизации                               |
-| isScreen            | boolean                  | Наличие экрана у пользователя                    |
-| isEnd               | boolean                  | Флаг завершения сессии                           |
-| isSend              | boolean                  | Статус отправки запроса к API                    |
+| Свойство            | Тип                                                  | Описание                                                                                                                              |
+| ------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| text                | string                                               | Текст ответа пользователю                                                                                                             |
+| tts                 | string \| null                                       | Текст для озвучки (на голосовых платформах, если `null` — может быть автоматически подставлен из `text`)                              |
+| buttons             | Buttons                                              | Компонент кнопок (инициализируется лениво через getter)                                                                               |
+| card                | Card                                                 | Компонент карточек/галерей (инициализируется лениво через getter)                                                                     |
+| nlu                 | Nlu                                                  | Данные NLU (инициализируется лениво через getter)                                                                                     |
+| sound               | Sound                                                | Звуковые эффекты (инициализируется лениво через getter)                                                                               |
+| userId              | string \| number \| null                             | Идентификатор пользователя                                                                                                            |
+| userToken           | string \| null                                       | Токен авторизации пользователя (если платформа его предоставляет)                                                                     |
+| userMeta            | unknown \| null                                      | Доп. информация о пользователе (зависит от платформы)                                                                                 |
+| messageId           | number \| string \| null                             | ID сообщения (часто используется для определения “первого” сообщения)                                                                 |
+| userCommand         | string \| null                                       | Команда пользователя в нижнем регистре                                                                                                |
+| originalUserCommand | string \| null                                       | Оригинальная команда пользователя                                                                                                     |
+| payload             | object \| string \| null \| undefined                | Дополнительные параметры запроса (payload)                                                                                            |
+| userData            | TUserData                                            | Данные пользователя (БД или локальное хранилище, в зависимости от `setAppConfig`)                                                     |
+| state               | TPlatformState \| null                               | Локальное хранилище платформы (если платформа поддерживает и включено `isLocalStorage`)                                               |
+| isAuth              | boolean                                              | Флаг “нужно запросить авторизацию” (поддержка зависит от платформы)                                                                   |
+| userEvents          | IUserEvent \| null                                   | События пользователя (авторизация/оценка), если платформа присылает                                                                   |
+| isScreen            | boolean                                              | Есть ли экран у пользователя (если платформа сообщает)                                                                                |
+| isEnd               | boolean                                              | Завершить диалог/сессию (поддержка зависит от платформы)                                                                              |
+| skipAutoReply       | boolean                                              | Если `true`, фреймворк не будет пытаться “авто-отправить” ответ (актуально для платформ, где вы сами отправляете сообщения через API) |
+| requestObject       | Record<string, unknown> \| string \| unknown \| null | Оригинальный объект запроса от платформы                                                                                              |
+| thisIntentName      | string \| null                                       | Имя шага/интента, которое нужно сохранить как “следующий шаг”                                                                         |
+| oldIntentName       | string \| null                                       | Имя предыдущего шага/интента (из `userData.oldIntentName` или из `state.oldIntentName`)                                               |
+| emotion             | string \| null                                       | Эмоция ответа (если платформа поддерживает)                                                                                           |
+| appeal              | 'official' \| 'no_official' \| null                  | Стиль обращения (если платформа поддерживает)                                                                                         |
+| isSendRating        | boolean                                              | Запросить у пользователя оценку (если платформа поддерживает)                                                                         |
 
 #### Методы
 
-| Метод  | Параметры                                       | Возвращаемое значение | Описание                       |
-| ------ | ----------------------------------------------- | --------------------- | ------------------------------ |
-| action | intentName: string \| null, isCommand?: boolean | void                  | Обработка команды пользователя |
-| run    | -                                               | void                  | Запуск обработки запроса       |
+| Метод  | Параметры                                                         | Возвращаемое значение | Описание                                                                        |
+| ------ | ----------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
+| action | intentName: string \| null, isCommand?: boolean, isStep?: boolean | void                  | Ваш основной обработчик. Вызывается фреймворком (переопределяется в наследнике) |
+| run    | -                                                                 | void \| Promise<void> | Запуск обработки запроса (вызывается фреймворком; вручную обычно не вызывают)   |
 
 ## Компоненты
 
@@ -42,10 +56,11 @@
 
 #### Методы
 
-| Метод  | Параметры                                 | Возвращаемое значение | Описание            |
-| ------ | ----------------------------------------- | --------------------- | ------------------- |
-| addBtn | text: string, url?: string, payload?: any | Buttons               | Добавление кнопки   |
-| clear  | -                                         | void                  | Очистка всех кнопок |
+| Метод   | Параметры                                     | Возвращаемое значение | Описание                 |
+| ------- | --------------------------------------------- | --------------------- | ------------------------ |
+| addBtn  | text: string, url?: string, payload?: unknown | Buttons               | Добавление кнопки        |
+| addLink | text: string, url?: string, payload?: unknown | Buttons               | Добавление кнопки-ссылки |
+| clear   | -                                             | void                  | Очистка всех кнопок      |
 
 ### Card
 
@@ -53,11 +68,14 @@
 
 #### Методы
 
-| Метод     | Параметры                                                | Возвращаемое значение | Описание               |
-| --------- | -------------------------------------------------------- | --------------------- | ---------------------- |
-| addImage  | imageToken: string, title?: string, description?: string | Card                  | Добавление изображения |
-| addHeader | text: string                                             | Card                  | Добавление заголовка   |
-| addFooter | text: string                                             | Card                  | Добавление подвала     |
+| Метод          | Параметры                                                                               | Возвращаемое значение | Описание                                                         |
+| -------------- | --------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------- |
+| addImage       | image: string \| null, title?: string, desc?: string, button?: string \| object \| null | Card                  | Добавление изображения/элемента (4-й параметр — кнопка элемента) |
+| addOneImage    | image: string \| null, title?: string, desc?: string, button?: string \| object \| null | Card                  | Заменяет текущую карточку одним изображением                     |
+| setTitle       | text: string                                                                            | Card                  | Добавление заголовка                                             |
+| setDescription | text: string                                                                            | Card                  | Добавление описания                                              |
+| addButton      | button: string \| object                                                                | Card                  | Добавление кнопки к элементу карточки                            |
+| clear          | -                                                                                       | void                  | Очистка карточки                                                 |
 
 ### Sound
 
@@ -65,10 +83,9 @@
 
 #### Методы
 
-| Метод    | Параметры          | Возвращаемое значение | Описание                      |
-| -------- | ------------------ | --------------------- | ----------------------------- |
-| addSound | soundToken: string | Sound                 | Добавление звука              |
-| addTts   | text: string       | Sound                 | Добавление текста для озвучки |
+| Метод    | Параметры          | Возвращаемое значение | Описание         |
+| -------- | ------------------ | --------------------- | ---------------- |
+| addSound | soundToken: string | Sound                 | Добавление звука |
 
 ## Интерфейсы
 
@@ -76,7 +93,7 @@
 
 Конфигурация приложения.
 
-```typescript
+```ts
 interface IAppConfig {
     error_log?: string; // Путь к директории логов
     json?: string; // Путь к директории JSON
@@ -87,15 +104,10 @@ interface IAppConfig {
 
 ### IAppParam
 
-Параметры приложения для различных платформ.
+Параметры приложения.
 
-```typescript
+```ts
 interface IAppParam {
-    viber_token?: string | null; // Токен Viber
-    telegram_token?: string | null; // Токен Telegram
-    vk_token?: string | null; // Токен VK
-    marusia_token?: string | null; // Токен Маруси
-    yandex_token?: string | null; // Токен Яндекса
     welcome_text?: string | string[]; // Текст приветствия
     help_text?: string | string[]; // Текст помощи
     intents?: IAppIntent[] | null; // Массив интентов
@@ -106,7 +118,7 @@ interface IAppParam {
 
 Интерфейс для хранения пользовательских данных.
 
-```typescript
+```ts
 interface IUserData {
     oldIntentName?: string; // Название предыдущего интента
     [key: string]: unknown; // Дополнительные данные
@@ -115,22 +127,9 @@ interface IUserData {
 
 ## Константы
 
-### Типы платформ
-
-```typescript
-type TAppType =
-    | 'alisa' // Яндекс.Алиса
-    | 'vk' // ВКонтакте
-    | 'telegram' // Telegram
-    | 'viber' // Viber
-    | 'marusia' // Маруся
-    | 'smart_app' // Сбер SmartApp
-    | 'user_application'; // Пользовательское приложение
-```
-
 ### Стандартные интенты
 
-```typescript
+```ts
 const WELCOME_INTENT_NAME = 'welcome'; // Интент приветствия
 const HELP_INTENT_NAME = 'help'; // Интент помощи
 ```
@@ -139,7 +138,7 @@ const HELP_INTENT_NAME = 'help'; // Интент помощи
 
 ### Базовый контроллер
 
-```typescript
+```ts
 import { BotController, WELCOME_INTENT_NAME } from 'umbot';
 
 class MyController extends BotController {
@@ -151,8 +150,8 @@ class MyController extends BotController {
                 break;
 
             case 'about':
-                this.text = 'Это пример бота на umbot';
-                this.card.addHeader('О приложении').addImage('image_token').addFooter('Версия 1.0');
+                this.text = 'Это пример приложения на umbot';
+                this.card.setTitle('О приложении').addImage('image_token');
                 break;
 
             default:
@@ -165,7 +164,7 @@ class MyController extends BotController {
 
 ### Работа с командами
 
-```typescript
+```ts
 import { Bot } from 'umbot';
 
 const bot = new Bot();
@@ -188,7 +187,7 @@ bot.addCommand(
 
 ### Работа с состоянием
 
-```typescript
+```ts
 interface GameData extends IUserData {
     score: number;
     level: number;
@@ -220,7 +219,7 @@ class GameController extends BotController<GameData> {
 
 ### Работа с кнопками
 
-```typescript
+```ts
 class ButtonController extends BotController {
     public action(intentName: string | null): void {
         switch (intentName) {
@@ -236,16 +235,15 @@ class ButtonController extends BotController {
 
 ### Работа с карточками
 
-```typescript
+```ts
 class CardController extends BotController {
     public action(intentName: string | null): void {
         switch (intentName) {
             case 'showCard':
                 // Создание карточки
                 this.card
-                    .addHeader('Заголовок карточки')
-                    .addImage('image_token', 'Описание изображения')
-                    .addFooter('Подвал карточки');
+                    .setTitle('Заголовок карточки')
+                    .addImage('image_token', ' ', 'Описание изображения');
                 this.text = 'Вот ваша карточка:';
                 break;
         }
@@ -255,7 +253,7 @@ class CardController extends BotController {
 
 ### Работа с NLU
 
-```typescript
+```ts
 class NluController extends BotController {
     public action(intentName: string | null): void {
         // Получение интента из NLU
@@ -271,7 +269,7 @@ class NluController extends BotController {
 
 ### Работа с авторизацией
 
-```typescript
+```ts
 class AuthController extends BotController {
     public action(intentName: string | null): void {
         // Проверка авторизации
@@ -288,7 +286,7 @@ class AuthController extends BotController {
 
 ### Работа с оценкой
 
-```typescript
+```ts
 class RatingController extends BotController {
     public action(intentName: string | null): void {
         // Проверка оценки

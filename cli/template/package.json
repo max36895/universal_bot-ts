@@ -13,7 +13,7 @@
     },
     "devDependencies": {
         "typescript": "^5.9.3",
-        "umbot": "*",
-        "@types/node": "^18.18.14"
+        "umbot": "^3.0.0",
+        "@types/node": "^20.0.0"
     }
 }

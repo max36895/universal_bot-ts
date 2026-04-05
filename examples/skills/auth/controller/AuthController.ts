@@ -1,4 +1,4 @@
-import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from '../../../../src';
+import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from 'umbot';
 
 /**
  * Пример с авторизацией в навыке.
@@ -15,8 +15,7 @@ export class AuthController extends BotController {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btns = ['Пример кнопки галереи'];
-                this.buttons.links = ['Пример ссылки для изображения'];
+                this.buttons.addBtn('Авторизоваться');
                 break;
 
             case HELP_INTENT_NAME:

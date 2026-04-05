@@ -1,7 +1,7 @@
 'use strict';
-const fs = require('fs');
-const { exec } = require('child_process');
-const utils = require(__dirname + '/../utils').utils;
+const fs = require('node:fs');
+const { exec } = require('node:child_process');
+const utils = require(__dirname + '/../utils.js').utils;
 
 /**
  * Класс, создающий пустой проект, или шаблон для готового проекта.
@@ -9,12 +9,10 @@ const utils = require(__dirname + '/../utils').utils;
 class CreateController {
     /**
      * Создает пустой проект
-     * @type {string}
      */
     static T_DEFAULT = 'Default';
     /**
      * Создает викторину
-     * @type {string}
      */
     static T_QUIZ = 'Quiz';
 
@@ -123,7 +121,7 @@ class CreateController {
             const maxReplace = replace.length - 1;
             find.forEach((f, i) => {
                 let r = replace[i];
-                if (typeof r === 'undefined') {
+                if (r === undefined) {
                     r = replace[maxReplace];
                 }
                 res = res.replace(new RegExp(f, 'g'), r);
@@ -172,10 +170,9 @@ class CreateController {
     /**
      * Создает файл конфигурации проекта
      * @param {string} path Путь к шаблонам
-     * @param {string} type Тип проекта
      * @private
      */
-    _getConfigFile(path, type) {
+    _getConfigFile(path) {
         console.log('Создается файл с конфигурацией приложения: ...');
         const configFile = `${this.#path}/src/config/{{name}}Config.ts`;
         let configContent;
@@ -186,7 +183,7 @@ class CreateController {
             configContent = '';
         }
         this._generateFile(configContent, configFile);
-        console.log('Файл с конфигурацией успешно создан!');
+        console.log('Файл с конфигурацией успешно создан');
     }
 
     /**
@@ -206,7 +203,7 @@ class CreateController {
             paramsContent = '';
         }
         this._generateFile(paramsContent, paramsFile);
-        console.log('Файл с параметрами успешно создан!');
+        console.log('Файл с параметрами успешно создан');
     }
 
     createDockerFile(path) {
@@ -214,7 +211,7 @@ class CreateController {
         const dockerFile = `${path}/Dockerfile`;
         const dockerContent = this._getFileContent(`${standardPath}/docker/Dockerfile.text`);
         this._generateFile(dockerContent, dockerFile);
-        console.log('Dockerfile файл успешно создан!');
+        console.log('Dockerfile успешно создан');
     }
 
     createDeployFile(path) {
@@ -224,7 +221,7 @@ class CreateController {
         fs.mkdirSync(`${path}/.github/workflows`);
         const deployContent = this._getFileContent(`${standardPath}/github/deploy.yml`);
         this._generateFile(deployContent, deployFile);
-        console.log('deploy.yml файл успешно создан!');
+        console.log('deploy.yml успешно создан');
     }
 
     /**.
@@ -233,7 +230,11 @@ class CreateController {
      * @private
      */
     _create(type = CreateController.T_DEFAULT) {
-        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) !== -1) {
+        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) === -1) {
+            console.warn(
+                'Не удалось создать проект, так как не удалось определить тип создаваемого приложения',
+            );
+        } else {
             const standardPath = __dirname + '/../template';
             const srcPath = `${this.#path}/src`;
             if (!utils.isDir(srcPath)) {
@@ -259,7 +260,7 @@ class CreateController {
                     `${standardPath}/controller/${type}Controller.ts.text`,
                 );
                 this._generateFile(controllerContent, controllerFile);
-                console.log('Класс с логикой приложения успешно создан!');
+                console.log('Класс с логикой приложения успешно создан');
             }
 
             console.log('Создается index файл: ...');
@@ -278,17 +279,17 @@ class CreateController {
             const indexFile = `${srcPath}/index.ts`;
             const indexContent = this._getFileContent(`${standardPath}/${path}.ts.text`);
             this._generateFile(indexContent, indexFile);
-            console.log('Index файл успешно создан!');
+            console.log('index.ts успешно создан');
 
             const packageFile = `${this.#path}/package.json`;
             const packageContent = this._getFileContent(`${standardPath}/package.json`);
             this._generateFile(packageContent, packageFile);
-            console.log('package.json файл успешно создан!');
+            console.log('package.json успешно создан');
 
             const tsconfigFile = `${this.#path}/tsconfig.json`;
             const tsconfigContent = this._getFileContent(`${standardPath}/tsconfig.json`);
             this._generateFile(tsconfigContent, tsconfigFile);
-            console.log('tsconfig.json файл успешно создан!');
+            console.log('tsconfig.json успешно создан');
 
             if (this.flags.includes('--prod')) {
                 this.createDeployFile(this.#path);
@@ -296,8 +297,6 @@ class CreateController {
             }
 
             console.log(`Проект успешно создан, и находится в директории: ${this.#path}`);
-        } else {
-            console.warn('Не удалось создать проект!');
         }
     }
 
@@ -308,17 +307,16 @@ class CreateController {
      */
     generateFile(fileName, content) {
         utils.fwrite(`${this.#path}/${fileName}`, content);
-        console.log('.env файл успешно создан!');
+        console.log('.env файл успешно создан');
     }
 
     /**
      * Форматирует проект через prettier
      */
     format() {
-        exec(`prettier.cmd --write ${this.#path}`, (error, stdout, stderr) => {
+        exec(`prettier.cmd --write ${this.#path}`, (error) => {
             if (error) {
                 console.error(`exec error: ${error}`);
-                return;
             }
         });
     }
@@ -354,7 +352,7 @@ class CreateController {
             }
             this._create(type);
         } else {
-            console.error('Не указано имя приложения!');
+            console.error('Не указано имя проекта');
         }
     }
 }

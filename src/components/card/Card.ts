@@ -1,26 +1,7 @@
 import { Buttons, TButton } from '../button';
-import { Image, initButton } from '../image/Image';
-import { TemplateCardTypes } from './types/TemplateCardTypes';
-
-import { AlisaCard } from './types/AlisaCard';
-import { TelegramCard } from './types/TelegramCard';
-import { VkCard } from './types/VkCard';
-import { ViberCard } from './types/ViberCard';
-import { MarusiaCard } from './types/MarusiaCard';
-import { SmartAppCard } from './types/SmartAppCard';
-import { MaxAppCard } from './types/MaxAppCard';
-import {
-    AppContext,
-    T_ALISA,
-    T_MARUSIA,
-    T_MAXAPP,
-    T_SMARTAPP,
-    T_TELEGRAM,
-    T_USER_APP,
-    T_VIBER,
-    T_VK,
-    TAppType,
-} from '../../core/AppContext';
+import { BotController } from '../../controller';
+import { getImage, IImageType, initButton } from '../image/Image';
+import { AppContext, TCardProcessing } from '../../core';
 
 /**
  * @class Card
@@ -29,127 +10,17 @@ import {
  * Класс предоставляет функциональность для:
  * - Создания карточек с изображениями, заголовками и описаниями
  * - Добавления кнопок к карточкам
- * - Адаптации карточек под различные платформы (Алиса, VK, Telegram, Viber, Marusia, SmartApp)
+ * - Адаптации карточек под различные платформы
  * - Поддержки галерей изображений
  *
- * Ограничения по платформам:
- *
- * Алиса:
- * - Максимум 5 элементов в галерее
- * - Изображения: до 1MB, 1024x1024px
- * - Форматы: JPG, PNG
- *
- * VK:
- * - Максимум 10 элементов в карусели
- * - Изображения: до 5MB, рекомендуется 13:8
- * - Форматы: JPG, PNG, GIF
- *
- * Telegram:
- * - Максимум 10 изображений в альбоме
- * - Изображения: до 10MB, 1280x1280px
- * - Форматы: JPG, PNG, WEBP
- *
- * Viber:
- * - Максимум 6 элементов в карусели
- * - Изображения: до 1MB, рекомендуется 400x400px
- * - Форматы: JPG, PNG
- *
- * @example
- * ```typescript
- * import { Card } from './components/card/Card';
- *
- * // Создание простой карточки
- * const card = new Card();
- * card.setTitle('Заголовок карточки')
- *     .setDescription('Описание карточки')
- *     .addImage('image.jpg', 'Заголовок изображения', 'Описание изображения')
- *     .addButton('Нажми меня');
- *
- * // Создание карточки с галереей
- * const galleryCard = new Card();
- * galleryCard.isUsedGallery = true;
- * galleryCard.addImage('image1.jpg', 'Изображение 1', 'Описание 1')
- *     .addImage('image2.jpg', 'Изображение 2', 'Описание 2')
- *     .addButton({
- *         title: 'Подробнее',
- *         url: 'https://example.com',
- *         payload: { action: 'details' }
- *     });
- *
- * // Кастомные шаблоны для разных платформ
- *
- * // Кастомное переопределение ответа, на примере: Алиса - BigImage
- * const alisaCard = new Card();
- * alisaCard.template = {
- *     type: 'BigImage',
- *     image_id: '123456/123456',
- *     title: 'Заголовок',
- *     description: 'Описание',
- *     button: {
- *         text: 'Кнопка',
- *         url: 'https://example.com'
- *     }
- * };
- *
- * // Кастомное переопределение ответа, на примере: VK - Карусель
- * const vkCard = new Card();
- * vkCard.template = {
- *     type: 'carousel',
- *     elements: [{
- *         photo_id: '-123456_789',
- *         title: 'Заголовок',
- *         description: 'Описание',
- *         buttons: [{
- *             action: {
- *                 type: 'text',
- *                 label: 'Кнопка',
- *                 payload: { button: 1 }
- *             }
- *         }]
- *     }]
- * };
- *
- * // Кастомное переопределение ответа, на примере: Telegram - HTML-разметка
- * const telegramCard = new Card();
- * telegramCard.template = {
- *     type: 'article',
- *     message_text: '<b>Заголовок</b>\n<i>Описание</i>',
- *     parse_mode: 'HTML',
- *     reply_markup: {
- *         inline_keyboard: [[{
- *             text: 'Кнопка',
- *             callback_data: 'button_1'
- *         }]]
- *     }
- * };
- *
- * // Кастомное переопределение ответа, на примере: Viber - Карусель
- * const viberCard = new Card();
- * viberCard.template = {
- *     type: 'carousel',
- *     elements: [{
- *         image: 'https://example.com/image.jpg',
- *         title: 'Заголовок',
- *         subtitle: 'Подзаголовок',
- *         buttons: [{
- *             text: 'Кнопка',
- *             actionType: 'reply',
- *             actionBody: 'button_1'
- *         }]
- *     }]
- * };
- *
- * // Получение карточки для текущей платформы
- * const cards = await card.getCards();
- * ```
+ * Ограничения платформ обрабатываются самими адаптерами
  */
 export class Card {
     /**
      * Заголовок элемента карточки.
      * Отображается в верхней части карточки.
-     * @type {string | null}
      * @example
-     * ```typescript
+     * ```ts
      * card.setTitle('Название товара');
      * ```
      */
@@ -158,9 +29,8 @@ export class Card {
     /**
      * Описание элемента карточки.
      * Отображается под заголовком.
-     * @type {string | null}
      * @example
-     * ```typescript
+     * ```ts
      * card.setDescription('Подробное описание товара');
      * ```
      */
@@ -169,22 +39,20 @@ export class Card {
     /**
      * Массив с изображениями или элементами карточки.
      * Каждый элемент может содержать изображение, заголовок, описание и кнопки.
-     * @type {Image[]}
-     * @see Image
+     * @see IImageType
      * @example
-     * ```typescript
+     * ```ts
      * card.addImage('product.jpg', 'Название товара', 'Описание товара');
      * ```
      */
-    public images: Image[];
+    public images: IImageType[];
 
     /**
      * Кнопки элемента карточки.
      * Используются для взаимодействия с пользователем.
-     * @type {Buttons}
      * @see Buttons
      * @example
-     * ```typescript
+     * ```ts
      * card.addButton('Купить');
      * card.addButton({
      *     title: 'Подробнее',
@@ -198,9 +66,8 @@ export class Card {
      * Определяет необходимость отображения только одного элемента карточки.
      * true - отображается только первый элемент
      * false - отображаются все элементы
-     * @type {boolean}
      * @example
-     * ```typescript
+     * ```ts
      * card.isOne = true; // Отобразить только первый элемент
      * ```
      */
@@ -210,9 +77,8 @@ export class Card {
      * Использование галереи изображений.
      * true - изображения отображаются в виде галереи
      * false - изображения отображаются как отдельные карточки
-     * @type {boolean}
      * @example
-     * ```typescript
+     * ```ts
      * card.isUsedGallery = true; // Включить режим галереи
      * ```
      */
@@ -220,18 +86,27 @@ export class Card {
 
     /**
      * Произвольный шаблон для отображения карточки.
-     * Используется для кастомизации отображения на определенных платформах. Не рекомендуется использовать при задании поддерживаемых платформ.
-     * При использовании этого параметра вы сами отвечаете за корректное отображение.
-     * @type {any}
+     * Используется для кастомизации отображения на определенных платформах.
+     * ⚠️ ОПАСНО: Использование этого свойства полностью обходит адаптеры платформ.
+     * Данные отправляются платформе «как есть» без преобразования в её формат.
+     *
+     * Последствия:
+     * - Карточка может не отобразиться на других платформах
+     * - Нарушается кроссплатформенность фреймворка
+     * - Ответственность за корректность формата лежит на разработчике
+     *
+     * Используйте ТОЛЬКО если:
+     * - Вы точно знаете формат ответа целевой платформы
+     * - Стандартные методы (`addImage()`, `addButton()`) не решают задачу
      * @example
-     * ```typescript
+     * ```ts
      * card.template = {
      *     type: 'custom_card',
      *     content: { ... }
      * };
      * ```
      */
-    public template: any = null;
+    public template: Record<string, unknown> | unknown | null = null;
 
     /**
      * Контекст приложения.
@@ -239,22 +114,19 @@ export class Card {
     #appContext: AppContext;
 
     /**
-     * Идентификатор пользователя
-     * @deprecated
-     */
-    public userId: string | number | null = null;
-    /**
-     * Идентификатор приложения
-     * @deprecated
-     */
-    public appId: string | null = null;
-
-    /**
-     * Создает новый экземпляр карточки.
-     * Инициализирует все поля значениями по умолчанию.
-     * @example
-     * ```typescript
-     * const card = new Card();
+     * Карточка с изображениями, заголовком и кнопками.
+     *
+     * Предоставляет унифицированный интерфейс для описания контента.
+     * Фактическая адаптация под формат целевой платформы происходит
+     * в адаптере платформы при вызове метода `getCards()`.
+     * @param appContext Контекст приложения.
+     * ⚠️ Обычно НЕ создаётся вручную — автоматически передаётся через контроллер:
+     * ```ts
+     * // Правильно — через контроллер:
+     * this.card.addImage('token', 'Title');
+     *
+     * // НЕ рекомендуется — ручное создание:
+     * new Card(this.appContext); // appContext берётся из контроллера
      * ```
      */
     public constructor(appContext: AppContext) {
@@ -271,7 +143,7 @@ export class Card {
      * Устанавливает контекст приложения.
      * @param appContext
      */
-    public setAppContext(appContext: AppContext): Card {
+    public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
         this.button.setAppContext(appContext);
         return this;
@@ -280,13 +152,13 @@ export class Card {
     /**
      * Устанавливает заголовок для карточки.
      * @param {string} title - Заголовок карточки
-     * @returns {Card} this для цепочки вызовов
+     * @returns {Card}
      * @example
-     * ```typescript
+     * ```ts
      * card.setTitle('Название товара');
      * ```
      */
-    public setTitle(title: string): Card {
+    public setTitle(title: string): this {
         this.title = title;
         return this;
     }
@@ -294,13 +166,13 @@ export class Card {
     /**
      * Устанавливает описание для карточки.
      * @param {string} description - Описание карточки
-     * @returns {Card} this для цепочки вызовов
+     * @returns {Card}
      * @example
-     * ```typescript
+     * ```ts
      * card.setDescription('Подробное описание товара');
      * ```
      */
-    public setDescription(description: string): Card {
+    public setDescription(description: string): this {
         this.desc = description;
         return this;
     }
@@ -308,9 +180,9 @@ export class Card {
     /**
      * Добавляет кнопку в карточку.
      * @param {TButton} button - Кнопка для добавления (строка или объект)
-     * @returns {Card} this для цепочки вызовов
+     * @returns {Card}
      * @example
-     * ```typescript
+     * ```ts
      * // Добавление простой кнопки
      * card.addButton('Купить');
      *
@@ -322,7 +194,7 @@ export class Card {
      * });
      * ```
      */
-    public addButton(button: TButton): Card {
+    public addButton(button: TButton): this {
         initButton(button, this.button);
         return this;
     }
@@ -331,7 +203,7 @@ export class Card {
      * Очищает все элементы карточки.
      * @returns {void}
      * @example
-     * ```typescript
+     * ```ts
      * card.clear(); // Удалить все изображения
      * ```
      */
@@ -347,7 +219,7 @@ export class Card {
      * @param {string} title - Заголовок изображения
      * @param {string} [desc=' '] - Описание изображения
      * @param {TButton} [button=null] - Кнопки для элемента
-     * @returns {Card} this для цепочки вызовов
+     * @returns {Card}
      *
      * @remarks
      * Ограничения на изображения:
@@ -357,7 +229,7 @@ export class Card {
      * - Viber: до 1MB, рекомендуется 400x400px, JPG/PNG
      *
      * @example
-     * ```typescript
+     * ```ts
      * // Добавление одного изображения
      * card.addImage('image.jpg', 'Название', 'Описание');
      *
@@ -380,28 +252,30 @@ export class Card {
         title: string = ' ',
         desc: string = ' ',
         button: TButton | null = null,
-    ): Card {
-        const img = new Image(this.#appContext);
-        if (img.init(image, title, desc, button)) {
+    ): this {
+        const img = getImage(this.#appContext, image, title, desc, button);
+        if (img) {
             this.images.push(img);
         }
         return this;
     }
 
     /**
-     * Добавляет одно изображение в виде карточки. Внутри себя выставляет isOne в true
+     * Добавляет одно изображение в виде карточки. Внутри себя выставляет isOne в true.
+     * Если ранее были указаны другие изображения, то они очистятся.
+     * Стоит использовать в том случае, если у вас всегда должно отобразиться только 1 изображение.
      * @param {string} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
      * @param {string} [desc=' '] - Описание изображения
      * @param {TButton} [button=null] - Кнопки для элемента
-     * @returns {Card} this для цепочки вызовов
+     * @returns {Card}
      */
     public addOneImage(
         image: string | null,
         title: string = ' ',
         desc: string = ' ',
         button: TButton | null = null,
-    ): Card {
+    ): this {
         this.isOne = true;
         this.images = [];
         return this.addImage(image, title, desc, button);
@@ -409,127 +283,24 @@ export class Card {
 
     /**
      * Получает карточку в формате для текущей платформы.
-     * @param {TAppType}[appType] - Тип приложения
-     * @param {TemplateCardTypes | null} [userCard=null] - Пользовательский шаблон карточки
-     * @returns {Promise<any>} Карточка в формате текущей платформы
-     *
-     * @remarks
-     * Возвращаемые значения зависят от платформы:
-     *
-     * Алиса:
-     * ```typescript
-     * {
-     *     type: 'BigImage',
-     *     image_id: string,
-     *     title?: string,
-     *     description?: string,
-     *     button?: {
-     *         text: string,
-     *         url?: string,
-     *         payload?: any
-     *     }
-     * }
-     * ```
-     *
-     * VK:
-     * ```typescript
-     * {
-     *     type: 'carousel',
-     *     elements: [{
-     *         photo_id: string,
-     *         title?: string,
-     *         description?: string,
-     *         buttons?: Array<{
-     *             action: {
-     *                 type: string,
-     *                 label: string,
-     *                 payload?: any
-     *             }
-     *         }>
-     *     }]
-     * }
-     * ```
-     *
-     * Telegram:
-     * ```typescript
-     * {
-     *     type: string,
-     *     media: Array<{
-     *         type: 'photo',
-     *         media: string,
-     *         caption?: string
-     *     }>,
-     *     reply_markup?: {
-     *         inline_keyboard: Array<Array<{
-     *             text: string,
-     *             url?: string,
-     *             callback_data?: string
-     *         }>>
-     *     }
-     * }
-     * ```
-     *
-     * @example
-     * ```typescript
-     * // Получение карточки для текущей платформы
-     * const card = new Card();
-     * card.addImage('image.jpg', 'Название', 'Описание')
-     *     .addButton('Подробнее');
-     *
-     * const result = await card.getCards('alisa');
-     * console.log(result);
-     *
-     * // Использование пользовательского шаблона
-     * const customTemplate = {
-     *     type: 'custom',
-     *     content: { ... }
-     * };
-     * const customResult = await card.getCards(customTemplate);
-     * ```
      */
-    public async getCards(
-        appType: TAppType | null,
-        userCard: TemplateCardTypes | null = null,
-    ): Promise<any> {
+    public getCards<TResult = unknown>(
+        cardProcessing: TCardProcessing<TResult>,
+        controller: BotController,
+    ): TResult {
         if (this.template) {
-            return this.template;
+            return this.template as TResult;
         }
-        let card = null;
-        switch (appType) {
-            case T_ALISA:
-                card = new AlisaCard(this.#appContext);
-                break;
-            case T_VK:
-                card = new VkCard(this.#appContext);
-                break;
-            case T_TELEGRAM:
-                card = new TelegramCard(this.#appContext);
-                break;
-            case T_VIBER:
-                card = new ViberCard(this.#appContext);
-                break;
-            case T_MARUSIA:
-                card = new MarusiaCard(this.#appContext);
-                break;
-            case T_SMARTAPP:
-                card = new SmartAppCard(this.#appContext);
-                break;
-            case T_MAXAPP:
-                card = new MaxAppCard(this.#appContext);
-                break;
-            case T_USER_APP:
-                card = userCard;
-                break;
-        }
-        if (card) {
-            card.userId = this.userId;
-            card.appId = this.appId;
-            card.isUsedGallery = this.isUsedGallery;
-            card.images = this.images;
-            card.button = this.button;
-            card.title = this.title;
-            return await card.getCard(this.isOne);
-        }
-        return {};
+        return cardProcessing(
+            {
+                usedGallery: this.isUsedGallery,
+                buttons: this.button,
+                images: this.images,
+                title: this.title,
+                description: this.desc,
+                showOne: this.isOne,
+            },
+            controller,
+        );
     }
 }

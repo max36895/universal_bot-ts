@@ -1,0 +1,211 @@
+import { AppContext, BotController, INluThisUser, Text } from '../../../index';
+import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
+import { buttonProcessing } from './Button';
+import { cardProcessing } from './Card';
+import { soundProcessing } from './Sound';
+import { T_TELEGRAM } from './constants';
+import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/ITelegramPlatform';
+import { TelegramRequest } from '../API';
+
+/**
+ * Адаптер, обеспечивающий поддержку платформы Telegram. Позволяет разрабатывать чат-ботов для Телеграм на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
+ *
+ * Подключение адаптера не требует изменения существующей бизнес-логики: после интеграции
+ * все команды и обработчики, написанные для umbot, автоматически становятся доступны для Telegram.
+ * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
+ * платформ (Telegram, VK, Алиса и др.) без дублирования кода.
+ *
+ * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера Telegram,
+ * преобразует их в унифицированный формат фреймворка и формирует ответ,
+ * совместимый с требованиями платформы. Подключается одной строкой и
+ * не мешает работе других адаптеров (например, для Алисы или Маруси).
+ *
+ * Поддерживает:
+ * - голосовые и текстовые запросы;
+ * - карточки, кнопки;
+ *
+ * Подключается как любой другой адаптер: `bot.use(new TelegramAdapter(token))`.
+ * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
+ * на основе заголовков и структуры входящего запроса.
+ * @example
+ * ```ts
+ * // Простейший бот для Telegram, который отвечает на приветствие
+ * import { Bot } from 'umbot';
+ * import { TelegramAdapter } from 'umbot/plugins';
+ *
+ * const bot = new Bot()
+ *     .use(new TelegramAdapter('YOUR_BOT_TOKEN'))
+ *     .addCommand('start', ['привет'], (_text, ctx) => {
+ *         ctx.text = 'Привет! Я твой первый бот для Telegram';
+ *     });
+ *
+ * bot.start('localhost', 3000);
+ * ```
+ *
+ * @see Bot
+ * @see BotController
+ * @see BasePlatform
+ */
+export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
+    platformName = T_TELEGRAM;
+    isVoice = false;
+    limit = 30;
+    signatureName = 'x-telegram-bot-api-secret-token';
+
+    init(appContext: AppContext): void {
+        super.init(appContext);
+        if (this._token) {
+            appContext.appConfig.tokens[this.platformName].token = this._token;
+        }
+    }
+
+    isPlatformOnQuery(query: ITelegramContent, headers?: Record<string, unknown>): boolean {
+        if (headers?.['x-telegram-bot-api-secret-token']) {
+            return true;
+        }
+        if (!query) {
+            this.appContext?.logWarn(`TelegramAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
+            return false;
+        }
+        return !!(
+            query.update_id !== undefined &&
+            (query.message ||
+                query.callback_query ||
+                query.inline_query ||
+                query.chosen_inline_result ||
+                query.channel_post ||
+                query.edited_message)
+        );
+    }
+
+    #setCallbackQuery(query: ITelegramContent, controller: BotController): boolean {
+        const cb = query.callback_query;
+        if (cb) {
+            controller.userId = cb.from?.id as number;
+            // callback_data может быть строкой или JSON-строкой
+            controller.userCommand = (cb.data || '').toLowerCase().trim();
+            controller.originalUserCommand = cb.data || '';
+            controller.messageId = cb.message?.message_id as number;
+            controller.payload = cb.data;
+            // Сохраняем ID callback-запроса, чтобы потом ответить
+            controller.platformOptions.callbackQueryId = cb.id;
+            return true;
+        }
+        return false;
+    }
+
+    #setInlineQuery(query: ITelegramContent, controller: BotController): boolean {
+        const iq = query.inline_query;
+        if (iq) {
+            controller.userId = iq.from?.id as number;
+            controller.userCommand = iq.query?.toLowerCase().trim() || '';
+            controller.originalUserCommand = iq.query || '';
+            return true;
+        }
+        return false;
+    }
+
+    async setQueryData(query: ITelegramContent, controller: BotController): Promise<boolean> {
+        if (this.appContext) {
+            if (query) {
+                controller.requestObject = query;
+
+                if (query.message !== undefined) {
+                    controller.userId = query.message.chat.id;
+                    controller.userCommand = query.message.text?.toLowerCase()?.trim() || '';
+                    controller.originalUserCommand = query.message.text;
+                    controller.messageId = query.message.message_id;
+
+                    const thisUser: INluThisUser = {
+                        username: query.message.chat.username || null,
+                        first_name: query.message.chat.first_name || null,
+                        last_name: query.message.chat.last_name || null,
+                    };
+                    controller.nlu.setNlu({ thisUser });
+                    return true;
+                }
+                // === 2. Callback query (нажатие на inline-кнопку) ===
+                if (query.callback_query) {
+                    return this.#setCallbackQuery(query, controller);
+                }
+                // === 4. Сообщение в канале ===
+                if (query.channel_post) {
+                    controller.userId = query.channel_post.chat?.id;
+                    controller.userCommand = query.channel_post.text?.toLowerCase().trim() || '';
+                    controller.originalUserCommand = query.channel_post.text || '';
+                    controller.messageId = query.channel_post.message_id;
+                    return true;
+                }
+
+                // === 5. Inline query ===
+                if (query.inline_query) {
+                    return this.#setInlineQuery(query, controller);
+                }
+            } else {
+                controller.platformOptions.error = `TelegramAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
+            }
+        } else {
+            console.error(`TelegramAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
+        }
+        return false;
+    }
+
+    async getContent(controller: BotController): Promise<string> {
+        if (!controller.skipAutoReply) {
+            const telegramApi = new TelegramRequest(controller.appContext);
+            const params: ITelegramParams = {};
+            const keyboard = controller.buttons.getButtonJson(buttonProcessing);
+            if (keyboard) {
+                params.reply_markup = keyboard;
+            }
+            params.parse_mode = 'markdown';
+
+            await telegramApi.sendMessage(
+                controller.userId as string,
+                Text.resize(controller.text, 4096),
+                params,
+            );
+
+            if (controller.card.images.length) {
+                const res: ITelegramMedia[] | null = await controller.card.getCards(
+                    cardProcessing,
+                    controller,
+                );
+                if (res) {
+                    await telegramApi.sendMediaGroup(controller.userId as string, res);
+                }
+            }
+
+            if (controller.sound.sounds.length) {
+                await controller.sound.getSounds(controller.tts, soundProcessing, controller);
+            }
+            // Если это ответ на callback_query, отправляем подтверждение
+            if (controller.platformOptions.callbackQueryId) {
+                await telegramApi.answerCallbackQuery(
+                    controller.platformOptions.callbackQueryId,
+                    controller.text,
+                    false,
+                    undefined,
+                    0,
+                );
+            }
+        }
+        return 'ok';
+    }
+
+    static isVoice(): boolean {
+        return false;
+    }
+
+    getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
+        return {
+            message: {
+                chat: {
+                    id: +userId,
+                },
+                text: query,
+                message_id: count,
+            },
+        };
+    }
+}

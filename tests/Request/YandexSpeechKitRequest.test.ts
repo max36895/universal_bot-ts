@@ -1,7 +1,7 @@
 global.fetch = jest.fn();
 
 import { AppContext } from '../../src';
-import { YandexSpeechKit } from '../../src/api/YandexSpeechKit';
+import { YandexSpeechKit } from '../../src/plugins';
 import { unlink } from '../../src/utils';
 
 const appContext = new AppContext();
@@ -10,8 +10,7 @@ describe('YandexSpeechKit', () => {
     let tts: YandexSpeechKit;
 
     beforeEach(() => {
-        appContext.platformParams.yandex_speech_kit_token = 'tts-token';
-        tts = new YandexSpeechKit(null, appContext);
+        tts = new YandexSpeechKit('tts-token', appContext);
         (global.fetch as jest.Mock).mockClear();
     });
 

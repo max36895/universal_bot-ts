@@ -1,53 +1,76 @@
-import { Model } from './db/Model';
 import { IModelRes, IModelRules } from './interface';
-import { AppContext } from '../core/AppContext';
+
+import { IModelState, Model } from './db/Model';
+import { IDbResult, AppContext } from '../core';
+import { TKey } from './db';
+
+const RULES: IModelRules[] = [
+    {
+        name: ['userId'],
+        type: 'string',
+        max: 250,
+    },
+    {
+        name: ['meta', 'data'],
+        type: 'text',
+    },
+    {
+        name: ['platformName'],
+        type: 'string',
+    },
+];
+
+const ATTRS_LABEL = {
+    userId: 'ID',
+    meta: 'User meta data',
+    data: 'User Data',
+    platform: 'Platform Name',
+};
+
+/**
+ * Тип для мета-данных
+ */
+export type TMetaType = Record<string, unknown> | string | null | undefined;
+/**
+ * Тип для возвращаемых данных
+ */
+export type TDataType = string | Record<string, unknown> | null | undefined;
 
 /**
  * Интерфейс для внутреннего состояния модели пользовательских данных.
  * Определяет структуру данных для хранения информации о пользователях в базе данных.
  */
-export interface IUserDataModelState {
+export interface IUserDataModelState extends IModelState {
     /**
      * Идентификатор пользователя.
      * Уникальный идентификатор пользователя в конкретной платформе.
      * @example "123456789" для Telegram, "user_123456" для VK
      */
-    userId: string;
+    userId: string | number | null;
     /**
      * Метаданные пользователя в JSON.
      * Содержит дополнительную информацию о пользователе, такую как статистика использования,
      * настройки, временные метки и т.д.
      * @example { "lastVisit": "2024-03-20T12:00:00Z", "usageCount": 42 }
      */
-    meta: string;
+    meta: TMetaType;
     /**
      * Пользовательские данные в JSON.
      * Содержит основное состояние пользователя, например, прогресс в игре,
      * сохраненные настройки, историю действий и т.д.
      * @example { "progress": 75, "settings": { "notifications": true } }
      */
-    data: string;
+    data: string | Record<string, unknown> | null;
     /**
      * Тип платформы.
      * Определяет, на какой платформе зарегистрирован пользователь.
-     * @see UsersData.T_ALISA
-     * @see UsersData.T_VK
-     * @see UsersData.T_TELEGRAM
-     * @see UsersData.T_VIBER
-     * @see UsersData.T_MARUSIA
-     * @see UsersData.T_SMART_APP
-     * @see UsersData.T_MAX_APP
-     * @see UsersData.T_USER_APP
      */
-    type: string;
+    platform: string;
 }
 
 /**
  * Модель для работы с пользовательскими данными.
  * Предоставляет единый интерфейс для работы с данными пользователей во всех поддерживаемых платформах.
- *
- * @class UsersData
- * @extends Model<IUserDataState>
  *
  * Основные возможности:
  * - Сохранение состояния пользователя между сессиями
@@ -57,11 +80,11 @@ export interface IUserDataModelState {
  *
  * @example
  * Сохранение прогресса пользователя:
- * ```typescript
+ * ```ts
  * class GameController extends BotController {
  *   public async action(intentName: string): Promise<void> {
  *     // Загрузка данных пользователя
- *     const userData = new UsersData();
+ *     const userData = new UsersData(this.appContext);
  *     userData.userId = this.userId;
  *
  *     // Если есть сохраненные данные - загружаем их
@@ -81,19 +104,14 @@ export interface IUserDataModelState {
  *
  * @example
  * Работа с разными платформами:
- * ```typescript
- * const userData = new UsersData();
+ * ```ts
+ * const userData = new UsersData(appContext);
  *
  * // Для Алисы
- * userData.type = UsersData.T_ALISA;
+ * userData.platform = T_ALISA;
  *
  * // Для Telegram
- * userData.type = UsersData.T_TELEGRAM;
- *
- * // Автоматическое определение типа из appContext
- * userData.type = this.AppContext.appType === 'alisa'
- *   ? UsersData.T_ALISA
- *   : UsersData.T_TELEGRAM;
+ * userData.platform = T_TELEGRAM;
  * ```
  */
 export class UsersData extends Model<IUserDataModelState> {
@@ -104,34 +122,46 @@ export class UsersData extends Model<IUserDataModelState> {
     public static readonly TABLE_NAME = 'UsersData';
 
     /**
-     * Константы для определения типа платформы.
-     * Используются для указания, на какой платформе зарегистрирован пользователь.
+     * Создает экземпляр модели пользовательских данных.
+     * Предоставляет унифицированный интерфейс для хранения данных пользователя.
+     *
+     * @example
+     * ```ts
+     * const userData = new UsersData(appContext);
+     * userData.userId = 'user123';
+     * userData.type = UsersData.T_TELEGRAM;
+     * ```
      */
-    /** Тип платформы: Яндекс.Алиса */
-    public static readonly T_ALISA = 0;
-    /** Тип платформы: ВКонтакте */
-    public static readonly T_VK = 1;
-    /** Тип платформы: Telegram */
-    public static readonly T_TELEGRAM = 2;
-    /** Тип платформы: Viber */
-    public static readonly T_VIBER = 3;
-    /** Тип платформы: Маруся */
-    public static readonly T_MARUSIA = 4;
-    /** Тип платформы: Сбер SmartApp */
-    public static readonly T_SMART_APP = 5;
-    /**
-     * Тип платформы: Max
-     * */
-    public static readonly T_MAX_APP = 6;
-    /** Тип платформы: Пользовательское приложение */
-    public static readonly T_USER_APP = 512;
+    public constructor(appContext: AppContext) {
+        super(appContext);
+        this.state = {
+            userId: null,
+            meta: null,
+            data: null,
+            platform: 'unknown',
+        };
+    }
+
+    protected getId(): TKey {
+        return 'userId';
+    }
 
     /**
      * Уникальный идентификатор пользователя.
      * Может быть строкой или числом в зависимости от платформы.
      * @example "123456789" для Telegram, 123456789 для VK
      */
-    public userId: string | number | null;
+    get userId(): string | number | null | undefined {
+        return this.state.userId;
+    }
+
+    /**
+     * Устанавливает уникальный идентификатор пользователя.
+     * @param userId
+     */
+    set userId(userId: string | number | null) {
+        this.state.userId = userId;
+    }
 
     /**
      * Метаданные пользователя.
@@ -142,7 +172,17 @@ export class UsersData extends Model<IUserDataModelState> {
      * - Дополнительная информация
      * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
-    public meta: any;
+    get meta(): TMetaType {
+        return this.state.meta;
+    }
+
+    /**
+     * Устанавливает метаданные пользователя.
+     * @param meta
+     */
+    set meta(meta: TMetaType) {
+        this.state.meta = meta;
+    }
 
     /**
      * Основные данные пользователя.
@@ -153,41 +193,32 @@ export class UsersData extends Model<IUserDataModelState> {
      * - Другие пользовательские данные
      * @remarks При сохранении в БД автоматически преобразуется в JSON строку
      */
-    public data: any;
+    get data(): TDataType {
+        return this.state.data;
+    }
+
+    /**
+     * Устанавливает основные данные пользователя.
+     * @param data
+     */
+    set data(data: TDataType) {
+        this.state.data = data;
+    }
 
     /**
      * Тип платформы пользователя.
      * Определяет платформу, с которой работает пользователь.
-     * @see T_ALISA, T_VK, T_TELEGRAM и другие константы типов
-     * @remarks Возможные значения:
-     * - T_ALISA (0) - Яндекс.Алиса
-     * - T_VK (1) - ВКонтакте
-     * - T_TELEGRAM (2) - Telegram
-     * - T_VIBER (3) - Viber
-     * - T_MARUSIA (4) - Маруся
-     * - T_SMART_APP (5) - Сбер SmartApp
-     * - T_MAX_APP (6) - Max
-     * - T_USER_APP (512) - Пользовательское приложение
      */
-    public type: number;
+    set platform(platform: string) {
+        this.state.platform = platform;
+    }
 
     /**
-     * Создает экземпляр модели пользовательских данных.
-     * Инициализирует все поля значениями по умолчанию.
-     *
-     * @example
-     * ```typescript
-     * const userData = new UsersData();
-     * userData.userId = 'user123';
-     * userData.type = UsersData.T_TELEGRAM;
-     * ```
+     * Тип платформы пользователя.
+     * Определяет платформу, с которой работает пользователь.
      */
-    public constructor(appContext: AppContext) {
-        super(appContext);
-        this.userId = null;
-        this.meta = null;
-        this.data = null;
-        this.type = UsersData.T_ALISA;
+    get platform(): string {
+        return this.state.platform as string;
     }
 
     /**
@@ -205,21 +236,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @return {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
-        return [
-            {
-                name: ['userId'],
-                type: 'string',
-                max: 250,
-            },
-            {
-                name: ['meta', 'data'],
-                type: 'text',
-            },
-            {
-                name: ['type'],
-                type: 'integer',
-            },
-        ];
+        return RULES;
     }
 
     /**
@@ -229,12 +246,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @return {IUserDataModelState} Описания атрибутов
      */
     public attributeLabels(): IUserDataModelState {
-        return {
-            userId: 'ID',
-            meta: 'User meta data',
-            data: 'User Data',
-            type: 'Type',
-        };
+        return ATTRS_LABEL;
     }
 
     /**
@@ -243,8 +255,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * @return {Promise<boolean>} true, если запись найдена
      *
      * @example
-     * ```typescript
-     * const userData = new UsersData();
+     * ```ts
+     * const userData = new UsersData(appContext);
      * userData.userId = 'user123';
      * if (await userData.getOne()) {
      *   console.log('Пользователь найден:', userData.data);
@@ -254,9 +266,9 @@ export class UsersData extends Model<IUserDataModelState> {
      * ```
      */
     public async getOne(): Promise<boolean> {
-        const query: IModelRes | any = await this.selectOne();
-        if (query && query.status) {
-            this.init(this.dbController.getValue(query));
+        const query: IModelRes = await this.selectOne();
+        if (query && query.status && this._appContext.database.adapter) {
+            this.init(this._appContext.database.adapter.getValue(query));
             return true;
         }
         return false;
@@ -280,20 +292,18 @@ export class UsersData extends Model<IUserDataModelState> {
      * @throws {Error} Если данные не прошли валидацию
      *
      * @example
-     * ```typescript
+     * ```ts
      * userData.meta = { lastVisit: new Date() };
      * userData.data = { progress: 75 };
      * userData.validate(); // meta и data будут преобразованы в JSON
      * ```
      */
     public validate(): void {
-        if (this._appContext?.isSaveDb) {
-            if (typeof this.meta !== 'string') {
-                this.meta = this.safeStringify(this.meta);
-            }
-            if (typeof this.data !== 'string') {
-                this.data = this.safeStringify(this.data);
-            }
+        if (this.meta && typeof this.meta !== 'string') {
+            this.meta = this.safeStringify(this.meta);
+        }
+        if (this.data && typeof this.data !== 'string') {
+            this.data = this.safeStringify(this.data);
         }
         super.validate();
     }
@@ -302,39 +312,42 @@ export class UsersData extends Model<IUserDataModelState> {
      * Инициализирует модель данными.
      * Преобразует JSON строки meta и data в объекты при загрузке из БД.
      *
-     * @param {any} data - Данные для инициализации
+     * @param data - Данные для инициализации
      * @remarks
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
      * - Парсинг происходит только если включено сохранение в БД (appContext.isSaveDb === true)
      *
      * @example
-     * ```typescript
-     * const userData = new UsersData();
+     * ```ts
+     * const userData = new UsersData(appContext);
      * userData.init({
      *   userId: 'user123',
      *   meta: '{"lastVisit":"2024-03-20T12:00:00Z"}',
      *   data: '{"progress":75}',
-     *   type: UsersData.T_TELEGRAM
+     *   platform: T_TELEGRAM
      * });
      * console.log(userData.meta.lastVisit); // Date object
      * console.log(userData.data.progress); // 75
      * ```
      */
-    public init(data: any): void {
+    public init(data: IDbResult[] | IDbResult | null): void {
         super.init(data);
-        if (this._appContext?.isSaveDb) {
-            if (typeof this.meta === 'string') {
+        if (typeof this.meta === 'string') {
+            if (this.meta.startsWith('{') || this.meta.startsWith('[')) {
                 this.meta = JSON.parse(this.meta);
             }
-            if (typeof this.data === 'string') {
-                try {
-                    this.data = JSON.parse(this.data);
-                } catch (e) {
-                    this._appContext?.logError(`UserData:init() Ошибка при парсинге данных`, {
+        }
+        if (typeof this.data === 'string') {
+            try {
+                this.data = JSON.parse(this.data);
+            } catch (e) {
+                this._appContext?.logError(
+                    `UserData:init() Произошла ошибка при обработке данных. Скорей всего данные повреждены.`,
+                    {
                         error: e,
                         data: this.data,
-                    });
-                }
+                    },
+                );
             }
         }
     }

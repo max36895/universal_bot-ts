@@ -1,40 +1,42 @@
-import { Image, AppContext } from '../../src';
+import { getImage, AppContext } from '../../src';
+
 const appContext = new AppContext();
 describe('image', () => {
     it('Image init', () => {
-        const image = new Image(appContext);
+        expect(getImage(appContext, '', '')).toBe(null);
 
-        expect(image.init('test', '')).toBe(false);
+        let image = getImage(appContext, 'test', 'title');
+        expect(image?.title).toEqual('title');
+        expect(image?.desc).toEqual(' ');
+        expect(image?.imageDir === null).toBe(true);
+        expect(image?.imageToken).toEqual('test');
 
-        expect(image.init('test', 'title')).toBe(true);
-        expect(image.title).toEqual('title');
-        expect(image.desc).toEqual(' ');
-        expect(image.imageDir === null).toBe(true);
-        expect(image.imageToken).toEqual('test');
-
-        expect(image.init('test', 'title', 'desc')).toBe(true);
-        expect(image.desc).toEqual('desc');
-
-        expect(image.init('https://google.com/image.png', 'title', 'desc')).toBe(true);
-        expect(image.imageToken === null).toBe(true);
-
-        expect(image.init('test', 'title', 'desc', 'btn')).toBe(true);
-        expect(image.button.buttons[0].title).toEqual('btn');
-        expect(image.button.buttons[0].url === null).toBe(true);
-
-        expect(
-            image.init('test', 'title', 'desc', { title: 'btn', url: 'https://google.com' }),
-        ).toBe(true);
-        expect(image.button.buttons[1].title).toEqual('btn');
-        expect(image.button.buttons[1].url).toEqual(
+        image = getImage(appContext, 'test', 'title', 'desc');
+        expect(image?.desc).toEqual('desc');
+        image = getImage(appContext, 'https://google.com/image.png', 'title', 'desc');
+        expect(image?.imageToken === null).toBe(true);
+        image = getImage(appContext, 'test', 'title', 'desc', 'btn');
+        expect(image?.button?.buttons[0].title).toEqual('btn');
+        expect(image?.button?.buttons[0].url === null).toBe(true);
+        image = getImage(appContext, 'test', 'title', 'desc', {
+            title: 'btn',
+            url: 'https://google.com',
+        });
+        expect(image?.button?.buttons[0].title).toEqual('btn');
+        expect(image?.button?.buttons[0].url).toEqual(
             'https://google.com?utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
         );
     });
 
     it('Image init isToken', () => {
-        const image = new Image(appContext);
-        image.isToken = true;
-        expect(image.init('https://google.com/image.png', 'title', 'desc')).toBe(true);
-        expect(image.imageToken).toEqual('https://google.com/image.png');
+        const image = getImage(
+            appContext,
+            'https://google.com/image.png',
+            'title',
+            'desc',
+            null,
+            true,
+        );
+        expect(image?.imageToken).toEqual('https://google.com/image.png');
     });
 });

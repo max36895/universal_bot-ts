@@ -1,8 +1,10 @@
-import { BotTest } from '../../../src/test';
+import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 import skillDefaultConfig from '../../config/skillDefaultConfig';
 import { StandardController } from './controller/StandardController';
 
 const bot = new BotTest();
+bot.use(fullPlatforms);
 bot.setAppConfig(skillDefaultConfig());
 bot.initBotController(StandardController);
 

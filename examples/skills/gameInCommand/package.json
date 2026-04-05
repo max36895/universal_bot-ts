@@ -1,0 +1,27 @@
+{
+    "name": "umbot_demo",
+    "description": "Демо пример игры",
+    "keywords": [
+        "Игра математика"
+    ],
+    "author": "Maxim-M",
+    "license": "MIT",
+    "version": "1.0.0",
+    "main": "./dist/index.js",
+    "scripts": {
+        "start": "node ./dist/index.js",
+        "build": "tsc"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/max36895/universal_bot-ts/"
+    },
+    "devDependencies": {
+        "tslint": "^5.18.0",
+        "typescript": "^5.9.3",
+        "umbot": "^3.0"
+    },
+    "dependencies": {
+        "@types/node": "^20.0.0"
+    }
+}

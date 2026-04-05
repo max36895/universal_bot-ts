@@ -1,10 +1,10 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
-        "target": "es2023",
+        "module": "Node16",
+        "target": "ES2023",
         "useDefineForClassFields": true,
-        "lib": ["es2023", "DOM"],
-        "moduleResolution": "node",
+        "lib": ["ES2023", "DOM"],
+        "moduleResolution": "Node16",
         "removeComments": false,
         "stripInternal": true,
         "sourceMap": false,
@@ -17,14 +17,15 @@
         "noFallthroughCasesInSwitch": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "outDir": "dist",
-        "baseUrl": ".",
-        "paths": {
-            "*": ["node_modules/*", "src/types/*"]
-        },
+        "rootDir": "./src",
+        "outDir": "./dist",
         "types": ["node", "jest"],
-        "typeRoots": ["node_modules/@types"]
+        "typeRoots": ["node_modules/@types"],
+        "preserveConstEnums": true,
+        "incremental": true,
+        "tsBuildInfoFile": "./dist/.tsbuildinfo",
+        "newLine": "LF"
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "examples/**/*", "cli/**/*", "**/*.test.ts"]
 }

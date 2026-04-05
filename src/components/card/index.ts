@@ -8,18 +8,8 @@
  *    - Добавление изображений и кнопок
  *    - Адаптация под различные платформы
  *
- * 2. **Платформо-специфичные классы карточек**:
- *    - AlisaCard - карточки для Алисы
- *    - MarusiaCard - карточки для Маруси
- *    - SmartAppCard - карточки для Сбер SmartApp
- *    - TelegramCard - карточки для Telegram
- *    - ViberCard - карточки для Viber
- *    - VkCard - карточки для ВКонтакте
- *
- * 3. **TemplateCardTypes** - базовый класс для создания пользовательских карточек
- *
  * @example
- * ```typescript
+ * ```ts
  * import { Card } from './card';
  *
  * // Создание карточки
@@ -33,13 +23,5 @@
  * const cardData = await card.getCards();
  * ```
  */
-export * from './types/AlisaCard';
-export * from './types/MarusiaCard';
-export * from './types/SmartAppCard';
-export * from './types/TelegramCard';
-export * from './types/TemplateCardTypes';
-export * from './types/ViberCard';
-export * from './types/VkCard';
-export * from './types/MaxAppCard';
 
 export * from './Card';

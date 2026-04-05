@@ -1,4 +1,4 @@
-import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from '../../../../src';
+import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from 'umbot';
 
 /**
  * Стандартный пример приложения.
@@ -15,16 +15,17 @@ export class StandardController extends BotController {
         super();
     }
 
-    public action(intentName: string, isCommand: boolean): void {
-        if (isCommand) {
-            // доп логика если была выполнена добавленная команда. Можно сохранять логи например
+    public action(intentName: string, isCommand: boolean, isStep: boolean): void {
+        if (isCommand || isStep) {
+            // Доп логика если была выполнена добавленная команда или шаг.
+            // Можно использовать как шаг, чтобы писать доп логи, либо добавить доп информацию к ответу.
             return;
         }
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btns = ['Пример кнопки галереи'];
-                this.buttons.links = ['Пример ссылки для изображения'];
+                this.buttons.addBtn('Пример кнопки');
+                this.buttons.addLink('Пример кнопки ссылки');
                 break;
 
             case HELP_INTENT_NAME:

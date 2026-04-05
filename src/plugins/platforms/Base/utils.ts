@@ -1,0 +1,244 @@
+import { ImageTokens, SoundTokens } from '../../../models';
+import { BotController } from '../../../controller';
+import { ISoundInfo } from '../../../core';
+import { Text } from '../../../utils';
+import { IButtonType, IEffect, ISound } from '../../../components';
+import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
+
+/**
+ * Тип для обработки запроса для загрузки изображения
+ */
+export type TImageCallback = (model: ImageTokens) => Promise<string | null>;
+
+/**
+ * Возвращает токен для изображения.
+ * В случае, если найти токен в базе не удалось, отрабатывает обработчик, который отправляет запрос на получение токена.
+ * @param path Путь до изображения
+ * @param platform Платформа для которой нужно получить токен
+ * @param controller Контроллер приложения
+ * @param cb Обработчик, который вернет токен.
+ */
+export async function getImageToken(
+    path: string,
+    platform: string,
+    controller: BotController,
+    cb: TImageCallback,
+): Promise<string | null> {
+    if (path) {
+        const model = new ImageTokens(controller.appContext);
+        model.platform = platform;
+        model.path = path;
+        const query = await model.whereOne({
+            platform,
+            path,
+        });
+        if (query && model.imageToken) {
+            return model.imageToken;
+        }
+        return cb(model);
+    }
+    return null;
+}
+
+/**
+ * Тип для обработки запроса для загрузки аудио
+ */
+export type TSoundCallback = (model: SoundTokens) => Promise<string | null>;
+
+/**
+ * Возвращает токен для аудио.
+ * В случае, если найти токен в базе не удалось, отрабатывает обработчик, который отправляет запрос на получение токена.
+ * @param path Путь до аудиофайла
+ * @param platform Платформа для которой нужно получить токен
+ * @param controller Контроллер приложения
+ * @param cb Обработчик, который вернет токен.
+ */
+export async function getSoundToken(
+    path: string,
+    platform: string,
+    controller: BotController,
+    cb: TSoundCallback,
+): Promise<string | null> {
+    if (path) {
+        const model = new SoundTokens(controller.appContext);
+        model.platform = platform;
+        model.path = path;
+        const query = await model.whereOne({
+            platform,
+            path,
+        });
+        if (query && model.soundToken) {
+            return model.soundToken;
+        }
+        return cb(model);
+    }
+    return null;
+}
+
+const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
+
+/**
+ * Ищет в запросе команду для паузы, и заменяет ее на корректный вид(sil).
+ *
+ * @param {string} text - Текст, который будет озвучен пользователю
+ * @returns {string} - Строка с паузой в формате sil <[ms]>
+ */
+export function getPause(text: string): string {
+    return text.replace(PAUSE_REG, (_, ms: string) => `sil <[${ms}]>`);
+}
+
+/**
+ * Заменяет звуковой токен в тексте на соответствующий звук
+ *
+ * @param {string} key - Ключ звука для замены
+ * @param {string | string[]} value - Значение или массив значений для замены
+ * @param {string} text - Исходный текст
+ * @returns {string} - Текст с замененными звуками
+ *
+ * @example
+ * ```ts
+ * // Замена одиночного звука
+ * const text = replaceSound(
+ *     '#game_win#',
+ *     '<speaker audio="alice-sounds-game-win-1.opus">',
+ *     'Поздравляем #game_win# с победой!'
+ * );
+ *
+ * // Замена на массив звуков
+ * const text = replaceSound(
+ *     '#nature_rain#',
+ *     [
+ *         '<speaker audio="alice-sounds-nature-rain-1.opus">',
+ *         '<speaker audio="alice-sounds-nature-rain-2.opus">'
+ *     ],
+ *     'На улице #nature_rain# идет дождь'
+ * );
+ * ```
+ */
+export function replaceSound(key: string, value: string | string[], text: string): string {
+    if (text.includes(key)) {
+        return Text.textReplace(key, value, text);
+    }
+    return text;
+}
+
+/**
+ * Удаляет все звуковые токены из текста
+ *
+ * @param {string} text - Исходный текст
+ * @returns {string} - Текст без звуковых токенов
+ *
+ * @example
+ * ```ts
+ * // Удаление звуковых токенов
+ * const text = removeSound('Текст #game_win# без #nature_rain# звуков');
+ * // Результат: 'Текст без звуков'
+ * ```
+ */
+export function removeSound(text: string): string {
+    if (text.includes('speaker') || text.includes('sil')) {
+        return text.replace(/<speaker[^>]*>|sil\s*<\[\d+]>/gi, '');
+    }
+    return text;
+}
+
+/**
+ * Базовый метод для обработки tts.
+ * Основная задача метода - найти все ключи в запросе, и заменить их на корректные звуки/эффекты.
+ * По умолчанию используется в Алисе и Марусе.
+ * @param soundInfo - Информация необходимая для обработки аудио
+ * @param defaultSounds - Стандартные звуки
+ * @param defaultEffects - Стандартные эффекты
+ */
+
+/**
+ * Базовый метод для обработки tts.
+ * Основная задача метода - найти все ключи в запросе, и заменить их на корректные звуки/эффекты.
+ * По умолчанию используется в Алисе и Марусе.
+ * @param soundInfo - Информация необходимая для обработки аудио
+ * @param defaultSounds - Стандартные звуки
+ * @param defaultEffects - Стандартные эффекты
+ */
+export function defaultSoundProcessing(
+    soundInfo: ISoundInfo,
+    defaultSounds: ISound[],
+    defaultEffects?: IEffect[],
+): string {
+    let updSounds: ISound[] = [];
+    if (soundInfo.sounds.length) {
+        updSounds = [...soundInfo.sounds, ...(soundInfo.usedStandardSound ? defaultSounds : [])];
+    } else if (soundInfo.usedStandardSound) {
+        updSounds = defaultSounds;
+    }
+    // Если в тексте нет "#", и никто не задал свои звуки,
+    // то считаем что звук никто не вставляет, поэтому доп обработка не требуется.
+    // По-хорошему, всегда стоит смотреть на наличие #, и при ее отсутствии не выполнять ничего, но могут быть места, где ключ может сильно отличаться.
+    const usedSoundEffect = soundInfo.text.includes('#');
+    if (usedSoundEffect) {
+        if (defaultEffects) {
+            defaultEffects.forEach((item) => {
+                soundInfo.text = soundInfo.text.replace(new RegExp(item.key, 'g'), item.effect);
+            });
+        }
+        soundInfo.text = getPause(soundInfo.text);
+    } else if (!soundInfo.sounds.length) {
+        return soundInfo.text;
+    }
+    let res = soundInfo.text;
+    if (updSounds.length) {
+        for (let i = 0; i < updSounds.length; i++) {
+            const sound = updSounds[i];
+            if (
+                typeof sound === 'object' &&
+                sound.sounds !== undefined &&
+                sound.key !== undefined
+            ) {
+                const sText: string = Text.getText(sound.sounds);
+                if (sText) {
+                    res = replaceSound(sound.key, sText, res);
+                }
+            }
+        }
+    }
+    return res;
+}
+
+/**
+ * Базовая функция, которая инициализирует команду пользователя.
+ * Обрабатывает различные типы запросов и сохраняет команду в контроллере
+ * @param request Объект запроса от пользователя
+ * @param controller Контроллер приложения
+ */
+export function initUserCommand(request: IAlisaRequest, controller: BotController): void {
+    if (request.type === 'SimpleUtterance') {
+        controller.userCommand = request.command.trim() || '';
+        controller.originalUserCommand = request.original_utterance.trim() || '';
+    } else {
+        if (typeof request.payload === 'string') {
+            controller.userCommand = request.payload;
+            controller.originalUserCommand = request.payload;
+        } else {
+            controller.userCommand = request.command?.trim() || '';
+            controller.originalUserCommand = request.original_utterance?.trim() || '';
+        }
+        controller.payload = request.payload;
+    }
+    if (!controller.userCommand) {
+        controller.userCommand = controller.originalUserCommand;
+    }
+}
+
+/**
+ * Возвращает корректный массив кнопок с учетом лимита
+ * @param buttons
+ * @param limit
+ */
+export function getCorrectButtons<TButton = IButtonType>(
+    buttons: TButton[],
+    limit: number = 10,
+): TButton[] {
+    if (buttons && buttons.length > limit) {
+        return buttons.slice(0, limit);
+    }
+    return buttons;
+}

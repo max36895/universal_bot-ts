@@ -2,7 +2,7 @@ import { Navigation } from '../../src';
 
 describe('Navigation tests', () => {
     let navigation: Navigation<number | { id: number; title: string }>;
-    let elements: any = null;
+    let elements: (number | { id: number; title: string })[] = [];
 
     beforeEach(() => {
         navigation = new Navigation();
@@ -15,6 +15,21 @@ describe('Navigation tests', () => {
         expect(navigation.getMaxPage(elements)).toEqual(2);
         elements.push(11);
         expect(navigation.getMaxPage(elements)).toEqual(3);
+    });
+
+    it('Get page info in navigation', () => {
+        navigation.elements = elements;
+        expect(navigation.getPageInfo()).toEqual('1 страница из 2');
+        navigation.elements.push(11);
+        expect(navigation.getPageInfo()).toEqual('1 страница из 3');
+        navigation.thisPage = 1;
+        expect(navigation.getPageInfo()).toEqual('2 страница из 3');
+        navigation.thisPage = 2;
+        expect(navigation.getPageInfo()).toEqual('3 страница из 3');
+        navigation.thisPage = -12;
+        expect(navigation.getPageInfo()).toEqual('1 страница из 3');
+        navigation.thisPage = 12;
+        expect(navigation.getPageInfo()).toEqual('1 страница из 3');
     });
 
     it('Get elements for navigation', () => {
@@ -64,7 +79,7 @@ describe('Navigation tests', () => {
                 title: `привет${i}`,
             });
         }
-        elements[3].title = 'приветствую тебя мир';
+        (elements[3] as { id: number; title: string }).title = 'приветствую тебя мир';
 
         selectedElement = navigation.selectedElement(elements, '2');
         expect(selectedElement).toEqual({ id: 2, title: 'привет1' });

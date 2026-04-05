@@ -1,13 +1,14 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
-        "target": "es2023",
-        "lib": ["es2023", "dom"],
+        "module": "Node16",
+        "target": "ES2023",
         "useDefineForClassFields": true,
-        "moduleResolution": "node",
+        "lib": ["ES2023", "DOM"],
+        "moduleResolution": "Node16",
         "removeComments": false,
+        "stripInternal": true,
         "sourceMap": false,
-        "allowJs": true,
+        "allowJs": false,
         "skipLibCheck": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
@@ -16,14 +17,23 @@
         "noFallthroughCasesInSwitch": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "outDir": "dist",
-        "baseUrl": ".",
-        "paths": {
-            "*": ["node_modules/*", "src/types/*"]
-        },
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "declaration": true,
+        "declarationMap": true,
         "types": ["node", "jest"],
-        "typeRoots": ["node_modules/@types"]
+        "typeRoots": ["node_modules/@types"],
+        "incremental": true,
+        "tsBuildInfoFile": "./dist/.tsbuildinfo.typedoc"
     },
-    "includes": ["src/**/*", "cli/**/*"],
-    "exclude": ["node_modules", "cli/template/**/*", "tests/**/*", "examples/**/*"]
+    "include": ["src/**/*"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "cli",
+        "examples",
+        "tests",
+        "**/*.test.ts",
+        "**/node_modules/**"
+    ]
 }

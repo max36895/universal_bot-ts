@@ -1,10 +1,9 @@
-import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from '../../../../src';
+import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from 'umbot';
 
 /**
- * Пример, позволяющий сохранить данные в локальном хранилище.
- * Локальное хранилище работает только для Алисы. Во всех других ботах, будет использована база данных.
+ * Пример, пользовательским контроллером
  *
- * Class LocalStorageController
+ * Class UserAppController
  */
 export class UserAppController extends BotController {
     constructor() {
@@ -15,8 +14,6 @@ export class UserAppController extends BotController {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет';
-                this.buttons.btns = ['Пример кнопки галереи'];
-                this.buttons.links = ['Пример ссылки для изображения'];
                 break;
 
             case HELP_INTENT_NAME:

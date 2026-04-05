@@ -5,14 +5,16 @@
 ## 📦 Установка
 
 ```ts
+import { T_ALISA } from 'umbot/plugins';
+
 // Глобальный middleware (для всех платформ)
 bot.use(async (ctx, next) => {
-    console.log('Запрос:', ctx.appContext.appType);
+    console.log('Запрос:', ctx.appType);
     await next(); // обязательно вызвать next() для продолжения
 });
 
-// Для конкретной платформы
-bot.use('alisa', async (ctx, next) => {
+// middleware для конкретной платформы
+bot.use(T_ALISA, async (ctx, next) => {
     if (!ctx.appContext.requestObject?.session?.user_id) {
         ctx.text = 'Некорректный запрос';
         ctx.isEnd = true;

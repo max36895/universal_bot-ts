@@ -17,12 +17,12 @@ module.exports = [
             parserOptions: {
                 ecmaVersion: 2023,
                 sourceType: 'module',
+                project: true,
             },
             globals: {
                 ...globals.node,
                 ...globals.es2023,
                 ...globals.browser,
-                ...globals.jest,
                 HeadersInit: 'readonly',
                 RequestInit: 'readonly',
                 RequestInfo: 'readonly',
@@ -40,18 +40,18 @@ module.exports = [
 
             'security/detect-object-injection': 'off', // много мест где не срабатывает ошибочно
             'security/detect-non-literal-fs-filename': 'off', // Пока отрубаем, так как ожидается что все пути задаст сам программист, и сделает это адекватно
-            'security/detect-unsafe-regex': 'warn',
+            'security/detect-unsafe-regex': 'error',
 
             '@typescript-eslint/explicit-function-return-type': 'warn',
-            '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/ban-ts-comment': 'off',
+            '@typescript-eslint/no-explicit-any': 'warn',
+            '@typescript-eslint/ban-ts-comment': 'error',
 
             'require-atomic-updates': 'error',
-            'max-lines-per-function': ['warn', { max: 80 }],
+            'max-lines-per-function': ['warn', { max: 100 }], // Меньшее значение мешает, из-за чего приходиться дробить метод, либо убирать логические разделения, благодаря которым удобнее читать код
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',
-            'no-unused-vars': 'off', // ругается на абстрактные классы и интерфейсы
-            'no-unused-private-class-members': 'warn',
+            'no-unused-vars': 'off', // Уже включено правило для ts, это правило для js, поэтому в реалиях ts будет много ошибочных срабатываний
+            'no-unused-private-class-members': 'error',
             'no-fallthrough': 'error',
             'no-eval': 'error',
             'no-implied-eval': 'error',
@@ -61,16 +61,34 @@ module.exports = [
             'no-param-reassign': 'warn',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
+            complexity: ['warn', { max: 20, variant: 'classic' }],
+            'max-depth': ['warn', { max: 4 }],
         },
     },
     {
         files: ['tests/**/*.test.ts', 'tests/**/*.ts'],
+        languageOptions: {
+            parserOptions: {
+                project: false,
+            },
+            globals: {
+                ...globals.jest,
+            },
+        },
         rules: {
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-call': 'off',
             'require-atomic-updates': 'off',
             'max-lines-per-function': ['off'],
+        },
+    },
+    {
+        files: ['cli/**/*.js', 'cli/**/*.ts'],
+        languageOptions: {
+            parserOptions: {
+                project: false,
+            },
         },
     },
 ];

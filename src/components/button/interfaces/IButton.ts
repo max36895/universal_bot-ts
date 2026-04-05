@@ -2,10 +2,9 @@
  * Тип для дополнительных данных кнопки.
  * Может содержать любые данные, которые будут переданы при нажатии на кнопку.
  *
- * @typedef {any} TButtonPayload
  *
  * @example
- * ```typescript
+ * ```ts
  * // Простой payload с действием
  * const payload: TButtonPayload = { action: 'click' };
  *
@@ -21,7 +20,6 @@
  * };
  * ```
  */
-export type TButtonPayload = any;
 
 /**
  * @interface IButtonOptions
@@ -31,14 +29,7 @@ export type TButtonPayload = any;
  * Поддерживает как общие опции, так и специфичные для конкретных платформ.
  *
  * @example
- * ```typescript
- * // Общие опции для всех платформ
- * const options: IButtonOptions = {
- *     _group: 'navigation',
- *     color: 'primary',
- *     size: 'large'
- * };
- *
+ * ```ts
  * // Специфичные опции для VK
  * const vkOptions: IButtonOptions = {
  *     _group: 'vk_buttons',
@@ -62,9 +53,8 @@ export interface IButtonOptions {
      * Используется для объединения кнопок в логические группы.
      * Позволяет организовать кнопки по категориям или функциональности.
      *
-     * @type {string | number}
      * @example
-     * ```typescript
+     * ```ts
      * // Группировка кнопок навигации
      * const options: IButtonOptions = {
      *     _group: 'nav_buttons'
@@ -77,14 +67,25 @@ export interface IButtonOptions {
      * ```
      */
     _group?: string | number;
+    /**
+     * Источник перехода
+     */
+    utmSource?: string;
+    /**
+     * Тип рекламного канала
+     */
+    utmMedium?: string;
+    /**
+     * Название рекламной кампании
+     */
+    utmCampaign?: string;
 
     /**
      * Дополнительные опции для кнопки.
      * Могут включать специфичные для платформы настройки.
      *
-     * @type {any}
      * @example
-     * ```typescript
+     * ```ts
      * // Настройка кнопки для VK
      * const options: IButtonOptions = {
      *     color: 'primary',
@@ -99,18 +100,17 @@ export interface IButtonOptions {
      * };
      * ```
      */
-    [name: string]: any;
+    [name: string]: unknown;
 }
 
 /**
- * @interface IButton
  * Интерфейс для определения структуры кнопки.
  *
  * Определяет основные свойства кнопки, которые используются на всех платформах.
  * Поддерживает различные типы кнопок: текстовые, ссылки, с payload и т.д.
  *
  * @example
- * ```typescript
+ * ```ts
  * // Создание простой текстовой кнопки
  * const button: IButton = {
  *     title: 'Нажми меня',
@@ -141,11 +141,9 @@ export interface IButton {
     /**
      * Заголовок кнопки.
      * Основной текст, отображаемый на кнопке.
-     * Используется на всех платформах.
      *
-     * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const button: IButton = {
      *     title: 'Нажми меня'
      * };
@@ -158,9 +156,8 @@ export interface IButton {
      * Используется в некоторых платформах вместо title.
      * Например, в VK API используется text вместо title.
      *
-     * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const button: IButton = {
      *     text: 'Нажми меня'
      * };
@@ -171,11 +168,9 @@ export interface IButton {
     /**
      * URL для перехода при нажатии на кнопку.
      * Используется для кнопок-ссылок.
-     * Поддерживается на всех платформах.
      *
-     * @type {string}
      * @example
-     * ```typescript
+     * ```ts
      * const button: IButton = {
      *     title: 'Перейти на сайт',
      *     url: 'https://example.com'
@@ -189,9 +184,8 @@ export interface IButton {
      * Могут содержать любую информацию, необходимую для обработки нажатия.
      * Используется для передачи контекста или параметров действия.
      *
-     * @type {TButtonPayload}
      * @example
-     * ```typescript
+     * ```ts
      * // Простой payload
      * const button: IButton = {
      *     title: 'Добавить в корзину',
@@ -219,25 +213,15 @@ export interface IButton {
      * };
      * ```
      */
-    payload?: TButtonPayload;
+    payload?: object;
 
     /**
      * Дополнительные параметры кнопки.
      * Влияют на внешний вид и поведение кнопки.
      * Могут включать как общие, так и платформо-специфичные настройки.
      *
-     * @type {IButtonOptions}
      * @example
-     * ```typescript
-     * // Общие настройки
-     * const button: IButton = {
-     *     title: 'Нажми меня',
-     *     options: {
-     *         color: 'primary',
-     *         size: 'large'
-     *     }
-     * };
-     *
+     * ```ts
      * // Платформо-специфичные настройки
      * const button: IButton = {
      *     title: 'Отправить контакт',
@@ -257,10 +241,8 @@ export interface IButton {
  * Может быть либо строкой (текстом кнопки), либо объектом, реализующим интерфейс IButton.
  * Упрощенный вариант для быстрого создания простых кнопок.
  *
- * @typedef {string | IButton} TButton
- *
  * @example
- * ```typescript
+ * ```ts
  * // Кнопка как строка (упрощенный вариант)
  * const simpleButton: TButton = 'Нажми меня';
  *

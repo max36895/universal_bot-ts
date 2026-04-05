@@ -8,8 +8,7 @@ let Re2: TRe2;
 let __$usedRe2: boolean;
 try {
     // На чистой винде, чтобы установить re2, нужно пострадать.
-    // Чтобы сильно не париться, и не использовать относительно старую версию (актуальная версия работает на node 20 и выше),
-    // даем возможность разработчикам самим подключить re2 по необходимости.
+    // Чтобы сильно не париться, даем возможность разработчикам самим подключить re2 по необходимости.
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     Re2 = require('re2');
@@ -19,26 +18,42 @@ try {
     __$usedRe2 = false;
 }
 
-export type customRegExp = RegExp;
+type customRegExp = RegExp;
 
-type TPattern = string | RegExp;
+/**
+ * Тип для регулярного выражения
+ */
+export type TPatternRegExp = string | RegExp;
 
-export function isRegex(regExp: string | RegExp | unknown): regExp is RegExp {
-    // @ts-ignore
-    return regExp instanceof RegExp || regExp instanceof Re2;
+/**
+ * Проверяет передано ли регулярное выражение или нет
+ * @param regExp Регулярное выражение
+ */
+export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
+    return !!(
+        regExp &&
+        typeof (regExp as RegExp).test === 'function' &&
+        typeof (regExp as RegExp).exec === 'function'
+    );
 }
 
 /**
- * Возвращает корректный класс для обработки регулярных выражений.
- * В случае если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp
+ * Возвращает скомпилированное регулярное выражение.
+ * Если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp.
+ * В случае, если передан customReg, регулярное выражение будет собранно через него
  * @param reg - само регулярное выражение
  * @param flags - флаг для регулярного выражения
+ * @param customReg - Произвольная реализация для обработки регулярных выражений
  * @returns
  */
-export function getRegExp(reg: TPattern | TPattern[], flags: string = 'ium'): customRegExp {
+export function getRegExp(
+    reg: TPatternRegExp | TPatternRegExp[],
+    flags: string = 'ium',
+    customReg?: RegExpConstructor,
+): customRegExp {
     let pattern;
     let flag = flags;
-    const getPattern = (pat: TPattern): string => {
+    const getPattern = (pat: TPatternRegExp): string => {
         return isRegex(pat) ? pat.source : pat;
     };
 
@@ -56,6 +71,9 @@ export function getRegExp(reg: TPattern | TPattern[], flags: string = 'ium'): cu
     } else {
         pattern = getPattern(reg);
         flag = isRegex(reg) ? reg.flags : flags;
+    }
+    if (customReg) {
+        return new customReg(pattern, flag);
     }
     return new Re2(pattern, flag);
 }

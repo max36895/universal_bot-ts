@@ -1,5 +1,5 @@
 /**
- * Модуль моделей данных
+ * Модуль для моделей, которые работают с базой данных.
  *
  * Предоставляет набор моделей и интерфейсов для:
  * - Работы с базами данных
@@ -7,7 +7,7 @@
  * - Хранения и обработки пользовательских данных
  *
  * @example
- * ```typescript
+ * ```ts
  * import { db, ImageTokens, SoundTokens, UsersData } from './models';
  *
  * // Работа с базой данных
@@ -18,16 +18,16 @@
  * await imageTokens.save('user123', 'image-token-123');
  *
  * // Работа с токенами звуков
- * const soundTokens = new SoundTokens();
+ * const soundTokens = new SoundTokens(appContext);
  * await soundTokens.get('user123');
  *
  * // Работа с данными пользователей
- * const usersData = new UsersData();
+ * const usersData = new UsersData(appContext);
  * await usersData.set('user123', { name: 'John' });
  * ```
  */
 
-export * as db from './db';
+export * from './db';
 export * from './interface';
 export * from './ImageTokens';
 export * from './SoundTokens';
