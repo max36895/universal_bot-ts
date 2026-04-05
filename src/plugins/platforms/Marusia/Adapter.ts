@@ -99,8 +99,8 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
     /**
      * Устанавливает состояние приложения.
      * Определяет тип хранилища и сохраняет состояние в контроллере
-     * @param controller Объект состояния из запроса
-     * @param state Объект состояния из запроса
+     * @param controller Контроллер приложения
+     * @param state Объект состояния из запроса Маруси (`user` или `session`)
      */
     #setState(controller: BotController, state: IMarusiaRequestState): void {
         if (state.user) {

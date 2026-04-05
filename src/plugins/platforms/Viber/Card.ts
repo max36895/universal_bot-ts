@@ -29,7 +29,7 @@ function getElement(image: IImageType, countImage: number = 1): IViberCard {
 /**
  * Получает карточку для отображения в Viber.
  * @param cardInfo Информация о карточке
- * @returns {IViberCard[] | IViberCard} Карточка или null
+ * @returns {IViberCard[] | IViberCard} Одна карточка, массив карточек или пустой массив, если нечего отобразить
  */
 export function cardProcessing(cardInfo: ICardInfo): IViberCard[] | IViberCard {
     const objects: IViberCard[] = [];

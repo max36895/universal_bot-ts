@@ -109,7 +109,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
  * Получает карточку для отображения в Алисе.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null>} Карточка или null
+ * @returns {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

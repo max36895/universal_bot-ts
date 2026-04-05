@@ -107,7 +107,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
  * Получает карточку для отображения в Марусе.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IMarusiaButtonCard | IMarusiaItemsList | IMarusiaBigImage | null>} Карточка или null
+ * @returns {Promise<IMarusiaButtonCard | IMarusiaItemsList | IMarusiaBigImage | null>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

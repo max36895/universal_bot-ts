@@ -110,8 +110,11 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
 
                 case 'message':
                     controller.userId = query.sender.id;
-                    controller.userCommand = query.message.text.toLowerCase().trim();
-                    controller.originalUserCommand = query.message.text;
+                    {
+                        const raw = query.message?.text ?? '';
+                        controller.userCommand = raw.toLowerCase().trim();
+                        controller.originalUserCommand = raw;
+                    }
                     controller.messageId = query.message_token;
 
                     this.appContext.appConfig.tokens[this.platformName].api_version = (query.sender

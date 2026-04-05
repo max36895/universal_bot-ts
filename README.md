@@ -8,7 +8,7 @@
 форматах запросов и ответов, предоставляя разработчику единый, предсказуемый интерфейс. Это позволяет писать логику один
 раз — и запускать её везде.
 
-Фреймворк следует [SemVer](https://semver.org/) . Breaking changes возможны только в MAJOR-версиях.
+Фреймворк следует [SemVer](https://semver.org/). Breaking changes возможны только в MAJOR-версиях.
 
 [![npm version](https://badge.fury.io/js/umbot.svg)](https://badge.fury.io/js/umbot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -29,7 +29,7 @@
 - ✅ Одна кодовая база для любой платформы. Хотите только Алису? Легко. Решите добавить Марусю или Telegram — просто
   добавьте нужный адаптер, логика остаётся.
 - ⚡ В типичных сценариях (до 1 000 команд) полная обработка запроса внутри фреймворка, включая поиск и выполнение
-  команд, занимает **менее 30 мс даже в самом сложном случае (fallback)**. На большинстве случаев это время составляет
+  команд, занимает **менее 30 мс даже в самом сложном случае (fallback)**. В большинстве случаев это время составляет
   **< 10 мс**. Это оставляет разработчику более **2.5 секунд** на выполнение собственной бизнес-логики — это критически
   важно для платформ с жёсткими тайм-аутами (Алиса, Маруся, Сбер и др.).
 - При первичной загрузке медиафайлов время ответа может превысить 1 секунду — поэтому `umbot` предусмотрел это, и
@@ -195,7 +195,7 @@ export class EchoController extends BotController {
 - [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_testing)
 - [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_deployment)
 - [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_middleware)
-- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_getting-started#часто-задаваемые-вопросы)
+- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_FAQ)
 
 ### Полезные ссылки
 

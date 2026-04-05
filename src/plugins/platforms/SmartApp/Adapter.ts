@@ -71,8 +71,8 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     /**
      * Инициализирует команду пользователя.
      * Обрабатывает различные типы сообщений и событий
-     * @param content Объект запроса от пользователя
-     * @param controller Объект запроса от пользователя
+     * @param content Объект webhook-запроса SmartApp
+     * @param controller Экземпляр контроллера приложения
      *
      * Поддерживаемые типы сообщений:
      * - MESSAGE_TO_SKILL: сообщение пользователя
@@ -86,10 +86,12 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         controller.messageId = content.messageId;
         switch (content.messageName) {
             case 'MESSAGE_TO_SKILL':
-            case 'CLOSE_APP':
-                controller.userCommand = content.payload.message.normalized_text;
-                controller.originalUserCommand = content.payload.message.original_text;
+            case 'CLOSE_APP': {
+                const msg = content.payload?.message;
+                controller.userCommand = msg?.normalized_text ?? '';
+                controller.originalUserCommand = msg?.original_text ?? '';
                 break;
+            }
 
             case 'SERVER_ACTION':
             case 'RUN_APP':
@@ -136,18 +138,19 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
                 };
 
                 controller.oldIntentName = query.payload.intent;
-                controller.appeal = query.payload.character.appeal;
+                controller.appeal = query.payload.character?.appeal ?? null;
                 controller.userId = query.uuid.userId;
+                const msg = query.payload.message;
                 const nlu = {
-                    entities: query.payload.message.entities,
-                    tokens: query.payload.message.tokenized_elements_list,
+                    entities: msg?.entities,
+                    tokens: msg?.tokenized_elements_list,
                 };
                 controller.nlu.setNlu(nlu);
 
                 controller.userMeta = query.payload.meta || {};
 
                 controller.platformOptions.appId = query.payload.app_info.applicationId;
-                if (query.payload.device.capabilities?.screen) {
+                if (query.payload.device?.capabilities?.screen) {
                     controller.isScreen = query.payload.device.capabilities.screen.available;
                 } else {
                     controller.isScreen = true;

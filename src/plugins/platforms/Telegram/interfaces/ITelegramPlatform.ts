@@ -79,7 +79,7 @@ export interface ITelegramContent {
      * Новое сообщение в канале (текст, фото, стикер и т.д.)
      * @see ITelegramMessage
      */
-    channel_post?: Record<string, unknown>;
+    channel_post?: ITelegramMessage;
     /**
      * Отредактированный пост в канале
      * Новая версия поста после редактирования
@@ -91,7 +91,12 @@ export interface ITelegramContent {
      * Новый запрос для inline-режима
      * @see https://core.telegram.org/bots/api#inlinequery
      */
-    inline_query?: Record<string, unknown>;
+    inline_query?: {
+        id: string;
+        from: ITelegramMessageFrom;
+        query: string;
+        offset: string;
+    };
     /**
      * Результат встроенного запроса
      * Выбранный пользователем результат inline-запроса
@@ -103,7 +108,13 @@ export interface ITelegramContent {
      * Новый запрос от inline-кнопки
      * @see https://core.telegram.org/bots/api#callbackquery
      */
-    callback_query?: Record<string, unknown>;
+    callback_query?: {
+        id: string;
+        from?: ITelegramMessageFrom;
+        message?: ITelegramMessage;
+        data?: string;
+        chat_instance?: string;
+    };
     /**
      * Запрос доставки
      * Только для счетов с гибкой ценой

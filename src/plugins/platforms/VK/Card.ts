@@ -73,8 +73,8 @@ async function getElements(
              * У карточки в любом случае должна быть хоть одна кнопка.
              * Максимальное количество кнопок 3
              */
-            if (button?.one_time) {
-                element.buttons = button.buttons.splice(0, 3) as IVkButton[];
+            if (button?.one_time && button.buttons?.length) {
+                element.buttons = button.buttons.slice(0, 3) as IVkButton[];
                 element.action = { type: 'open_photo' };
                 elements.push(element);
             }
@@ -87,7 +87,7 @@ async function getElements(
  * Получает карточку для отображения в VK.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IVkCard | string[]>} Карточка или null
+ * @returns {Promise<IVkCard | string[]>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

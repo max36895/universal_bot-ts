@@ -361,6 +361,31 @@ export class TelegramRequest {
     }
 
     /**
+     * Отвечает на callback-запрос от инлайн-кнопки.
+     * @param callbackQueryId - ID запроса из поля callback_query.id
+     * @param text - Текст уведомления (показывается всплывающим окном)
+     * @param showAlert - Показывать как alert (true) или всплывающее уведомление (false)
+     * @param url - URL для открытия после нажатия
+     * @param cacheTime - Время кэширования ответа (сек)
+     */
+    public async answerCallbackQuery(
+        callbackQueryId: string,
+        text?: string,
+        showAlert?: boolean,
+        url?: string,
+        cacheTime?: number,
+    ): Promise<ITelegramResult | null> {
+        this.#request.post = {
+            callback_query_id: callbackQueryId,
+            text,
+            show_alert: showAlert,
+            url,
+            cache_time: cacheTime,
+        };
+        return this.call('answerCallbackQuery');
+    }
+
+    /**
      * Отправляет фотографию
      * @param userId ID чата или пользователя
      * @param file Путь к файлу или его содержимое

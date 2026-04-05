@@ -105,8 +105,9 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 if (query.object !== undefined) {
                     const object: IVkRequestObject = query.object;
                     controller.userId = object.message.from_id;
-                    controller.userCommand = object.message.text.toLowerCase().trim();
-                    controller.originalUserCommand = object.message.text.trim();
+                    const rawText = object.message.text ?? '';
+                    controller.userCommand = rawText.toLowerCase().trim();
+                    controller.originalUserCommand = rawText.trim();
                     controller.messageId = object.message.id;
                     controller.payload = object.message.payload || null;
                     const user = await new VkRequest(this.appContext as AppContext).usersGet(

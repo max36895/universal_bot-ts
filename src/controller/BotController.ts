@@ -220,6 +220,10 @@ export interface IPlatformOptions {
      * Идентификатор приложения
      */
     appId?: string;
+    /**
+     * ID callback-запроса
+     */
+    callbackQueryId?: string;
 }
 
 /**
@@ -230,7 +234,7 @@ export interface IPlatformOptions {
  * кнопкам, карточкам, состоянию диалога, пользовательским данным, NLU и многому другому.
  *
  * Адаптеры платформ (например, `AlisaAdapter`) автоматически наполняют контроллер данными,
- * вызывают метод {@link run}, а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
+ * вызывают внутренний метод `{@link run}` (он вызывает ваш `action()`), а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
  *
  * **Ключевая особенность:** вся логика вашего голосового навыка или бота описывается в одном месте – в методе `action()`.
  * Фреймворк сам позаботится о маршрутизации: команды, интенты, шаги диалога – всё придёт в `action` с соответствующим флагом.
@@ -947,18 +951,27 @@ export abstract class BotController<
                 if (result && command) {
                     const res = this.#commandExecute(result, command);
                     if (res) {
-                        return res.then(() => {
-                            if (this.appContext?.usedMetric) {
-                                this.appContext.logMetric(
-                                    EMetric.GET_COMMAND,
-                                    performance.now() - startTimer,
+                        return res
+                            .then(() => {
+                                if (this.appContext?.usedMetric) {
+                                    this.appContext.logMetric(
+                                        EMetric.GET_COMMAND,
+                                        performance.now() - startTimer,
+                                        {
+                                            result,
+                                            status: true,
+                                        },
+                                    );
+                                }
+                            })
+                            .catch((error) => {
+                                this.appContext.logError(
+                                    `BotController: Произошла ошибка во время обработки команды "${result}". Текст ошибки: "${error}"`,
                                     {
-                                        result,
-                                        status: true,
+                                        error,
                                     },
                                 );
-                            }
-                        });
+                            });
                     }
                     if (this.appContext?.usedMetric) {
                         this.appContext.logMetric(
@@ -1180,7 +1193,7 @@ export abstract class BotController<
                     e,
                 },
             );
-            this.text = 'Произошла ошибка. Попробуйте позже.';
+            this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
         };
         try {
             if (command) {
@@ -1236,9 +1249,18 @@ export abstract class BotController<
                 if (stepName === this.oldIntentName || intents?.[stepName]) {
                     const res = step.cb(this);
                     if (res) {
-                        return res.then(() => {
-                            this._actionMetric(stepName, false, true);
-                        });
+                        return res
+                            .then(() => {
+                                this._actionMetric(stepName, false, true);
+                            })
+                            .catch((error) => {
+                                this.appContext.logError(
+                                    `BotController: Произошла ошибка во время обработки шага "${stepName}". Текст ошибки: "${error}"`,
+                                    {
+                                        error,
+                                    },
+                                );
+                            });
                     }
                     this._actionMetric(stepName, false, true);
                     return;

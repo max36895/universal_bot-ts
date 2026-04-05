@@ -59,7 +59,7 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
     }
 
     isPlatformOnQuery(query: IMaxRequestContent, headers?: Record<string, unknown>): boolean {
-        if (headers?.['X-Max-Signature']) {
+        if (headers?.['x-max-signature']) {
             return true;
         }
         if (!query) {
@@ -77,8 +77,9 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
                     if (query.message !== undefined) {
                         const object: IMaxRequestContent['message'] = query.message;
                         controller.userId = object.sender.user_id;
-                        controller.userCommand = object.body.text.toLowerCase().trim();
-                        controller.originalUserCommand = object.body.text.trim();
+                        const raw = object.body.text ?? '';
+                        controller.userCommand = raw.toLowerCase().trim();
+                        controller.originalUserCommand = raw.trim();
                         controller.messageId = object.body.seq;
                         controller.payload = object.body.attachments || null;
                         const thisUser = {

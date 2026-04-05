@@ -78,6 +78,33 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         );
     }
 
+    #setCallbackQuery(query: ITelegramContent, controller: BotController): boolean {
+        const cb = query.callback_query;
+        if (cb) {
+            controller.userId = cb.from?.id as number;
+            // callback_data может быть строкой или JSON-строкой
+            controller.userCommand = (cb.data || '').toLowerCase().trim();
+            controller.originalUserCommand = cb.data || '';
+            controller.messageId = cb.message?.message_id as number;
+            controller.payload = cb.data;
+            // Сохраняем ID callback-запроса, чтобы потом ответить
+            controller.platformOptions.callbackQueryId = cb.id;
+            return true;
+        }
+        return false;
+    }
+
+    #setInlineQuery(query: ITelegramContent, controller: BotController): boolean {
+        const iq = query.inline_query;
+        if (iq) {
+            controller.userId = iq.from?.id as number;
+            controller.userCommand = iq.query?.toLowerCase().trim() || '';
+            controller.originalUserCommand = iq.query || '';
+            return true;
+        }
+        return false;
+    }
+
     async setQueryData(query: ITelegramContent, controller: BotController): Promise<boolean> {
         if (this.appContext) {
             if (query) {
@@ -96,6 +123,23 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
                     };
                     controller.nlu.setNlu({ thisUser });
                     return true;
+                }
+                // === 2. Callback query (нажатие на inline-кнопку) ===
+                if (query.callback_query) {
+                    return this.#setCallbackQuery(query, controller);
+                }
+                // === 4. Сообщение в канале ===
+                if (query.channel_post) {
+                    controller.userId = query.channel_post.chat?.id;
+                    controller.userCommand = query.channel_post.text?.toLowerCase().trim() || '';
+                    controller.originalUserCommand = query.channel_post.text || '';
+                    controller.messageId = query.channel_post.message_id;
+                    return true;
+                }
+
+                // === 5. Inline query ===
+                if (query.inline_query) {
+                    return this.#setInlineQuery(query, controller);
                 }
             } else {
                 controller.platformOptions.error = `TelegramAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
@@ -134,6 +178,16 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
 
             if (controller.sound.sounds.length) {
                 await controller.sound.getSounds(controller.tts, soundProcessing, controller);
+            }
+            // Если это ответ на callback_query, отправляем подтверждение
+            if (controller.platformOptions.callbackQueryId) {
+                await telegramApi.answerCallbackQuery(
+                    controller.platformOptions.callbackQueryId,
+                    controller.text,
+                    false,
+                    undefined,
+                    0,
+                );
             }
         }
         return 'ok';

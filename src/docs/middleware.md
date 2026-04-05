@@ -9,7 +9,7 @@ import { T_ALISA } from 'umbot/plugins';
 
 // Глобальный middleware (для всех платформ)
 bot.use(async (ctx, next) => {
-    console.log('Запрос:', ctx.appContext.appType);
+    console.log('Запрос:', ctx.appType);
     await next(); // обязательно вызвать next() для продолжения
 });
 

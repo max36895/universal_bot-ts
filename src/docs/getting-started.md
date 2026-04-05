@@ -283,8 +283,7 @@ const bot = new Bot();
 bot.setAppMode('strict_prod'); // ← обязательно включите!
 ```
 
-При `appMode = strict_prod` любая потенциально опасная RegExp будет отклонена, а её использование вызовет ошибку в
-логах.
+При `setAppMode('strict_prod')` любая потенциально опасная RegExp будет отклонена при регистрации, а попытка её использовать вызовет ошибку в логах.
 
 ⚠️ Если вы используете slots с RegExp, убедитесь, что ваши выражения:
 
@@ -362,4 +361,4 @@ this.card
     .setTitle('Галерея изображений');
 ```
 
-Больше вопросов и ответов можно найти [тут](https://www.maxim-m.ru/bot/ts-doc/documents/FAQ)
+Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_FAQ).
