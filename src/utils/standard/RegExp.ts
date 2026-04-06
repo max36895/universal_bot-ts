@@ -7,9 +7,9 @@ let Re2: TRe2;
  */
 let __$usedRe2: boolean;
 try {
+    // Условная загрузка так как не всем нужен re2.
     // На чистой винде, чтобы установить re2, нужно пострадать.
     // Чтобы сильно не париться, даем возможность разработчикам самим подключить re2 по необходимости.
-
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     Re2 = require('re2');
     __$usedRe2 = true;

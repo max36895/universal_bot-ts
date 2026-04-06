@@ -328,20 +328,44 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     #getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
         const setEnvFn = (errorMsg: string): void => {
             let correctEnvValue = {};
-            // Используем доступ к process.env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая часть конфигурации бота. Сетевые запросы нужны для работы с их API.
+            // Используем доступ к process.env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая часть конфигурации бота.
             if (process.env) {
+                const {
+                    // Получаем токен для viber
+                    VIBER_TOKEN,
+                    // Получаем токен для talegram
+                    TELEGRAM_TOKEN,
+                    // Получаем токен для vk
+                    VK_TOKEN,
+                    // Получаем токен для max
+                    MAX_TOKEN,
+                    // Получаем токен для подтверждения vk
+                    VK_CONFIRMATION_TOKEN,
+                    // Получаем токен для маруси
+                    MARUSIA_TOKEN,
+                    // Получаем токен для работы с api яндекса
+                    YANDEX_TOKEN,
+                    // Получаем хост для подключения к базе
+                    DB_HOST,
+                    // Получаем имя пользователя для подключения к базе
+                    DB_USER,
+                    // Получаем пароль пользователя для подключения к базе
+                    DB_PASSWORD,
+                    // Получаем имя базы данных
+                    DB_NAME,
+                } = process.env;
                 correctEnvValue = {
-                    VIBER_TOKEN: process.env.VIBER_TOKEN,
-                    TELEGRAM_TOKEN: process.env.TELEGRAM_TOKEN,
-                    VK_TOKEN: process.env.VK_TOKEN,
-                    MAX_TOKEN: process.env.MAX_TOKEN,
-                    VK_CONFIRMATION_TOKEN: process.env.VK_CONFIRMATION_TOKEN,
-                    MARUSIA_TOKEN: process.env.MARUSIA_TOKEN,
-                    YANDEX_TOKEN: process.env.YANDEX_TOKEN,
-                    DB_HOST: process.env.DB_HOST,
-                    DB_USER: process.env.DB_USER,
-                    DB_PASSWORD: process.env.DB_PASSWORD,
-                    DB_NAME: process.env.DB_NAME,
+                    VIBER_TOKEN,
+                    TELEGRAM_TOKEN,
+                    VK_TOKEN,
+                    MAX_TOKEN,
+                    VK_CONFIRMATION_TOKEN,
+                    MARUSIA_TOKEN,
+                    YANDEX_TOKEN,
+                    DB_HOST,
+                    DB_USER,
+                    DB_PASSWORD,
+                    DB_NAME,
                 };
             }
             let isError = true;

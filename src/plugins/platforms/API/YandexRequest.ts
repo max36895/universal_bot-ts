@@ -19,7 +19,7 @@ import { getErrorMsg } from './constants';
  * api.setOAuth('new-token');
  *
  * // Выполнение запроса
- * const result = await api.call<ApiResponse>('https://api.yandex.ru/endpoint');
+ * const result = await api.call<ApiResponse>('...');
  * if (result) {
  *   // Обработка успешного ответа
  *   console.log(result);
@@ -159,7 +159,7 @@ export class YandexRequest {
      *
      * try {
      *   // Выполнение запроса
-     *   const response = await api.call<MyApiResponse>('https://api.yandex.ru/endpoint');
+     *   const response = await api.call<MyApiResponse>('...');
      *
      *   if (response) {
      *     // Обработка успешного ответа

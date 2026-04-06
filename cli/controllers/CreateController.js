@@ -282,7 +282,7 @@ class CreateController {
             console.log('index.ts успешно создан');
 
             const packageFile = `${this.#path}/package.json`;
-            const packageContent = this._getFileContent(`${standardPath}/package.json`);
+            const packageContent = this._getFileContent(`${standardPath}/package.json.text`);
             this._generateFile(packageContent, packageFile);
             console.log('package.json успешно создан');
 

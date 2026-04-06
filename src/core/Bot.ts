@@ -492,7 +492,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * // Асинхронная команда (работа с API):
      * ```ts
      * bot.addCommand('weather', ['погода'], async (text, controller) => {
-     *   const weather = await fetch('https://api.weather.com');
+     *   const weather = await fetch('Какой-то сервис для получения погоды');
      *   controller.text = `Погода: ${await weather.text()}`;
      * });
      * ```
@@ -873,7 +873,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   ): void {
      *     // Добавим кнопку "Подписаться" везде, кроме шагов
      *     if (!isStep) {
-     *       this.buttons.addBtn('Подписаться на рассылку', 'https://example.com');
+     *       this.buttons.addBtn('Подписаться на рассылку', 'http://localhost');
      *     }
      *
      *     // Логирование

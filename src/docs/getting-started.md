@@ -127,7 +127,7 @@ this.tts = 'Текст для синтеза речи (если отличает
 ```ts
 this.buttons
     .addBtn('Простая кнопка')
-    .addBtn('Ссылка', 'https://example.com')
+    .addBtn('Ссылка', 'http://localhost')
     .addBtn('Кнопка с данными', null, {
         action: 'custom',
         value: 123,

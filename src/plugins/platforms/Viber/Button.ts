@@ -31,9 +31,9 @@ export const T_REPLY = 'reply';
  * const viberButton = new ViberButton();
  *
  * // Создание кнопки-ссылки
- * const linkButton = getButton('Открыть сайт', 'https://example.com', null, {
+ * const linkButton = getButton('Открыть сайт', 'http://localhost', null, {
  *     ActionType: ViberButton.T_OPEN_URL,
- *     ActionBody: 'https://example.com'
+ *     ActionBody: 'http://localhost'
  * });
  * viberButton.buttons = [linkButton];
  * ```

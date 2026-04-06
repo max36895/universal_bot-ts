@@ -2,7 +2,7 @@ global.fetch = jest.fn();
 
 jest.mock('../../src/utils', () => ({
     ...jest.requireActual('../../src/utils'),
-    fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]) }),
+    fread: jest.fn().mockReturnValue({ data: new Uint8Array([1, 2, 3]), success: true }),
     isFile: jest.fn().mockReturnValue(true),
 }));
 jest.mock('fs', () => ({

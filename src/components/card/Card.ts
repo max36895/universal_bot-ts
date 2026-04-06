@@ -56,7 +56,7 @@ export class Card {
      * card.addButton('Купить');
      * card.addButton({
      *     title: 'Подробнее',
-     *     url: 'https://example.com'
+     *     url: 'http://localhost'
      * });
      * ```
      */
@@ -189,7 +189,7 @@ export class Card {
      * // Добавление кнопки с дополнительными параметрами
      * card.addButton({
      *     title: 'Подробнее',
-     *     url: 'https://example.com',
+     *     url: 'http://localhost',
      *     payload: { action: 'details' }
      * });
      * ```
@@ -236,7 +236,7 @@ export class Card {
      * // Добавление изображения с кнопкой
      * card.addImage('product.jpg', 'Товар', 'Описание', {
      *     title: 'Купить',
-     *     url: 'https://shop.com/product',
+     *     url: 'http://localhost/product',
      *     payload: { action: 'buy', id: 123 }
      * });
      *

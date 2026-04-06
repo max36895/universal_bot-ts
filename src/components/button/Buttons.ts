@@ -114,7 +114,7 @@ export class Buttons {
      * buttons.addBtn('Нажми меня');
      *
      * // Кнопка с URL и payload
-     * buttons.addBtn('Перейти', 'https://example.com', { action: 'navigate' });
+     * buttons.addBtn('Перейти', 'http://localhost', { action: 'navigate' });
      * ```
      */
     public addBtn(
@@ -138,10 +138,10 @@ export class Buttons {
      * @example
      * ```ts
      * // Простая ссылка
-     * buttons.addLink('Перейти на сайт', 'https://example.com');
+     * buttons.addLink('Перейти на сайт', 'http://localhost');
      *
      * // Ссылка с payload
-     * buttons.addLink('Документация', 'https://docs.example.com', { section: 'api' });
+     * buttons.addLink('Документация', 'http://localhost', { section: 'api' });
      * ```
      */
     public addLink(

@@ -506,7 +506,7 @@ export interface IAlisaResponse {
      *     description: "Описание",
      *     button: {
      *         text: "Подробнее",
-     *         url: "https://example.com"
+     *         url: "http://localhost"
      *     }
      * }
      *

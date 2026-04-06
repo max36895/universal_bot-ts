@@ -7,7 +7,7 @@ import { IVkApi } from './IVkApi';
  * @example
  * ```ts
  * const response: IMarusiaApiPictureUpdateLink = {
- *   picture_upload_link: "https://upload.marusia.ru/upload/photo",
+ *   picture_upload_link: "/photo",
  *   // ... другие поля из IVkApi
  * };
  * ```
@@ -58,7 +58,7 @@ export type IMarusiaApiRemove = IVkApi<number>;
  * @example
  * ```ts
  * const response: IMarusiaApiAudioUpdateLink = {
- *   audio_upload_link: "https://upload.marusia.ru/upload/audio",
+ *   audio_upload_link: "/audio",
  *   // ... другие поля из IVkApi
  * };
  * ```

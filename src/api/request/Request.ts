@@ -2,12 +2,10 @@
  * Модуль для отправки HTTP-запросов.
  * Предоставляет функционал для работы с различными типами запросов и ответов
  */
-import { httpBuildQuery, IGetParams, isFile } from '../../utils';
+import { fread, httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { AppContext, EMetric, THttpClient } from '../../core';
 import { IRequestSend } from '../interfaces/IRequest';
 import { basename } from 'path';
-// Импорт fs/promises — легитимная работа с файловой системой (чтение/запись конфигов, логов, загрузок).
-import fs from 'fs/promises';
 
 /**
  * Класс для отправки HTTP-запросов к API различных платформ. Используется внутри адаптеров для взаимодействия с внешними сервисами.
@@ -277,12 +275,15 @@ export class Request {
         filePath: string,
         fileName?: string,
     ): Promise<void> {
-        try {
-            const fileResult = (await fs.readFile(filePath)) as BufferSource;
+        const fileData = await fread(filePath);
+        if (fileData.success) {
+            const fileResult = fileData.data as unknown as BufferSource;
             const fileBlob = new Blob([fileResult]);
             formData.append(fileName || 'file', fileBlob, basename(filePath));
-        } catch (error) {
-            this.#appContext?.logError(`Ошибка чтения файла: "${filePath}"`, { error });
+        } else {
+            this.#appContext?.logError(`Ошибка чтения файла: "${filePath}"`, {
+                error: fileData.error,
+            });
         }
     }
 

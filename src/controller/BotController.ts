@@ -741,14 +741,14 @@ export abstract class BotController<
      * this.text = 'Популярные товары:';
      * this.card
      *   .addImage(
-     *     'https://example.com/iphone.jpg',
+     *     'http://localhost/iphone.jpg',
      *     'iPhone 15 Pro',
      *     '99 990 ₽\nЭкран 6.1", процессор A17 Pro'
      *   )
      *   .addButton('Купить')
      *
      *   .addImage(
-     *     'https://example.com/macbook.jpg',
+     *     'http://localhost/macbook.jpg',
      *     'MacBook Air M2',
      *     '124 990 ₽\n13.6", 8ГБ RAM, 256ГБ SSD'
      *   )
@@ -769,7 +769,7 @@ export abstract class BotController<
      *     'Добавлена оплата картой и доставка',
      *     {
      *         title: 'Перейти',
-     *         url: 'https://example.com/news/1'
+     *         url: 'http://localhost/news/1'
      *     }
      *   )
      * ```

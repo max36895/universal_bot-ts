@@ -47,7 +47,7 @@ export interface IViberApi {
  * const userInfo: IViberUserInfo = {
  *   id: "123456789",
  *   name: "John Doe",
- *   avatar: "https://example.com/avatar.jpg",
+ *   avatar: "http://localhost/avatar.jpg",
  *   country: "US",
  *   language: "en",
  *   primary_device_os: "iOS 15.0",
@@ -123,7 +123,7 @@ export interface IViberUserInfo {
  * ```ts
  * const sender: IViberSender = {
  *   name: "My Bot",
- *   avatar: "https://example.com/bot-avatar.jpg"
+ *   avatar: "http://localhost/bot-avatar.jpg"
  * };
  * ```
  */
@@ -153,7 +153,7 @@ export interface IViberSender {
  *   user: {
  *     id: "123456789",
  *     name: "John Doe",
- *     avatar: "https://example.com/avatar.jpg",
+ *     avatar: "http://localhost/avatar.jpg",
  *     primary_device_os: "iOS 15.0",
  *     api_version: 8,
  *     viber_version: "12.0.0",
@@ -180,7 +180,7 @@ export interface IViberGetUserDetails extends IViberApi {
  * @example
  * ```ts
  * const webhookParams: IViberWebhookParams = {
- *   url: "https://example.com/webhook",
+ *   url: "http://localhost/webhook",
  *   event_types: ["message", "delivered", "seen"],
  *   send_name: true,
  *   send_photo: true
@@ -293,8 +293,8 @@ export interface IViberRichMediaParams {
  * const imageMessage: IViberParams = {
  *   receiver: "123456789",
  *   type: "picture",
- *   media: "https://example.com/image.jpg",
- *   thumbnail: "https://example.com/thumb.jpg",
+ *   media: ".../image.jpg",
+ *   thumbnail: "http://localhost/thumb.jpg",
  *   text: "Check out this image!"
  * };
  *

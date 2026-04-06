@@ -32,7 +32,7 @@ const API_ENDPOINT = 'https://api.telegram.org/bot';
  * // Отправка форматированного сообщения
  * await telegram.sendMessage(12345,
  *   '*Жирный текст* и _курсив_\n' +
- *   '[Ссылка](https://example.com)\n' +
+ *   '[Ссылка](http://localhost)\n' +
  *   '`code` и ```pre```',
  *   { parse_mode: 'Markdown' }
  * );
@@ -215,8 +215,8 @@ export class TelegramRequest {
      * @param message Текст сообщения
      * @param params Дополнительные параметры:
      * - parse_mode: формат текста
-     *   - Markdown: *жирный*, _курсив_, [ссылка](https://example.com), `код`, ```pre```
-     *   - HTML: <b>жирный</b>, <i>курсив</i>, <a href="https://example.com">ссылка</a>, <code>код</code>, <pre>pre</pre>
+     *   - Markdown: *жирный*, _курсив_, [ссылка](http://localhost), `код`, ```pre```
+     *   - HTML: <b>жирный</b>, <i>курсив</i>, <a href="http://localhost">ссылка</a>, <code>код</code>, <pre>pre</pre>
      * - disable_web_page_preview: отключить предпросмотр ссылок
      * - disable_notification: отключить уведомление
      * - reply_to_message_id: ID сообщения для ответа
@@ -234,7 +234,7 @@ export class TelegramRequest {
      * // Форматированное сообщение
      * await telegram.sendMessage(12345,
      *   '<b>Жирный</b> и <i>курсив</i>\n' +
-     *   '<a href="https://example.com">Ссылка</a>\n' +
+     *   '<a href="http://localhost">Ссылка</a>\n' +
      *   '<code>code</code>',
      *   { parse_mode: 'HTML' }
      * );

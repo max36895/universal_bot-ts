@@ -101,17 +101,17 @@ function init<TButtonPayload = TBtnPayload>(
  * @example
  * ```ts
  * // Простая ссылка
- * const button1 = getButton('Перейти на сайт', 'https://example.com');
+ * const button1 = getButton('Перейти на сайт', 'http://localhost');
  *
  * // Ссылка с UTM-метками
- * const button2 = getButton('Купить', 'https://shop.com/product', null, {
+ * const button2 = getButton('Купить', 'http://localhost/product', null, {
  *   utmSource: 'bot',
  *   utmMedium: 'button',
  *   utmCampaign: 'spring_sale'
  * });
  *
  * // Ссылка с дополнительными данными
- * const button3 = getButton('Подробнее', 'https://example.com/article', {
+ * const button3 = getButton('Подробнее', 'http://localhost/article', {
  *   action: 'read',
  *   article_id: 123
  * });

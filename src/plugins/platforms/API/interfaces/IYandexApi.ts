@@ -114,7 +114,7 @@ export interface IYandexCheckOutPlace {
  * const response: IYandexRequestDownloadImageRequest = {
  *   image: {
  *     id: "image123456789",
- *     origUrl: "https://example.com/image.jpg",
+ *     origUrl: ".../image.jpg",
  *     size: 1024,
  *     createdAt: 1234567890
  *   }
@@ -138,13 +138,13 @@ export interface IYandexRequestDownloadImageRequest extends IYandexApi {
  *   images: [
  *     {
  *       id: "image123456789",
- *       origUrl: "https://example.com/image1.jpg",
+ *       origUrl: ".../image1.jpg",
  *       size: 1024,
  *       createdAt: 1234567890
  *     },
  *     {
  *       id: "image987654321",
- *       origUrl: "https://example.com/image2.jpg",
+ *       origUrl: ".../image2.jpg",
  *       size: 2048,
  *       createdAt: 1234567891
  *     }
@@ -167,7 +167,7 @@ export interface IYandexRequestDownloadImagesRequest extends IYandexApi {
  * ```ts
  * const image: IYandexRequestDownloadImage = {
  *   id: "image123456789",
- *   origUrl: "https://example.com/image.jpg",
+ *   origUrl: ".../image.jpg",
  *   size: 1024,
  *   createdAt: 1234567890
  * };
