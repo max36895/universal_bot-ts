@@ -7,6 +7,7 @@
  * - Работы с HTTP-параметрами
  * - Взаимодействия с консолью
  */
+// Импорт fs/promises — легитимная работа с файловой системой (чтение/запись конфигов, логов, загрузок).
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as readline from 'readline';

@@ -150,12 +150,12 @@
         "@types/node": "^20.19.30",
         "@typescript-eslint/eslint-plugin": "^8.58.0",
         "@typescript-eslint/parser": "^8.58.0",
-        "eslint": "^10.1.0",
+        "eslint": "^10.2.0",
         "eslint-plugin-security": "^4.0.0",
         "globals": "^17.4.0",
         "jest": "^30.3.0",
         "prettier": "^3.8.1",
-        "ts-jest": "^29.4.6",
+        "ts-jest": "^29.4.9",
         "typedoc": "^0.28.18"
     },
     "peerDependencies": {
