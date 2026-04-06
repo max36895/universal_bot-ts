@@ -328,6 +328,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     #getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
         const setEnvFn = (errorMsg: string): void => {
             let correctEnvValue = {};
+            // Используем доступ к process.env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая часть конфигурации бота. Сетевые запросы нужны для работы с их API.
             if (process.env) {
                 correctEnvValue = {
                     VIBER_TOKEN: process.env.VIBER_TOKEN,

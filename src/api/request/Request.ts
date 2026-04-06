@@ -6,6 +6,7 @@ import { httpBuildQuery, IGetParams, isFile } from '../../utils';
 import { AppContext, EMetric, THttpClient } from '../../core';
 import { IRequestSend } from '../interfaces/IRequest';
 import { basename } from 'path';
+// Импорт fs/promises — легитимная работа с файловой системой (чтение/запись конфигов, логов, загрузок).
 import fs from 'fs/promises';
 
 /**
@@ -154,6 +155,7 @@ export class Request {
      * Возвращает функцию для отправки запроса
      */
     #getHttpClient(): THttpClient {
+        // Легитимный доступ к HTTP-клиенту: используется либо переданный контекст, либо глобальный fetch.
         if (this.#appContext?.httpClient) {
             return this.#appContext?.httpClient;
         }
