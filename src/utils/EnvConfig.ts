@@ -7,7 +7,7 @@
  * - Управления токенами для различных платформ
  * - Настройки подключения к базе данных
  */
-import * as fs from 'fs';
+import { freadSync } from './standard/util';
 import * as path from 'path';
 
 /**
@@ -187,6 +187,8 @@ export interface IEnvConfigStatus {
     data?: IEnvConfig;
 }
 
+export const ENV_NAME = 'env';
+
 /**
  * Загружает переменные окружения из файла .env
  *
@@ -213,8 +215,9 @@ export interface IEnvConfigStatus {
  * @throws {Error} Если файл не найден или не может быть прочитан
  */
 export function loadEnvFile(envPath: string): IEnvConfigStatus {
-    try {
-        const envContent = fs.readFileSync(path.resolve(envPath), 'utf-8');
+    const fileData = freadSync(path.resolve(envPath));
+    if (fileData.success) {
+        const envContent = fileData.data as string;
         const envVars: IEnvConfig = {};
 
         envContent.split('\n').forEach((line) => {
@@ -229,10 +232,10 @@ export function loadEnvFile(envPath: string): IEnvConfigStatus {
         });
 
         return { status: true, data: envVars };
-    } catch (error) {
+    } else {
         return {
             status: false,
-            error: `Error loading .env file: ${(error as Error)?.message || 'Unknown error'}`,
+            error: `Error loading .env file: ${fileData.error || 'Unknown error'}`,
         };
     }
 }
