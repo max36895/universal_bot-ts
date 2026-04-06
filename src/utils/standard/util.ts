@@ -7,8 +7,8 @@
  * - Работы с HTTP-параметрами
  * - Взаимодействия с консолью
  */
-// Импорт fs/promises — легитимная работа с файловой системой (чтение/запись конфигов, логов, загрузок).
 import * as fs from 'fs';
+// Импорт fs/promises — легитимная работа с файловой системой (чтение/запись конфигов, логов, загрузок).
 import * as fsPromises from 'fs/promises';
 import * as readline from 'readline';
 import { TLoggerCb } from '../../core/interfaces/ILogger';
@@ -476,9 +476,9 @@ export async function mkdir(path: string, mask?: fs.Mode): Promise<FileOperation
  * @param fileName - Путь к файлу
  * @returns Promise с результатом операции
  */
-export async function fread(fileName: string): Promise<FileOperationResult<string>> {
+export async function fread(fileName: string): Promise<FileOperationResult<string | Buffer>> {
     try {
-        const content = await fsPromises.readFile(fileName, 'utf-8');
+        const content = await fsPromises.readFile(fileName);
         return { success: true, data: content };
     } catch (error) {
         return {

@@ -123,7 +123,7 @@ const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|
  * Text.resize('Длинный текст', 5); // -> 'Длин...'
  *
  * // Проверка URL
- * Text.isUrl('https://example.com'); // -> true
+ * Text.isUrl('http://localhost'); // -> true
  *
  * // Определение согласия
  * Text.isSayTrue('да, согласен'); // -> true
@@ -188,7 +188,7 @@ export class Text {
      *
      * @example
      * ```ts
-     * Text.isUrl('https://example.com'); // -> true
+     * Text.isUrl('http://localhost'); // -> true
      * Text.isUrl('не url'); // -> false
      * ```
      */

@@ -1,28 +1,28 @@
 version: 2
 
 projects:
-  - path: .
-    capabilities:
-      # Разрешаем доступ только к конкретным переменным окружения
-      environment:
-        - VIBER_TOKEN
-        - TELEGRAM_TOKEN
-        - VK_TOKEN
-        - MAX_TOKEN
-        - VK_CONFIRMATION_TOKEN
-        - MARUSIA_TOKEN
-        - YANDEX_TOKEN
-        - DB_HOST
-        - DB_USER
-        - DB_PASSWORD
-        - DB_NAME
-      # Разрешаем и чтение, и запись в файловую систему
-      filesystem: write
-      # Разрешаем любые сетевые запросы (без ограничений)
-      network: true
+    - path: .
+      capabilities:
+          # Разрешаем доступ только к конкретным переменным окружения
+          environment:
+              - VIBER_TOKEN
+              - TELEGRAM_TOKEN
+              - VK_TOKEN
+              - MAX_TOKEN
+              - VK_CONFIRMATION_TOKEN
+              - MARUSIA_TOKEN
+              - YANDEX_TOKEN
+              - DB_HOST
+              - DB_USER
+              - DB_PASSWORD
+              - DB_NAME
+          # Разрешаем и чтение, и запись в файловую систему
+          filesystem: write
+          # Разрешаем любые сетевые запросы (без ограничений)
+          network: true
 
-    ignorePaths:
-      - "examples/"
-      - "examples/**"
-      - "tests/"
-      - "tests/**"
+      ignorePaths:
+          - 'examples/'
+          - 'examples/**'
+          - 'tests/'
+          - 'tests/**'

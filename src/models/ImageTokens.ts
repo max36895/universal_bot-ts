@@ -36,7 +36,6 @@ export interface IImageModelState extends IModelState {
     /**
      * Расположение изображения (url/директория).
      * Может быть URL-адресом изображения или путем к локальному файлу.
-     * @example "https://example.com/image.jpg" или "/path/to/local/image.jpg"
      */
     path: string | null;
     /**

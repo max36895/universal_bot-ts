@@ -1,0 +1,9 @@
+.idea/*
+/logs/*
+/json/*
+/examples/*
+/tests/*
+/docs/*
+/node_modules/*
+/coverage/*
+/package-lock.json

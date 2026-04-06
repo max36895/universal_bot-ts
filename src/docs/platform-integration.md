@@ -171,7 +171,7 @@ class TelegramController extends BotController {
 
             // Добавление inline кнопок
             this.buttons
-                .addBtn('Веб-сайт', 'https://example.com')
+                .addBtn('Веб-сайт', 'http://localhost')
                 .addBtn('Помощь', null, { command: 'help' });
 
             // Отправка изображения

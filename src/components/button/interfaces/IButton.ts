@@ -120,7 +120,7 @@ export interface IButtonOptions {
  * // Создание кнопки-ссылки
  * const linkButton: IButton = {
  *     title: 'Перейти на сайт',
- *     url: 'https://example.com',
+ *     url: 'http://localhost',
  *     options: { color: 'primary' }
  * };
  *
@@ -173,7 +173,7 @@ export interface IButton {
      * ```ts
      * const button: IButton = {
      *     title: 'Перейти на сайт',
-     *     url: 'https://example.com'
+     *     url: 'http://localhost'
      * };
      * ```
      */

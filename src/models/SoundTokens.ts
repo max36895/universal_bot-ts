@@ -36,7 +36,7 @@ export interface ISoundModelState extends IModelState {
     /**
      * Путь к файлу.
      * Может быть URL-адресом звукового файла или путем к локальному файлу.
-     * @example "/path/to/audio.mp3" или "https://example.com/audio.mp3"
+     * @example "/path/to/audio.mp3" или "http://localhost/audio.mp3"
      */
     path: string | null;
     /**
@@ -113,7 +113,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Путь к файлу.
      * Может быть URL-адресом звукового файла или путем к локальному файлу.
-     * @example "/path/to/audio.mp3" или "https://example.com/audio.mp3"
+     * @example "/path/to/audio.mp3" или "http://localhost/audio.mp3"
      */
     get path(): string {
         return this.state.path as string;

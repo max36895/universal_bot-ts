@@ -1,9 +1,10 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
-        "target": "es2023",
-        "lib": ["es2023", "dom"],
-        "moduleResolution": "node",
+        "module": "Node16",
+        "target": "ES2023",
+        "useDefineForClassFields": true,
+        "lib": ["ES2023", "DOM"],
+        "moduleResolution": "Node16",
         "removeComments": true,
         "sourceMap": false,
         "allowJs": true,
@@ -15,14 +16,12 @@
         "noFallthroughCasesInSwitch": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "outDir": "dist",
-        "baseUrl": ".",
-        "paths": {
-            "*": ["node_modules/*", "src/*"]
-        },
+        "rootDir": "./src",
+        "outDir": "./dist",
         "types": ["node"],
-        "typeRoots": ["node_modules/@types"]
+        "typeRoots": ["node_modules/@types"],
+        "newLine": "LF"
     },
-    "include": ["src/**/*", "src/index.ts"],
+    "include": ["src/**/*"],
     "exclude": ["node_modules"]
 }

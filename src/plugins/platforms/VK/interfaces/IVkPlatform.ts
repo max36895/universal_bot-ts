@@ -189,7 +189,7 @@ export interface IVkButtonObject {
  * // Кнопка-ссылка
  * const linkAction: IVkButtonAction = {
  *     type: 'open_link',
- *     link: 'https://example.com',
+ *     link: 'http://localhost',
  *     label: 'Перейти на сайт'
  * };
  * ```
@@ -220,7 +220,7 @@ export interface IVkButtonAction {
      * ```ts
      * const action: IVkButtonAction = {
      *     type: 'open_link',
-     *     link: 'https://example.com',
+     *     link: 'http://localhost',
      *     label: 'Перейти на сайт'
      * };
      * ```
@@ -370,7 +370,7 @@ export interface IVkButton {
  *     photo_id: '123456789',
  *     buttons: [
  *         { action: { type: 'text', label: 'Купить' } },
- *         { action: { type: 'link', link: 'https://example.com' } }
+ *         { action: { type: 'link', link: 'http://localhost' } }
  *     ],
  *     action: { type: 'open_photo' }
  * };
@@ -448,7 +448,7 @@ export interface IVkCardElement {
      * // Кнопки с разными действиями
      * buttons: [
      *     { action: { type: 'text', label: 'Купить' } },
-     *     { action: { type: 'link', link: 'https://example.com' } },
+     *     { action: { type: 'link', link: 'http://localhost' } },
      *     { action: { type: 'callback', label: 'Подробнее' } }
      * ]
      *

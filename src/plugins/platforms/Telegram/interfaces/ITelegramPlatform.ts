@@ -859,7 +859,7 @@ export type TButtonPayload = Record<string, unknown>;
  * ```ts
  * const inlineButton: ITelegramInlineKeyboard = {
  *     text: 'Открыть сайт',
- *     url: 'https://example.com',
+ *     url: 'http://localhost',
  *     callback_data: { action: 'open_site' }
  * };
  * ```
@@ -893,7 +893,7 @@ export interface ITelegramInlineKeyboard {
  * // Inline-кнопки
  * const inlineKeyboard: ITelegramKeyboard = {
  *     inline_keyboard: [
- *         [{ text: 'Кнопка 1', url: 'https://example.com/1' }],
+ *         [{ text: 'Кнопка 1', url: 'http://localhost/1' }],
  *         [{ text: 'Кнопка 2', callback_data: { action: 'button2' } }]
  *     ]
  * };

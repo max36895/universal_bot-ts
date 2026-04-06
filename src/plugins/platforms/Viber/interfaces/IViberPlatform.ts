@@ -132,7 +132,7 @@ export interface IViberContent {
  *     TextSize: 'regular',
  *     TextVAlign: 'middle',
  *     TextHAlign: 'center',
- *     Image: 'https://example.com/button.png'
+ *     Image: 'http://localhost/button.png'
  * };
  * ```
  */
@@ -262,7 +262,7 @@ export interface IViberButton {
      * ```ts
      * const button: IViberButton = {
      *     Text: 'Нажми меня',
-     *     Image: 'https://example.com/button.png'
+     *     Image: 'http://localhost/button.png'
      * };
      * ```
      */
@@ -376,7 +376,7 @@ export interface IViberButtonObject {
  * const card: IViberCard = {
  *     Columns: 6, // Максимальная ширина
  *     Rows: 6,    // Максимальная высота
- *     Image: 'https://example.com/image.jpg',
+ *     Image: '/image.jpg',
  *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#ccc>Описание</font>',
  *     ActionType: 'reply',  // Обязательное поле
  *     ActionBody: 'card_action'  // Обязательное поле
@@ -386,7 +386,7 @@ export interface IViberButtonObject {
  * const cardWithButton: IViberCard = {
  *     Columns: 6,
  *     Rows: 6,
- *     Image: 'https://example.com/image.jpg',
+ *     Image: '/image.jpg',
  *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#ccc>Описание</font>',
  *     ActionType: 'reply',
  *     ActionBody: 'button_action',

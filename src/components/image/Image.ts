@@ -90,7 +90,7 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * @example
      * ```ts
      * const image = getImage(...);
-     * image.button.addBtn('Нажми меня', 'https://example.com');
+     * image.button.addBtn('Нажми меня', 'http://localhost');
      * image.button.addBtn('Другая кнопка', null, { action: 'custom' });
      * ```
      */
@@ -139,7 +139,7 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
      * @example
      * ```ts
      * const image = getImage(...);
-     * image.imageDir = 'https://example.com/image.jpg';
+     * image.imageDir = '/image.jpg';
      * // или
      * image.imageDir = '/path/to/image.jpg';
      * ```
@@ -191,16 +191,16 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  * ```ts
  * // Инициализация с URL
  * getImage(
- *     'https://example.com/image.jpg',
+ *     'http://localhost/image.jpg',
  *     'Заголовок',
  *     'Описание',
- *     { title: 'Кнопка', url: 'https://example.com' },
+ *     { title: 'Кнопка', url: 'http://localhost' },
  *     appContext
  * );
  *
  * // Инициализация с простой кнопкой
  * getImage(
- *     'https://example.com/image.jpg',
+ *     'http://localhost/image.jpg',
  *     'Заголовок',
  *     'Описание',
  *     'Текст кнопки',

@@ -50,7 +50,7 @@ import { Text } from '../../utils';
  * 4. Контактная информация:
  * - Email: "user@example.com"
  * - Телефоны: "+7 (999) 123-45-67", "8-800-555-35-35"
- * - Ссылки: "https://example.com", "www.site.ru"
+ * - Ссылки: "http://localhost.ru", "www.site.ru"
  *
  * @example
  * ```ts
@@ -101,7 +101,7 @@ import { Text } from '../../utils';
  *   console.log('Email:', emails.result[0]);
  * }
  *
- * const links = Nlu.getLink('Посетите наш сайт https://example.com');
+ * const links = Nlu.getLink('Посетите наш сайт http://localhost');
  * if (links.status) {
  *   console.log('Ссылка:', links.result[0]);
  * }
@@ -180,8 +180,8 @@ export class Nlu {
      * @example
      * ```ts
      * // Находит ссылки вида:
-     * // http://example.com
-     * // https://example.com/path
+     * // http://localhost
+     * // http://localhost/path
      * ```
      */
     private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/gimu;
@@ -700,7 +700,7 @@ export class Nlu {
      * @returns {INluResult<string[]>} Результат поиска ссылок
      * @example
      * ```ts
-     * const links = Nlu.getLink('Посетите https://example.com и http://test.ru');
+     * const links = Nlu.getLink('Посетите http://localhost');
      * if (links.status) {
      *     links.result.forEach(link => {
      *         console.log('Найдена ссылка:', link);
