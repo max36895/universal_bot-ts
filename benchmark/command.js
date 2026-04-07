@@ -345,6 +345,7 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
             // чтобы не писался файл с предупреждениями
             // пишется когда количество команд больше 10_000
         },
+        maskSecrets: false,
     });
 
     for (let j = 0; j < count; j++) {

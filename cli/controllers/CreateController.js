@@ -230,7 +230,7 @@ class CreateController {
      * @private
      */
     _create(type = CreateController.T_DEFAULT) {
-        if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(type) === -1) {
+        if (![CreateController.T_DEFAULT, CreateController.T_QUIZ].includes(type)) {
             console.warn(
                 'Не удалось создать проект, так как не удалось определить тип создаваемого приложения',
             );

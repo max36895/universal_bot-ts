@@ -1,4 +1,4 @@
-name: Deploy umbot bot
+name: Deploy umbot project
 
 on:
     push:
