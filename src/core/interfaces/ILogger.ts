@@ -32,4 +32,20 @@ export interface ILogger {
      * @param labels - Дополнительная информация
      */
     metric?: (name: string, value: unknown, labels?: Record<string, unknown>) => void;
+
+    /**
+     * Включает или отключает автоматическую маскировку секретов (паролей, токенов,
+     * ключей API и т.д.) во всех сообщениях лога.
+     *
+     * @default true (маскировка включена)
+     *
+     * @example
+     * // Отключить маскировку (только для отладки!)
+     * setLogger(customLogger, { maskSecrets: false });
+     *
+     * @warning Устанавливайте `false` ТОЛЬКО в безопасных окружениях (локальная отладка,
+     *          изолированный тестовый стенд). В production отключение маскировки
+     *          может привести к утечке конфиденциальных данных в логи.
+     */
+    maskSecrets?: boolean;
 }

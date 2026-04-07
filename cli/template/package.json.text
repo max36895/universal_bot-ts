@@ -1,7 +1,7 @@
 {
     "name": "{{name}}",
     "version": "1.0.0",
-    "description": "{{name}} app",
+    "description": "{{name}} application",
     "keywords": [
         "umbot"
     ],
@@ -12,8 +12,10 @@
         "build": "tsc"
     },
     "devDependencies": {
-        "typescript": "^5.9.3",
-        "umbot": "^3.0.0",
+        "typescript": "^6.0.0",
         "@types/node": "^20.0.0"
+    },
+    "dependencies": {
+        "umbot": "^3.0.0"
     }
 }

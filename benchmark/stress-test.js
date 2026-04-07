@@ -120,6 +120,7 @@ bot.setLogger({
             metric[name].time += time;
         }
     },*/
+    maskSecrets: false,
 });
 bot.use(fullPlatforms);
 // Не будем подключать адаптер бд если храним данные внутри самой платформы

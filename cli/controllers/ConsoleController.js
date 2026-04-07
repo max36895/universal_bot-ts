@@ -62,10 +62,7 @@ function main(
                 if (param.params && param.params.type) {
                     let paramType = param.params.type.toLowerCase();
                     paramType = paramType.substring(0, 1).toUpperCase() + paramType.substring(1);
-                    if (
-                        [CreateController.T_DEFAULT, CreateController.T_QUIZ].indexOf(paramType) !==
-                        -1
-                    ) {
+                    if ([CreateController.T_DEFAULT, CreateController.T_QUIZ].includes(paramType)) {
                         type = paramType;
                     } else {
                         throw new Error(

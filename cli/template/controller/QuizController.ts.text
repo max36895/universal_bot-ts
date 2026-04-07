@@ -17,7 +17,7 @@ interface IMyUserData extends IUserData {
 }
 
 /**
- * Шаблон для викторины
+ * Шаблон для контроллера викторины
  * Class __className__Controller
  */
 export class __className__Controller extends BotController<IMyUserData> {
@@ -29,9 +29,9 @@ export class __className__Controller extends BotController<IMyUserData> {
         super();
         this.question = [
             {
-                text: '', // Вопрос
-                variants: [''], // Возможные варианты ответа
-                success: '', // Правильный ответ
+                text: 'Луна это', // Вопрос
+                variants: ['Спутник', 'Хлопья', 'Звезда'], // Возможные варианты ответа
+                success: 'Спутник', // Правильный ответ
             },
         ];
     }
@@ -65,7 +65,7 @@ export class __className__Controller extends BotController<IMyUserData> {
             this.tts = this.text + SoundConstants.S_AUDIO_GAME_WIN;
             questionId++;
         } else {
-            const failTexts = ['Ты ошибся... Попробуй ещё раз!'];
+            const failTexts = ['Ты ошибся... Попробуй ещё раз.'];
             this.text = Text.getText(failTexts);
             this.tts = this.text + SoundConstants.S_AUDIO_GAME_LOSS;
         }
@@ -122,7 +122,7 @@ export class __className__Controller extends BotController<IMyUserData> {
                             this._quiz();
                             this.thisIntentName = this.GAME_QUESTION;
                         } else if (Text.isSayFalse(this.userCommand || '')) {
-                            this.text = 'Хорошо!\nПоиграем в другой раз!';
+                            this.text = 'Хорошо!\nПоиграем в другой раз.';
                             this.isEnd = true;
                         } else {
                             this.text = 'Скажи, ты готов начать игру?';

@@ -19,7 +19,7 @@ if (argv[2]) {
     param.hostname = 'localhost';
     param.port = 3000;
     if (argv[3]) {
-        if (argv[3].incluses('.json')) {
+        if (argv[3].includes('.json')) {
             if (utils.isFile(argv[3])) {
                 const jsonParam = JSON.parse(utils.fread(argv[3]));
                 param.appName = jsonParam.name;
