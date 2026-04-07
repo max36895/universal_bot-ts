@@ -63,7 +63,7 @@ import {
 } from './interfaces/IAppContext';
 
 import { CommandReg, ICommandParam, IGroupData, IStepParam } from './utils/CommandReg';
-import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
+import { IEnvConfig, loadEnvFile, ENV_NAME } from '../utils/EnvConfig';
 import { saveData } from '../utils';
 import * as process from 'node:process';
 import { join } from 'node:path';
@@ -329,7 +329,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         const setEnvFn = (errorMsg: string): void => {
             let correctEnvValue = {};
             // Используем доступ к process.env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая часть конфигурации бота.
-            if (process.env) {
+            if (process[ENV_NAME]) {
                 const {
                     // Получаем токен для viber
                     VIBER_TOKEN,
@@ -353,7 +353,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     DB_PASSWORD,
                     // Получаем имя базы данных
                     DB_NAME,
-                } = process.env;
+                } = process[ENV_NAME];
                 correctEnvValue = {
                     VIBER_TOKEN,
                     TELEGRAM_TOKEN,
