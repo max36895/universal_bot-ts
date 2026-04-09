@@ -165,7 +165,7 @@ export class MaxRequest {
                     params.keyboard = undefined;
                 }
 
-                this.#request.post.attachment = attachment;
+                this.#request.post.attachments = attachment;
             }
 
             if (Object.keys(params).length) {

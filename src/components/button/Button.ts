@@ -117,7 +117,7 @@ function init<TButtonPayload = TBtnPayload>(
  * });
  * ```
  *
- * @returns {IButtonType | null} Вернется объект, если кнопка добавлена, и null в случае если переданы некорректные настройки для кнопки
+ * @returns {IButtonType | null} Возвращается объект, если кнопка добавлена, и null в случае, если переданы некорректные настройки для кнопки
  */
 export function getLinkButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,
@@ -142,7 +142,7 @@ export function getLinkButton<TButtonPayload = TBtnPayload>(
  * - utmMedium: тип рекламного канала
  * - utmCampaign: название рекламной кампании
  *
- * @returns {IButtonType | null} Вернется объект, если кнопка добавлена, и null в случае если переданы некорректные настройки для кнопки.
+ * @returns {IButtonType | null} Возвращается объект, если кнопка добавлена, и null в случае, если переданы некорректные настройки для кнопки.
  */
 export function getButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,

@@ -232,7 +232,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      */
     public validate(): void {
-        /* TODO document why this method 'validate' is empty */
+        // TODO document why this method 'validate' is empty
     }
 
     /**

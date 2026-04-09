@@ -184,6 +184,7 @@ export type TCommandResolver = (
 
 /**
  * Класс, который берет на себя всю обязанность за регистрацию команд и шагов
+ * @internal Используется только внутри фреймворка
  */
 export class CommandReg {
     #regExpCommandCount = 0;

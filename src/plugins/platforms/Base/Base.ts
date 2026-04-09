@@ -343,7 +343,7 @@ export abstract class BasePlatform<TQuery = unknown>
      * @param _controller - контроллер приложения
      */
     setLocalStorage<TStorageData>(_data: TStorageData, _controller: BotController): void {
-        /* TODO document why this method 'setLocalStorage' is empty */
+        // TODO document why this method 'setLocalStorage' is empty
     }
 
     /**

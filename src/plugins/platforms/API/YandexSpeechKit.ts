@@ -303,7 +303,9 @@ export class YandexSpeechKit extends YandexRequest {
         if (!audioData) {
             return null;
         }
-        const fileName = `${this._appContext.appConfig.error_log || join(__dirname, '..', '..', 'logs')}/tts_${Date.now()}.ogg`;
+        const fileName = `${
+            this._appContext.appConfig.error_log || join(__dirname, '..', '..', 'logs')
+        }/tts_${Date.now()}_${Math.floor(Math.random() * 100)}.ogg`;
         await fwrite(fileName, new Uint8Array(audioData), 'w');
         return {
             fileName,

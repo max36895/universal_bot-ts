@@ -97,7 +97,7 @@ describe('MaxRequest', () => {
         });
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"attachment":[{"type":"image","payload":{"token":"file_123"}}]');
+        expect(body).toContain('"attachments":[{"type":"image","payload":{"token":"file_123"}}]');
     });
 
     it('should send message with inline keyboard', async () => {
