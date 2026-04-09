@@ -1,6 +1,6 @@
 {
     "name": "umbot",
-    "version": "3.0.3",
+    "version": "3.0.4",
     "description": "Мультиплатформенный фреймворк для создания голосовых навыков и чат-ботов с единой бизнес-логикой. Встроенная поддержка ВКонтакте, Telegram, Viber, MAX, Яндекс.Алисы, Маруси и Сбера SmartApp. Архитектура на адаптерах позволяет подключать любые другие платформы без изменения основного кода.",
     "keywords": [
         "vk",
@@ -129,7 +129,7 @@
         "prettier": "prettier --write .",
         "bench": "node --expose-gc ./benchmark/command.js",
         "stress": "node --expose-gc ./benchmark/stress-test.js",
-        "stress:lite": "node --prof ./benchmark/stress-test.js lite",
+        "stress:lite": "node --expose-gc ./benchmark/stress-test.js lite",
         "stress:long": "node --expose-gc ./benchmark/stress-test.js long",
         "stress:prof": "node --prof --expose-gc ./benchmark/stress-test.js",
         "fb": "node --expose-gc ./benchmark/fb.js",
@@ -170,5 +170,16 @@
     "files": [
         "dist",
         "cli"
+    ],
+    "funding": {
+        "type": "individual",
+        "url": "https://boosty.to/max36895/donate"
+    },
+    "maintainers": [
+        {
+            "name": "max36895",
+            "email": "maximco36895@yandex.ru",
+            "url": "https://github.com/max36895"
+        }
     ]
 }

@@ -222,7 +222,10 @@ export class Request {
                 // Добавляем дополнительные поля из this.post в FormData
                 if (this.post && typeof this.post === 'object') {
                     for (const [key, value] of Object.entries(this.post)) {
-                        formData.append(key, String(value));
+                        formData.append(
+                            key,
+                            typeof value === 'object' ? JSON.stringify(value) : String(value),
+                        );
                     }
                 }
                 post = formData;

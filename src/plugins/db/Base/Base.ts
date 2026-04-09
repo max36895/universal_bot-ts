@@ -345,7 +345,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Используйте для закрытия соединений, сохранения данных и т.п.
      */
     public destroy(): void {
-        /* TODO document why this method 'destroy' is empty */
+        // TODO document why this method 'destroy' is empty
     }
 
     /**
@@ -354,6 +354,6 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param _tableName Название таблицы, подключение к которой закрывается
      */
     public close(_tableName: string): void {
-        /* TODO document why this method 'close' is empty */
+        // TODO document why this method 'close' is empty
     }
 }
