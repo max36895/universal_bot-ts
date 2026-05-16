@@ -1672,7 +1672,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
         port: number = 3000,
         responseCb?: TBotResponseCb,
     ): Server {
-        this.close();
+        if (this.#serverInst) {
+            this.#serverInst.close();
+            this.#serverInst = undefined;
+        }
 
         this.#serverInst = createServer(
             async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
