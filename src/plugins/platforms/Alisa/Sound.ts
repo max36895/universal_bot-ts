@@ -314,7 +314,7 @@ export async function getSoundInDB(
 ): Promise<string | null> {
     return getSoundToken(path, T_ALISA, controller, async (model) => {
         const yandexApi = new YandexSoundRequest(
-            controller.appContext.appConfig.tokens[T_ALISA].token,
+            controller.appContext.appConfig.tokens[T_ALISA]?.token,
             controller.platformOptions.appId,
             controller.appContext,
         );

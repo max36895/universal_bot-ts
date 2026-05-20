@@ -105,6 +105,7 @@ export abstract class BasePlatform<TQuery = unknown>
     init(appContext: AppContext<IDatabaseInfo, TQuery>): void {
         appContext.platforms[this.platformName] = this;
         this.appContext = appContext;
+        appContext.appConfig.tokens[this.platformName] ??= {};
     }
 
     /**
@@ -162,7 +163,7 @@ export abstract class BasePlatform<TQuery = unknown>
      * @param headers
      */
     isCorrectQuery(query: TQuery, headers?: Record<string, unknown>): boolean {
-        if (this.appContext?.appConfig.tokens[this.platformName].token && this.signatureName) {
+        if (this.appContext?.appConfig.tokens[this.platformName]?.token && this.signatureName) {
             if (!headers?.[this.signatureName]) {
                 return false;
             }

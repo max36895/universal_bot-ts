@@ -37,7 +37,7 @@ export async function getImageInDB(
 ): Promise<string | null> {
     return getImageToken(path, T_ALISA, controller, async (model) => {
         const yImage = new YandexImageRequest(
-            controller.appContext.appConfig.tokens[T_ALISA].token,
+            controller.appContext.appConfig.tokens[T_ALISA]?.token,
             controller.platformOptions.appId,
             controller.appContext,
         );
