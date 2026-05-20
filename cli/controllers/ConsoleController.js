@@ -39,7 +39,7 @@ DB_NAME=bot_db`,
  * @param argv
  */
 function main(
-    param = { appName: null, command: null, mode: 'prod', hostname: 'localhost', port: 3000 },
+    param = { appName: null, command: null, mode: 'prod', hostname: '0.0.0.0', port: 3000 },
     argv,
 ) {
     const infoText =
