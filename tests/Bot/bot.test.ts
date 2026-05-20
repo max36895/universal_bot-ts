@@ -228,7 +228,7 @@ describe('Bot', () => {
             res = (await bot.run(T_ALISA, getContent('cool', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('test');
         });
-        /*
+
         it('set thisIntentName', async () => {
             bot.setAppConfig({
                 isLocalStorage: true,
@@ -276,7 +276,7 @@ describe('Bot', () => {
             )) as IAlisaWebhookResponse;
             expect((res.session_state as Record<string, string>).oldIntentName).toBe('test2');
             bot.clearCommands();
-        });*/
+        });
 
         it('added user step', async () => {
             bot.setAppConfig({

@@ -1118,12 +1118,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 botController.userData.oldIntentName = botController.thisIntentName;
             }
         } else {
+            // В Алисе в любом случае будет какое-то поле, так как если ничего не будет, то данные просто не обновятся.
+            // Поэтому в oldIntentName в любом случае необходимо писать null
             if (botController.userData.oldIntentName !== undefined) {
                 userDataLength--;
-                delete botController.userData.oldIntentName;
+                botController.userData.oldIntentName = null;
             }
-            if (botController.state) {
-                delete botController.state.oldIntentName;
+            if (botController.state?.oldIntentName !== undefined) {
+                botController.state.oldIntentName = null;
             }
         }
         let stateData;
