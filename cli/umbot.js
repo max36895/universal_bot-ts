@@ -16,7 +16,7 @@ const argv = process.argv;
 const param = {};
 if (argv[2]) {
     param.command = argv[2].toLowerCase();
-    param.hostname = 'localhost';
+    param.hostname = '0.0.0.0';
     param.port = 3000;
     if (argv[3]) {
         if (argv[3].includes('.json')) {

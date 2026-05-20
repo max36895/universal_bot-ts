@@ -10,6 +10,7 @@ export interface IGroupData {
     commands: string[];
     regExp: RegExp | null | string;
 }
+
 const LIMIT_COMMANDS = [1e4, 5e4, 1e5];
 // Глобальные лимиты, возможно, можно вынести в конфигурацию
 let MAX_COUNT_FOR_GROUP = 0;
@@ -143,31 +144,48 @@ export interface ICommandParam<TBotController extends BotController = BotControl
 }
 
 /**
- * Параметры шагов
+ * Параметры конфигурации шага диалога.
  *
- * Определяет структуру шагов, включая название шага и функцию-обработчик.
+ * Используется для регистрации шагов в системе. Шаги сохраняются между сессиями
+ * и автоматически восстанавливаются при повторном входе пользователя в навык.
  *
  * @example
  * ```ts
+ * // Обычный шаг
  * const step: IStepParam = {
  *   stepName: 'hello',
- *   cb: (controller) => {
- *     controller.text = 'Привет! Рад вас видеть!';
+ *   cb: (ctx) => {
+ *     ctx.text = 'Привет! Рад вас видеть!';
+ *   }
+ * };
+ *
+ * // Шаг с условием пропуска (возврат false)
+ * const stepWithFallback: IStepParam = {
+ *   stepName: 'expired_game',
+ *   cb: (ctx) => {
+ *     if (ctx.messageId === 0) {
+ *          return false; // Пропустить шаг
+ *     }
+ *     ctx.text = 'Продолжаем игру...';
  *   }
  * };
  * ```
  */
 export interface IStepParam<TBotController extends BotController = BotController> {
     /**
-     * Название шага
+     * Уникальное имя шага. Используется для идентификации и сохранения в сессии.
      */
     stepName: string;
     /**
-     * Функция-обработчик команды
+     * Функция-обработчик шага. Вызывается при активации шага.
+     * Если шаг обрабатывать не нужно, то можно вернуть false. В таком случае фреймворк посчитает что шаг не был найден, и продолжит выполнение своей логики с поиском команд.
      *
-     * @param {BotController} [botController] - Контроллер с бизнес-логикой приложения для управления ответом
+     * @param {BotController} botController - Контроллер с бизнес-логикой приложения для управления ответом
+     * @returns
+     * - `void` или `undefined` — шаг активен. Обработка останавливается на этом шаге, ожидается ввод пользователя.
+     * - `false` — шаг **игнорируется**. Фреймворк считает, что шаг не применим, и передаёт управление дальше.
      */
-    cb: (botController: TBotController) => void | Promise<void>;
+    cb: (botController: TBotController) => void | Promise<void> | false;
 }
 
 /**

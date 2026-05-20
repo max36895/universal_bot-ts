@@ -229,6 +229,55 @@ describe('Bot', () => {
             expect(res.response?.text).toBe('test');
         });
 
+        it('set thisIntentName', async () => {
+            bot.setAppConfig({
+                isLocalStorage: true,
+            });
+            bot.initBotController(TestBotController);
+            bot.addCommand('test', ['test1'], (_, bc) => {
+                bc.text = 'test1';
+                bc.thisIntentName = 'test1';
+                bc.userData.start = { test: 1 };
+                bc.userData.end = '512';
+            });
+            bot.addCommand('test2', ['test2'], (_, bc) => {
+                bc.text = 'test2';
+                bc.thisIntentName = 'test2';
+                bc.userData.start = { test: 2 };
+                bc.userData.end = '2';
+            });
+            bot.addCommand('clear', ['clear'], (_, bc) => {
+                bc.text = 'clear';
+                bc.thisIntentName = null;
+                bc.userData.start = null;
+                bc.userData.end = null;
+            });
+
+            bot.use(new AlisaAdapter());
+            let res = (await bot.run(T_ALISA, getContent('test1', 2))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('test1');
+            expect((res.session_state as Record<string, string>).oldIntentName).toBe('test1');
+
+            res = (await bot.run(
+                T_ALISA,
+                getContent('test2', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect((res.session_state as Record<string, string>).oldIntentName).toBe('test2');
+
+            res = (await bot.run(
+                T_ALISA,
+                getContent('clear', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect((res.session_state as Record<string, string>).oldIntentName).toBe(null);
+
+            res = (await bot.run(
+                T_ALISA,
+                getContent('test2', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect((res.session_state as Record<string, string>).oldIntentName).toBe('test2');
+            bot.clearCommands();
+        });
+
         it('added user step', async () => {
             bot.setAppConfig({
                 isLocalStorage: true,
@@ -287,6 +336,45 @@ describe('Bot', () => {
             bot.removeCommand('cool');
 
             // Просто на всякий случай
+            bot.clearSteps();
+            bot.clearCommands();
+        });
+
+        it('cansel step', async () => {
+            bot.setAppConfig({
+                isLocalStorage: true,
+            });
+            bot.initBotController(TestBotController);
+            bot.addCommand('step', ['step'], (_, bc) => {
+                bc.text = 'start step';
+                bc.thisIntentName = 'my_step';
+            });
+            bot.addStep('my_step', (bc) => {
+                // Если первое сообщение, то шаги игнорируем
+                if (bc.messageId === 0) {
+                    return false;
+                }
+                bc.text = 'step';
+                bc.thisIntentName = 'my_step';
+            });
+            bot.use(new AlisaAdapter());
+            let res = (await bot.run(T_ALISA, getContent('step', 1))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('start step');
+            res = (await bot.run(
+                T_ALISA,
+                getContent('step', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('step');
+            res = (await bot.run(
+                T_ALISA,
+                getContent('step', 3, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('step');
+            res = (await bot.run(
+                T_ALISA,
+                getContent('step', 0, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('start step');
             bot.clearSteps();
             bot.clearCommands();
         });
