@@ -111,7 +111,7 @@ bot.start('0.0.0.0', 3000);
 
 ### 2. Интеграция в существующее приложение (Express/Fastify)
 
-См. раздел [Универсальный webhook-обработчик](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_platform-integration#🌐-универсальный-webhook-обработчик) в руководстве по платформам.
+Смотри раздел: [Универсальный webhook-обработчик](https://www.maxim-m.ru/bot/ts-doc/documents/src_docs_platform-integration#🌐-универсальный-webhook-обработчик) в руководстве по платформам.
 
 ## Сборка Docker-образа
 

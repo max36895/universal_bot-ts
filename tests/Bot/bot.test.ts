@@ -1350,13 +1350,12 @@ describe('Bot', () => {
     describe('adapters', () => {
         it('i18n', async () => {
             const i18n = (appContext: AppContext): void => {
-                const fn = (text: string): string => {
+                appContext.plugins.i18n = (text: string): string => {
                     if (text === 'привет') {
                         return 'hi';
                     }
                     return text;
                 };
-                appContext.plugins.i18n = fn;
             };
             i18n.isPlugin = true;
             bot.use(i18n);
@@ -1376,11 +1375,10 @@ describe('Bot', () => {
         it('regExp', async () => {
             let usedRegExp = 0;
             const reg = (appContext: AppContext): void => {
-                const fn = (): RegExpConstructor => {
+                appContext.plugins.regExp = (): RegExpConstructor => {
                     usedRegExp++;
                     return MyReg as unknown as RegExpConstructor;
                 };
-                appContext.plugins.regExp = fn;
             };
             reg.isPlugin = true;
             bot.use(reg);

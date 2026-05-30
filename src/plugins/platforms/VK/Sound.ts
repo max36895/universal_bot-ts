@@ -72,7 +72,7 @@ export async function soundProcessing(
         let sText = null;
         if (content) {
             sText = await getSoundInDB(controller, content.fileName, true);
-            unlink(content.fileName);
+            await unlink(content.fileName);
         }
         if (sText) {
             data.push(sText);

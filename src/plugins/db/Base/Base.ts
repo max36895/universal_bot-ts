@@ -68,7 +68,14 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     init(appContext: AppContext<unknown>): void {
         this._appContext = appContext as AppContext<TDbInfo>;
         if (appContext.database.adapter) {
-            appContext.database.adapter.destroy();
+            appContext.database.adapter.destroy()?.catch((e) => {
+                appContext.logError(
+                    `Произошла ошибка при уничтожении предыдущего адаптера! Текст ошибки: ${e.message}`,
+                    {
+                        error: e,
+                    },
+                );
+            });
         }
         appContext.database = {
             adapter: this,
@@ -344,7 +351,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Вызывается при завершении работы приложения или замене адаптера.
      * Используйте для закрытия соединений, сохранения данных и т.п.
      */
-    public destroy(): void {
+    public destroy(): void | Promise<void> {
         // TODO document why this method 'destroy' is empty
     }
 
@@ -353,7 +360,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Может использоваться для освобождения ресурсов, связанных с таблицей.
      * @param _tableName Название таблицы, подключение к которой закрывается
      */
-    public close(_tableName: string): void {
+    public close(_tableName: string): void | Promise<void> {
         // TODO document why this method 'close' is empty
     }
 }

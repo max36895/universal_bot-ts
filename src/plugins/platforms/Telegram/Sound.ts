@@ -80,7 +80,7 @@ export async function soundProcessing(
                 controller.userId as TTelegramChatId,
                 content.fileName,
             );
-            unlink(content.fileName);
+            await unlink(content.fileName);
         }
     }
     return data;

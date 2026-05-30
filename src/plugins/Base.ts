@@ -18,7 +18,7 @@ export abstract class BasePlugin implements IPlugin {
      * В данном методе можно добавить отписку, либо выполнить другие действия.
      * @param _bot Основной класс приложения
      */
-    destroy(_bot: Bot): void {
+    destroy(_bot: Bot): void | Promise<void> {
         // todo Ваша логика
     }
 }

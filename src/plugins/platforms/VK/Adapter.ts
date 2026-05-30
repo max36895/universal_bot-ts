@@ -127,10 +127,11 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
 
             case 'message_event':
                 if (query.object?.payload) {
-                    controller.userCommand =
+                    controller.userCommand = (
                         typeof query.object.payload === 'string'
                             ? query.object.payload
-                            : JSON.stringify(query.object.payload);
+                            : JSON.stringify(query.object.payload)
+                    )?.toLowerCase();
                     controller.userId = query.object.user_id as number;
                     controller.payload = query.object.payload;
                     controller.messageId = query.object.conversation_message_id || 0;

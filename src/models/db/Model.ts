@@ -513,7 +513,7 @@ export abstract class Model<TState extends IModelState> {
      * model.destroy();
      * ```
      */
-    public destroy(): void {
-        this._appContext.database.adapter?.destroy();
+    public destroy(): void | Promise<void> {
+        return this._appContext.database.adapter?.destroy();
     }
 }

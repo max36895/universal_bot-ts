@@ -67,7 +67,7 @@ export class ImageTokens extends Model<IImageModelState> {
     /**
      * Название таблицы для хранения данных об изображениях.
      */
-    private readonly TABLE_NAME = 'ImageTokens';
+    protected static readonly TABLE_NAME = 'ImageTokens';
 
     /**
      * Описание изображения (Не обязательное поле).
@@ -144,7 +144,7 @@ export class ImageTokens extends Model<IImageModelState> {
      * @return {string} Название таблицы для хранения данных об изображениях
      */
     public tableName(): string {
-        return this.TABLE_NAME;
+        return ImageTokens.TABLE_NAME;
     }
 
     /**

@@ -57,7 +57,7 @@ export async function soundProcessing(
         let sText = null;
         if (content) {
             sText = await getSoundInDB(controller, content.fileName);
-            unlink(content.fileName);
+            await unlink(content.fileName);
         }
         if (sText) {
             data.push({ type: 'audio', payload: { token: sText } });

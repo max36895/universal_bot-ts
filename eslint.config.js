@@ -1,7 +1,6 @@
 // eslint.config.js
 const eslint = require('@eslint/js');
-const tseslint = require('@typescript-eslint/eslint-plugin');
-const tsParser = require('@typescript-eslint/parser');
+const tseslint = require('typescript-eslint');
 const globals = require('globals');
 
 module.exports = [
@@ -13,11 +12,13 @@ module.exports = [
         languageOptions: {
             ecmaVersion: 2023,
             sourceType: 'module',
-            parser: tsParser,
+            parser: tseslint.parser,
             parserOptions: {
-                ecmaVersion: 2023,
+                ecmaVersion: 2025,
                 sourceType: 'module',
-                project: true,
+                projectService: true,
+                tsconfigRootDir: __dirname,
+                allowDefaultProject: true,
             },
             globals: {
                 ...globals.node,
@@ -31,12 +32,13 @@ module.exports = [
             },
         },
         plugins: {
-            '@typescript-eslint': tseslint,
+            '@typescript-eslint': tseslint.plugin,
             security: require('eslint-plugin-security'),
         },
         rules: {
             ...eslint.configs.recommended.rules,
             ...tseslint.configs.recommended.rules,
+            ...require('eslint-config-prettier').rules,
 
             'security/detect-object-injection': 'off', // много мест где не срабатывает ошибочно
             'security/detect-non-literal-fs-filename': 'off', // Пока отрубаем, так как ожидается что все пути задаст сам программист, и сделает это адекватно
@@ -45,6 +47,20 @@ module.exports = [
             '@typescript-eslint/explicit-function-return-type': 'warn',
             '@typescript-eslint/no-explicit-any': 'warn',
             '@typescript-eslint/ban-ts-comment': 'error',
+
+            '@typescript-eslint/no-misused-promises': [
+                'error',
+                {
+                    checksVoidReturn: {
+                        attributes: false,
+                        properties: false,
+                        returns: false,
+                        arguments: false,
+                    },
+                },
+            ],
+            '@typescript-eslint/no-floating-promises': 'error',
+            '@typescript-eslint/await-thenable': 'error',
 
             'require-atomic-updates': 'error',
             'max-lines-per-function': ['warn', { max: 100 }], // Меньшее значение мешает, из-за чего приходиться дробить метод, либо убирать логические разделения, благодаря которым удобнее читать код
@@ -69,7 +85,7 @@ module.exports = [
         files: ['tests/**/*.test.ts', 'tests/**/*.ts'],
         languageOptions: {
             parserOptions: {
-                project: false,
+                projectService: false,
             },
             globals: {
                 ...globals.jest,
@@ -80,6 +96,9 @@ module.exports = [
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-call': 'off',
             'require-atomic-updates': 'off',
+            '@typescript-eslint/await-thenable': 'off',
+            '@typescript-eslint/no-misused-promises': 'off',
+            '@typescript-eslint/no-floating-promises': 'off',
             'max-lines-per-function': ['off'],
         },
     },
@@ -87,8 +106,13 @@ module.exports = [
         files: ['cli/**/*.js', 'cli/**/*.ts'],
         languageOptions: {
             parserOptions: {
-                project: false,
+                projectService: false,
             },
+        },
+        rules: {
+            '@typescript-eslint/await-thenable': 'off',
+            '@typescript-eslint/no-misused-promises': 'off',
+            '@typescript-eslint/no-floating-promises': 'off',
         },
     },
 ];

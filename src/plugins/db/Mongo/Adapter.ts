@@ -399,7 +399,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
      * @param tableName
      */
     public async close(tableName: string): Promise<void> {
-        super.close(tableName);
+        await super.close(tableName);
         if (this._appContext.database.databaseInfo) {
             try {
                 await (this._appContext.database.databaseInfo.mongoClient as MongoClient).close();

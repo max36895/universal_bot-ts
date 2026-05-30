@@ -156,8 +156,7 @@ export function rateLimiter(
         }
 
         // Получаем лимит из адаптера платформы
-        const platformAdapter = ctx.appContext.platforms[platform];
-        const limit = platformAdapter?.limit;
+        const limit = ctx.appContext.platforms[platform]?.limit;
         if (!limit) {
             return next(); // лимит не задан – пропускаем
         }
@@ -176,28 +175,23 @@ export function rateLimiter(
             };
             stateMap.set(key, st);
         }
-        st.lastActivity = Date.now();
-
-        const now = Date.now();
+        const now = (st.lastActivity = Date.now());
         // Сброс счётчика каждую секунду
         if (now - st.lastReset >= 1000) {
             st.count = 0;
             st.lastReset = now;
         }
-
         // Если влезаем в лимит – выполняем сразу
         if (st.count < limit) {
             st.count++;
             return next();
         }
-
         // Превышен лимит – ставим в очередь, если есть место
         if (st.queue.length >= maxQueueSize) {
             throw new Error(
                 `rateLimit - Превышено ограничение на размер очереди. Убедитесь что значение указанно корректно, текущее значение - ${maxQueueSize}.`,
             );
         }
-
         // Возвращаем промис, который будет разрешён после выполнения задачи
         return new Promise<void>((resolve, reject) => {
             st.queue.push({
@@ -216,8 +210,12 @@ export function rateLimiter(
             // Запускаем обработчик очереди, если он ещё не запущен
             if (!st.processing) {
                 st.processing = true;
-                // Передаём appContext для логирования ошибок и сам state
-                processQueue(st, limit, ctx.appContext);
+                processQueue(st, limit, ctx.appContext).catch((e) => {
+                    ctx.appContext.logError(
+                        `rateLimiter: Произошла ошибка при обработке очереди: ${e.message}`,
+                        { error: e },
+                    );
+                });
             }
         });
     };

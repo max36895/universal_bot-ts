@@ -155,8 +155,8 @@ export class Text {
      *
      * @example
      * ```ts
-     * Text.resize('Длинный текст', 5); // -> 'Длин...'
-     * Text.resize('Длинный текст', 5, false); // -> 'Длинн'
+     * Text.resize('Длинный текст', 6); // -> 'Дли...'
+     * Text.resize('Длинный текст', 6, false); // -> 'Длинны'
      * ```
      */
     public static resize(

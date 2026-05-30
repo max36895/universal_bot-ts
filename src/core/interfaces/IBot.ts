@@ -105,7 +105,7 @@ export interface IPlugin {
      * В данном методе можно добавить отписку, либо выполнить другие действия.
      * @param bot Основной класс приложения
      */
-    destroy: (bot: Bot) => void;
+    destroy: (bot: Bot) => void | Promise<void>;
 }
 
 /**

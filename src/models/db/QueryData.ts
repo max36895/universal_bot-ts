@@ -93,16 +93,16 @@ export interface IQuery {
  */
 export function getQueryData(str: string): IQueryData | null {
     if (str) {
-        const datas = str.matchAll(DATA_REG);
+        const matchAll = str.matchAll(DATA_REG);
         const regData: IQueryData = {};
-        let data = datas.next();
+        let data = matchAll.next();
         while (!data.done) {
             let val: string | number = data.value[2] ?? data.value[3];
             if (!isNaN(+val)) {
                 val = +val;
             }
             regData[data.value[1]] = val;
-            data = datas.next();
+            data = matchAll.next();
         }
         return regData;
     }
