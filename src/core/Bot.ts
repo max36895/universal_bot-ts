@@ -650,7 +650,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
             if (typeof plugin === 'function') {
                 plugin(this);
             } else {
-                plugin.destroy?.(this);
+                plugin.destroy?.(this)?.catch((e) => {
+                    this.#appContext.logError(
+                        `Произошла ошибка при уничтожении адаптера! Текст ошибки: ${e.message}`,
+                        {
+                            error: e,
+                        },
+                    );
+                });
             }
         });
         this.#plugins = [];
@@ -1571,7 +1578,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
             appType = this.#getAppType(query, req.headers);
             if (appType && this.#appContext.platforms[appType]) {
-                if (!this.#appContext.platforms[appType].isCorrectQuery(query, req.headers)) {
+                if (!this.#appContext.platforms[appType].isCorrectQuery(data, req.headers)) {
                     this.#appContext.logError(
                         `Bot:webhookHandle(): Для платформы "${appType}", пришел запрос с неверным токеном. Дальнейшая обработка запроса остановлена.`,
                         {
@@ -1681,6 +1688,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
         this.#serverInst = createServer(
             async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+                if (req.method === 'GET' && req.url === '/health') {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'ok', timestamp: Date.now() }));
+                    return;
+                }
                 return this.webhookHandle(req, res, responseCb);
             },
         );

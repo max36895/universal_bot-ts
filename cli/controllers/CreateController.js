@@ -246,7 +246,7 @@ class CreateController {
             }
             const typeToLower = type.toLowerCase();
 
-            this._getConfigFile(standardPath, typeToLower);
+            this._getConfigFile(standardPath);
             this._getParamsFile(standardPath, typeToLower);
 
             if (!(this.flags.includes('--minimal') && type === CreateController.T_DEFAULT)) {

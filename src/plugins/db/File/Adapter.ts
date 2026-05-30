@@ -165,7 +165,11 @@ export class FileAdapter extends Base<IFileDbInfo> {
         const cb = (): void => {
             const data = this.getCachedFileData(tableName).data;
             if (data) {
-                this._appContext?.saveFileData(`${tableName}.json`, data);
+                this._appContext?.saveFileData(`${tableName}.json`, data)?.catch((e) => {
+                    this._appContext.logError(`Произошла ошибка при записи в файл: ${e.message}`, {
+                        error: e,
+                    });
+                });
             }
             this.#setCachedFileData(tableName, 'timeOutId', null);
             const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
@@ -463,6 +467,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * Все процессы завершаются, и происходит сохранение данных в файл.
      */
     public destroy(): void {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         super.destroy();
         if (this._appContext.database.databaseInfo) {
             Object.keys(this._appContext.database.databaseInfo).forEach((tableName: string) => {

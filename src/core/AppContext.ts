@@ -513,10 +513,14 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             clearTimeout(this.#errWarnData.timeout);
         }
         if (this.#errWarnData.warnings.length) {
-            this.#saveLog('warn.log', this.#errWarnData.warnings.join('\n'), false);
+            this.#saveLog('warn.log', this.#errWarnData.warnings.join('\n'), false).catch(() => {
+                // ignore error
+            });
         }
         if (this.#errWarnData.errors.length) {
-            this.#saveLog('error.log', this.#errWarnData.errors.join('\n'), false);
+            this.#saveLog('error.log', this.#errWarnData.errors.join('\n'), false).catch(() => {
+                // ignore error
+            });
         }
         this.#errWarnData.errors = [];
         this.#errWarnData.warnings = [];

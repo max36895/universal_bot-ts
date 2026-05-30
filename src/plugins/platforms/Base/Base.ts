@@ -298,7 +298,7 @@ export abstract class BasePlatform<TQuery = unknown>
      * В данном методе стоит реализовать логику, с помощью которой будут наложены дополнительные эффекты для озвучивания текста пользователю
      * @param _controller
      */
-    soundProcessing(_controller: BotController): void {
+    soundProcessing(_controller: BotController): void | Promise<void> {
         // custom logic
     }
 
@@ -343,7 +343,10 @@ export abstract class BasePlatform<TQuery = unknown>
      * @param _data - данные для сохранения
      * @param _controller - контроллер приложения
      */
-    setLocalStorage<TStorageData>(_data: TStorageData, _controller: BotController): void {
+    setLocalStorage<TStorageData>(
+        _data: TStorageData,
+        _controller: BotController,
+    ): void | Promise<void> {
         // TODO document why this method 'setLocalStorage' is empty
     }
 

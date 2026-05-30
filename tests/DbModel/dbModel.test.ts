@@ -1,7 +1,16 @@
 import { join } from 'node:path';
-import { AppContext, UsersData, isFileSync, unlinkSync, IQueryData } from '../../src';
+import {
+    AppContext,
+    UsersData,
+    isFileSync,
+    unlinkSync,
+    saveDataSync,
+    IQueryData,
+    ImageTokens,
+    SoundTokens,
+} from '../../src';
 
-import { FileAdapter, MongoAdapter, T_ALISA } from '../../src/plugins';
+import { FileAdapter, MongoAdapter, T_ALISA, T_TELEGRAM, TFileData } from '../../src/plugins';
 
 const FILE_NAME = 'UsersData.json';
 const MONGO_TIMEOUT = 3000; // 3 секунды для операций с MongoDB
@@ -13,6 +22,42 @@ appContext.setLogger({
 
 const FILE_PATH = join(__dirname, FILE_NAME);
 
+const imageData: TFileData = {
+    123: {
+        imageToken: '123',
+        path: 'path1',
+        platform: T_ALISA,
+    },
+    456: {
+        imageToken: '456',
+        path: 'path2',
+        platform: T_ALISA,
+    },
+    789: {
+        imageToken: '789',
+        path: 'path2',
+        platform: T_TELEGRAM,
+    },
+};
+
+const soundData: TFileData = {
+    123: {
+        soundToken: '123',
+        path: 'path1',
+        platform: T_ALISA,
+    },
+    456: {
+        soundToken: '456',
+        path: 'path2',
+        platform: T_ALISA,
+    },
+    789: {
+        soundToken: '789',
+        path: 'path2',
+        platform: T_TELEGRAM,
+    },
+};
+
 describe('Db file connect', () => {
     let data: Record<string, Record<string, unknown>>;
     const userData = new UsersData(appContext);
@@ -20,7 +65,29 @@ describe('Db file connect', () => {
     beforeEach(async () => {
         unlinkSync(FILE_PATH);
         const fileAdapter = new FileAdapter();
+
+        // Грубый мок для того, чтобы мы явно не читали и не писали никакой файл, так как это в тесте проверять не нужно.
+        fileAdapter.getFileData = (tableName: string): TFileData => {
+            fileAdapter.setCachedFileData(tableName, {
+                data:
+                    tableName === 'ImageTokens'
+                        ? imageData
+                        : tableName === 'SoundTokens'
+                          ? soundData
+                          : data,
+                version: Date.now(),
+                isFileRead: true,
+            });
+            return tableName === 'ImageTokens'
+                ? imageData
+                : tableName === 'SoundTokens'
+                  ? soundData
+                  : data;
+        };
+        appContext.saveFileData = jest.fn();
+
         fileAdapter.init(appContext);
+        fileAdapter.connect();
         appContext.platformParams.utm_text = '';
         appContext.appConfig.json = __dirname;
         appContext.setLogger({
@@ -57,9 +124,9 @@ describe('Db file connect', () => {
                 },
             },
         };
-        await appContext.saveFileData(FILE_NAME, data);
     });
     afterEach(() => {
+        (appContext.saveFileData as jest.Mock).mockClear();
         userData.destroy();
         unlinkSync(FILE_PATH);
         appContext.close();
@@ -178,9 +245,40 @@ describe('Db file connect', () => {
     });
 
     it('Delete file db', () => {
-        expect(isFileSync(__dirname + '/' + FILE_NAME)).toBe(true);
-        unlinkSync(__dirname + '/' + FILE_NAME);
-        expect(isFileSync(__dirname + '/' + FILE_NAME)).toBe(false);
+        const filePatch = __dirname + '/' + FILE_NAME;
+        expect(isFileSync(filePatch)).toBe(false);
+        saveDataSync(
+            {
+                path: __dirname,
+                fileName: FILE_NAME,
+            },
+            '{}',
+        );
+        expect(isFileSync(filePatch)).toBe(true);
+        unlinkSync(filePatch);
+        expect(isFileSync(filePatch)).toBe(false);
+    });
+
+    it('image tokens search', async () => {
+        const imageTokens = new ImageTokens(appContext);
+        imageTokens.platform = T_ALISA;
+        await imageTokens.whereOne({ path: 'path1' });
+        expect(imageTokens.imageToken).toBe('123');
+        await imageTokens.whereOne({ path: 'path2', platform: T_ALISA });
+        expect(imageTokens.imageToken).toBe('456');
+        await imageTokens.whereOne({ path: 'path2', platform: T_TELEGRAM });
+        expect(imageTokens.imageToken).toBe('789');
+    });
+
+    it('sound tokens search', async () => {
+        const soundTokens = new SoundTokens(appContext);
+        soundTokens.platform = T_ALISA;
+        await soundTokens.whereOne({ path: 'path1' });
+        expect(soundTokens.soundToken).toBe('123');
+        await soundTokens.whereOne({ path: 'path2', platform: T_ALISA });
+        expect(soundTokens.soundToken).toBe('456');
+        await soundTokens.whereOne({ path: 'path2', platform: T_TELEGRAM });
+        expect(soundTokens.soundToken).toBe('789');
     });
 });
 

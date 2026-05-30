@@ -68,7 +68,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Название таблицы для хранения данных о звуковых файлах.
      */
-    private readonly TABLE_NAME = 'SoundTokens';
+    protected static readonly TABLE_NAME = 'SoundTokens';
 
     /**
      * Флаг, указывающий, что передается содержимое файла.
@@ -149,7 +149,7 @@ export class SoundTokens extends Model<ISoundModelState> {
      * @return {string} Название таблицы для хранения данных о звуковых файлах
      */
     public tableName(): string {
-        return this.TABLE_NAME;
+        return SoundTokens.TABLE_NAME;
     }
 
     /**
