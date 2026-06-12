@@ -6,6 +6,7 @@ import {
     IDatabaseInfo,
     getFileInfoSync,
     freadSync,
+    keysCount,
 } from '../../../index';
 
 /**
@@ -187,12 +188,16 @@ export class FileAdapter extends Base<IFileDbInfo> {
         if (force) {
             cb();
         } else {
-            this.#setCachedFileData(tableName, 'timeOutId', setTimeout(cb, LAZY_DELAY_SAVE_TIME));
+            this.#setCachedFileData(
+                tableName,
+                'timeOutId',
+                setTimeout(cb, LAZY_DELAY_SAVE_TIME).unref(),
+            );
             if (!forceTimeOutId) {
                 this.#setCachedFileData(
                     tableName,
                     'forceTimeOutId',
-                    setTimeout(cb, FORCE_DELAY_SAVE_TIME),
+                    setTimeout(cb, FORCE_DELAY_SAVE_TIME).unref(),
                 );
             }
         }
@@ -285,7 +290,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     ): IModelRes {
         const whereKey = where[selectData.primaryKeyName as string];
         if ((typeof whereKey === 'string' || typeof whereKey === 'number') && content[whereKey]) {
-            if (Object.keys(where).length === 1) {
+            if (keysCount(where) === 1) {
                 return {
                     status: true,
                     data: isOne ? content[whereKey] : [content[whereKey]],

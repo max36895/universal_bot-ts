@@ -1,6 +1,6 @@
 {
     "name": "umbot",
-    "version": "3.0.10",
+    "version": "3.0.12",
     "description": "Мультиплатформенный фреймворк для создания голосовых навыков и чат-ботов с единой бизнес-логикой. Встроенная поддержка ВКонтакте, Telegram, Viber, MAX, Яндекс Алисы, Маруси и Сбера SmartApp. Архитектура на адаптерах позволяет подключать любые другие платформы без изменения основного кода.",
     "keywords": [
         "vk",
@@ -123,6 +123,8 @@
         "stress:lite": "node --expose-gc ./benchmark/stress-test.js lite",
         "stress:long": "node --expose-gc ./benchmark/stress-test.js long",
         "stress:prof": "node --prof --expose-gc ./benchmark/stress-test.js",
+        "cleancomp": "node --expose-gc ./benchmark/um.js",
+        "cleancomp:logic": "node --expose-gc ./benchmark/um.js logic",
         "fb": "node --expose-gc ./benchmark/fb.js",
         "typecheck": "tsc --noEmit"
     },

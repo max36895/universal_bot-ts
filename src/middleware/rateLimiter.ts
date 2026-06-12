@@ -28,7 +28,7 @@ async function processQueue(
 
             // Если текущая секунда ещё не закончилась, ждём её окончания
             if (timePassed < 1000) {
-                await new Promise((r) => setTimeout(r, 1000 - timePassed));
+                await new Promise((r) => setTimeout(r, 1000 - timePassed).unref());
                 // eslint-disable-next-line require-atomic-updates
                 st.count = 0;
                 // eslint-disable-next-line require-atomic-updates
@@ -61,7 +61,7 @@ async function processQueue(
                 // Равномерная задержка между запросами внутри пачки
                 if (st.queue.length > 0) {
                     // -1 для подстраховки
-                    await new Promise((r) => setTimeout(r, Math.ceil(1000 / limit) - 1));
+                    await new Promise((r) => setTimeout(r, Math.ceil(1000 / limit) - 1).unref());
                 }
             }
         }

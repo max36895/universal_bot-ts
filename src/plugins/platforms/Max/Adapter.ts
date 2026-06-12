@@ -81,7 +81,8 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
                         controller.userCommand = raw.toLowerCase().trim();
                         controller.originalUserCommand = raw.trim();
                         controller.messageId = object.body.seq;
-                        controller.payload = object.body.attachments || null;
+                        controller.payload =
+                            (object.body.attachments as Record<string, unknown>) || null;
                         const thisUser = {
                             username: object.sender.username,
                             first_name: object.sender.first_name || null,

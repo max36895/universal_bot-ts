@@ -63,7 +63,7 @@ import {
 } from './interfaces/IAppContext';
 
 import { CommandReg, ICommandParam, IGroupData, IStepParam } from './utils/CommandReg';
-import { IEnvConfig, loadEnvFile, ENV_NAME } from '../utils/EnvConfig';
+import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { saveData } from '../utils';
 import * as process from 'node:process';
 import { join } from 'node:path';
@@ -89,6 +89,17 @@ const regVk2 =
     /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g;
 const regToken = /"[A-Za-z0-9+/=]{30,256}"/g;
 const regToken2 = /\b[A-Za-z0-9]{64,256}\b/g;
+
+const PATTERNS = [
+    { regex: regBot, replacement: 'bot***' },
+    { regex: regVk, replacement: 'vk1a***' },
+    {
+        regex: regVk2,
+        replacement: '$1:"***"',
+    },
+    { regex: regToken, replacement: '"***"' },
+    { regex: regToken2, replacement: '***' },
+];
 
 interface IErrWarnData {
     errors: string[];
@@ -330,7 +341,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             let correctEnvValue = {};
             // Используем доступ к env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая для работы с api и базой данных.
             // Используется только в случае если явно хотят работать с env файлами.
-            if (process[ENV_NAME]) {
+            if (process.env) {
                 const {
                     // Получаем токен для viber
                     VIBER_TOKEN,
@@ -354,7 +365,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     DB_PASSWORD,
                     // Получаем имя базы данных
                     DB_NAME,
-                } = process[ENV_NAME];
+                } = process.env;
                 correctEnvValue = {
                     VIBER_TOKEN,
                     TELEGRAM_TOKEN,
@@ -537,7 +548,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             this.#errWarnData.timeout = setTimeout(() => {
                 this.#errWarnData.timeout = null;
                 this.#saveErrorData();
-            }, 200);
+            }, 200).unref();
         }
     }
 
@@ -582,21 +593,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             return text;
         }
 
-        // Определите список паттернов как массив
-        const patterns = [
-            { regex: regBot, replacement: 'bot***' },
-            { regex: regVk, replacement: 'vk1a***' },
-            {
-                regex: regVk2,
-                replacement: '$1:"***"',
-            },
-            { regex: regToken, replacement: '"***"' },
-            { regex: regToken2, replacement: '***' },
-        ];
-
         let result = text;
-
-        for (const { regex, replacement } of patterns) {
+        for (const { regex, replacement } of PATTERNS) {
             result = result.replace(regex, replacement);
         }
 
