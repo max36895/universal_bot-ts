@@ -237,10 +237,10 @@ export class Request {
             if (this.postInString) {
                 post = this.postInString;
             } else if (!(this.post instanceof FormData)) {
-                    post = JSON.stringify(this.post);
-                } else {
-                    post = this.post;
-                }
+                post = JSON.stringify(this.post);
+            } else {
+                post = this.post;
+            }
         }
 
         if (post) {
