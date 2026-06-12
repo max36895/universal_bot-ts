@@ -10,11 +10,13 @@ jobs:
         permissions:
             contents: read
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
                   node-version: 20
-            - run: npm ci
+                  cache: 'npm'
+            - run: npm install
+            - run: npm run build
             - run: npm test
 
     publish-gpr:
@@ -24,13 +26,15 @@ jobs:
             packages: write
             contents: read
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
                   node-version: 20
+                  cache: 'npm'
                   registry-url: https://npm.pkg.github.com/
-            - run: npm ci
-            - run: npm run bt
+            - run: npm install
+            - run: npm config set @max36895:registry https://npm.pkg.github.com/
+            - run: npm run build
             - run: npm publish
               env:
                   NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

@@ -19,7 +19,7 @@ import { BaseBotController, BotController, IPlatformData, IUserData } from '../c
 import { AppContext, T_AUTO } from './AppContext';
 import { UsersData } from '../models';
 import { ILogger } from './interfaces/ILogger';
-import { Text, isPromise } from '../utils';
+import { Text, isPromise, keysCount } from '../utils';
 
 /**
  * Тип для класса контроллера приложения
@@ -646,7 +646,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         this.#globalMiddlewares = [];
         this.#platformMiddlewares = {};
         this.#appContext.plugins = {};
-        this.#plugins.map((plugin) => {
+        this.#plugins.forEach((plugin) => {
             if (typeof plugin === 'function') {
                 plugin(this);
             } else {
@@ -986,9 +986,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
-    async #getDbAdapter(): Promise<IDatabaseAdapter | undefined> {
-        const dbAdapter = this.#appContext.database.adapter;
-        if (dbAdapter && !this.#appContext.database.isSendConnect) {
+    async #getDbAdapter(dbAdapter: IDatabaseAdapter): Promise<IDatabaseAdapter | undefined> {
+        if (!this.#appContext.database.isSendConnect) {
             if (this.#appConnectStatus.isConnecting) {
                 if (isPromise(this.#appConnectStatus.status)) {
                     await this.#appConnectStatus.status;
@@ -1004,8 +1003,36 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
         return dbAdapter;
     }
-
     /* eslint-disable require-atomic-updates*/
+    async #initUserData(
+        botController: BotController<TUserData>,
+        userData?: UsersData,
+        localStateData?: unknown,
+    ): Promise<boolean> {
+        if (botController.platformOptions.usedLocalStorage) {
+            botController.state = localStateData as IPlatformData;
+        }
+        if (userData && !this.#appContext.appConfig.isLocalStorage) {
+            const query = {
+                userId: botController.userId,
+            };
+            if (this.#auth) {
+                query.userId = userData.escapeString(botController.userToken as string);
+            }
+            if (await userData.whereOne(query)) {
+                botController.userData = userData.data as TUserData;
+                return false;
+            } else {
+                if (!botController.userData) {
+                    botController.userData = {} as TUserData;
+                }
+                userData.userId = botController.userId;
+                userData.meta = botController.userMeta as Record<string, unknown>;
+            }
+        }
+        return true;
+    }
+
     /**
      * Запуск логики приложения
      * @param botController - Контроллер с бизнес-логикой приложения
@@ -1017,13 +1044,15 @@ export class Bot<TUserData extends IUserData = IUserData> {
         platformClass: IPlatformAdapter,
         appType: TAppType,
     ): Promise<TRunResult> {
-        if (botController.platformOptions.sendInInit) {
-            return botController.platformOptions.sendInInit as TRunResult;
+        const dbAdapter = this.#appContext.database.adapter
+            ? await this.#getDbAdapter(this.#appContext.database.adapter)
+            : undefined;
+        let userData: UsersData | undefined;
+        if (dbAdapter) {
+            userData = new UsersData(this.#appContext);
+            botController.userId = userData.escapeString(botController.userId as string | number);
+            userData.platform = platformClass.platformName;
         }
-        const dbAdapter = await this.#getDbAdapter();
-        const userData = new UsersData(this.#appContext);
-        botController.userId = userData.escapeString(botController.userId as string | number);
-        userData.platform = platformClass.platformName;
         botController.platformOptions.usedLocalStorage =
             platformClass.isLocalStorage(botController);
         const isLocalStorage: boolean =
@@ -1037,32 +1066,18 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (isLocalStorage) {
             botController.userData = localStateData as TUserData;
         } else {
-            if (botController.platformOptions.usedLocalStorage) {
-                botController.state = localStateData as IPlatformData;
-            }
-            if (dbAdapter && !this.#appContext.appConfig.isLocalStorage) {
-                const query = {
-                    userId: botController.userId,
-                };
-                if (this.#auth) {
-                    query.userId = userData.escapeString(botController.userToken as string);
-                }
-                if (await userData.whereOne(query)) {
-                    botController.userData = userData.data as TUserData;
-                    isNewUser = false;
-                } else {
-                    if (!botController.userData) {
-                        botController.userData = {} as TUserData;
-                    }
-                    userData.userId = botController.userId;
-                    userData.meta = botController.userMeta as Record<string, unknown>;
-                }
-            }
+            isNewUser = await this.#initUserData(botController, userData, localStateData);
         }
         this.#initNLU(botController);
-        const content = await this.#getAppContent(botController, platformClass, appType);
+        const shouldProceed =
+            this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length
+                ? await this.#runMiddlewares(botController, appType)
+                : true;
+        const content = shouldProceed
+            ? await this.#getAppContent(botController, platformClass, appType)
+            : 'Request entity too large';
         if (
-            dbAdapter &&
+            userData &&
             !(
                 isLocalStorage &&
                 (!botController.state || botController.state === botController.userData)
@@ -1086,13 +1101,16 @@ export class Bot<TUserData extends IUserData = IUserData> {
                             `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}".`,
                         );
                     }
+                    return res;
                 });
             }
         }
         if (botController.platformOptions.error) {
             this.#appContext.logError(botController.platformOptions.error);
         }
-        this._clearState(botController);
+        if (this.#$botController) {
+            this._clearState(botController);
+        }
         return content;
     }
 
@@ -1117,7 +1135,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         botController: BotController<TUserData>,
         platformClass: IPlatformAdapter,
     ): Promise<string | object> {
-        let userDataLength = Object.keys(botController.userData).length;
+        let userDataLength = keysCount(botController.userData);
         if (botController.thisIntentName !== null) {
             if (botController.state && userDataLength === 0) {
                 botController.state.oldIntentName = botController.thisIntentName;
@@ -1142,13 +1160,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
         ) {
             if (this.#appContext.database.adapter) {
                 stateData =
-                    botController.state && Object.keys(botController.state).length
+                    botController.state && keysCount(botController.state)
                         ? botController.state
                         : botController.userData;
             } else {
                 stateData = userDataLength ? botController.userData : botController.state;
             }
-        } else if (botController.state && Object.keys(botController.state).length) {
+        } else if (botController.state && keysCount(botController.state)) {
             stateData = botController.state;
         }
         let content: string | object;
@@ -1178,20 +1196,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
     ): Promise<string | object> {
         this.#setOldIntentName(botController);
 
-        const shouldProceed =
-            this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length
-                ? await this.#runMiddlewares(botController, appType)
-                : true;
-        if (shouldProceed) {
-            const res = botController.run();
-            if (res) {
-                await res;
-            }
+        const res = botController.run();
+        if (res) {
+            await res;
         }
-        if (
-            botController.tts === null &&
-            this.#appContext.platforms[botController.appType as string]?.isVoice
-        ) {
+
+        if (botController.tts === null && this.#appContext.platforms[appType]?.isVoice) {
             botController.tts = botController.text;
         }
 
@@ -1362,6 +1372,15 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Получение контроллера приложения
+     * Не использовать!
+     * @private
+     */
+    public getBotController(): BotController<TUserData> | null {
+        return this.#$botController;
+    }
+
+    /**
      * Выполняет непосредственную обработку входящего запроса от платформы.
      * Этот метод **не запускает HTTP-сервер** и **не обрабатывает HTTP-запросы напрямую** —
      * он принимает уже распарсенные данные и возвращает результат обработки.
@@ -1403,7 +1422,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
         const botController: BotController<TUserData> =
             this.#$botController || new this.#botControllerClass(this.#appContext);
-        botController.setAppContext(this.#appContext);
+        if (this.#$botController) {
+            botController.setAppContext(this.#appContext);
+        }
         botController.appType = appType || this.#getAppType(correctContent);
         const platformClass = botController.appType
             ? this.#appContext.platforms[botController.appType]
@@ -1417,11 +1438,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 res = await res;
             }
             if (res) {
-                return await this.#runApp(
-                    botController,
-                    platformClass,
-                    botController.appType as string,
-                );
+                if (botController.platformOptions.sendInInit) {
+                    return botController.platformOptions.sendInInit as TRunResult;
+                }
+                return this.#runApp(botController, platformClass, botController.appType as string);
             } else {
                 this.#appContext.logError(botController.platformOptions.error as string);
                 throw new Error(botController.platformOptions.error || '');

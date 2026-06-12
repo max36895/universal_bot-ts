@@ -1,6 +1,6 @@
 import { IMaxSendMessage, IMaxParams, IMaxAppApi } from './interfaces';
 import { IMaxUploadFile, TMaxUploadFile } from './interfaces/IMaxAppApi';
-import { AppContext, Request } from '../../../index';
+import { AppContext, keysCount, Request } from '../../../index';
 import { T_MAX_APP } from '../Max/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
@@ -168,7 +168,7 @@ export class MaxRequest {
                 this.#request.post.attachments = attachment;
             }
 
-            if (Object.keys(params).length) {
+            if (keysCount(params)) {
                 this.#request.post = { ...params, ...this.#request.post };
             }
         }

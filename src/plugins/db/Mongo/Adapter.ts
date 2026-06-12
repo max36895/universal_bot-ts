@@ -109,7 +109,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
                 if (!(await connect())) {
                     await new Promise((resolve) => {
-                        setTimeout(resolve, 2000);
+                        setTimeout(resolve, 2000).unref();
                     });
                     if (!(await connect())) {
                         throw new Error('Failed to verify database connection');
