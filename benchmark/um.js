@@ -593,7 +593,7 @@ function printDeltaTable(results) {
 async function main() {
     const tableData = [];
 
-    for (scenario of SCENARIOS) {
+    for (const scenario of SCENARIOS) {
         const cleanResult = await runScenario(() => new CleanRouter(), scenario);
         forceGC();
         await sleep(50);
