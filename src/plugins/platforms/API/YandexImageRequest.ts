@@ -196,7 +196,7 @@ export class YandexImageRequest extends YandexRequest {
                         try {
                             await this.deleteImage(image.id);
                             // Добавить задержку между запросами
-                            await new Promise((resolve) => setTimeout(resolve, 200));
+                            await new Promise((resolve) => setTimeout(resolve, 200).unref());
                             return true;
                         } catch (e) {
                             this._log(

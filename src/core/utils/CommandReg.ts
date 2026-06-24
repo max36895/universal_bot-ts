@@ -357,7 +357,7 @@ export class CommandReg {
                 this.#oldFnGroup = undefined;
             };
 
-            this.#timeOutReg = setTimeout(this.#oldFnGroup, 100);
+            this.#timeOutReg = setTimeout(this.#oldFnGroup, 35).unref();
             return;
         } else {
             if (this.#timeOutReg && this.#oldGroupName !== group.name) {

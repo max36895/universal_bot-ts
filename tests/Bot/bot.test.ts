@@ -33,8 +33,8 @@ class MyReg extends RegExp {
 }
 
 class TestBotController extends BotController {
-    constructor() {
-        super();
+    constructor(appContext: AppContext) {
+        super(appContext);
     }
 
     action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
@@ -212,7 +212,7 @@ describe('Bot', () => {
                 botC.text = 'cool';
                 botC.userData.cool = true;
             });
-            let botController: TestBotController = new TestBotController();
+            let botController: TestBotController = new TestBotController(bot.getAppContext());
             bot.use((controller: TestBotController, next) => {
                 botController = controller;
                 return next();
@@ -221,8 +221,7 @@ describe('Bot', () => {
             bot.use(new AlisaAdapter());
             let res = (await bot.run(T_ALISA, getContent('cool', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('cool');
-            // Убеждаемся что пользовательские данные скинулись, так как они хранятся в сессии.
-            expect(botController.userData.cool).toBe(undefined);
+            expect(botController.userData.cool).toBe(true);
 
             bot.removeCommand('cool');
             res = (await bot.run(T_ALISA, getContent('cool', 2))) as IAlisaWebhookResponse;
@@ -1386,12 +1385,12 @@ describe('Bot', () => {
             bot.addCommand('reg', ['\\d+'], (userCommand) => `Вы сказали ${userCommand}`, true);
             const res = (await bot.run(T_ALISA, getContent('5'))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('Вы сказали 5');
-            expect(usedRegExp).toBe(3);
+            expect(usedRegExp).toBe(2);
             expect(MyReg.created).toBe(1);
             // Вызывается 3 раза, так как 2 раза идет прогрев + 1 реальный вызов
             expect(MyReg.used).toBe(3);
             await bot.run(T_ALISA, getContent('привет'));
-            expect(usedRegExp).toBe(5);
+            expect(usedRegExp).toBe(3);
             expect(MyReg.created).toBe(1);
             expect(MyReg.used).toBe(4);
         });

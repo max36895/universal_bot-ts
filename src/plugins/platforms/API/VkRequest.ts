@@ -11,7 +11,7 @@ import {
     TVkDocType,
     TVkPeerId,
 } from './interfaces';
-import { AppContext, Request, httpBuildQuery } from '../../../index';
+import { AppContext, Request, httpBuildQuery, keysCount } from '../../../index';
 import { T_VK } from '../VK/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
@@ -357,7 +357,7 @@ export class VkRequest {
                 params.keyboard = undefined;
             }
 
-            if (Object.keys(params).length) {
+            if (keysCount(params)) {
                 this._request.post = { ...params, ...this._request.post };
             }
         }

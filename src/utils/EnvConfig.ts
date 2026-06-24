@@ -187,8 +187,6 @@ export interface IEnvConfigStatus {
     data?: IEnvConfig;
 }
 
-export const ENV_NAME = 'env';
-
 /**
  * Загружает переменные окружения из файла .env
  *

@@ -1,5 +1,6 @@
 // benchmark.js
 // Запуск: node --expose-gc  .\command.js
+// Бенчмарк, проверяющий скорость обработки команд
 
 const { Bot, BotController } = require('../dist/index');
 const { AlisaAdapter, T_ALISA } = require('../dist/plugins');

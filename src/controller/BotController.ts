@@ -430,7 +430,7 @@ export abstract class BotController<
      * };
      * ```
      */
-    public payload: object | string | null | undefined = null;
+    public payload: Record<string, unknown> | string | null | undefined = null;
 
     /**
      * Пользовательские данные, который были сохранены.
@@ -1246,30 +1246,36 @@ export abstract class BotController<
     #stepResolver(): void | null | Promise<void> {
         if (this.appContext.steps.size) {
             const intents = this.nlu.getIntents();
-            for (const [stepName, step] of this.appContext.steps) {
-                if (stepName === this.oldIntentName || intents?.[stepName]) {
-                    const res = step.cb(this);
-                    if (res) {
-                        return res
-                            .then(() => {
-                                this._actionMetric(stepName, false, true);
-                            })
-                            .catch((error) => {
-                                this.appContext.logError(
-                                    `BotController: Произошла ошибка во время обработки шага "${stepName}". Текст ошибки: "${error}"`,
-                                    {
-                                        error,
-                                    },
-                                );
-                            });
-                    } else if (res === false) {
-                        // Если передали false, значит хотят чтобы шаг не выполнялся, и дальше пошла логика с обработкой команд.
-                        // Как правило, нужно в случаях, когда был записан какой-то шал, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
-                        return null;
+            let step = this.oldIntentName ? this.appContext.steps.get(this.oldIntentName) : null;
+            if (!step && intents) {
+                for (const intent in intents) {
+                    if (this.appContext.steps.has(intent)) {
+                        step = this.appContext.steps.get(intent);
                     }
-                    this._actionMetric(stepName, false, true);
-                    return;
                 }
+            }
+            if (step) {
+                const res = step.cb(this);
+                if (res) {
+                    return res
+                        .then(() => {
+                            this._actionMetric(step.stepName, false, true);
+                        })
+                        .catch((error) => {
+                            this.appContext.logError(
+                                `BotController: Произошла ошибка во время обработки шага "${step.stepName}". Текст ошибки: "${error}"`,
+                                {
+                                    error,
+                                },
+                            );
+                        });
+                } else if (res === false) {
+                    // Если передали false, значит хотят чтобы шаг не выполнялся, и дальше пошла логика с обработкой команд.
+                    // Как правило, нужно в случаях, когда был записан какой-то шал, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
+                    return null;
+                }
+                this._actionMetric(step.stepName, false, true);
+                return;
             }
         }
         return null;

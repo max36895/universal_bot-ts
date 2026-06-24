@@ -176,7 +176,7 @@ export interface IMarusiaRequest {
      * Данные с нажатой кнопки
      * Максимум 4096 байт
      */
-    payload?: object | string;
+    payload?: Record<string, unknown> | string;
 
     /**
      * Результаты анализа текста

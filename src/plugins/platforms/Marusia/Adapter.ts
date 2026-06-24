@@ -136,7 +136,7 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                 }
 
                 controller.platformOptions.session = query.session;
-                controller.userId = query.session.user_id as string;
+                controller.userId = query.session.user_id + '';
                 controller.nlu.setNlu(query.request.nlu || {});
 
                 controller.userMeta = query.meta || {};

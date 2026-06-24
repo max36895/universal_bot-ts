@@ -2,6 +2,8 @@ export {
     BasePlatform as BasePlatformAdapter,
     type TContent,
     type IOptions as IAdapterOptions,
+    EMPTY_CONTEXT_ERROR,
+    EMPTY_QUERY_ERROR,
 } from './platforms/Base/Base';
 
 export * as pUtils from './platforms/Base/utils';

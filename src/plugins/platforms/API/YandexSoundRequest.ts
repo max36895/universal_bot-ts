@@ -167,7 +167,7 @@ export class YandexSoundRequest extends YandexRequest {
                         try {
                             await this.deleteSound(image.id);
                             // Добавить задержку между запросами
-                            await new Promise((resolve) => setTimeout(resolve, 200));
+                            await new Promise((resolve) => setTimeout(resolve, 200).unref());
                             return true;
                         } catch (e) {
                             this._log(

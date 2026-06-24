@@ -308,7 +308,7 @@ export abstract class BasePlatform<TQuery = unknown>
      * @param controller Тип приложения
      * @protected
      */
-    protected async _initTTS(controller: BotController): Promise<void> {
+    protected _initTTS(controller: BotController): void | Promise<void> {
         if (controller.sound.sounds.length || controller.sound.isUsedStandardSound) {
             controller.tts ??= controller.text;
             return this.soundProcessing(controller);

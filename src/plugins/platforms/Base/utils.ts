@@ -211,7 +211,7 @@ export function defaultSoundProcessing(
  */
 export function initUserCommand(request: IAlisaRequest, controller: BotController): void {
     if (request.type === 'SimpleUtterance') {
-        controller.userCommand = request.command.trim() || '';
+        controller.userCommand = request.command?.trim() || '';
         controller.originalUserCommand = request.original_utterance.trim() || '';
     } else {
         if (typeof request.payload === 'string') {

@@ -167,7 +167,9 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 controller.requestObject = query;
                 this.#initUserCommand(query.request, controller);
                 this.#setUserId(controller, query.session);
-                controller.nlu.setNlu(query.request.nlu || {});
+                if (query.request.nlu) {
+                    controller.nlu.setNlu(query.request.nlu);
+                }
 
                 controller.userMeta = query.meta || {};
                 controller.messageId = query.session.message_id;
@@ -244,7 +246,10 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         if (controller.isAuth && controller.userToken === null) {
             result.start_account_linking = {};
         } else {
-            await this._initTTS(controller);
+            const resTts = this._initTTS(controller);
+            if (resTts) {
+                await resTts;
+            }
             result.response = await this._getResponse(controller);
         }
         if (controller.platformOptions.stateName && stateData) {

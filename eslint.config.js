@@ -75,7 +75,10 @@ module.exports = [
             'no-constant-binary-expression': 'error',
             'prefer-const': 'error',
             'no-param-reassign': 'warn',
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+            ],
             'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
             complexity: ['warn', { max: 20, variant: 'classic' }],
             'max-depth': ['warn', { max: 4 }],

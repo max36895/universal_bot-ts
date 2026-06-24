@@ -1,5 +1,6 @@
 // stress-test.js
 // Запуск: node --expose-gc stress-test.js
+// Бенчмарк для теста стабильности. Показывает производительность фреймворка в различных сценариях.
 
 const { Bot, BotController, rand, unlink, Text } = require('../dist/index');
 const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');

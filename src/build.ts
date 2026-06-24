@@ -11,7 +11,7 @@
  * @packageDocumentation
  * @module build
  */
-import { Bot, IAppConfig, IAppParam, TBotControllerClass, TPlugin } from './index';
+import { Bot, IAppConfig, IAppParam, keysCount, TBotControllerClass, TPlugin } from './index';
 import { FileAdapter, MongoAdapter, fullPlatforms } from './plugins';
 import { BotTest, IBotTestParams } from './test';
 import { Server } from 'node:http';
@@ -97,7 +97,7 @@ function _initParam(bot: Bot | BotTest, config: IConfig): void {
         });
     } else {
         const appContext = bot.getAppContext();
-        if (!Object.keys(appContext.platforms).length) {
+        if (!keysCount(appContext.platforms)) {
             bot.use(fullPlatforms);
         }
         if (!appContext.database.adapter) {

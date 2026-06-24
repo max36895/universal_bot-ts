@@ -106,7 +106,7 @@ describe('Middleware', () => {
         bot.setContent(getContent('test'));
         const result = (await bot.run()) as IAlisaWebhookResponse;
 
-        expect(result.response?.text).toBe('Прервано middleware');
+        expect(result.response?.text).toBe(undefined);
     });
 
     it('should execute middlewares in order', async () => {

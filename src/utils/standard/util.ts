@@ -48,6 +48,19 @@ export function rand(min: number, max: number): number {
 }
 
 /**
+ * Метод, возвращающий количество ключей в объекте
+ * @param obj
+ */
+export function keysCount(obj: object | Record<string, unknown>): number {
+    // Такой вариант быстрее Object.keys, но до тех пор, пока не был delete.
+    let count = 0;
+    for (const _ in obj) {
+        count++;
+    }
+    return count;
+}
+
+/**
  * Вычисляет процент схожести двух текстов
  * Использует алгоритм LCS (Longest Common Subsequence)
  *

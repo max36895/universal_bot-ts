@@ -1,5 +1,6 @@
 // fallback.js
 // Запуск: node --expose-gc fb.js
+// Бенчмарк для проверки скорости обработки fallback команд.
 
 const { Bot, unlink } = require('../dist/index');
 const { fullPlatforms, FileAdapter, T_ALISA } = require('../dist/plugins');

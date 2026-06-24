@@ -107,7 +107,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
                 break;
 
             case 'RATING_RESULT':
-                controller.payload = content.payload;
+                controller.payload = content.payload as unknown as Record<string, unknown>;
                 controller.messageId = 0;
                 controller.userEvents = {
                     rating: {
