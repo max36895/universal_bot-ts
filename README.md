@@ -199,6 +199,7 @@ export class EchoController extends BotController {
 
 - [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started) - Подробное описание, для
   быстрого старта проекта
+- [Подробная инструкция по созданию приложений](./src/docs/GUIDE.md)
 - [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_api-reference) - Подробное описание всех классов,
   методов и интерфейсов
 - [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration) - Руководство по

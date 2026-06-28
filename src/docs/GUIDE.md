@@ -321,7 +321,6 @@ import {
     getImage,
     ISound,
     IEffect,
-    getPause,
     INlu,
     INluFIO,
     INluGeo,
@@ -1560,10 +1559,7 @@ bot.use(async (ctx, next) => {
 | Платформа | Опции в `options`                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------------------ |
 | VK        | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'` |
-| Telegram  | `request_contact: true`, `request_location: true` — для reply-кнопок                                   |
 | Viber     | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'`                              |
-
-> **Важно про Telegram:** URL-кнопка без payload молча отбрасывается из inline-клавиатуры. Для inline-ссылки передавайте пустой payload: `addLink('Открыть', 'https://...', '')`.
 
 Примеры:
 
@@ -1895,7 +1891,7 @@ bot.use(new MarusiaAdapter('MARUSIA_TOKEN'));
 bot.use(new SmartAppAdapter()); // без токена — аутентификация через Sber-экосистему
 ```
 
-> Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration).
+> Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_platformAdapter).
 
 ### Авто-определение платформы
 
@@ -2037,7 +2033,7 @@ bot.setAppConfig({
 
 ### Свой DB-адаптер (PostgreSQL, Redis, ...)
 
-Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`, `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_configuration) и в `examples/skills/userDbConnect/` репозитория.
+Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`, `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_dbAdapter) и в `examples/skills/userDbConnect/` репозитория.
 
 ### Что фреймворк хранит в БД автоматически
 
@@ -2909,21 +2905,18 @@ bot.addCommand('show_product', ['покажи товар'], (_, bc) => {
 bot.initBotController(
     class extends BotController {
         action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
-            // Если сработала команда/шаг — они уже всё сделали, выходим.
-            // Кнопку "Помощь" добавим в самом конце — она нужна во всех ответах.
-            if (isCommand || isStep) return;
-
-            // Проверяем payload ДО intentName — иначе коллизия:
-            // кнопка "Играть" установит userCommand='играть' и сработает интент play,
-            // а не ваш обработчик кнопки.
+            // Сначала проверяем payload — иначе коллизия: если кнопка "Купить"
+            // совпадёт со слотом команды 'купить', сработает команда, isCommand=true,
+            // и мы выйдем по раннему возврату, не дойдя до payload.
             const data = this.payload as Record<string, unknown> | null;
             if (data?.action === 'buy') {
                 this.text = `Покупка товара #${data.id} инициирована.`;
-                // На Telegram: this.platformOptions.callbackQueryId содержит ID
-                // для answerCallbackQuery — фреймворк автоматически вызовет его.
                 this.buttons.addBtn('Помощь');
                 return;
             }
+
+            // Если сработала команда/шаг — они уже всё сделали, выходим.
+            if (isCommand || isStep) return;
 
             // Обычная обработка по intentName (welcome, help, ...)
             this.buttons.addBtn('Помощь');
