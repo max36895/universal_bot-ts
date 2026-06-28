@@ -1361,11 +1361,35 @@ export abstract class BotController<
                  */
                 switch (intent) {
                     case DEFAULT_WELCOME_INTENT_NAME:
-                        this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                        if (this.appContext.commands.has(DEFAULT_WELCOME_INTENT_NAME)) {
+                            const command = this.appContext.commands.get(
+                                DEFAULT_WELCOME_INTENT_NAME,
+                            );
+                            if (command) {
+                                return this.#commandCb(
+                                    DEFAULT_WELCOME_INTENT_NAME,
+                                    command,
+                                    this.#getStartMetric(),
+                                );
+                            }
+                        } else {
+                            this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                        }
                         break;
 
                     case DEFAULT_HELP_INTENT_NAME:
-                        this.text = Text.getText(this.appContext.platformParams.help_text);
+                        if (this.appContext.commands.has(DEFAULT_HELP_INTENT_NAME)) {
+                            const command = this.appContext.commands.get(DEFAULT_HELP_INTENT_NAME);
+                            if (command) {
+                                return this.#commandCb(
+                                    DEFAULT_HELP_INTENT_NAME,
+                                    command,
+                                    this.#getStartMetric(),
+                                );
+                            }
+                        } else {
+                            this.text = Text.getText(this.appContext.platformParams.help_text);
+                        }
                         break;
                 }
 
