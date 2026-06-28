@@ -177,7 +177,7 @@ function findLinksInFile(filePath) {
 
     // 3. Пути в коде — ТОЛЬКО с допустимыми префиксами (не ловим README.md, text.md и т.д.)
     const prefixPattern = config.allowedPathPrefixes
-        .map(p => p.replace(/\./g, '\\.'))
+        .map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
         .join('|');
     const codePathRegex = new RegExp(
         '(?:`|\'|")(' + prefixPattern + '[a-zA-Z0-9_\\-\\.\\/]+\\.md)(?:`|\'|")', 'g'
