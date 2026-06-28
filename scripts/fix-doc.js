@@ -143,6 +143,11 @@ function walkDir(dir, callback) {
     });
 }
 
+// Экранирование строки для безопасной вставки в RegExp
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Поиск ссылок в файле
 function findLinksInFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -150,7 +155,7 @@ function findLinksInFile(filePath) {
 
     // 1. URL документации
     const urlRegex = new RegExp(
-        config.baseUrl.replace(/\./g, '\\.') + '[^\\s\\)\\]"\'<>]+', 'g'
+        escapeRegex(config.baseUrl) + '[^\\s\\)\\]"\'<>]+', 'g'
     );
     let match;
     while ((match = urlRegex.exec(content)) !== null) {
