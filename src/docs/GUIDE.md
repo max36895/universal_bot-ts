@@ -97,15 +97,15 @@
 
 ### Главные сущности
 
-| Сущность | Роль | Кто пишет |
-|---|---|---|
-| `Bot` | Оркестратор. Принимает запросы, маршрутизирует, управляет жизненным циклом. | Использует разработчик |
-| `AppContext` | Хранилище состояния приложения: конфиг, токены, реестр плагинов, логгер. | Создаётся внутри `Bot` |
-| `BotController` | Базовый класс для бизнес-логики. Содержит `text`, `buttons`, `card`, `userData`, `state`, `nlu`. | Разработчик наследуется |
-| PlatformAdapter | Переводит универсальный ответ в формат конкретной платформы. | Встроено или разработчик |
-| DatabaseAdapter | Сохраняет `userData` между запросами. | Встроено или разработчик |
-| Middleware | Перехватывает запрос до/после `action()`. | Разработчик |
-| Plugin | Расширение: NLU, i18n, кастомный RegExp-движок. | Разработчик |
+| Сущность        | Роль                                                                                             | Кто пишет                |
+| --------------- | ------------------------------------------------------------------------------------------------ | ------------------------ |
+| `Bot`           | Оркестратор. Принимает запросы, маршрутизирует, управляет жизненным циклом.                      | Использует разработчик   |
+| `AppContext`    | Хранилище состояния приложения: конфиг, токены, реестр плагинов, логгер.                         | Создаётся внутри `Bot`   |
+| `BotController` | Базовый класс для бизнес-логики. Содержит `text`, `buttons`, `card`, `userData`, `state`, `nlu`. | Разработчик наследуется  |
+| PlatformAdapter | Переводит универсальный ответ в формат конкретной платформы.                                     | Встроено или разработчик |
+| DatabaseAdapter | Сохраняет `userData` между запросами.                                                            | Встроено или разработчик |
+| Middleware      | Перехватывает запрос до/после `action()`.                                                        | Разработчик              |
+| Plugin          | Расширение: NLU, i18n, кастомный RegExp-движок.                                                  | Разработчик              |
 
 ---
 
@@ -125,30 +125,30 @@ npm run start
 
 ### CLI-команды
 
-| Команда | Что делает |
-|---|---|
-| `npx umbot create <name>` | Создать новый проект в папке `<name>` |
+| Команда                             | Что делает                                                 |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `npx umbot create <name>`           | Создать новый проект в папке `<name>`                      |
 | `npx umbot create <name> --minimal` | Минимальная версия (один файл, без отдельного контроллера) |
-| `npx umbot create <name> --prod` | Production-готовый проект (Dockerfile + GitHub Actions) |
-| `npx umbot create config.json` | Создать проект по JSON-конфигу (см. ниже) |
-| `npx umbot generateenv` | Сгенерировать `.env` в текущей папке |
-| `npx umbot add docker` | Добавить `Dockerfile` в текущую папку |
-| `npx umbot add deploy` | Добавить `.github/workflows/deploy.yml` |
-| `npx umbot -v` | Узнать версию CLI |
+| `npx umbot create <name> --prod`    | Production-готовый проект (Dockerfile + GitHub Actions)    |
+| `npx umbot create config.json`      | Создать проект по JSON-конфигу (см. ниже)                  |
+| `npx umbot generateenv`             | Сгенерировать `.env` в текущей папке                       |
+| `npx umbot add docker`              | Добавить `Dockerfile` в текущую папку                      |
+| `npx umbot add deploy`              | Добавить `.github/workflows/deploy.yml`                    |
+| `npx umbot -v`                      | Узнать версию CLI                                          |
 
 ### JSON-конфиг для `npx umbot create`
 
 ```ts
 interface ProjectConfig {
-    name:      string;                       // обязательно
-    type?:     'default' | 'quiz';           // default = пустой шаблон, quiz = готовая викторина
-    mode?:     'prod' | 'dev' | 'dev-online' | 'build';
-    config?:   Record<string, unknown>;       // мерджится в IAppConfig
-    params?:   Record<string, unknown>;       // мерджится в IAppParam
-    path?:     string;                        // путь создания (по умолчанию ./<name>)
-    hostname?: string;                        // по умолчанию '0.0.0.0'
-    port?:     number;                        // по умолчанию 3000
-    isEnv?:    boolean;                       // сгенерировать .env из токенов в params/config.db
+    name: string; // обязательно
+    type?: 'default' | 'quiz'; // default = пустой шаблон, quiz = готовая викторина
+    mode?: 'prod' | 'dev' | 'dev-online' | 'build';
+    config?: Record<string, unknown>; // мерджится в IAppConfig
+    params?: Record<string, unknown>; // мерджится в IAppParam
+    path?: string; // путь создания (по умолчанию ./<name>)
+    hostname?: string; // по умолчанию '0.0.0.0'
+    port?: number; // по умолчанию 3000
+    isEnv?: boolean; // сгенерировать .env из токенов в params/config.db
 }
 ```
 
@@ -226,9 +226,9 @@ const bot = new Bot()
 
 // Команда приветствия
 bot.addCommand(WELCOME_INTENT_NAME, ['привет'], (_, bc) => {
-   bc.text = 'Привет! Я повторяю за вами. Скажите "помощь" или "пока".';
-   bc.buttons.addBtn('Помощь');
-})
+    bc.text = 'Привет! Я повторяю за вами. Скажите "помощь" или "пока".';
+    bc.buttons.addBtn('Помощь');
+});
 
 // Команда "помощь"
 bot.addCommand(HELP_INTENT_NAME, ['помощь'], (_, bc) => {
@@ -245,10 +245,15 @@ bot.addCommand('bye', ['пока', 'выйти', 'до свидания'], (_, b
 
 // Fallback — повторяем за пользователем всё, что не подошло под команды выше.
 // isPattern = true обязателен для FALLBACK_COMMAND (это '*').
-bot.addCommand(FALLBACK_COMMAND, [], (userCommand, bc) => {
-    bc.text = `Вы сказали: ${userCommand}`;
-    bc.buttons.addBtn('Помощь').addBtn('Выйти');
-}, true);
+bot.addCommand(
+    FALLBACK_COMMAND,
+    [],
+    (userCommand, bc) => {
+        bc.text = `Вы сказали: ${userCommand}`;
+        bc.buttons.addBtn('Помощь').addBtn('Выйти');
+    },
+    true,
+);
 
 bot.start('localhost', 3000);
 ```
@@ -268,8 +273,8 @@ const bot = new BotTest()
         intents: [],
     });
 
-bot.test();  // запустит интерактивный диалог в консоли —
-             // вводите текст, получаете ответ, для выхода введите "exit"
+bot.test(); // запустит интерактивный диалог в консоли —
+// вводите текст, получаете ответ, для выхода введите "exit"
 ```
 
 ---
@@ -281,35 +286,115 @@ bot.test();  // запустит интерактивный диалог в ко
 ```ts
 // Главный модуль — основная часть API
 import {
-    Bot, BotController, BaseBotController,
+    Bot,
+    BotController,
+    BaseBotController,
     AppContext,
-    WELCOME_INTENT_NAME, HELP_INTENT_NAME, FALLBACK_COMMAND,
-    IUserData, IPlatformData, IUserEvent, TStatus,
-    IAppConfig, IAppParam, IAppIntent, IAppDB, ITokenPlatform,
-    ILogger, TAppType, TAppMode, EMetric,
-    Buttons, Card, Sound, Nlu, Navigation, SoundConstants,
-    IButton, IButtonType, IButtonOptions, TButton,
-    IImageType, IImageParams, getImage,
-    ISound, IEffect, getPause,
-    INlu, INluFIO, INluGeo, INluDateTime, INluThisUser, INluIntents, INluResult,
-    Model, UsersData, ImageTokens, SoundTokens,
-    IModelRes, IQuery, IQueryData, IModelRules,
-    Text, getRegExp, isRegex, rand, keysCount, httpBuildQuery,
-    isPromise, fread, fwrite, isFile, saveData,
-    ICommandParam, IStepParam, TSlots, TCommandResolver,
-    TBotControllerClass, MiddlewareFn, MiddlewareNext,
+    WELCOME_INTENT_NAME,
+    HELP_INTENT_NAME,
+    FALLBACK_COMMAND,
+    IUserData,
+    IPlatformData,
+    IUserEvent,
+    TStatus,
+    IAppConfig,
+    IAppParam,
+    IAppIntent,
+    IAppDB,
+    ITokenPlatform,
+    ILogger,
+    TAppType,
+    TAppMode,
+    EMetric,
+    Buttons,
+    Card,
+    Sound,
+    Nlu,
+    Navigation,
+    SoundConstants,
+    IButton,
+    IButtonType,
+    IButtonOptions,
+    TButton,
+    IImageType,
+    IImageParams,
+    getImage,
+    ISound,
+    IEffect,
+    getPause,
+    INlu,
+    INluFIO,
+    INluGeo,
+    INluDateTime,
+    INluThisUser,
+    INluIntents,
+    INluResult,
+    Model,
+    UsersData,
+    ImageTokens,
+    SoundTokens,
+    IModelRes,
+    IQuery,
+    IQueryData,
+    IModelRules,
+    Text,
+    getRegExp,
+    isRegex,
+    rand,
+    keysCount,
+    httpBuildQuery,
+    isPromise,
+    fread,
+    fwrite,
+    isFile,
+    saveData,
+    ICommandParam,
+    IStepParam,
+    TSlots,
+    TCommandResolver,
+    TBotControllerClass,
+    MiddlewareFn,
+    MiddlewareNext,
 } from 'umbot';
 
 // Платформы и БД-адаптеры
 import {
-    fullPlatforms, voicePlatforms, botPlatforms, adapters,
-    AlisaAdapter, TelegramAdapter, VkAdapter, ViberAdapter, MaxAdapter, MarusiaAdapter, SmartAppAdapter,
-    FileAdapter, MongoAdapter, BaseDbAdapter,
-    BasePlatformAdapter, TContent, IAdapterOptions,
-    T_ALISA, T_MARUSIA, T_SMART_APP, T_TELEGRAM, T_VK, T_VIBER, T_MAX_APP,
-    AlisaConstants, MarusiaConstants, SmartAppConstants,
-    YandexRequest, YandexImageRequest, YandexSoundRequest, YandexSpeechKit,
-    TelegramRequest, VkRequest, ViberRequest, MaxRequest, MarusiaRequest,
+    fullPlatforms,
+    voicePlatforms,
+    botPlatforms,
+    adapters,
+    AlisaAdapter,
+    TelegramAdapter,
+    VkAdapter,
+    ViberAdapter,
+    MaxAdapter,
+    MarusiaAdapter,
+    SmartAppAdapter,
+    FileAdapter,
+    MongoAdapter,
+    BaseDbAdapter,
+    BasePlatformAdapter,
+    TContent,
+    IAdapterOptions,
+    T_ALISA,
+    T_MARUSIA,
+    T_SMART_APP,
+    T_TELEGRAM,
+    T_VK,
+    T_VIBER,
+    T_MAX_APP,
+    AlisaConstants,
+    MarusiaConstants,
+    SmartAppConstants,
+    YandexRequest,
+    YandexImageRequest,
+    YandexSoundRequest,
+    YandexSpeechKit,
+    TelegramRequest,
+    VkRequest,
+    ViberRequest,
+    MaxRequest,
+    MarusiaRequest,
 } from 'umbot/plugins';
 
 // Middleware
@@ -325,23 +410,23 @@ import { Preload, IOptions as IPreloadOptions } from 'umbot/preload';
 import { run, IConfig, TMode } from 'umbot/build';
 
 // Загрузка .env (опционально)
-import { loadEnvFile } from 'umbot/utils';  // НЕ 'umbot/utils/EnvConfig' — этого субпути нет в exports map
+import { loadEnvFile } from 'umbot/utils'; // НЕ 'umbot/utils/EnvConfig' — этого субпути нет в exports map
 ```
 
 ### Важные константы
 
-| Константа | Значение | Назначение |
-|---|---|---|
-| `WELCOME_INTENT_NAME` | `'welcome'` | Имя интента приветствия (messageId === 0) |
-| `HELP_INTENT_NAME` | `'help'` | Имя интента помощи |
-| `FALLBACK_COMMAND` | `'*'` | Имя fallback-команды |
-| `T_ALISA` | `'alisa'` | Идентификатор платформы Алиса |
-| `T_MARUSIA` | `'marusia'` | Маруся |
-| `T_SMART_APP` | `'smart_app'` | Сбер Салют |
-| `T_TELEGRAM` | `'telegram'` | Telegram |
-| `T_VK` | `'vk'` | ВКонтакте |
-| `T_VIBER` | `'viber'` | Viber |
-| `T_MAX_APP` | `'max_app'` | MAX (ВК) |
+| Константа             | Значение      | Назначение                                |
+| --------------------- | ------------- | ----------------------------------------- |
+| `WELCOME_INTENT_NAME` | `'welcome'`   | Имя интента приветствия (messageId === 0) |
+| `HELP_INTENT_NAME`    | `'help'`      | Имя интента помощи                        |
+| `FALLBACK_COMMAND`    | `'*'`         | Имя fallback-команды                      |
+| `T_ALISA`             | `'alisa'`     | Идентификатор платформы Алиса             |
+| `T_MARUSIA`           | `'marusia'`   | Маруся                                    |
+| `T_SMART_APP`         | `'smart_app'` | Сбер Салют                                |
+| `T_TELEGRAM`          | `'telegram'`  | Telegram                                  |
+| `T_VK`                | `'vk'`        | ВКонтакте                                 |
+| `T_VIBER`             | `'viber'`     | Viber                                     |
+| `T_MAX_APP`           | `'max_app'`   | MAX (ВК)                                  |
 
 ---
 
@@ -360,9 +445,9 @@ import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 const bot = new Bot();
 
 bot.use(fullPlatforms)
-   .use(new FileAdapter())
-   .setAppConfig({ json: './data', isLocalStorage: false })
-   .setAppMode('strict_prod');
+    .use(new FileAdapter())
+    .setAppConfig({ json: './data', isLocalStorage: false })
+    .setAppMode('strict_prod');
 
 bot.addCommand(WELCOME_INTENT_NAME, ['привет', 'здравствуй'], (_, bc) => {
     bc.text = 'Привет! Чем могу помочь?';
@@ -401,12 +486,16 @@ interface GameData extends IUserData {
 
 export function gamePlugin(appContext: AppContext, bot: Bot): void {
     // Передаём GameData как generic-параметр и аннотируем bc
-    bot.addCommand<GameData>('game_start', ['играть', 'начать игру'], (_, bc: BotController<GameData>) => {
-        bc.userData.score = 0;
-        bc.text = 'Игра началась! Сколько будет 2+2?';
-        bc.buttons.addBtn('3').addBtn('4').addBtn('5');
-        bc.thisIntentName = 'game_answer';
-    });
+    bot.addCommand<GameData>(
+        'game_start',
+        ['играть', 'начать игру'],
+        (_, bc: BotController<GameData>) => {
+            bc.userData.score = 0;
+            bc.text = 'Игра началась! Сколько будет 2+2?';
+            bc.buttons.addBtn('3').addBtn('4').addBtn('5');
+            bc.thisIntentName = 'game_answer';
+        },
+    );
 
     bot.addStep<GameData>('game_answer', (bc: BotController<GameData>) => {
         if (bc.userCommand === '4') {
@@ -418,11 +507,15 @@ export function gamePlugin(appContext: AppContext, bot: Bot): void {
         bc.thisIntentName = null;
     });
 
-    bot.addCommand<GameData>('game_score', ['счёт', 'мой счёт'], (_, bc: BotController<GameData>) => {
-        bc.text = `Ваш счёт: ${bc.userData.score || 0}`;
-    });
+    bot.addCommand<GameData>(
+        'game_score',
+        ['счёт', 'мой счёт'],
+        (_, bc: BotController<GameData>) => {
+            bc.text = `Ваш счёт: ${bc.userData.score || 0}`;
+        },
+    );
 }
-gamePlugin.isPlugin = true;  // ОБЯЗАТЕЛЬНО — см. заметку ниже
+gamePlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО — см. заметку ниже
 ```
 
 ```ts
@@ -430,9 +523,15 @@ gamePlugin.isPlugin = true;  // ОБЯЗАТЕЛЬНО — см. заметку 
 import { Bot, AppContext } from 'umbot';
 
 export function shopPlugin(appContext: AppContext, bot: Bot): void {
-    bot.addCommand('catalog', ['каталог'], (_, bc) => { /* ... */ });
-    bot.addCommand('order', ['заказ'], (_, bc) => { /* ... */ });
-    bot.addStep('order_email', (bc) => { /* ... */ });
+    bot.addCommand('catalog', ['каталог'], (_, bc) => {
+        /* ... */
+    });
+    bot.addCommand('order', ['заказ'], (_, bc) => {
+        /* ... */
+    });
+    bot.addStep('order_email', (bc) => {
+        /* ... */
+    });
 }
 shopPlugin.isPlugin = true;
 ```
@@ -447,8 +546,8 @@ import { shopPlugin } from './plugins/shop';
 const bot = new Bot();
 bot.use(fullPlatforms);
 bot.use(new FileAdapter());
-bot.use(gamePlugin);   // регистрирует команды из game.ts
-bot.use(shopPlugin);   // регистрирует команды из shop.ts
+bot.use(gamePlugin); // регистрирует команды из game.ts
+bot.use(shopPlugin); // регистрирует команды из shop.ts
 bot.setAppConfig({ json: './data' });
 bot.setAppMode('strict_prod');
 bot.start('0.0.0.0', 3000);
@@ -527,44 +626,52 @@ bot.addCommand('weather', ['погода'], (_, bc) => {
 import { BotController, WELCOME_INTENT_NAME } from 'umbot';
 
 // Контроллер: добавляет кнопку "Помощь" ко всем ответам и пишет аналитику
-bot.initBotController(class extends BotController {
-    async action(intentName: string | null, isCommand?: boolean, isStep?: boolean): Promise<void> {
-        // Общая кнопка для всех ответов — пишется один раз
-        this.buttons.addBtn('Помощь');
+bot.initBotController(
+    class extends BotController {
+        async action(
+            intentName: string | null,
+            isCommand?: boolean,
+            isStep?: boolean,
+        ): Promise<void> {
+            // Общая кнопка для всех ответов — пишется один раз
+            this.buttons.addBtn('Помощь');
 
-        // Если сработала команда/шаг — они уже заполнили text, выходим
-        if (isCommand || isStep) return;
+            // Если сработала команда/шаг — они уже заполнили text, выходим
+            if (isCommand || isStep) return;
 
-        switch (intentName) {
-            case WELCOME_INTENT_NAME:
-                // welcome_text уже выставлен фреймворком —
-                // дополнительно считаем визиты пользователя
-                this.userData.visits = (this.userData.visits || 0) + 1;
-                break;
-            default:
-                if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
+            switch (intentName) {
+                case WELCOME_INTENT_NAME:
+                    // welcome_text уже выставлен фреймворком —
+                    // дополнительно считаем визиты пользователя
+                    this.userData.visits = (this.userData.visits || 0) + 1;
+                    break;
+                default:
+                    if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
+            }
+
+            // Аналитика — асинхронно, не блокируя ответ
+            // (fire-and-forget: не ждём await, чтобы не задерживать пользователя)
+            fetch('https://analytics.example.com/event', {
+                method: 'POST',
+                body: JSON.stringify({
+                    intent: intentName,
+                    platform: this.appType,
+                    userId: this.userId,
+                    isCommand,
+                    isStep,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+            }).catch(() => {}); // ошибки аналитики не должны влиять на пользователя
         }
-
-        // Аналитика — асинхронно, не блокируя ответ
-        // (fire-and-forget: не ждём await, чтобы не задерживать пользователя)
-        fetch('https://analytics.example.com/event', {
-            method: 'POST',
-            body: JSON.stringify({
-                intent: intentName,
-                platform: this.appType,
-                userId: this.userId,
-                isCommand,
-                isStep,
-            }),
-            headers: { 'Content-Type': 'application/json' },
-        }).catch(() => {});  // ошибки аналитики не должны влиять на пользователя
-    }
-});
+    },
+);
 
 // Команды описывают конкретную логику
 bot.use(gamePlugin);
 bot.use(shopPlugin);
-bot.addCommand('about', ['о нас'], (_, bc) => { bc.text = '...'; });
+bot.addCommand('about', ['о нас'], (_, bc) => {
+    bc.text = '...';
+});
 ```
 
 ---
@@ -597,9 +704,9 @@ interface IAppConfig {
 }
 
 interface IAppDB {
-    host: string;       // например, 'mongodb://localhost:27017'
+    host: string; // например, 'mongodb://localhost:27017'
     user?: string;
-    pass?: string;      // НЕ 'password'!
+    pass?: string; // НЕ 'password'!
     database: string;
     options?: Record<string, unknown>;
 }
@@ -627,8 +734,8 @@ export default function (): IAppConfig {
     return {
         json: join(__dirname, '..', 'json'),
         error_log: join(__dirname, '..', 'errors'),
-        isLocalStorage: true,    // используем session_state Алисы
-        env: '.env',             // загружаем .env автоматически
+        isLocalStorage: true, // используем session_state Алисы
+        env: '.env', // загружаем .env автоматически
     };
 }
 ```
@@ -658,8 +765,8 @@ interface IAppParam {
 
 interface IAppIntent {
     name: string;
-    slots: (string | RegExp)[];   // строка → подстрока; RegExp → .test()
-    is_pattern?: boolean;          // трактовать строки как regex (по умолчанию false)
+    slots: (string | RegExp)[]; // строка → подстрока; RegExp → .test()
+    is_pattern?: boolean; // трактовать строки как regex (по умолчанию false)
 }
 ```
 
@@ -675,13 +782,13 @@ export default function (): IAppParam {
         help_text: 'Это игра в математику. Я называю пример — вы ответ.',
         empty_text: 'Не поняла. Скажите "помощь".',
         intents: [
-            { name: 'game',   slots: ['игра', 'начать игру'] },
-            { name: 'bye',    slots: ['пока', 'до свидания'] },
+            { name: 'game', slots: ['игра', 'начать игру'] },
+            { name: 'bye', slots: ['пока', 'до свидания'] },
             { name: 'replay', slots: ['повтори', 'ещё раз'] },
             // RegExp-слот:
             { name: 'number', slots: [/^\d+$/] },
             // Строка как regex:
-            { name: 'phone',  slots: ['\\+?\\d{11}'], is_pattern: true },
+            { name: 'phone', slots: ['\\+?\\d{11}'], is_pattern: true },
         ],
     };
 }
@@ -727,13 +834,13 @@ DB_NAME=umbot
 ```ts
 const ctx = bot.getAppContext();
 
-ctx.appConfig;           // заполненный IAppConfig (со всеми дефолтами)
-ctx.platformParams;      // IAppParam
-ctx.platforms;           // реестр платформ { alisa: AlisaAdapter, telegram: ... }
-ctx.database.adapter;    // активный DB-адаптер
-ctx.command;             // CommandReg (реестр команд)
-ctx.httpClient;          // функция fetch (можно переопределить)
-ctx.log('...');          // лог
+ctx.appConfig; // заполненный IAppConfig (со всеми дефолтами)
+ctx.platformParams; // IAppParam
+ctx.platforms; // реестр платформ { alisa: AlisaAdapter, telegram: ... }
+ctx.database.adapter; // активный DB-адаптер
+ctx.command; // CommandReg (реестр команд)
+ctx.httpClient; // функция fetch (можно переопределить)
+ctx.log('...'); // лог
 ctx.logError('msg', { meta: '...' });
 ctx.logMetric('name', value, { label: '...' });
 ```
@@ -752,74 +859,76 @@ class Bot<TUserData extends IUserData = IUserData> {
 
 ### Конфигурация
 
-| Метод | Назначение |
-|---|---|
-| `setAppConfig(config: Partial<IAppConfig>): this` | Задать инфраструктурную конфигурацию |
-| `setPlatformParams(params: IAppParam): this` | Задать бизнес-параметры |
-| `setAppMode(mode: 'dev' \| 'prod' \| 'strict_prod'): this` | Режим работы (см. ниже) |
-| `setLogger(logger: ILogger \| null): this` | Кастомный логгер |
-| `setPlatformResolver(resolver): this` | Переопределить авто-определение платформы |
-| `setCommandGroupMode(mode: 'auto' \| 'no-group' \| 'group'): this` | Тюнинг regex-группировки |
-| `setCustomCommandResolver(resolver): this` | Своя логика поиска команды |
-| `getAppContext(): AppContext` | Доступ к контексту |
+| Метод                                                              | Назначение                                |
+| ------------------------------------------------------------------ | ----------------------------------------- |
+| `setAppConfig(config: Partial<IAppConfig>): this`                  | Задать инфраструктурную конфигурацию      |
+| `setPlatformParams(params: IAppParam): this`                       | Задать бизнес-параметры                   |
+| `setAppMode(mode: 'dev' \| 'prod' \| 'strict_prod'): this`         | Режим работы (см. ниже)                   |
+| `setLogger(logger: ILogger \| null): this`                         | Кастомный логгер                          |
+| `setPlatformResolver(resolver): this`                              | Переопределить авто-определение платформы |
+| `setCommandGroupMode(mode: 'auto' \| 'no-group' \| 'group'): this` | Тюнинг regex-группировки                  |
+| `setCustomCommandResolver(resolver): this`                         | Своя логика поиска команды                |
+| `getAppContext(): AppContext`                                      | Доступ к контексту                        |
 
 ### Регистрация компонентов
 
-| Метод | Назначение |
-|---|---|
-| `use(plugin: TPlugin): this` | Подключить платформу / БД / плагин |
-| `use(fn: MiddlewareFn): this` | Глобальная middleware |
-| `use(platform: TAppType, fn: MiddlewareFn): this` | Платформенная middleware |
-| `initBotController(fn: TBotControllerClass): this` | Зарегистрировать контроллер |
+| Метод                                              | Назначение                         |
+| -------------------------------------------------- | ---------------------------------- |
+| `use(plugin: TPlugin): this`                       | Подключить платформу / БД / плагин |
+| `use(fn: MiddlewareFn): this`                      | Глобальная middleware              |
+| `use(platform: TAppType, fn: MiddlewareFn): this`  | Платформенная middleware           |
+| `initBotController(fn: TBotControllerClass): this` | Зарегистрировать контроллер        |
 
 ### Команды и шаги
 
-| Метод | Назначение |
-|---|---|
-| `addCommand(name, slots, cb, isPattern?): this` | Зарегистрировать команду |
-| `removeCommand(name): this` | Удалить команду |
-| `clearCommands(): this` | Очистить все команды |
-| `addStep(name, cb): this` | Зарегистрировать шаг |
-| `removeStep(name): this` | Удалить шаг |
-| `clearSteps(): this` | Очистить все шаги |
-| `clearUse(): this` | Удалить все плагины/middleware |
+| Метод                                           | Назначение                     |
+| ----------------------------------------------- | ------------------------------ |
+| `addCommand(name, slots, cb, isPattern?): this` | Зарегистрировать команду       |
+| `removeCommand(name): this`                     | Удалить команду                |
+| `clearCommands(): this`                         | Очистить все команды           |
+| `addStep(name, cb): this`                       | Зарегистрировать шаг           |
+| `removeStep(name): this`                        | Удалить шаг                    |
+| `clearSteps(): this`                            | Очистить все шаги              |
+| `clearUse(): this`                              | Удалить все плагины/middleware |
 
 ### Запуск
 
-| Метод | Назначение |
-|---|---|
-| `start(hostname='localhost', port=3000, responseCb?): Server` | Запустить HTTP-сервер |
-| `webhookHandle(req, res, responseCb?): Promise<void>` | Обработать один HTTP-запрос (для Express/Fastify) |
-| `run(appType?, content?): Promise<TRunResult>` | Обработать запрос программно (для тестов) |
-| `setContent(content): void` | Вручную установить тело запроса (для тестов) |
-| `send(userId, controllerOrText, platform): Promise<unknown>` | Проактивная отправка (только TG/VK/Viber/Max) |
-| `close(): Promise<void>` | Корректно остановить сервер и освободить ресурсы |
+| Метод                                                         | Назначение                                        |
+| ------------------------------------------------------------- | ------------------------------------------------- |
+| `start(hostname='localhost', port=3000, responseCb?): Server` | Запустить HTTP-сервер                             |
+| `webhookHandle(req, res, responseCb?): Promise<void>`         | Обработать один HTTP-запрос (для Express/Fastify) |
+| `run(appType?, content?): Promise<TRunResult>`                | Обработать запрос программно (для тестов)         |
+| `setContent(content): void`                                   | Вручную установить тело запроса (для тестов)      |
+| `send(userId, controllerOrText, platform): Promise<unknown>`  | Проактивная отправка (только TG/VK/Viber/Max)     |
+| `close(): Promise<void>`                                      | Корректно остановить сервер и освободить ресурсы  |
 
 ### Режимы (`setAppMode`)
 
-| Режим | Логи | ReDoS-проверка | Маскировка секретов | Когда использовать |
-|---|---|---|---|---|
-| `dev` | Подробные | Warn, но не блокирует | Выкл | Разработка, `BotTest` |
-| `prod` | Минимальные | Warn + фильтр опасных | Выкл | Pre-prod |
-| `strict_prod` | Минимальные | **Блокировка** опасных | Вкл | **Production** |
+| Режим         | Логи        | ReDoS-проверка         | Маскировка секретов | Когда использовать    |
+| ------------- | ----------- | ---------------------- | ------------------- | --------------------- |
+| `dev`         | Подробные   | Warn, но не блокирует  | Выкл                | Разработка, `BotTest` |
+| `prod`        | Минимальные | Warn + фильтр опасных  | Выкл                | Pre-prod              |
+| `strict_prod` | Минимальные | **Блокировка** опасных | Вкл                 | **Production**        |
 
 ### Минимальный набор для запуска
 
 ```ts
 const bot = new Bot();
-bot.use(fullPlatforms);           // 1. Зарегистрировать платформы
-bot.use(new FileAdapter());       // 2. Зарегистрировать БД (или isLocalStorage: true)
-bot.setAppConfig({                // 3. Передать конфиг
+bot.use(fullPlatforms); // 1. Зарегистрировать платформы
+bot.use(new FileAdapter()); // 2. Зарегистрировать БД (или isLocalStorage: true)
+bot.setAppConfig({
+    // 3. Передать конфиг
     json: './data',
     error_log: './errors',
     isLocalStorage: false,
 });
-bot.setPlatformParams({           // 4. Передать параметры (intents обязателен!)
+bot.setPlatformParams({
+    // 4. Передать параметры (intents обязателен!)
     intents: [{ name: 'bye', slots: ['пока'] }],
     welcome_text: 'Привет!',
 });
-bot.setAppMode('strict_prod');    // 5. Режим продакшена
-bot.start('0.0.0.0', 3000);       // 6. Запустить
+bot.setAppMode('strict_prod'); // 5. Режим продакшена
+bot.start('0.0.0.0', 3000); // 6. Запустить
 ```
 
 > Контроллер (`initBotController`) и команды (`addCommand`) — **необязательны** для запуска. Без них бот будет отвечать только `welcome_text` / `help_text` / `empty_text`. Это удобно для самого первого старта — убедиться, что вебхук работает, а потом постепенно добавлять логику.
@@ -829,18 +938,25 @@ bot.start('0.0.0.0', 3000);       // 6. Запустить
 Если хочется ещё короче — есть утилита `run`:
 
 ```ts
-import { run } from 'umbot/build';  // TMode = 'dev' | 'dev-online' | 'prod'
+import { run } from 'umbot/build'; // TMode = 'dev' | 'dev-online' | 'prod'
 import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 
-run({
-    appConfig: { isLocalStorage: true },
-    appParam:  { intents: [{ name: 'bye', slots: ['пока'] }] },
-    controller: MyController,
-    plugins: [fullPlatforms, new FileAdapter()],
-    logic: (bot) => {
-        bot.addCommand('ping', ['пинг'], (_, bc) => { bc.text = 'понг'; });
+run(
+    {
+        appConfig: { isLocalStorage: true },
+        appParam: { intents: [{ name: 'bye', slots: ['пока'] }] },
+        controller: MyController,
+        plugins: [fullPlatforms, new FileAdapter()],
+        logic: (bot) => {
+            bot.addCommand('ping', ['пинг'], (_, bc) => {
+                bc.text = 'понг';
+            });
+        },
     },
-}, 'prod', '0.0.0.0', 8080);
+    'prod',
+    '0.0.0.0',
+    8080,
+);
 // run(config, mode: TMode = 'prod', hostname = 'localhost', port = 3000)
 //     → 'dev' (запускает BotTest.test()), 'dev-online' (сервер в dev-режиме), 'prod' (сервер в strict_prod)
 ```
@@ -853,50 +969,50 @@ run({
 
 ### Поля ответа (что вы заполняете)
 
-| Поле | Тип | Назначение |
-|---|---|---|
-| `text` | `string` | Текст, который увидит пользователь (на экране или услышит, если `tts` не задан) |
-| `tts` | `string \| null` | TTS-текст (только голосовые платформы). Если null → используется `text` |
-| `isEnd` | `boolean` | Завершить диалог (true = сессия закрывается) |
-| `skipAutoReply` | `boolean` | Не отправлять ответ автоматически (вы уже отправили вручную через API) |
-| `isAuth` | `boolean` | Запросить авторизацию (только Алиса) |
-| `isSendRating` | `boolean` | Запросить оценку (только SmartApp) |
-| `emotion` | `string \| null` | Эмоция (только SmartApp: `'radost'`, `'pechal'`, ...) |
-| `appeal` | `'official' \| 'no_official' \| null` | Стиль обращения (только SmartApp) |
-| `thisIntentName` | `string \| null` | Имя следующего шага (для многошаговых диалогов). null = выйти из сценария |
+| Поле             | Тип                                   | Назначение                                                                      |
+| ---------------- | ------------------------------------- | ------------------------------------------------------------------------------- |
+| `text`           | `string`                              | Текст, который увидит пользователь (на экране или услышит, если `tts` не задан) |
+| `tts`            | `string \| null`                      | TTS-текст (только голосовые платформы). Если null → используется `text`         |
+| `isEnd`          | `boolean`                             | Завершить диалог (true = сессия закрывается)                                    |
+| `skipAutoReply`  | `boolean`                             | Не отправлять ответ автоматически (вы уже отправили вручную через API)          |
+| `isAuth`         | `boolean`                             | Запросить авторизацию (только Алиса)                                            |
+| `isSendRating`   | `boolean`                             | Запросить оценку (только SmartApp)                                              |
+| `emotion`        | `string \| null`                      | Эмоция (только SmartApp: `'radost'`, `'pechal'`, ...)                           |
+| `appeal`         | `'official' \| 'no_official' \| null` | Стиль обращения (только SmartApp)                                               |
+| `thisIntentName` | `string \| null`                      | Имя следующего шага (для многошаговых диалогов). null = выйти из сценария       |
 
 ### Поля запроса (что фреймворк заполняет)
 
-| Поле | Тип | Назначение |
-|---|---|---|
-| `userCommand` | `string \| null` | Текст пользователя в нижнем регистре |
-| `originalUserCommand` | `string \| null` | Оригинальный текст (с заглавными, пунктуацией) |
-| `userId` | `string \| number \| null` | ID пользователя на платформе |
-| `userToken` | `string \| null` | OAuth-тoken (для авторизованных запросов Алисы) |
-| `userMeta` | `unknown \| null` | Метаданные (timezone, locale, ...) |
-| `messageId` | `number \| string \| null` | Номер сообщения. 0 = начало новой сессии |
-| `payload` | `Record<string, unknown> \| string \| null` | Payload от кнопки (если нажали кнопку с payload) |
-| `requestObject` | `unknown` | Полный оригинальный объект запроса от платформы |
-| `isScreen` | `boolean` | Есть ли экран у устройства |
-| `appType` | `TAppType \| null` | Идентификатор текущей платформы |
-| `oldIntentName` | `string \| null` | Имя предыдущего шага (из `userData.oldIntentName`) |
+| Поле                  | Тип                                         | Назначение                                         |
+| --------------------- | ------------------------------------------- | -------------------------------------------------- |
+| `userCommand`         | `string \| null`                            | Текст пользователя в нижнем регистре               |
+| `originalUserCommand` | `string \| null`                            | Оригинальный текст (с заглавными, пунктуацией)     |
+| `userId`              | `string \| number \| null`                  | ID пользователя на платформе                       |
+| `userToken`           | `string \| null`                            | OAuth-тoken (для авторизованных запросов Алисы)    |
+| `userMeta`            | `unknown \| null`                           | Метаданные (timezone, locale, ...)                 |
+| `messageId`           | `number \| string \| null`                  | Номер сообщения. 0 = начало новой сессии           |
+| `payload`             | `Record<string, unknown> \| string \| null` | Payload от кнопки (если нажали кнопку с payload)   |
+| `requestObject`       | `unknown`                                   | Полный оригинальный объект запроса от платформы    |
+| `isScreen`            | `boolean`                                   | Есть ли экран у устройства                         |
+| `appType`             | `TAppType \| null`                          | Идентификатор текущей платформы                    |
+| `oldIntentName`       | `string \| null`                            | Имя предыдущего шага (из `userData.oldIntentName`) |
 
 ### Состояние
 
-| Поле | Тип | Назначение |
-|---|---|---|
-| `userData` | `TUserData` | Персистентное состояние пользователя (БД или локальное хранилище). Сохраняется между запросами |
-| `state` | `TPlatformState \| null` | Локальное хранилище платформы (только при `isLocalStorage: true`) |
-| `userEvents` | `IUserEvent \| null` | События: `auth.status` (true/false/null), `rating.status`, `rating.value` |
+| Поле         | Тип                      | Назначение                                                                                     |
+| ------------ | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `userData`   | `TUserData`              | Персистентное состояние пользователя (БД или локальное хранилище). Сохраняется между запросами |
+| `state`      | `TPlatformState \| null` | Локальное хранилище платформы (только при `isLocalStorage: true`)                              |
+| `userEvents` | `IUserEvent \| null`     | События: `auth.status` (true/false/null), `rating.status`, `rating.value`                      |
 
 ### UI-компоненты (lazy-init через геттеры)
 
-| Геттер | Тип | Назначение |
-|---|---|---|
+| Геттер    | Тип       | Назначение                                 |
+| --------- | --------- | ------------------------------------------ |
 | `buttons` | `Buttons` | Кнопки (цепочный API: `addBtn`, `addLink`) |
-| `card` | `Card` | Карточки (изображения, галереи) |
-| `sound` | `Sound` | Звуки и TTS-эффекты |
-| `nlu` | `Nlu` | NLU-сущности (FIO, GEO, DateTime, Number) |
+| `card`    | `Card`    | Карточки (изображения, галереи)            |
+| `sound`   | `Sound`   | Звуки и TTS-эффекты                        |
+| `nlu`     | `Nlu`     | NLU-сущности (FIO, GEO, DateTime, Number)  |
 
 Методы проверки инициализации: `isButtonsInit()`, `isCardInit()`, `isSoundInit()`, `isNluInit()`.
 
@@ -919,6 +1035,7 @@ public abstract action(
 ### Жизненный цикл контроллера
 
 Фреймворк автоматически:
+
 1. Создаёт экземпляр (`new MyController(appContext)`) на каждый запрос.
 2. Заполняет поля запроса (`userCommand`, `userId`, ...).
 3. Загружает `userData` / `state`.
@@ -945,11 +1062,11 @@ bot.addCommand(
 
 Поведение слотов:
 
-| Тип слота | Поведение |
-|---|---|
+| Тип слота                                  | Поведение                                                                                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `string`, `isPattern=false` (по умолчанию) | `userCommand.includes(slot)` — подстрока. O(1) поиск по индексу. **Слот должен быть в нижнем регистре**, т.к. `userCommand` уже приведён к нижнему. |
-| `string`, `isPattern=true` | Компилируется как regex, проверяется через `.test()`. |
-| `RegExp` | `.test(userCommand)`. `isPattern` игнорируется. |
+| `string`, `isPattern=true`                 | Компилируется как regex, проверяется через `.test()`.                                                                                               |
+| `RegExp`                                   | `.test(userCommand)`. `isPattern` игнорируется.                                                                                                     |
 
 > **Важно про регистр:** `controller.userCommand` — это текст пользователя, приведённый к нижнему регистру. Слоты-строки тоже должны быть в нижнем регистре: `'привет'`, а не `'Привет'`. Для RegExp используйте флаг `i`, если хотите case-insensitive.
 
@@ -959,7 +1076,7 @@ bot.addCommand(
 > bot.addCommand('weather', ['погода'], async (userCommand, bc) => {
 >     const city = userCommand.replace('погода', '').trim() || 'москва';
 >     const res = await fetch(`https://api.weather.example.com/current?city=${city}`);
->     const data = await res.json() as { temp: number };
+>     const data = (await res.json()) as { temp: number };
 >     bc.text = `Сейчас ${data.temp}°C`;
 > });
 > ```
@@ -973,12 +1090,18 @@ bot.addCommand(
 ```ts
 import { FALLBACK_COMMAND } from 'umbot';
 
-bot.addCommand(FALLBACK_COMMAND, [], (userCommand, bc) => {
-    bc.text = `Не поняла: "${userCommand}". Скажите "помощь".`;
-}, true);  // isPattern=true обязательно!
+bot.addCommand(
+    FALLBACK_COMMAND,
+    [],
+    (userCommand, bc) => {
+        bc.text = `Не поняла: "${userCommand}". Скажите "помощь".`;
+    },
+    true,
+); // isPattern=true обязательно!
 ```
 
 `FALLBACK_COMMAND` это `'*'`. Срабатывает, если:
+
 - Ни шаг, ни команда, ни интент не подошли.
 - `messageId !== 0` (не начало сессии).
 
@@ -1007,9 +1130,9 @@ bot.addStep(
 3. **В следующем запросе** фреймворк загружает `oldIntentName` из хранилища и кладёт в `controller.oldIntentName`.
 4. **Диспетчер** проверяет: если `oldIntentName` совпадает с именем зарегистрированного шага — вызывает callback этого шага **вместо** поиска команд.
 5. **Внутри шага** вы опять можете:
-   - Установить `thisIntentName = 'next_step'` — перейти к другому шагу.
-   - Установить `thisIntentName = null` — выйти из сценария (следующий запрос пойдёт по обычному пути: команды → интенты → fallback).
-   - Не трогать `thisIntentName` — остаться на текущем шаге (пользователь должен корректно ответить, чтобы перейти дальше).
+    - Установить `thisIntentName = 'next_step'` — перейти к другому шагу.
+    - Установить `thisIntentName = null` — выйти из сценария (следующий запрос пойдёт по обычному пути: команды → интенты → fallback).
+    - Не трогать `thisIntentName` — остаться на текущем шаге (пользователь должен корректно ответить, чтобы перейти дальше).
 
 #### Особые случаи
 
@@ -1031,7 +1154,7 @@ interface PhoneData extends IUserData {
 bot.addCommand('weather', ['погода'], async (userCommand, bc) => {
     const city = userCommand.replace('погода', '').trim() || 'москва';
     const res = await fetch(`https://api.weather.example.com/current?city=${city}`);
-    const data = await res.json() as { temp: number };
+    const data = (await res.json()) as { temp: number };
     bc.text = `Сейчас ${data.temp}°C. `;
     // Не трогаем bc.thisIntentName — он сохранится из предыдущего шага,
     // и после ответа про погоду пользователь вернётся в сценарий.
@@ -1047,7 +1170,7 @@ bot.addStep<PhoneData>('ask_phone', (bc: BotController<PhoneData>) => {
     // Иначе — обычная обработка шага
     if (!bc.userCommand || bc.userCommand.length < 5) {
         bc.text = 'Это похоже не на номер. Введите телефон:';
-        return;  // остаёмся на шаге (thisIntentName не меняли)
+        return; // остаёмся на шаге (thisIntentName не меняли)
     }
     bc.userData.phone = bc.userCommand;
     bc.text = 'Готово! Телефон сохранён.';
@@ -1061,7 +1184,7 @@ bot.addStep<PhoneData>('ask_phone', (bc: BotController<PhoneData>) => {
 bot.addStep('ask_name', (bc) => {
     // Если это новая сессия — не продолжаем старый сценарий, начинаем заново
     if (bc.messageId === 0) {
-        return false;  // шаг пропускается, диспетчер идёт дальше → welcome
+        return false; // шаг пропускается, диспетчер идёт дальше → welcome
     }
     // ... обычная логика шага
 });
@@ -1084,7 +1207,7 @@ interface RegData extends IUserData {
 // userData здесь не трогаем — типизация не нужна
 bot.addCommand('register', ['регистрация', 'зарегистрироваться'], (_, bc) => {
     bc.text = 'Как вас зовут?';
-    bc.thisIntentName = 'reg_name';  // следующий запрос пойдёт в шаг reg_name
+    bc.thisIntentName = 'reg_name'; // следующий запрос пойдёт в шаг reg_name
 });
 
 // Шаг 1: ожидаем имя — типизируем через generic-параметр
@@ -1094,9 +1217,9 @@ bot.addStep<RegData>('reg_name', (bc: BotController<RegData>) => {
         // Не меняем thisIntentName — остаёмся на шаге reg_name
         return;
     }
-    bc.userData.name = bc.originalUserCommand;  // сохраняем с правильным регистром
+    bc.userData.name = bc.originalUserCommand; // сохраняем с правильным регистром
     bc.text = `Приятно познакомиться, ${bc.userData.name}! Сколько вам лет?`;
-    bc.thisIntentName = 'reg_age';  // переходим к шагу reg_age
+    bc.thisIntentName = 'reg_age'; // переходим к шагу reg_age
 });
 
 // Шаг 2: ожидаем возраст
@@ -1104,23 +1227,23 @@ bot.addStep<RegData>('reg_age', (bc: BotController<RegData>) => {
     const age = parseInt(bc.userCommand || '', 10);
     if (isNaN(age) || age < 1 || age > 120) {
         bc.text = 'Это похоже не на возраст. Введите число от 1 до 120.';
-        bc.thisIntentName = 'reg_age';  // остаёмся на шаге
+        bc.thisIntentName = 'reg_age'; // остаёмся на шаге
         return;
     }
     bc.userData.age = age;
     bc.text = `Запомнил: вам ${age} лет. Регистрация завершена!`;
-    bc.thisIntentName = null;  // выходим из сценария — следующий запрос пойдёт по обычному пути
+    bc.thisIntentName = null; // выходим из сценария — следующий запрос пойдёт по обычному пути
 });
 ```
 
 **Что произошло в этом примере по запросам:**
 
-| Запрос | `oldIntentName` при входе | Что вызывает | `thisIntentName` после |
-|---|---|---|---|
-| «регистрация» | null | команда `register` | `'reg_name'` |
-| «Иван» | `'reg_name'` | шаг `reg_name` | `'reg_age'` |
-| «25» | `'reg_age'` | шаг `reg_age` | `null` (выход) |
-| «привет» | `null` | обычный поиск команд | — |
+| Запрос        | `oldIntentName` при входе | Что вызывает         | `thisIntentName` после |
+| ------------- | ------------------------- | -------------------- | ---------------------- |
+| «регистрация» | null                      | команда `register`   | `'reg_name'`           |
+| «Иван»        | `'reg_name'`              | шаг `reg_name`       | `'reg_age'`            |
+| «25»          | `'reg_age'`               | шаг `reg_age`        | `null` (выход)         |
+| «привет»      | `null`                    | обычный поиск команд | —                      |
 
 ### Доступ к oldIntentName
 
@@ -1143,15 +1266,15 @@ public action(intentName, isCommand, isStep): void {
 
 1. **Шаг** — если `oldIntentName` зарегистрирован как шаг.
 2. **Команда** — поиск до первой подошедшей. Порядок зависит от типа слота:
-   - сначала проверяются **точные совпадения строк** (O(1) по индексу);
-   - затем **RegExp-группы** (если есть `isPattern: true`);
-   - затем **линейный поиск** по порядку вызова `addCommand` (строки как подстрока, RegExp через `.test()`).
+    - сначала проверяются **точные совпадения строк** (O(1) по индексу);
+    - затем **RegExp-группы** (если есть `isPattern: true`);
+    - затем **линейный поиск** по порядку вызова `addCommand` (строки как подстрока, RegExp через `.test()`).
 3. **Интент** — из `platformParams.intents`.
 4. **FALLBACK_COMMAND** — если зарегистрирован.
 5. **Built-in интенты**:
-   - `messageId === 0` → `'welcome'` → фреймворк устанавливает `controller.text = platformParams.welcome_text`
-   - `'help'` → фреймворк устанавливает `controller.text = platformParams.help_text`
-   - иначе → `controller.text = platformParams.empty_text` (только если наследуетесь от `BaseBotController`)
+    - `messageId === 0` → `'welcome'` → фреймворк устанавливает `controller.text = platformParams.welcome_text`
+    - `'help'` → фреймворк устанавливает `controller.text = platformParams.help_text`
+    - иначе → `controller.text = platformParams.empty_text` (только если наследуетесь от `BaseBotController`)
 6. **`action(intentName, isCommand, isStep)`** — вызывается всегда в конце.
 
 > **Важно про welcome/help:** фреймворк устанавливает `controller.text = platformParams.welcome_text` (или `help_text`) **перед** вызовом `action()`. Если в `action()` вы тоже установите `this.text`, **ваше значение перекроет** автоматически установленное. Это полезно для динамического приветствия (например, другое приветствие для вернувшегося пользователя).
@@ -1159,6 +1282,7 @@ public action(intentName, isCommand, isStep): void {
 > **⚠️ Важно про `BaseBotController` и `empty_text`:** автоматическая установка `controller.text = platformParams.empty_text` (когда ничего не подошло) происходит **только** если вы наследуетесь от `BaseBotController`. Во всех примерах этой инструкции используется наследование напрямую от `BotController` — в этом случае при несовпадении текст **не выставится автоматически**, и если вы не зададите `this.text` вручную в `action()`, бот вернёт **пустой ответ**.
 >
 > Поэтому в `action()` всегда обрабатывайте `default:` в switch или добавляйте проверку в конце:
+>
 > ```ts
 > if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
 > ```
@@ -1177,11 +1301,11 @@ public action(intentName, isCommand, isStep): void {
 
 То есть:
 
-| Подключён DB-адаптер? | `isLocalStorage` | Откуда `userData` |
-|---|---|---|
-| ✅ Да (любой) | любое значение | **из БД** (адаптер сам читает/пишет) |
-| ❌ Нет | `true` | **из локального хранилища платформы** (Алиса/Маруся/SmartApp) |
-| ❌ Нет | `false` | `userData` остаётся пустым (нечего загружать) — не валидная конфигурация для персистентных данных |
+| Подключён DB-адаптер? | `isLocalStorage` | Откуда `userData`                                                                                 |
+| --------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
+| ✅ Да (любой)         | любое значение   | **из БД** (адаптер сам читает/пишет)                                                              |
+| ❌ Нет                | `true`           | **из локального хранилища платформы** (Алиса/Маруся/SmartApp)                                     |
+| ❌ Нет                | `false`          | `userData` остаётся пустым (нечего загружать) — не валидная конфигурация для персистентных данных |
 
 Это логично: БД — это «тяжёлая артиллерия», которая всегда работает. Локальное хранилище — это lighter-вариант для простых навыков только на голосовых платформах, без БД. Если вы подключили БД — она и используется.
 
@@ -1193,14 +1317,15 @@ public action(intentName, isCommand, isStep): void {
 
 Связь между `userData` и `state` зависит от того, подключён DB-адаптер или нет:
 
-| Конфигурация | `userData` | `state` |
-|---|---|---|
-| **DB-адаптер подключён** + `isLocalStorage: true` | **из БД** (адаптер читает/пишет) | **из локального хранилища платформы** — это **другой объект** |
-| **DB-адаптер НЕ подключён** + `isLocalStorage: true` | **из локального хранилища платформы** | **тот же объект**, что и `userData` (ссылка) |
-| DB-адаптер подключён + `isLocalStorage: false` | из БД | `null` |
-| DB-адаптер НЕ подключён + `isLocalStorage: false` | пустой | `null` (некорректная конфигурация для персистентных данных) |
+| Конфигурация                                         | `userData`                            | `state`                                                       |
+| ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------- |
+| **DB-адаптер подключён** + `isLocalStorage: true`    | **из БД** (адаптер читает/пишет)      | **из локального хранилища платформы** — это **другой объект** |
+| **DB-адаптер НЕ подключён** + `isLocalStorage: true` | **из локального хранилища платформы** | **тот же объект**, что и `userData` (ссылка)                  |
+| DB-адаптер подключён + `isLocalStorage: false`       | из БД                                 | `null`                                                        |
+| DB-адаптер НЕ подключён + `isLocalStorage: false`    | пустой                                | `null` (некорректная конфигурация для персистентных данных)   |
 
 **Ключевое отличие первого и второго случая:**
+
 - Когда БД подключена + `isLocalStorage: true` → у вас **два независимых хранилища**: `userData` (БД, тяжёлые данные) и `state` (локальное, лёгкие временные). Они никак не связаны.
 - Когда БД не подключена + `isLocalStorage: true` → `userData` и `state` ссылаются на **один и тот же объект** локального хранилища. Записали в `userData.foo` — то же самое увидите в `state.foo`. Это сделано для удобства: работаете с тем полем, которое больше нравится.
 
@@ -1245,23 +1370,23 @@ bot.setAppConfig({ isLocalStorage: true });
 
 Когда вы мутируете `controller.userData` и/или `controller.state`, фреймворк после `action()` сам определяет, куда сохранять:
 
-| Что заполнено | Куда сохраняется |
-|---|---|
-| Только `userData` | БД (если подключена) или локальное хранилище (если `isLocalStorage=true` и БД не подключена) |
-| Только `state` | Локальное хранилище платформы |
-| И `userData`, и `state` (разные объекты) | `userData` → БД, `state` → локальное хранилище |
+| Что заполнено                            | Куда сохраняется                                                                             |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Только `userData`                        | БД (если подключена) или локальное хранилище (если `isLocalStorage=true` и БД не подключена) |
+| Только `state`                           | Локальное хранилище платформы                                                                |
+| И `userData`, и `state` (разные объекты) | `userData` → БД, `state` → локальное хранилище                                               |
 
 Вам не нужно вызывать никаких методов «сохранения» — фреймворк делает это автоматически.
 
 ### Что класть в `userData` / `state`
 
-| Тип данных | Где хранить |
-|---|---|
-| Прогресс игры, счёт | `userData.score`, `userData.level` |
-| Настройки пользователя (язык, тема) | `userData.preferences` |
-| Авторизационный токен | `userData.token` |
-| Текущий шаг сценария | **Не храните вручную!** Используйте `controller.thisIntentName` — фреймворк сам сохранит его в `userData.oldIntentName`. |
-| Временные данные текущего диалога (черновик сообщения, выбранный товар) | `state.draft`, `state.selectedItemId` (только если `isLocalStorage=true`) |
+| Тип данных                                                              | Где хранить                                                                                                              |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Прогресс игры, счёт                                                     | `userData.score`, `userData.level`                                                                                       |
+| Настройки пользователя (язык, тема)                                     | `userData.preferences`                                                                                                   |
+| Авторизационный токен                                                   | `userData.token`                                                                                                         |
+| Текущий шаг сценария                                                    | **Не храните вручную!** Используйте `controller.thisIntentName` — фреймворк сам сохранит его в `userData.oldIntentName`. |
+| Временные данные текущего диалога (черновик сообщения, выбранный товар) | `state.draft`, `state.selectedItemId` (только если `isLocalStorage=true`)                                                |
 
 ### Важный нюанс: удаление полей (Алиса)
 
@@ -1270,7 +1395,7 @@ bot.setAppConfig({ isLocalStorage: true });
 Чтобы **удалить** поле, установите его в `null`:
 
 ```ts
-this.userData.tempData = null;  // поле будет удалено на стороне Алисы
+this.userData.tempData = null; // поле будет удалено на стороне Алисы
 // А НЕ:
 // delete this.userData.tempData;  // НЕ сработает — поле вернётся
 // this.userData.tempData = undefined;  // НЕ сработает — поле вернётся
@@ -1310,7 +1435,7 @@ import { Bot, BotController, IUserData } from 'umbot';
 // 1. Передаём MyUserData в generic-параметр addCommand<MyUserData>
 // 2. Аннотируем bc как BotController<MyUserData>
 bot.addCommand<MyUserData>('play', ['играть'], (_: string, bc: BotController<MyUserData>) => {
-    bc.userData.score ??= 0;          // ✅ TypeScript знает, что score: number
+    bc.userData.score ??= 0; // ✅ TypeScript знает, что score: number
     bc.userData.score += 10;
     bc.userData.lastVisit = new Date().toISOString();
     bc.text = `Счёт: ${bc.userData.score}`;
@@ -1374,7 +1499,7 @@ export class MyController extends BotController<MyUserData> {
 ```ts
 // Интерактивная кнопка (отправляет текст/payload обратно боту)
 this.buttons.addBtn('Помощь');
-this.buttons.addBtn('Купить', '', { action: 'buy', id: 42 });  // с payload
+this.buttons.addBtn('Купить', '', { action: 'buy', id: 42 }); // с payload
 
 // Кнопка-ссылка (открывает URL)
 this.buttons.addLink('Сайт', 'https://example.com');
@@ -1384,18 +1509,15 @@ this.buttons.addLink('Документация', 'https://docs.example.com', nul
 });
 
 // Цепочка
-this.buttons
-    .addBtn('Да')
-    .addBtn('Нет')
-    .addLink('Подробнее', 'https://example.com/help');
+this.buttons.addBtn('Да').addBtn('Нет').addLink('Подробнее', 'https://example.com/help');
 ```
 
 #### Типы кнопок
 
-| Метод | `hide` флаг | Назначение |
-|---|---|---|
-| `addBtn(title, url?, payload?, options?)` | `true` (B_BTN) | Интерактивная — отправляет payload при нажатии |
-| `addLink(title, url, payload?, options?)` | `false` (B_LINK) | Ссылка / suggestion chip |
+| Метод                                     | `hide` флаг      | Назначение                                     |
+| ----------------------------------------- | ---------------- | ---------------------------------------------- |
+| `addBtn(title, url?, payload?, options?)` | `true` (B_BTN)   | Интерактивная — отправляет payload при нажатии |
+| `addLink(title, url, payload?, options?)` | `false` (B_LINK) | Ссылка / suggestion chip                       |
 
 #### Payload кнопок — как передавать и читать
 
@@ -1419,9 +1541,9 @@ bot.use(async (ctx, next) => {
     const data = ctx.payload as Record<string, unknown> | null;
     if (data?.action === 'buy') {
         ctx.text = `Покупка товара #${data.id} инициирована.`;
-        return;  // НЕ вызываем next() — обрываем цепочку, обычная обработка не запустится
+        return; // НЕ вызываем next() — обрываем цепочку, обычная обработка не запустится
     }
-    await next();  // продолжаем обычную обработку команд/интентов
+    await next(); // продолжаем обычную обработку команд/интентов
 });
 ```
 
@@ -1435,11 +1557,11 @@ bot.use(async (ctx, next) => {
 
 Платформо-специфичные опции (через `options`):
 
-| Платформа | Опции в `options` |
-|---|---|
-| VK | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'` |
-| Telegram | `request_contact: true`, `request_location: true` — для reply-кнопок |
-| Viber | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'` |
+| Платформа | Опции в `options`                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| VK        | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'` |
+| Telegram  | `request_contact: true`, `request_location: true` — для reply-кнопок                                   |
+| Viber     | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'`                              |
 
 > **Важно про Telegram:** URL-кнопка без payload молча отбрасывается из inline-клавиатуры. Для inline-ссылки передавайте пустой payload: `addLink('Открыть', 'https://...', '')`.
 
@@ -1472,8 +1594,14 @@ this.card
 // Список (галерея) — до 5 элементов на Алисе
 this.card
     .setTitle('Каталог товаров')
-    .addImage('https://example.com/p1.jpg', 'Товар 1', '99 ₽', { title: 'Купить', payload: { id: 1 } })
-    .addImage('https://example.com/p2.jpg', 'Товар 2', '199 ₽', { title: 'Купить', payload: { id: 2 } })
+    .addImage('https://example.com/p1.jpg', 'Товар 1', '99 ₽', {
+        title: 'Купить',
+        payload: { id: 1 },
+    })
+    .addImage('https://example.com/p2.jpg', 'Товар 2', '199 ₽', {
+        title: 'Купить',
+        payload: { id: 2 },
+    })
     .addButton('В каталог', 'https://shop.example.com');
 
 // Галерея (только изображения, до 7 на Алисе)
@@ -1485,11 +1613,11 @@ this.card
 
 #### Типы карточек (авто-определение)
 
-| Что установлено | Тип карточки |
-|---|---|
-| `addOneImage()` или `isOne=true` | Одиночная (BigImage на Алисе) |
-| `images.length > 1`, `isUsedGallery=false` | Список (ItemsList на Алисе, ≤ 5) |
-| `isUsedGallery=true` | Галерея (только изображения, без описаний и кнопок) |
+| Что установлено                            | Тип карточки                                        |
+| ------------------------------------------ | --------------------------------------------------- |
+| `addOneImage()` или `isOne=true`           | Одиночная (BigImage на Алисе)                       |
+| `images.length > 1`, `isUsedGallery=false` | Список (ItemsList на Алисе, ≤ 5)                    |
+| `isUsedGallery=true`                       | Галерея (только изображения, без описаний и кнопок) |
 
 > Лимиты на количество элементов в карточке (заголовок, описание, число картинок) адаптеры также берут на себя — лишнее будет обрезано.
 
@@ -1507,7 +1635,7 @@ this.card.addImage('/abs/path/to/file.png', 'Title');
 // Уже известный токен (например, после Preload) — не загружается
 this.card.addImage('image_hash_xxx', 'Title');
 // Или с явным указанием:
-getImage(appContext, 'image_hash_xxx', 'Title', ' ', null, true);  // isToken=true
+getImage(appContext, 'image_hash_xxx', 'Title', ' ', null, true); // isToken=true
 ```
 
 ### Sound — звуки и TTS-эффекты
@@ -1525,9 +1653,7 @@ this.tts = `Минуточку${SoundConstants.getPause(1000)}готово!`;
 this.tts = `${SoundConstants.S_EFFECT_HAMSTER}Привет!${SoundConstants.S_EFFECT_END}`;
 
 // Кастомный звук (загружается из файла при первом использовании)
-this.sound.sounds = [
-    { key: '#bell#', sounds: ['/audio/bell.mp3'] },
-];
+this.sound.sounds = [{ key: '#bell#', sounds: ['/audio/bell.mp3'] }];
 this.tts = 'Внимание! #bell# Объявление.';
 ```
 
@@ -1570,13 +1696,13 @@ this.tts = 'Внимание! #bell# Объявление.';
 
 #### Поведение на разных платформах
 
-| Платформа | Стандартные звуки | Кастомные звуки | TTS-эффекты | Паузы |
-|---|---|---|---|---|
-| Алиса | ✅ | ✅ (через `<speaker audio="...">`) | ✅ | ✅ |
-| Маруся | ✅ | ✅ | ❌ | ✅ |
-| SmartApp | ❌ | ❌ | ❌ | ❌ |
-| Telegram/VK/Max | ❌ | ✅ (загружается как аудио) | ❌ (TTS через SpeechKit, отдельным сообщением) | ❌ |
-| Viber | ❌ | ❌ | ❌ | ❌ |
+| Платформа       | Стандартные звуки | Кастомные звуки                    | TTS-эффекты                                    | Паузы |
+| --------------- | ----------------- | ---------------------------------- | ---------------------------------------------- | ----- |
+| Алиса           | ✅                | ✅ (через `<speaker audio="...">`) | ✅                                             | ✅    |
+| Маруся          | ✅                | ✅                                 | ❌                                             | ✅    |
+| SmartApp        | ❌                | ❌                                 | ❌                                             | ❌    |
+| Telegram/VK/Max | ❌                | ✅ (загружается как аудио)         | ❌ (TTS через SpeechKit, отдельным сообщением) | ❌    |
+| Viber           | ❌                | ❌                                 | ❌                                             | ❌    |
 
 > **Важно.** На Telegram/VK/Max для TTS нужен токен Yandex SpeechKit. Укажите его в `appConfig.tokens[platform].speech_kit_token`.
 
@@ -1654,24 +1780,28 @@ if (myIntent) {
 
 #### Доступность NLU по платформам
 
-| Возможность | Алиса | Маруся | SmartApp | Telegram | VK | Viber | Max |
-|---|---|---|---|---|---|---|---|
-| FIO, GEO, DateTime, Number | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Кастомные интенты | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `getUserName()` | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `isIntentConfirm/Reject` (через userCommand) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `getLink/getPhone/getEMail` (regex, static) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Возможность                                  | Алиса | Маруся | SmartApp | Telegram | VK  | Viber | Max |
+| -------------------------------------------- | ----- | ------ | -------- | -------- | --- | ----- | --- |
+| FIO, GEO, DateTime, Number                   | ✅    | ✅     | ❌       | ❌       | ❌  | ❌    | ❌  |
+| Кастомные интенты                            | ✅    | ✅     | ✅       | ❌       | ❌  | ❌    | ❌  |
+| `getUserName()`                              | ✅    | ❌     | ❌       | ✅       | ❌  | ❌    | ❌  |
+| `isIntentConfirm/Reject` (через userCommand) | ✅    | ✅     | ✅       | ✅       | ✅  | ✅    | ✅  |
+| `getLink/getPhone/getEMail` (regex, static)  | ✅    | ✅     | ✅       | ✅       | ✅  | ✅    | ✅  |
 
 ### Navigation — пагинация
 
 ```ts
 import { Navigation } from 'umbot';
 
-interface Product { id: number; name: string; price: number; }
+interface Product {
+    id: number;
+    name: string;
+    price: number;
+}
 
 class ShopController extends BotController {
     // В реальности — сохранять между запросами через this.userData.nav = { page: N }
-    nav = new Navigation<Product>(3);  // 3 элемента на странице
+    nav = new Navigation<Product>(3); // 3 элемента на странице
 
     public action(intentName: string | null): void {
         const products: Product[] = [
@@ -1690,12 +1820,10 @@ class ShopController extends BotController {
         // Рендерим как карточку-список
         this.card.setTitle('Выберите товар');
         for (const p of page) {
-            this.card.addImage(
-                `https://shop.example.com/img/${p.id}.jpg`,
-                p.name,
-                `${p.price} ₽`,
-                { title: 'Купить', payload: { action: 'buy', id: p.id } },
-            );
+            this.card.addImage(`https://shop.example.com/img/${p.id}.jpg`, p.name, `${p.price} ₽`, {
+                title: 'Купить',
+                payload: { action: 'buy', id: p.id },
+            });
         }
 
         // Кнопки пагинации
@@ -1718,14 +1846,14 @@ class ShopController extends BotController {
 
 #### Методы `Navigation`
 
-| Метод | Назначение |
-|---|---|
-| `getPageElements(elements, text)` | Возвращает элементы текущей страницы. **Мутирует `thisPage`** при "дальше"/"назад" |
-| `selectedElement(elements, text, keys)` | Подбирает элемент по тексту (по номеру или по похожести текста) |
-| `getPageNav(isNumber?)` | Возвращает подписи кнопок пагинации: `['👈 Назад', 'Дальше 👉']` или `['1', '[2]', '3']` |
-| `getPageInfo()` | Возвращает `"N страница из M"` (или пустую строку) |
-| `getMaxPage(elements)` | Количество страниц |
-| `numberPage(text)` | Распознать `"2 страница"` и перейти |
+| Метод                                   | Назначение                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `getPageElements(elements, text)`       | Возвращает элементы текущей страницы. **Мутирует `thisPage`** при "дальше"/"назад"       |
+| `selectedElement(elements, text, keys)` | Подбирает элемент по тексту (по номеру или по похожести текста)                          |
+| `getPageNav(isNumber?)`                 | Возвращает подписи кнопок пагинации: `['👈 Назад', 'Дальше 👉']` или `['1', '[2]', '3']` |
+| `getPageInfo()`                         | Возвращает `"N страница из M"` (или пустую строку)                                       |
+| `getMaxPage(elements)`                  | Количество страниц                                                                       |
+| `numberPage(text)`                      | Распознать `"2 страница"` и перейти                                                      |
 
 > **Важно:** `Navigation` — чисто in-memory. Сохраняйте `thisPage` (и при необходимости список элементов) в `userData` между запросами.
 
@@ -1750,17 +1878,21 @@ bot.use(botPlatforms);
 // Вариант 4: выборочно по одной (если хотите ограничить круг платформ)
 bot.use(new AlisaAdapter('YANDEX_OAUTH_TOKEN'));
 bot.use(new TelegramAdapter('TELEGRAM_BOT_TOKEN'));
-bot.use(new VkAdapter('VK_TOKEN', {
-    vk_confirmation_token: 'CONFIRMATION_STRING',  // обязательно для VK
-    vk_api_version: '5.199',                        // опционально
-}));
-bot.use(new ViberAdapter('VIBER_TOKEN', {
-    viber_sender: 'MyBotName',  // обязательно для Viber, ≤ 28 символов
-    viber_api_version: '8',     // опционально
-}));
+bot.use(
+    new VkAdapter('VK_TOKEN', {
+        vk_confirmation_token: 'CONFIRMATION_STRING', // обязательно для VK
+        vk_api_version: '5.199', // опционально
+    }),
+);
+bot.use(
+    new ViberAdapter('VIBER_TOKEN', {
+        viber_sender: 'MyBotName', // обязательно для Viber, ≤ 28 символов
+        viber_api_version: '8', // опционально
+    }),
+);
 bot.use(new MaxAdapter('MAX_TOKEN'));
 bot.use(new MarusiaAdapter('MARUSIA_TOKEN'));
-bot.use(new SmartAppAdapter());   // без токена — аутентификация через Sber-экосистему
+bot.use(new SmartAppAdapter()); // без токена — аутентификация через Sber-экосистему
 ```
 
 > Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration).
@@ -1840,16 +1972,16 @@ bot.setPlatformResolver((query, headers, detect) => {
 
 ### Сводная таблица — что поддерживает каждая платформа
 
-| Свойство | Алиса | Маруся | SmartApp | Telegram | VK | Viber | Max |
-|---|---|---|---|---|---|---|---|
-| Голосовая (TTS native) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Локальное хранилище | ✅ | ✅ | ✅ (внешнее API) | ❌ | ❌ | ❌ | ❌ |
-| Проактивная отправка (`bot.send`) | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Загрузка изображений | ✅ | ✅ | ❌ (URL) | ✅ | ✅ | ❌ (URL) | ✅ |
-| Кастомные звуки | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| TTS-эффекты SSML (`<speaker>`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Проверка подписи webhook | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Эмоции / appeal | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Свойство                          | Алиса | Маруся | SmartApp         | Telegram | VK  | Viber    | Max |
+| --------------------------------- | ----- | ------ | ---------------- | -------- | --- | -------- | --- |
+| Голосовая (TTS native)            | ✅    | ✅     | ✅               | ❌       | ❌  | ❌       | ❌  |
+| Локальное хранилище               | ✅    | ✅     | ✅ (внешнее API) | ❌       | ❌  | ❌       | ❌  |
+| Проактивная отправка (`bot.send`) | ❌    | ❌     | ❌               | ✅       | ✅  | ✅       | ✅  |
+| Загрузка изображений              | ✅    | ✅     | ❌ (URL)         | ✅       | ✅  | ❌ (URL) | ✅  |
+| Кастомные звуки                   | ✅    | ✅     | ❌               | ✅       | ✅  | ❌       | ✅  |
+| TTS-эффекты SSML (`<speaker>`)    | ✅    | ✅     | ✅               | ❌       | ❌  | ❌       | ❌  |
+| Проверка подписи webhook          | ❌    | ✅     | ✅               | ✅       | ✅  | ✅       | ✅  |
+| Эмоции / appeal                   | ❌    | ❌     | ✅               | ❌       | ❌  | ❌       | ❌  |
 
 > Где `❌` — фича не поддерживается платформой, фреймворк просто молча проигнорирует соответствующие поля в `controller`. Код не сломается.
 
@@ -1867,7 +1999,7 @@ bot.setPlatformResolver((query, headers, detect) => {
 import { FileAdapter } from 'umbot/plugins';
 
 bot.use(new FileAdapter());
-bot.setAppConfig({ json: './data' });  // папка для JSON-файлов
+bot.setAppConfig({ json: './data' }); // папка для JSON-файлов
 ```
 
 **Лимиты:** до ~250 МБ данных (логирует warning при 270 МБ, error при 360 МБ, при ~400 МБ возможен краш — весь файл грузится в память). Один процесс (небезопасно для multi-process). Только строгое равенство в `where` (без операторов типа `$gt`, `$in`).
@@ -1878,13 +2010,15 @@ bot.setAppConfig({ json: './data' });  // папка для JSON-файлов
 import { MongoAdapter } from 'umbot/plugins';
 
 // Вариант 1: опции в конструкторе
-bot.use(new MongoAdapter({
-    host: 'mongodb://localhost:27017',
-    database: 'umbot',
-    user: 'root',
-    pass: 'secret',
-    options: { maxPoolSize: 100 },
-}));
+bot.use(
+    new MongoAdapter({
+        host: 'mongodb://localhost:27017',
+        database: 'umbot',
+        user: 'root',
+        pass: 'secret',
+        options: { maxPoolSize: 100 },
+    }),
+);
 
 // Вариант 2: через appConfig.db + .env
 bot.use(new MongoAdapter());
@@ -1928,11 +2062,11 @@ interface IScoreState extends IModelState {
 
 const RULES: IModelRules[] = [
     { name: ['userId'], type: 'string', max: 250 },
-    { name: ['score'],  type: 'integer' },
+    { name: ['score'], type: 'integer' },
 ];
 
 const LABELS: IScoreState = {
-    userId: 'ID',  // 'ID' маркирует primary key
+    userId: 'ID', // 'ID' маркирует primary key
     score: 'Score',
 };
 
@@ -1944,9 +2078,15 @@ export class ScoreModel extends Model<IScoreState> {
         this.state = { userId: null, score: null };
     }
 
-    rules()          { return RULES; }
-    attributeLabels(){ return LABELS; }
-    tableName()      { return ScoreModel.TABLE_NAME; }
+    rules() {
+        return RULES;
+    }
+    attributeLabels() {
+        return LABELS;
+    }
+    tableName() {
+        return ScoreModel.TABLE_NAME;
+    }
 }
 ```
 
@@ -1997,7 +2137,7 @@ bot.use(async (ctx, next) => {
 bot.use(T_ALISA, async (ctx, next) => {
     if (!ctx.userData.authorized) {
         ctx.text = 'Пожалуйста, авторизуйтесь';
-        return;  // НЕ вызываем next() — обрываем цепочку
+        return; // НЕ вызываем next() — обрываем цепочку
     }
     await next();
 });
@@ -2010,10 +2150,20 @@ bot.use(T_ALISA, async (ctx, next) => {
 ```
 
 Пример: если зарегистрированы:
+
 ```ts
-bot.use(async (_, next) => { console.log(1); await next(); console.log(4); });
-bot.use(T_ALISA, async (_, next) => { console.log(2); await next(); console.log(3); });
+bot.use(async (_, next) => {
+    console.log(1);
+    await next();
+    console.log(4);
+});
+bot.use(T_ALISA, async (_, next) => {
+    console.log(2);
+    await next();
+    console.log(3);
+});
 ```
+
 То при запросе от Алисы порядок будет: `1, 2, 3, 4` (после `next()` идёт обратная раскрутка).
 
 ### Полезные паттерны
@@ -2067,12 +2217,13 @@ bot.use(async (ctx, next) => {
 ```ts
 import { rateLimiter } from 'umbot/middleware';
 
-bot.use(rateLimiter());  // дефолт: queue=100, idle=60s
+bot.use(rateLimiter()); // дефолт: queue=100, idle=60s
 // или
-bot.use(rateLimiter(200, 120_000));  // queue=200, idle=2 мин
+bot.use(rateLimiter(200, 120_000)); // queue=200, idle=2 мин
 ```
 
 **Что делает:**
+
 - Читает `appContext.platforms[platform].limit` (для TG/VK/Viber/Max = 30).
 - Поддерживает sliding-1s-window per `{platform, userId}`.
 - При превышении — ставит в очередь (до `maxQueueSize`).
@@ -2118,19 +2269,16 @@ const preload = new Preload(bot.getAppContext());
 // Возвращает массив промисов — нужно дождаться всех
 const imagePromises = preload.loadImages(
     ['./media/img1.jpg', './media/img2.png'],
-    [T_ALISA, T_VK],  // только для этих платформ
+    [T_ALISA, T_VK], // только для этих платформ
 );
 
-const soundPromises = preload.loadSounds(
-    ['./media/beep.mp3', './media/win.mp3'],
-    [T_ALISA],
-);
+const soundPromises = preload.loadSounds(['./media/beep.mp3', './media/win.mp3'], [T_ALISA]);
 
 // Telegram требует реального получателя для получения file_id
 const tgPromises = preload.loadImages(
     ['./media/img1.jpg'],
     [T_TELEGRAM],
-    { telegramUseId: 123456789 },  // ID пользователя, которому придут фото
+    { telegramUseId: 123456789 }, // ID пользователя, которому придут фото
 );
 
 await Promise.all([...imagePromises, ...soundPromises, ...tgPromises]);
@@ -2172,9 +2320,9 @@ bot.setAppConfig({ json: './data', isLocalStorage: true });
 bot.setPlatformParams({ intents: [{ name: 'game', slots: ['играть'] }] });
 
 const params: IBotTestParams = {
-    isShowResult: true,    // печатать полный JSON ответа платформы
-    isShowStorage: true,   // печатать userData + state после каждого хода
-    isShowTime: true,      // печатать время выполнения
+    isShowResult: true, // печатать полный JSON ответа платформы
+    isShowStorage: true, // печатать userData + state после каждого хода
+    isShowTime: true, // печатать время выполнения
 };
 
 bot.test(params);
@@ -2202,6 +2350,7 @@ bot.test(params);
 ```
 
 **Поведение:**
+
 - При запуске `bot.test()` автоматически отправляется первое сообщение `'Привет'` (имитация старта сессии с `messageId === 0`).
 - Дальше вы вводите текст вручную, бот отвечает так же, как ответил бы на реальной платформе.
 - Выход — введите `exit` или закройте терминал. Также выход произойдёт автоматически, если бот выставил `isEnd = true`.
@@ -2225,7 +2374,11 @@ bot.initBotController(MyController);
 const realPayload = JSON.stringify({
     version: '1.0',
     session: { message_id: 0, user_id: 'user-1', application: { application_id: 'AppID' } },
-    request: { command: 'привет', original_utterance: 'Привет', nlu: { tokens: ['привет'], entities: [], intents: {} } },
+    request: {
+        command: 'привет',
+        original_utterance: 'Привет',
+        nlu: { tokens: ['привет'], entities: [], intents: {} },
+    },
     state: {},
 });
 const result1 = await bot.run(T_ALISA, realPayload);
@@ -2395,6 +2548,7 @@ server {
 ### GitHub Actions CI/CD
 
 `npx umbot create --prod` генерирует `.github/workflows/deploy.yml`:
+
 - На push в `main` → сборка → Docker build → push в Docker Hub → SSH на сервер → pull + restart.
 
 ### Корректное завершение
@@ -2402,7 +2556,7 @@ server {
 ```ts
 process.on('SIGTERM', async () => {
     console.log('Shutting down...');
-    await bot.close();  // останавливает сервер, сохраняет данные, закрывает БД
+    await bot.close(); // останавливает сервер, сохраняет данные, закрывает БД
     process.exit(0);
 });
 ```
@@ -2426,28 +2580,28 @@ process.on('SIGTERM', async () => {
 ### Что НЕЛЬЗЯ делать
 
 1. **Долгие синхронные операции в `action()` или в команде** — заблокируют event loop и таймаут голосовой платформы.
-   - ❌ `JSON.parse(fs.readFileSync(hugeFile))`
-   - ✅ `await fs.promises.readFile()`
+    - ❌ `JSON.parse(fs.readFileSync(hugeFile))`
+    - ✅ `await fs.promises.readFile()`
 
 2. **Сложные RegExp без защиты от ReDoS** — `setAppMode('strict_prod')` проверит, но не рискуйте.
-   - ❌ `/(a+)+b/` (катастрофическая backtracking)
-   - ✅ `/a+b/`
+    - ❌ `/(a+)+b/` (катастрофическая backtracking)
+    - ✅ `/a+b/`
 
 3. **Делать HTTP-запросы без таймаута** — внешний API может зависнуть и съесть весь лимит времени ответа.
-   - ❌ `await fetch(url)`
-   - ✅ `AbortController` с `setTimeout(() => controller.abort(), 3000)`
+    - ❌ `await fetch(url)`
+    - ✅ `AbortController` с `setTimeout(() => controller.abort(), 3000)`
 
 4. **Хранить большие данные в `userData` при `isLocalStorage=true`** — лимит 4 КБ на стороне платформы.
-   - ❌ `userData.history = [1000 сообщений]`
-   - ✅ Использовать MongoAdapter
+    - ❌ `userData.history = [1000 сообщений]`
+    - ✅ Использовать MongoAdapter
 
 5. **Использовать `delete this.userData.field`** — на Алисе отсутствие поля не означает его удаление, платформа вернёт старое значение.
-   - ❌ `delete this.userData.tempData`
-   - ✅ `this.userData.tempData = null`
+    - ❌ `delete this.userData.tempData`
+    - ✅ `this.userData.tempData = null`
 
 6. **Забывать `intents` в `setPlatformParams`** — поле обязательное.
-   - ❌ `bot.setPlatformParams({ welcome_text: 'Привет' })`
-   - ✅ `bot.setPlatformParams({ welcome_text: 'Привет', intents: [] })`
+    - ❌ `bot.setPlatformParams({ welcome_text: 'Привет' })`
+    - ✅ `bot.setPlatformParams({ welcome_text: 'Привет', intents: [] })`
 
 7. **Логировать секреты в `dev`-режиме** — `setAppMode('strict_prod')` маскирует, но в `dev` маскировки нет.
 
@@ -2465,6 +2619,7 @@ process.on('SIGTERM', async () => {
 ### Команда не срабатывает
 
 **Причины:**
+
 - В `slots` строка с заглавной буквой — `userCommand` уже в нижнем регистре, но слот тоже должен быть в нижнем.
 - Слот содержит спецсимволы — экранируйте или используйте `isPattern=true`.
 - Команда зарегистрирована после старта (`start()`) — её нужно регистрировать до запуска сервера.
@@ -2484,6 +2639,7 @@ process.on('SIGTERM', async () => {
 ### `userData` не сохраняется
 
 **Причины:**
+
 - `isLocalStorage: false` и не подключён DB-адаптер → данные не сохраняются.
 - `isLocalStorage: true` на Telegram/VK (нет локального хранилища) и не подключён DB-адаптер.
 - Поле равно `undefined` → Алиса его не сохранит. Используйте `null` для удаления.
@@ -2492,6 +2648,7 @@ process.on('SIGTERM', async () => {
 ### Платформа не определяется
 
 **Причины:**
+
 - Запрос пришёл с неизвестными заголовками.
 - Несколько платформ имеют похожие маркеры (Алиса/Маруся — одинаковый формат тела).
 - Не зарегистрирован адаптер для нужной платформы.
@@ -2509,6 +2666,7 @@ process.on('SIGTERM', async () => {
 ### `ReDoS detected` в продакшене
 
 В `strict_prod` режиме опасные regex отклоняются. Упростите паттерн:
+
 - ❌ `/(a+)+b/`
 - ✅ `/a+b/` или `/^(a+?)b$/`
 
@@ -2532,9 +2690,14 @@ bot.addCommand(WELCOME_INTENT_NAME, ['привет'], (_, bc) => {
     bc.buttons.addBtn('Помощь');
 });
 
-bot.addCommand(FALLBACK_COMMAND, [], (userCommand, bc) => {
-    bc.text = `Вы сказали: ${userCommand}`;
-}, true);
+bot.addCommand(
+    FALLBACK_COMMAND,
+    [],
+    (userCommand, bc) => {
+        bc.text = `Вы сказали: ${userCommand}`;
+    },
+    true,
+);
 
 bot.start('0.0.0.0', 3000);
 ```
@@ -2636,22 +2799,26 @@ interface ListData extends IUserData {
 }
 
 const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
-const nav = new Navigation<string>(3);  // 3 элемента на странице
+const nav = new Navigation<string>(3); // 3 элемента на странице
 
-bot.addCommand<ListData>('list', ['список', 'дальше', 'назад'], (userCommand, bc: BotController<ListData>) => {
-    bc.userData.page ??= 0;
-    nav.thisPage = bc.userData.page;
+bot.addCommand<ListData>(
+    'list',
+    ['список', 'дальше', 'назад'],
+    (userCommand, bc: BotController<ListData>) => {
+        bc.userData.page ??= 0;
+        nav.thisPage = bc.userData.page;
 
-    const page = nav.getPageElements(items, userCommand || '');
-    bc.userData.page = nav.thisPage;
+        const page = nav.getPageElements(items, userCommand || '');
+        bc.userData.page = nav.thisPage;
 
-    bc.text = page.map((s, i) => `${i + 1}. ${s}`).join('\n');
-    for (const cap of nav.getPageNav()) {
-        bc.buttons.addBtn(cap);
-    }
-    const info = nav.getPageInfo();
-    if (info) bc.buttons.addBtn(info);
-});
+        bc.text = page.map((s, i) => `${i + 1}. ${s}`).join('\n');
+        for (const cap of nav.getPageNav()) {
+            bc.buttons.addBtn(cap);
+        }
+        const info = nav.getPageInfo();
+        if (info) bc.buttons.addBtn(info);
+    },
+);
 
 // Выбор элемента по имени — отдельная команда (сработает, если пользователь сказал имя, а не "дальше")
 bot.addCommand<ListData>('select_item', items, (userCommand, bc: BotController<ListData>) => {
@@ -2677,7 +2844,7 @@ bot.addCommand('weather', ['погода'], async (_, bc) => {
         const url = 'https://api.weather.example.com/current?city=moscow';
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as { temp: number; condition: string };
+        const data = (await res.json()) as { temp: number; condition: string };
         bc.text = `Сейчас ${data.temp}°C, ${data.condition}`;
     } catch (e) {
         bc.text = 'Не удалось узнать погоду. Попробуйте позже.';
@@ -2694,32 +2861,34 @@ bot.addCommand('weather', ['погода'], async (_, bc) => {
 ```ts
 // Триггер — пользователь инициировал авторизацию
 bot.addCommand('auth', ['авторизоваться', 'войти'], (_, bc) => {
-    bc.isAuth = true;  // фреймворк отправит start_account_linking
+    bc.isAuth = true; // фреймворк отправит start_account_linking
     bc.text = 'Перенаправляю на авторизацию...';
 });
 
 // Контроллер обрабатывает события авторизации (они приходят автоматически)
-bot.initBotController(class extends BotController {
-    action(intentName, isCommand, isStep) {
-        if (isCommand || isStep) return;
+bot.initBotController(
+    class extends BotController {
+        action(intentName, isCommand, isStep) {
+            if (isCommand || isStep) return;
 
-        // Событие: Алиса прислала account_linking_complete_event
-        // В ЭТОМ запросе userEvents.auth.status === true, но userToken ещё null!
-        if (this.userEvents?.auth?.status === true) {
-            this.userData.authCompleted = true;
-            this.text = 'Авторизация завершена! Теперь вам доступны все функции.';
-            return;
-        }
+            // Событие: Алиса прислала account_linking_complete_event
+            // В ЭТОМ запросе userEvents.auth.status === true, но userToken ещё null!
+            if (this.userEvents?.auth?.status === true) {
+                this.userData.authCompleted = true;
+                this.text = 'Авторизация завершена! Теперь вам доступны все функции.';
+                return;
+            }
 
-        // В последующих регулярных запросах userToken уже заполнен
-        if (this.userToken) {
-            // Делаем авторизованные запросы к вашему API:
-            // const res = await fetch('https://api.example.com/me', {
-            //     headers: { Authorization: `Bearer ${this.userToken}` },
-            // });
+            // В последующих регулярных запросах userToken уже заполнен
+            if (this.userToken) {
+                // Делаем авторизованные запросы к вашему API:
+                // const res = await fetch('https://api.example.com/me', {
+                //     headers: { Authorization: `Bearer ${this.userToken}` },
+                // });
+            }
         }
-    }
-});
+    },
+);
 ```
 
 > **Важно:** между шагом 2 (получение `account_linking_complete_event`) и шагом 3 (`userToken` заполнен) может быть задержка — следующий запрос от Алисы. Не рассчитывайте, что `userToken` доступен сразу в том же запросе.
@@ -2737,28 +2906,30 @@ bot.addCommand('show_product', ['покажи товар'], (_, bc) => {
 });
 
 // Контроллер обрабатывает нажатия кнопок
-bot.initBotController(class extends BotController {
-    action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
-        // Если сработала команда/шаг — они уже всё сделали, выходим.
-        // Кнопку "Помощь" добавим в самом конце — она нужна во всех ответах.
-        if (isCommand || isStep) return;
+bot.initBotController(
+    class extends BotController {
+        action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
+            // Если сработала команда/шаг — они уже всё сделали, выходим.
+            // Кнопку "Помощь" добавим в самом конце — она нужна во всех ответах.
+            if (isCommand || isStep) return;
 
-        // Проверяем payload ДО intentName — иначе коллизия:
-        // кнопка "Играть" установит userCommand='играть' и сработает интент play,
-        // а не ваш обработчик кнопки.
-        const data = this.payload as Record<string, unknown> | null;
-        if (data?.action === 'buy') {
-            this.text = `Покупка товара #${data.id} инициирована.`;
-            // На Telegram: this.platformOptions.callbackQueryId содержит ID
-            // для answerCallbackQuery — фреймворк автоматически вызовет его.
+            // Проверяем payload ДО intentName — иначе коллизия:
+            // кнопка "Играть" установит userCommand='играть' и сработает интент play,
+            // а не ваш обработчик кнопки.
+            const data = this.payload as Record<string, unknown> | null;
+            if (data?.action === 'buy') {
+                this.text = `Покупка товара #${data.id} инициирована.`;
+                // На Telegram: this.platformOptions.callbackQueryId содержит ID
+                // для answerCallbackQuery — фреймворк автоматически вызовет его.
+                this.buttons.addBtn('Помощь');
+                return;
+            }
+
+            // Обычная обработка по intentName (welcome, help, ...)
             this.buttons.addBtn('Помощь');
-            return;
         }
-
-        // Обычная обработка по intentName (welcome, help, ...)
-        this.buttons.addBtn('Помощь');
-    }
-});
+    },
+);
 ```
 
 > **Совет:** проверяйте payload **до** intentName, иначе возможны коллизии. Например, если кнопка называется "Играть", её нажатие установит `userCommand='играть'`, и сработает интент `play`, а не ваш обработчик кнопки.
@@ -2773,8 +2944,8 @@ import { rateLimiter } from 'umbot/middleware';
 new Bot()
     .use(fullPlatforms)
     .use(new MongoAdapter({ host: 'mongodb://...', database: 'umbot' }))
-    .use(rateLimiter())  // глобально
-    .use('telegram', rateLimiter(50, 120_000))  // для TG — отдельный лимит
+    .use(rateLimiter()) // глобально
+    .use('telegram', rateLimiter(50, 120_000)) // для TG — отдельный лимит
     .start('0.0.0.0', 3000);
 ```
 
@@ -2833,10 +3004,10 @@ const logger = winston.createLogger({
 
 const bot = new Bot();
 bot.setLogger({
-    log:   (...args) => logger.info(args.join(' ')),
+    log: (...args) => logger.info(args.join(' ')),
     error: (msg, meta) => logger.error(msg, meta),
-    warn:  (msg, meta) => logger.warn(msg, meta),
-    metric:(name, value, labels) => logger.info({ metric: name, value, labels }),
+    warn: (msg, meta) => logger.warn(msg, meta),
+    metric: (name, value, labels) => logger.info({ metric: name, value, labels }),
     maskSecrets: true,
 });
 ```
@@ -2923,7 +3094,9 @@ bot.use(T_TELEGRAM, async (ctx, next) => {
         // формируем результаты inline
         await telegramApi.call('answerInlineQuery', {
             inline_query_id: req.inline_query.id,
-            results: JSON.stringify([/* ... */]),
+            results: JSON.stringify([
+                /* ... */
+            ]),
         });
         ctx.skipAutoReply = true;
         return;
@@ -2951,7 +3124,6 @@ bot.use(async (ctx, next) => {
 ```
 
 ---
-
 
 ## Сценарии, которых не хватает (но которые часто нужны)
 
@@ -2986,14 +3158,15 @@ export const handler = async (event: any) => {
 ### Account linking с backend-интеграцией
 
 Полный flow:
+
 1. Пользователь говорит "авторизоваться".
 2. Контроллер ставит `this.isAuth = true`.
 3. Фреймворк отправляет `start_account_linking` — Яндекс открывает браузер.
 4. Браузер редиректит на ваш backend.
 5. Backend генерирует access_token, редиректит обратно в Яндекс с `access_token`.
 6. Алиса присылает **специальный запрос** с `account_linking_complete_event: true`.
-   - В этом запросе: `controller.userEvents.auth.status === true`.
-   - В этом запросе: `controller.userToken` **всё ещё null** (токен в этом запросе не передаётся).
+    - В этом запросе: `controller.userEvents.auth.status === true`.
+    - В этом запросе: `controller.userToken` **всё ещё null** (токен в этом запросе не передаётся).
 7. В **следующих регулярных запросах** (когда пользователь скажет что-то ещё) Алиса присылает `session.user.access_token`, и `controller.userToken` будет заполнен.
 
 Backend-часть (между шагами 4–5) в фреймворке не реализована — пишете сами.
@@ -3049,7 +3222,7 @@ await userData.query(async (client, db) => {
 ```ts
 bot.setLogger({
     error: (msg, meta) => Sentry.captureException(new Error(msg), { extra: meta }),
-    warn:  (msg, meta) => Sentry.captureMessage(msg, 'warning', { extra: meta }),
+    warn: (msg, meta) => Sentry.captureMessage(msg, 'warning', { extra: meta }),
     // ...
 });
 ```
@@ -3177,15 +3350,20 @@ bot.addCommand('num', [/^\d+$/], (cmd, bc) => {
 });
 
 // Команда с regex-строкой
-bot.addCommand('phone', ['\\+?\\d{11}'], (cmd, bc) => {
-    bc.text = `Телефон: ${cmd}`;
-}, true);  // isPattern = true
+bot.addCommand(
+    'phone',
+    ['\\+?\\d{11}'],
+    (cmd, bc) => {
+        bc.text = `Телефон: ${cmd}`;
+    },
+    true,
+); // isPattern = true
 
 // Асинхронная команда — через fetch
 bot.addCommand('weather', ['погода'], async (_, bc) => {
     try {
         const res = await fetch('https://api.weather.example.com/current');
-        const data = await res.json() as { temp: number };
+        const data = (await res.json()) as { temp: number };
         bc.text = `Температура: ${data.temp}`;
     } catch {
         bc.text = 'Не удалось узнать погоду.';
@@ -3193,9 +3371,14 @@ bot.addCommand('weather', ['погода'], async (_, bc) => {
 });
 
 // Fallback
-bot.addCommand(FALLBACK_COMMAND, [], (cmd, bc) => {
-    bc.text = `Не поняла: ${cmd}`;
-}, true);
+bot.addCommand(
+    FALLBACK_COMMAND,
+    [],
+    (cmd, bc) => {
+        bc.text = `Не поняла: ${cmd}`;
+    },
+    true,
+);
 ```
 
 ### Шпаргалка по шагам
@@ -3213,7 +3396,7 @@ bot.addStep('step1', (bc) => {
 
 bot.addStep('step2', (bc) => {
     bc.text = `Готово! Ввод: ${bc.userCommand}`;
-    bc.thisIntentName = null;  // выходим
+    bc.thisIntentName = null; // выходим
 });
 ```
 
@@ -3221,10 +3404,49 @@ bot.addStep('step2', (bc) => {
 
 ```ts
 // Главный модуль
-import { Bot, BotController, IUserData, WELCOME_INTENT_NAME, HELP_INTENT_NAME, FALLBACK_COMMAND, Text, Navigation, SoundConstants, Nlu, Buttons, Card, Sound, UsersData, ImageTokens, SoundTokens } from 'umbot';
+import {
+    Bot,
+    BotController,
+    IUserData,
+    WELCOME_INTENT_NAME,
+    HELP_INTENT_NAME,
+    FALLBACK_COMMAND,
+    Text,
+    Navigation,
+    SoundConstants,
+    Nlu,
+    Buttons,
+    Card,
+    Sound,
+    UsersData,
+    ImageTokens,
+    SoundTokens,
+} from 'umbot';
 
 // Платформы и БД
-import { fullPlatforms, voicePlatforms, botPlatforms, AlisaAdapter, TelegramAdapter, VkAdapter, ViberAdapter, MaxAdapter, MarusiaAdapter, SmartAppAdapter, FileAdapter, MongoAdapter, BasePlatformAdapter, BaseDbAdapter, T_ALISA, T_TELEGRAM, T_VK, T_VIBER, T_MAX_APP, T_MARUSIA, T_SMART_APP } from 'umbot/plugins';
+import {
+    fullPlatforms,
+    voicePlatforms,
+    botPlatforms,
+    AlisaAdapter,
+    TelegramAdapter,
+    VkAdapter,
+    ViberAdapter,
+    MaxAdapter,
+    MarusiaAdapter,
+    SmartAppAdapter,
+    FileAdapter,
+    MongoAdapter,
+    BasePlatformAdapter,
+    BaseDbAdapter,
+    T_ALISA,
+    T_TELEGRAM,
+    T_VK,
+    T_VIBER,
+    T_MAX_APP,
+    T_MARUSIA,
+    T_SMART_APP,
+} from 'umbot/plugins';
 
 // Middleware
 import { rateLimiter } from 'umbot/middleware';

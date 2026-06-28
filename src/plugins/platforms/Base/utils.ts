@@ -252,12 +252,14 @@ export function tryParse<TResult = Record<string, unknown>>(
 ): TResult | null {
     const rawPayload = data;
     if (typeof rawPayload === 'string') {
-        try {
-            return JSON.parse(rawPayload);
-        } catch {
-            return rawPayload as unknown as TResult;
+        const trimmedPayload = rawPayload.trim();
+        if (trimmedPayload[0] === '{' || trimmedPayload[0] === '[') {
+            try {
+                return JSON.parse(rawPayload);
+            } catch {
+                return rawPayload as unknown as TResult;
+            }
         }
-    } else {
-        return rawPayload as TResult;
     }
+    return rawPayload as TResult;
 }
