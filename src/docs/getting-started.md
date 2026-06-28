@@ -361,4 +361,4 @@ this.card
     .setTitle('Галерея изображений');
 ```
 
-Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ).
+Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ.html).

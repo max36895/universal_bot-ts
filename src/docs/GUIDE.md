@@ -1891,7 +1891,7 @@ bot.use(new MarusiaAdapter('MARUSIA_TOKEN'));
 bot.use(new SmartAppAdapter()); // без токена — аутентификация через Sber-экосистему
 ```
 
-> Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_platformAdapter).
+> Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_platformAdapter.html).
 
 ### Авто-определение платформы
 
@@ -2033,7 +2033,7 @@ bot.setAppConfig({
 
 ### Свой DB-адаптер (PostgreSQL, Redis, ...)
 
-Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`, `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_dbAdapter) и в `examples/skills/userDbConnect/` репозитория.
+Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`, `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_dbAdapter.html) и в `examples/skills/userDbConnect/` репозитория.
 
 ### Что фреймворк хранит в БД автоматически
 

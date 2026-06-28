@@ -172,7 +172,7 @@ export class EchoController extends BotController {
 
 Протестируйте приложение, и в случае необходимости опубликуйте его.
 
-👉 [Подробное руководство по запуску](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started)
+👉 [Подробное руководство по запуску](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started.html)
 
 ## Производительность
 
@@ -197,20 +197,20 @@ export class EchoController extends BotController {
 
 Подробная документация доступна в следующих разделах:
 
-- [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started) - Подробное описание, для
+- [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started.html) - Подробное описание, для
   быстрого старта проекта
-- [Подробная инструкция по созданию приложений](./src/docs/GUIDE.md)
-- [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_api-reference) - Подробное описание всех классов,
+- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html)
+- [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_api-reference.html) - Подробное описание всех классов,
   методов и интерфейсов
-- [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration) - Руководство по
+- [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration.html) - Руководство по
   интеграции с различными платформами
-- [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_configuration)
-- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_http-client)
-- [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_performance-and-guarantees)
-- [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_testing)
-- [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_deployment)
-- [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_middleware)
-- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ)
+- [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_configuration.html)
+- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_http-client.html)
+- [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_performance-and-guarantees.html)
+- [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_testing.html)
+- [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_deployment.html)
+- [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_middleware.html)
+- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ.html)
 
 ### Полезные ссылки
 
@@ -221,11 +221,11 @@ export class EchoController extends BotController {
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
 - [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples.md)
 - [Список изменений](https://github.com/max36895/universal_bot-ts/blob/main/CHANGELOG.md)
-- [Что ждать в следующем релизе](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release)
+- [Что ждать в следующем релизе](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release.html)
 
 ## 🛠 Инструменты разработчика
 
-- [CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.cli_README) команды
+- [CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.cli_README.html) команды
 
 ## 📝 Лицензия
 
