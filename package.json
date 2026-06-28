@@ -113,7 +113,7 @@
         "test:coverage": "jest --coverage",
         "bt": "npm run build && npm test",
         "create": "umbot",
-        "doc": "typedoc --excludePrivate --excludeExternals && npm run doc-fix",
+        "doc": "typedoc --excludePrivate --excludeExternals",
         "doc-fix": "node scripts/fix-doc.js",
         "deploy": "npm run build && npm publish",
         "lint": "eslint . --ext .ts",
