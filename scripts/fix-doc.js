@@ -5,17 +5,42 @@ const path = require('path');
 const config = {
     baseUrl: 'https://www.maxim-m.ru/bot/ts-doc/documents/',
     excludeFiles: [
-        'SECURITY.md', 'AFENT_PROPMPT.md', 'CHANGELOG.md',
-        'fix-doc.js', 'fix-doc.mjs', 'doc-fix.js', 'typedoc.json'
+        'SECURITY.md',
+        'AFENT_PROPMPT.md',
+        'CHANGELOG.md',
+        'fix-doc.js',
+        'fix-doc.mjs',
+        'doc-fix.js',
+        'typedoc.json',
+        'scr.js',
     ],
     excludeDirs: ['node_modules', 'docs', 'dist', 'coverage', '.git', '.idea'],
     ignoredExtensions: [
-        '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp',
-        '.pdf', '.zip', '.tar', '.gz', '.exe', '.dll', '.so', '.dylib',
-        '.woff', '.woff2', '.ttf', '.eot', '.map', '.lock', '.patch'
+        '.png',
+        '.jpg',
+        '.jpeg',
+        '.gif',
+        '.svg',
+        '.ico',
+        '.webp',
+        '.pdf',
+        '.zip',
+        '.tar',
+        '.gz',
+        '.exe',
+        '.dll',
+        '.so',
+        '.dylib',
+        '.woff',
+        '.woff2',
+        '.ttf',
+        '.eot',
+        '.map',
+        '.lock',
+        '.patch',
     ],
     // Допустимые префиксы для путей к md файлам в коде
-    allowedPathPrefixes: ['./', '../', 'src/', 'docs/', 'examples/', 'cli/']
+    allowedPathPrefixes: ['./', '../', 'src/', 'docs/', 'examples/', 'cli/'],
 };
 
 // Загрузка .gitignore
@@ -23,9 +48,11 @@ function loadGitignore() {
     try {
         if (fs.existsSync('.gitignore')) {
             const gitignore = fs.readFileSync('.gitignore', 'utf8');
-            gitignore.split('\n').forEach(line => {
+            gitignore.split('\n').forEach((line) => {
                 line = line.trim();
-                if (!line || line.startsWith('#')) return;
+                if (!line || line.startsWith('#')) {
+                    return;
+                }
                 const dir = line.replace(/^\//, '').replace(/\/$/, '');
                 if (dir && !dir.includes('*') && !dir.includes('.')) {
                     if (!config.excludeDirs.includes(dir)) {
@@ -55,7 +82,7 @@ function getVersionFromPackageJson() {
 // Надежная проверка исключений — разбиваем путь на части
 function isExcluded(fullPath) {
     const normalizedPath = path.normalize(fullPath);
-    const parts = normalizedPath.split(path.sep).filter(p => p && p !== '.');
+    const parts = normalizedPath.split(path.sep).filter((p) => p && p !== '.');
 
     // Проверяем директории
     for (const excludeDir of config.excludeDirs) {
@@ -131,7 +158,7 @@ function resolveFilePath(urlOrPath, currentFile) {
 function walkDir(dir, callback) {
     if (!fs.existsSync(dir)) return;
 
-    fs.readdirSync(dir).forEach(f => {
+    fs.readdirSync(dir).forEach((f) => {
         const fullPath = path.join(dir, f);
         if (isExcluded(fullPath)) return;
 
@@ -151,19 +178,20 @@ function escapeRegex(value) {
 // Поиск ссылок в файле
 function findLinksInFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
+    if (content.includes('#$no_doc_fix$#')) {
+        return [];
+    }
     const links = [];
 
     // 1. URL документации
-    const urlRegex = new RegExp(
-        escapeRegex(config.baseUrl) + '[^\\s\\)\\]"\'<>]+', 'g'
-    );
+    const urlRegex = new RegExp(escapeRegex(config.baseUrl) + '[^\\s\\)\\]"\'<>]+', 'g');
     let match;
     while ((match = urlRegex.exec(content)) !== null) {
         links.push({
             type: 'url',
             value: match[0],
             line: content.substring(0, match.index).split('\n').length,
-            index: match.index
+            index: match.index,
         });
     }
 
@@ -176,24 +204,28 @@ function findLinksInFile(filePath) {
             line: content.substring(0, match.index).split('\n').length,
             index: match.index,
             fullMatch: match[0],
-            text: match[1]
+            text: match[1],
         });
     }
 
     // 3. Пути в коде — ТОЛЬКО с допустимыми префиксами (не ловим README.md, text.md и т.д.)
     const prefixPattern = config.allowedPathPrefixes
-        .map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
         .join('|');
     const codePathRegex = new RegExp(
-        '(?:`|\'|")(' + prefixPattern + '[a-zA-Z0-9_\\-\\.\\/]+\\.md)(?:`|\'|")', 'g'
+        '(?:`|\'|")(' + prefixPattern + '[a-zA-Z0-9_\\-\\.\\/]+\\.md)(?:`|\'|")',
+        'g',
     );
     while ((match = codePathRegex.exec(content)) !== null) {
-        links.push({
-            type: 'path',
-            value: match[1],
-            line: content.substring(0, match.index).split('\n').length,
-            index: match.index
-        });
+        // не генерируем пустые ссылки
+        if (!config.allowedPathPrefixes.includes(match[1])) {
+            links.push({
+                type: 'path',
+                value: match[1],
+                line: content.substring(0, match.index).split('\n').length,
+                index: match.index,
+            });
+        }
     }
 
     return links;
@@ -205,7 +237,9 @@ function processFiles() {
 
     const version = getVersionFromPackageJson();
     console.log(`🎯 Версия: ${version}`);
-    console.log(`🚫 Исключения: ${config.excludeDirs.length} папок, ${config.excludeFiles.length} файлов\n`);
+    console.log(
+        `🚫 Исключения: ${config.excludeDirs.length} папок, ${config.excludeFiles.length} файлов\n`,
+    );
 
     const brokenLinks = [];
     const updatedFiles = new Set();
@@ -222,19 +256,22 @@ function processFiles() {
         // Обратный порядок, чтобы индексы не сдвигались
         const sortedLinks = links.sort((a, b) => b.index - a.index);
 
-        sortedLinks.forEach(link => {
+        sortedLinks.forEach((link) => {
             const resolvedPath = resolveFilePath(link.value, filePath);
 
             if (resolvedPath) {
                 if (link.type === 'url') {
                     const hashIndex = link.value.indexOf('#');
                     const hash = hashIndex !== -1 ? link.value.substring(hashIndex) : '';
-                    const urlWithoutHash = hashIndex !== -1 ? link.value.substring(0, hashIndex) : link.value;
+                    const urlWithoutHash =
+                        hashIndex !== -1 ? link.value.substring(0, hashIndex) : link.value;
                     const localPath = urlToFilePath(urlWithoutHash);
                     const newUrl = filePathToUrl(localPath, version) + hash;
 
                     if (link.value !== newUrl) {
-                        content = content.substring(0, link.index) + newUrl +
+                        content =
+                            content.substring(0, link.index) +
+                            newUrl +
                             content.substring(link.index + link.value.length);
                         updatedFiles.add(filePath);
                     }
@@ -243,10 +280,14 @@ function processFiles() {
 
                     if (link.fullMatch) {
                         const newFullMatch = `[${link.text}](${newUrl})`;
-                        content = content.substring(0, link.index) + newFullMatch +
+                        content =
+                            content.substring(0, link.index) +
+                            newFullMatch +
                             content.substring(link.index + link.fullMatch.length);
                     } else {
-                        content = content.substring(0, link.index) + newUrl +
+                        content =
+                            content.substring(0, link.index) +
+                            newUrl +
                             content.substring(link.index + link.value.length);
                     }
                     updatedFiles.add(filePath);
@@ -256,7 +297,7 @@ function processFiles() {
                     file: filePath,
                     line: link.line,
                     type: link.type,
-                    value: link.value
+                    value: link.value,
                 });
             }
         });
@@ -267,12 +308,15 @@ function processFiles() {
     });
 
     console.log(`\n📊 Обработано: ${processedFiles} | Обновлено: ${updatedFiles.size}`);
+    if (updatedFiles.size) {
+        console.log('Обновленные файлы: ', updatedFiles);
+    }
 
     if (brokenLinks.length === 0) {
         console.log('\n✅ Все ссылки корректны!');
     } else {
         console.log(`\n❌ Найдено битых ссылок: ${brokenLinks.length}\n`);
-        brokenLinks.forEach(link => {
+        brokenLinks.forEach((link) => {
             console.log(`📄 ${link.file}:${link.line}`);
             console.log(`   ${link.type === 'url' ? '🔗 URL' : '📁 Путь'}: ${link.value}\n`);
         });
