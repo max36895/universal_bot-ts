@@ -6,6 +6,7 @@ import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VK } from './constants';
 import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPlatform';
+import { tryParse } from '../Base/utils';
 
 /**
  * Адаптер, обеспечивающий поддержку платформы VK. Позволяет разрабатывать чат-ботов для мессенджера ВК на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
@@ -109,7 +110,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                     controller.userCommand = rawText.toLowerCase().trim();
                     controller.originalUserCommand = rawText.trim();
                     controller.messageId = object.message.id;
-                    controller.payload = object.message.payload || null;
+                    controller.payload = tryParse(object.message.payload || null);
                     const user = await new VkRequest(this.appContext as AppContext).usersGet(
                         controller.userId,
                     );
@@ -133,7 +134,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                             : JSON.stringify(query.object.payload)
                     )?.toLowerCase();
                     controller.userId = query.object.user_id as number;
-                    controller.payload = query.object.payload;
+                    controller.payload = tryParse(query.object.payload);
                     controller.messageId = query.object.conversation_message_id || 0;
                     return true;
                 }

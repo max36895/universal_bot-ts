@@ -1355,17 +1355,36 @@ export abstract class BotController<
                 if (intent === null && this.messageId === 0) {
                     intent = DEFAULT_WELCOME_INTENT_NAME;
                 }
+                let command: ICommandParam | undefined;
                 /*
                  * Для стандартных действий параметры заполняются автоматически.
                  * Есть возможность переопределить их в action() по названию действия
                  */
                 switch (intent) {
                     case DEFAULT_WELCOME_INTENT_NAME:
-                        this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                        command = this.appContext.commands.get(DEFAULT_WELCOME_INTENT_NAME);
+                        if (command) {
+                            return this.#commandCb(
+                                DEFAULT_WELCOME_INTENT_NAME,
+                                command,
+                                this.#getStartMetric(),
+                            );
+                        } else {
+                            this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                        }
                         break;
 
                     case DEFAULT_HELP_INTENT_NAME:
-                        this.text = Text.getText(this.appContext.platformParams.help_text);
+                        command = this.appContext.commands.get(DEFAULT_HELP_INTENT_NAME);
+                        if (command) {
+                            return this.#commandCb(
+                                DEFAULT_HELP_INTENT_NAME,
+                                command,
+                                this.#getStartMetric(),
+                            );
+                        } else {
+                            this.text = Text.getText(this.appContext.platformParams.help_text);
+                        }
                         break;
                 }
 

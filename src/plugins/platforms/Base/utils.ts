@@ -242,3 +242,24 @@ export function getCorrectButtons<TButton = IButtonType>(
     }
     return buttons;
 }
+
+/**
+ * Утилита для безопасного преобразования строки в объект
+ * @param data
+ */
+export function tryParse<TResult = Record<string, unknown>>(
+    data: Record<string, unknown> | object | string | null | undefined,
+): TResult | null {
+    const rawPayload = data;
+    if (typeof rawPayload === 'string') {
+        const trimmedPayload = rawPayload.trim();
+        if (trimmedPayload[0] === '{' || trimmedPayload[0] === '[') {
+            try {
+                return JSON.parse(rawPayload);
+            } catch {
+                return rawPayload as unknown as TResult;
+            }
+        }
+    }
+    return rawPayload as TResult;
+}

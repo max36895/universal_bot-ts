@@ -846,6 +846,12 @@ export interface ITelegramResult {
 
 export type TButtonPayload = Record<string, unknown>;
 
+export interface ITelegramReplyButton {
+    text?: string;
+    request_contact?: boolean;
+    request_location?: boolean;
+}
+
 /**
  * @interface ITelegramInlineKeyboard
  * Интерфейс для inline-кнопок в сообщениях Telegram
@@ -917,7 +923,7 @@ export interface ITelegramKeyboard {
     /**
      * Кнопки в виде кнопок. Отображаются вместо клавиатуры
      */
-    keyboard?: string[];
+    keyboard?: ITelegramReplyButton[];
     /**
      * Удалить все кнопки
      */

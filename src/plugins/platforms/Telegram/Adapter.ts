@@ -6,6 +6,7 @@ import { soundProcessing } from './Sound';
 import { T_TELEGRAM } from './constants';
 import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/ITelegramPlatform';
 import { TelegramRequest } from '../API';
+import { tryParse } from '../Base/utils';
 
 /**
  * Адаптер, обеспечивающий поддержку платформы Telegram. Позволяет разрабатывать чат-ботов для Телеграм на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
@@ -86,7 +87,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             controller.userCommand = (cb.data || '').toLowerCase().trim();
             controller.originalUserCommand = cb.data || '';
             controller.messageId = cb.message?.message_id as number;
-            controller.payload = cb.data;
+            controller.payload = tryParse(cb.data);
             // Сохраняем ID callback-запроса, чтобы потом ответить
             controller.platformOptions.callbackQueryId = cb.id;
             return true;
