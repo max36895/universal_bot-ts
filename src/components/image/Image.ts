@@ -191,20 +191,20 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  * ```ts
  * // Инициализация с URL
  * getImage(
+ *      appContext,
  *     'http://localhost/image.jpg',
  *     'Заголовок',
  *     'Описание',
  *     { title: 'Кнопка', url: 'http://localhost' },
- *     appContext
  * );
  *
  * // Инициализация с простой кнопкой
  * getImage(
+ *      appContext,
  *     'http://localhost/image.jpg',
  *     'Заголовок',
  *     'Описание',
  *     'Текст кнопки',
- *     appContext
  * );
  * ```
  */

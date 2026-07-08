@@ -2,7 +2,7 @@
 
 > **Для кого эта инструкция.** Она написана так, чтобы её мог прочитать и разработчик, и нейросеть. Если вы передадите этот файл в LLM вместе с описанием задачи, нейросеть сможет сгенерировать работающее приложение на `umbot` без дополнительных подсказок.
 >
-> **Версия фреймворка:** `umbot@3.0.x` (текущая `3.0.13` на момент написания).
+> **Версия фреймворка:** `umbot@3.0.x`
 > **Репозиторий:** https://github.com/max36895/universal_bot-ts
 > **npm:** https://www.npmjs.com/package/umbot
 
@@ -244,16 +244,10 @@ bot.addCommand('bye', ['пока', 'выйти', 'до свидания'], (_, b
 });
 
 // Fallback — повторяем за пользователем всё, что не подошло под команды выше.
-// isPattern = true обязателен для FALLBACK_COMMAND (это '*').
-bot.addCommand(
-    FALLBACK_COMMAND,
-    [],
-    (userCommand, bc) => {
-        bc.text = `Вы сказали: ${userCommand}`;
-        bc.buttons.addBtn('Помощь').addBtn('Выйти');
-    },
-    true,
-);
+bot.addCommand(FALLBACK_COMMAND, [], (userCommand, bc) => {
+    bc.text = `Вы сказали: ${userCommand}`;
+    bc.buttons.addBtn('Помощь').addBtn('Выйти');
+});
 
 bot.start('localhost', 3000);
 ```
@@ -407,9 +401,6 @@ import { Preload, IOptions as IPreloadOptions } from 'umbot/preload';
 
 // Утилита запуска без бойлерплейта
 import { run, IConfig, TMode } from 'umbot/build';
-
-// Загрузка .env (опционально)
-import { loadEnvFile } from 'umbot/utils'; // НЕ 'umbot/utils/EnvConfig' — этого субпути нет в exports map
 ```
 
 ### Важные константы
@@ -485,18 +476,14 @@ interface GameData extends IUserData {
 
 export function gamePlugin(appContext: AppContext, bot: Bot): void {
     // Передаём GameData как generic-параметр и аннотируем bc
-    bot.addCommand<GameData>(
-        'game_start',
-        ['играть', 'начать игру'],
-        (_, bc: BotController<GameData>) => {
-            bc.userData.score = 0;
-            bc.text = 'Игра началась! Сколько будет 2+2?';
-            bc.buttons.addBtn('3').addBtn('4').addBtn('5');
-            bc.thisIntentName = 'game_answer';
-        },
-    );
+    bot.addCommand('game_start', ['играть', 'начать игру'], (_, bc: BotController<GameData>) => {
+        bc.userData.score = 0;
+        bc.text = 'Игра началась! Сколько будет 2+2?';
+        bc.buttons.addBtn('3').addBtn('4').addBtn('5');
+        bc.thisIntentName = 'game_answer';
+    });
 
-    bot.addStep<GameData>('game_answer', (bc: BotController<GameData>) => {
+    bot.addStep('game_answer', (bc: BotController<GameData>) => {
         if (bc.userCommand === '4') {
             bc.userData.score = (bc.userData.score || 0) + 1;
             bc.text = 'Правильно!';
@@ -506,13 +493,9 @@ export function gamePlugin(appContext: AppContext, bot: Bot): void {
         bc.thisIntentName = null;
     });
 
-    bot.addCommand<GameData>(
-        'game_score',
-        ['счёт', 'мой счёт'],
-        (_, bc: BotController<GameData>) => {
-            bc.text = `Ваш счёт: ${bc.userData.score || 0}`;
-        },
-    );
+    bot.addCommand('game_score', ['счёт', 'мой счёт'], (_, bc: BotController<GameData>) => {
+        bc.text = `Ваш счёт: ${bc.userData.score || 0}`;
+    });
 }
 gamePlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО — см. заметку ниже
 ```
@@ -1082,21 +1065,16 @@ bot.addCommand(
 
 Если callback возвращает строку — она становится `controller.text`.
 
-> **Про типизацию `userData` в команде:** `addCommand` — generic-метод. Чтобы TypeScript знал про ваши поля в `bc.userData`, передайте интерфейс как `bot.addCommand<MyUserData>(...)`. Подробное описание всех способов типизации (в команде, в шаге, в контроллере) — в разделе [«Типизированный `userData`»](#типизированный-userdata).
+> **Про типизацию `userData` в команде:** `addCommand` — generic-метод. Чтобы TypeScript знал про ваши поля в `bc.userData`, передайте интерфейс как `bot.addCommand(...(_, bc: BotController<IUserData>))`. Подробное описание всех способов типизации (в команде, в шаге, в контроллере) — в разделе [«Типизированный `userData`»](#типизированный-userdata).
 
 ### Fallback-команда
 
 ```ts
 import { FALLBACK_COMMAND } from 'umbot';
 
-bot.addCommand(
-    FALLBACK_COMMAND,
-    [],
-    (userCommand, bc) => {
-        bc.text = `Не поняла: "${userCommand}". Скажите "помощь".`;
-    },
-    true,
-); // isPattern=true обязательно!
+bot.addCommand(FALLBACK_COMMAND, [], (userCommand, bc) => {
+    bc.text = `Не поняла: "${userCommand}". Скажите "помощь".`;
+});
 ```
 
 `FALLBACK_COMMAND` это `'*'`. Срабатывает, если:
@@ -1159,7 +1137,7 @@ bot.addCommand('weather', ['погода'], async (userCommand, bc) => {
     // и после ответа про погоду пользователь вернётся в сценарий.
 });
 
-bot.addStep<PhoneData>('ask_phone', (bc: BotController<PhoneData>) => {
+bot.addStep('ask_phone', (bc: BotController<PhoneData>) => {
     // Пользователь прислал что-то похожее на погоду? Пропускаем шаг —
     // пусть сработает команда weather выше.
     if (bc.userCommand?.includes('погода')) {
@@ -1210,7 +1188,7 @@ bot.addCommand('register', ['регистрация', 'зарегистриро�
 });
 
 // Шаг 1: ожидаем имя — типизируем через generic-параметр
-bot.addStep<RegData>('reg_name', (bc: BotController<RegData>) => {
+bot.addStep('reg_name', (bc: BotController<RegData>) => {
     if (!bc.userCommand || bc.userCommand.length < 2) {
         bc.text = 'Имя слишком короткое. Попробуйте ещё раз.';
         // Не меняем thisIntentName — остаёмся на шаге reg_name
@@ -1222,7 +1200,7 @@ bot.addStep<RegData>('reg_name', (bc: BotController<RegData>) => {
 });
 
 // Шаг 2: ожидаем возраст
-bot.addStep<RegData>('reg_age', (bc: BotController<RegData>) => {
+bot.addStep('reg_age', (bc: BotController<RegData>) => {
     const age = parseInt(bc.userCommand || '', 10);
     if (isNaN(age) || age < 1 || age > 120) {
         bc.text = 'Это похоже не на возраст. Введите число от 1 до 120.';
@@ -1431,9 +1409,8 @@ interface MyUserData extends IUserData {
 ```ts
 import { Bot, BotController, IUserData } from 'umbot';
 
-// 1. Передаём MyUserData в generic-параметр addCommand<MyUserData>
-// 2. Аннотируем bc как BotController<MyUserData>
-bot.addCommand<MyUserData>('play', ['играть'], (_: string, bc: BotController<MyUserData>) => {
+// 1. Аннотируем bc как BotController<MyUserData>
+bot.addCommand('play', ['играть'], (_: string, bc: BotController<MyUserData>) => {
     bc.userData.score ??= 0; // ✅ TypeScript знает, что score: number
     bc.userData.score += 10;
     bc.userData.lastVisit = new Date().toISOString();
@@ -1449,7 +1426,7 @@ bot.addCommand<MyUserData>('play', ['играть'], (_: string, bc: BotControll
 **Вариант B — в `addStep` (тоже через generic):**
 
 ```ts
-bot.addStep<MyUserData>('game_answer', (bc: BotController<MyUserData>) => {
+bot.addStep('game_answer', (bc: BotController<MyUserData>) => {
     bc.userData.score ??= 0;
     bc.userData.score += 1;
     bc.text = `Правильно! Счёт: ${bc.userData.score}`;
@@ -2380,7 +2357,7 @@ const realPayload = JSON.stringify({
 const result1 = await bot.run(T_ALISA, realPayload);
 console.log(result1);
 
-// Вариант 2: подменить содержимое,然后用 run() без аргументов
+// Вариант 2: подменить содержимое, run() без аргументов
 bot.setContent(realPayload);
 const result2 = await bot.run(T_ALISA);
 ```
@@ -2714,14 +2691,14 @@ bot.addCommand('register', ['регистрация'], (_, bc) => {
     bc.thisIntentName = 'reg_name';
 });
 
-// Шаг — типизируем через generic-параметр addStep<RegData>
-bot.addStep<RegData>('reg_name', (bc: BotController<RegData>) => {
+// Шаг — типизируем через generic-параметр
+bot.addStep('reg_name', (bc: BotController<RegData>) => {
     bc.userData.name = bc.originalUserCommand;
     bc.text = `Привет, ${bc.userData.name}! Возраст?`;
     bc.thisIntentName = 'reg_age';
 });
 
-bot.addStep<RegData>('reg_age', (bc: BotController<RegData>) => {
+bot.addStep('reg_age', (bc: BotController<RegData>) => {
     const age = parseInt(bc.userCommand || '', 10);
     if (isNaN(age) || age < 1 || age > 120) {
         bc.text = 'Не похоже на возраст. Число 1–120:';
@@ -2745,8 +2722,8 @@ interface GameData extends IUserData {
     lastPlayed?: string;
 }
 
-// Generic-параметр + аннотация bc — TypeScript знает про поля userData
-bot.addCommand<GameData>('play', ['играть'], (_, bc: BotController<GameData>) => {
+// Аннотация bc — TypeScript знает про поля userData
+bot.addCommand('play', ['играть'], (_, bc: BotController<GameData>) => {
     bc.userData.score ??= 0;
     bc.userData.level ??= 1;
     bc.userData.score += 10;
@@ -2797,7 +2774,7 @@ interface ListData extends IUserData {
 const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
 const nav = new Navigation<string>(3); // 3 элемента на странице
 
-bot.addCommand<ListData>(
+bot.addCommand(
     'list',
     ['список', 'дальше', 'назад'],
     (userCommand, bc: BotController<ListData>) => {
@@ -2817,7 +2794,7 @@ bot.addCommand<ListData>(
 );
 
 // Выбор элемента по имени — отдельная команда (сработает, если пользователь сказал имя, а не "дальше")
-bot.addCommand<ListData>('select_item', items, (userCommand, bc: BotController<ListData>) => {
+bot.addCommand('select_item', items, (userCommand, bc: BotController<ListData>) => {
     nav.thisPage = bc.userData.page ?? 0;
     const selected = nav.selectedElement(items, userCommand || '', []);
     if (selected) {
@@ -3027,21 +3004,25 @@ import { AppContext, Bot, INlu } from 'umbot';
 
 export class MyNluPlugin {
     init(appContext: AppContext, bot: Bot): void {
-        appContext.plugins.nlu = {
-            cb: (text, platformNlu, platform, request) => {
-                // Кастомная логика NLU
-                return {
-                    ...platformNlu,
-                    intents: { custom: { slots: [] } },
-                } as INlu;
-            },
-            isUsed: true,
+        appContext.plugins.nlu = (
+            text: string,
+            platformNlu: INlu,
+            platform: string,
+            request: unknown,
+        ): INlu => {
+            return {
+                ...platformNlu,
+                intents: {
+                    ...platformNlu.intents,
+                    custom: { slots: [] },
+                },
+            } as INlu;
         };
     }
 }
 
 // Использование
-bot.use(new MyNluPlugin() as any);
+bot.use(new MyNluPlugin());
 ```
 
 ### Рецепт 16: i18n-плагин
@@ -3057,18 +3038,15 @@ const translations: Record<string, Record<string, string>> = {
 
 export class I18nPlugin {
     init(appContext: AppContext, bot: Bot): void {
-        appContext.plugins.i18n = {
-            cb: (key: string, lang = 'ru', ...args: unknown[]) => {
-                return translations[lang]?.[key] ?? key;
-            },
-            isUsed: true,
+        appContext.plugins.i18n = (key: string, lang = 'ru', ...args: unknown[]) => {
+            return translations[lang]?.[key] ?? key;
         };
     }
 }
 
 // В контроллере:
 public action(intentName: string | null): void {
-    const t = this.appContext.plugins.i18n?.cb;
+    const t = this.appContext.plugins.i18n;
     if (t) {
         this.text = t('hello', 'ru');
     }

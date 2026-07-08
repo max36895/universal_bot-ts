@@ -8,11 +8,7 @@ interface IGameControllerExample {
 /**
  * Пример с игрой в математику.
  */
-export class GameController extends BotController {
-    constructor() {
-        super();
-    }
-
+export class GameController extends BotController<IGameControllerExample> {
     protected _getExample(): IGameControllerExample {
         const value1 = rand(0, 20);
         const value2 = rand(0, 20);

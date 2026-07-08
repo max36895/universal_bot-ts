@@ -1,20 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
-// Конфигурация
 const config = {
     baseUrl: 'https://www.maxim-m.ru/bot/ts-doc/documents/',
     excludeFiles: [
+        'AGENTS.md',
         'SECURITY.md',
-        'AFENT_PROPMPT.md',
         'CHANGELOG.md',
-        'fix-doc.js',
-        'fix-doc.mjs',
-        'doc-fix.js',
+        'CONTRIBUTING.md',
+        'CODE_OF_CONDUCT.md',
         'typedoc.json',
+        'tsconfig.json',
+        'tsconfigForDoc.json',
         'scr.js',
+        'clean.js',
+        'fix-doc.js',
+        'jest.config.js',
+        'eslint.config.js',
+        '.pretterrc',
     ],
-    excludeDirs: ['node_modules', 'docs', 'dist', 'coverage', '.git', '.idea'],
+    excludeDirs: ['node_modules', '.git', '.idea', '.github', '.vscode'],
+    rootExcludeDirs: ['dist', 'coverage', 'docs'],
     ignoredExtensions: [
         '.png',
         '.jpg',
@@ -39,11 +45,11 @@ const config = {
         '.lock',
         '.patch',
     ],
-    // Допустимые префиксы для путей к md файлам в коде
     allowedPathPrefixes: ['./', '../', 'src/', 'docs/', 'examples/', 'cli/'],
 };
 
-// Загрузка .gitignore
+const PROJECT_ROOT = path.resolve('.');
+
 function loadGitignore() {
     try {
         if (fs.existsSync('.gitignore')) {
@@ -53,21 +59,35 @@ function loadGitignore() {
                 if (!line || line.startsWith('#')) {
                     return;
                 }
-                const dir = line.replace(/^\//, '').replace(/\/$/, '');
-                if (dir && !dir.includes('*') && !dir.includes('.')) {
-                    if (!config.excludeDirs.includes(dir)) {
-                        config.excludeDirs.push(dir);
+
+                const isRootOnly = line.startsWith('/');
+                let pattern = line.replace(/^\//, '').replace(/\/$/, '');
+
+                if (!pattern || pattern.includes('*') || pattern.includes('?')) {
+                    return;
+                }
+
+                if (pattern.includes('/')) {
+                    if (!config.excludeDirs.includes(pattern)) {
+                        config.excludeDirs.push(pattern);
+                    }
+                } else if (isRootOnly) {
+                    if (!config.rootExcludeDirs.includes(pattern)) {
+                        config.rootExcludeDirs.push(pattern);
+                    }
+                } else {
+                    if (!config.excludeDirs.includes(pattern)) {
+                        config.excludeDirs.push(pattern);
                     }
                 }
             });
-            console.log('📖 Загружен .gitignore');
+            console.log('📖 Загружены ограничения из .gitignore');
         }
     } catch (error) {
         console.warn('⚠️ Не удалось загрузить .gitignore:', error.message);
     }
 }
 
-// Получение версии из package.json (major.minor)
 function getVersionFromPackageJson() {
     try {
         const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
@@ -79,103 +99,138 @@ function getVersionFromPackageJson() {
     }
 }
 
-// Надежная проверка исключений — разбиваем путь на части
-function isExcluded(fullPath) {
+function isExcluded(fullPath, isRoot = false) {
     const normalizedPath = path.normalize(fullPath);
     const parts = normalizedPath.split(path.sep).filter((p) => p && p !== '.');
 
-    // Проверяем директории
     for (const excludeDir of config.excludeDirs) {
-        if (parts.includes(excludeDir)) return true;
+        if (excludeDir.includes('/')) {
+            if (normalizedPath.includes(excludeDir)) {
+                return true;
+            }
+        } else {
+            if (parts.includes(excludeDir)) {
+                return true;
+            }
+        }
     }
 
-    // Проверяем файлы
+    if (isRoot) {
+        for (const rootExclude of config.rootExcludeDirs) {
+            if (parts.length === 1 && parts[0] === rootExclude) {
+                return true;
+            }
+        }
+    }
+
     const fileName = path.basename(fullPath);
-    if (config.excludeFiles.includes(fileName)) return true;
+    if (config.excludeFiles.includes(fileName)) {
+        return true;
+    }
 
-    // Проверяем расширения
     const ext = path.extname(fullPath).toLowerCase();
-    if (config.ignoredExtensions.includes(ext)) return true;
-
-    return false;
+    return config.ignoredExtensions.includes(ext);
 }
 
-// URL -> локальный путь к MD
 function urlToFilePath(url) {
     let urlPath = url.replace(config.baseUrl, '');
 
-    // Убираем якорь
     const hashIndex = urlPath.indexOf('#');
     if (hashIndex !== -1) urlPath = urlPath.substring(0, hashIndex);
 
-    // Убираем префикс версии
     const versionMatch = urlPath.match(/umbot_v-\d+\.\d+_\.?/);
     if (versionMatch) urlPath = urlPath.substring(versionMatch[0].length);
 
-    // Убираем ВСЕ .html в конце (защита от .html.html)
     urlPath = urlPath.replace(/(\.html)+$/g, '');
-
-    // _ -> /
     urlPath = urlPath.replace(/_/g, '/');
     urlPath = urlPath.replace(/^\//, '');
 
     return urlPath + '.md';
 }
 
-// Локальный путь -> URL
 function filePathToUrl(filePath, version) {
-    let urlPath = filePath;
+    let urlPath = path.normalize(filePath).replace(/\\/g, '/');
     urlPath = urlPath.replace(/\.md$/, '');
-    urlPath = urlPath.replace(/(\.html)+$/g, ''); // защита от дублей
+    urlPath = urlPath.replace(/(\.html)+$/g, '');
     urlPath = urlPath.replace(/^\.\//, '');
     urlPath = urlPath.replace(/^\//, '');
     urlPath = urlPath.replace(/\//g, '_');
     return config.baseUrl + 'umbot_v-' + version + '_.' + urlPath + '.html';
 }
 
-// Резолв пути
+function isRelativePath(p) {
+    return p.startsWith('./') || p.startsWith('../');
+}
+
 function resolveFilePath(urlOrPath, currentFile) {
     let localPath;
 
     if (urlOrPath.startsWith(config.baseUrl)) {
-        localPath = urlToFilePath(urlOrPath);
+        // URL - конвертируем в путь и резолвим от корня проекта
+        localPath = path.resolve(PROJECT_ROOT, urlToFilePath(urlOrPath));
     } else if (urlOrPath.endsWith('.md') && !urlOrPath.startsWith('http')) {
-        if (currentFile) {
-            const currentDir = path.dirname(currentFile);
-            localPath = path.resolve(currentDir, urlOrPath);
+        if (isRelativePath(urlOrPath)) {
+            // Относительный путь - резолвим относительно текущего файла
+            if (currentFile) {
+                const currentDir = path.dirname(currentFile);
+                localPath = path.resolve(currentDir, urlOrPath);
+            } else {
+                localPath = path.resolve(urlOrPath);
+            }
         } else {
-            localPath = path.resolve(urlOrPath);
+            // Путь от корня проекта (например, src/docs/GUIDE.md)
+            localPath = path.resolve(PROJECT_ROOT, urlOrPath);
         }
     } else {
         return null;
     }
 
     localPath = path.normalize(localPath);
+
+    if (!localPath.startsWith(PROJECT_ROOT)) {
+        return null;
+    }
+
     return fs.existsSync(localPath) ? localPath : null;
 }
 
-// Обход директории
-function walkDir(dir, callback) {
+function walkDir(dir, callback, isRoot = true) {
     if (!fs.existsSync(dir)) return;
 
-    fs.readdirSync(dir).forEach((f) => {
-        const fullPath = path.join(dir, f);
-        if (isExcluded(fullPath)) return;
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
+        console.warn(`⚠️ Не удалось прочитать директорию ${dir}:`, error.message);
+        return;
+    }
 
-        if (fs.statSync(fullPath).isDirectory()) {
-            walkDir(fullPath, callback);
-        } else {
+    entries.forEach((entry) => {
+        const fullPath = path.join(dir, entry.name);
+        if (isExcluded(fullPath, isRoot)) return;
+
+        if (entry.isDirectory()) {
+            try {
+                const realPath = fs.realpathSync(fullPath);
+                if (realPath.startsWith(PROJECT_ROOT)) {
+                    walkDir(fullPath, callback, false);
+                }
+            } catch (error) {
+                console.warn(
+                    `⚠️ Не удалось получить реальный путь для ${fullPath}:`,
+                    error.message,
+                );
+            }
+        } else if (entry.isFile()) {
             callback(fullPath);
         }
     });
 }
 
-// Экранирование строки для безопасной вставки в RegExp
 function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Поиск ссылок в файле
 function findLinksInFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
     if (content.includes('#$no_doc_fix$#')) {
@@ -183,7 +238,6 @@ function findLinksInFile(filePath) {
     }
     const links = [];
 
-    // 1. URL документации
     const urlRegex = new RegExp(escapeRegex(config.baseUrl) + '[^\\s\\)\\]"\'<>]+', 'g');
     let match;
     while ((match = urlRegex.exec(content)) !== null) {
@@ -195,8 +249,7 @@ function findLinksInFile(filePath) {
         });
     }
 
-    // 2. Markdown ссылки [text](./path.md)
-    const mdLinkRegex = /\[([^\]]+)\]\((\.[^)]+\.md(?:#[^)]*)?)\)/g;
+    const mdLinkRegex = /\[([^\]]+)\]\((?!https?:\/\/)([^)]+\.md(?:#[^)]*)?)\)/g;
     while ((match = mdLinkRegex.exec(content)) !== null) {
         links.push({
             type: 'path',
@@ -208,7 +261,6 @@ function findLinksInFile(filePath) {
         });
     }
 
-    // 3. Пути в коде — ТОЛЬКО с допустимыми префиксами (не ловим README.md, text.md и т.д.)
     const prefixPattern = config.allowedPathPrefixes
         .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
         .join('|');
@@ -217,7 +269,6 @@ function findLinksInFile(filePath) {
         'g',
     );
     while ((match = codePathRegex.exec(content)) !== null) {
-        // не генерируем пустые ссылки
         if (!config.allowedPathPrefixes.includes(match[1])) {
             links.push({
                 type: 'path',
@@ -231,29 +282,27 @@ function findLinksInFile(filePath) {
     return links;
 }
 
-// Основная функция
 function processFiles() {
     loadGitignore();
 
     const version = getVersionFromPackageJson();
-    console.log(`🎯 Версия: ${version}`);
+    console.log(`🎯 Текущая версия: ${version}`);
     console.log(
-        `🚫 Исключения: ${config.excludeDirs.length} папок, ${config.excludeFiles.length} файлов\n`,
+        `🚫 Исключения: ${config.excludeDirs.length} папок, ${config.rootExcludeDirs.length} корневых папок, ${config.excludeFiles.length} файлов\n`,
     );
 
     const brokenLinks = [];
     const updatedFiles = new Set();
-    let processedFiles = 0;
+    const processedFiles = [];
 
     walkDir('.', (filePath) => {
         const links = findLinksInFile(filePath);
         if (links.length === 0) return;
 
-        processedFiles++;
+        processedFiles.push(filePath);
         let content = fs.readFileSync(filePath, 'utf8');
         const originalContent = content;
 
-        // Обратный порядок, чтобы индексы не сдвигались
         const sortedLinks = links.sort((a, b) => b.index - a.index);
 
         sortedLinks.forEach((link) => {
@@ -276,7 +325,8 @@ function processFiles() {
                         updatedFiles.add(filePath);
                     }
                 } else if (link.type === 'path') {
-                    const newUrl = filePathToUrl(link.value, version);
+                    const relativePath = path.relative(PROJECT_ROOT, resolvedPath);
+                    const newUrl = filePathToUrl(relativePath, version);
 
                     if (link.fullMatch) {
                         const newFullMatch = `[${link.text}](${newUrl})`;
@@ -307,9 +357,12 @@ function processFiles() {
         }
     });
 
-    console.log(`\n📊 Обработано: ${processedFiles} | Обновлено: ${updatedFiles.size}`);
+    console.log(`\n📊 Найдено: ${processedFiles.length} | Обновлено: ${updatedFiles.size}`);
+    if (processedFiles.length) {
+        console.log(' - Найденные файлы: ', processedFiles);
+    }
     if (updatedFiles.size) {
-        console.log('Обновленные файлы: ', updatedFiles);
+        console.log(' - Обновленные файлы: ', [...updatedFiles]);
     }
 
     if (brokenLinks.length === 0) {

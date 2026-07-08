@@ -66,10 +66,25 @@ async function processQueue(
             }
         }
     } finally {
-        // Гарантированно сбрасываем флаг обработки, даже если произошла ошибка
-        st.processing = false;
         // Обновляем lastActivity после завершения обработки очереди
         st.lastActivity = Date.now();
+
+        // Критически важная проверка: за время пока мы выходили из цикла
+        // (между последней итерацией while и этим finally) в очередь могли
+        // подкинуть новые задачи. Если это произошло — перезапускаем обработку,
+        // не сбрасывая флаг processing. Это закрывает race condition,
+        // из-за которого Promise мог навсегда зависнуть в очереди.
+        if (st.queue.length > 0) {
+            processQueue(st, limit, appContext).catch((e) => {
+                appContext.logError(
+                    `rateLimiter: Произошла ошибка при обработке очереди: ${e.message}`,
+                    { error: e },
+                );
+            });
+        } else {
+            // Очередь пуста — безопасно сбрасываем флаг
+            st.processing = false;
+        }
     }
 }
 
@@ -101,7 +116,7 @@ async function processQueue(
  *                       При превышении очередь перестаёт принимать новые запросы и выбрасывается исключение.
  * @param inactivityTimeout - Время в миллисекундах, после которого запись (очередь + счётчик) удаляется,
  *                            если не было активности. По умолчанию 60000 (1 минута).
- * @returns Middleware-функция для использования в `bot.use()`.
+ * @returns Middleware-функцию для использования в `bot.use()`.
  *
  * @example
  * ```ts
@@ -117,7 +132,7 @@ async function processQueue(
  * @remarks
  * Чтобы лимит заработал для вашей платформы, добавьте в соответствующий адаптер публичное поле `limit`:
  * ```ts
- * export class TelegramAdapter extends BasePlatform {
+ * export class TelegramAdapter extends BasePlatformAdapter {
  *   public limit = 30;
  *   // ...
  * }
@@ -129,14 +144,18 @@ export function rateLimiter(
 ): (ctx: BotController, next: MiddlewareNext) => Promise<void> {
     const stateMap = new Map<string, PlatformState>();
     let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
     const startCleanup = (): void => {
         if (!cleanupInterval) {
             cleanupInterval = setInterval(
                 () => {
                     const now = Date.now();
                     for (const [key, st] of stateMap.entries()) {
-                        // Удаляем запись, если она неактивна дольше порога и очередь пуста
-                        if (now - st.lastActivity > inactivityTimeout && st.queue.length === 0) {
+                        if (
+                            now - st.lastActivity > inactivityTimeout &&
+                            st.queue.length === 0 &&
+                            !st.processing
+                        ) {
                             stateMap.delete(key);
                         }
                     }
@@ -155,15 +174,13 @@ export function rateLimiter(
             return next();
         }
 
-        // Получаем лимит из адаптера платформы
         const limit = ctx.appContext.platforms[platform]?.limit;
         if (!limit) {
-            return next(); // лимит не задан – пропускаем
+            return next();
         }
 
         const key = `${platform}:${userId}`;
 
-        // Получаем или создаём состояние для этого ключа
         let st = stateMap.get(key);
         if (!st) {
             st = {
@@ -175,24 +192,22 @@ export function rateLimiter(
             };
             stateMap.set(key, st);
         }
+
         const now = (st.lastActivity = Date.now());
-        // Сброс счётчика каждую секунду
         if (now - st.lastReset >= 1000) {
             st.count = 0;
             st.lastReset = now;
         }
-        // Если влезаем в лимит – выполняем сразу
         if (st.count < limit) {
             st.count++;
             return next();
         }
-        // Превышен лимит – ставим в очередь, если есть место
         if (st.queue.length >= maxQueueSize) {
             throw new Error(
                 `rateLimit - Превышено ограничение на размер очереди. Убедитесь что значение указанно корректно, текущее значение - ${maxQueueSize}.`,
             );
         }
-        // Возвращаем промис, который будет разрешён после выполнения задачи
+
         return new Promise<void>((resolve, reject) => {
             st.queue.push({
                 resolve,
@@ -203,6 +218,9 @@ export function rateLimiter(
                         resolve();
                     } catch (err) {
                         reject(err instanceof Error ? err : new Error(String(err)));
+                    } finally {
+                        // Обновляем lastActivity после завершения задачи, чтобы запись не удалили, пока она ещё работает
+                        st.lastActivity = Date.now();
                     }
                 },
             });

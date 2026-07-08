@@ -474,7 +474,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   'stats',
      *   ['статистика'],
      *   async (cmd, ctrl) => {
-     *     if (ctrl) {
      *       // Доступ к пользовательским данным
      *       const visits = ctrl.userData?.visits || 0;
      *       ctrl.text = `Вы использовали приложение ${visits} раз`;
@@ -483,7 +482,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *       ctrl.buttons
      *         .addBtn('Сбросить статистику')
      *         .addBtn('Закрыть');
-     *     }
      *   }
      * );
      * ```
@@ -1058,6 +1056,20 @@ export class Bot<TUserData extends IUserData = IUserData> {
         const isLocalStorage: boolean =
             this.#appContext.appConfig.isLocalStorage &&
             botController.platformOptions.usedLocalStorage;
+
+        if (
+            this.#appContext.appConfig.isLocalStorage &&
+            !botController.platformOptions.usedLocalStorage &&
+            !this.#appContext.database.adapter
+        ) {
+            this.#appContext.logWarn(
+                `Bot:run(): Платформа "${appType}" не поддерживает локальное хранилище, ` +
+                    `а DB-адаптер не подключён. userData не будет сохраняться между запросами. ` +
+                    `Подключите DB-адаптер (FileAdapter/MongoAdapter) или отключите isLocalStorage.`,
+                { platform: appType, userId: botController.userId },
+            );
+        }
+
         let isNewUser = true;
         let localStateData = platformClass.getLocalStorage(botController);
         if (isPromise(localStateData)) {
@@ -1235,7 +1247,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @example
      * // Только для Алисы
      * bot.use(T_ALISA, async (ctx, next) => {
-     *   if (!ctx.appContext.requestObject?.session?.user_id) {
+     *   if (!ctx.requestObject?.session?.user_id) {
      *     ctx.text = 'Некорректный запрос';
      *     ctx.isEnd = true;
      *     // next() не вызывается → action() не запускается
@@ -1313,13 +1325,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     async #runMiddlewares(controller: BotController, appType: TAppType): Promise<boolean> {
         if (appType) {
-            if (
-                this.#globalMiddlewares.length === 0 &&
-                !this.#platformMiddlewares[appType]?.length
-            ) {
-                return true;
-            }
-
             const start = this.#appContext.usedMetric ? performance.now() : 0;
 
             let index = 0;

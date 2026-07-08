@@ -15,7 +15,7 @@ bot.use(async (ctx, next) => {
 
 // middleware для конкретной платформы
 bot.use(T_ALISA, async (ctx, next) => {
-    if (!ctx.appContext.requestObject?.session?.user_id) {
+    if (!ctx.requestObject?.session?.user_id) {
         ctx.text = 'Некорректный запрос';
         ctx.isEnd = true;
         // next() не вызывается → action() не запустится

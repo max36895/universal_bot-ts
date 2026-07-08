@@ -458,13 +458,12 @@ Node.js на Windows работает менее эффективно, чем н
 ### Можно ли использовать файловую БД в продакшене?
 
 Не рекомендуется. Файловая БД (FileAdapter) хранит данные в оперативной памяти. При большом количестве записей (>10000)
-возможен Out
-of Memory и падение приложения.
+возможен Out of Memory и падение приложения.
 
 **Рекомендация**: Используйте MongoAdapter или создайте свой адаптер:
 
 ```ts
-import { MongoAdapter } from 'umbot/adapters';
+import { MongoAdapter } from 'umbot/plugins';
 
 bot.use(
     new MongoAdapter({
@@ -558,9 +557,9 @@ bot.use(new MyPlatformAdapter(token));
 платформ выполните следующие действия:
 
 ```ts
-import { TelegramPlatform, VkPlatform } from 'umbot/plugins';
+import { TelegramAdapter, VkAdapter } from 'umbot/plugins';
 // Подключаем телеграм и вк
-bot.use(new TelegramPlatform(telegramToken)).use(new VkPlatform(vkToken));
+bot.use(new TelegramAdapter(telegramToken)).use(new VkAdapter(vkToken));
 ```
 
 Также не стоит забывать о том, что можно подключить только голосовые платформы(`voicePlatforms`), либо только платформы
@@ -584,7 +583,7 @@ bot.use(new TelegramPlatform(telegramToken)).use(new VkPlatform(vkToken));
 
 ### Почему мои кнопки не отображаются на некоторых платформах?
 
-- Ограничения платформ: Telegram поддерживает до 8 кнопок в ряду, VK — до 3 кнопок на карточку, Алиса — до 4 кнопок.
+- Ограничения платформ
 - Тип кнопок: Для голосовых платформ (Алиса, Маруся) кнопки-ссылки (addLink) отображаются как сайджесты, а
   интерактивные (addBtn) — как обычные кнопки.
 
@@ -710,7 +709,7 @@ bot.setAppMode('dev');
 
 - Для локального тестирования используйте BotTest — он автоматически подставляет тестовые данные.
 
-### Платформа определилась не корректно.
+### Платформа определилась некорректно.
 
 Иногда может возникнуть ситуация, когда фреймворк не смог корректно определить тип платформы, либо вам необходимо
 самостоятельно определять тип платформы.
@@ -731,7 +730,7 @@ bot.setPlatformResolver((query, headers, detect) => {
 Первым аргументом придет сам запрос от платформы, вторым заголовок, третьим придет функция обработчик со стандартной
 механикой определения платформы.
 
-В случае если платформа определилась не корректно, рекомендуется использовать данную механику для проставления
+В случае если платформа определилась некорректно, рекомендуется использовать данную механику для проставления
 корректной платформы, после чего выписать bug-report с ошибкой, чтобы мы смогли оперативно ее поправить.
 
 ### Почему не работают шаги (steps)?
@@ -792,13 +791,13 @@ class MyI18nPlugin implements IPlugin {
 }
 
 // Вариант 2: функция
-const myNluPlugin: IPluginFn = (appContext: AppContext) => {
-    appContext.plugins['i18n'] = (input: string, ctx?: unknown) => ({
-        intent: 'default',
-        entities: {},
-    });
+const myI18nPlugin: IPluginFn = (appContext: AppContext) => {
+    appContext.plugins['i18n'] = (key: string, ...params: unknown[]) => {
+        return `Перевод для: ${key}`;
+    };
 };
-myNluPlugin.isPlugin = true; // маркер обязательного наличия
+myI18nPlugin.isPlugin = true; // маркер обязательного наличия
 
-bot.use(i18n);
+bot.use(myI18nPlugin);
+bot.use(new MyI18nPlugin());
 ```

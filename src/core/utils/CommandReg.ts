@@ -5,6 +5,7 @@ import os from 'os';
 import { BotController } from '../../controller';
 import { TAppPlugin } from '../interfaces/IAppContext';
 import { TCommandGroupMode } from '../interfaces/IBot';
+import { Text } from '../../utils';
 
 export interface IGroupData {
     commands: string[];
@@ -712,7 +713,7 @@ export class CommandReg {
     }
 
     /**
-     * Удаляет все команды
+     * Удаляет все зарегистрированные команды
      */
     public clearCommands(): void {
         this.commands.clear();
@@ -724,6 +725,7 @@ export class CommandReg {
         this.#oldFnGroup = undefined;
         clearTimeout(this.#timeOutReg);
         this.#timeOutReg = undefined;
+        Text.clearCache();
     }
 
     /**

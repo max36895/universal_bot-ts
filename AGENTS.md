@@ -1,3 +1,8 @@
+---
+apply: always
+mode: all
+---
+
 You are an AI agent working with the umbot framework codebase. Your task is to modify the code, strictly adhering to architectural invariants, build order, and quality standards. Any deviation from these rules is considered an error.
 
 1. Project Structure and Responsibilities

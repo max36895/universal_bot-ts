@@ -335,6 +335,36 @@ function formatDelta(val, unit = '') {
     return `${sign}${val.toFixed(2)}${unit}`;
 }
 
+function getVerdict(timeDelta, memDelta) {
+    // Пороги
+    const TIME_THRESHOLD = 10;
+    const MEM_THRESHOLD = 30;
+
+    // Если лучше по обоим —++
+    if (timeDelta < 0 && memDelta < 0) {
+        return '++ лучше';
+    }
+
+    // Если один лучше, другой хуже —+- допустимо* (компромисс)
+    const timeBetterMemWorse = timeDelta < 0 && memDelta > 0;
+    const timeWorseMemBetter = timeDelta > 0 && memDelta < 0;
+
+    if (timeBetterMemWorse || timeWorseMemBetter) {
+        return '+- допустимо*';
+    }
+
+    // Если оба хуже, но оба в пределах нормы —+- допустимо**
+    const timeOk = timeDelta > 0 && timeDelta <= TIME_THRESHOLD;
+    const memOk = memDelta > 0 && memDelta <= MEM_THRESHOLD;
+
+    if (timeOk && memOk) {
+        return '+- допустимо**';
+    }
+
+    // Если хотя бы один за пределами нормы —--
+    return '-- уступаем';
+}
+
 async function runScenario(initCb, scenario) {
     forceGC();
     await sleep(10);
@@ -468,12 +498,7 @@ function printDeltaTable(results) {
         const coldTimeDelta = safePercent(umbotRes.cold.time, cleanRes.cold.time);
         const coldRpsDelta = safePercent(umbotRes.cold.rps, cleanRes.cold.rps);
         const coldMemDelta = umbotRes.cold.memKB - cleanRes.cold.memKB;
-        const coldVerdict =
-            coldTimeDelta < 0 && coldMemDelta < 0
-                ? '++ лучше'
-                : coldTimeDelta < 0 || coldMemDelta < 0
-                  ? '+ смешано'
-                  : '-- хуже';
+        const coldVerdict = getVerdict(coldTimeDelta, coldMemDelta);
 
         console.log(
             pad(scenarioName, 35) +
@@ -493,12 +518,7 @@ function printDeltaTable(results) {
         const warmTimeDelta = safePercent(umbotRes.warm.time, cleanRes.warm.time);
         const warmRpsDelta = safePercent(umbotRes.warm.rps, cleanRes.warm.rps);
         const warmMemDelta = umbotRes.warm.memKB - cleanRes.warm.memKB;
-        const warmVerdict =
-            warmTimeDelta < 0 && warmMemDelta < 0
-                ? '++ лучше'
-                : warmTimeDelta < 0 || warmMemDelta < 0
-                  ? '+ смешано'
-                  : '-- хуже';
+        const warmVerdict = getVerdict(warmTimeDelta, warmMemDelta);
 
         console.log(
             pad('', 35) +
@@ -566,11 +586,7 @@ function printDeltaTable(results) {
             ' | ' +
             pad(formatDelta(coldMemDeltaTotal, ' KB'), 16) +
             ' | ' +
-            (coldTimeDeltaTotal < 0 && coldMemDeltaTotal < 0
-                ? '++ лучше'
-                : coldTimeDeltaTotal < 0 || coldMemDeltaTotal < 0
-                  ? '+ смешано'
-                  : '-- хуже'),
+            getVerdict(coldTimeDeltaTotal, coldMemDeltaTotal),
     );
     console.log(
         pad('', 35) +
@@ -583,11 +599,7 @@ function printDeltaTable(results) {
             ' | ' +
             pad(formatDelta(warmMemDeltaTotal, ' KB'), 16) +
             ' | ' +
-            (warmTimeDeltaTotal < 0 && warmMemDeltaTotal < 0
-                ? '++ лучше'
-                : warmTimeDeltaTotal < 0 || warmMemDeltaTotal < 0
-                  ? '+ смешано'
-                  : '-- хуже'),
+            getVerdict(warmTimeDeltaTotal, warmMemDeltaTotal),
     );
 }
 async function main() {
@@ -619,6 +631,11 @@ async function main() {
     console.log('• RPS: 1000 / среднее время запроса. Если время <= 0, используется 0.001 мс.');
     console.log(
         '• Порог регрессии в CI: > +20% по времени выполнения (Warm) считается деградацией.',
+    );
+
+    console.log('\n* Время выполнения лучше, но потребление памяти выше');
+    console.log(
+        '** По всем показателям уступаем, но в пределах порогов (10% по скорости, 30 KB по памяти)',
     );
 }
 

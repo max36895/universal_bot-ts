@@ -81,12 +81,6 @@
 
 Компонент для работы со звуками.
 
-#### Методы
-
-| Метод    | Параметры          | Возвращаемое значение | Описание         |
-| -------- | ------------------ | --------------------- | ---------------- |
-| addSound | soundToken: string | Sound                 | Добавление звука |
-
 ## Интерфейсы
 
 ### IAppConfig
@@ -110,7 +104,7 @@ interface IAppConfig {
 interface IAppParam {
     welcome_text?: string | string[]; // Текст приветствия
     help_text?: string | string[]; // Текст помощи
-    intents?: IAppIntent[] | null; // Массив интентов
+    intents: IAppIntent[] | null; // Массив интентов
 }
 ```
 
@@ -170,16 +164,14 @@ import { Bot } from 'umbot';
 const bot = new Bot();
 
 // Добавление простой команды
-bot.addCommand('greeting', ['привет', 'здравствуй']);
+bot.addCommand('greeting', ['привет', 'здравствуй'], () => 'Привет!');
 
 // Добавление команды с колбэком
 bot.addCommand(
     'numbers',
     ['\\b\\d{3}\\b'],
     (userCommand, botController) => {
-        if (botController) {
-            botController.text = `Вы ввели число: ${userCommand}`;
-        }
+        botController.text = `Вы ввели число: ${userCommand}`;
     },
     true,
 );
@@ -257,7 +249,7 @@ class CardController extends BotController {
 class NluController extends BotController {
     public action(intentName: string | null): void {
         // Получение интента из NLU
-        const nluIntent = this.nlu.getIntent();
+        const nluIntent = this.nlu.getIntent(intentName);
         if (nluIntent) {
             this.text = `Распознанный интент: ${nluIntent}`;
         } else {

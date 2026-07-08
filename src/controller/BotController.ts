@@ -948,7 +948,7 @@ export abstract class BotController<
                 this.appContext.commands,
             );
             const cb = (result: string | null): void | Promise<void> => {
-                const command = result ? this.appContext.commands.get(res as string) : null;
+                const command = result ? this.appContext.commands.get(result) : null;
                 if (result && command) {
                     const res = this.#commandExecute(result, command);
                     if (res) {

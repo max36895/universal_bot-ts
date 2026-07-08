@@ -2,7 +2,7 @@
 const CreateController = require(__dirname + '/CreateController.js').create;
 const utils = require(__dirname + '/../utils.js').utils;
 
-const VERSION = '3.0.0';
+const VERSION = '3.0.15';
 
 function getFlags(argv) {
     const flags = [];

@@ -19,9 +19,7 @@ const config = {
 
         // Fallback
         bot.addCommand(FALLBACK_COMMAND, [], (_, botController) => {
-          if (botController) {
             botController.text = 'Я вас не понял. Скажите "помощь", чтобы получить список всех команд.';
-          }
         });
     },
     plugins: [fullPlatforms, new FileAdapter()] // Замените FileAdapter на свой адаптер для работы с базой данных

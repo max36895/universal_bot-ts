@@ -57,6 +57,7 @@ bot.setPlatformParams({
     // Параметры платформы
     welcome_text: 'Привет!', // Текст приветствия
     help_text: 'Я умею...', // Текст помощи
+    intents: [],
 });
 bot.setAppConfig({
     // Общие параметры
@@ -85,6 +86,7 @@ bot.start('localhost', 3000); // Запуск приложения
 ```ts
 bot.setPlatformParams({
     isAuthUser: true, // Для работы с авторизацией
+    intents: [],
 });
 bot.use(new AlisaAdapter('YOUR_OAUTH_TOKEN')); // Указываем токен в адаптере
 bot.setAppConfig({
@@ -213,6 +215,12 @@ bot.setAppConfig({
     },
 }); // Или можно указать токен через настройку приложения
 ```
+
+> **Примечание:** В конструкторе `VkAdapter` ключи передаются в snake_case
+> (`vk_confirmation_token`, `vk_api_version`), а в `appConfig.tokens.vk` — в camelCase
+> (`confirmationToken`, `apiVersion`). Оба формата валидны и фреймворком поддерживаются.
+> Это сделано для совместимости: snake_case повторяет имена переменных окружения
+> (удобно при передаче из `.env`), а camelCase соответствует общему стилю TypeScript-кода.
 
 ### Особенности
 
