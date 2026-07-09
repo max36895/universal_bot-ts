@@ -334,7 +334,17 @@ export class UsersData extends Model<IUserDataModelState> {
         super.init(data);
         if (typeof this.meta === 'string') {
             if (this.meta.startsWith('{') || this.meta.startsWith('[')) {
-                this.meta = JSON.parse(this.meta);
+                try {
+                    this.meta = JSON.parse(this.meta);
+                } catch (e) {
+                    this._appContext?.logError(
+                        `UserData:init() Ошибка при парсинге meta. Возможно данные повреждены.`,
+                        {
+                            error: e,
+                            meta: this.meta,
+                        },
+                    );
+                }
             }
         }
         if (typeof this.data === 'string') {

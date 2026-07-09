@@ -488,13 +488,11 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
         if (this.#logger?.error) {
-            this.#logger.error(
-                this.appMode.includes('strict') ? this.#maskSecrets(str) : str,
-                meta,
-            );
+            this.#logger.error(str, meta);
         } else {
+            const masked = this.appMode.includes('strict') ? this.#maskSecrets(str) : str;
             this.#errWarnLog(
-                `${str}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
+                `${masked}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
                 true,
             );
         }
@@ -559,14 +557,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
         if (this.#logger?.warn) {
-            this.#logger.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, {
-                ...meta,
-            });
+            this.#logger.warn(str, { ...meta });
         } else {
+            const masked = this.appMode.includes('strict') ? this.#maskSecrets(str) : str;
             if (this.appMode === 'dev') {
-                console.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, meta);
+                console.warn(masked, meta);
             }
-            this.#errWarnLog(`${str}\n${JSON.stringify({ ...meta }, null, '\t')}`, false);
+            this.#errWarnLog(`${masked}\n${JSON.stringify({ ...meta }, null, '\t')}`, false);
         }
     }
 

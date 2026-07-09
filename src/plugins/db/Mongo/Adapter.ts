@@ -118,8 +118,10 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
                 return true;
             } catch (err) {
                 errors.push((err as Error).message);
-                // mongoConnect = null;
-                mongoClient = null;
+                const client = mongoClient;
+                if (client) {
+                    await client.close(true).catch(() => {});
+                }
                 this._saveLog('При подключении в базе данных произошла ошибка:', err as Error);
                 return false;
             }
@@ -400,11 +402,12 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
      */
     public async close(tableName: string): Promise<void> {
         await super.close(tableName);
-        if (this._appContext.database.databaseInfo) {
+        const dbInfo = this._appContext.database.databaseInfo;
+        if (dbInfo?.mongoClient) {
             try {
-                await (this._appContext.database.databaseInfo.mongoClient as MongoClient).close();
-                this._appContext.database.databaseInfo.mongoConnect = null;
-                this._appContext.database.databaseInfo.mongoClient = null;
+                await dbInfo.mongoClient.close();
+                dbInfo.mongoConnect = null;
+                dbInfo.mongoClient = null;
             } catch (err) {
                 this._appContext.logError((err as Error).message, {
                     error: err,

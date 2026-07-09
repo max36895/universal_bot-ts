@@ -136,8 +136,8 @@ export class Preload {
      *                                   Может быть установлен позже через `setAppContext`.
      */
     constructor(appContext?: AppContext) {
-        this.setAppContext(appContext);
         this._controller = new BaseBotController(appContext as AppContext);
+        this.setAppContext(appContext);
     }
 
     /**

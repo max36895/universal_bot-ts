@@ -257,12 +257,6 @@ export class Bot<TUserData extends IUserData = IUserData> {
     #botControllerClass: TBotControllerClass<TUserData>;
 
     /**
-     * Авторизационный токен пользователя.
-     * Используется для авторизованных запросов (например, в Алисе)
-     */
-    #auth: TBotAuth = null;
-
-    /**
      * Тип платформы по умолчанию
      */
     #defaultAppType: TAppType | 'auto' = 'auto';
@@ -992,11 +986,15 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 }
             } else {
                 this.#appConnectStatus.isConnecting = true;
-                const res = (this.#appConnectStatus.status = dbAdapter.connect());
-                if (isPromise(res)) {
-                    await res;
+                const connectResult = dbAdapter.connect();
+                this.#appConnectStatus.status = connectResult;
+                let connected: boolean;
+                if (isPromise(connectResult)) {
+                    connected = await connectResult;
+                } else {
+                    connected = connectResult;
                 }
-                this.#appContext.database.isSendConnect = res as boolean;
+                this.#appContext.database.isSendConnect = connected;
             }
         }
         return dbAdapter;
@@ -1014,7 +1012,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             const query = {
                 userId: botController.userId,
             };
-            if (this.#auth) {
+            if (botController.userToken) {
                 query.userId = userData.escapeString(botController.userToken as string);
             }
             if (await userData.whereOne(query)) {
@@ -1396,6 +1394,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @param {TAppType | null} [appType] - Тип приложения. Если не указан, будет определен автоматически в зависимости от запроса.
      * @param {string | object} [content] - Входные данные для обработки (например, текст сообщения или объект запроса).
+     * @param {TBotAuth | null} [auth] - Авторизационные токен
      * @returns {Promise<TRunResult>} Результат обработки запроса
      * @throws {Error} Если не удаётся определить платформу или отсутствуют данные для обработки.
      *
@@ -1409,6 +1408,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     public async run(
         appType: TAppType | null = null,
         content: string | object | null = null,
+        auth: TBotAuth = null,
     ): Promise<TRunResult> {
         if (!this.#botControllerClass) {
             const errMsg =
@@ -1435,7 +1435,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             ? this.#appContext.platforms[botController.appType]
             : null;
         if (platformClass) {
-            botController.userToken ??= this.#auth;
+            botController.userToken ??= auth;
 
             platformClass.updateTimeStart(botController);
             let res = platformClass.setQueryData(correctContent, botController);
@@ -1597,8 +1597,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
             if (!query) {
                 return this.#webhookHandleError(req, res, 400, responseCb);
             }
+            let auth: TBotAuth = null;
             if (req.headers?.authorization) {
-                this.#auth = req.headers.authorization.replace('Bearer ', '');
+                auth = req.headers.authorization.replace('Bearer ', '');
             }
 
             appType = this.#getAppType(query, req.headers);
@@ -1614,7 +1615,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                     return this.#webhookHandleError(req, res, 401, responseCb);
                 }
             }
-            const result = await this.run(appType, query);
+            const result = await this.run(appType, query, auth);
             const statusCode = result === 'notFound' ? 404 : 200;
             if (this.#appContext.usedMetric) {
                 this.#appContext.logMetric(EMetric.END_WEBHOOK, performance.now() - startTimer, {
@@ -1726,11 +1727,11 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.log(`Server running at //${hostname}:${port}/`);
         });
         // Если завершили процесс, то закрываем все подключения и чистим ресурсы.
-        process.on('SIGTERM', () => {
+        process.once('SIGTERM', () => {
             void this.#gracefulShutdown();
         });
 
-        process.on('SIGINT', () => {
+        process.once('SIGINT', () => {
             void this.#gracefulShutdown();
         });
 
@@ -1750,6 +1751,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
         Text.clearCache();
 
         this.#appContext.log('Graceful shutdown завершён.');
+        // Даём event loop завершить отложенные I/O-операции (запись в файл, закрытие сокетов)
+        await new Promise<void>((resolve) => setTimeout(resolve, 500));
         process.exit(0);
     }
 

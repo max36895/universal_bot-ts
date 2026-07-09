@@ -171,7 +171,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                     soundProcessing,
                     controller,
                 );
-                params.attachments = { ...attach, ...params.attachments };
+                params.attachments = [...(attach as string[]), ...(params.attachments || [])];
             }
             const vkApi = new VkRequest(this.appContext as AppContext);
             await vkApi.messagesSend(

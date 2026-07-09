@@ -7,6 +7,7 @@ import {
     getFileInfoSync,
     freadSync,
     keysCount,
+    isPromise,
 } from '../../../index';
 
 /**
@@ -472,8 +473,12 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * Все процессы завершаются, и происходит сохранение данных в файл.
      */
     public destroy(): void {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        super.destroy();
+        const result = super.destroy();
+        if (isPromise(result)) {
+            result.catch((e: Error) => {
+                this._appContext?.logError(`FileAdapter:destroy(): ${e.message}`, { error: e });
+            });
+        }
         if (this._appContext.database.databaseInfo) {
             Object.keys(this._appContext.database.databaseInfo).forEach((tableName: string) => {
                 this.close(tableName);
@@ -491,6 +496,13 @@ export class FileAdapter extends Base<IFileDbInfo> {
         if (timeOutId) {
             clearTimeout(timeOutId);
             this.#setCachedFileData(tableName, 'timeOutId', null);
+        }
+        const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
+        if (forceTimeOutId) {
+            clearTimeout(forceTimeOutId);
+            this.#setCachedFileData(tableName, 'forceTimeOutId', null);
+        }
+        if (timeOutId || forceTimeOutId) {
             this.#update(tableName, true);
         }
         this.setCachedFileData(tableName, undefined);

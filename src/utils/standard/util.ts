@@ -564,7 +564,7 @@ export async function saveData(
     if (!(await isDir(dir.path))) {
         await mkdir(dir.path);
     }
-    if (data.startsWith('{')) {
+    if (data.startsWith('{') || data.startsWith('[')) {
         try {
             JSON.parse(data);
         } catch (e) {
