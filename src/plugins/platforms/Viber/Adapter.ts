@@ -174,8 +174,8 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         const name = userName.split(' ');
         const thisUser = {
             username: name[0] || null,
-            first_name: name[1] || null,
-            last_name: name[2] || null,
+            first_name: name.length > 1 ? name.slice(0, -1).join(' ') : null,
+            last_name: name.length > 1 ? name[name.length - 1] : null,
         };
         controller.nlu.setNlu({ thisUser });
     }

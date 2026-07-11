@@ -141,6 +141,7 @@ export class TelegramRequest {
                 media.push({
                     type: item.type,
                     media: mediaItem,
+                    ...(item.caption ? { caption: item.caption } : {}),
                 });
             }
             formData.append('media', JSON.stringify(media));

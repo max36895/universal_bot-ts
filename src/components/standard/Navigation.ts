@@ -379,19 +379,20 @@ export class Navigation<ElementType = TElementType> {
             const elementsTypeof = typeof this.elements[i];
 
             if (keys === null || elementsTypeof === 'string') {
-                const r = Text.textSimilarity(this.elements[i] + '', text, 75);
+                const elemText = this.elements[i] + '';
+                if (elemText === text) {
+                    return this.elements[i];
+                }
+                const r = Text.textSimilarity(elemText, text, 75);
                 setMaxElement(i, r);
             } else if (elementsTypeof === 'object') {
-                if (typeof keys === 'object') {
-                    keys.forEach((key) => {
-                        const value = (this.elements[i] as Record<string, string>)[key];
-                        if (value) {
-                            const r = Text.textSimilarity(value, text, 75);
-                            setMaxElement(i, r);
-                        }
-                    });
-                } else {
-                    const value = (this.elements[i] as Record<string, string>)[keys];
+                const elemObj = this.elements[i] as Record<string, string>;
+                const keysToSearch = typeof keys === 'object' ? keys : [keys];
+                for (const key of keysToSearch) {
+                    const value = elemObj[key];
+                    if (value === text) {
+                        return this.elements[i];
+                    }
                     if (value) {
                         const r = Text.textSimilarity(value, text, 75);
                         setMaxElement(i, r);

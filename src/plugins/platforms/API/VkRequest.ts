@@ -319,6 +319,7 @@ export class VkRequest {
         this._request.post = {
             peer_id: peerId,
             message,
+            random_id: Date.now() + Math.floor(Math.random() * 1000),
         };
 
         if (typeof peerId !== 'number') {
@@ -327,7 +328,7 @@ export class VkRequest {
         }
         if (params) {
             if (params.random_id === undefined) {
-                this._request.post.random_id = Date.now();
+                this._request.post.random_id = Date.now() + Math.floor(Math.random() * 1000);
             } else {
                 this._request.post.random_id = params.random_id;
             }

@@ -502,10 +502,10 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             this.#logger.error(str, meta);
         } else {
             const masked = this.appMode.includes('strict') ? this.#maskSecrets(str) : str;
-            this.#errWarnLog(
-                `${masked}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
-                true,
-            );
+            const data = meta
+                ? { ...meta, trace: new Error().stack }
+                : { trace: new Error().stack };
+            this.#errWarnLog(`${masked}\n${JSON.stringify(data, null, '\t')}`, true);
         }
     }
 
@@ -579,13 +579,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
         if (this.#logger?.warn) {
-            this.#logger.warn(str, { ...meta });
+            this.#logger.warn(str, meta);
         } else {
             const masked = this.appMode.includes('strict') ? this.#maskSecrets(str) : str;
             if (this.appMode === 'dev') {
                 console.warn(masked, meta);
             }
-            this.#errWarnLog(`${masked}\n${JSON.stringify({ ...meta }, null, '\t')}`, false);
+            this.#errWarnLog(`${masked}\n${JSON.stringify(meta, null, '\t')}`, false);
         }
     }
 

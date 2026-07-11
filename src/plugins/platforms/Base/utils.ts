@@ -204,7 +204,7 @@ export function defaultSoundProcessing(
     if (usedSoundEffect) {
         if (defaultEffects) {
             defaultEffects.forEach((item) => {
-                soundInfo.text = soundInfo.text.replace(new RegExp(item.key, 'g'), item.effect);
+                soundInfo.text = soundInfo.text.replaceAll(item.key, item.effect);
             });
         }
         soundInfo.text = getPause(soundInfo.text);

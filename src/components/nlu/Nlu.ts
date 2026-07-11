@@ -709,7 +709,10 @@ export class Nlu {
      * ```
      */
     public static getLink(query: string): INluResult<string[] | null> {
-        const matches = [...query.matchAll(Nlu.LINK_REGEX)].map((m) => m[0]);
+        const matches: string[] = [];
+        for (const m of query.matchAll(Nlu.LINK_REGEX)) {
+            matches.push(m[0]);
+        }
         return {
             status: matches.length > 0,
             result: matches.length ? matches : null,
@@ -732,7 +735,10 @@ export class Nlu {
      * ```
      */
     public static getPhone(query: string): INluResult<string[] | null> {
-        const matches = [...query.matchAll(Nlu.PHONE_REGEX)].map((m) => m[0]);
+        const matches: string[] = [];
+        for (const m of query.matchAll(Nlu.PHONE_REGEX)) {
+            matches.push(m[0]);
+        }
         return {
             status: matches.length > 0,
             result: matches.length ? matches : null,
@@ -755,7 +761,10 @@ export class Nlu {
      * ```
      */
     public static getEMail(query: string): INluResult<string[] | null> {
-        const matches = [...query.matchAll(Nlu.EMAIL_REGEX)].map((m) => m[0]);
+        const matches: string[] = [];
+        for (const m of query.matchAll(Nlu.EMAIL_REGEX)) {
+            matches.push(m[0]);
+        }
         return {
             status: matches.length > 0,
             result: matches.length ? matches : null,

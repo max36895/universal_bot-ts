@@ -2,6 +2,8 @@ import { ISberSmartAppAnnotations } from './interfaces/ISmartAppPlatform';
 
 export const T_SMART_APP = 'smart_app';
 
+export const SMART_APP_STORAGE_URL = 'https://smartapp-code.sberdevices.ru/tools/api/data';
+
 export const DEVICE = {
     platformType: '',
     platformVersion: '',

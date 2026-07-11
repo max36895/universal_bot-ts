@@ -23,9 +23,9 @@ Make documentation technically accurate, consistent with real code and platform 
 
 **DO NOT APPLY ANY CHANGES.**
 
-1. Analyze the workspace. Find all MD files and JSDoc blocks.
-2. Produce an audit report: list of desynchronizations, outdated sections, and gaps, grouped by file.
-3. **STOP and wait for user confirmation.**
+1. Analyze the workspace. Find all MD files and JSDoc blocks in `src/` and project root.
+2. Produce an audit report using the format below.
+3. **STOP and wait for user confirmation "Plan approved"**.
 
 ### Step 1: Iterative Refactoring (ONE FILE AT A TIME)
 
@@ -60,6 +60,45 @@ After all edits, perform **minimum 2 rounds of re-audit**.
 - Each round checks different aspects: one — code examples, another — API accuracy, third — formatting.
 - If 0 problems found in a round — can stop. If problems found — fix and run next round.
 
+## Audit Report Format
+
+```markdown
+## DOCUMENTATION AUDIT REPORT
+
+### Critical (Must Fix)
+
+1. **[file:line]** — Description of the problem
+   - **What's wrong**: Exact description
+   - **Impact**: How this affects developers
+   - **Fix**: What needs to change
+
+### High (Should Fix)
+
+2. ...
+
+### Medium (Nice to Fix)
+
+3. ...
+
+### Low (Cosmetic)
+
+4. ...
+
+### Verified OK (No Issues)
+
+- `src/core/Bot.ts` JSDoc — accurate, matches code
+- `src/plugins/platforms/Telegram/Adapter.ts` — platform limits correct
+```
+
+### Priority Definitions
+
+| Priority | Definition | Example |
+|----------|-----------|---------|
+| **Critical** | Code example doesn't compile, API info is wrong, contradicts source code | Wrong method signature in JSDoc |
+| **High** | Missing important section, inconsistent terminology across files | Different names for the same concept |
+| **Medium** | Outdated example, suboptimal structure, minor contradictions | Old API version referenced |
+| **Low** | Formatting, style inconsistency, missing optional details | Broken markdown table |
+
 ## Quality Standards
 
 - [ ] **Accuracy**: 100% match with real code and official platform APIs.
@@ -77,6 +116,7 @@ After all edits, perform **minimum 2 rounds of re-audit**.
     - **FORBIDDEN** to change actual code (`.ts` outside comments): types, signatures, logic, variable names. If code is broken — do not fix it, write a comment `// TODO: [Problem description]`.
 2. **No filler**: Do not write introductions like "Great, I analyzed the code and here are my changes". Apply fixes directly.
 3. **Questions**: If uncertain about platform behavior — **stop execution** and ask in chat.
+4. **No repetition**: Do not re-report findings that were already dismissed. Track what you've checked.
 
 ## Self-Verification Checklist
 

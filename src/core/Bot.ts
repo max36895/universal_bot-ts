@@ -1014,6 +1014,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 if (isPromise(this.#appConnectStatus.status)) {
                     await this.#appConnectStatus.status;
                 }
+                if (!this.#appContext.database.isSendConnect) {
+                    return undefined;
+                }
             } else {
                 this.#appConnectStatus.isConnecting = true;
                 try {
@@ -1026,7 +1029,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         connected = connectResult;
                     }
                     this.#appContext.database.isSendConnect = connected;
-                } catch {
+                } catch (e) {
+                    this.#appContext.logError(
+                        `Bot:#getDbAdapter(): Ошибка при подключении к базе данных: ${(e as Error).message}`,
+                        { error: e },
+                    );
+                } finally {
                     this.#appConnectStatus.isConnecting = false;
                 }
             }
@@ -1120,51 +1128,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         const content = shouldProceed
             ? await this.#getAppContent(botController, platformClass, appType)
             : 'Request entity too large';
-        if (
-            userData &&
-            !(
-                isLocalStorage &&
-                (!botController.state || botController.state === botController.userData)
-            )
-        ) {
-            userData.userId = botController.userId;
-            userData.data = botController.userData;
-            if (isNewUser) {
-                await userData
-                    .save(true)
-                    .then((res) => {
-                        if (!res) {
-                            this.#appContext.logError(
-                                `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${botController.userId}".`,
-                            );
-                        }
-                        return res;
-                    })
-                    .catch((e) => {
-                        this.#appContext.logError(
-                            `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${botController.userId}". Текст ошибки: ${e.message}`,
-                            { error: e },
-                        );
-                    });
-            } else {
-                await userData
-                    .update()
-                    .then((res) => {
-                        if (!res) {
-                            this.#appContext.logError(
-                                `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}".`,
-                            );
-                        }
-                        return res;
-                    })
-                    .catch((e) => {
-                        this.#appContext.logError(
-                            `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}". Текст ошибки: ${e.message}`,
-                            { error: e },
-                        );
-                    });
-            }
-        }
+        await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
         if (botController.platformOptions.error) {
             this.#appContext.logError(botController.platformOptions.error);
         }
@@ -1172,6 +1136,48 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this._clearState(botController);
         }
         return content;
+    }
+
+    /**
+     * Сохраняет данные пользователя в БД после обработки запроса.
+     * Если пользователь новый — выполняется insert, иначе — update.
+     * При использовании localStorage и отсутствии DB-адаптера сохранение пропускается.
+     * @param botController Контроллер с данными текущего запроса
+     * @param userData Экземпляр модели для работы с данными пользователя
+     * @param isNewUser true, если пользователь новый (ещё не записан в БД)
+     * @param isLocalStorage true, если данные хранятся в локальном хранилище платформы
+     */
+    async #saveUserData(
+        botController: BotController<TUserData>,
+        userData: UsersData | undefined,
+        isNewUser: boolean,
+        isLocalStorage: boolean,
+    ): Promise<void> {
+        if (
+            !userData ||
+            (isLocalStorage &&
+                (!botController.state || botController.state === botController.userData))
+        ) {
+            return;
+        }
+        userData.userId = botController.userId;
+        userData.data = botController.userData;
+        const userId = botController.userId;
+        if (isNewUser) {
+            await userData.save(true).catch((e) => {
+                this.#appContext.logError(
+                    `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${userId}". Текст ошибки: ${e.message}`,
+                    { error: e },
+                );
+            });
+        } else {
+            await userData.update().catch((e) => {
+                this.#appContext.logError(
+                    `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${userId}". Текст ошибки: ${e.message}`,
+                    { error: e },
+                );
+            });
+        }
     }
 
     #setOldIntentName(botController: BotController<TUserData>): void {
@@ -1466,10 +1472,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.logError(errMsg);
             throw new Error(errMsg);
         }
-        let correctContent = this._content || content;
-        if (correctContent && typeof correctContent === 'string') {
-            correctContent = JSON.parse(correctContent);
-        }
+        const correctContent = this.#parseContent(this._content || content);
         if (!correctContent) {
             const msg = `${appType ? `Для платформы "${appType}"` : 'Пришел не корректный запрос в котором'} передано пустое содержимое, дальнейшая обработка невозможна.`;
             this.#appContext.logError(msg);
@@ -1507,6 +1510,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.logError(msg);
             throw new Error(msg);
         }
+    }
+
+    #parseContent(content: TBotContent): TBotContent {
+        if (content && typeof content === 'string') {
+            try {
+                return JSON.parse(content);
+            } catch {
+                const msg = 'Передана невалидная JSON-строка. Убедитесь, что данные корректны.';
+                this.#appContext.logError(msg);
+                throw new Error(msg);
+            }
+        }
+        return content;
     }
 
     #isWebhookError(
@@ -1822,14 +1838,16 @@ export class Bot<TUserData extends IUserData = IUserData> {
         return new Promise((resolve, reject) => {
             const chunks: Buffer[] = [];
             let totalLength = 0;
-            req.on('data', (chunk: Buffer) => {
+            const onData = (chunk: Buffer): void => {
                 chunks.push(chunk);
                 totalLength += chunk.length;
                 if (totalLength > MAX_REQUEST_SIZE) {
+                    req.removeListener('data', onData);
                     req.destroy(new Error('Request too large'));
                     reject(new Error('Request too large'));
                 }
-            });
+            };
+            req.on('data', onData);
             req.on('end', () => resolve(Buffer.concat(chunks).toString()));
             req.on('error', reject);
         });

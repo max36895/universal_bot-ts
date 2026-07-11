@@ -47,7 +47,7 @@ export function cardProcessing(cardInfo: ICardInfo): IViberCard[] | IViberCard {
             }
         } else {
             cardInfo.images.forEach((image) => {
-                if (objects.length <= countImage) {
+                if (objects.length < countImage) {
                     objects.push(getElement(image, countImage));
                 }
             });

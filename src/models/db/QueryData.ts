@@ -106,7 +106,7 @@ export function getQueryData(str: string): IQueryData | null {
         let data = matchAll.next();
         while (!data.done) {
             let val: string | number = data.value[2] ?? data.value[3];
-            if (!isNaN(+val)) {
+            if (val !== '' && !isNaN(+val)) {
                 val = +val;
             }
             regData[data.value[1]] = val;

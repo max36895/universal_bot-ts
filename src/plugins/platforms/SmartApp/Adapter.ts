@@ -2,7 +2,7 @@ import { Text, BotController, Request, IRequestSend } from '../../../index';
 import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
-import { T_SMART_APP, DEVICE, ANNOTATIONS } from './constants';
+import { T_SMART_APP, DEVICE, ANNOTATIONS, SMART_APP_STORAGE_URL } from './constants';
 import {
     ISberSmartAppWebhookRequest,
     ISberSmartAppWebhookResponse,
@@ -270,7 +270,10 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
      */
     protected async _getUserData(controller: BotController): Promise<unknown> {
         const request = new Request(controller.appContext);
-        request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${controller.userId}`;
+        const storageUrl =
+            controller.appContext.appConfig.tokens[T_SMART_APP]?.storage_url ||
+            SMART_APP_STORAGE_URL;
+        request.url = `${storageUrl}/${controller.userId}`;
         const result = await request.send();
         if (result.status && result.data) {
             return result.data;
@@ -287,7 +290,10 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     ): Promise<IRequestSend<unknown>> {
         const request = new Request(controller.appContext);
         request.header = Request.HEADER_JSON;
-        request.url = `https://smartapp-code.sberdevices.ru/tools/api/data/${controller.userId}`;
+        const storageUrl =
+            controller.appContext.appConfig.tokens[T_SMART_APP]?.storage_url ||
+            SMART_APP_STORAGE_URL;
+        request.url = `${storageUrl}/${controller.userId}`;
         request.post = data as Record<string, unknown>;
         return await request.send();
     }
