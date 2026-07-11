@@ -98,7 +98,7 @@ export async function cardProcessing(
             object.push({
                 type: 'photo',
                 media: field,
-                caption: Text.resize(image.desc, 200),
+                caption: Text.resize(image.desc, 1024),
             });
         }
     }

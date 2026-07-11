@@ -277,11 +277,11 @@ describe('Buttons test', () => {
 
     it('Get buttons Telegram', () => {
         const telegramButtons = {
-            keyboard: [{ text: '1' }, { text: '2' }, { text: '3' }],
+            keyboard: [[{ text: '1' }], [{ text: '2' }], [{ text: '3' }]],
             inline_keyboard: [
-                { text: '1', url: 'https://test.ru' },
-                { text: '2', url: 'https://test.ru' },
-                { text: '3', url: 'https://test.ru' },
+                [{ text: '1', url: 'https://test.ru' }],
+                [{ text: '2', url: 'https://test.ru' }],
+                [{ text: '3', url: 'https://test.ru' }],
             ],
         };
 

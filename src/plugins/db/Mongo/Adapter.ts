@@ -115,6 +115,15 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
                         throw new Error('Failed to verify database connection');
                     }
                 }
+                if (this._appContext.database.databaseInfo) {
+                    this._appContext.database.databaseInfo.mongoClient = mongoClient;
+                    this._appContext.database.databaseInfo.mongoConnect = mongoConnect;
+                } else {
+                    this._appContext.database.databaseInfo = {
+                        mongoClient,
+                        mongoConnect,
+                    };
+                }
                 return true;
             } catch (err) {
                 errors.push((err as Error).message);
@@ -127,15 +136,6 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
             }
         } else {
             errors.push('Отсутствуют данные для подключения!');
-        }
-        if (this._appContext.database.databaseInfo) {
-            this._appContext.database.databaseInfo.mongoClient = mongoClient;
-            this._appContext.database.databaseInfo.mongoConnect = mongoConnect;
-        } else {
-            this._appContext.database.databaseInfo = {
-                mongoClient,
-                mongoConnect,
-            };
         }
         if (errors.length > 0) {
             this._saveLog(

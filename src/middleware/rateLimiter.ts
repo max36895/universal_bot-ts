@@ -29,11 +29,11 @@ async function processQueue(
             // Если текущая секунда ещё не закончилась, ждём её окончания
             if (timePassed < 1000) {
                 await new Promise((r) => setTimeout(r, 1000 - timePassed).unref());
-                // eslint-disable-next-line require-atomic-updates
-                st.count = 0;
-                // eslint-disable-next-line require-atomic-updates
-                st.lastReset = Date.now();
             }
+            // eslint-disable-next-line require-atomic-updates
+            st.count = 0;
+            // eslint-disable-next-line require-atomic-updates
+            st.lastReset = Date.now();
 
             // Определяем, сколько задач можно выполнить в этом цикле
             const canRun = Math.max(0, limit - st.count);

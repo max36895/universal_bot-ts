@@ -385,6 +385,7 @@ export function saveDataSync(
                 mode,
             },
         );
+        return false;
     }
     const res = fwriteSync(join(dir.path, dir.fileName), data, mode);
     if (!res.success) {

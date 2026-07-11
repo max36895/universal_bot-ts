@@ -919,11 +919,11 @@ export interface ITelegramKeyboard {
     /**
      * Кнопки в виде ссылки
      */
-    inline_keyboard?: ITelegramInlineKeyboard[];
+    inline_keyboard?: ITelegramInlineKeyboard[][];
     /**
      * Кнопки в виде кнопок. Отображаются вместо клавиатуры
      */
-    keyboard?: ITelegramReplyButton[];
+    keyboard?: ITelegramReplyButton[][];
     /**
      * Удалить все кнопки
      */

@@ -17,19 +17,23 @@ export function buttonProcessing(buttons: IButtonType[]): ITelegramKeyboard | nu
     const reply: ITelegramReplyButton[] = [];
 
     getCorrectButtons(buttons, 40).forEach((button) => {
+        const callbackData =
+            button.payload && typeof button.payload !== 'string'
+                ? JSON.stringify(button.payload)
+                : button.payload || undefined;
         if (button.url) {
             const inline: ITelegramInlineKeyboard = {
                 text: button.title,
                 url: button.url,
             };
-            if (button.payload) {
-                inline.callback_data = button.payload;
+            if (callbackData) {
+                inline.callback_data = callbackData;
             }
             inlines.push(inline);
         } else if (button.payload) {
             inlines.push({
                 text: button.title,
-                callback_data: button.payload,
+                callback_data: callbackData,
             });
         } else {
             const replyBtn: ITelegramReplyButton = { text: button.title || '' };
@@ -42,10 +46,10 @@ export function buttonProcessing(buttons: IButtonType[]): ITelegramKeyboard | nu
     const rInline = inlines.length;
     if (rCount || rInline) {
         if (rInline) {
-            object.inline_keyboard = inlines;
+            object.inline_keyboard = inlines.map((btn) => [btn]);
         }
         if (rCount) {
-            object.keyboard = reply;
+            object.keyboard = reply.map((btn) => [btn]);
         }
     } else {
         // Удаляем клавиатуру из-за ненадобности

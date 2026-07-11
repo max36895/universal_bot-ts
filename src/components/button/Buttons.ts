@@ -173,8 +173,8 @@ export class Buttons {
     public getButtonJson<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,
     ): string | null {
-        const btn: object[] | null = this.getButtons(buttonProcessing) as object[] | null;
-        if (btn?.length) {
+        const btn = this.getButtons(buttonProcessing);
+        if (btn != null) {
             return JSON.stringify(btn);
         }
         return null;

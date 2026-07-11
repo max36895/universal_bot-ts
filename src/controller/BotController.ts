@@ -1340,6 +1340,11 @@ export abstract class BotController<
             const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
             if (!intent && fallbackCommand) {
                 const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
+                if (isPromise(res)) {
+                    return res.then(() => {
+                        this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+                    });
+                }
                 this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
                 return res;
             } else {

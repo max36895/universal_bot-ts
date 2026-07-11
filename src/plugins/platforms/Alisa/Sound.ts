@@ -295,7 +295,7 @@ const STANDARD_EFFECTS: IEffect[] = [
     },
     {
         key: SoundConstants.S_EFFECT_TRAIN_ANNOUNCE,
-        effect: '<speaker effect="train_announce"',
+        effect: '<speaker effect="train_announce">',
     },
     {
         key: SoundConstants.S_EFFECT_END,

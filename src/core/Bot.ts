@@ -1016,15 +1016,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 }
             } else {
                 this.#appConnectStatus.isConnecting = true;
-                const connectResult = dbAdapter.connect();
-                this.#appConnectStatus.status = connectResult;
-                let connected: boolean;
-                if (isPromise(connectResult)) {
-                    connected = await connectResult;
-                } else {
-                    connected = connectResult;
+                try {
+                    const connectResult = dbAdapter.connect();
+                    this.#appConnectStatus.status = connectResult;
+                    let connected: boolean;
+                    if (isPromise(connectResult)) {
+                        connected = await connectResult;
+                    } else {
+                        connected = connectResult;
+                    }
+                    this.#appContext.database.isSendConnect = connected;
+                } catch {
+                    this.#appConnectStatus.isConnecting = false;
                 }
-                this.#appContext.database.isSendConnect = connected;
             }
         }
         return dbAdapter;
@@ -1126,23 +1130,39 @@ export class Bot<TUserData extends IUserData = IUserData> {
             userData.userId = botController.userId;
             userData.data = botController.userData;
             if (isNewUser) {
-                await userData.save(true).then((res) => {
-                    if (!res) {
+                await userData
+                    .save(true)
+                    .then((res) => {
+                        if (!res) {
+                            this.#appContext.logError(
+                                `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${botController.userId}".`,
+                            );
+                        }
+                        return res;
+                    })
+                    .catch((e) => {
                         this.#appContext.logError(
-                            `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${botController.userId}".`,
+                            `Bot:run(): Произошла ошибка при сохранении данных для нового пользователя "${botController.userId}". Текст ошибки: ${e.message}`,
+                            { error: e },
                         );
-                    }
-                    return res;
-                });
+                    });
             } else {
-                await userData.update().then((res) => {
-                    if (!res) {
+                await userData
+                    .update()
+                    .then((res) => {
+                        if (!res) {
+                            this.#appContext.logError(
+                                `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}".`,
+                            );
+                        }
+                        return res;
+                    })
+                    .catch((e) => {
                         this.#appContext.logError(
-                            `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}".`,
+                            `Bot:run(): Произошла ошибка при сохранении данных для пользователя: "${botController.userId}". Текст ошибки: ${e.message}`,
+                            { error: e },
                         );
-                    }
-                    return res;
-                });
+                    });
             }
         }
         if (botController.platformOptions.error) {
