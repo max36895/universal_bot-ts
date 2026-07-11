@@ -68,9 +68,9 @@ After all edits, perform **minimum 2 rounds of re-audit**.
 ### Critical (Must Fix)
 
 1. **[file:line]** — Description of the problem
-   - **What's wrong**: Exact description
-   - **Impact**: How this affects developers
-   - **Fix**: What needs to change
+    - **What's wrong**: Exact description
+    - **Impact**: How this affects developers
+    - **Fix**: What needs to change
 
 ### High (Should Fix)
 
@@ -92,12 +92,12 @@ After all edits, perform **minimum 2 rounds of re-audit**.
 
 ### Priority Definitions
 
-| Priority | Definition | Example |
-|----------|-----------|---------|
-| **Critical** | Code example doesn't compile, API info is wrong, contradicts source code | Wrong method signature in JSDoc |
-| **High** | Missing important section, inconsistent terminology across files | Different names for the same concept |
-| **Medium** | Outdated example, suboptimal structure, minor contradictions | Old API version referenced |
-| **Low** | Formatting, style inconsistency, missing optional details | Broken markdown table |
+| Priority     | Definition                                                               | Example                              |
+| ------------ | ------------------------------------------------------------------------ | ------------------------------------ |
+| **Critical** | Code example doesn't compile, API info is wrong, contradicts source code | Wrong method signature in JSDoc      |
+| **High**     | Missing important section, inconsistent terminology across files         | Different names for the same concept |
+| **Medium**   | Outdated example, suboptimal structure, minor contradictions             | Old API version referenced           |
+| **Low**      | Formatting, style inconsistency, missing optional details                | Broken markdown table                |
 
 ## Quality Standards
 
