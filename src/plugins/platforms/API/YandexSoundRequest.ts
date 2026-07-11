@@ -50,7 +50,7 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * Получение адреса для загрузки аудиофайлов.
      *
-     * @return string
+     * @returns {string}
      */
     #getSoundsUrl(): string {
         return `${STANDARD_URL}skills/${this.skillId}/sounds`;

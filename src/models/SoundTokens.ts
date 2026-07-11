@@ -53,6 +53,7 @@ export interface ISoundModelState extends IModelState {
  * @extends Model<ISoundModelState>
  *
  * @example
+ * ```ts
  * // Создание и загрузка звукового файла для Telegram
  * const sound = new SoundTokens(appContext);
  * sound.path = '/path/to/audio.mp3';
@@ -61,8 +62,11 @@ export interface ISoundModelState extends IModelState {
  * if (token) {
  *     console.log('Токен для звукового файла успешно получен, токен:', token);
  * } else {
- *     || Загрузка аудиофайла
+ *     // Загрузка аудиофайла
+ *     const newToken = await sound.save();
+ *     console.log('Новый токен:', newToken);
  * }
+ * ```
  */
 export class SoundTokens extends Model<ISoundModelState> {
     /**
@@ -104,7 +108,7 @@ export class SoundTokens extends Model<ISoundModelState> {
 
     /**
      * Устанавливает идентификатор звукового файла.
-     * @param soundToken
+     * @param {string | null} soundToken - Токен звукового файла
      */
     set soundToken(soundToken: string | null) {
         this.state.soundToken = soundToken;
@@ -121,7 +125,7 @@ export class SoundTokens extends Model<ISoundModelState> {
 
     /**
      * Устанавливает путь к файлу.
-     * @param path
+     * @param {string | null} path - Путь к аудиофайлу или URL
      */
     set path(path: string | null) {
         this.state.path = path;
@@ -137,7 +141,7 @@ export class SoundTokens extends Model<ISoundModelState> {
 
     /**
      * Устанавливает тип платформы.
-     * @param platform
+     * @param {string} platform - Тип платформы (alisa, telegram, vk и т.д.)
      */
     set platform(platform: string) {
         this.state.platform = platform;
@@ -146,7 +150,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Возвращает название таблицы/файла с данными.
      *
-     * @return {string} Название таблицы для хранения данных о звуковых файлах
+     * @returns {string} Название таблицы для хранения данных о звуковых файлах
      */
     public tableName(): string {
         return SoundTokens.TABLE_NAME;
@@ -155,7 +159,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Определяет правила валидации для полей модели.
      *
-     * @return {IModelRules[]} Массив правил валидации
+     * @returns {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return RULES;
@@ -165,7 +169,7 @@ export class SoundTokens extends Model<ISoundModelState> {
      * Возвращает метки атрибутов таблицы.
      * Используется для отображения понятных названий полей.
      *
-     * @return {ISoundModelState} Объект с метками атрибутов
+     * @returns {ISoundModelState} Объект с метками атрибутов
      */
     public attributeLabels(): ISoundModelState {
         return ATTRS_LABEL;

@@ -13,15 +13,15 @@ export interface ILogger {
     log?: (...args: unknown[]) => void;
     /**
      * Метод для логирования ошибок
-     * @param message
-     * @param meta
+     * @param {string} message - Текст ошибки
+     * @param {Record<string, unknown>} [meta] - Дополнительные метаданные
      */
     error?: TLoggerCb;
 
     /**
      * Метод для логирования предупреждений
-     * @param message
-     * @param meta
+     * @param {string} message - Текст предупреждения
+     * @param {Record<string, unknown>} [meta] - Дополнительные метаданные
      */
     warn?: TLoggerCb;
 

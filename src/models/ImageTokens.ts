@@ -52,16 +52,20 @@ export interface IImageModelState extends IModelState {
  * @extends Model<IImageModelState>
  *
  * @example
+ * ```ts
  * // Создание и загрузка изображения для Telegram
- * const image = new ImageTokens();
- * sound.path = '/path/to/image.png';
- * sound.platform = T_TELEGRAM;
+ * const image = new ImageTokens(appContext);
+ * image.path = '/path/to/image.png';
+ * image.platform = T_TELEGRAM;
  * const token = await image.selectOne();
  * if (token) {
  *     console.log('Токен для изображения успешно получен, токен:', token);
  * } else {
- *     || Загрузка изображения
+ *     // Загрузка изображения
+ *     const newToken = await image.save();
+ *     console.log('Новый токен:', newToken);
  * }
+ * ```
  */
 export class ImageTokens extends Model<IImageModelState> {
     /**
@@ -101,7 +105,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Устанавливает идентификатор/токен изображения.
-     * @param imageToken
+     * @param {string | null} imageToken - Токен изображения
      */
     set imageToken(imageToken: string | null) {
         this.state.imageToken = imageToken;
@@ -117,7 +121,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Устанавливает расположение изображения (url/директория).
-     * @param path
+     * @param {string | null} path - Путь к изображению или URL
      */
     set path(path: string | null) {
         this.state.path = path;
@@ -132,7 +136,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Устанавливает тип приложения, для которого загружена картинка.
-     * @param platform
+     * @param {string} platform - Тип платформы (alisa, telegram, vk и т.д.)
      */
     set platform(platform: string) {
         this.state.platform = platform;
@@ -141,7 +145,7 @@ export class ImageTokens extends Model<IImageModelState> {
     /**
      * Возвращает название таблицы/файла с данными.
      *
-     * @return {string} Название таблицы для хранения данных об изображениях
+     * @returns {string} Название таблицы для хранения данных об изображениях
      */
     public tableName(): string {
         return ImageTokens.TABLE_NAME;
@@ -150,7 +154,7 @@ export class ImageTokens extends Model<IImageModelState> {
     /**
      * Определяет правила валидации для полей модели.
      *
-     * @return {IModelRules[]} Массив правил валидации
+     * @returns {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return RULES;
@@ -160,7 +164,7 @@ export class ImageTokens extends Model<IImageModelState> {
      * Возвращает метки атрибутов таблицы.
      * Используется для отображения понятных названий полей.
      *
-     * @return {IImageModelState} Объект с метками атрибутов
+     * @returns {IImageModelState} Объект с метками атрибутов
      */
     public attributeLabels(): IImageModelState {
         return ATTRS_LABEL;

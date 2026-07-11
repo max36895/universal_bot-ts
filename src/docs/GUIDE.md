@@ -1,6 +1,6 @@
 # `umbot` — Инструкция по созданию голосовых навыков и чат-ботов
 
-> **Для кого эта инструкция.** Она написана так, чтобы её мог прочитать и разработчик, и нейросеть. Если вы передадите этот файл в LLM вместе с описанием задачи, нейросеть сможет сгенерировать работающее приложение на `umbot` без дополнительных подсказок.
+> **Для кого эта инструкция.** Она написана максимально структурированно и подробно — с примерами кода, описанием типов и пошаговыми инструкциями. Благодаря этому документ легко обрабатывается автоматически и может быть использован как основа для генерации проектов.
 >
 > **Версия фреймворка:** `umbot@3.0.x`
 > **Репозиторий:** https://github.com/max36895/universal_bot-ts
@@ -267,7 +267,7 @@ const bot = new BotTest()
         intents: [],
     });
 
-bot.test(); // запустит интерактивный диалог в консоли —
+await bot.test(); // запустит интерактивный диалог в консоли —
 // вводите текст, получаете ответ, для выхода введите "exit"
 ```
 
@@ -330,6 +330,8 @@ import {
     IQuery,
     IQueryData,
     IModelRules,
+    IPlugin,
+    IPluginFn,
     Text,
     getRegExp,
     isRegex,
@@ -778,12 +780,12 @@ export default function (): IAppParam {
 
 ### Приоритет токенов
 
-Если токен платформы указан в нескольких местах, приоритет такой:
+Если токен платформы указан в нескольких местах, приоритет такой (от высшего к низшему):
 
-1. `.env` файл (загружается через `config.env`)
-2. `process.env` (если `config.env === 'local'`)
-3. Inline-объект `config.tokens`
-4. Аргумент конструктора адаптера: `new AlisaAdapter('token')`
+1. **Аргумент конструктора адаптера**: `new AlisaAdapter('token')` — перезаписывает токен из `.env`/`process.env` при вызове `bot.use()`.
+2. **`.env` файл** (загружается через `config.env`) — используется, если адаптер создан без токена (`new AlisaAdapter()`).
+3. **`process.env`** (если `config.env === 'local'`) — используется, если `.env` не найден.
+4. **Inline-объект `config.tokens`** — наименьший приоритет.
 
 ### Содержимое `.env`
 
@@ -823,8 +825,8 @@ ctx.database.adapter; // активный DB-адаптер
 ctx.command; // CommandReg (реестр команд)
 ctx.httpClient; // функция fetch (можно переопределить)
 ctx.log('...'); // лог
-ctx.logError('msg', { meta: '...' });
-ctx.logMetric('name', value, { label: '...' });
+ctx.logError('msg', { error: 'details' });
+ctx.logMetric('name', value, { platform: 'telegram' });
 ```
 
 ---
@@ -875,14 +877,14 @@ class Bot<TUserData extends IUserData = IUserData> {
 
 ### Запуск
 
-| Метод                                                         | Назначение                                        |
-| ------------------------------------------------------------- | ------------------------------------------------- |
-| `start(hostname='localhost', port=3000, responseCb?): Server` | Запустить HTTP-сервер                             |
-| `webhookHandle(req, res, responseCb?): Promise<void>`         | Обработать один HTTP-запрос (для Express/Fastify) |
-| `run(appType?, content?): Promise<TRunResult>`                | Обработать запрос программно (для тестов)         |
-| `setContent(content): void`                                   | Вручную установить тело запроса (для тестов)      |
-| `send(userId, controllerOrText, platform): Promise<unknown>`  | Проактивная отправка (только TG/VK/Viber/Max)     |
-| `close(): Promise<void>`                                      | Корректно остановить сервер и освободить ресурсы  |
+| Метод                                                                                                                        | Назначение                                        |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `start(hostname='localhost', port=3000, responseCb?): Server`                                                                | Запустить HTTP-сервер                             |
+| `webhookHandle(req, res, responseCb?): Promise<void>`                                                                        | Обработать один HTTP-запрос (для Express/Fastify) |
+| `run(appType?, content?, auth?): Promise<TRunResult>`                                                                        | Обработать запрос программно (для тестов)         |
+| `setContent(content): void`                                                                                                  | Вручную установить тело запроса (для тестов)      |
+| `send(userId: string \| number, controllerOrText: BotController \| string, platform: TAppType): Promise<unknown \| boolean>` | Проактивная отправка (только TG/VK/Viber/Max)     |
+| `close(): Promise<void>`                                                                                                     | Корректно остановить сервер и освободить ресурсы  |
 
 ### Режимы (`setAppMode`)
 
@@ -891,6 +893,14 @@ class Bot<TUserData extends IUserData = IUserData> {
 | `dev`         | Подробные   | Warn, но не блокирует  | Выкл                | Разработка, `BotTest` |
 | `prod`        | Минимальные | Warn + фильтр опасных  | Выкл                | Pre-prod              |
 | `strict_prod` | Минимальные | **Блокировка** опасных | Вкл                 | **Production**        |
+
+**Что делает `strict_prod`:**
+
+- **Блокирует опасные RegExp.** При регистрации команды с потенциально уязвимым регулярным выражением (вложенные квантификаторы `(a+)+`, `.*` без якорей и т.д.) фреймворк выбросит ошибку в лог и **не зарегистрирует** команду. Это защищает от ReDoS-атак.
+- **Маскирует секреты в логах.** Токены, пароли и другие чувствительные данные заменяются на `***` в выводе логгера. Отключить можно через `bot.setLogger({ maskSecrets: false })`.
+- **Сокращает логи.** Выводятся только ошибки и предупреждения — без трассировки запросов и отладочной информации.
+
+> **Рекомендация:** используйте `strict_prod` для продакшена. `dev` — для разработки и тестирования через `BotTest`.
 
 ### Минимальный набор для запуска
 
@@ -905,8 +915,7 @@ bot.setAppConfig({
     isLocalStorage: false,
 });
 bot.setPlatformParams({
-    // 4. Передать параметры (intents обязателен!)
-    intents: [{ name: 'bye', slots: ['пока'] }],
+    intents: [{ name: 'bye', slots: ['пока'] }], // Рекомендуется указать
     welcome_text: 'Привет!',
 });
 bot.setAppMode('strict_prod'); // 5. Режим продакшена
@@ -965,19 +974,20 @@ run(
 
 ### Поля запроса (что фреймворк заполняет)
 
-| Поле                  | Тип                                         | Назначение                                         |
-| --------------------- | ------------------------------------------- | -------------------------------------------------- |
-| `userCommand`         | `string \| null`                            | Текст пользователя в нижнем регистре               |
-| `originalUserCommand` | `string \| null`                            | Оригинальный текст (с заглавными, пунктуацией)     |
-| `userId`              | `string \| number \| null`                  | ID пользователя на платформе                       |
-| `userToken`           | `string \| null`                            | OAuth-тoken (для авторизованных запросов Алисы)    |
-| `userMeta`            | `unknown \| null`                           | Метаданные (timezone, locale, ...)                 |
-| `messageId`           | `number \| string \| null`                  | Номер сообщения. 0 = начало новой сессии           |
-| `payload`             | `Record<string, unknown> \| string \| null` | Payload от кнопки (если нажали кнопку с payload)   |
-| `requestObject`       | `unknown`                                   | Полный оригинальный объект запроса от платформы    |
-| `isScreen`            | `boolean`                                   | Есть ли экран у устройства                         |
-| `appType`             | `TAppType \| null`                          | Идентификатор текущей платформы                    |
-| `oldIntentName`       | `string \| null`                            | Имя предыдущего шага (из `userData.oldIntentName`) |
+| Поле                  | Тип                                                      | Назначение                                         |
+| --------------------- | -------------------------------------------------------- | -------------------------------------------------- |
+| `userCommand`         | `string \| null`                                         | Текст пользователя в нижнем регистре               |
+| `originalUserCommand` | `string \| null`                                         | Оригинальный текст (с заглавными, пунктуацией)     |
+| `userId`              | `string \| number \| null`                               | ID пользователя на платформе                       |
+| `userToken`           | `string \| null`                                         | OAuth-тoken (для авторизованных запросов Алисы)    |
+| `userMeta`            | `unknown \| null`                                        | Метаданные (timezone, locale, ...)                 |
+| `messageId`           | `number \| string \| null`                               | Номер сообщения. 0 = начало новой сессии           |
+| `payload`             | `Record<string, unknown> \| string \| null \| undefined` | Payload от кнопки (если нажали кнопку с payload)   |
+| `requestObject`       | `unknown`                                                | Полный оригинальный объект запроса от платформы    |
+| `isScreen`            | `boolean`                                                | Есть ли экран у устройства                         |
+| `appType`             | `TAppType \| null`                                       | Идентификатор текущей платформы                    |
+| `oldIntentName`       | `string \| null`                                         | Имя предыдущего шага (из `userData.oldIntentName`) |
+| `appContext`          | `AppContext`                                             | Контекст приложения (конфиг, реестры, логгер)      |
 
 ### Состояние
 
@@ -1023,9 +1033,8 @@ public abstract action(
 3. Загружает `userData` / `state`.
 4. Вызывает `run()` — внутренний диспетчер.
 5. `run()` определяет, что сработало (шаг → команда → интент → fallback → built-in), и в конце вызывает `action()`.
-6. Сохраняет `userData` / `state`.
-7. Вызывает `platformAdapter.getContent(controller)` — формирует ответ.
-8. Сбрасывает transient-поля (text, tts, buttons, card, nlu) — userData сохраняется.
+6. Вызывает `platformAdapter.getContent(controller)` — формирует ответ (внутри этого метода также сохраняются `userData` / `state`).
+7. Сбрасывает transient-поля (text, tts, buttons, card, nlu) — userData сохраняется.
 
 ---
 
@@ -1507,7 +1516,7 @@ this.buttons.addBtn('Купить', '', { action: 'buy', id: 42 });
 // controller.payload === { action: 'buy', id: 42 }
 ```
 
-> Тип `controller.payload` — `Record<string, unknown> | string | null`. Если вы передавали объект — получите объект. Проверяйте наличие нужного поля перед использованием: payload может отсутствовать, если пользователь не нажимал кнопку.
+> Тип `controller.payload` — `Record<string, unknown> | string | null | undefined`. Если вы передавали объект — получите объект. Проверяйте наличие нужного поля перед использованием: payload может отсутствовать, если пользователь не нажимал кнопку.
 
 Пример обработки нажатия кнопки с payload в middleware (проверка до команд, чтобы избежать коллизий):
 
@@ -1562,7 +1571,7 @@ this.buttons.addBtn('Геолокация', '', '', {
 // Одна картинка с заголовком и описанием
 this.card
     .addOneImage('https://example.com/img.jpg', 'Заголовок', 'Описание')
-    .addButton('Открыть', 'https://example.com');
+    .addButton({ title: 'Открыть', url: 'https://example.com' });
 
 // Список (галерея) — до 5 элементов на Алисе
 this.card
@@ -1880,7 +1889,7 @@ bot.use(new SmartAppAdapter()); // без токена — аутентифик�
 bot.setPlatformResolver((query, headers, detect) => {
     // detect() запускает стандартное авто-определение
     if (headers?.['x-my-routing'] === 'alice') return 'alisa';
-    return detect();
+    return detect(query, headers);
 });
 ```
 
@@ -2095,6 +2104,8 @@ type MiddlewareNext = () => Promise<void>;
 - `next()` — продолжить цепочку. **Не вызвали → короткое замыкание, `action()` не запустится.**
 
 > **Асинхронность:** `MiddlewareFn` поддерживает `async/await`. Можно использовать `await` до вызова `next()` (например, для аутентификации через БД) и после (для пост-обработки ответа). Фреймворк автоматически дожидается Promise.
+>
+> **Обработка ошибок:** если middleware выбрасывает исключение, фреймворк перехватывает его, логирует ошибку и прерывает обработку — `action()` не вызывается. Оборачивайте потенциально опасные операции (HTTP-запросы, обращения к БД) в `try/catch`, если хотите вернуть пользователю осмысленный ответ.
 
 ### Регистрация
 
@@ -2233,6 +2244,13 @@ bot.use(authMiddleware(process.env.SECRET!));
 
 `Preload` загружает все медиа при старте приложения, чтобы первый ответ был таким же быстрым, как и все последующие.
 
+**Как это работает:**
+
+1. При вызове `loadImages()` фреймворк проверяет, есть ли уже токен для этого файла в БД (`ImageTokens` модель).
+2. Если токен есть — используется кэшированное значение (загрузка не происходит).
+3. Если токена нет — файл загружается на сервер платформы, полученный токен сохраняется в БД.
+4. При следующем обращении к тому же файлу токен берётся из БД — без задержки на аплоад.
+
 ```ts
 import { Preload } from 'umbot/preload';
 import { T_ALISA, T_VK, T_TELEGRAM } from 'umbot/plugins';
@@ -2258,6 +2276,15 @@ await Promise.all([...imagePromises, ...soundPromises, ...tgPromises]);
 
 bot.start('0.0.0.0', 3000);
 ```
+
+### API Preload
+
+| Метод          | Параметры                                                                  | Возвращаемое значение | Описание                           |
+| -------------- | -------------------------------------------------------------------------- | --------------------- | ---------------------------------- |
+| `loadImages`   | `paths: string[]`, `platforms: TAppType[]`, `options?: { telegramUseId? }` | `Promise<boolean>[]`  | Загрузить изображения на платформы |
+| `loadSounds`   | `paths: string[]`, `platforms: TAppType[]`                                 | `Promise<boolean>[]`  | Загрузить звуки на платформы       |
+| `removeImages` | `paths: string[]`, `platforms: TAppType[]`                                 | `Promise<boolean>[]`  | Удалить изображения с платформ     |
+| `removeSounds` | `paths: string[]`, `platforms: TAppType[]`                                 | `Promise<boolean>[]`  | Удалить звуки с платформ           |
 
 ### Удаление медиа
 
@@ -2298,7 +2325,7 @@ const params: IBotTestParams = {
     isShowTime: true, // печатать время выполнения
 };
 
-bot.test(params);
+await bot.test(params);
 ```
 
 **Что происходит в консоли:**
@@ -2336,7 +2363,7 @@ bot.test(params);
 
 ```ts
 import { BotTest } from 'umbot/test';
-import { T_ALISA } from 'umbot/plugins';
+import { fullPlatforms, T_ALISA } from 'umbot/plugins';
 
 const bot = new BotTest();
 bot.use(fullPlatforms);
@@ -2420,6 +2447,23 @@ adapter.getFileData = (tableName) => {
 };
 adapter.init(appContext);
 ```
+
+---
+
+## Чеклист: готовность к production
+
+Перед запуском в продакшене убедитесь, что всё выполнено:
+
+- [ ] **Режим `strict_prod`** — включен через `bot.setAppMode('strict_prod')`
+- [ ] **Re2 установлен** — `npm install re2` (ускорение RegExp в 2-15 раз)
+- [ ] **MongoAdapter вместо FileAdapter** — FileAdapter хранит данные в памяти, не подходит для production
+- [ ] **Preload для медиа** — все изображения и звуки предзагружены (иначе первый ответ > 1 сек)
+- [ ] **rateLimiter подключен** — `bot.use(rateLimiter())` для защиты от превышения лимитов платформ
+- [ ] **Токены в .env** — не в коде, не в git. Проверьте `.gitignore`
+- [ ] **error_log настроен** — `bot.setAppConfig({ error_log: './logs' })`
+- [ ] **HTTPS настроен** — обязателен для Алисы, Сбера, Viber
+- [ ] **Webhook URL зарегистрирован** — в консоли разработчика каждой платформы
+- [ ] **Тесты пройдены** — `npm run test` зелёный
 
 ---
 
@@ -2542,7 +2586,7 @@ process.on('SIGTERM', async () => {
 
 ### Про лимиты платформ
 
-Подробные лимиты платформ (1024 символа, 10 кнопок, ...) **адаптеры берут на себя** — см. раздел [13.3](#133-главное-про-лимиты-платформ). Вам не нужно их запоминать: фреймворк сам обрежет лишнее.
+Подробные лимиты платформ (1024 символа, 10 кнопок, ...) **адаптеры берут на себя** — Подробнее о лимитах платформ — в разделе [Главное про лимиты платформ](#главное-про-лимиты-платформ). Вам не нужно их запоминать: фреймворк сам обрежет лишнее.
 
 Единственное, за что вы отвечаете:
 
@@ -2584,6 +2628,146 @@ process.on('SIGTERM', async () => {
 - При 10 000+ команд с regex — установите `re2` (2–15× ускорение).
 - 48-часовой soak-тест: 67 582 RPS без утечек памяти.
 - Для высокой нагрузки — `setAppMode('strict_prod')`, `MongoAdapter`, `Preload` медиа.
+
+---
+
+## Обработка ошибок
+
+Фреймворк `umbot` обрабатывает ошибки на нескольких уровнях. Понимание этих уровней поможет вам писать надёжный код.
+
+### Уровень 1: Команды и шаги
+
+Если callback команды или шага выбрасывает исключение, фреймворк перехватывает его, логирует ошибку и возвращает пользователю стандартное сообщение «Не удалось выполнить команду. Попробуйте ещё раз.».
+
+```ts
+// Фреймворк автоматически обернёт этот код в try/catch:
+bot.addCommand('risk', ['риск'], async (_, bc) => {
+    const res = await fetch('https://external-api.com/data'); // может упасть
+    const data = await res.json();
+    bc.text = data.answer;
+});
+```
+
+Если вам нужно обработать ошибку самостоятельно (например, показать пользователю понятное сообщение), используйте `try/catch` внутри callback:
+
+```ts
+bot.addCommand('risk', ['риск'], async (_, bc) => {
+    try {
+        const res = await fetch('https://external-api.com/data');
+        const data = await res.json();
+        bc.text = data.answer;
+    } catch (error) {
+        bc.text = 'Сервис временно недоступен. Попробуйте позже.';
+        bc.appContext.logError('Ошибка при обращении к внешнему API', { error });
+    }
+});
+```
+
+### Уровень 2: Middleware
+
+Middleware-функции также могут выбрасывать исключения. Если middleware не вызвал `next()` и не установил `text` — `action()` не будет вызван, и пользователь получит пустой ответ.
+
+```ts
+bot.use(async (ctx, next) => {
+    try {
+        const allowed = await checkAccess(ctx.userId);
+        if (!allowed) {
+            ctx.text = 'Доступ запрещён.';
+            return; // next() не вызываем — action() не запустится
+        }
+        await next();
+    } catch (error) {
+        ctx.appContext.logError('Ошибка в middleware', { error });
+        ctx.text = 'Произошла ошибка. Попробуйте позже.';
+    }
+});
+```
+
+### Уровень 3: Контроллер (action)
+
+В методе `action()` ошибки не перехватываются автоматически. Рекомендуется оборачивать тело `action()` в `try/catch`:
+
+```ts
+class SafeController extends BotController {
+    public action(intentName: string | null): void {
+        try {
+            switch (intentName) {
+                case WELCOME_INTENT_NAME:
+                    this.text = 'Привет!';
+                    break;
+                default:
+                    if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
+            }
+        } catch (error) {
+            this.appContext.logError('Ошибка в action()', { error });
+            this.text = 'Извините, произошла ошибка. Попробуйте ещё раз.';
+        }
+    }
+}
+```
+
+### Логирование ошибок
+
+Все ошибки логируются через `appContext.logError()`:
+
+```ts
+// В любом месте кода:
+this.appContext.logError('Описание ошибки', { additionalData: '...' });
+```
+
+В режиме `dev` ошибки выводятся в консоль и в файл (если указан `error_log`). В режимах `prod` и `strict_prod` — только в файл.
+
+### Типичные сценарии
+
+| Сценарий                   | Что происходит                | Рекомендация                                 |
+| -------------------------- | ----------------------------- | -------------------------------------------- |
+| Ошибка в команде           | Стандартное сообщение + лог   | Оберните в `try/catch` для кастомного ответа |
+| Ошибка в middleware        | `action()` не вызывается      | Логируйте и устанавливайте `text`            |
+| Ошибка в `fetch`           | Промис отклоняется            | Используйте `try/catch` + таймауты           |
+| Ошибка в БД                | Метод возвращает `false`      | Проверяйте результат `save()`                |
+| Таймаут платформы (>3 сек) | Платформа обрывает соединение | Используйте `Preload` для медиа              |
+
+---
+
+## Метрики
+
+Фреймворк собирает метрики времени выполнения ключевых операций. Это полезно для профилирования и поиска узких мест.
+
+### Как включить
+
+Метрики собираются, только если в логгере реализован метод `logMetric()`:
+
+```ts
+bot.setLogger({
+    logMetric: (name: string, value: number, meta?: Record<string, unknown>) => {
+        console.log(`[METRIC] ${name}: ${value.toFixed(2)}ms`, meta);
+    },
+});
+```
+
+### Доступные метрики
+
+| Метрика              | Константа               | Что измеряет                        |
+| -------------------- | ----------------------- | ----------------------------------- |
+| Начало webhook       | `EMetric.START_WEBHOOK` | Момент начала обработки запроса     |
+| Время webhook        | `EMetric.END_WEBHOOK`   | Общее время обработки webhook       |
+| Поиск интента        | `EMetric.GET_INTENT`    | Время поиска подходящего интента    |
+| Поиск команды        | `EMetric.GET_COMMAND`   | Время поиска подходящей команды     |
+| Выполнение action    | `EMetric.ACTION`        | Время выполнения вашего `action()`  |
+| Middleware           | `EMetric.MIDDLEWARE`    | Время выполнения middleware-цепочки |
+| Запрос к БД (SELECT) | `EMetric.DB_SELECT`     | Время выполнения SELECT             |
+| Запрос к БД (INSERT) | `EMetric.DB_INSERT`     | Время выполнения INSERT             |
+| Запрос к БД (UPDATE) | `EMetric.DB_UPDATE`     | Время выполнения UPDATE             |
+| Запрос к БД (DELETE) | `EMetric.DB_REMOVE`     | Время выполнения DELETE             |
+
+### Как читать метрики
+
+Пример вывода:
+
+```
+[METRIC] umbot_get-command_duration_ms: 0.45ms { commandName: 'weather', status: true }
+[METRIC] umbot_action_duration_ms: 12.30ms { commandName: 'weather', platform: 'telegram' }
+```
 
 ---
 
@@ -2746,7 +2930,7 @@ bot.addCommand('show_product', ['покажи товар'], (_, bc) => {
     bc.tts = 'Посмотрите этот товар';
     bc.card
         .addOneImage('https://shop.example.com/img/1.jpg', 'iPhone 15', '99 990 ₽')
-        .addButton('Купить', '', { action: 'buy', id: 1 });
+        .addButton({ title: 'Купить', payload: { action: 'buy', id: 1 } });
 });
 ```
 
@@ -2875,7 +3059,7 @@ bot.initBotController(
 bot.addCommand('show_product', ['покажи товар'], (_, bc) => {
     bc.card
         .addOneImage('https://shop.example.com/1.jpg', 'Товар 1', '99 ₽')
-        .addButton('Купить', '', { action: 'buy', id: 1 });
+        .addButton({ title: 'Купить', payload: { action: 'buy', id: 1 } });
 });
 
 // Контроллер обрабатывает нажатия кнопок
@@ -2947,7 +3131,6 @@ import { Preload } from 'umbot/preload';
 
 const bot = new Bot();
 bot.use(fullPlatforms);
-bot.use(new AlisaAdapter('OAuth ...'));
 bot.setAppConfig({ isLocalStorage: true });
 bot.initBotController(MyController);
 
@@ -2975,9 +3158,9 @@ const logger = winston.createLogger({
 const bot = new Bot();
 bot.setLogger({
     log: (...args) => logger.info(args.join(' ')),
-    error: (msg, meta) => logger.error(msg, meta),
-    warn: (msg, meta) => logger.warn(msg, meta),
-    metric: (name, value, labels) => logger.info({ metric: name, value, labels }),
+    logError: (msg, meta) => logger.error(msg, meta),
+    logWarn: (msg, meta) => logger.warn(msg, meta),
+    logMetric: (name, value, labels) => logger.info({ metric: name, value, labels }),
     maskSecrets: true,
 });
 ```
@@ -3059,7 +3242,7 @@ Telegram отправляет `inline_query` в теле запроса. Обр�
 
 ```ts
 bot.use(T_TELEGRAM, async (ctx, next) => {
-    const req = ctx.requestObject as any;
+    const req = ctx.requestObject as Record<string, unknown>;
     if (req.inline_query) {
         const telegramApi = new TelegramRequest(ctx.appContext);
         // формируем результаты inline
@@ -3111,7 +3294,7 @@ import { Bot } from 'umbot';
 const bot = new Bot();
 // ... настройка ...
 
-export const handler = async (event: any) => {
+export const handler = async (event: Record<string, unknown>) => {
     // event.body — JSON от платформы
     const content = typeof event.body === 'string' ? event.body : JSON.stringify(event.body);
     bot.setContent(content);

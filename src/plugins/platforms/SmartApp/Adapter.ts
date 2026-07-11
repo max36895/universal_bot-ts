@@ -29,6 +29,7 @@ import {
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
  * на основе заголовков и структуры входящего запроса.
  * @example
+ * ```ts
  * // Простейший навык, который отвечает на приветствие
  * import { Bot } from 'umbot';
  * import { SmartAppAdapter } from 'umbot/plugins';
@@ -40,6 +41,7 @@ import {
  *     });
  *
  * bot.start('localhost', 3000);
+ * ```
  *
  * @see Bot
  * @see BotController
@@ -158,10 +160,10 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
 
                 return true;
             } else {
-                controller.platformOptions.error = `SmartAppAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`;
+                controller.platformOptions.error = `SmartAppAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
             }
         } else {
-            console.error(`SmartAppAdapter.isPlatformOnQuery(): ${EMPTY_CONTEXT_ERROR}`);
+            console.error(`SmartAppAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
         }
         return false;
     }
@@ -169,7 +171,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     /**
      * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
-     * @returns {Promise<ISberSmartAppResponsePayload>} Объект ответа для SmartApp
+     * @returns {ISberSmartAppResponsePayload} Объект ответа для SmartApp
      */
     #getPayload(controller: BotController): ISberSmartAppResponsePayload {
         const payload: ISberSmartAppResponsePayload = {
@@ -249,7 +251,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
 
     /**
      * Формирует ответ с оценкой навыка
-     * @returns {Promise<ISberSmartAppWebhookResponse>} Объект ответа для webhook`а
+     * @returns {ISberSmartAppWebhookResponse} Объект ответа для webhook`а
      */
     public getRatingContext(controller: BotController): ISberSmartAppWebhookResponse {
         return {

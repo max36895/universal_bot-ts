@@ -4,7 +4,17 @@ import { adapters } from './adapters';
 /**
  * Регистрирует все доступные из коробки платформы в приложение.
  * Регистрирует только платформы для чат-ботов(ВК, Телеграм и тд)
+ *
  * @param appContext Контекст приложения
+ *
+ * @example
+ * ```ts
+ * import { Bot } from 'umbot';
+ * import { botPlatforms } from 'umbot/plugins';
+ *
+ * const bot = new Bot();
+ * bot.use(botPlatforms); // подключает Telegram, VK, Viber, Max
+ * ```
  */
 function botPlatforms(appContext: AppContext): void {
     adapters.forEach((adapter) => {

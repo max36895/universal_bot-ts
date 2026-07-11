@@ -21,9 +21,8 @@
 
 ### Какие требования к окружению?
 
-- **Node.js**: 20.0+ (минимальная версия)
-- **TypeScript**: 5.0+ <= 7.0
-- **npm**: 9.0+
+- **Node.js**: 20.19+ (минимальная версия)
+- **TypeScript**: 5.0+
 
 ---
 
@@ -68,7 +67,7 @@ ctx.text = `Привет, ${ctx.userData.name}!`;
 
 Плагин в `umbot` — это модуль расширения функциональности, который регистрируется в контексте приложения (`AppContext`)
 и позволяет добавлять новую логику без изменения ядра фреймворка.
-**Интерфейс**: Плагин может быть реализован как класс с методом `init(appContext)` или как функция со свойством
+**Интерфейс**: Плагин может быть реализован как класс с методом `init(appContext, bot)` или как функция со свойством
 `isPlugin = true`.
 **Регистрация**: Плагины подключаются через метод `bot.use(plugin)`.
 **Встроенные типы**: В системе зарезервированы слоты для системных плагинов:
@@ -79,7 +78,7 @@ ctx.text = `Привет, ${ctx.userData.name}!`;
   Адаптеры: Платформы (Алиса, Telegram, VK и др.) и базы данных (MongoDB, файловая) в версии 3.0.0 также реализованы
   через архитектуру плагинов/адаптеров.
 
-## Как использовать плагин?
+### Как использовать плагин?
 
 Подключение происходит в точке входа приложения через цепочку методов `use()`.
 Пример кода:
@@ -99,7 +98,7 @@ bot.use(
 );
 
 // 2. Подключение кастомного плагина (пример)
-const myPlugin = (appContext) => {
+const myPlugin = (appContext, bot) => {
     appContext.plugins['myPlugin'] = {
         getData: (key) => `Value: ${key}`,
     };
@@ -116,218 +115,50 @@ bot.start('localhost', 3000);
 Плагин — это механизм расширения функциональности фреймворка без изменения его ядра. Он позволяет инкапсулировать логику
 в отдельные модули, которые можно подключать только когда это нужно.
 
-#### 🎯 Основные сценарии использования
+**Основные сценарии:**
 
-**Сценарий 1**: Модульная архитектура большого проекта
-**Проблема**: У вас есть приложение с разными функциями (статистика, задачи, админка), и весь код находится в одном
-файле → сложно поддерживать.
-**Решение**: Каждая функция оформляется как отдельный плагин.
+- **Модульная архитектура** — вынести связанную логику (игру, магазин, статистику) в отдельные файлы.
+- **Переиспользование** — один плагин работает в нескольких проектах (Telegram-бот + Алиса-навык).
+- **Динамическое включение/выключение** — временно отключить функционал через `bot.clearUse()`.
+- **Интеграция со сторонними сервисами** — инкапсулировать работу с CRM, платежами и т.д.
+
+**Пример:**
 
 ```ts
-// plugins/statistics.ts
-import { AppContext, Bot } from 'umbot';
+// plugins/game.ts
+import { Bot, AppContext, BotController, IUserData } from 'umbot';
 
-export class StatisticsPlugin {
-    init(appContext: AppContext, bot: Bot): void {
-        // Плагин регистрирует свои команды
-        bot.addCommand('stats', ['статистика', 'статы'], (_, controller) => {
-            controller.text = '📊 Статистика приложения...';
-        });
-
-        bot.addCommand('stats_reset', ['сброс статистики'], (_, controller) => {
-            controller.text = 'Статистика сброшена';
-        });
-    }
-
-    destroy(bot: Bot): void {
-        // При удалении плагина очищаем его команды
-        bot.removeCommand('stats');
-        bot.removeCommand('stats_reset');
-    }
+interface GameData extends IUserData {
+    score: number;
 }
 
-// plugins/tasks.ts
-export class TasksPlugin {
-    init(appContext: AppContext, bot: Bot): void {
-        bot.addCommand('task_add', ['добавить задачу'], (_, controller) => {
-            controller.text = '📝 Новая задача создана';
-        });
-
-        bot.addCommand('task_list', ['список задач'], (_, controller) => {
-            controller.text = '📋 Список задач...';
-        });
-    }
-
-    destroy(bot: Bot): void {
-        bot.removeCommand('task_add');
-        bot.removeCommand('task_list');
-    }
+export function gamePlugin(appContext: AppContext, bot: Bot): void {
+    bot.addCommand('game_start', ['играть'], (_, bc: BotController<GameData>) => {
+        bc.userData.score = 0;
+        bc.text = 'Игра началась!';
+    });
 }
-```
-
-**Главное преимущество**: Вы можете собирать разные версии приложения из одних и тех же плагинов:
-
-```ts
-// index-lite.ts — только статистика
-import { Bot } from 'umbot';
-import { StatisticsPlugin } from './plugins/statistics';
-
-const bot = new Bot();
-bot.use(new StatisticsPlugin()); // Только статистика
-bot.start('localhost', 3000);
-
-// index-full.ts — статистика + задачи
-import { Bot } from 'umbot';
-import { StatisticsPlugin } from './plugins/statistics';
-import { TasksPlugin } from './plugins/tasks';
-
-const bot = new Bot();
-bot.use(new StatisticsPlugin());
-bot.use(new TasksPlugin()); // + Задачи
-bot.start('localhost', 3000);
-
-// index-admin.ts — всё + админка
-import { Bot } from 'umbot';
-import { StatisticsPlugin } from './plugins/statistics';
-import { TasksPlugin } from './plugins/tasks';
-import { AdminPlugin } from './plugins/admin';
-
-const bot = new Bot();
-bot.use(new StatisticsPlugin());
-bot.use(new TasksPlugin());
-bot.use(new AdminPlugin()); // + Админка
-bot.start('localhost', 3000);
-```
-
-**Сценарий 2**: Переиспользование кода между проектами
-**Проблема**: У вас 5 разных платформ, и в каждом нужна одинаковая логика (например, команда /help или обработка
-платежей).
-**Решение**: Создаёте плагин один раз → подключаете везде.
-
-```ts
-// plugins/help-system.ts
-import { AppContext, Bot, HELP_INTENT_NAME } from 'umbot';
-
-export class HelpPlugin {
-    init(appContext: AppContext, bot: Bot): void {
-        bot.addCommand(HELP_INTENT_NAME, ['помощь', 'help', 'справка'], (_, controller) => {
-            controller.text =
-                '🤖 Доступные команды:\n' +
-                '• /stats — статистика\n' +
-                '• /tasks — задачи\n' +
-                '• /settings — настройки';
-            controller.buttons.addBtn('📊 Статистика').addBtn('⚙️ Настройки');
-        });
-    }
-
-    destroy(bot: Bot): void {
-        bot.removeCommand(HELP_INTENT_NAME);
-    }
-}
+gamePlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО
 ```
 
 ```ts
-// Проект 1: Бот для Telegram
-import { Bot } from 'umbot';
-import { HelpPlugin } from './plugins/help-system';
-import { TelegramAdapter } from 'umbot/plugins';
+// index.ts
+import { gamePlugin } from './plugins/game';
 
 const bot = new Bot();
-bot.use(new TelegramAdapter());
-bot.use(new HelpPlugin()); // ✅ Готовая помощь
-bot.start('localhost', 3000);
-
-// Проект 2: Навык для Алисы
-import { Bot } from 'umbot';
-import { HelpPlugin } from './plugins/help-system';
-import { AlisaAdapter } from 'umbot/plugins';
-
-const bot = new Bot();
-bot.use(new AlisaAdapter());
-bot.use(new HelpPlugin()); // ✅ Та же помощь, работает везде
-bot.start('localhost', 3000);
+bot.use(gamePlugin); // подключаем плагин
 ```
 
-**Сценарий 3**: Динамическое включение/выключение функций
-**Проблема**: Нужно временно отключить функционал (например, на время технических работ).
-**Решение**: Плагин можно удалить из приложения.
-
-```ts
-import { Bot } from 'umbot';
-import { PaymentPlugin } from './plugins/payment';
-import { MaintenancePlugin } from './plugins/maintenance';
-
-const bot = new Bot();
-bot.use(new PaymentPlugin());
-
-// Во время технических работ:
-bot.clearUse(); // Удаляем все плагины
-bot.use(new MaintenancePlugin()); // Добавляем заглушку
-
-// После восстановления:
-bot.clearUse();
-bot.use(new PaymentPlugin()); // Возвращаем функционал
-```
-
-**Сценарий 4**: Интеграция со сторонними сервисами
-**Проблема**: Нужно подключить внешнее API (например, CRM, базу знаний, платежную систему).
-**Решение**: Плагин инкапсулирует всю логику интеграции.
-
-```ts
-// plugins/crm-integration.ts
-import { AppContext, Bot } from 'umbot';
-
-export class CrmPlugin {
-    private crmClient: any;
-
-    init(appContext: AppContext, bot: Bot): void {
-        // Инициализация клиента CRM
-        this.crmClient = new CrmClient(appContext.appConfig.crm);
-
-        // Регистрируем команды для работы с CRM
-        bot.addCommand('crm_client', ['клиент', 'карточка клиента'], async (_, controller) => {
-            const client = await this.crmClient.getClient(controller.userId);
-            controller.text = `👤 Клиент: ${client.name}`;
-        });
-
-        bot.addCommand('crm_order', ['заказ', 'история заказов'], async (_, controller) => {
-            const orders = await this.crmClient.getOrders(controller.userId);
-            controller.text = `📦 Заказы: ${orders.length}`;
-        });
-    }
-
-    destroy(bot: Bot): void {
-        bot.removeCommand('crm_client');
-        bot.removeCommand('crm_order');
-        this.crmClient?.disconnect();
-    }
-}
-```
-
-#### 📊 Сравнение: с плагинами и без
-
-| Критерий                | Без плагинов             | С плагинами                        |
-| ----------------------- | ------------------------ | ---------------------------------- |
-| Структура кода          | Всё в одном файле        | Модульная, по функциям             |
-| Повторное использование | Копипаст между проектами | Один плагин → много проектов       |
-| Тестирование            | Тестировать всё вместе   | Тестировать каждый плагин отдельно |
-| Масштабирование         | Сложно добавлять новое   | Просто подключить новый плагин     |
-| Отключение функций      | Нужно комментировать код | bot.clearUse() + новый плагин      |
-| Командная разработка    | Конфликты в одном файле  | Каждый работает в своём плагине    |
-
-#### ✅ Итог: когда использовать плагины
+**Когда использовать плагины:**
 
 | Ситуация                           | Использовать плагин |
 | ---------------------------------- | ------------------- |
-| Большая кодовая база (>1000 строк) | ✅ Да               |
-| Несколько проектов с общей логикой | ✅ Да               |
-| Нужно включать/выключать функции   | ✅ Да               |
-| Интеграция со сторонними API       | ✅ Да               |
-| Командная разработка               | ✅ Да               |
+| Большая кодовая база (>1000 строк) | Да                  |
+| Несколько проектов с общей логикой | Да                  |
+| Нужно включать/выключать функции   | Да                  |
+| Интеграция со сторонними API       | Да                  |
 
-Плагины превращают разработку приложения в конструктор: вы подключаете только те функции, которые нужны конкретному
-продукту,
-и можете легко переиспользовать код между проектами.
+Подробнее о создании плагинов — в разделе [Архитектура расширений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_readme.html).
 
 ## Установка и настройка
 
@@ -419,17 +250,19 @@ npm list umbot
 ### Сколько команд может обработать umbot?
 
 `umbot` в состоянии обработать любое количество команд, но важно понимать что большое количество команд, как правило,
-говорит о не оптимальной архитектуре приложения.
+говорит о неоптимальной архитектуре приложения.
 Также при большом количестве команд, время ответа приложения будет увеличиваться.
 **Рекомендуется** не использовать более 1000 команд в своем приложении.
 
-| Количество команд | Время обработки (с re2) | Рекомендация        |
-| ----------------- | ----------------------- | ------------------- |
-| 50                | 0.06 мс                 | ✅ Отлично          |
-| 500               | 0.26 мс                 | ✅ Отлично          |
-| 1000              | < 30 мс                 | ✅ Хорошо           |
-| 10000             | < 1 сек                 | ⚠️ Проверьте сервер |
-| 20000             | 22.44 мс                | ⚠️ Используйте re2  |
+| Количество команд | Время обработки (холодный запуск, worst case) | Время обработки (с re2, кэш прогрет) | Рекомендация     |
+| ----------------- | --------------------------------------------- | ------------------------------------ | ---------------- |
+| 50                | до 0.5 мс                                     | до 0.5 мс                            | Отлично          |
+| 500               | до 1.2 мс                                     | до 0.7 мс                            | Отлично          |
+| 1000              | до 30 мс                                      | < 1 мс                               | Хорошо           |
+| 10000             | до 1 сек                                      | < 20 мс                              | Проверьте сервер |
+| 20000             | до 1 сек                                      | 22.44 мс                             | Используйте re2  |
+
+> Примечание: «Холодный запуск» — кэш RegExp пуст, выражения компилируются впервые. Значение «до 30 мс» для 1000 команд — worst case (все команды с RegExp, кэш пуст). В типичном сценарии (500 команд, строки) время составляет 0.26 мс. «С re2, кэш прогрет» — `re2` установлен, кэш уже заполнен. Подробные результаты — в разделе [BENCHMARKS](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_BENCHMARKS.html).
 
 ### Что такое re2 и зачем он нужен?
 
@@ -632,7 +465,7 @@ import { fullPlatforms } from 'umbot/plugins';
 
 const bot = new BotTest();
 bot.use(fullPlatforms);
-bot.test(); // Запускает интерактивный режим в консоли
+await bot.test(); // Запускает интерактивный режим в консоли
 ```
 
 ### Где найти логи ошибок?
@@ -696,7 +529,7 @@ bot.setAppMode('dev');
 Фреймворк автоматически проверяет регулярные выражения на уязвимости. В режиме strict_prod такие команды не
 регистрируются. Чтобы исправить:
 
-- Перепишите выражение, избегая вложенных квантификаторов ((a+)+), повторяющихся групп, .\* без якорей.
+- Перепишите выражение, избегая вложенных квантификаторов ((a+)+), повторяющихся групп, `.*` без якорей.
 - Проверьте выражение на regex101.com с флагом "debugger".
   Если вы уверены в безопасности, используйте режим prod (не рекомендуется).
 
@@ -719,7 +552,7 @@ bot.setAppMode('dev');
 
 ```ts
 bot.setPlatformResolver((query, headers, detect) => {
-    const platform = detect?.();
+    const platform = detect?.(query, headers);
     if (platform === 'telegram' && headers?.['x-force-vk']) {
         return 'vk';
     }
@@ -731,7 +564,7 @@ bot.setPlatformResolver((query, headers, detect) => {
 механикой определения платформы.
 
 В случае если платформа определилась некорректно, рекомендуется использовать данную механику для проставления
-корректной платформы, после чего выписать bug-report с ошибкой, чтобы мы смогли оперативно ее поправить.
+корректной платформы, после чего выписать bug-report с ошибкой, чтобы мы смогли оперативно её поправить.
 
 ### Почему не работают шаги (steps)?
 
@@ -781,17 +614,18 @@ app.post('/webhook', (req, res) => {
 ```ts
 // Вариант 1: объект
 class MyI18nPlugin implements IPlugin {
-    init(appContext: AppContext<IDatabaseInfo>) {
+    init(appContext: AppContext, bot: Bot) {
         appContext.plugins['i18n'] = {
             getData(key: string, ...params: unknown[]): string {
                 return `Translated: ${key}`;
             },
         };
     }
+    destroy(_bot: Bot) {}
 }
 
 // Вариант 2: функция
-const myI18nPlugin: IPluginFn = (appContext: AppContext) => {
+const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
     appContext.plugins['i18n'] = (key: string, ...params: unknown[]) => {
         return `Перевод для: ${key}`;
     };

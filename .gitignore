@@ -1,4 +1,5 @@
 .idea/*
+.gigacode/*
 /logs/*
 /json/*
 /dist/*

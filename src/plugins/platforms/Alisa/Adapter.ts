@@ -131,7 +131,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     /**
      * Устанавливает состояние приложения.
      * Определяет тип хранилища и сохраняет состояние в контроллере
-     * @param controller Объект состояния из запроса
+     * @param controller Контроллер приложения
      * @param state Объект состояния из запроса
      */
     #setState(controller: BotController, state: IAlisaRequestState): void {

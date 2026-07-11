@@ -9,22 +9,49 @@ import {
 import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
- * Тип ответа, который может вернуть адаптер после обработки запроса
+ * Тип ответа, который может вернуть адаптер после обработки запроса.
+ * Адаптер возвращает этот тип из метода getContent() — объект (JSON) или строка.
+ *
+ * @example
+ * ```ts
+ * // Объект (для Алисы, SmartApp — JSON в теле ответа)
+ * const content: TContent = { version: '1.0', response: { text: 'Привет!' } };
+ *
+ * // Строка (для Telegram, VK — ответ уже отправлен через API)
+ * const content: TContent = 'ok';
+ * ```
  */
 export type TContent = object | string | Promise<object | string>;
 
 /**
- * Дополнительные опции, которые передаются в конструктор адаптера
+ * Дополнительные опции, которые передаются в конструктор адаптера.
+ * Формат зависит от конкретной платформы.
+ *
+ * @example
+ * ```ts
+ * const options: IOptions = {
+ *     vk_confirmation_token: 'abc123',
+ *     vk_api_version: '5.199',
+ * };
+ * ```
  */
 export interface IOptions {
     /**
-     * Любое свойство в необходимо для работы формате
+     * Любое свойство, необходимое для работы платформы, в нужном формате
      */
     [key: string]: unknown;
 }
 
+/**
+ * Ошибка, возникающая при получении пустого тела запроса от платформы.
+ * Indicates that the request body is empty and further processing is impossible.
+ */
 export const EMPTY_QUERY_ERROR =
     'Получено пустое тело запроса от платформы, дальнейшая корректная работа невозможна. Скорее всего запрос пришел не от платформы.';
+/**
+ * Ошибка, возникающая при отсутствии контекста приложения.
+ * Indicates that AppContext is not initialized.
+ */
 export const EMPTY_CONTEXT_ERROR =
     'Не указан контекст приложения, дальнейшая работа приложения невозможна. Проверьте корректность настройки приложения.';
 
@@ -47,7 +74,6 @@ export const EMPTY_CONTEXT_ERROR =
  *
  * @see Bot
  * @see BotController
- * @see BasePlatform
  */
 export abstract class BasePlatform<TQuery = unknown>
     extends BasePlugin
@@ -100,7 +126,7 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Инициализация адаптера.
      * Определять не обязательно. Стоит указывать в случаях, когда нужно выполнить доп логику, например указать токены или писать какую-то статистику по использованию.
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
      */
     init(appContext: AppContext<IDatabaseInfo, TQuery>): void {
         appContext.platforms[this.platformName] = this;
@@ -144,10 +170,10 @@ export abstract class BasePlatform<TQuery = unknown>
      * }
      * ```
      *
-     * @example Алиса (тело содержит "meta.session_id")
+     * @example Алиса
      * ```ts
      * isPlatformOnQuery(query) {
-     *   return typeof query === 'object' && query.meta?.session_id;
+     *   return !!(query.request && query.version && query.session);
      * }
      * ```
      * @param query Запрос, который пришел в приложение
@@ -159,8 +185,8 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Проверяет полученный запрос от платформы на корректность.
      * Из коробки проверка идет по sha256. Если по какой-то причине поведение по умолчанию не подходит, то просто переопределите метод.
-     * @param query
-     * @param headers
+     * @param {TQuery} query - Объект запроса от платформы
+     * @param {Record<string, unknown>} [headers] - HTTP-заголовки запроса
      */
     isCorrectQuery(query: TQuery, headers?: Record<string, unknown>): boolean {
         if (this.appContext?.appConfig.tokens[this.platformName]?.token && this.signatureName) {
@@ -209,7 +235,7 @@ export abstract class BasePlatform<TQuery = unknown>
      *
      * Возвращает платформо-специфичный ответ (например, JSON для Алисы).
      * Для платформ, которые отправляют ответ напрямую (например, Telegram через `sendMessage`),
-     * метод может возвращать `{ ok: true }` или аналог.
+     * метод может возвращать строку `'ok'` или объект.
      *
      * @param controller - контроллер с готовым ответом
      * @param stateData - данные для локального хранилища
@@ -296,7 +322,7 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Дополнительная обработка для звуков.
      * В данном методе стоит реализовать логику, с помощью которой будут наложены дополнительные эффекты для озвучивания текста пользователю
-     * @param _controller
+     * @param {BotController} _controller - Контроллер бота
      */
     soundProcessing(_controller: BotController): void | Promise<void> {
         // custom logic
@@ -305,7 +331,7 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Инициализирует TTS (Text-to-Speech) в контроллере.
      * Обрабатывает звуки и стандартные звуковые эффекты
-     * @param controller Тип приложения
+     * @param controller Контроллер приложения
      * @protected
      */
     protected _initTTS(controller: BotController): void | Promise<void> {

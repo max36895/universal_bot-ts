@@ -26,7 +26,8 @@ export type TPatternRegExp = string | RegExp;
 
 /**
  * Проверяет передано ли регулярное выражение или нет
- * @param regExp Регулярное выражение
+ * @param {TPatternRegExp | unknown} regExp - Проверяемое значение
+ * @returns {regExp is RegExp} true если значение является регулярным выражением
  */
 export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
     return !!(
@@ -40,10 +41,10 @@ export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
  * Возвращает скомпилированное регулярное выражение.
  * Если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp.
  * В случае, если передан customReg, регулярное выражение будет собранно через него
- * @param reg - само регулярное выражение
- * @param flags - флаг для регулярного выражения
- * @param customReg - Произвольная реализация для обработки регулярных выражений
- * @returns
+ * @param {TPatternRegExp | TPatternRegExp[]} reg - Регулярное выражение или массив выражений
+ * @param {string} flags - Флаги для регулярного выражения (по умолчанию: 'ium')
+ * @param {RegExpConstructor} [customReg] - Произвольная реализация для обработки регулярных выражений
+ * @returns {customRegExp} Скомпилированное регулярное выражение
  */
 export function getRegExp(
     reg: TPatternRegExp | TPatternRegExp[],

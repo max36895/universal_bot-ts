@@ -59,7 +59,7 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
    Step 4.3: npm run prettier — Format code according to .prettierrc.
    Step 4.4: npm run lint — Check ESLint. If there are errors, you are responsible for fixing them yourself, not just reporting them.
 4. Coding Standards
-   Language: Comments and JSDoc must be in Russian. The wording must be clear and descriptive ("what")."does" and "why"), without the formal style.
+   Language: Comments and JSDoc must be in Russian. The wording must be clear and descriptive ("what it does" and "why"), without the formal style.
    Async: All promises must be processed (await or .catch()). "No-floating-promises" are prohibited.
    Performance:
    Avoid creating heavy objects or compiling RegExp inside hot loops. Use caching (see src/utils/standard/Text.ts and RegExp.ts).

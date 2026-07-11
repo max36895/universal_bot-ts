@@ -57,8 +57,8 @@ export interface IImageParams {
 
 /**
  * Инициализация кнопки.
- * @param button
- * @param buttonInst
+ * @param {TButton} button - Кнопка (строка или объект)
+ * @param {Buttons} buttonInst - Экземпляр компонента кнопок
  */
 export function initButton(button: TButton, buttonInst: Buttons): void {
     if (typeof button === 'string') {
@@ -179,7 +179,7 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  *    - Поддерживает строковые кнопки
  *    - Поддерживает объекты кнопок
  *
- * @param {AppContext} [appContext] - Контекст приложения
+ * @param {AppContext} appContext - Контекст приложения
  * @param {string | null} image - Путь к изображению или токен
  * @param {string} title - Заголовок изображения
  * @param {string} [desc=' '] - Описание изображения

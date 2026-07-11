@@ -157,7 +157,7 @@ export class UsersData extends Model<IUserDataModelState> {
 
     /**
      * Устанавливает уникальный идентификатор пользователя.
-     * @param userId
+     * @param {string | number | null} userId - Идентификатор пользователя
      */
     set userId(userId: string | number | null) {
         this.state.userId = userId;
@@ -178,7 +178,7 @@ export class UsersData extends Model<IUserDataModelState> {
 
     /**
      * Устанавливает метаданные пользователя.
-     * @param meta
+     * @param {TMetaType} meta - Метаданные пользователя
      */
     set meta(meta: TMetaType) {
         this.state.meta = meta;
@@ -199,7 +199,7 @@ export class UsersData extends Model<IUserDataModelState> {
 
     /**
      * Устанавливает основные данные пользователя.
-     * @param data
+     * @param {TDataType} data - Основные данные пользователя
      */
     set data(data: TDataType) {
         this.state.data = data;
@@ -224,7 +224,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Возвращает название таблицы/файла для хранения данных.
      *
-     * @return {string} Название таблицы для хранения данных пользователей
+     * @returns {string} Название таблицы для хранения данных пользователей
      */
     public tableName(): string {
         return UsersData.TABLE_NAME;
@@ -233,7 +233,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Определяет правила валидации полей модели.
      *
-     * @return {IModelRules[]} Массив правил валидации
+     * @returns {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return RULES;
@@ -243,7 +243,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * Возвращает описания атрибутов модели.
      * Используется для отображения понятных названий полей.
      *
-     * @return {IUserDataModelState} Описания атрибутов
+     * @returns {IUserDataModelState} Описания атрибутов
      */
     public attributeLabels(): IUserDataModelState {
         return ATTRS_LABEL;
@@ -252,7 +252,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Ищет одну запись в хранилище по текущим параметрам.
      *
-     * @return {Promise<boolean>} true, если запись найдена
+     * @returns {Promise<boolean>} true, если запись найдена
      *
      * @example
      * ```ts

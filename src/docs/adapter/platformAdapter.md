@@ -18,17 +18,13 @@
 заголовок x-telegram-bot-api-secret-token.
 
 ```ts
-isPlatformOnQuery(query
-:
-any, headers ? : Record<string, unknown>
-):
-boolean
-{
+isPlatformOnQuery(query: unknown, headers?: Record<string, unknown>): boolean {
+    const q = query as Record<string, unknown>;
     // 1. Проверяем заголовки (самый надежный способ)
     if (headers?.['x-wechat-signature']) return true;
 
     // 2. Фоллбэк: проверяем уникальные поля в теле запроса
-    return !!(query.xml_msg || query.specific_wechat_field);
+    return !!(q.xml_msg || q.specific_wechat_field);
 }
 ```
 
@@ -69,28 +65,22 @@ boolean
 - `controller.payload` — дополнительные данные (например, нажатая кнопка).
 
 ```ts
-setQueryData(query
-:
-any, controller
-:
-BotController
-):
-boolean
-{
-    if (!query) {
+setQueryData(query: unknown, controller: BotController): boolean {
+    const q = query as Record<string, unknown>;
+    if (!q) {
         controller.platformOptions.error = 'Пустой запрос';
         return false;
     }
 
     controller.requestObject = query; // Сохраняем оригинал
-    controller.userId = query.user_id;
-    controller.userCommand = (query.text || '').toLowerCase().trim();
-    controller.originalUserCommand = query.text || '';
-    controller.messageId = query.message_id;
+    controller.userId = q.user_id;
+    controller.userCommand = ((q.text as string) || '').toLowerCase().trim();
+    controller.originalUserCommand = (q.text as string) || '';
+    controller.messageId = q.message_id;
 
     // Если платформа присылает данные о юзере
-    if (query.user) {
-        controller.nlu.setNlu({ thisUser: { username: query.user.name } });
+    if (q.user) {
+        controller.nlu.setNlu({ thisUser: { username: (q.user as Record<string, unknown>).name } });
     }
 
     return true;
@@ -232,12 +222,7 @@ const audioToken = await pUtils.getSoundToken(
 Платформа ждет JSON в теле HTTP-ответа.
 
 ```ts
-async
-getContent(controller
-:
-BotController, stateData ? : any
-):
-Promise < object > {
+async getContent(controller: BotController, stateData?: Record<string, unknown>): Promise<object> {
     // 1. Собираем UI через наши процессоры
     const buttons = controller.buttons.getButtons(myPlatformButtonProcessing);
     const cards = await controller.card.getCards(myPlatformCardProcessing, controller);
@@ -252,13 +237,11 @@ Promise < object > {
     };
 
     // 3. Добавляем состояние (если платформа его поддерживает)
-    if(controller.platformOptions.stateName && stateData
-)
-{
-    response[controller.platformOptions.stateName] = stateData;
-}
+    if (controller.platformOptions.stateName && stateData) {
+        response[controller.platformOptions.stateName] = stateData;
+    }
 
-return response;
+    return response;
 }
 ```
 
@@ -266,34 +249,26 @@ return response;
 Платформа ждет, что вы сами отправите ответ через её API, а вебхуку нужно просто вернуть 200 OK.
 
 ```ts
-async
-getContent(controller
-:
-BotController
-):
-Promise < string > {
+async getContent(controller: BotController): Promise<string> {
     // 1. Если ответ еще не отправлен (флаг skipAutoReply)
-    if(!
-controller.skipAutoReply
-)
-{
-    const api = new MyPlatformApi(controller.appContext);
+    if (!controller.skipAutoReply) {
+        const api = new MyPlatformApi(controller.appContext);
 
-    // Собираем все UI-компоненты
-    const keyboard = controller.buttons.getButtons(myPlatformButtonProcessing);
-    const attachments = await controller.card.getCards(myPlatformCardProcessing, controller);
-    const sounds = await controller.sound.getSounds(controller.tts, mySoundProcessing, controller);
+        // Собираем все UI-компоненты
+        const keyboard = controller.buttons.getButtons(myPlatformButtonProcessing);
+        const attachments = await controller.card.getCards(myPlatformCardProcessing, controller);
+        const sounds = await controller.sound.getSounds(controller.tts, mySoundProcessing, controller);
 
-    // Передаем их в API платформы (формат зависит от самой платформы)
-    await api.sendMessage(controller.userId, Text.resize(controller.text, 4096), {
-        keyboard,
-        attachments, // Пример для Discord/VK
-        audio: sounds // Пример
-    });
-}
+        // Передаем их в API платформы (формат зависит от самой платформы)
+        await api.sendMessage(controller.userId, Text.resize(controller.text, 4096), {
+            keyboard,
+            attachments, // Пример для Discord/VK
+            audio: sounds // Пример
+        });
+    }
 
-// 3. Возвращаем заглушку для вебхука
-return 'ok';
+    // 3. Возвращаем заглушку для вебхука
+    return 'ok';
 }
 ```
 
@@ -312,20 +287,11 @@ return 'ok';
 ```ts
 // Для тестирования через BotTest
 getQueryExample(
-    query
-:
-string,
-    userId
-:
-string,
-    count
-:
-number,
-    state
-:
-Record<string, unknown> | string,
-):
-Record < string, unknown > {
+    query: string,
+    userId: string,
+    count: number,
+    state: Record<string, unknown> | string,
+): Record<string, unknown> {
     // Возвращаем объект в формате ВАШЕЙ платформы
     // Этот же формат будет парситься в setQueryData
     return {

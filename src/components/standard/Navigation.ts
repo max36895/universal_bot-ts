@@ -151,7 +151,7 @@ export class Navigation<ElementType = TElementType> {
      * Проверяет наличие команд навигации вперед в тексте
      *
      * @param {string} text Пользовательский запрос
-     * @return {boolean} true если обнаружена команда навигации вперед
+     * @returns {boolean} true если обнаружена команда навигации вперед
      * @example
      * ```ts
      * const isNext = navigation.isNext('покажи дальше'); // true
@@ -173,7 +173,7 @@ export class Navigation<ElementType = TElementType> {
      * Проверяет наличие команд навигации назад в тексте
      *
      * @param {string} text Пользовательский запрос
-     * @return {boolean} true если обнаружена команда навигации назад
+     * @returns {boolean} true если обнаружена команда навигации назад
      * @example
      * ```ts
      * const isOld = navigation.isOld('вернись назад'); // true
@@ -211,7 +211,7 @@ export class Navigation<ElementType = TElementType> {
      * Ищет в тексте указание конкретной страницы в формате "N страница"
      *
      * @param {string} text Пользовательский запрос
-     * @return {boolean} true если обнаружено указание страницы
+     * @returns {boolean} true если обнаружено указание страницы
      * @example
      * ```ts
      * const isNumberPage = navigation.numberPage('покажи 2 страницу'); // true
@@ -233,7 +233,7 @@ export class Navigation<ElementType = TElementType> {
      * Проверяет команду навигации вперед и обновляет thisPage
      *
      * @param {string} text Пользовательский запрос
-     * @return {boolean} true если переход выполнен
+     * @returns {boolean} true если переход выполнен
      */
     protected _nextPage(text: string): boolean {
         if (this.isNext(text)) {
@@ -249,7 +249,7 @@ export class Navigation<ElementType = TElementType> {
      * Проверяет команду навигации назад и обновляет thisPage
      *
      * @param {string} text Пользовательский запрос
-     * @return {boolean} true если переход выполнен
+     * @returns {boolean} true если переход выполнен
      */
     protected _oldPage(text: string): boolean {
         if (this.isOld(text)) {
@@ -268,9 +268,9 @@ export class Navigation<ElementType = TElementType> {
      * автоматически изменяет `this.thisPage` (текущую страницу).
      *
      *
-     * @param elements Массив элементов для обработки
+     * @param {ElementType[] | null} elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
-     * @return Массив элементов текущей страницы
+     * @returns Массив элементов текущей страницы
      * @example
      * ```ts
      * const elements = [
@@ -315,11 +315,11 @@ export class Navigation<ElementType = TElementType> {
      * Выбор элемента из списка по тексту или номеру.
      * Поддерживает поиск по тексту с учетом схожести и выбор по номеру
      *
-     * @param elements Массив элементов для обработки
+     * @param {ElementType[] | null} elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
      * @param {TKeys} keys Ключи для поиска по объектам
      * @param {number} thisPage Текущая страница
-     * @return Выбранный элемент или null
+     * @returns Выбранный элемент или null
      * @example
      * ```ts
      * const elements = [
@@ -411,7 +411,7 @@ export class Navigation<ElementType = TElementType> {
      * Формирует список доступных команд для навигации по страницам
      *
      * @param {boolean} isNumber Включить команды с номерами страниц
-     * @return {string[]} Массив команд навигации
+     * @returns {string[]} Массив команд навигации
      * @example
      * ```ts
      * // Получение базовых команд
@@ -469,11 +469,11 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает информацию о текущей странице.
      * Формирует строку с информацией о текущей позиции
      *
-     * @return {string} Информация о текущей странице
+     * @returns {string} Информация о текущей странице
      * @example
      * ```ts
      * const info = navigation.getPageInfo();
-     * // "Страница 1 из 3"
+     * // "1 страница из 3"
      * ```
      */
     public getPageInfo(): string {
@@ -497,8 +497,8 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает максимальное количество страниц.
      * Вычисляет количество страниц на основе количества элементов
      *
-     * @param elements Массив элементов
-     * @return Максимальное количество страниц
+     * @param {ElementType[] | null} elements Массив элементов
+     * @returns Максимальное количество страниц
      * @example
      * ```ts
      * const elements = [

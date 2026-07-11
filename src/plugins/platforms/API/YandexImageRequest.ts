@@ -52,7 +52,7 @@ export class YandexImageRequest extends YandexRequest {
     /**
      * Получение адреса для загрузки изображения.
      *
-     * @return string
+     * @returns {string}
      */
     #getImagesUrl(): string {
         return STANDARD_URL + `skills/${this.skillId}/images`;

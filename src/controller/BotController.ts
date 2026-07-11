@@ -192,11 +192,11 @@ export interface IPlatformOptions {
      */
     error?: string;
     /**
-     * Время начало обработки запроса
+     * Время начала обработки запроса
      */
     timeStart?: number;
     /**
-     * Флаг говорящий о том, что результат выполнения приложения бы получен при обработке запроса
+     * Флаг говорящий о том, что результат выполнения приложения был получен при обработке запроса
      */
     sendInInit?: string | object | null;
 
@@ -717,7 +717,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы кнопки или нет
-     * @returns
+     * @returns {boolean} true если кнопки были инициализированы
      */
     isButtonsInit(): boolean {
         return !!this.#buttons;
@@ -737,7 +737,7 @@ export abstract class BotController<
      *
      * @see Card
      * @example
-     ```ts
+     * ```ts
      * // КАТАЛОГ ТОВАРОВ (интернет-магазин):
      * this.text = 'Популярные товары:';
      * this.card
@@ -784,7 +784,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы карточки или нет
-     * @returns
+     * @returns {boolean} true если карточки были инициализированы
      */
     isCardInit(): boolean {
         return !!this.#card;
@@ -805,7 +805,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы звуки или нет
-     * @returns
+     * @returns {boolean} true если звуки были инициализированы
      */
     isSoundInit(): boolean {
         return !!this.#sound;
@@ -826,7 +826,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализирован nlu или нет
-     * @returns
+     * @returns {boolean} true если NLU был инициализирован
      */
     isNluInit(): boolean {
         return !!this.#nlu;
@@ -834,7 +834,7 @@ export abstract class BotController<
 
     /**
      * Устанавливает контекст приложения.
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
      */
     public setAppContext(appContext: AppContext): this {
         if (appContext) {
@@ -851,7 +851,7 @@ export abstract class BotController<
     }
 
     /**
-     * Очищает все временные данные необходимые для отправки ответа.
+     * Полностью сбрасывает состояние контроллера, включая текст ответа, пользовательские данные, состояние диалога и внутренние флаги.
      */
     public clearStoreData(): void {
         if (this.#buttons) {
@@ -1052,7 +1052,7 @@ export abstract class BotController<
     /**
      * Извлекает нужную команду из запроса.
      *
-     * @returns {string | null} найденная команда или null если не удалось найти команду
+     * @returns {void | null | Promise<void>} найденная команда или null если не удалось найти команду
      */
     protected _getCommand(): void | null | Promise<void> {
         if (!this.userCommand || !this.appContext.commands) {
@@ -1219,9 +1219,9 @@ export abstract class BotController<
 
     /**
      * Запуск обработки пользовательских команд с учетом метрик.
-     * @param commandName
-     * @param isCommand
-     * @param isStep
+     * @param {string | null} commandName - Имя команды
+     * @param {boolean} isCommand - Является ли обработка командой (а не шагом)
+     * @param {boolean} isStep - Является ли обработка шагом диалога
      */
     protected _actionMetric(
         commandName: string | null,

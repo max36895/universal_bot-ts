@@ -192,8 +192,8 @@ export class TelegramRequest {
 
     /**
      * Санитизировать текст сообщения
-     * @param text
-     * @param parseMode
+     * @param text Текст сообщения
+     * @param parseMode Режим разметки (HTML или Markdown)
      *
      */
     #sanitizeTelegramMessage(text: string, parseMode?: string): string {

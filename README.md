@@ -12,9 +12,9 @@
 
 [![npm version](https://badge.fury.io/js/umbot.svg)](https://badge.fury.io/js/umbot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)]()
-[![Security](https://img.shields.io/badge/Security-A+-green)]()
-[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
+[![Security](https://img.shields.io/badge/Security-A+-green)](https://github.com/max36895/universal_bot-ts/blob/main/SECURITY.md)
+[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration.html)
 
 ---
 
@@ -147,9 +147,11 @@ npm run start
 ```ts
 // index.ts
 import { Bot } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
 import { EchoController } from './EchoController';
 
 const bot = new Bot()
+    .use(fullPlatforms)
     .setAppConfig({ json: './data', isLocalStorage: true })
     .initBotController(EchoController)
     .start('localhost', 3000);
@@ -160,7 +162,7 @@ const bot = new Bot()
 import { BotController, WELCOME_INTENT_NAME } from 'umbot';
 
 export class EchoController extends BotController {
-    public action(intentName: string): void {
+    public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
             this.text = 'Привет! Я повторяю за вами.';
         } else {
@@ -182,16 +184,17 @@ export class EchoController extends BotController {
   (эмуляция полного цикла: входящий запрос → нормализация → логика → ответ)
 - **Пиковая пропускная способность (burst)** — **40 000 RPS**  
   (одновременная обработка тысяч параллельных вызовов)
-- **Последовательная пропускная способность (ядро)** — **66 000 RPS**  
+- **Последовательная пропускная способность (ядро)** — **~67 000 RPS**  
   (максимальная скорость одного потока)
 
 **Важно:**
 
 - Тесты проводились без сетевых вызовов и операций с базами данных, поэтому цифры показывают потенциал ядра фреймворка.
 - В реальном проекте итоговый RPS будет определяться внешними факторами (сеть, БД, логика приложения).
+- На реальном сервере (2 ядра / 4 ГБ RAM) с фоновой нагрузкой фреймворк показывает **16 000+ RPS** — подробнее в [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_performance-and-guarantees.html).
 
 Длительное тестирование (48 часов) не выявило утечек памяти или снижения производительности: средняя пропускная
-способность в последовательном сценарии осталась на уровне **66 000 RPS**, а потребление памяти стабильно.
+способность в последовательном сценарии осталась на уровне **~67 000 RPS**, а потребление памяти стабильно.
 
 ## 📚 Документация
 
@@ -219,9 +222,9 @@ export class EchoController extends BotController {
 - 💬 [Telegram группа](https://t.me/mm_universal_bot)
 - 📦 [npm package](https://www.npmjs.com/package/umbot)
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
-- [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples.md)
+- [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples)
 - [Список изменений](https://github.com/max36895/universal_bot-ts/blob/main/CHANGELOG.md)
-- [Что ждать в следующем релизе](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release.html)
+- [Миграция с umbot 2.x на 3.0](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release.html)
 
 ## 🛠 Инструменты разработчика
 

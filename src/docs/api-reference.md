@@ -12,34 +12,35 @@
 
 #### Свойства
 
-| Свойство            | Тип                                                  | Описание                                                                                                                              |
-| ------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| text                | string                                               | Текст ответа пользователю                                                                                                             |
-| tts                 | string \| null                                       | Текст для озвучки (на голосовых платформах, если `null` — может быть автоматически подставлен из `text`)                              |
-| buttons             | Buttons                                              | Компонент кнопок (инициализируется лениво через getter)                                                                               |
-| card                | Card                                                 | Компонент карточек/галерей (инициализируется лениво через getter)                                                                     |
-| nlu                 | Nlu                                                  | Данные NLU (инициализируется лениво через getter)                                                                                     |
-| sound               | Sound                                                | Звуковые эффекты (инициализируется лениво через getter)                                                                               |
-| userId              | string \| number \| null                             | Идентификатор пользователя                                                                                                            |
-| userToken           | string \| null                                       | Токен авторизации пользователя (если платформа его предоставляет)                                                                     |
-| userMeta            | unknown \| null                                      | Доп. информация о пользователе (зависит от платформы)                                                                                 |
-| messageId           | number \| string \| null                             | ID сообщения (часто используется для определения “первого” сообщения)                                                                 |
-| userCommand         | string \| null                                       | Команда пользователя в нижнем регистре                                                                                                |
-| originalUserCommand | string \| null                                       | Оригинальная команда пользователя                                                                                                     |
-| payload             | object \| string \| null \| undefined                | Дополнительные параметры запроса (payload)                                                                                            |
-| userData            | TUserData                                            | Данные пользователя (БД или локальное хранилище, в зависимости от `setAppConfig`)                                                     |
-| state               | TPlatformState \| null                               | Локальное хранилище платформы (если платформа поддерживает и включено `isLocalStorage`)                                               |
-| isAuth              | boolean                                              | Флаг “нужно запросить авторизацию” (поддержка зависит от платформы)                                                                   |
-| userEvents          | IUserEvent \| null                                   | События пользователя (авторизация/оценка), если платформа присылает                                                                   |
-| isScreen            | boolean                                              | Есть ли экран у пользователя (если платформа сообщает)                                                                                |
-| isEnd               | boolean                                              | Завершить диалог/сессию (поддержка зависит от платформы)                                                                              |
-| skipAutoReply       | boolean                                              | Если `true`, фреймворк не будет пытаться “авто-отправить” ответ (актуально для платформ, где вы сами отправляете сообщения через API) |
-| requestObject       | Record<string, unknown> \| string \| unknown \| null | Оригинальный объект запроса от платформы                                                                                              |
-| thisIntentName      | string \| null                                       | Имя шага/интента, которое нужно сохранить как “следующий шаг”                                                                         |
-| oldIntentName       | string \| null                                       | Имя предыдущего шага/интента (из `userData.oldIntentName` или из `state.oldIntentName`)                                               |
-| emotion             | string \| null                                       | Эмоция ответа (если платформа поддерживает)                                                                                           |
-| appeal              | 'official' \| 'no_official' \| null                  | Стиль обращения (если платформа поддерживает)                                                                                         |
-| isSendRating        | boolean                                              | Запросить у пользователя оценку (если платформа поддерживает)                                                                         |
+| Свойство            | Тип                                                      | Описание                                                                                                                              |
+| ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| text                | string                                                   | Текст ответа пользователю                                                                                                             |
+| tts                 | string \| null                                           | Текст для озвучки (на голосовых платформах, если `null` — может быть автоматически подставлен из `text`)                              |
+| buttons             | Buttons                                                  | Компонент кнопок (инициализируется лениво через getter)                                                                               |
+| card                | Card                                                     | Компонент карточек/галерей (инициализируется лениво через getter)                                                                     |
+| nlu                 | Nlu                                                      | Данные NLU (инициализируется лениво через getter)                                                                                     |
+| sound               | Sound                                                    | Звуковые эффекты (инициализируется лениво через getter)                                                                               |
+| userId              | string \| number \| null                                 | Идентификатор пользователя                                                                                                            |
+| userToken           | string \| null                                           | Токен авторизации пользователя (если платформа его предоставляет)                                                                     |
+| userMeta            | unknown \| null                                          | Доп. информация о пользователе (зависит от платформы)                                                                                 |
+| messageId           | number \| string \| null                                 | ID сообщения (часто используется для определения “первого” сообщения)                                                                 |
+| userCommand         | string \| null                                           | Команда пользователя в нижнем регистре                                                                                                |
+| originalUserCommand | string \| null                                           | Оригинальная команда пользователя                                                                                                     |
+| payload             | Record\<string, unknown\> \| string \| null \| undefined | Дополнительные параметры запроса (payload)                                                                                            |
+| userData            | TUserData                                                | Данные пользователя (БД или локальное хранилище, в зависимости от `setAppConfig`)                                                     |
+| state               | TPlatformState \| null                                   | Локальное хранилище платформы (если платформа поддерживает и включено `isLocalStorage`)                                               |
+| isAuth              | boolean                                                  | Флаг “нужно запросить авторизацию” (поддержка зависит от платформы)                                                                   |
+| userEvents          | IUserEvent \| null                                       | События пользователя (авторизация/оценка), если платформа присылает                                                                   |
+| isScreen            | boolean                                                  | Есть ли экран у пользователя (если платформа сообщает)                                                                                |
+| isEnd               | boolean                                                  | Завершить диалог/сессию (поддержка зависит от платформы)                                                                              |
+| skipAutoReply       | boolean                                                  | Если `true`, фреймворк не будет пытаться “авто-отправить” ответ (актуально для платформ, где вы сами отправляете сообщения через API) |
+| requestObject       | Record<string, unknown> \| string \| unknown \| null     | Оригинальный объект запроса от платформы                                                                                              |
+| thisIntentName      | string \| null                                           | Имя шага/интента, которое нужно сохранить как “следующий шаг”                                                                         |
+| oldIntentName       | string \| null                                           | Имя предыдущего шага/интента (из `userData.oldIntentName` или из `state.oldIntentName`)                                               |
+| emotion             | string \| null                                           | Эмоция ответа (если платформа поддерживает)                                                                                           |
+| appeal              | 'official' \| 'no_official' \| null                      | Стиль обращения (если платформа поддерживает)                                                                                         |
+| isSendRating        | boolean                                                  | Запросить у пользователя оценку (если платформа поддерживает)                                                                         |
+| appContext          | AppContext                                               | Контекст приложения (конфиг, реестры, логгер)                                                                                         |
 
 #### Методы
 
@@ -47,6 +48,38 @@
 | ------ | ----------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
 | action | intentName: string \| null, isCommand?: boolean, isStep?: boolean | void                  | Ваш основной обработчик. Вызывается фреймворком (переопределяется в наследнике) |
 | run    | -                                                                 | void \| Promise<void> | Запуск обработки запроса (вызывается фреймворком; вручную обычно не вызывают)   |
+
+### Bot
+
+Основной класс-оркестратор. Управляет жизненным циклом, middleware, регистрацией команд и запуском сервера.
+
+#### Методы
+
+| Метод                    | Параметры                                                                                                                                            | Возвращаемое значение         | Описание                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------- |
+| setAppConfig             | config: Partial\<IAppConfig\>                                                                                                                        | Bot                           | Установка конфигурации приложения                           |
+| setAppMode               | mode: TAppMode (`'dev' \| 'prod' \| 'strict_prod'`)                                                                                                  | Bot                           | Установка режима работы                                     |
+| setPlatformParams        | params: IAppParam                                                                                                                                    | Bot                           | Установка параметров платформы                              |
+| initBotController        | controller: TBotControllerClass                                                                                                                      | Bot                           | Подключение класса контроллера                              |
+| addCommand               | commandName: string, slots: TSlots, cb: (userCommand: string, bc: BotController) => void \| string \| Promise\<void \| string\>, isPattern?: boolean | Bot                           | Регистрация команды                                         |
+| removeCommand            | commandName: string                                                                                                                                  | Bot                           | Удаление команды по имени                                   |
+| clearCommands            | -                                                                                                                                                    | Bot                           | Удаление всех команд                                        |
+| addStep                  | stepName: string, handler: IStepParam['cb']                                                                                                          | Bot                           | Регистрация шага (цепочки диалога)                          |
+| removeStep               | stepName: string                                                                                                                                     | Bot                           | Удаление шага по имени                                      |
+| clearSteps               | -                                                                                                                                                    | Bot                           | Удаление всех шагов                                         |
+| use                      | fn: MiddlewareFn \| platform: TAppType, fn: MiddlewareFn \| plugin: TPlugin                                                                          | Bot                           | Подключение middleware или плагина                          |
+| clearUse                 | -                                                                                                                                                    | Bot                           | Удаление всех плагинов и middleware                         |
+| setCustomCommandResolver | resolver: TCommandResolver                                                                                                                           | Bot                           | Установка кастомного резолвера команд                       |
+| setCommandGroupMode      | mode: TCommandGroupMode                                                                                                                              | Bot                           | Режим группировки RegExp                                    |
+| setPlatformResolver      | resolver: TPlatformResolver                                                                                                                          | Bot                           | Установка функции определения платформы                     |
+| setLogger                | logger: ILogger \| null                                                                                                                              | Bot                           | Установка кастомного логгера (null — отключить)             |
+| getAppContext            | -                                                                                                                                                    | AppContext                    | Получение контекста приложения                              |
+| setContent               | content: TBotContent (`object \| string \| null`)                                                                                                    | void                          | Установка содержимого запроса (для тестирования)            |
+| run                      | appType?: TAppType \| null, content?: string \| object \| null, auth?: TBotAuth                                                                      | Promise\<TRunResult\>         | Обработка входящего запроса                                 |
+| webhookHandle            | req: IncomingMessage, res: ServerResponse, responseCb?: TBotResponseCb                                                                               | Promise\<void\>               | Обработчик HTTP-запроса (для Express/Fastify интеграции)    |
+| start                    | hostname?: string, port?: number, responseCb?: TBotResponseCb                                                                                        | Server                        | Запуск HTTP-сервера (возвращает экземпляр Server)           |
+| close                    | -                                                                                                                                                    | Promise\<void\>               | Остановка HTTP-сервера и очистка ресурсов                   |
+| send                     | userId: string \| number, controllerOrText: BotController \| string, platform: TAppType                                                              | Promise\<unknown \| boolean\> | Отправка сообщения пользователю (для платформ с поддержкой) |
 
 ## Компоненты
 
@@ -56,11 +89,13 @@
 
 #### Методы
 
-| Метод   | Параметры                                     | Возвращаемое значение | Описание                 |
-| ------- | --------------------------------------------- | --------------------- | ------------------------ |
-| addBtn  | text: string, url?: string, payload?: unknown | Buttons               | Добавление кнопки        |
-| addLink | text: string, url?: string, payload?: unknown | Buttons               | Добавление кнопки-ссылки |
-| clear   | -                                             | void                  | Очистка всех кнопок      |
+| Метод         | Параметры                                                                                       | Возвращаемое значение | Описание                                                |
+| ------------- | ----------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------- |
+| addBtn        | title: string \| null, url?: string \| null, payload?: TButtonPayload, options?: IButtonOptions | this                  | Добавление кнопки                                       |
+| addLink       | title: string \| null, url?: string, payload?: TButtonPayload, options?: IButtonOptions         | this                  | Добавление кнопки-ссылки                                |
+| getButtons    | buttonProcessing: TButtonProcessing                                                             | T \| null             | Получение массива кнопок, адаптированного под платформу |
+| getButtonJson | buttonProcessing: TButtonProcessing                                                             | string \| null        | JSON-представление кнопок для платформы                 |
+| clear         | -                                                                                               | void                  | Очистка всех кнопок                                     |
 
 ### Card
 
@@ -68,18 +103,31 @@
 
 #### Методы
 
-| Метод          | Параметры                                                                               | Возвращаемое значение | Описание                                                         |
-| -------------- | --------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------- |
-| addImage       | image: string \| null, title?: string, desc?: string, button?: string \| object \| null | Card                  | Добавление изображения/элемента (4-й параметр — кнопка элемента) |
-| addOneImage    | image: string \| null, title?: string, desc?: string, button?: string \| object \| null | Card                  | Заменяет текущую карточку одним изображением                     |
-| setTitle       | text: string                                                                            | Card                  | Добавление заголовка                                             |
-| setDescription | text: string                                                                            | Card                  | Добавление описания                                              |
-| addButton      | button: string \| object                                                                | Card                  | Добавление кнопки к элементу карточки                            |
-| clear          | -                                                                                       | void                  | Очистка карточки                                                 |
+| Метод          | Параметры                                                                      | Возвращаемое значение | Описание                                                         |
+| -------------- | ------------------------------------------------------------------------------ | --------------------- | ---------------------------------------------------------------- |
+| addImage       | image: string \| null, title?: string, desc?: string, button?: TButton \| null | this                  | Добавление изображения/элемента (4-й параметр — кнопка элемента) |
+| addOneImage    | image: string \| null, title?: string, desc?: string, button?: TButton \| null | this                  | Заменяет текущую карточку одним изображением                     |
+| setTitle       | text: string                                                                   | this                  | Добавление заголовка                                             |
+| setDescription | text: string                                                                   | this                  | Добавление описания                                              |
+| addButton      | button: TButton                                                                | this                  | Добавление кнопки к элементу карточки                            |
+| clear          | -                                                                              | void                  | Очистка карточки                                                 |
 
 ### Sound
 
-Компонент для работы со звуками.
+Компонент для работы со звуками. Поддерживает стандартные звуки платформ (Алиса, Маруся) и пользовательские аудиофайлы.
+
+#### Свойства
+
+| Свойство            | Тип      | Описание                                                      |
+| ------------------- | -------- | ------------------------------------------------------------- |
+| sounds              | ISound[] | Массив пользовательских звуков                                |
+| isUsedStandardSound | boolean  | Использовать стандартные звуки платформы (по умолчанию: true) |
+
+#### Методы
+
+| Метод     | Параметры                                                                                     | Возвращаемое значение | Описание                                              |
+| --------- | --------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------- |
+| getSounds | text: string \| null, soundProcessing: TSoundProcessing\<TResult\>, controller: BotController | Promise\<TResult\>    | Получение текста со встроенными звуками для платформы |
 
 ## Интерфейсы
 
@@ -93,6 +141,8 @@ interface IAppConfig {
     json?: string; // Путь к директории JSON
     db?: IAppDB; // Конфигурация базы данных
     isLocalStorage?: boolean; // Использование локального хранилища
+    env?: string; // Путь к .env файлу или 'local' для process.env
+    tokens?: ITokenPlatform; // Токены платформ (telegram, vk и др.)
 }
 ```
 
@@ -102,9 +152,12 @@ interface IAppConfig {
 
 ```ts
 interface IAppParam {
+    isAuthUser?: boolean; // Требуется ли авторизация пользователя
     welcome_text?: string | string[]; // Текст приветствия
     help_text?: string | string[]; // Текст помощи
+    empty_text?: string | string[]; // Текст при отсутствии подходящих команд
     intents: IAppIntent[] | null; // Массив интентов
+    utm_text?: string | null; // UTM-метка для ссылок
 }
 ```
 
@@ -114,7 +167,7 @@ interface IAppParam {
 
 ```ts
 interface IUserData {
-    oldIntentName?: string; // Название предыдущего интента
+    oldIntentName?: string | null; // Название предыдущего интента (null при сбросе)
     [key: string]: unknown; // Дополнительные данные
 }
 ```
@@ -126,6 +179,93 @@ interface IUserData {
 ```ts
 const WELCOME_INTENT_NAME = 'welcome'; // Интент приветствия
 const HELP_INTENT_NAME = 'help'; // Интент помощи
+const FALLBACK_COMMAND = '*'; // Команда-заглушка (вызывается при отсутствии совпадений)
+```
+
+## Типы и утилиты
+
+### Middleware
+
+```ts
+// Функция для обработки следующего шага в цепочке middleware
+type MiddlewareNext = () => Promise<void>;
+
+// Функция промежуточной обработки
+type MiddlewareFn = (ctx: BotController, next: MiddlewareNext) => void | Promise<void>;
+```
+
+### Команды и шаги
+
+```ts
+// Параметры зарегистрированной команды
+interface ICommandParam<TBotController extends BotController = BotController> {
+    slots?: TSlots; // Триггеры активации (строки или RegExp)
+    isPattern?: boolean; // Интерпретировать slots как RegExp
+    cb: (
+        userCommand: string,
+        botController: TBotController,
+    ) => void | string | Promise<void | string>;
+    regExp?: RegExp; // Скомпилированное RegExp (заполняется автоматически)
+    isRegExpString: boolean; // Флаг строкового RegExp
+}
+
+// Параметры шага (цепочки диалога)
+interface IStepParam<TBotController extends BotController = BotController> {
+    stepName: string; // Уникальное имя шага
+    cb: (botController: TBotController) => void | Promise<void> | false;
+}
+
+// Тип слотов команды
+type TSlots = (string | RegExp)[];
+
+// Кастомный резолвер команд
+type TCommandResolver = (
+    userCommand: string,
+    commands: Map<string, ICommandParam>,
+) => string | null | Promise<string | null>;
+```
+
+### Утилиты для кнопок
+
+```ts
+// Создание интерактивной кнопки
+getButton(
+    appContext: AppContext,
+    title: string | null,
+    url: string | null,
+    payload: TButtonPayload | null,
+    options?: IButtonOptions
+): IButtonType | null
+
+// Создание кнопки-ссылки
+getLinkButton(
+    appContext: AppContext,
+    title: string | null,
+    url: string | null,
+    payload: TButtonPayload | null,
+    options?: IButtonOptions
+): IButtonType | null
+```
+
+### Утилита для изображений
+
+```ts
+// Создание изображения для карточки
+getImage(
+    appContext: AppContext,
+    image: string | null,
+    title: string,
+    desc?: string,
+    button?: TButton | null,
+    isToken?: boolean
+): IImageType | null
+```
+
+### Результат выполнения
+
+```ts
+// Результат обработки запроса
+type TRunResult = object | string;
 ```
 
 ## Примеры использования
@@ -164,7 +304,7 @@ import { Bot } from 'umbot';
 const bot = new Bot();
 
 // Добавление простой команды
-bot.addCommand('greeting', ['привет', 'здравствуй'], () => 'Привет!');
+bot.addCommand('greeting', ['привет', 'здравствуй'], (_, bc) => 'Привет!');
 
 // Добавление команды с колбэком
 bot.addCommand(
@@ -248,12 +388,13 @@ class CardController extends BotController {
 ```ts
 class NluController extends BotController {
     public action(intentName: string | null): void {
-        // Получение интента из NLU
-        const nluIntent = this.nlu.getIntent(intentName);
+        // Получение интента из NLU (например, 'YANDEX.CONFIRM')
+        const nluIntent = this.nlu.getIntent('YANDEX.CONFIRM');
         if (nluIntent) {
-            this.text = `Распознанный интент: ${nluIntent}`;
+            // nluIntent — объект INluIntent со свойством slots
+            this.text = `Найдены слоты: ${JSON.stringify(nluIntent.slots)}`;
         } else {
-            this.text = 'Не удалось распознать интент';
+            this.text = 'Интент не найден';
         }
     }
 }
@@ -292,3 +433,244 @@ class RatingController extends BotController {
     }
 }
 ```
+
+## Дополнительные классы
+
+### AppContext
+
+Контекст приложения — синглтон-хранилище конфигурации, реестров и подключенных модулей.
+
+#### Основные свойства
+
+| Свойство         | Тип                                                                               | Описание                                           |
+| ---------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `appConfig`      | `IAppConfig`                                                                      | Текущая конфигурация                               |
+| `platformParams` | `IAppParam`                                                                       | Параметры платформы                                |
+| `platforms`      | `Record<TAppType, IPlatformAdapter>`                                              | Реестр подключенных платформ                       |
+| `database`       | `{ adapter?: IDatabaseAdapter, databaseInfo?: unknown, isSendConnect?: boolean }` | Подключенный DB-адаптер и информация о подключении |
+| `commands`       | `Map<string, ICommandParam>`                                                      | Реестр команд                                      |
+| `steps`          | `Map<string, IStepParam>`                                                         | Реестр шагов                                       |
+| `httpClient`     | `THttpClient`                                                                     | HTTP-клиент (кастомизируемый)                      |
+| `plugins`        | `Record<string, unknown>`                                                         | Реестр плагинов                                    |
+
+#### Методы
+
+| Метод                            | Описание                   |
+| -------------------------------- | -------------------------- |
+| `log(msg, meta?)`                | Логирование                |
+| `logError(msg, meta?)`           | Логирование ошибок         |
+| `logWarn(msg, meta?)`            | Логирование предупреждений |
+| `logMetric(name, value, label?)` | Логирование метрик         |
+
+### Navigation
+
+Компонент для постраничной навигации по спискам и меню.
+
+```ts
+import { Navigation } from 'umbot';
+
+const nav = new Navigation(5); // 5 элементов на странице
+const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// Получение элементов текущей страницы
+const page = nav.getPageElements(elements);
+
+// Навигация по командам
+nav.getPageElements(elements, 'дальше'); // следующая страница
+nav.getPageElements(elements, 'назад'); // предыдущая страница
+
+// Поиск элемента
+const item = nav.selectedElement(elements, 'iPhone', ['title']);
+```
+
+#### Методы Navigation
+
+| Метод             | Параметры                                                                         | Возвращаемое значение | Описание                                                                      |
+| ----------------- | --------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------- |
+| `getPageElements` | `elements: T[]`, `text?: string`                                                  | `T[]`                 | Элементы текущей страницы (мутирует `thisPage` при "дальше"/"назад")          |
+| `selectedElement` | `elements: T[]`, `text: string`, `keys?: string \| string[]`, `thisPage?: number` | `T \| null`           | Поиск элемента по значению (по номеру или по похожести текста)                |
+| `getPageNav`      | `isNumber?: boolean`                                                              | `string[]`            | Подписи кнопок пагинации: `['👈 Назад', 'Дальше 👉']` или `['1', '[2]', '3']` |
+| `getPageInfo`     | -                                                                                 | `string`              | Информация о текущей странице: `"N страница из M"` (или пустая строка)        |
+| `getMaxPage`      | `elements?: T[] \| null`                                                          | `number`              | Количество страниц                                                            |
+| `numberPage`      | `text: string`                                                                    | `boolean`             | Распознать команду вида `"2 страница"` и перейти                              |
+
+#### Свойства
+
+| Свойство             | Тип      | Описание                           |
+| -------------------- | -------- | ---------------------------------- |
+| `thisPage`           | `number` | Номер текущей страницы (0-indexed) |
+| `maxVisibleElements` | `number` | Максимум элементов на странице     |
+
+### Preload
+
+Предзагрузка медиаресурсов на серверы платформ.
+
+```ts
+import { Preload } from 'umbot/preload';
+import { T_ALISA, T_TELEGRAM } from 'umbot/plugins';
+
+const preload = new Preload(bot.getAppContext());
+
+// Загрузка изображений
+await Promise.all(preload.loadImages(['./img.jpg'], [T_ALISA]));
+
+// Загрузка звуков
+await Promise.all(preload.loadSounds(['./sound.mp3'], [T_ALISA]));
+
+// Telegram требует ID получателя
+await Promise.all(preload.loadImages(['./img.jpg'], [T_TELEGRAM], { telegramUseId: 123 }));
+```
+
+#### Методы Preload
+
+| Метод          | Параметры                                              | Возвращаемое значение | Описание              |
+| -------------- | ------------------------------------------------------ | --------------------- | --------------------- |
+| `loadImages`   | `paths: string[]`, `platforms: TAppType[]`, `options?` | `Promise<boolean>[]`  | Загрузить изображения |
+| `loadSounds`   | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`  | Загрузить звуки       |
+| `removeImages` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`  | Удалить изображения   |
+| `removeSounds` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`  | Удалить звуки         |
+
+### ILogger
+
+Интерфейс кастомного логгера. Все методы опциональны.
+
+```ts
+interface ILogger {
+    log?(...args: unknown[]): void;
+    error?(message: string, meta?: Record<string, unknown>): void;
+    warn?(message: string, meta?: Record<string, unknown>): void;
+    metric?(name: string, value: unknown, labels?: Record<string, unknown>): void;
+    maskSecrets?: boolean; // По умолчанию true в strict_prod
+}
+```
+
+### IPlugin / IPluginFn
+
+Интерфейсы для расширений фреймворка.
+
+```ts
+// Класс-плагин
+interface IPlugin {
+    init: (appContext: AppContext, bot: Bot) => void;
+    destroy: (bot: Bot) => void | Promise<void>;
+}
+
+// Функция-плагин (рекомендуется)
+interface IPluginFn {
+    (appContext: AppContext, bot: Bot): void | ((bot: Bot) => void);
+    isPlugin: boolean; // ОБЯЗАТЕЛЬНО: myPlugin.isPlugin = true;
+}
+```
+
+### SoundConstants
+
+Константы стандартных звуков и эффектов.
+
+| Константа                 | Описание                      |
+| ------------------------- | ----------------------------- |
+| `S_AUDIO_GAME_WIN`        | Звук победы                   |
+| `S_AUDIO_GAME_LOSS`       | Звук проигрыша                |
+| `S_AUDIO_GAME_8_BIT_COIN` | Монетка                       |
+| `S_AUDIO_NATURE_RAIN`     | Дождь                         |
+| `S_AUDIO_NATURE_SEA`      | Море                          |
+| `S_EFFECT_HAMSTER`        | Эффект хомяка (высокий голос) |
+| `S_EFFECT_MEGAPHONE`      | Эффект мегафона               |
+
+Полный список — в `src/components/sound/constants.ts`.
+
+### Text
+
+Утилита для работы со строками.
+
+| Метод            | Параметры                                                                                                                                             | Возвращаемое значение | Описание                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------ |
+| `Text.resize`    | `text: string \| null`, `size?: number`, `isEllipsis?: boolean`                                                                                       | `string`              | Обрезка строки по длине              |
+| `Text.getText`   | `str?: string \| string[]`                                                                                                                            | `string`              | Выбор случайного элемента из массива |
+| `Text.isSayText` | `find: string \| RegExp \| (string \| RegExp)[]`, `text: string`, `isPattern?: boolean`, `useDirectRegExp?: boolean`, `customReg?: RegExpConstructor` | `boolean`             | Проверка совпадения слота с текстом  |
+
+## Метрики
+
+Фреймворк собирает метрики времени выполнения ключевых операций. Для включения реализуйте метод `logMetric()` в логгере.
+
+| Метрика              | Константа               | Что измеряет                        |
+| -------------------- | ----------------------- | ----------------------------------- |
+| Время запроса        | `EMetric.REQUEST`       | Общее время обработки HTTP-запроса  |
+| Начало webhook       | `EMetric.START_WEBHOOK` | Момент начала обработки запроса     |
+| Время webhook        | `EMetric.END_WEBHOOK`   | Общее время обработки webhook       |
+| Поиск интента        | `EMetric.GET_INTENT`    | Время поиска подходящего интента    |
+| Поиск команды        | `EMetric.GET_COMMAND`   | Время поиска подходящей команды     |
+| Выполнение action    | `EMetric.ACTION`        | Время выполнения вашего `action()`  |
+| Middleware           | `EMetric.MIDDLEWARE`    | Время выполнения middleware-цепочки |
+| Запрос к БД (SELECT) | `EMetric.DB_SELECT`     | Время выполнения SELECT             |
+| Запрос к БД (INSERT) | `EMetric.DB_INSERT`     | Время выполнения INSERT             |
+| Запрос к БД (UPDATE) | `EMetric.DB_UPDATE`     | Время выполнения UPDATE             |
+| Запрос к БД (REMOVE) | `EMetric.DB_REMOVE`     | Время выполнения DELETE             |
+
+Пример подключения:
+
+```ts
+bot.setLogger({
+    logMetric: (name: string, value: number, meta?: Record<string, unknown>) => {
+        console.log(`[METRIC] ${name}: ${value.toFixed(2)}ms`, meta);
+    },
+});
+```
+
+## Модели
+
+### Model
+
+Базовый класс для работы с данными в БД. Наследуйтесь для создания кастомных моделей (таблиц лидеров, каталогов и т.д.).
+
+```ts
+import { Model, IModelState, IModelRules, AppContext } from 'umbot';
+
+interface IScoreState extends IModelState {
+    userId: string | null;
+    score: number | null;
+}
+
+const RULES: IModelRules[] = [
+    { name: ['userId'], type: 'string', max: 250 },
+    { name: ['score'], type: 'integer' },
+];
+
+export class ScoreModel extends Model<IScoreState> {
+    public static readonly TABLE_NAME = 'Scores';
+
+    constructor(appContext: AppContext) {
+        super(appContext);
+        this.state = { userId: null, score: null };
+    }
+
+    rules() {
+        return RULES;
+    }
+    attributeLabels() {
+        return { userId: 'ID', score: 'Score' };
+    }
+    tableName() {
+        return ScoreModel.TABLE_NAME;
+    }
+}
+```
+
+#### Методы Model
+
+| Метод                   | Описание                                       |
+| ----------------------- | ---------------------------------------------- |
+| `add()`                 | Вставка новой записи                           |
+| `update()`              | Обновление текущей записи                      |
+| `remove()`              | Удаление записи                                |
+| `whereOne(where?)`      | Поиск одной записи по условиям                 |
+| `where(where?, isOne?)` | Поиск записей по условиям                      |
+| `query(callback)`       | Сырой запрос к БД                              |
+| `save(isNew?)`          | Сохранение (add если isNew=true, иначе update) |
+
+### UsersData
+
+Встроенная модель для хранения `userData`. Обычно не используется напрямую — фреймворк работает с ней автоматически через `controller.userData`.
+
+### ImageTokens / SoundTokens
+
+Встроенные модели для кэширования токенов загруженных медиа. Управляются фреймворком автоматически через `Preload` и компоненты `Card`/`Sound`.

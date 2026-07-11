@@ -57,7 +57,7 @@ export class Buttons {
 
     /**
      * Устанавливает контекст приложения.
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
      */
     public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
@@ -102,8 +102,8 @@ export class Buttons {
     /**
      * Добавляет интерактивную кнопку в коллекцию.
      *
-     * @param {string} title - Текст кнопки
-     * @param {string} [url=''] - URL для перехода
+     * @param {string | null} title - Текст кнопки
+     * @param {string | null} [url=''] - URL для перехода
      * @param {TButtonPayload} [payload=''] - Дополнительные данные
      * @param {IButtonOptions} [options={}] - Дополнительные параметры
      * @returns {Buttons}
@@ -129,8 +129,8 @@ export class Buttons {
     /**
      * Добавляет кнопку-ссылку в коллекцию.
      *
-     * @param {string} title - Текст кнопки
-     * @param {string} [url=''] - URL для перехода
+     * @param {string | null} title - Текст кнопки
+     * @param {string | null} [url=''] - URL для перехода
      * @param {TButtonPayload} [payload=''] - Дополнительные данные
      * @param {IButtonOptions} [options={}] - Дополнительные параметры
      * @returns {Buttons}
@@ -156,7 +156,7 @@ export class Buttons {
     /**
      * Возвращает массив кнопок, адаптированный для указанной платформы.
      *
-     * @param buttonProcessing
+     * @param {TButtonProcessing} buttonProcessing - Функция обработки кнопок для платформы
      */
     public getButtons<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,
@@ -167,7 +167,8 @@ export class Buttons {
     /**
      * Возвращает JSON-представление кнопок для указанной платформы.
      *
-     * @param buttonProcessing - Тип кнопок (платформа)
+     * @param {TButtonProcessing} buttonProcessing - Функция обработки кнопок для платформы
+     * @returns {string | null} JSON-строка кнопок или null если кнопок нет
      */
     public getButtonJson<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,

@@ -7,8 +7,14 @@ import { TAppPlugin } from '../interfaces/IAppContext';
 import { TCommandGroupMode } from '../interfaces/IBot';
 import { Text } from '../../utils';
 
+/**
+ * Данные группы команд для оптимизации поиска.
+ * Используется внутренне фреймворком для группировки команд с RegExp.
+ */
 export interface IGroupData {
+    /** Имена команд в этой группе */
     commands: string[];
+    /** Объединённое регулярное выражение для группы (или null) */
     regExp: RegExp | null | string;
 }
 
@@ -194,7 +200,7 @@ export interface IStepParam<TBotController extends BotController = BotController
  * Кастомный обработчик может быть как синхронным, так и асинхронным. В случае успешного нахождения команды, возвращается название этой команды. В противном случае возвращается null
  * @param userCommand - Команда пользователя
  * @param commands - Список всех зарегистрированных команд
- * @return {string} - Имя команды
+ * @returns {string} - Имя команды
  */
 export type TCommandResolver = (
     userCommand: string,
@@ -241,12 +247,24 @@ export class CommandReg {
     private readonly logWarn: TLoggerCb;
     private readonly plugins: TAppPlugin;
 
+    /**
+     * Конструктор класса CommandReg.
+     *
+     * @param {ILogger} logger - Логгер для вывода предупреждений и ошибок
+     * @param {TAppPlugin} plugins - Плагины приложения (для получения кастомного RegExp)
+     */
     constructor(logger: ILogger, plugins: TAppPlugin) {
         this.logWarn = logger.warn as TLoggerCb;
         this.logError = logger.error as TLoggerCb;
         this.plugins = plugins;
     }
 
+    /**
+     * Поиск команды по точному совпадению (без RegExp).
+     *
+     * @param {string} userCommand - Команда пользователя (в нижнем регистре)
+     * @returns {string | undefined} Имя найденной команды или undefined
+     */
     getExactMatchCommand(userCommand: string): string | undefined {
         return this.#exactMatchMap.get(userCommand);
     }
@@ -262,6 +280,11 @@ export class CommandReg {
         return undefined;
     }
 
+    /**
+     * Устанавливает режим группировки регулярных выражений.
+     *
+     * @param {TCommandGroupMode} mode - Режим группировки: 'auto', 'group' или 'no-group'
+     */
     setCommandGroupMode(mode: TCommandGroupMode): void {
         this.#commandGroupMode = mode;
     }
@@ -740,7 +763,7 @@ export class CommandReg {
      *
      * @param stepName — Уникальное имя шага (например, `'enter_email'`).
      * @param handler — Функция, вызываемая при получении сообщения в этом шаге.
-     * @returns Текущий экземпляр `Bot` (для цепочки вызовов).
+     * @returns Текущий экземпляр `CommandReg`.
      *
      * @example
      * ```ts

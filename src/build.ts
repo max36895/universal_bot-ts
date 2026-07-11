@@ -60,7 +60,7 @@ export interface IConfig {
      *      bot.addCommand('my_command', ['my_slot'], (intent, bc) => { bc.text = 'OK'; }); // Добавляем команду
      * }
      * ```
-     * @param bot
+     * @param {Bot} bot - Экземпляр приложения для настройки
      */
     logic?: (bot: Bot) => void;
     /**

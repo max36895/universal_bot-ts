@@ -233,8 +233,9 @@ export class BotTest extends Bot {
     /**
      * Запуск обработку запроса
      * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит за классом.
-     * @param appType
-     * @param content
+     * @param {TAppType | null} [appType] - Тип платформы
+     * @param {string | null} [content] - Содержимое запроса
+     * @returns {Promise<TRunResult>} Результат обработки запроса
      */
     public run(appType?: TAppType | null, content?: string | null): Promise<TRunResult> {
         this.appType = appType || 'alisa';

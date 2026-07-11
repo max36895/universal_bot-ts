@@ -250,7 +250,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * ```ts
      * (input: RequestInfo, init?: RequestInit) => Promise<Response>
      * ```
-     *      *  Это позволяет:
+     * Это позволяет:
      * - добавлять retry-логику, таймауты, circuit breaker;
      * - внедрять tracing, метрики или логирование всех запросов;
      * - мокать сетевые вызовы в тестах;
@@ -272,7 +272,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      *     throw e;
      *   }
      * };
-     *```
+     * ```
      */
     public httpClient: THttpClient = global.fetch;
 
@@ -345,7 +345,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 const {
                     // Получаем токен для viber
                     VIBER_TOKEN,
-                    // Получаем токен для talegram
+                    // Получаем токен для telegram
                     TELEGRAM_TOKEN,
                     // Получаем токен для vk
                     VK_TOKEN,
@@ -415,7 +415,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Устанавливает конфигурацию приложения
-     * @param {IAppConfig} config - Пользовательская конфигурация
+     * @param {Partial<IAppConfig>} config - Пользовательская конфигурация
      */
     public setAppConfig(config: Partial<IAppConfig>): void {
         this.appConfig = { ...this.appConfig, ...config };
@@ -463,7 +463,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Позволяет установить свою реализацию для логирования
-     * @param logger
+     * @param {ILogger | null} logger - Экземпляр логгера или null для отключения
      */
     public setLogger(logger: ILogger | null): void {
         this.#logger = logger;
@@ -471,7 +471,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Логирование информации
-     * @param args
+     * @param {...unknown[]} args - Аргументы для логирования
+     *
+     * @example
+     * ```ts
+     * ctx.log('Запрос обработан за', 42, 'мс');
+     * ctx.log({ userId: '123', command: 'start' });
+     * ```
      */
     public log(...args: unknown[]): void {
         if (this.#logger?.log) {
@@ -483,8 +489,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Логирование ошибки
-     * @param str
-     * @param meta
+     * @param {string} str - Текст ошибки
+     * @param {Record<string, unknown>} [meta] - Дополнительные метаданные
+     *
+     * @example
+     * ```ts
+     * ctx.logError('Ошибка подключения к БД', { host: 'localhost', error: err.message });
+     * ```
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
         if (this.#logger?.error) {
@@ -510,6 +521,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param name - имя метрики
      * @param value - значение
      * @param label - Дополнительные метаданные
+     *
+     * @example
+     * ```ts
+     * ctx.logMetric('GET_COMMAND', 0.42, { platform: 'alisa', command: 'weather' });
+     * ctx.logMetric('DB_SELECT', 12.5, { table: 'UsersData' });
+     * ```
      */
     public logMetric(name: string, value: unknown, label: Record<string, unknown>): void {
         if (this.#logger?.metric) {
@@ -552,8 +569,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Логирование предупреждения
-     * @param str
-     * @param meta
+     * @param {string} str - Текст предупреждения
+     * @param {Record<string, unknown>} [meta] - Дополнительные метаданные
+     *
+     * @example
+     * ```ts
+     * ctx.logWarn('Текст обрезан до 1024 символов', { original: longText, truncated: shortText });
+     * ```
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
         if (this.#logger?.warn) {
@@ -572,6 +594,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param fileName - Имя файла
      * @param data - Данные для сохранения
      * @returns true в случае успешного сохранения
+     *
+     * @example
+     * ```ts
+     * const saved = await ctx.saveFileData('config.json', { key: 'value' });
+     * if (saved) console.log('Данные сохранены');
+     * ```
      */
     public saveFileData(fileName: string, data: unknown): Promise<boolean> {
         const dir: IDir = {
@@ -583,7 +611,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Скрывает секретные данные в тексте
-     * @param text
+     * @param text - Текст для маскировки секретов
      */
     #maskSecrets(text: string): string {
         if (!text || this.#logger?.maskSecrets === false) {

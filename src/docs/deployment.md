@@ -132,3 +132,46 @@ docker run -p 3000:3000 -e YANDEX_TOKEN=... my-bot
 - Деплой на сервер через SSH.
 
 > 🔐 Безопасность: никогда не коммитьте .env в Git. Используйте GitHub Secrets.
+
+## Serverless
+
+Для платформ без постоянного сервера (Алиса, Маруся, SmartApp) можно использовать serverless-функции.
+
+### Яндекс Cloud Functions
+
+```ts
+import { Bot } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
+
+const bot = new Bot();
+bot.use(fullPlatforms);
+bot.setAppConfig({ isLocalStorage: true });
+
+// Экспорт функции для Яндекс Cloud Functions
+export const handler = async (event: Record<string, unknown>) => {
+    const result = await bot.run('alisa', JSON.stringify(event));
+    return {
+        statusCode: 200,
+        body: JSON.stringify(result),
+    };
+};
+```
+
+Подробнее о serverless — в разделе [Рецепты: Serverless](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html#рецепты-cookbook).
+
+## Чеклист деплоя
+
+Перед запуском в продакшене убедитесь:
+
+- [ ] **Сборка завершена успешно** — `npm run build` без ошибок
+- [ ] **Тесты пройдены** — `npm run test` зелёный
+- [ ] **Режим `strict_prod`** — `bot.setAppMode('strict_prod')`
+- [ ] **Токены в переменных окружения** — не в коде, не в .env в контейнере
+- [ ] **MongoAdapter** — вместо FileAdapter (FileAdapter хранит данные в памяти)
+- [ ] **HTTPS настроен** — обязателен для Алисы, Сбера, Viber
+- [ ] **Webhook URL зарегистрирован** — в консоли разработчика каждой платформы
+- [ ] **error_log настроен** — `bot.setAppConfig({ error_log: './logs' })`
+- [ ] **Preload выполнен** — все медиафайлы предзагружены
+- [ ] **rateLimiter подключен** — `bot.use(rateLimiter())`
+- [ ] **PM2 или Docker** — для автоматического перезапуска при падении
+- [ ] **Мониторинг** — логи доступны, метрики настроены

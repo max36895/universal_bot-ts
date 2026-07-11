@@ -153,14 +153,14 @@ export type TPlatformResolver = (
  * 5. **Запустите:** `bot.start();`
  *
  * ## 🎯 Ключевые возможности
- *  * - ✅ **Поддержка множества платформ** через подключаемые адаптеры (Алиса, Telegram, VK, Маруся и др.)
- *  * - ✅ **Единая логика** для голосовых навыков и ботов
- *  * - ✅ **Мощная система команд и интентов** с поддержкой регулярных выражений
- *  * - ✅ **Управление состоянием диалога** (шаги) и пользовательскими данными
- *  * - ✅ **Встроенная работа с БД** (MongoDB через плагины)
- *  * - ✅ **Middleware и плагины** для расширения функциональности
- *  * - ✅ **Гибкая настройка** (режимы разработки/продакшена, защита от ReDoS, кастомные резолверы команд)
- *  * - ✅ **Логирование и метрики** для отладки и мониторинга
+ * - ✅ **Поддержка множества платформ** через подключаемые адаптеры (Алиса, Telegram, VK, Маруся и др.)
+ * - ✅ **Единая логика** для голосовых навыков и ботов
+ * - ✅ **Мощная система команд и интентов** с поддержкой регулярных выражений
+ * - ✅ **Управление состоянием диалога** (шаги) и пользовательскими данными
+ * - ✅ **Встроенная работа с БД** (MongoDB через плагины)
+ * - ✅ **Middleware и плагины** для расширения функциональности
+ * - ✅ **Гибкая настройка** (режимы разработки/продакшена, защита от ReDoS, кастомные резолверы команд)
+ * - ✅ **Логирование и метрики** для отладки и мониторинга
  *
  * ## 🚀 БЫСТРЫЙ СТАРТ
  * Создание простого Telegram бота
@@ -315,7 +315,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Явно устанавливает тип платформы для всего приложения. Стоит использовать в крайнем случае
-     * @param appType
+     * @param {TAppType | 'auto'} appType - Тип платформы или 'auto' для автоматического определения
      */
     public set appType(appType: TAppType | 'auto') {
         this.#defaultAppType = appType;
@@ -323,6 +323,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Возвращает установленный тип приложения.
+     * @returns {string} Текущий тип платформы
      */
     public get appType(): string {
         return this.#defaultAppType;
@@ -333,7 +334,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * При значении auto, регулярные выражения будут группироваться в группу, благодаря чему уменьшается время обработки. Логика начинает отрабатывать после того, как добавили более 300 команд.
      * При значении no-group, группировка регулярных выражений производиться не будет, из-за чего каждое регулярное выражение будет обрабатываться отдельно. Указывать данное значение стоит в том случае, если вы получаете сильную деградацию при обработке групп.
      * При значении group, все регулярные выражения будут добавляться в группу. Перед использованием данного значения, перепроверьте производительность, так как при группировке определенных регулярных выражений, производительность может быть ниже.
-     * @param mode - Определяет режим работы с регулярными выражениями.
+     * @param {TCommandGroupMode} mode - Определяет режим работы с регулярными выражениями.
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public setCommandGroupMode(mode: TCommandGroupMode): this {
         this.#appContext.command.setCommandGroupMode(mode);
@@ -389,9 +391,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * });
      *
      * @remarks
-     * - Резолвер может быть асинхронным, если это необходимо. Для этого просто объявите
-     *   функцию как `async` и возвращайте `Promise<string | null>`. Фреймворк дождётся
-     *   результата перед продолжением.
+     * - Резолвер выполняется синхронно. Если нужна асинхронная логика — выполните её до вызова резолвера.
      * - Внутри резолвера можно модифицировать `query` или `headers`, если нужно повлиять
      *   на дальнейшую обработку (например, добавить недостающие поля).
      * - Если резолвер возвращает имя платформы, для которой нет зарегистрированного
@@ -404,7 +404,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Позволяет установить свою реализацию для логирования
-     * @param logger
+     * @param {ILogger | null} logger - Экземпляр логгера или null для отключения
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public setLogger(logger: ILogger | null): this {
         this.#appContext.setLogger(logger);
@@ -522,6 +523,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Удаляет зарегистрированную команду по имени
      * @param commandName - Имя команды
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public removeCommand(commandName: string): this {
         this.#appContext.command.removeCommand(commandName);
@@ -533,6 +535,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
      * > Используйте с осторожностью (например, при перезагрузке логики приложения).
+     *
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public clearCommands(): this {
         this.#appContext.command.clearCommands();
@@ -551,6 +555,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * @param stepName — Уникальное имя шага (например, `'enter_email'`).
      * @param handler — Функция, вызываемая при получении сообщения в этом шаге.
+     *                  Может вернуть `false`, чтобы пропустить шаг и передать управление командам.
      * @returns Текущий экземпляр `Bot` (для цепочки вызовов).
      *
      * @example
@@ -604,8 +609,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * После удаления шаг больше не будет обрабатываться, даже если активен у пользователя.
      * (Рекомендуется завершать активные сценарии через `ctx.clearStep()` перед удалением.)
      *
-     * @param stepName — Имя шага для удаления.
-     * @returns Текущий экземпляр `Bot`.
+     * @param {string} stepName — Имя шага для удаления.
+     * @returns {this} Текущий экземпляр `Bot`.
+     *
+     * @example
+     * ```ts
+     * bot.removeStep('confirm_order');
+     * ```
      */
     public removeStep(stepName: string): this {
         this.#appContext.command.removeStep(stepName);
@@ -618,7 +628,12 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
      * > Используйте с осторожностью (например, при перезагрузке логики приложения).
      *
-     * @returns Текущий экземпляр `Bot`.
+     * @returns {this} Текущий экземпляр `Bot`.
+     *
+     * @example
+     * ```ts
+     * bot.clearSteps();
+     * ```
      */
     public clearSteps(): this {
         this.#appContext.command.clearSteps();
@@ -627,11 +642,17 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Удаляет **все** зарегистрированные платформы, плагины и middleware службы.
+     * Для каждого объектного плагина вызывается метод `destroy()`.
      *
-     * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
-     * > Используйте с осторожностью (например, при перезагрузке логики приложения).
+     * > ⚠️ Это **глобальная операция**: все адаптеры и middleware станут недоступны.
+     * > Команды и шаги при этом **не удаляются** — для их очистки используйте `clearCommands()` / `clearSteps()`.
      *
-     * @returns Текущий экземпляр `Bot`.
+     * @returns {this} Текущий экземпляр `Bot`.
+     *
+     * @example
+     * ```ts
+     * bot.clearUse();
+     * ```
      */
     public clearUse(): this {
         this.#appContext.platforms = {};
@@ -667,13 +688,16 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ⚠️ ВАЖНО: В продакшене всегда используйте 'strict_prod' для защиты от атак через регулярные выражения.
      * Режим 'prod' оставлен для обратной совместимости, но небезопасен.
      *
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
      * @example
+     * ```ts
      * // Для продакшена (обязательно!)
      * bot.setAppMode('strict_prod');
      *
      * // Для разработки
      * bot.setAppMode('dev');
-     * @param appMode
+     * ```
      */
     public setAppMode(appMode: TAppMode): this {
         this.#appContext.appMode = appMode;
@@ -699,7 +723,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * - необходимости в fuzzy-поиске или сложной маршрутизации,
      * вы можете подключить оптимизированный resolver.
      *
-     * @param resolver - Функция вида `(userText: string, commands: Map<string, ICommand>) => string | null`.
+     * @param resolver - Функция вида `(userCommand: string, commands: Map<string, ICommandParam>) => string | null | Promise<string | null>`.
      *                    Должна вернуть имя команды или `null`, если совпадений нет.
      *
      * @example
@@ -727,6 +751,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * - Для fuzzy-поиска — рассмотрите `fuse.js`, `natural` или trie-структуры.
      * - При работе с регулярными выражениями **обязательно проверяйте их на ReDoS**.
      * - Избегайте тяжёлых синхронных операций — они блокируют event loop.
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public setCustomCommandResolver(resolver: TCommandResolver): this {
         this.#appContext.command.customCommandResolver = resolver;
@@ -740,7 +765,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * > 🔒 **Безопасность**: никогда не храните секреты (пароли, токены, API-ключи) прямо в коде.
      * > Всегда используйте `.env`-файлы или переменные окружения.
      *
-     * @param {IAppConfig} config - Конфигурация приложения
+     * @param {Partial<IAppConfig>} config - Конфигурация приложения
      *
      * @example
      * ```ts
@@ -753,7 +778,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *     pass: 'password'
      *   }
      * });
-     *
+     * ```
      *
      * @remarks
      * Важно! Чувствительные данные рекомендуется сохранять в .env файл, передав путь к нему:
@@ -762,6 +787,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *     env: './.env', // путь до файла
      * });
      * ```
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public setAppConfig(config: Partial<IAppConfig>): this {
         if (config) {
@@ -790,6 +816,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * bot.getAppContext().httpClient = customFetch;
      *
      * ⚠️ Важно: Не модифицируйте внутренние поля контекста напрямую (например, commands, steps). Используйте публичные методы addCommand(), addStep().
+     *
+     * @returns {AppContext} Контекст приложения
      */
     public getAppContext(): AppContext {
         return this.#appContext;
@@ -818,6 +846,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *   empty_text: 'Извините, я не понял.'
      * });
      * ```
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public setPlatformParams(params: IAppParam): this {
         if (params) {
@@ -841,7 +870,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Контроллер по умолчанию уже обрабатывает интенты `welcome`, `help` и `fallback`,
      * но вы можете заменить его, если нужно кастомное поведение.
      *
-     * @param {BotController<TUserData>} fn - Экземпляр контроллера, наследующий `BotController<TUserData>`
+     * @param {TBotControllerClass<TUserData>} fn - Класс контроллера, наследующий `BotController<TUserData>`
      *
      * @example
      * ```ts
@@ -882,6 +911,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *
      * bot.initBotController(MyController);
      * ```
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
     public initBotController(fn: TBotControllerClass<TUserData>): this {
         if (fn) {
@@ -1393,8 +1423,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * или запускаете его вне HTTP-контекста (например, из консоли или очереди сообщений).
      *
      * @param {TAppType | null} [appType] - Тип приложения. Если не указан, будет определен автоматически в зависимости от запроса.
-     * @param {string | object} [content] - Входные данные для обработки (например, текст сообщения или объект запроса).
-     * @param {TBotAuth | null} [auth] - Авторизационные токен
+     * @param {string | object | null} [content] - Входные данные для обработки (например, текст сообщения или объект запроса).
+     * @param {TBotAuth} [auth] - Авторизационный токен
      * @returns {Promise<TRunResult>} Результат обработки запроса
      * @throws {Error} Если не удаётся определить платформу или отсутствуют данные для обработки.
      *
@@ -1566,8 +1596,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *          if (state.statusCode === 200) {
      *              return state.defaultSend(_res, state);
      *          }
-     *          res.statusCode = 200;
-     *          res.end(...);// Какое-то содержимое страницы
+     *          _res.statusCode = 200;
+     *          _res.end(...);// Какое-то содержимое страницы
      *     });
      *   } else {
      *     res.statusCode = 404;
@@ -1669,6 +1699,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param {string} hostname - Имя хоста
      * @param {number} port - Порт
      * @param responseCb - Callback, для пользовательской обработки ответа пользователю. Стоит использовать в том случае, если есть необходимость переопределить стандартный ответ фреймворка.
+     * @returns {Server} Экземпляр http.Server для управления сервером
      *
      * @example
      * ```ts
@@ -1697,8 +1728,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
      *      if (state.statusCode === 200) {
      *          return state.defaultSend(_res, state);
      *      }
-     *      res.statusCode = 200;
-     *      res.end(...);// Какое-то содержимое страницы
+     *      _res.statusCode = 200;
+     *      _res.end(...);// Какое-то содержимое страницы
      * });
      * ```
      */
@@ -1722,6 +1753,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 return this.webhookHandle(req, res, responseCb);
             },
         );
+
+        this.#serverInst.on('error', (err: NodeJS.ErrnoException) => {
+            this.#appContext.logError(
+                `Bot:start(): Ошибка HTTP-сервера на ${hostname}:${port}: ${err.message}`,
+                { error: err, code: err.code },
+            );
+        });
 
         this.#serverInst.listen(port, hostname, () => {
             this.#appContext.log(`Server running at //${hostname}:${port}/`);
@@ -1808,12 +1846,13 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Отправка текста пользователю
      * Этот метод используется для активных рассылок — когда голосовой навык или чат-бот инициирует диалог первым (например, уведомление).
-     * В методе реализована механика преобразования текстового значения `controllerOrText` в контроллер, а также базовый механизм для отправки ответа.
+     * Метод делегирует отправку соответствующему адаптеру платформы.
      *
      * Если платформа не поддерживает возможность начать диалог самостоятельно, то вернется false
      * @param userId Ид пользователя, которому нужно отправить сообщение
      * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
      * @param platform Платформа, на которую необходимо отправить запрос
+     * @returns {Promise<unknown | boolean>} Результат отправки или false, если платформа не зарегистрирована
      */
     public async send(
         userId: string | number,

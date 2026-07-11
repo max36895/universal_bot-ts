@@ -232,6 +232,8 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
     }
 
     // Транслятор IQueryData в SQL (упрощенно)
+    // ⚠️ ВНИМАНИЕ: Это псевдокод для демонстрации. В реальном коде используйте
+    // параметризованные запросы (prepared statements) для защиты от SQL-инъекций!
     private buildSelectQuery(table: string, where: IQueryData | null, isOne: boolean): string {
         let sql = `SELECT * FROM ${table}`;
         if (where) {
@@ -239,9 +241,9 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
                 const val = where[key];
                 // Поддержка операторов
                 if (typeof val === 'object' && val !== null && val.$gt !== undefined) {
-                    return `${key} > ${val.$gt}`;
+                    return `${key} > ?`; // параметризованный запрос
                 }
-                return `${key} = '${val}'`;
+                return `${key} = ?`; // параметризованный запрос
             });
             sql += ` WHERE ${conditions.join(' AND ')}`;
         }

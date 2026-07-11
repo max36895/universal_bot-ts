@@ -19,7 +19,7 @@ import {
 } from './constants';
 
 /**
- * Возвращает кнопки для кнопок в нужном для Алисы виде
+ * Возвращает кнопки в формате Алисы
  * @param buttons Кнопки для отображения
  */
 export function alisaCardButton(buttons: IButtonType[]): IAlisaButtonCard {

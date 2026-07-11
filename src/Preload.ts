@@ -180,7 +180,7 @@ export class Preload {
      * Возвращает внутренний тип изображения, используемый в `ImageTokens`, для указанной платформы.
      *
      * @param {TAppType} platform - Тип платформы.
-     * @returns {number | undefined} Тип изображения для `ImageTokens` или `undefined`, если платформа не поддерживается
+     * @returns {string | undefined} Тип изображения для `ImageTokens` или `undefined`, если платформа не поддерживается
      *                               или не требует предзагрузки (например, Telegram).
      */
     protected _getImageType(platform: TAppType): string | undefined {
@@ -203,7 +203,7 @@ export class Preload {
      * Возвращает внутренний тип звука, используемый в `SoundTokens`, для указанной платформы.
      *
      * @param {TAppType} platform - Тип платформы.
-     * @returns {number | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается
+     * @returns {string | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается
      *                               или не требует предзагрузки (например, Telegram).
      */
     protected _getSoundType(platform: TAppType): string | undefined {
@@ -374,7 +374,7 @@ export class Preload {
      * @param {string[]} images - Массив путей к файлам изображений для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
      * @param opts - Дополнительные опции для загрузки. Так как в Telegram не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
-     * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном изображения
+     * @returns {Promise<string | null>[]} Массив промисов, каждый из которых разрешается токеном изображения
      *                                        или `null` в случае ошибки или если платформа не поддерживается.
      */
     public loadImages(
@@ -427,7 +427,7 @@ export class Preload {
      * @param {string[]} sounds - Массив путей к файлам звуков для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
      * @param opts - Дополнительные опции для загрузки. Так как в телеграм не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
-     * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном звука
+     * @returns {Promise<string | null>[]} Массив промисов, каждый из которых разрешается токеном звука
      *                                        или `null` в случае ошибки или если платформа не поддерживается.
      */
     public loadSounds(

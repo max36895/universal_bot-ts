@@ -20,6 +20,10 @@
  */
 export type TModelRulesType = 'text' | 'string' | 'integer' | 'date' | 'int' | 'bool';
 
+/**
+ * Базовый интерфейс для данных модели.
+ * Используется как тип по умолчанию для IModelRes и методов модели.
+ */
 export interface IDataValue {
     [key: string]: unknown;
 }

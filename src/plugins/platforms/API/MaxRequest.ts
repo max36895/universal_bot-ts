@@ -44,7 +44,7 @@ export class MaxRequest {
     readonly #appContext: AppContext;
 
     /**
-     * Создает экземпляр класса для работы с API ВКонтакте
+     * Создает экземпляр класса для работы с API Max
      * Устанавливает токен из конфигурации приложения, если он доступен
      */
     public constructor(appContext: AppContext) {
@@ -70,7 +70,7 @@ export class MaxRequest {
 
     /**
      * Устанавливает токен доступа к MAX API
-     * @param accessToken
+     * @param accessToken Токен доступа
      * @protected
      */
     #setAccessToken(accessToken: string): void {
@@ -130,9 +130,9 @@ export class MaxRequest {
 
     /**
      * Отправляет сообщение пользователю или в чат
-     * @param peerId Идентификатор получателя:
+     * @param peerId Идентификатор получателя (user_id или chat_id)
      * @param message Текст сообщения
-     * @param params Дополнительные параметры:
+     * @param params Дополнительные параметры (клавиатура, вложения и т.д.)
      * @returns Информация об отправленном сообщении или null при ошибке
      */
     public async messagesSend(
@@ -177,7 +177,7 @@ export class MaxRequest {
 
     /**
      * Регистрирует событие для получения уведомлений о новых сообщениях в MAX
-     * @param url
+     * @param {string} url - URL для получения уведомлений
      */
     public subscriptions(url: string): Promise<unknown> {
         this.#request.post = {

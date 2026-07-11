@@ -265,7 +265,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Выполняет произвольный запрос через callback.
      *
-     * Внутри себя вызывает this._query, основное отличие в том, что в данном методе пишутся метрики.
+     * Выполняет this._query напрямую. Метрики времени выполнения не записываются (в отличие от select/insert/update/remove).
      * @param callback функция обработчик
      */
     public async query(callback: TQueryCb<MongoClient, Db>): Promise<unknown | IModelRes> {
@@ -275,8 +275,8 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Валидация запросов.
      * Валидирует запрос, приводя его к корректному виду
-     * @param query
-     * @param element
+     * @param {IQuery} query - Запрос для валидации
+     * @param {IQueryData | null} element - Элемент данных
      */
     public validate(query: IQuery, element: IQueryData | null): IQueryData {
         if (!element) {
@@ -377,8 +377,8 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
     /**
      * Сохранение логов
-     * @param errorMsg
-     * @param error
+     * @param errorMsg Текст ошибки
+     * @param error Объект ошибки (опционально)
      * @protected
      */
     protected _saveLog(errorMsg: string, error?: Error): void {
@@ -398,7 +398,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Закрывает подключение к определенной таблице.
      * В MongoDB нет концепции "закрытия таблицы". Метод close() закрывает всё соединение с базой.
-     * @param tableName
+     * @param {string} tableName - Имя таблицы
      */
     public async close(tableName: string): Promise<void> {
         await super.close(tableName);

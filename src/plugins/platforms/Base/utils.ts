@@ -6,7 +6,25 @@ import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
 /**
- * Тип для обработки запроса для загрузки изображения
+ * Callback для загрузки изображения на платформу.
+ * Вызывается только при cache miss — когда токен для файла ещё не был сгенерирован.
+ *
+ * @param model - Модель ImageTokens для сохранения токена в БД
+ * @returns Токен загруженного изображения или null при ошибке
+ *
+ * @example
+ * ```ts
+ * const cb: TImageCallback = async (model) => {
+ *     const api = new MyPlatformApi(appContext);
+ *     const result = await api.uploadImage(model.path);
+ *     if (result?.id) {
+ *         model.imageToken = result.id;
+ *         await model.save(true);
+ *         return model.imageToken;
+ *     }
+ *     return null;
+ * };
+ * ```
  */
 export type TImageCallback = (model: ImageTokens) => Promise<string | null>;
 
@@ -41,7 +59,25 @@ export async function getImageToken(
 }
 
 /**
- * Тип для обработки запроса для загрузки аудио
+ * Callback для загрузки аудио на платформу.
+ * Вызывается только при cache miss — когда токен для файла ещё не был сгенерирован.
+ *
+ * @param model - Модель SoundTokens для сохранения токена в БД
+ * @returns Токен загруженного аудио или null при ошибке
+ *
+ * @example
+ * ```ts
+ * const cb: TSoundCallback = async (model) => {
+ *     const api = new MyPlatformApi(appContext);
+ *     const result = await api.uploadAudio(model.path);
+ *     if (result?.id) {
+ *         model.soundToken = result.id;
+ *         await model.save(true);
+ *         return model.soundToken;
+ *     }
+ *     return null;
+ * };
+ * ```
  */
 export type TSoundCallback = (model: SoundTokens) => Promise<string | null>;
 
@@ -150,15 +186,6 @@ export function removeSound(text: string): string {
  * @param defaultSounds - Стандартные звуки
  * @param defaultEffects - Стандартные эффекты
  */
-
-/**
- * Базовый метод для обработки tts.
- * Основная задача метода - найти все ключи в запросе, и заменить их на корректные звуки/эффекты.
- * По умолчанию используется в Алисе и Марусе.
- * @param soundInfo - Информация необходимая для обработки аудио
- * @param defaultSounds - Стандартные звуки
- * @param defaultEffects - Стандартные эффекты
- */
 export function defaultSoundProcessing(
     soundInfo: ISoundInfo,
     defaultSounds: ISound[],
@@ -230,8 +257,8 @@ export function initUserCommand(request: IAlisaRequest, controller: BotControlle
 
 /**
  * Возвращает корректный массив кнопок с учетом лимита
- * @param buttons
- * @param limit
+ * @param {TButton[]} buttons - Массив кнопок
+ * @param {number} limit - Максимальное количество кнопок
  */
 export function getCorrectButtons<TButton = IButtonType>(
     buttons: TButton[],
@@ -245,7 +272,7 @@ export function getCorrectButtons<TButton = IButtonType>(
 
 /**
  * Утилита для безопасного преобразования строки в объект
- * @param data
+ * @param {Record<string, unknown> | object | string | null | undefined} data - Данные для преобразования
  */
 export function tryParse<TResult = Record<string, unknown>>(
     data: Record<string, unknown> | object | string | null | undefined,

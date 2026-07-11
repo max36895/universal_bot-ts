@@ -105,7 +105,7 @@ export class Request {
 
     /**
      * Устанавливает контекст приложения
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
      */
     public setAppContext(appContext: AppContext): void {
         if (appContext) {
@@ -267,9 +267,9 @@ export class Request {
 
     /**
      * Добавляет файл в FormData
-     * @param formData
-     * @param filePath
-     * @param fileName
+     * @param {FormData} formData - Объект FormData для добавления файла
+     * @param {string} filePath - Путь к файлу
+     * @param {string} fileName - Имя файла для отправки
      */
     public async addAttachFile(
         formData: FormData,

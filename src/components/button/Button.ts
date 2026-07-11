@@ -90,9 +90,9 @@ function init<TButtonPayload = TBtnPayload>(
  * Возвращает кнопку в виде сайджеста (ссылки под текстом).
  *
  * @param {AppContext} appContext Контекст приложения
- * @param {string} title Текст кнопки
- * @param {string} [url=''] URL для перехода (должен начинаться с http:// или https://)
- * @param {TButtonPayload} [payload=null] Дополнительные данные для обработки нажатия
+ * @param {string | null} title Текст кнопки
+ * @param {string | null} [url=''] URL для перехода (должен начинаться с http:// или https://)
+ * @param {TButtonPayload | null} [payload=null] Дополнительные данные для обработки нажатия
  * @param {IButtonOptions} [options={}] Дополнительные параметры:
  * - utmSource: источник перехода
  * - utmMedium: тип рекламного канала
@@ -101,17 +101,17 @@ function init<TButtonPayload = TBtnPayload>(
  * @example
  * ```ts
  * // Простая ссылка
- * const button1 = getButton('Перейти на сайт', 'http://localhost');
+ * const button1 = getLinkButton(appContext, 'Перейти на сайт', 'http://localhost');
  *
  * // Ссылка с UTM-метками
- * const button2 = getButton('Купить', 'http://localhost/product', null, {
+ * const button2 = getLinkButton(appContext, 'Купить', 'http://localhost/product', null, {
  *   utmSource: 'bot',
  *   utmMedium: 'button',
  *   utmCampaign: 'spring_sale'
  * });
  *
  * // Ссылка с дополнительными данными
- * const button3 = getButton('Подробнее', 'http://localhost/article', {
+ * const button3 = getLinkButton(appContext, 'Подробнее', 'http://localhost/article', {
  *   action: 'read',
  *   article_id: 123
  * });
@@ -133,9 +133,9 @@ export function getLinkButton<TButtonPayload = TBtnPayload>(
  * Возвращает кнопку в виде интерактивной кнопки.
  *
  * @param {AppContext} appContext Контекст приложения
- * @param {string} title Текст кнопки
- * @param {string} [url=''] URL для перехода
- * @param {TButtonPayload} [payload=null] Дополнительные данные для обработки нажатия.
+ * @param {string | null} title Текст кнопки
+ * @param {string | null} [url=''] URL для перехода
+ * @param {TButtonPayload | null} [payload=null] Дополнительные данные для обработки нажатия.
  *                                        Может быть строкой или объектом.
  * @param {IButtonOptions} [options={}] Дополнительные параметры:
  * - utmSource: источник перехода

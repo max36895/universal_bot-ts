@@ -407,8 +407,8 @@ export class Nlu {
     /**
      * Устанавливает данные NLU и очищает кэш.
      *
-     * @param nlu - Данные NLU для обработки
-     * @param isClearCache - Флаг, говорящий о том, что нужно сбросить кэш
+     * @param {INlu} nlu - Данные NLU для обработки
+     * @param {boolean} [isClearCache=false] - Флаг, говорящий о том, что нужно сбросить кэш
      * @example
      * ```ts
      * nlu.setNlu({
@@ -460,9 +460,9 @@ export class Nlu {
      * ```ts
      * const user = nlu.getUserName();
      * if (user) {
-     *     console.log('ID пользователя:', user.user_id);
      *     console.log('Имя пользователя:', user.first_name);
      *     console.log('Фамилия пользователя:', user.last_name);
+     *     console.log('Username:', user.username);
      * }
      * ```
      */
@@ -697,7 +697,7 @@ export class Nlu {
      * Извлекает ссылки из текста.
      *
      * @param {string} query - Текст для поиска
-     * @returns {INluResult<string[]>} Результат поиска ссылок
+     * @returns {INluResult<string[] | null>} Результат поиска ссылок
      * @example
      * ```ts
      * const links = Nlu.getLink('Посетите http://localhost');
@@ -720,7 +720,7 @@ export class Nlu {
      * Извлекает телефонные номера из текста.
      *
      * @param {string} query - Текст для поиска
-     * @returns {INluResult<string[]>} Результат поиска телефонов
+     * @returns {INluResult<string[] | null>} Результат поиска телефонов
      * @example
      * ```ts
      * const phones = Nlu.getPhone('Позвоните по номеру +7 (999) 123-45-67 или 8-800-555-35-35');
@@ -743,7 +743,7 @@ export class Nlu {
      * Извлекает email адреса из текста.
      *
      * @param {string} query - Текст для поиска
-     * @returns {INluResult<string[]>} Результат поиска email
+     * @returns {INluResult<string[] | null>} Результат поиска email
      * @example
      * ```ts
      * const emails = Nlu.getEMail('Напишите на email@example.com или support@test.ru');

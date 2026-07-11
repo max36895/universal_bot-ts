@@ -17,7 +17,7 @@ import {
 } from './constants';
 
 /**
- * Возвращает кнопки для кнопок в нужном для Алисы виде
+ * Возвращает кнопки в формате Маруси
  * @param buttons Кнопки для отображения
  */
 function marusiaCardButton(buttons: IButtonType[]): IMarusiaButtonCard {
@@ -57,12 +57,12 @@ export async function getImageInDB(
 }
 
 /**
- * Получает элементы карточки для Алисы.
+ * Получает элементы карточки для Маруси.
  *
  * Процесс работы:
  * 1. Определяет максимальное количество изображений:
- *    - Для галереи: ALISA_MAX_GALLERY_IMAGES (7)
- *    - Для списка: ALISA_MAX_IMAGES (5)
+ *    - Для галереи: MARUSIA_MAX_GALLERY_IMAGES (7)
+ *    - Для списка: MARUSIA_MAX_IMAGES (5)
  * 2. Обрабатывает каждое изображение:
  *    - Создает токен изображения, если его нет
  *    - Добавляет кнопки (если не галерея)
@@ -70,7 +70,7 @@ export async function getImageInDB(
  *      * Заголовок: 128 символов
  *      * Описание: 256 символов
  *
- * @returns {Promise<IAlisaImage[]>} Массив элементов карточки
+ * @returns {Promise<IMarusiaImage[]>} Массив элементов карточки
  */
 async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise<IMarusiaImage[]> {
     const items: IMarusiaImage[] = [];

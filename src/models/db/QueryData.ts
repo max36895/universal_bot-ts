@@ -46,7 +46,15 @@ export interface IQueryData {
 const DATA_REG = /`([^`]+)`\s*=\s*(?:"([^"]*)"|(\S+))/gim;
 
 /**
- * Тип для ключа
+ * Тип для ключа записи в базе данных.
+ * Используется как значение primaryKeyName в IQuery.
+ *
+ * @example
+ * ```ts
+ * const key: TKey = 'user-123';  // строковый ключ
+ * const key: TKey = 42;           // числовой ключ
+ * const key: TKey = null;         // ключ не задан
+ * ```
  */
 export type TKey = string | number | null;
 

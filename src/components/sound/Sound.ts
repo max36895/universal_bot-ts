@@ -58,8 +58,8 @@ const regReplace = /((?:^|\s)#\w+#(?:\s|$))/g;
  *         sounds: ['<speaker audio="alice-xxx">']
  *     },
  * ];
- * // Получение текста со звуками
- * const result = await sound.getSounds('Текст сообщения #myKey#');
+ * // Получение текста со звуками (text, soundProcessing, controller)
+ * const result = await sound.getSounds('Текст сообщения #myKey#', mySoundProcessing, controller);
  * ```
  */
 export class Sound {
@@ -105,8 +105,9 @@ export class Sound {
      * 4. Применяет звуки к тексту
      *
      * @param {string | null} text - Исходный текст для обработки
-     * @param soundProcessing
-     * @param controller
+     * @param {TSoundProcessing<TResult>} soundProcessing - Функция обработки звуков для платформы
+     * @param {BotController} controller - Контроллер бота
+     * @returns {Promise<TResult>} Текст со встроенными звуками для платформы
      */
     public async getSounds<TResult = unknown>(
         text: string | null,

@@ -49,7 +49,7 @@ export function rand(min: number, max: number): number {
 
 /**
  * Метод, возвращающий количество ключей в объекте
- * @param obj
+ * @param {object | Record<string, unknown>} obj - Объект для подсчёта ключей
  */
 export function keysCount(obj: object | Record<string, unknown>): number {
     // Такой вариант быстрее Object.keys, но до тех пор, пока не был delete.
@@ -148,7 +148,7 @@ export interface FileOperationResult<T> {
 
 /**
  * Быстрое сравнение на то похож введенный текст на имя файла или нет
- * @param str
+ * @param str Проверяемая строка
  */
 function looksLikeFilePath(str: string): boolean {
     const i = str.lastIndexOf('.');

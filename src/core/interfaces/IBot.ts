@@ -49,7 +49,7 @@ export type TBotContent = object | string | null;
 export type TBotAuth = string | null;
 
 /**
- * Интерфейс для базового ответ
+ * Интерфейс для базового ответа
  */
 export interface IBotResponse {
     /**
@@ -71,8 +71,8 @@ export interface IBotResponse {
 export interface IBotResponseState extends IBotResponse {
     /**
      * Базовый метод для отправки ответа
-     * @param res
-     * @param state
+     * @param {ServerResponse} res - Объект ответа HTTP-сервера
+     * @param {IBotResponse} state - Состояние ответа фреймворка
      */
     defaultSend: (res: ServerResponse, state: IBotResponse) => void;
 }
@@ -175,8 +175,8 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     /**
      * Проверяет полученный запрос от платформы на корректность.
      * Реализация зависит от адаптера, как правило, в чувствительных платформах есть токен, который приходит с запросом, и желательно проверять что пришедший токен соответствует тому, что сохранен в настройках.
-     * @param query
-     * @param headers
+     * @param {TQuery} query - Объект запроса от платформы
+     * @param {Record<string, unknown>} [headers] - HTTP-заголовки запроса
      */
     isCorrectQuery: (query: TQuery, headers?: Record<string, unknown>) => boolean;
     /**

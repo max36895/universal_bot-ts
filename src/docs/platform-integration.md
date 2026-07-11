@@ -6,14 +6,15 @@
 
 ### Сравнение с аналогами
 
-| Возможность                     | `umbot` | Jovo | SaluteJS |                     Нативный SDK                     |
-| :------------------------------ | :-----: | :--: | :------: | :--------------------------------------------------: |
-| Алиса + Маруся + Сбер           |   ✅    |  ❌  |    ❌    | Требуется ручная маршрутизация и дублирование логики |
-| Единая бизнес-логика            |   ✅    |  ❌  |    ❌    |                          ❌                          |
-| Поддержка Telegram / VK / Viber |   ✅    |  ❌  |    ❌    | Требуется ручная маршрутизация и дублирование логики |
-| TypeScript «из коробки»         |   ✅    |  ✅  |    ✅    |                  ⚠️ Зависит от sdk                   |
+| Возможность                           | `umbot` | Jovo | SaluteJS |                     Нативный SDK                     |
+| :------------------------------------ | :-----: | :--: | :------: | :--------------------------------------------------: |
+| Алиса + Маруся + Сбер                 |   ✅    |  ❌  |    ❌    | Требуется ручная маршрутизация и дублирование логики |
+| Единая бизнес-логика                  |   ✅    |  ❌  |    ❌    |                          ❌                          |
+| Поддержка Telegram / VK / Viber       |   ✅    |  ✅  |    ❌    | Требуется ручная маршрутизация и дублирование логики |
+| Полный российский стек (Алиса+Маруся) |   ✅    |  ❌  |    ❌    |                          ❌                          |
+| TypeScript «из коробки»               |   ✅    |  ✅  |    ✅    |                  ⚠️ Зависит от sdk                   |
 
-> **`umbot` — Решение с полной поддержкой всего российского стека голосовых ассистентов в одном коде.**
+> **`umbot` — единственное решение с полной поддержкой всего российского стека голосовых ассистентов (Алиса, Маруся, Сбер SmartApp) в одном коде.** Jovo поддерживает чат-боты (Telegram, VK, WhatsApp), но не интегрирован с российскими голосовыми платформами.
 
 ### Список платформ
 
@@ -43,7 +44,7 @@ const bot = new Bot('max_app');
 - HTTPS с валидным SSL-сертификатом
 - Стабильное время ответа (рекомендуется < 3 секунд)
 - Поддержка webhook URL
-- Node.js 20.0+ и TypeScript 5+
+- Node.js 20.19+ и TypeScript 5+
 
 ### Базовая настройка
 
@@ -88,14 +89,14 @@ bot.setPlatformParams({
     isAuthUser: true, // Для работы с авторизацией
     intents: [],
 });
-bot.use(new AlisaAdapter('YOUR_OAUTH_TOKEN')); // Указываем токен в адаптере
-bot.setAppConfig({
-    tokens: {
-        alisa: {
-            token: 'YOUR_OAUTH_TOKEN',
-        },
-    },
-}); // Или можно указать токен через настройку приложения
+bot.use(new AlisaAdapter('YOUR_OAUTH_TOKEN')); // Способ 1: токен в конструкторе (приоритет выше)
+// bot.setAppConfig({                         // Способ 2: токен в конфиге (альтернатива, если не передан в конструкторе)
+//     tokens: {
+//         alisa: {
+//             token: 'YOUR_OAUTH_TOKEN',
+//         },
+//     },
+// });
 ```
 
 ### Особенности
@@ -147,14 +148,14 @@ class AlisaController extends BotController {
 3. Настройте параметры в коде:
 
 ```ts
-bot.use(new TelegramAdapter('YOUR_BOT_TOKEN')); // Указываем токен в адаптере
-bot.setAppConfig({
-    tokens: {
-        telegram: {
-            token: 'YOUR_BOT_TOKEN',
-        },
-    },
-}); // Или можно указать токен через настройку приложения
+bot.use(new TelegramAdapter('YOUR_BOT_TOKEN')); // Способ 1: токен в конструкторе (приоритет выше)
+// bot.setAppConfig({                           // Способ 2: токен в конфиге (альтернатива)
+//     tokens: {
+//         telegram: {
+//             token: 'YOUR_BOT_TOKEN',
+//         },
+//     },
+// });
 ```
 
 ### Особенности
@@ -204,23 +205,21 @@ bot.use(
         vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
         vk_api_version: 'v5.131',
     }),
-); // Указываем токен в адаптере
-bot.setAppConfig({
-    tokens: {
-        vk: {
-            token: 'YOUR_BOT_TOKEN',
-            confirmationToken: 'YOUR_CONFIRMATION_TOKEN',
-            apiVersion: 'v5.131',
-        },
-    },
-}); // Или можно указать токен через настройку приложения
+); // Способ 1: токен и опции в конструкторе (приоритет выше)
+// bot.setAppConfig({                             // Способ 2: токен в конфиге (альтернатива)
+//     tokens: {
+//         vk: {
+//             token: 'YOUR_BOT_TOKEN',
+//             confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
+//             api_version: 'v5.131',
+//         },
+//     },
+// });
 ```
 
-> **Примечание:** В конструкторе `VkAdapter` ключи передаются в snake_case
-> (`vk_confirmation_token`, `vk_api_version`), а в `appConfig.tokens.vk` — в camelCase
-> (`confirmationToken`, `apiVersion`). Оба формата валидны и фреймворком поддерживаются.
-> Это сделано для совместимости: snake_case повторяет имена переменных окружения
-> (удобно при передаче из `.env`), а camelCase соответствует общему стилю TypeScript-кода.
+> **Примечание:** В конструкторе `VkAdapter` ключи передаются с префиксом `vk_`
+> (`vk_confirmation_token`, `vk_api_version`), а в `appConfig.tokens.vk` — без префикса
+> (`confirmation_token`, `api_version`). Оба формата валидны и фреймворком поддерживаются.
 
 ### Особенности
 
@@ -262,14 +261,14 @@ class VKController extends BotController {
 3. Заполните данные в настройках бота (его карточке) и нажмите Создать
 
 ```ts
-bot.use(new MaxAdapter('YOUR_BOT_TOKEN')); // Указываем токен в адаптере
-bot.setAppConfig({
-    tokens: {
-        max_app: {
-            token: 'YOUR_BOT_TOKEN',
-        },
-    },
-}); // Или можно указать токен через настройку приложения
+bot.use(new MaxAdapter('YOUR_BOT_TOKEN')); // Способ 1: токен в конструкторе (приоритет выше)
+// bot.setAppConfig({                         // Способ 2: токен в конфиге (альтернатива)
+//     tokens: {
+//         max_app: {
+//             token: 'YOUR_BOT_TOKEN',
+//         },
+//     },
+// });
 ```
 
 ### Особенности
@@ -317,16 +316,14 @@ class MaxController extends BotController {
 3. Настройте параметры:
 
 ```ts
-bot.use(new MarusiaAdapter('YOUR_BOT_TOKEN')); // Указываем токен в адаптере
-bot.setAppConfig({
-    tokens: {
-        marusia: {
-            token: 'YOUR_BOT_TOKEN',
-        },
-    },
-}); // Или можно указать токен через настройку приложения
+bot.use(new MarusiaAdapter('YOUR_BOT_TOKEN')); // Способ 1: токен в конструкторе (приоритет выше)
 bot.setAppConfig({
     isLocalStorage: true,
+    // tokens: {                              // Способ 2: токен в конфиге (альтернатива)
+    //     marusia: {
+    //         token: 'YOUR_BOT_TOKEN',
+    //     },
+    // },
 });
 ```
 
@@ -369,11 +366,13 @@ class MarusiaController extends BotController {
 2. Настройте параметры:
 
 ```ts
-bot.use(new SmartAppAdapter());
+bot.use(new SmartAppAdapter()); // Токен не нужен — аутентификация через Sber-экосистему
 bot.setAppConfig({
     isLocalStorage: true,
 });
 ```
+
+> **Почему нет токена?** SmartApp использует встроенную аутентификацию платформы Сбербанка — приложение проходит проверку через экосистему Сбера при регистрации, отдельный API-токен не требуется.
 
 ### Особенности
 
@@ -423,36 +422,39 @@ class MyAdapter extends BasePlatformAdapter {
 
     /**
      * Возвращает признак того, соответствует ли запрос текущей платформе или нет
-     * @param query
-     * @param headers
+     * @param query - Тело запроса
+     * @param headers - HTTP-заголовки
      */
-    isPlatformOnQuery(query: object, headers?: Record<string, unknown>): boolean {
-        return query.data?.messageCount !== undefined;
+    isPlatformOnQuery(query: unknown, headers?: Record<string, unknown>): boolean {
+        const q = query as Record<string, unknown>;
+        return !!(q.data && (q.data as Record<string, unknown>).messageCount !== undefined);
     }
 
     /**
-     * Обработка полученного запроса. В данном методе необходимо настроить botController, необходимыми данными
-     * @param query Запрос от платформы
-     * @param controller Контроллер приложения
+     * Обработка полученного запроса. В данном методе необходимо настроить botController необходимыми данными
+     * @param query - Запрос от платформы
+     * @param controller - Контроллер приложения
      */
-    setQueryData(query: object | string, controller: BotController): boolean | Promise<boolean> {
+    setQueryData(query: unknown, controller: BotController): boolean | Promise<boolean> {
         if (this.appContext) {
             if (query) {
-                let content: object;
+                let content: Record<string, unknown>;
                 if (typeof query === 'string') {
                     content = JSON.parse(query);
                 } else {
-                    content = query;
+                    content = query as Record<string, unknown>;
                 }
 
+                const data = content.data as Record<string, unknown> | undefined;
+
                 controller.requestObject = content;
-                controller.userId = content.userId;
-                controller.userCommand = content.data.text;
-                controller.originalUserCommand = content.data.text;
-                controller.messageId = content.data.messageCount;
+                controller.userId = content.userId as string;
+                controller.userCommand = ((data?.text as string) || '').toLowerCase();
+                controller.originalUserCommand = (data?.text as string) || '';
+                controller.messageId = data?.messageCount as number;
 
                 if (content.store) {
-                    controller.state = content.store;
+                    controller.state = content.store as Record<string, unknown>;
                 }
 
                 controller.isScreen = false;
@@ -503,6 +505,40 @@ class MyAdapter extends BasePlatformAdapter {
 }
 ```
 
+## Подводные камни по платформам
+
+### Алиса
+
+- **Таймаут 3 секунды.** Включая время обработки фреймворком + вашей логики + сетевые запросы. Используйте `Preload` для медиа.
+- **Лимит userData: 4 КБ.** Если данные больше — используйте MongoAdapter.
+- **`isScreen = false` на колонках.** Кнопки и карточки не отображаются. Проверяйте `this.isScreen` перед `this.card.addImage(...)`.
+- **Health check (ping).** Яндекс периодически шлёт `ping`. Фреймворк автоматически отвечает `pong`.
+- **Удаление полей.** `delete this.userData.foo` не работает — платформа вернёт старое значение. Используйте `this.userData.foo = null`.
+
+### Telegram
+
+- **Нет локального хранилища.** `isLocalStorage: true` не работает — нужна БД для `userData`.
+- **TTS через SpeechKit.** Для озвучки нужен `appConfig.tokens.telegram.speech_kit_token`. Без него `controller.tts` игнорируется.
+- **Markdown по умолчанию.** `parse_mode='markdown'`. Экранируйте спецсимволы или переопределяйте через middleware.
+- **Проактивная отправка.** `bot.send(userId, text, T_TELEGRAM)` работает (в отличие от голосовых платформ).
+
+### VK
+
+- **Два токена.** Бот-токен + `vk_confirmation_token` (для подтверждения вебхука при первичной настройке).
+- **Группировка кнопок.** Кнопки с одинаковым `options._group` окажутся в одной строке.
+- **Цвет кнопок.** `options.color: 'primary' | 'secondary' | 'positive' | 'negative'`.
+
+### Viber
+
+- **Sender name обязателен.** Должен совпадать с именем бота в Viber.
+- **Звуки не поддерживаются.** `controller.tts` игнорируется.
+
+### SmartApp (Сбер)
+
+- **Без токена.** Аутентификация через Sber-экосистему.
+- **Эмоции.** `controller.emotion = 'radost'` (23 варианта).
+- **Rating flow.** `controller.isSendRating = true` запускает оценку навыка.
+
 ## Итог
 
 Как видно из примеров выше, код контроллера для всех платформ выглядит практически одинаково.  
@@ -542,9 +578,9 @@ bot.setAppConfig({
 });
 
 // Подключение webhook-обработчика
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
     try {
-        bot.webhookHandle(req, res);
+        await bot.webhookHandle(req, res);
     } catch (err) {
         console.error('Webhook error:', err);
         res.status(500).send('Internal Server Error');
@@ -568,8 +604,10 @@ app.listen(3000, () => {
 ### Пример использования
 
 ```ts
+import { T_TELEGRAM } from 'umbot/plugins';
+
 // Отправка сообщения пользователю в Telegram
-const success = await bot.send('123456789', 'Привет! Это рассылка.', T_TELEGRAM);
+const result = await bot.send('123456789', 'Привет! Это рассылка.', T_TELEGRAM);
 ```
 
 ## Лучшие практики

@@ -65,7 +65,7 @@ const FORCE_DELAY_SAVE_TIME = 60 * 1000 * 3;
 
 /**
  * Адаптер для файловой базы данных.
- * Стоит использовать только для быстрого старта, либо для приложений, у которых объем базы не будет превышать 250мб.
+ * Стоит использовать только для быстрого старта, либо для приложений, у которых объем базы не будет превышать несколько сотен мегабайт.
  */
 export class FileAdapter extends Base<IFileDbInfo> {
     /**
@@ -92,7 +92,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     }
 
     /**
-     * Сохранение всех данные в базу
+     * Сохранение данных в кэш (в памяти)
      * @param tableName Имя таблицы
      * @param data Сохраняемые данные
      */
@@ -116,7 +116,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     }
 
     /**
-     * Получение всех данных из базы
+     * Получение данных из кэша (в памяти)
      * @param tableName Имя таблицы
      */
     getCachedFileData(tableName: string): IDBFileInfo {
@@ -199,6 +199,35 @@ export class FileAdapter extends Base<IFileDbInfo> {
                     tableName,
                     'forceTimeOutId',
                     setTimeout(cb, FORCE_DELAY_SAVE_TIME).unref(),
+                );
+            }
+        }
+    }
+
+    /**
+     * Принудительно сохраняет данные таблицы в файл и дожидается завершения записи.
+     * @param tableName Название таблицы
+     * @private
+     */
+    async #forceSave(tableName: string): Promise<void> {
+        const data = this.getCachedFileData(tableName).data;
+        if (data) {
+            const timeOutId = this.getCachedFileData(tableName).timeOutId;
+            if (timeOutId) {
+                clearTimeout(timeOutId);
+                this.#setCachedFileData(tableName, 'timeOutId', null);
+            }
+            const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
+            if (forceTimeOutId) {
+                clearTimeout(forceTimeOutId);
+                this.#setCachedFileData(tableName, 'forceTimeOutId', null);
+            }
+            try {
+                await this._appContext?.saveFileData(`${tableName}.json`, data);
+            } catch (e) {
+                this._appContext?.logError(
+                    `Произошла ошибка при записи в файл: ${(e as Error).message}`,
+                    { error: e },
                 );
             }
         }
@@ -472,26 +501,25 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * Закрывает все подключения к файловой БД.
      * Все процессы завершаются, и происходит сохранение данных в файл.
      */
-    public destroy(): void {
+    public async destroy(): Promise<void> {
         const result = super.destroy();
         if (isPromise(result)) {
-            result.catch((e: Error) => {
+            await result.catch((e: Error) => {
                 this._appContext?.logError(`FileAdapter:destroy(): ${e.message}`, { error: e });
             });
         }
         if (this._appContext.database.databaseInfo) {
-            Object.keys(this._appContext.database.databaseInfo).forEach((tableName: string) => {
-                this.close(tableName);
-            });
+            const tableNames = Object.keys(this._appContext.database.databaseInfo);
+            await Promise.all(tableNames.map((tableName) => this.close(tableName)));
         }
     }
 
     /**
      * Закрывает подключение к определенной таблице.
      * При закрытии, все хранящиеся в памяти данные сохраняются в файл.
-     * @param tableName
+     * @param {string} tableName - Имя таблицы
      */
-    public close(tableName: string): void {
+    public async close(tableName: string): Promise<void> {
         const timeOutId = this.getCachedFileData(tableName).timeOutId;
         if (timeOutId) {
             clearTimeout(timeOutId);
@@ -503,7 +531,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
             this.#setCachedFileData(tableName, 'forceTimeOutId', null);
         }
         if (timeOutId || forceTimeOutId) {
-            this.#update(tableName, true);
+            await this.#forceSave(tableName);
         }
         this.setCachedFileData(tableName, undefined);
     }

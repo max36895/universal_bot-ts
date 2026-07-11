@@ -141,7 +141,7 @@ export class Card {
 
     /**
      * Устанавливает контекст приложения.
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
      */
     public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
@@ -215,10 +215,10 @@ export class Card {
 
     /**
      * Добавляет изображение в карточку.
-     * @param {string} image - Идентификатор или URL изображения
+     * @param {string | null} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
      * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton} [button=null] - Кнопки для элемента
+     * @param {TButton | null} [button=null] - Кнопки для элемента
      * @returns {Card}
      *
      * @remarks
@@ -264,10 +264,10 @@ export class Card {
      * Добавляет одно изображение в виде карточки. Внутри себя выставляет isOne в true.
      * Если ранее были указаны другие изображения, то они очистятся.
      * Стоит использовать в том случае, если у вас всегда должно отобразиться только 1 изображение.
-     * @param {string} image - Идентификатор или URL изображения
+     * @param {string | null} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
      * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton} [button=null] - Кнопки для элемента
+     * @param {TButton | null} [button=null] - Кнопки для элемента
      * @returns {Card}
      */
     public addOneImage(
@@ -283,6 +283,10 @@ export class Card {
 
     /**
      * Получает карточку в формате для текущей платформы.
+     *
+     * @param {TCardProcessing<TResult>} cardProcessing - Функция обработки карточек для платформы
+     * @param {BotController} controller - Контроллер бота
+     * @returns {TResult} Карточка в формате платформы
      */
     public getCards<TResult = unknown>(
         cardProcessing: TCardProcessing<TResult>,

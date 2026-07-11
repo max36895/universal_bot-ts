@@ -31,7 +31,7 @@ import { join } from 'node:path';
 
 // Создаем контроллер с логикой навыка
 class MyController extends BotController {
-    public action(intentName: string): void {
+    public action(intentName: string | null): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет! Я новый навык.';
@@ -179,7 +179,7 @@ bot.addCommand('greeting', ['привет', 'здравствуй'], (_, control
 
 ```
 src/
-├── controllers/      # Контроллеры с логикой (Если нужно)
+├── controller/       # Контроллеры с логикой (Если нужно)
 ├── plugins/          # Дополнительные плагины (Если нужно)
 ├── utils/            # Вспомогательные функции (Если нужно)
 ├── config/           # Конфигурация (Если нужно)
@@ -196,7 +196,7 @@ interface IGameState {
 }
 
 class GameController extends BotController<IGameState> {
-    public action(intentName: string): void {
+    public action(intentName: string | null): void {
         // Теперь this.userData типизирован как IGameState
         this.userData.score = 100;
     }
@@ -207,7 +207,8 @@ class GameController extends BotController<IGameState> {
 
 ```ts
 try {
-    const result = await this.processUserInput();
+    // Ваша асинхронная логика (запрос к API, работа с БД и т.д.)
+    const result = await fetchExternalData();
     this.text = `Успешно: ${result}`;
 } catch (error) {
     console.error('Ошибка:', error);
@@ -236,14 +237,14 @@ if (intentName === 'restart') {
 ### 1. Локальное тестирование
 
 ```ts
-import { BotTest } from 'umbot';
+import { BotTest } from 'umbot/test';
 import { fullPlatforms } from 'umbot/plugins';
 
 const bot = new BotTest();
 bot.use(fullPlatforms);
 
 // Запускает интерактивный режим в консоли: вы вводите фразы, приложение отвечает
-bot.test();
+await bot.test();
 ```
 
 ### 2. Логирование
@@ -269,11 +270,109 @@ bot.setAppMode('strict_prod'); // включает строгие проверк
 bot.start('0.0.0.0', 8080); // запуск HTTP-сервера
 ```
 
+## Чеклист перед запуском
+
+Убедитесь, что всё выполнено:
+
+- [ ] **Режим `strict_prod`** — включен через `bot.setAppMode('strict_prod')`
+- [ ] **intents передан** — `bot.setPlatformParams({ intents: [...] })` (даже если пустой массив)
+- [ ] **Токены в .env** — не в коде, не в git. Проверьте `.gitignore`
+- [ ] **MongoAdapter вместо FileAdapter** — FileAdapter хранит данные в памяти, не подходит для production
+- [ ] **Preload для медиа** — все изображения и звуки предзагружены (иначе первый ответ может превысить 3 сек)
+- [ ] **rateLimiter подключен** — `bot.use(rateLimiter())` для защиты от превышения лимитов платформ
+- [ ] **error_log настроен** — `bot.setAppConfig({ error_log: './logs' })`
+- [ ] **HTTPS настроен** — обязателен для Алисы, Сбера, Viber
+- [ ] **Webhook URL зарегистрирован** — в консоли разработчика каждой платформы
+
+## Типичные ошибки
+
+### Команда не срабатывает
+
+**Причина:** Регистр. `controller.userCommand` автоматически приводится к нижнему регистру.
+
+```ts
+// ❌ Неправильно — слот с заглавной буквы
+bot.addCommand('greet', ['Привет'], (_, bc) => {
+    bc.text = 'Привет!';
+});
+
+// ✅ Правильно — слот в нижнем регистре
+bot.addCommand('greet', ['привет'], (_, bc) => {
+    bc.text = 'Привет!';
+});
+```
+
+### Бот не отвечает на приветствие
+
+**Причина:** Не передан `welcome_text` в `setPlatformParams`.
+
+```ts
+// ❌ Неправильно — нет welcome_text
+bot.setPlatformParams({ intents: [] });
+
+// ✅ Правильно
+bot.setPlatformParams({
+    welcome_text: 'Привет! Я могу помочь.',
+    intents: [],
+});
+```
+
+### TypeScript ошибка "Property 'score' does not exist"
+
+**Причина:** Не типизирован `userData`.
+
+```ts
+// ❌ Неправильно — TypeScript не знает про score
+bot.addCommand('play', ['играть'], (_, bc) => {
+    bc.userData.score += 10; // Ошибка!
+});
+
+// ✅ Правильно — аннотируем тип
+bot.addCommand('play', ['играть'], (_, bc: BotController<MyData>) => {
+    bc.userData.score += 10; // OK
+});
+```
+
+### Данные не сохраняются между запросами
+
+**Причина:** Не подключен DB-adapter и `isLocalStorage: false`.
+
+```ts
+import { MongoAdapter } from 'umbot/plugins';
+
+// ❌ Неправильно — данные теряются
+bot.setAppConfig({ isLocalStorage: false });
+
+// ✅ Вариант 1: локальное хранилище (для голосовых платформ)
+bot.setAppConfig({ isLocalStorage: true });
+
+// ✅ Вариант 2: БД (для чат-ботов)
+bot.use(new MongoAdapter({ host: '...', database: '...' }));
+bot.setAppConfig({ isLocalStorage: false });
+```
+
+### Пустой ответ вместо "Не поняла"
+
+**Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`.
+
+```ts
+// Решение: вручную обрабатывайте default-case в action()
+public action(intentName: string | null): void {
+    switch (intentName) {
+        case WELCOME_INTENT_NAME:
+            this.text = 'Привет!';
+            break;
+        default:
+            if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
+    }
+}
+```
+
 ## 🔐 Безопасность и защита от ReDoS
 
 При использовании регулярных выражений в командах (`addCommand(..., isPattern: true)`) или интентах, фреймворк проверяет их на потенциальные ReDoS‑уязвимости.
 
-⚠️ **По умолчанию (`appMode: false`) небезопасные RegExp всё равно регистрируются!**  
+⚠️ **По умолчанию (`appMode: 'dev'`) небезопасные RegExp всё равно регистрируются!**  
 Это сделано для гибкости в разработке, но порой **недопустимо в production**.
 
 ✅ **Рекомендация для production включить строгую проверку**:
@@ -295,7 +394,7 @@ bot.setAppMode('strict_prod'); // ← обязательно включите!
 
 ### Как добавить поддержку новой платформы?
 
-Достаточно создать адаптер для нужной платформы согласно документации и после подключить его к приложению.
+Достаточно создать адаптер для нужной платформы согласно [документации по созданию адаптера платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_platformAdapter.html) и после подключить его к приложению.
 Если все сделано верно, то при получении запроса от новой платформы, фреймворк корректно отработает запрос, и вернет
 данные в нужном для платформы виде.
 

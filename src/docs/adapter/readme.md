@@ -34,6 +34,7 @@ const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
         console.log('i18n plugin destroyed');
     };
 };
+myI18nPlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО — без этого bot.use() воспримет функцию как middleware
 
 const bot = new Bot();
 bot.use(myI18nPlugin);
@@ -125,7 +126,7 @@ const myCustomCachePlugin: IPluginFn = (appContext: AppContext) => {
 
     // Регистрируем под своим уникальным ключом
     appContext.plugins['myCustomCache'] = {
-        set: (key: string, value: any) => cache.set(key, value),
+        set: (key: string, value: unknown) => cache.set(key, value),
         get: (key: string) => cache.get(key),
     };
 };

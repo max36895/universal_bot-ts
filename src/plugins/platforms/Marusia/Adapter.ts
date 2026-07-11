@@ -29,7 +29,7 @@ type TState = 'user_state_update' | 'session_state';
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
- * - сохранение состояния (user/application/session);
+ * - сохранение состояния (user/session);
  * - карточки, кнопки, TTS-эффекты;
  * - health-check (`ping` → `pong`);
  *
