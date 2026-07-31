@@ -12,7 +12,7 @@ import { __className__Controller } from './controller/__className__Controller';
 const config = {
     appConfig: {{name}}Config(),
     appParam: {{name}}Params(),
-    controller: __className__Controller
+    controller: __className__Controller,
     plugins: [fullPlatforms, new FileAdapter()] // Замените FileAdapter на свой адаптер для работы с базой данных
 };
 const mode = 'dev';// Режим работы приложения. (prod, dev, dev-online)

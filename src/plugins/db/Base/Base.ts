@@ -352,7 +352,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Используйте для закрытия соединений, сохранения данных и т.п.
      */
     public destroy(): void | Promise<void> {
-        // TODO document why this method 'destroy' is empty
+        // Базовая реализация пуста — переопределяется в наследниках для закрытия соединений
     }
 
     /**
@@ -361,6 +361,6 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param _tableName Название таблицы, подключение к которой закрывается
      */
     public close(_tableName: string): void | Promise<void> {
-        // TODO document why this method 'close' is empty
+        // Базовая реализация пуста — переопределяется в наследниках для освобождения ресурсов
     }
 }

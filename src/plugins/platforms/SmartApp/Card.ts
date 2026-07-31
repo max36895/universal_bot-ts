@@ -11,7 +11,7 @@ import {
 
 function buttonCardProcessing(
     buttons: IButtonType[],
-): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction {
+): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction | null {
     return buttonProcessing(buttons, true);
 }
 
@@ -55,8 +55,8 @@ function getOneElement(image: IImageType<ISberSmartImageParam>): ISberSmartAppCa
             },
         });
     }
-    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
-    if (button) {
+    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction | null;
+    if (button && !Array.isArray(button)) {
         res.push({
             type: 'text_cell_view',
             paddings: {
@@ -125,8 +125,8 @@ function getCardItem(
             },
         };
     }
-    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction;
-    if (button) {
+    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction | null;
+    if (button && !Array.isArray(button)) {
         cardItem.bottom_text ??= {
             text: image.title,
             typeface: image.params.descTypeface || 'body3',

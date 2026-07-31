@@ -16,10 +16,22 @@ import {
 import { ICommandParam, TSlots, TCommandResolver, IStepParam } from './utils/CommandReg';
 import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
 import { BaseBotController, BotController, IPlatformData, IUserData } from '../controller';
-import { AppContext, T_AUTO } from './AppContext';
+import {
+    AppContext,
+    HELP_INTENT_NAME,
+    HELP_INTENT_SLOTS,
+    T_AUTO,
+    WELCOME_INTENT_NAME,
+    WELCOME_INTENT_SLOTS,
+} from './AppContext';
 import { UsersData } from '../models';
 import { ILogger } from './interfaces/ILogger';
 import { Text, isPromise, keysCount } from '../utils';
+
+const DEFAULT_HELP_INTENT_NAME = HELP_INTENT_NAME;
+const DEFAULT_HELP_INTENT_SLOTS = HELP_INTENT_SLOTS;
+const DEFAULT_WELCOME_INTENT_NAME = WELCOME_INTENT_NAME;
+const DEFAULT_WELCOME_INTENT_SLOTS = WELCOME_INTENT_SLOTS;
 
 /**
  * Тип для класса контроллера приложения
@@ -127,7 +139,7 @@ export type TPlatformResolver = (
 ) => TAppType | null;
 
 /**
- * Мультиплатформенный фреймворк для разработки голосовых навыков и чат-ботов. Он даёт единую бизнес-логику для все платформ — но одинаково эффективен, даже если вы работаете только с одной.
+ * Мультиплатформенный фреймворк для разработки голосовых навыков и чат-ботов. Он даёт единую бизнес-логику для всех платформ — но одинаково эффективен, даже если вы работаете только с одной.
  *
  * **`Bot` — главный класс**, управляющий всем жизненным циклом приложения:
  *  - регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.);
@@ -233,6 +245,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /** Экземпляр HTTP-сервера */
     #serverInst: Server | undefined;
 
+    /** Обработчики сигналов для удаления при повторном start() */
+    #sigtermHandler: (() => void) | null = null;
+    #sigintHandler: (() => void) | null = null;
+
     /**
      * Полученный запрос от пользователя.
      * Может быть JSON-строкой, текстом или null
@@ -252,7 +268,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /**
      * Контроллер с бизнес-логикой приложения.
      * Обрабатывает команды и формирует ответы
-     * @see BotControllerClass
+     * @see TBotControllerClass
      */
     #botControllerClass: TBotControllerClass<TUserData>;
 
@@ -272,7 +288,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Получение корректного контроллера
-     * @param botController
+     * @param botController — Класс контроллера (если не передан, используется BaseBotController)
      */
     #getBotController(
         botController?: TBotControllerClass<TUserData>,
@@ -516,7 +532,18 @@ export class Bot<TUserData extends IUserData = IUserData> {
         cb: ICommandParam<TBotController>['cb'],
         isPattern: boolean = false,
     ): this {
-        this.#appContext.command.addCommand(commandName, slots, cb, isPattern);
+        let correctSlots = slots;
+        if (slots.length === 0) {
+            switch (commandName) {
+                case DEFAULT_WELCOME_INTENT_NAME:
+                    correctSlots = DEFAULT_WELCOME_INTENT_SLOTS;
+                    break;
+                case DEFAULT_HELP_INTENT_NAME:
+                    correctSlots = DEFAULT_HELP_INTENT_SLOTS;
+                    break;
+            }
+        }
+        this.#appContext.command.addCommand(commandName, correctSlots, cb, isPattern);
         return this;
     }
 
@@ -607,7 +634,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Удаляет зарегистрированный шаг по имени.
      *
      * После удаления шаг больше не будет обрабатываться, даже если активен у пользователя.
-     * (Рекомендуется завершать активные сценарии через `ctx.clearStep()` перед удалением.)
+     * (Рекомендуется завершать активные сценарии через `ctx.thisIntentName = null` перед удалением.)
      *
      * @param {string} stepName — Имя шага для удаления.
      * @returns {this} Текущий экземпляр `Bot`.
@@ -1034,6 +1061,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
                         `Bot:#getDbAdapter(): Ошибка при подключении к базе данных: ${(e as Error).message}`,
                         { error: e },
                     );
+                    return undefined;
                 } finally {
                     this.#appConnectStatus.isConnecting = false;
                 }
@@ -1125,10 +1153,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length
                 ? await this.#runMiddlewares(botController, appType)
                 : true;
-        const content = shouldProceed
-            ? await this.#getAppContent(botController, platformClass, appType)
-            : 'Request entity too large';
-        await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
+        let content: string | object | null;
+        try {
+            content = shouldProceed
+                ? await this.#getAppContent(botController, platformClass, appType)
+                : 'Request blocked by middleware';
+        } finally {
+            await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
+        }
         if (botController.platformOptions.error) {
             this.#appContext.logError(botController.platformOptions.error);
         }
@@ -1197,6 +1229,26 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
+    /**
+     * Валидация результата работы адаптера платформы
+     * @param content
+     * @param botController
+     * @private
+     */
+    #validateAdapterResult(
+        content: object | string | Promise<object | string>,
+        botController: BotController<TUserData>,
+    ): object | string | Promise<object | string> {
+        if (content === null || content === undefined) {
+            this.#appContext.logWarn(
+                `Bot:#getPlatformContent(): Адаптер платформы вернул null/undefined из getContent(). Ответ будет пустым.`,
+                { platform: botController.platformOptions },
+            );
+            return '';
+        }
+        return content;
+    }
+
     async #getPlatformContent(
         botController: BotController<TUserData>,
         platformClass: IPlatformAdapter,
@@ -1242,7 +1294,10 @@ export class Bot<TUserData extends IUserData = IUserData> {
             if (botController.state && userDataLength === 0) {
                 botController.userData = botController.state as TUserData;
             }
-            content = platformClass.getContent(botController, stateData);
+            content = this.#validateAdapterResult(
+                platformClass.getContent(botController, stateData),
+                botController,
+            );
         }
         if (botController.platformOptions.usedLocalStorage) {
             const res = platformClass.setLocalStorage(stateData, botController);
@@ -1374,8 +1429,8 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Выполняет middleware для текущего запроса
-     * @param controller
-     * @param appType
+     * @param controller — Контроллер с данными запроса
+     * @param appType — Тип платформы
      */
     async #runMiddlewares(controller: BotController, appType: TAppType): Promise<boolean> {
         if (appType) {
@@ -1468,7 +1523,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     ): Promise<TRunResult> {
         if (!this.#botControllerClass) {
             const errMsg =
-                'Не определен класс с логикой приложения. Укажите класс контроллер, передав его в метод initBotController';
+                'Не определен класс с логикой приложения. Укажите класс контроллера, передав его в метод initBotController';
             this.#appContext.logError(errMsg);
             throw new Error(errMsg);
         }
@@ -1801,13 +1856,21 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.log(`Server running at //${hostname}:${port}/`);
         });
         // Если завершили процесс, то закрываем все подключения и чистим ресурсы.
-        process.once('SIGTERM', () => {
+        // Удаляем старые обработчики, если start() вызывается повторно
+        if (this.#sigtermHandler) {
+            process.removeListener('SIGTERM', this.#sigtermHandler);
+        }
+        if (this.#sigintHandler) {
+            process.removeListener('SIGINT', this.#sigintHandler);
+        }
+        this.#sigtermHandler = (): void => {
             void this.#gracefulShutdown();
-        });
-
-        process.once('SIGINT', () => {
+        };
+        this.#sigintHandler = (): void => {
             void this.#gracefulShutdown();
-        });
+        };
+        process.once('SIGTERM', this.#sigtermHandler);
+        process.once('SIGINT', this.#sigintHandler);
 
         return this.#serverInst;
     }
@@ -1832,24 +1895,56 @@ export class Bot<TUserData extends IUserData = IUserData> {
 
     /**
      * Обработка запросов webhook сервера
-     * @param req
+     * @param req — Входящий HTTP-запрос
      */
     #readRequestData(req: IncomingMessage): Promise<string> {
         return new Promise((resolve, reject) => {
             const chunks: Buffer[] = [];
             let totalLength = 0;
+            let finished = false;
+
+            const cleanup = (): void => {
+                if (!finished) {
+                    finished = true;
+                    clearTimeout(timeoutId);
+                    req.removeListener('data', onData);
+                    req.removeListener('end', onEnd);
+                    req.removeListener('error', onError);
+                }
+            };
+
             const onData = (chunk: Buffer): void => {
                 chunks.push(chunk);
                 totalLength += chunk.length;
                 if (totalLength > MAX_REQUEST_SIZE) {
-                    req.removeListener('data', onData);
+                    cleanup();
                     req.destroy(new Error('Request too large'));
                     reject(new Error('Request too large'));
                 }
             };
+
+            const onEnd = (): void => {
+                cleanup();
+                resolve(Buffer.concat(chunks).toString());
+            };
+
+            const onError = (err: Error): void => {
+                cleanup();
+                reject(err);
+            };
+
+            // Timeout 30 сек — защита от зависших запросов (клиент отключился без end/error)
+            const timeoutId = setTimeout(() => {
+                if (!finished) {
+                    cleanup();
+                    req.destroy(new Error('Request timeout'));
+                    reject(new Error('Request timeout'));
+                }
+            }, 30000).unref();
+
             req.on('data', onData);
-            req.on('end', () => resolve(Buffer.concat(chunks).toString()));
-            req.on('error', reject);
+            req.on('end', onEnd);
+            req.on('error', onError);
         });
     }
 
@@ -1875,6 +1970,15 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (this.#serverInst) {
             this.#serverInst.close();
             this.#serverInst = undefined;
+        }
+        // Удаляем обработчики сигналов
+        if (this.#sigtermHandler) {
+            process.removeListener('SIGTERM', this.#sigtermHandler);
+            this.#sigtermHandler = null;
+        }
+        if (this.#sigintHandler) {
+            process.removeListener('SIGINT', this.#sigintHandler);
+            this.#sigintHandler = null;
         }
         // Также необходимо почистить все подключенные плагины.
         this.clearUse();

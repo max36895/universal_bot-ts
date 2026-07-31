@@ -16,6 +16,34 @@ import { IDir } from '../../core/interfaces/IAppContext';
 import { join } from 'node:path';
 
 /**
+ * Безопасная сериализация объекта в JSON-строку.
+ * При ошибке (циклические ссылки, несериализуемые объекты) возвращает строковое представление.
+ * Используется в логировании для защиты от падения JSON.stringify.
+ *
+ * @param data - Данные для сериализации
+ * @param replacer - Функция замены (по умолчанию null)
+ * @param space - Отступы для форматирования (по умолчанию '\t')
+ * @returns JSON-строка или строковое представление данных
+ *
+ * @example
+ * ```ts
+ * const result = safeStringify({ a: 1, b: { c: 2 } }, null, '\t');
+ * const circular = safeStringify({ a: circularRef }); // не бросает исключение
+ * ```
+ */
+export function safeStringify(
+    data: unknown,
+    replacer?: ((key: string, value: unknown) => unknown) | null,
+    space?: string,
+): string {
+    try {
+        return JSON.stringify(data, replacer ?? undefined, space);
+    } catch {
+        return String(data);
+    }
+}
+
+/**
  * Интерфейс для GET-параметров
  *
  * @example
@@ -83,7 +111,7 @@ export function similarText(first: string, second: string): number {
         return 0;
     }
 
-    // Helper function to calculate LCS length using dynamic programming
+    // Вычисление длины LCS (Longest Common Subsequence) методом динамического программирования
     const lcsLength = (shorter: string, longer: string): number => {
         const dp = new Int32Array(longer.length + 1);
         dp.fill(0, 0, longer.length + 1);
@@ -100,7 +128,7 @@ export function similarText(first: string, second: string): number {
         return dp[longer.length];
     };
 
-    // Ensure shorter string is first for optimization
+    // Гарантируем, что короткая строка идёт первой для оптимизации
     const [a, b] = first.length <= second.length ? [first, second] : [second, first];
     const totalLength = first.length + second.length;
 
@@ -263,16 +291,24 @@ export function fwriteSync(
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): FileOperationResult<void> {
+    const tmpPath = mode === 'w' ? `${fileName}.tmp` : undefined;
     try {
         if (mode === 'w') {
-            const tmpPath = `${fileName}.tmp`;
-            fs.writeFileSync(tmpPath, fileContent);
-            fs.renameSync(tmpPath, fileName);
+            fs.writeFileSync(tmpPath!, fileContent);
+            fs.renameSync(tmpPath!, fileName);
         } else {
             fs.appendFileSync(fileName, fileContent);
         }
         return { success: true };
     } catch (error) {
+        // Удаляем осиротевший tmp-файл при ошибке
+        if (tmpPath) {
+            try {
+                fs.unlinkSync(tmpPath);
+            } catch {
+                // Игнорируем ошибку удаления tmp файла
+            }
+        }
         return {
             success: false,
             error: error instanceof Error ? error : new Error('Failed to write file'),
@@ -290,7 +326,7 @@ export function fwriteSync(
  * ```ts
  * const result = unlink('file.txt');
  * if (result.success) {
- *   console.log('File deleted successfully');
+ *   console.log('Файл успешно удалён');
  * } else {
  *   console.error(result.error);
  * }
@@ -339,7 +375,7 @@ export function isDirSync(path: string): boolean {
  * ```ts
  * const result = mkdir('new/directory');
  * if (result.success) {
- *   console.log('Directory created successfully');
+ *   console.log('Директория успешно создана');
  * } else {
  *   console.error(result.error);
  * }
@@ -403,10 +439,10 @@ export function saveDataSync(
 }
 
 /**
- * Синхронно возвращает информацию о файле
+ * Асинхронно возвращает информацию о файле
  *
  * @param {string} fileName - Путь к файлу
- * @returns {FileOperationResult<fs.Stats>} Результат операции с информацией о файле
+ * @returns {Promise<FileOperationResult<fs.Stats>>} Результат операции с информацией о файле
  *
  * @example
  * ```ts
@@ -432,10 +468,10 @@ export async function getFileInfo(fileName: string): Promise<FileOperationResult
 }
 
 /**
- * Синхронно проверяет существование файла
+ * Асинхронно проверяет существование файла
  *
  * @param {string} file - Путь к проверяемому файлу
- * @returns {boolean} true, если файл существует и это файл, иначе false
+ * @returns {Promise<boolean>} true, если файл существует и это файл, иначе false
  *
  * @example
  * ```ts
@@ -514,16 +550,24 @@ export async function fwrite(
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): Promise<FileOperationResult<void>> {
+    const tmpPath = mode === 'w' ? `${fileName}.tmp` : undefined;
     try {
         if (mode === 'w') {
-            const tmpPath = `${fileName}.tmp`;
-            await fsPromises.writeFile(tmpPath, fileContent);
-            await fsPromises.rename(tmpPath, fileName);
+            await fsPromises.writeFile(tmpPath!, fileContent);
+            await fsPromises.rename(tmpPath!, fileName);
         } else {
             await fsPromises.appendFile(fileName, fileContent);
         }
         return { success: true };
     } catch (error) {
+        // Удаляем осиротевший tmp-файл при ошибке
+        if (tmpPath) {
+            try {
+                await fsPromises.unlink(tmpPath);
+            } catch {
+                // Игнорируем ошибку удаления tmp файла
+            }
+        }
         return {
             success: false,
             error: error instanceof Error ? error : new Error('Failed to write file'),
@@ -618,8 +662,8 @@ export async function saveData(
 export function httpBuildQuery(formData: IGetParams, separator: string = '&'): string {
     return Object.entries(formData)
         .map(([key, value]) => {
-            const encodedKey = encodeURI(key);
-            const encodedValue = encodeURI(String(value)).replace(/%20/g, '+');
+            const encodedKey = encodeURIComponent(key);
+            const encodedValue = encodeURIComponent(String(value)).replace(/%20/g, '+');
             return `${encodedKey}=${encodedValue}`;
         })
         .join(separator);

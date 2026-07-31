@@ -14,6 +14,50 @@ import { getErrorMsg, getErrorToken } from './constants';
 const API_ENDPOINT = 'https://api.telegram.org/bot';
 
 /**
+ * Экранирует спецсимволы MarkdownV2 для безопасной вставки пользовательского ввода.
+ *
+ * Используйте эту функцию, если вы формируете сообщение в MarkdownV2
+ * и хотите безопасно вставить текст, который может содержать спецсимволы.
+ *
+ * @example
+ * ```ts
+ * import { escapeMarkdownV2 } from 'umbot/plugins';
+ *
+ * const userName = 'Иван. Петров';
+ * ctx.text = `*Пользователь:* ${escapeMarkdownV2(userName)}`;
+ * // Результат: *Пользователь:* Иван\. Петров
+ * ```
+ *
+ * @param text Текст для экранирования
+ * @returns Экранированный текст, безопасный для MarkdownV2
+ */
+export function escapeMarkdownV2(text: string): string {
+    return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+}
+
+/**
+ * Экранирует спецсимволы HTML для безопасной вставки пользовательского ввода.
+ *
+ * Экранирует только базовые HTML-сущности: &, <, >.
+ * Не ломает валидные HTML-теги, которые разработчик передал намеренно.
+ *
+ * @example
+ * ```ts
+ * import { escapeHtml } from 'umbot/plugins';
+ *
+ * const userInput = '<script>alert("xss")</script>';
+ * ctx.text = `<b>Ввод:</b> ${escapeHtml(userInput)}`;
+ * // Результат: <b>Ввод:</b> &lt;script&gt;alert("xss")&lt;/script&gt;
+ * ```
+ *
+ * @param text Текст для экранирования
+ * @returns Экранированный текст, безопасный для HTML
+ */
+export function escapeHtml(text: string): string {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
  * Класс для взаимодействия с API Telegram
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
  * @see (https://core.telegram.org/bots/api) Смотри тут
@@ -34,7 +78,7 @@ const API_ENDPOINT = 'https://api.telegram.org/bot';
  *   '*Жирный текст* и _курсив_\n' +
  *   '[Ссылка](http://localhost)\n' +
  *   '`code` и ```pre```',
- *   { parse_mode: 'Markdown' }
+ *   { parse_mode: 'MarkdownV2' }
  * );
  *
  * // Отправка сообщения с клавиатурой
@@ -192,20 +236,18 @@ export class TelegramRequest {
     }
 
     /**
-     * Санитизировать текст сообщения
-     * @param text Текст сообщения
-     * @param parseMode Режим разметки (HTML или Markdown)
+     * Санитизировать текст сообщения.
      *
+     * Для HTML: экранирует &, <, > (базовая защита от XSS, не ломает валидные теги).
+     * Для MarkdownV2: текст отправляется как есть (raw) — разработчик отвечает за валидность.
+     * Для остальных режимов: текст отправляется как есть.
+     *
+     * @param text Текст сообщения
+     * @param parseMode Режим разметки (HTML, MarkdownV2 или undefined)
      */
     #sanitizeTelegramMessage(text: string, parseMode?: string): string {
         if (parseMode === 'HTML') {
-            // Экранирование HTML сущностей
-            return text
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#39;');
+            return escapeHtml(text);
         }
         return text;
     }
@@ -216,7 +258,7 @@ export class TelegramRequest {
      * @param message Текст сообщения
      * @param params Дополнительные параметры:
      * - parse_mode: формат текста
-     *   - Markdown: *жирный*, _курсив_, [ссылка](http://localhost), `код`, ```pre```
+     *   - MarkdownV2: *жирный*, _курсив_, [ссылка](http://localhost), `код`, ```pre```
      *   - HTML: <b>жирный</b>, <i>курсив</i>, <a href="http://localhost">ссылка</a>, <code>код</code>, <pre>pre</pre>
      * - disable_web_page_preview: отключить предпросмотр ссылок
      * - disable_notification: отключить уведомление

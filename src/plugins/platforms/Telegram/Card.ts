@@ -53,6 +53,10 @@ export async function cardProcessing(
     controller: BotController,
 ): Promise<ITelegramMedia[] | null> {
     let object: ITelegramMedia[] | null = null;
+    // Защита от пустого массива images при showOne=true
+    if (cardInfo.images.length === 0) {
+        return null;
+    }
     if (cardInfo.showOne || cardInfo.images.length === 1) {
         const image = cardInfo.images[0];
         try {
@@ -100,6 +104,16 @@ export async function cardProcessing(
                 media: field,
                 caption: Text.resize(image.desc, 1024),
             });
+        }
+        // Telegram API требует 2-10 элементов для sendMediaGroup.
+        // Если после фильтрации осталось < 2 элементов — отправляем через sendPhoto.
+        if (object.length === 1) {
+            const media = object[0];
+            await new TelegramRequest(controller.appContext).sendPhoto(
+                controller.userId as TTelegramChatId,
+                media.media,
+                media.caption || undefined,
+            );
         }
     }
 

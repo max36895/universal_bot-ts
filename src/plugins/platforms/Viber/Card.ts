@@ -3,6 +3,20 @@ import { ICardInfo, Text, IImageType } from '../../../index';
 import { buttonProcessing } from './Button';
 import { IViberCard, IViberButtonObject } from './interfaces/IViberPlatform';
 
+/**
+ * Экранирует HTML-сущности для безопасной вставки в Viber Rich Media.
+ * Предотвращает разрыв HTML-структуры при наличии <, >, &, ", ' в пользовательском контенте.
+ * @param text Текст для экранирования
+ */
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function getElement(image: IImageType, countImage: number = 1): IViberCard {
     if (!image.imageToken) {
         if (Text.isUrl(image.imageDir || '')) {
@@ -12,7 +26,7 @@ function getElement(image: IImageType, countImage: number = 1): IViberCard {
 
     let element: IViberCard = {
         Columns: countImage,
-        Rows: 6,
+        Rows: 2,
     };
     if (image.imageToken) {
         element.Image = image.imageToken;
@@ -21,7 +35,7 @@ function getElement(image: IImageType, countImage: number = 1): IViberCard {
         image.button?.getButtons<IViberButtonObject>(buttonProcessing) || null;
     if (btn?.Buttons !== undefined) {
         element = { ...element, ...btn.Buttons[0] };
-        element.Text = `<font color=#000><b>${image.title}</b></font><font color=#000>${image.desc}</font>`;
+        element.Text = `<font color=#000><b>${escapeHtml(image.title)}</b></font><font color=#000>${escapeHtml(image.desc)}</font>`;
     }
     return element;
 }
@@ -34,8 +48,8 @@ function getElement(image: IImageType, countImage: number = 1): IViberCard {
 export function cardProcessing(cardInfo: ICardInfo): IViberCard[] | IViberCard {
     const objects: IViberCard[] = [];
     let countImage = cardInfo.images.length;
-    if (countImage > 7) {
-        countImage = 7;
+    if (countImage > 6) {
+        countImage = 6;
     }
     if (countImage) {
         if (countImage === 1 || cardInfo.showOne) {

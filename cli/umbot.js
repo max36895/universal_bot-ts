@@ -3,7 +3,7 @@
 /**
  * cli универсального фреймворка umbot для создания голосовых навыков и чат-ботов для различных платформ.
  * Скрипт позволяет создавать готовые шаблоны для вашего приложения.
- * @version 3.0.0
+ * @version 3.0.15
  * @author Maxim-M maximco36895@yandex.ru
  * @module
  */
@@ -19,22 +19,34 @@ if (argv[2]) {
     param.hostname = '0.0.0.0';
     param.port = 3000;
     if (argv[3]) {
-        if (argv[3].includes('.json')) {
+        if (argv[3].endsWith('.json')) {
             if (utils.isFile(argv[3])) {
-                const jsonParam = JSON.parse(utils.fread(argv[3]));
-                param.appName = jsonParam.name;
-                param.params = jsonParam;
-                if (jsonParam.hostname) {
-                    param.hostname = jsonParam.hostname;
+                try {
+                    const jsonParam = JSON.parse(utils.fread(argv[3]));
+                    param.appName = jsonParam.name;
+                    param.params = jsonParam;
+                    if (jsonParam.hostname) {
+                        param.hostname = jsonParam.hostname;
+                    }
+                    if (jsonParam.port) {
+                        param.port = jsonParam.port;
+                    }
+                } catch (e) {
+                    console.error(`Ошибка чтения JSON файла: ${e.message}`);
+                    process.exit(1);
                 }
-                if (jsonParam.port) {
-                    param.port = jsonParam.port;
-                }
+            } else {
+                console.error(`Файл не найден: ${argv[3]}`);
+                process.exit(1);
             }
         } else {
             param.appName = argv[3];
         }
     }
 }
-consoleController.main(param, argv);
-process.exitCode = 1;
+try {
+    consoleController.main(param, argv);
+} catch (e) {
+    console.error(`Ошибка: ${e.message}`);
+    process.exit(1);
+}

@@ -759,7 +759,7 @@ export class CommandReg {
      * следующее сообщение пользователя будет обработано этим обработчиком.
      *
      * > 💡 Обработчик получает полный `BotController`, как и в командах:
-     * > доступны `this.text`, `this.userData`, `this.buttons`, `this.setStep()` и т.д.
+     * > доступны `this.text`, `this.userData`, `this.buttons`, `this.thisIntentName` и т.д.
      *
      * @param stepName — Уникальное имя шага (например, `'enter_email'`).
      * @param handler — Функция, вызываемая при получении сообщения в этом шаге.
@@ -770,10 +770,10 @@ export class CommandReg {
      * bot.addStep('confirm_age', (ctx) => {
      *   if (ctx.userCommand === 'да') {
      *     ctx.text = 'Отлично! Добро пожаловать.';
-     *     ctx.clearStep(); // завершаем сценарий
+     *     ctx.thisIntentName = null; // завершаем сценарий
      *   } else {
      *     ctx.text = 'Извините, вход запрещён.';
-     *     ctx.setStep('goodbye'); // переходим к другому шагу
+     *     ctx.thisIntentName = 'goodbye'; // переходим к другому шагу
      *   }
      * });
      * ```
@@ -796,7 +796,7 @@ export class CommandReg {
      * (Рекомендуется завершать активные сценарии через `ctx.clearStep()` перед удалением.)
      *
      * @param stepName — Имя шага для удаления.
-     * @returns Текущий экземпляр `Bot`.
+     * @returns Текущий экземпляр `CommandReg`.
      */
     public removeStep(stepName: string): this {
         this.steps.delete(stepName);
@@ -809,7 +809,7 @@ export class CommandReg {
      * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
      * > Используйте с осторожностью (например, при перезагрузке логики приложения).
      *
-     * @returns Текущий экземпляр `Bot`.
+     * @returns Текущий экземпляр `CommandReg`.
      */
     public clearSteps(): this {
         this.steps.clear();

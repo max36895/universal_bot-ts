@@ -111,6 +111,18 @@ export class YandexSpeechKit extends YandexRequest {
      * Голос для синтеза речи Филипп (ru)
      */
     public static readonly V_FILIPP = 'filipp';
+    /**
+     * Голос для синтеза речи Киркоров (ru)
+     */
+    public static readonly V_KIRKOROV = 'kirkorov';
+    /**
+     * Голос для синтеза речи Лера (ru)
+     */
+    public static readonly V_LERA = 'lera';
+    /**
+     * Голос для синтеза речи Мадуза (ru)
+     */
+    public static readonly V_MADUSA = 'madusa';
 
     /**
      * Русский язык
@@ -119,7 +131,7 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Английский язык
      */
-    public static readonly L_EN = 'en_EN';
+    public static readonly L_EN = 'en-US';
     /**
      * Турецкий язык
      */
@@ -242,7 +254,13 @@ export class YandexSpeechKit extends YandexRequest {
         ) {
             this._request.post.emotion = this.emotion;
         }
-        if (this.voice !== YandexSpeechKit.V_ALENA && this.voice !== YandexSpeechKit.V_FILIPP) {
+        if (
+            this.voice !== YandexSpeechKit.V_ALENA &&
+            this.voice !== YandexSpeechKit.V_FILIPP &&
+            this.voice !== YandexSpeechKit.V_KIRKOROV &&
+            this.voice !== YandexSpeechKit.V_LERA &&
+            this.voice !== YandexSpeechKit.V_MADUSA
+        ) {
             if (this.speed < 0.1 || this.speed > 3.0) {
                 this.speed = 1.0;
             }

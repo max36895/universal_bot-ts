@@ -1,6 +1,6 @@
 'use strict';
 const fs = require('node:fs');
-const { exec } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const utils = require(__dirname + '/../utils.js').utils;
 
 /**
@@ -45,8 +45,8 @@ class CreateController {
      * @private
      */
     _getHeaderContent() {
-        let headerContent = '/*\n';
-        headerContent += '/* Created by umbot\n';
+        let headerContent = '/**\n';
+        headerContent += ' * Created by umbot\n';
         headerContent += ' * Date: {{date}}\n';
         headerContent += ' * Time: {{time}}\n';
         headerContent += ' */\n\n';
@@ -115,7 +115,7 @@ class CreateController {
      */
     _replace(find, replace, str) {
         if (typeof find === 'string') {
-            return str.replace(new RegExp(find, 'g'), replace);
+            return str.split(find).join(replace);
         } else {
             let res = str;
             const maxReplace = replace.length - 1;
@@ -124,7 +124,7 @@ class CreateController {
                 if (r === undefined) {
                     r = replace[maxReplace];
                 }
-                res = res.replace(new RegExp(f, 'g'), r);
+                res = res.split(f).join(r);
             });
             return res;
         }
@@ -148,13 +148,15 @@ class CreateController {
             '{{hostname}}',
             '{{port}}',
         ];
-        const name = this.#name.substring(0, 1).toUpperCase() + this.#name.substring(1);
-        const date = `${new Date().getDate().toString().padStart(2, '0')}.${(new Date().getMonth() + 1).toString().padStart(2, '0')}.${new Date().getFullYear()}`;
-        const time = `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`;
+        const rawName = this.#name || 'project';
+        const name = rawName.substring(0, 1).toUpperCase() + rawName.substring(1);
+        const now = new Date();
+        const date = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`;
+        const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         const replace = [
             date,
             time,
-            this.#name,
+            rawName,
             name,
             name,
             '',
@@ -209,7 +211,7 @@ class CreateController {
     createDockerFile(path) {
         const standardPath = __dirname + '/../template';
         const dockerFile = `${path}/Dockerfile`;
-        const dockerContent = this._getFileContent(`${standardPath}/docker/Dockerfile.text`);
+        const dockerContent = this._getFileContent(`${standardPath}/docker/DockerFile.text`);
         this._generateFile(dockerContent, dockerFile);
         console.log('Dockerfile успешно создан');
     }
@@ -217,14 +219,14 @@ class CreateController {
     createDeployFile(path) {
         const standardPath = __dirname + '/../template';
         const deployFile = `${path}/.github/workflows/deploy.yml`;
-        fs.mkdirSync(`${path}/.github`);
-        fs.mkdirSync(`${path}/.github/workflows`);
+        fs.mkdirSync(`${path}/.github`, { recursive: true });
+        fs.mkdirSync(`${path}/.github/workflows`, { recursive: true });
         const deployContent = this._getFileContent(`${standardPath}/github/deploy.yml`);
         this._generateFile(deployContent, deployFile);
         console.log('deploy.yml успешно создан');
     }
 
-    /**.
+    /**
      * Создает структуру проекта
      * @param {string} type Тип проекта (Default или Quiz)
      * @private
@@ -291,6 +293,11 @@ class CreateController {
             this._generateFile(tsconfigContent, tsconfigFile);
             console.log('tsconfig.json успешно создан');
 
+            const gitignoreFile = `${this.#path}/.gitignore`;
+            const gitignoreContent = this._getFileContent(`${standardPath}/.gitignore`);
+            this._generateFile(gitignoreContent, gitignoreFile);
+            console.log('.gitignore успешно создан');
+
             if (this.flags.includes('--prod')) {
                 this.createDeployFile(this.#path);
                 this.createDockerFile(this.#path);
@@ -314,11 +321,12 @@ class CreateController {
      * Форматирует проект через prettier
      */
     format() {
-        exec(`prettier.cmd --write ${this.#path}`, (error) => {
-            if (error) {
-                console.error(`exec error: ${error}`);
-            }
-        });
+        try {
+            const prettier = process.platform === 'win32' ? 'prettier.cmd' : 'prettier';
+            execFileSync(prettier, ['--write', this.#path], { stdio: 'ignore' });
+        } catch {
+            console.warn('Предупреждение: не удалось отформатировать код');
+        }
     }
 
     /**

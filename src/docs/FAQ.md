@@ -126,18 +126,18 @@ bot.start('localhost', 3000);
 
 ```ts
 // plugins/game.ts
-import { Bot, AppContext, BotController, IUserData } from 'umbot';
+import { Bot, AppContext, BotController, IUserData, IPluginFn } from 'umbot';
 
 interface GameData extends IUserData {
     score: number;
 }
 
-export function gamePlugin(appContext: AppContext, bot: Bot): void {
+export const gamePlugin: IPluginFn = (appContext: AppContext, bot: Bot): void => {
     bot.addCommand('game_start', ['играть'], (_, bc: BotController<GameData>) => {
         bc.userData.score = 0;
         bc.text = 'Игра началась!';
     });
-}
+};
 gamePlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО
 ```
 
@@ -395,8 +395,8 @@ import { TelegramAdapter, VkAdapter } from 'umbot/plugins';
 bot.use(new TelegramAdapter(telegramToken)).use(new VkAdapter(vkToken));
 ```
 
-Также не стоит забывать о том, что можно подключить только голосовые платформы(`voicePlatforms`), либо только платформы
-для чат-ботов(`botPlatforms`)
+Также не стоит забывать о том, что можно подключить только голосовые платформы (`voicePlatforms`), либо только платформы
+для чат-ботов (`botPlatforms`)
 
 ### Почему не работает интеграция с платформой?
 

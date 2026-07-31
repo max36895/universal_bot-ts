@@ -17,7 +17,7 @@ import { IModelRules } from '../interface/IModel';
  * @example
  * ```ts
  * const query: IQueryData = {
- *   id: 1,                    // Поиск по id = 1
+ *   id: 1,                   // Поиск по id = 1
  *   name: 'John',            // Поиск по name = 'John'
  *   age: { $gt: 18 },        // Поиск по age > 18
  *   city: { $in: ['Moscow', 'St. Petersburg'] } // Поиск по city в списке

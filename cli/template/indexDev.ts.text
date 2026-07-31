@@ -4,13 +4,14 @@
  * Time: {{time}}
  */
 import { BotTest } from 'umbot/test';
-import { fullPlatforms } from 'umbot/plugins';
+import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
 import { __className__Controller } from './controller/__className__Controller';
 
 const bot = new BotTest();
 bot.use(fullPlatforms);
+bot.use(new FileAdapter());
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
 bot.initBotController(__className__Controller);

@@ -15,7 +15,7 @@ const RULES: IModelRules[] = [
         type: 'text',
     },
     {
-        name: ['platformName'],
+        name: ['platform'],
         type: 'string',
     },
 ];
@@ -129,7 +129,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * ```ts
      * const userData = new UsersData(appContext);
      * userData.userId = 'user123';
-     * userData.type = UsersData.T_TELEGRAM;
+     * userData.platform = 'telegram';
      * ```
      */
     public constructor(appContext: AppContext) {
@@ -315,7 +315,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @param data - Данные для инициализации
      * @remarks
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
-     * - Парсинг происходит только если включено сохранение в БД (appContext.isSaveDb === true)
+     * - Парсинг происходит только если включено сохранение в БД (appConfig.isLocalStorage !== true)
      *
      * @example
      * ```ts

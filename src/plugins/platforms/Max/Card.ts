@@ -36,6 +36,10 @@ export async function cardProcessing(
     cardInfo: ICardInfo,
     controller: BotController,
 ): Promise<IMaxCard[] | null> {
+    // Защита от пустого массива images при showOne=true
+    if (cardInfo.images.length === 0) {
+        return null;
+    }
     if (cardInfo.images.length === 1 || cardInfo.showOne) {
         if (!cardInfo.images[0].imageToken) {
             if (cardInfo.images[0].imageDir) {

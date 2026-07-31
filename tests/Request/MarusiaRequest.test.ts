@@ -90,7 +90,7 @@ describe('MarusiaRequest', () => {
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain(
-            'audio_meta=%5Bobject+Object%5D&access_token=test-marusia-token&v=5.103',
+            'audio_meta=%5Bobject+Object%5D&access_token=test-marusia-token&v=5.199',
         );
     });
 

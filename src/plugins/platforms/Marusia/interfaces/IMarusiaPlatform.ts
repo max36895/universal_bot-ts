@@ -341,6 +341,21 @@ export interface IMarusiaItemsList {
 }
 
 /**
+ * Интерфейс для галереи изображений
+ * От 1 до 7 изображений
+ */
+export interface IMarusiaImageGallery {
+    /** Тип карточки */
+    type: 'ImageGallery';
+
+    /**
+     * Изображения
+     * От 1 до 7 элементов
+     */
+    items?: IMarusiaImage[];
+}
+
+/**
  * Интерфейс для ответа навыка.
  * Определяет формат ответа пользователю
  */
@@ -363,7 +378,7 @@ export interface IMarusiaResponse {
      * Карточка с изображением.
      * Отображается вместо текста
      */
-    card?: IMarusiaBigImage | IMarusiaItemsList;
+    card?: IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery;
 
     /**
      * Кнопки

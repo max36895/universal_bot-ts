@@ -81,7 +81,7 @@ describe('VkRequest', () => {
         });
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('attachment=photo123_456,doc789_012');
+        expect(body).toContain('attachment=photo123_456%2Cdoc789_012');
     });
 
     // === usersGet ===
@@ -106,7 +106,7 @@ describe('VkRequest', () => {
 
         await vk.usersGet(['123', '456']);
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('user_ids=123,456&access_token=test-token');
+        expect(body).toContain('user_ids=123%2C456&access_token=test-token');
     });
 
     // === photos & docs ===
@@ -151,7 +151,7 @@ describe('VkRequest', () => {
         const result = await vk.docsSave('FILE123', 'MyDoc', 'tag1,tag2');
         expect(result).toEqual({ id: 200 });
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('file=FILE123&title=MyDoc&tags=tag1,tag2&access_token=test-token');
+        expect(body).toContain('file=FILE123&title=MyDoc&tags=tag1%2Ctag2&access_token=test-token');
     });
 
     // === Ошибки ===

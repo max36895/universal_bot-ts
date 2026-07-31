@@ -4,7 +4,7 @@ import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Ba
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
-import { T_VIBER } from './constants';
+import { T_VIBER, VIBER_DEFAULT_API_VERSION } from './constants';
 import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
 
 /**
@@ -93,22 +93,22 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         }
         controller.requestObject = query;
 
-        if (query.message) {
-            switch (query.event) {
-                case 'conversation_started':
-                    if (query.user) {
-                        controller.userId = query.user.id;
+        switch (query.event) {
+            case 'conversation_started':
+                if (query.user) {
+                    controller.userId = query.user.id;
 
-                        controller.userCommand = '';
-                        controller.messageId = 0;
+                    controller.userCommand = '';
+                    controller.messageId = 0;
 
-                        this.appContext.appConfig.tokens[this.platformName].api_version =
-                            query.user.api_version || 2;
-                        this.setNlu(controller, query.sender.name);
-                    }
-                    return true;
+                    controller.platformOptions.apiVersion =
+                        query.user.api_version || VIBER_DEFAULT_API_VERSION;
+                    this.setNlu(controller, query.sender.name);
+                }
+                return true;
 
-                case 'message':
+            case 'message':
+                if (query.message) {
                     controller.userId = query.sender.id;
                     {
                         const raw = query.message?.text ?? '';
@@ -117,12 +117,13 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
                     }
                     controller.messageId = query.message_token;
 
-                    this.appContext.appConfig.tokens[this.platformName].api_version = (query.sender
-                        .api_version || 2) as unknown as string;
+                    controller.platformOptions.apiVersion =
+                        query.sender.api_version || VIBER_DEFAULT_API_VERSION;
 
                     this.setNlu(controller, query.sender.name);
                     return true;
-            }
+                }
+                break;
         }
 
         return false;
@@ -131,6 +132,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
     async getContent(controller: BotController): Promise<string> {
         if (!controller.skipAutoReply) {
             const viberApi = new ViberRequest(controller.appContext);
+            viberApi.apiVersion = controller.platformOptions.apiVersion;
             const params: IViberParams = {};
             const keyboard = controller.isButtonsInit()
                 ? controller.buttons.getButtons<IViberButtonObject>(buttonProcessing)

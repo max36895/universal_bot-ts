@@ -78,3 +78,10 @@ export const ALISA_MAX_IMAGES = 5;
  * ```
  */
 export const ALISA_MAX_GALLERY_IMAGES = 7;
+
+/**
+ * Максимальный размер state (user_state_update, application_state, session_state) в байтах.
+ * Яндекс.Диалоги возвращают 400 Bad Request при превышении.
+ * Рекомендуемый порог — 3.5 KB с запасом.
+ */
+export const ALISA_STATE_MAX_BYTES = 3584;

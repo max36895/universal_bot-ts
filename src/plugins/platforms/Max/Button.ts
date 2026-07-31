@@ -19,6 +19,9 @@ export function buttonProcessing(buttons: IButtonType[]): IMaxButtonObject {
             object.url = button.url;
         }
         if (button.payload) {
+            if (!button.url) {
+                object.type = 'callback';
+            }
             if (typeof button.payload === 'string') {
                 object.payload = button.payload;
             } else {

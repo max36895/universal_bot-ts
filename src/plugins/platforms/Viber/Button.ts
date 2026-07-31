@@ -114,7 +114,11 @@ export function buttonProcessing(buttons: IButtonType[]): IViberButtonObject | n
             btn.ActionBody = button.url;
         } else {
             btn.ActionType = T_REPLY;
-            btn.ActionBody = button.title;
+            btn.ActionBody = button.payload
+                ? typeof button.payload === 'string'
+                    ? button.payload
+                    : JSON.stringify(button.payload)
+                : button.title;
         }
         btn = <IViberButton>{ ...btn, ...button.options };
 

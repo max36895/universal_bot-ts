@@ -79,7 +79,8 @@ import { Text } from '../../utils';
  *   const location = geo.result[0];
  *   console.log('Город:', location.city);
  *   console.log('Страна:', location.country);
- *   console.log('Координаты:', location.latitude, location.longitude);
+ *   console.log('Улица:', location.street);
+ *   console.log('Дом:', location.house_number);
  * }
  *
  * // Проверка встроенных интентов
@@ -227,7 +228,7 @@ export class Nlu {
      *     console.log('Город:', location.city);
      *     console.log('Улица:', location.street);
      *     console.log('Номер дома:', location.house_number);
-     *     console.log('Координаты:', location.latitude, location.longitude);
+     *     console.log('Аэропорт:', location.airport);
      * }
      * ```
      */
@@ -267,9 +268,9 @@ export class Nlu {
      *         console.log(`Время: ${date.hour}:${date.minute || '00'}`);
      *     }
      *
-     *     // Относительное время
-     *     if (date.relative) {
-     *         console.log(`Относительно: ${date.relative}`);
+     *     // Относительная дата
+     *     if (date.day_is_relative) {
+     *         console.log(`Через ${date.day} дней`);
      *     }
      * }
      * ```
@@ -507,7 +508,7 @@ export class Nlu {
      *     console.log('Город:', location.city);
      *     console.log('Улица:', location.street);
      *     console.log('Номер дома:', location.house_number);
-     *     console.log('Координаты:', location.latitude, location.longitude);
+     *     console.log('Аэропорт:', location.airport);
      * }
      * ```
      */

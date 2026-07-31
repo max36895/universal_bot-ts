@@ -1,6 +1,6 @@
-import { ISoundInfo, isFile, Text, unlink, BotController } from '../../../index';
+import { ISoundInfo, unlink, BotController } from '../../../index';
 import { YandexSpeechKit, VkRequest } from '../API';
-import { getSoundToken } from '../Base/utils';
+import { getBaseDataSoundProcessing, getSoundToken } from '../Base/utils';
 import { T_VK } from './constants';
 
 /**
@@ -46,33 +46,25 @@ export async function soundProcessing(
     soundInfo: ISoundInfo,
     controller: BotController,
 ): Promise<string[]> {
-    const { sounds, text } = soundInfo;
-    const data: string[] = [];
-    if (sounds) {
-        for (let i = 0; i < sounds.length; i++) {
-            const sound = sounds[i];
-            if (sound.sounds !== undefined && sound.key !== undefined) {
-                let sText: string | null = Text.getText(sound.sounds);
-                if (Text.isUrl(sText) || (await isFile(sText))) {
-                    sText = await getSoundInDB(controller, sText);
-                }
+    const { text } = soundInfo;
+    const data: string[] = await getBaseDataSoundProcessing(soundInfo, controller, getSoundInDB);
 
-                if (sText) {
-                    data.push(sText);
-                }
-            }
-        }
-    }
     if (text) {
-        const speechKit = new YandexSpeechKit(
-            controller.appContext.appConfig.tokens[T_VK].speech_kit_token as string,
-            controller.appContext,
-        );
+        const token = controller.appContext.appConfig.tokens[T_VK]?.speech_kit_token;
+        if (!token) {
+            controller.appContext.logWarn('VK: speech_kit_token не настроен, TTS недоступен');
+            return data;
+        }
+        const speechKit = new YandexSpeechKit(token as string, controller.appContext);
         const content = await speechKit.getTts(text);
         let sText = null;
         if (content) {
             sText = await getSoundInDB(controller, content.fileName, true);
-            await unlink(content.fileName);
+            try {
+                await unlink(content.fileName);
+            } catch {
+                // Игнорируем ошибку удаления временного файла
+            }
         }
         if (sText) {
             data.push(sText);

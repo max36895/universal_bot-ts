@@ -2,6 +2,10 @@
 import { BotController } from '../controller';
 import { AppContext, MiddlewareNext } from '../core';
 
+/** Модульное состояние для очистки при destroy */
+let moduleCleanupInterval: ReturnType<typeof setInterval> | null = null;
+let moduleStateMap: Map<string, PlatformState> | null = null;
+
 interface QueueItem {
     resolve: () => void;
     reject: (err: Error) => void;
@@ -15,6 +19,9 @@ interface PlatformState {
     count: number; // количество запросов за текущую секунду
     lastActivity: number; // время последней активности (для очистки)
 }
+
+/** Максимальный размер stateMap. При превышении новые записи не добавляются. */
+const MAX_STATE_MAP_SIZE = 10000;
 
 async function processQueue(
     st: PlatformState,
@@ -49,7 +56,7 @@ async function processQueue(
                 } catch (err) {
                     // Ошибка уже обработана в reject, но логируем на всякий случай
                     appContext.logError(
-                        `rateLimited - произошла ошибки при обработке. Ошибка: ${(err as Error).message}`,
+                        `rateLimited - произошла ошибка при обработке. Ошибка: ${(err as Error).message}`,
                         { err },
                     );
                 }
@@ -86,6 +93,33 @@ async function processQueue(
             st.processing = false;
         }
     }
+}
+
+function startCleanupFn(
+    cInterval: ReturnType<typeof setInterval> | null = null,
+    stateMap: Map<string, PlatformState>,
+    inactivityTimeout: number,
+): ReturnType<typeof setInterval> | null {
+    let cleanupInterval = cInterval;
+    if (!cleanupInterval) {
+        cleanupInterval = setInterval(
+            () => {
+                const now = Date.now();
+                for (const [key, st] of stateMap.entries()) {
+                    if (
+                        now - st.lastActivity > inactivityTimeout &&
+                        st.queue.length === 0 &&
+                        !st.processing
+                    ) {
+                        stateMap.delete(key);
+                    }
+                }
+            },
+            Math.min(inactivityTimeout / 2, 30000),
+        ).unref();
+        moduleCleanupInterval = cleanupInterval;
+    }
+    return cleanupInterval;
 }
 
 /**
@@ -143,26 +177,12 @@ export function rateLimiter(
     inactivityTimeout = 60000,
 ): (ctx: BotController, next: MiddlewareNext) => Promise<void> {
     const stateMap = new Map<string, PlatformState>();
+    moduleStateMap = stateMap;
     let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+    moduleCleanupInterval = null;
 
     const startCleanup = (): void => {
-        if (!cleanupInterval) {
-            cleanupInterval = setInterval(
-                () => {
-                    const now = Date.now();
-                    for (const [key, st] of stateMap.entries()) {
-                        if (
-                            now - st.lastActivity > inactivityTimeout &&
-                            st.queue.length === 0 &&
-                            !st.processing
-                        ) {
-                            stateMap.delete(key);
-                        }
-                    }
-                },
-                Math.min(inactivityTimeout / 2, 30000),
-            ).unref();
-        }
+        cleanupInterval = startCleanupFn(cleanupInterval, stateMap, inactivityTimeout);
     };
     startCleanup();
 
@@ -183,6 +203,10 @@ export function rateLimiter(
 
         let st = stateMap.get(key);
         if (!st) {
+            // Защита от переполнения: если stateMap слишком большой — пропускаем добавление
+            if (stateMap.size >= MAX_STATE_MAP_SIZE) {
+                return next();
+            }
             st = {
                 queue: [],
                 processing: false,
@@ -204,7 +228,7 @@ export function rateLimiter(
         }
         if (st.queue.length >= maxQueueSize) {
             throw new Error(
-                `rateLimit - Превышено ограничение на размер очереди. Убедитесь что значение указанно корректно, текущее значение - ${maxQueueSize}.`,
+                `rateLimit - Превышено ограничение на размер очереди. Убедитесь, что значение указано корректно, текущее значение - ${maxQueueSize}.`,
             );
         }
 
@@ -237,4 +261,39 @@ export function rateLimiter(
             }
         });
     };
+}
+
+/**
+ * Очищает все ресурсы rateLimiter: интервал очистки и карту состояний.
+ * Используйте при завершении приложения или.hot-reload для предотвращения утечек памяти.
+ *
+ * @example
+ * ```ts
+ * import { destroyRateLimiter } from 'umbot/middleware';
+ *
+ * // При завершении приложения
+ * process.on('SIGTERM', () => {
+ *     destroyRateLimiter();
+ *     process.exit(0);
+ * });
+ * ```
+ */
+export function destroyRateLimiter(): void {
+    if (moduleCleanupInterval) {
+        clearInterval(moduleCleanupInterval);
+        moduleCleanupInterval = null;
+    }
+    if (moduleStateMap) {
+        // Очищаем все очереди, отклоняя ожидающие промисы
+        moduleStateMap.forEach((state) => {
+            while (state.queue.length > 0) {
+                const item = state.queue.shift();
+                if (item) {
+                    item.reject(new Error('Rate limiter destroyed'));
+                }
+            }
+        });
+        moduleStateMap.clear();
+        moduleStateMap = null;
+    }
 }

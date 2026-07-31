@@ -83,8 +83,8 @@ export class FileAdapter extends Base<IFileDbInfo> {
     }
 
     connect(): Promise<boolean> | boolean {
-        // TODO костыль, но нужно как-то предварительно загрузить содержимое файлов, иначе под нагрузкой может 1 файл прочитаться несколько раз сразу, либо прочитаться во время выполнения.
-        // И если проблема в самом файле, то лучше пусть будет так, чем приложение упадет при запросе.
+        // Предварительная загрузка данных из файлов при подключении,
+        // чтобы избежать одновременного чтения одного файла под нагрузкой
         this.getFileData('UsersData');
         this.getFileData('SoundTokens');
         this.getFileData('ImageTokens');
@@ -204,6 +204,23 @@ export class FileAdapter extends Base<IFileDbInfo> {
         }
     }
 
+    #clearTimeOutFileData(tableName: string): {
+        timeOutId?: ReturnType<typeof setTimeout> | null;
+        forceTimeOutId?: ReturnType<typeof setTimeout> | null;
+    } {
+        const timeOutId = this.getCachedFileData(tableName).timeOutId;
+        if (timeOutId) {
+            clearTimeout(timeOutId);
+            this.#setCachedFileData(tableName, 'timeOutId', null);
+        }
+        const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
+        if (forceTimeOutId) {
+            clearTimeout(forceTimeOutId);
+            this.#setCachedFileData(tableName, 'forceTimeOutId', null);
+        }
+        return { timeOutId, forceTimeOutId };
+    }
+
     /**
      * Принудительно сохраняет данные таблицы в файл и дожидается завершения записи.
      * @param tableName Название таблицы
@@ -212,16 +229,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     async #forceSave(tableName: string): Promise<void> {
         const data = this.getCachedFileData(tableName).data;
         if (data) {
-            const timeOutId = this.getCachedFileData(tableName).timeOutId;
-            if (timeOutId) {
-                clearTimeout(timeOutId);
-                this.#setCachedFileData(tableName, 'timeOutId', null);
-            }
-            const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
-            if (forceTimeOutId) {
-                clearTimeout(forceTimeOutId);
-                this.#setCachedFileData(tableName, 'forceTimeOutId', null);
-            }
+            this.#clearTimeOutFileData(tableName);
             try {
                 await this._appContext?.saveFileData(`${tableName}.json`, data);
             } catch (e) {
@@ -520,16 +528,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * @param {string} tableName - Имя таблицы
      */
     public async close(tableName: string): Promise<void> {
-        const timeOutId = this.getCachedFileData(tableName).timeOutId;
-        if (timeOutId) {
-            clearTimeout(timeOutId);
-            this.#setCachedFileData(tableName, 'timeOutId', null);
-        }
-        const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
-        if (forceTimeOutId) {
-            clearTimeout(forceTimeOutId);
-            this.#setCachedFileData(tableName, 'forceTimeOutId', null);
-        }
+        const { timeOutId, forceTimeOutId } = this.#clearTimeOutFileData(tableName);
         if (timeOutId || forceTimeOutId) {
             await this.#forceSave(tableName);
         }

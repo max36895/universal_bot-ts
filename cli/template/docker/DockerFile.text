@@ -23,8 +23,7 @@ WORKDIR /app
 COPY --from=builder --chown=umbot:nodejs /app/package*.json ./
 COPY --from=builder --chown=umbot:nodejs /app/dist ./dist
 
-# Копируем .env.example → .env (можно переопределить при запуске)
-COPY --chown=umbot:nodejs .env.example .env
+# .env монтируется при запуске контейнера: docker run --env-file .env ...
 
 RUN npm ci --only=production --omit=dev
 

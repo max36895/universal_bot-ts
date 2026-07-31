@@ -3,7 +3,7 @@ import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Ba
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
-import { T_TELEGRAM } from './constants';
+import { T_TELEGRAM, T_FORMAT_HTML } from './constants';
 import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/ITelegramPlatform';
 import { TelegramRequest } from '../API';
 import { tryParse } from '../Base/utils';
@@ -155,11 +155,17 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         if (!controller.skipAutoReply) {
             const telegramApi = new TelegramRequest(controller.appContext);
             const params: ITelegramParams = {};
-            const keyboard = controller.buttons.getButtonJson(buttonProcessing);
+            const keyboard = buttonProcessing(
+                controller.buttons.buttons,
+                this.appContext as AppContext,
+            );
             if (keyboard) {
-                params.reply_markup = keyboard;
+                params.reply_markup = JSON.stringify(keyboard);
             }
-            params.parse_mode = 'markdown';
+            // parse_mode: читаем из platformOptions, если не задан — дефолт HTML.
+            // Разработчик задаёт через new TelegramAdapter(token, { telegram_parse_mode: T_FORMAT_MARKDOWN }).
+            params.parse_mode =
+                (this._platformOptions?.telegram_parse_mode as string) || T_FORMAT_HTML;
 
             await telegramApi.sendMessage(
                 controller.userId as string,

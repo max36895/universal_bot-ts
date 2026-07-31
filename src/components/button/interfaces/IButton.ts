@@ -81,18 +81,29 @@ export interface IButtonOptions {
     utmCampaign?: string;
 
     /**
+     * Стиль визуального отображения кнопки.
+     * Поддерживается в Telegram (Bot API 9.4+) и VK.
+     *
+     * Telegram: 'primary' (зелёная), 'secondary' (серая), 'destructive' (красная)
+     * VK: используется через payload.color ('primary', 'secondary', 'negative', 'positive')
+     *
+     * @example
+     * ```ts
+     * // Telegram — красная кнопка удаления
+     * buttons.addBtn('Удалить', null, { action: 'delete' }, { style: 'destructive' });
+     *
+     * // Telegram — зелёная кнопка подтверждения
+     * buttons.addBtn('Подтвердить', null, { action: 'confirm' }, { style: 'primary' });
+     * ```
+     */
+    style?: string;
+
+    /**
      * Дополнительные опции для кнопки.
      * Могут включать специфичные для платформы настройки.
      *
      * @example
      * ```ts
-     * // Настройка кнопки для VK
-     * const options: IButtonOptions = {
-     *     color: 'primary',
-     *     size: 'large',
-     *     vk_style: 'primary'
-     * };
-     *
      * // Настройка кнопки для Telegram
      * const options: IButtonOptions = {
      *     request_contact: true,

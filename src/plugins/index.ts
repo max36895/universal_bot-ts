@@ -21,7 +21,15 @@ export * from './platforms/Telegram/interfaces/ITelegramPlatform';
 export * as TelegramButton from './platforms/Telegram/Button';
 export * as TelegramSound from './platforms/Telegram/Sound';
 export * as TelegramCard from './platforms/Telegram/Card';
-export { T_TELEGRAM } from './platforms/Telegram/constants';
+export {
+    T_TELEGRAM,
+    T_FORMAT_HTML,
+    T_FORMAT_MARKDOWN,
+    TG_STYLE_DESTRUCTIVE,
+    TG_STYLE_PRIMARY,
+    TG_STYLE_SECONDARY,
+} from './platforms/Telegram/constants';
+export { escapeMarkdownV2, escapeHtml } from './platforms/API/TelegramRequest';
 
 export { MarusiaAdapter } from './platforms/Marusia/Adapter';
 export * as MarusiaConstants from './platforms/Marusia/constants';

@@ -112,7 +112,7 @@
         "deploy": "npm run build && npm publish",
         "create": "umbot",
         "clean": "node clean.js",
-        "test": "jest",
+        "test": "node --expose-gc ./node_modules/jest/bin/jest.js",
         "test:coverage": "jest --coverage",
         "doc": "typedoc --excludePrivate --excludeExternals",
         "doc:fix": "node scripts/fix-doc.js",

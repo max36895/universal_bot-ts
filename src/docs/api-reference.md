@@ -455,12 +455,12 @@ class RatingController extends BotController {
 
 #### Методы
 
-| Метод                            | Описание                   |
-| -------------------------------- | -------------------------- |
-| `log(msg, meta?)`                | Логирование                |
-| `logError(msg, meta?)`           | Логирование ошибок         |
-| `logWarn(msg, meta?)`            | Логирование предупреждений |
-| `logMetric(name, value, label?)` | Логирование метрик         |
+| Метод                           | Описание                   |
+| ------------------------------- | -------------------------- |
+| `log(...args)`                  | Логирование                |
+| `logError(msg, meta?)`          | Логирование ошибок         |
+| `logWarn(msg, meta?)`           | Логирование предупреждений |
+| `logMetric(name, value, label)` | Логирование метрик         |
 
 ### Navigation
 
@@ -590,7 +590,7 @@ interface IPluginFn {
 
 ## Метрики
 
-Фреймворк собирает метрики времени выполнения ключевых операций. Для включения реализуйте метод `logMetric()` в логгере.
+Фреймворк собирает метрики времени выполнения ключевых операций. Для включения реализуйте метод `metric()` в логгере.
 
 | Метрика              | Константа               | Что измеряет                        |
 | -------------------- | ----------------------- | ----------------------------------- |
@@ -610,8 +610,8 @@ interface IPluginFn {
 
 ```ts
 bot.setLogger({
-    logMetric: (name: string, value: number, meta?: Record<string, unknown>) => {
-        console.log(`[METRIC] ${name}: ${value.toFixed(2)}ms`, meta);
+    metric: (name: string, value: unknown, meta?: Record<string, unknown>) => {
+        console.log(`[METRIC] ${name}: ${value}`, meta);
     },
 });
 ```

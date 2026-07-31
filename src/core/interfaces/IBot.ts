@@ -121,7 +121,7 @@ export type TPluginFnResult = void | ((bot: Bot) => void);
 export interface IPluginFn {
     /**
      * Конструктор функции регистрации плагина
-     * @extends
+     * @example
      * ```ts
      * function myPlugin(appContext: AppContext, bot: Bot) {
      *      // Какая-то ваша логика
@@ -182,7 +182,7 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     /**
      * Инициализирует данные запроса в контроллере приложения.
      *
-     * Парсит входящий запрос и заполняет `controller.queryData`, `controller.user` и другие поля.
+     * Парсит входящий запрос и заполняет `controller.userCommand`, `controller.payload` и другие поля.
      * Вызывается после подтверждения, что запрос принадлежит этой платформе.
      *
      * @param query - входящий запрос
@@ -361,17 +361,17 @@ export interface IDatabaseAdapter extends IPlugin {
     select: (selectData: IQuery, where: IQueryData | null, isOne: boolean) => Promise<IModelRes>;
     /**
      * Выполняет INSERT-запрос.
-     * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param insertData — Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     insert: (insertData: IQuery) => Promise<boolean>;
     /**
      * Выполняет UPDATE-запрос.
-     * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param updateData — Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     update: (updateData: IQuery) => Promise<boolean>;
     /**
      * Выполняет DELETE-запрос.
-     * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param removeData — Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     remove: (removeData: IQuery) => Promise<boolean>;
     /**
@@ -400,12 +400,12 @@ export interface IDatabaseAdapter extends IPlugin {
     /**
      * Выполняет SELECT с ограничением до одной записи.
      * @param selectData Дополнительные данные для запроса
-     * @param where Сам запроса
+     * @param where — Условия поиска
      */
     selectOne: (selectData: IQuery, where: IQueryData | null) => Promise<IModelRes | null>;
     /**
      * Экранирует строку для безопасного использования в SQL-запросах.
-     * @param str Экранируемый запрос
+     * @param str — Экранируемая строка
      */
     escapeString: (str: string | number) => string;
 

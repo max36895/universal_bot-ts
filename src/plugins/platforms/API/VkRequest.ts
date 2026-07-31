@@ -18,7 +18,7 @@ import { getErrorMsg, getErrorToken } from './constants';
 /**
  * Версия VK API по умолчанию
  */
-const VK_API_VERSION = '5.103';
+const VK_API_VERSION = '5.199';
 
 /**
  * Базовый URL для всех методов VK API
@@ -319,7 +319,7 @@ export class VkRequest {
         this._request.post = {
             peer_id: peerId,
             message,
-            random_id: Date.now() + Math.floor(Math.random() * 1000),
+            random_id: this.#generateRandomId(),
         };
 
         if (typeof peerId !== 'number') {
@@ -327,39 +327,42 @@ export class VkRequest {
             this._request.post.peer_id = undefined;
         }
         if (params) {
-            if (params.random_id === undefined) {
-                this._request.post.random_id = Date.now() + Math.floor(Math.random() * 1000);
+            const p = { ...params };
+            if (p.random_id === undefined) {
+                this._request.post.random_id = this.#generateRandomId();
             } else {
-                this._request.post.random_id = params.random_id;
+                this._request.post.random_id = p.random_id;
             }
 
-            if (params.attachments !== undefined) {
-                this._request.post.attachment = params.attachments.join(',');
-                params.attachments = undefined;
+            if (p.attachments !== undefined) {
+                this._request.post.attachment = p.attachments.join(',');
+                delete p.attachments;
             }
 
-            if (params.template !== undefined) {
-                if (typeof params.template !== 'string') {
-                    params.template = JSON.stringify(params.template);
+            if (p.template !== undefined) {
+                if (typeof p.template !== 'string') {
+                    p.template = JSON.stringify(p.template);
                 }
-                this._request.post.template = params.template;
-                params.template = undefined;
+                this._request.post.template = p.template;
+                delete p.template;
             }
 
-            if (params.keyboard !== undefined) {
+            if (p.keyboard !== undefined) {
                 if (this._request.post.template !== undefined) {
-                    // await this.call<IVKSendMessage>(method);
+                    this._appContext.logWarn(
+                        'VkRequest.messagesSend(): keyboard и template взаимоисключающи в VK API. Template будет удалён.',
+                    );
                     this._request.post.template = undefined;
                 }
-                if (typeof params.keyboard !== 'string') {
-                    params.keyboard = JSON.stringify(params.keyboard);
+                if (typeof p.keyboard !== 'string') {
+                    p.keyboard = JSON.stringify(p.keyboard);
                 }
-                this._request.post.keyboard = params.keyboard;
-                params.keyboard = undefined;
+                this._request.post.keyboard = p.keyboard;
+                delete p.keyboard;
             }
 
-            if (keysCount(params)) {
-                this._request.post = { ...params, ...this._request.post };
+            if (keysCount(p)) {
+                this._request.post = { ...p, ...this._request.post };
             }
         }
         return await this.call(method);
@@ -470,6 +473,57 @@ export class VkRequest {
             this._request.post.tags = tags;
         }
         return this.call<IVkDocSave>('docs.save');
+    }
+
+    /**
+     * Подтверждение получения callback-события от кнопки.
+     * Обязательный метод для обработки message_event в VK Bot API.
+     * Без этого вызова VK показывает пользователю "Бот недоступен" при нажатии callback-кнопки.
+     *
+     * @param userId ID пользователя
+     * @param eventId ID события из message_event
+     * @param eventData Данные события (опционально): show_snackbar, open_link или open_modal
+     * @returns Результат выполнения или null при ошибке
+     *
+     * @example
+     * ```ts
+     * // Простое подтверждение
+     * await vkApi.sendMessageEvent(userId, eventId);
+     *
+     * // С показом всплывающего уведомления
+     * await vkApi.sendMessageEvent(userId, eventId, {
+     *     type: 'show_snackbar',
+     *     text: 'Действие выполнено!'
+     * });
+     * ```
+     */
+    public async sendMessageEvent(
+        userId: TVkPeerId,
+        eventId: string,
+        eventData?: {
+            type: 'show_snackbar' | 'open_link' | 'open_modal';
+            text?: string;
+            link?: string;
+            Intent?: string;
+            title?: string;
+        },
+    ): Promise<IVKSendMessage | null> {
+        this._request.post = {
+            user_id: userId,
+            event_id: eventId,
+        };
+        if (eventData) {
+            this._request.post.event_data = JSON.stringify(eventData);
+        }
+        return this.call<IVKSendMessage>('messages.sendEvent');
+    }
+
+    /**
+     * Генерирует уникальный ID для избежания повторной отправки сообщения.
+     * Использует комбинацию timestamp и случайного числа для минимизации коллизий.
+     */
+    #generateRandomId(): number {
+        return Date.now() * 1000 + Math.floor(Math.random() * 1000000);
     }
 
     /**

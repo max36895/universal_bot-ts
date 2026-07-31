@@ -66,7 +66,7 @@ export class MarusiaRequest extends VkRequest {
      */
     public constructor(appContext: AppContext) {
         super(appContext);
-        if (appContext.appConfig.tokens[T_MARUSIA].token) {
+        if (appContext.appConfig.tokens[T_MARUSIA]?.token) {
             this.initToken(appContext.appConfig.tokens[T_MARUSIA].token);
         }
     }

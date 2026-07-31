@@ -200,7 +200,7 @@ export class Text {
      * ```
      */
     public static isUrl(link: string): boolean {
-        if (link.startsWith('http://') || link.startsWith('https://')) {
+        if (link.startsWith('https://') || link.startsWith('http://')) {
             try {
                 new URL(link);
                 return true;
@@ -452,7 +452,6 @@ export class Text {
             }
         } else if (cache) {
             cache.cReq++;
-            Text.#regexCache.set(key, cache);
         }
         return regex;
     }
@@ -575,7 +574,7 @@ export class Text {
             text: null,
         };
 
-        // Check for exact matches first
+        // Сначала проверяем точные совпадения
         const exactMatch = texts.findIndex((t) => t.toLowerCase() === normalizedOrigText);
 
         if (exactMatch !== -1) {
@@ -587,7 +586,7 @@ export class Text {
             };
         }
 
-        // Find best similarity if no exact match
+        // Если точного совпадения нет — ищем наиболее похожий текст
         texts.forEach((currentText, index) => {
             const similarity = similarText(normalizedOrigText, currentText.toLowerCase());
             if (similarity > maxSimilarity.percent) {

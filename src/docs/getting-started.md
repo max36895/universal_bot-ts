@@ -353,7 +353,9 @@ bot.setAppConfig({ isLocalStorage: false });
 
 ### Пустой ответ вместо "Не поняла"
 
-**Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`.
+**Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`. Если вы наследуетесь от `BotController` напрямую, текст не выставится автоматически — бот вернёт пустой ответ.
+
+Подробнее об этом механизме — в разделе [«Порядок диспетчера»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html#порядок-диспетчера) в GUIDE.md.
 
 ```ts
 // Решение: вручную обрабатывайте default-case в action()

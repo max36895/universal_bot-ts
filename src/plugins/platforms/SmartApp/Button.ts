@@ -14,7 +14,7 @@ import { getCorrectButtons } from '../Base/utils';
 export function buttonProcessing(
     buttons: IButtonType[],
     isCard: boolean = false,
-): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction {
+): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction | null {
     const objects: ISberSmartAppSuggestionButton[] = [];
     if (isCard) {
         const button = buttons[0];
@@ -34,6 +34,7 @@ export function buttonProcessing(
                 }
             }
         }
+        return null;
     } else {
         getCorrectButtons(buttons, 8).forEach((button) => {
             const title = Text.resize(button.title || '', 64);

@@ -9,7 +9,7 @@ import {
 import { IViberButton } from '../Viber/interfaces/IViberPlatform';
 
 import { AppContext, Request, Text } from '../../../index';
-import { T_VIBER } from '../Viber/constants';
+import { T_VIBER, VIBER_DEFAULT_API_VERSION } from '../Viber/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
 /**
@@ -45,6 +45,14 @@ export class ViberRequest {
      * Контекст приложения.
      */
     readonly #appContext: AppContext;
+
+    /**
+     * Версия API для конкретного запроса.
+     * Устанавливается из controller.platformOptions для каждого запроса,
+     * чтобы избежать race condition при параллельных запросах от разных пользователей.
+     * Если не задана, используется значение из appConfig.tokens.
+     */
+    public apiVersion: string | number | undefined;
 
     /**
      * Создает экземпляр класса для работы с API Viber
@@ -83,7 +91,9 @@ export class ViberRequest {
                 };
                 this.#request.post ??= {};
                 (this.#request.post as Record<string, unknown>).min_api_version =
-                    this.#appContext.appConfig.tokens[T_VIBER].api_version || 2;
+                    this.apiVersion ||
+                    this.#appContext.appConfig.tokens[T_VIBER].api_version ||
+                    VIBER_DEFAULT_API_VERSION;
                 const sendData = await this.#request.send<IViberApi>(API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;

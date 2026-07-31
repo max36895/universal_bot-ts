@@ -4,6 +4,7 @@
 /examples/*
 /tests/*
 /docs/*
+/repos/*
 /node_modules/*
 /coverage/*
 /package-lock.json

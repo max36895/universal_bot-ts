@@ -117,7 +117,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      *
      * @returns Массив правил валидации
-     * @virtual
+     * @abstract
      */
     public abstract rules(): IModelRules[];
 
@@ -137,7 +137,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      *
      * @returns Объект с метками атрибутов
-     * @virtual
+     * @abstract
      */
     public abstract attributeLabels(): TState;
 
@@ -153,7 +153,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      *
      * @returns Имя таблицы
-     * @virtual
+     * @abstract
      */
     public abstract tableName(): string;
 
@@ -232,7 +232,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      */
     public validate(): void {
-        // TODO document why this method 'validate' is empty
+        // Базовая реализация пуста — переопределяется в наследниках для валидации данных
     }
 
     /**
@@ -465,7 +465,7 @@ export abstract class Model<TState extends IModelState> {
      * ```ts
      * const found = await model.whereOne({ id: 1 });
      * if (found) {
-     *   console.log('Record found');
+     *   console.log('Запись найдена');
      * }
      * ```
      *

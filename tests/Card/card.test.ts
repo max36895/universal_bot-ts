@@ -458,17 +458,17 @@ describe('Card test', () => {
         const viberCard: IViberCard[] = [
             {
                 Columns: 3,
-                Rows: 6,
+                Rows: 2,
                 Image: '123456',
             },
             {
                 Columns: 3,
-                Rows: 6,
+                Rows: 2,
                 Image: '123456',
             },
             {
                 Columns: 3,
-                Rows: 6,
+                Rows: 2,
                 Image: '123456',
             },
         ];
@@ -509,12 +509,14 @@ describe('Card test', () => {
                     description: 'запись: 1',
                     photo_id: '123456',
                     buttons: [
-                        {
-                            action: {
-                                type: VkButton.VK_TYPE_TEXT,
-                                label: '1',
+                        [
+                            {
+                                action: {
+                                    type: VkButton.VK_TYPE_TEXT,
+                                    label: '1',
+                                },
                             },
-                        },
+                        ],
                     ],
                     action: {
                         type: 'open_photo',

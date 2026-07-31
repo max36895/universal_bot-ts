@@ -85,7 +85,7 @@ module.exports = [
         },
     },
     {
-        files: ['tests/**/*.test.ts', 'tests/**/*.ts'],
+        files: ['tests/**/*.test.ts', 'tests/**/*.ts', '*.test.ts'],
         languageOptions: {
             parserOptions: {
                 projectService: false,

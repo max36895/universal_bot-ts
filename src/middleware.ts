@@ -6,4 +6,4 @@
  * @packageDocumentation
  * @module middleware
  */
-export { rateLimiter } from './middleware/rateLimiter';
+export { rateLimiter, destroyRateLimiter } from './middleware/rateLimiter';

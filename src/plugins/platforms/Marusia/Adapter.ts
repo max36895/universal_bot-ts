@@ -1,14 +1,15 @@
-import { Text, BotController, AppContext } from '../../../index';
+import { Text, BotController, AppContext, IButtonType } from '../../../index';
 import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
-import { T_MARUSIA, VERSION } from './constants';
+import { T_MARUSIA, VERSION, MARUSIA_STATE_MAX_BYTES } from './constants';
 import {
     IMarusiaRequest,
     IMarusiaRequestState,
     IMarusiaItemsList,
     IMarusiaBigImage,
+    IMarusiaImageGallery,
     IMarusiaButton,
     IMarusiaResponse,
     IMarusiaWebhookRequest,
@@ -78,7 +79,7 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                 return true;
             } else if (query.session.application?.application_id) {
                 return (
-                    query.session.application?.application_id ==
+                    query.session.application?.application_id ===
                     query.session.application?.application_id.toLowerCase()
                 );
             }
@@ -168,7 +169,7 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
         };
         if (controller.isScreen) {
             if (controller.isCardInit() && controller.card.images.length) {
-                response.card = <IMarusiaItemsList | IMarusiaBigImage>(
+                response.card = <IMarusiaItemsList | IMarusiaBigImage | IMarusiaImageGallery>(
                     await controller.card.getCards(cardProcessing, controller)
                 );
                 if (!response.card) {
@@ -176,7 +177,14 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                 }
             }
             response.buttons = controller.isButtonsInit()
-                ? (controller.buttons.getButtons(buttonProcessing) as IMarusiaButton[])
+                ? (controller.buttons.getButtons(
+                      (buttons: IButtonType[]) =>
+                          buttonProcessing(
+                              buttons,
+                              false,
+                              this.appContext as AppContext,
+                          ) as IMarusiaButton[],
+                  ) as IMarusiaButton[])
                 : [];
         }
         return response;
@@ -194,7 +202,17 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
         result.response = await this._getResponse(controller);
         result.session = controller.platformOptions.session as IMarusiaWebhookResponse['session'];
         if (controller.platformOptions.stateName && stateData) {
-            result[controller.platformOptions.stateName as TState] = stateData;
+            const stateJson = JSON.stringify(stateData);
+            if (Buffer.byteLength(stateJson, 'utf8') > MARUSIA_STATE_MAX_BYTES) {
+                this.appContext?.logError(
+                    `MarusiaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
+                        `(${Buffer.byteLength(stateJson, 'utf8')} байт) превышает лимит API ` +
+                        `(${MARUSIA_STATE_MAX_BYTES} байт). Состояние будет очищено.`,
+                );
+                result[controller.platformOptions.stateName as TState] = {};
+            } else {
+                result[controller.platformOptions.stateName as TState] = stateData;
+            }
         }
         this._timeLimitLog(controller);
         return result;

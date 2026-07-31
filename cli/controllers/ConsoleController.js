@@ -1,6 +1,7 @@
 'use strict';
 const CreateController = require(__dirname + '/CreateController.js').create;
 const utils = require(__dirname + '/../utils.js').utils;
+const flowGenerator = require(__dirname + '/../flowGenerator.js');
 
 const VERSION = '3.0.15';
 
@@ -47,6 +48,8 @@ function main(
         '\n - create <project-name> [--minimal] [--prod] - Создать новый голосовой навык/чат-бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
         '\n\t --minimal   Создать минимальную рабочую версию (1 файл). Работает только для стандартного шаблона.' +
         '\n\t --prod      Создать production-готовый проект (Docker, CI/CD)' +
+        '\n - create from-flow <flow.json> [--output ./path] [--usecloud] - Создать проект из flow.json (визуальный редактор)' +
+        '\n\t --usecloud  Сгенерировать конфигурацию для Yandex Cloud Functions' +
         '\n - generateEnv - Сгенерировать файл .env' +
         '\n - add <feature> - Добавляет данные в проект. Доступные типы: ' +
         '\n\t docker  Добавляет docker-compose.yml' +
@@ -56,6 +59,31 @@ function main(
         const create = new CreateController();
         switch (param.command) {
             case 'create':
+                // Проверяем, не является ли второй аргумент "from-flow"
+                if (argv[3] === 'from-flow') {
+                    const flowJsonPath = argv[4];
+                    if (!flowJsonPath) {
+                        console.log('Укажите путь к flow.json файлу.');
+                        console.log(
+                            'Использование: npx umbot create from-flow flow.json --output ./my-bot',
+                        );
+                        break;
+                    }
+                    // Ищем флаги
+                    const outputIdx = argv.indexOf('--output');
+                    let outputPath =
+                        './' + (require('path').basename(flowJsonPath, '.json') || 'my-bot');
+                    if (outputIdx !== -1 && argv[outputIdx + 1]) {
+                        outputPath = argv[outputIdx + 1];
+                    }
+                    const useCloud = argv.includes('--usecloud');
+                    try {
+                        flowGenerator.generateFromFlow(flowJsonPath, outputPath, { useCloud });
+                    } catch (e) {
+                        console.error('Ошибка:', e.message);
+                    }
+                    break;
+                }
                 create.flags = getFlags(argv);
                 create.params = param.params ?? param;
                 let type = CreateController.T_DEFAULT;
@@ -114,10 +142,10 @@ DB_NAME=${create.params?.config?.db?.database}`;
             case 'add':
                 switch (argv[3]) {
                     case 'docker':
-                        create.createDockerFile(__dirname);
+                        create.createDockerFile(process.cwd());
                         break;
                     case 'deploy':
-                        create.createDeployFile(__dirname);
+                        create.createDeployFile(process.cwd());
                         break;
                     case 'env':
                         generateEnv();

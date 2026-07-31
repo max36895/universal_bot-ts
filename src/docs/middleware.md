@@ -2,7 +2,7 @@
 
 `umbot` поддерживает **middleware в стиле `telegraf` и `vk-io`** — функции, которые вызываются **до запуска бизнес-логики** (`BotController.action`).
 
-## 📦 Установка
+## Использование
 
 ```ts
 import { T_ALISA } from 'umbot/plugins';

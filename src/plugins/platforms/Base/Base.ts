@@ -44,13 +44,11 @@ export interface IOptions {
 
 /**
  * Ошибка, возникающая при получении пустого тела запроса от платформы.
- * Indicates that the request body is empty and further processing is impossible.
  */
 export const EMPTY_QUERY_ERROR =
     'Получено пустое тело запроса от платформы, дальнейшая корректная работа невозможна. Скорее всего запрос пришел не от платформы.';
 /**
  * Ошибка, возникающая при отсутствии контекста приложения.
- * Indicates that AppContext is not initialized.
  */
 export const EMPTY_CONTEXT_ERROR =
     'Не указан контекст приложения, дальнейшая работа приложения невозможна. Проверьте корректность настройки приложения.';
@@ -373,7 +371,7 @@ export abstract class BasePlatform<TQuery = unknown>
         _data: TStorageData,
         _controller: BotController,
     ): void | Promise<void> {
-        // TODO document why this method 'setLocalStorage' is empty
+        // Базовая реализация пуста — переопределяется в наследниках при необходимости
     }
 
     /**

@@ -1,5 +1,5 @@
 /**
- * Основной класс приложения для создания мультиплатформенных приложений, которое будет работать с голосовыми навыками и чат-ботами одновременно.
+ * Основной класс приложения для создания мультиплатформенного приложения, которое будет работать с голосовыми навыками и чат-ботами одновременно.
  *
  * Предоставляет функциональность для:
  * - Управления конфигурацией приложения
@@ -64,7 +64,7 @@ import {
 
 import { CommandReg, ICommandParam, IGroupData, IStepParam } from './utils/CommandReg';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
-import { saveData } from '../utils';
+import { saveData, safeStringify } from '../utils';
 import * as process from 'node:process';
 import { join } from 'node:path';
 
@@ -77,11 +77,12 @@ export const T_AUTO = 'auto';
  * Идентификатор интента приветствия
  */
 export const WELCOME_INTENT_NAME = 'welcome';
-
+export const WELCOME_INTENT_SLOTS = ['привет', 'здравст'];
 /**
  * Идентификатор интента помощи
  */
 export const HELP_INTENT_NAME = 'help';
+export const HELP_INTENT_SLOTS = ['помощь', 'что ты умеешь'];
 
 const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
 const regVk = /vk1a[a-z0-9]{79}/g;
@@ -219,8 +220,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Конфигурация приложения
      */
     public appConfig: Required<IAppConfig> = {
-        error_log: join(__dirname, '..', '..', 'logs'),
-        json: join(__dirname, '..', '..', 'json'),
+        error_log: join(process.cwd(), 'logs'),
+        json: join(process.cwd(), 'json'),
         db: { host: '', user: '', pass: '', database: '' },
         isLocalStorage: false,
         tokens: {},
@@ -236,8 +237,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         help_text: 'Текст помощи',
         empty_text: 'Извините, но я вас не понимаю',
         intents: [
-            { name: WELCOME_INTENT_NAME, slots: ['привет', 'здравст'] },
-            { name: HELP_INTENT_NAME, slots: ['помощь', 'что ты умеешь'] },
+            { name: WELCOME_INTENT_NAME, slots: WELCOME_INTENT_SLOTS },
+            { name: HELP_INTENT_NAME, slots: HELP_INTENT_SLOTS },
         ],
         utm_text: null,
     };
@@ -418,7 +419,19 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param {Partial<IAppConfig>} config - Пользовательская конфигурация
      */
     public setAppConfig(config: Partial<IAppConfig>): void {
-        this.appConfig = { ...this.appConfig, ...config };
+        if (config.tokens) {
+            for (const platform of Object.keys(config.tokens)) {
+                this.appConfig.tokens[platform] = {
+                    ...this.appConfig.tokens[platform],
+                    ...config.tokens[platform],
+                };
+            }
+            delete config.tokens;
+        }
+        this.appConfig = {
+            ...this.appConfig,
+            ...config,
+        };
         if (config.env) {
             const envVars = this.#getEnvVars(config.env);
             if (envVars) {
@@ -444,6 +457,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
+        if (this.platformParams.intents) {
+            this.platformParams.intents = this.platformParams.intents.map((intent) => ({
+                ...intent,
+                slots: [...intent.slots],
+            }));
+        }
         this.platformParams.intents =
             this.platformParams.intents?.filter((intent) => {
                 if (intent.is_pattern) {
@@ -505,12 +524,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             const data = meta
                 ? { ...meta, trace: new Error().stack }
                 : { trace: new Error().stack };
-            this.#errWarnLog(`${masked}\n${JSON.stringify(data, null, '\t')}`, true);
+            const serialized = safeStringify(data, null, '\t');
+            this.#errWarnLog(`${masked}\n${serialized}`, true);
         }
     }
 
     /**
-     * Возвращает флаг, который говорит о том необходимо собирать метрики или нет
+     * Возвращает флаг, который говорит о том, нужно ли собирать метрики
      */
     public get usedMetric(): boolean {
         return !!this.#logger?.metric;
@@ -585,7 +605,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             if (this.appMode === 'dev') {
                 console.warn(masked, meta);
             }
-            this.#errWarnLog(`${masked}\n${JSON.stringify(meta, null, '\t')}`, false);
+            const serialized = safeStringify(meta, null, '\t');
+            this.#errWarnLog(`${masked}\n${serialized}`, false);
         }
     }
 
@@ -593,7 +614,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Сохраняет данные в JSON файл
      * @param fileName - Имя файла
      * @param data - Данные для сохранения
-     * @returns true в случае успешного сохранения
+     * @returns Promise<boolean> — true в случае успешного сохранения
      *
      * @example
      * ```ts

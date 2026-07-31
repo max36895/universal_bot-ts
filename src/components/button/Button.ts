@@ -48,10 +48,6 @@ export interface IButtonType<TButtonPayload = TBtnPayload> {
     options: IButtonOptions;
 }
 
-function getUrlSeparator(url: string): string {
-    return url.includes('?') ? '&' : '?';
-}
-
 function init<TButtonPayload = TBtnPayload>(
     appContext: AppContext,
     title: string | null,
@@ -71,12 +67,21 @@ function init<TButtonPayload = TBtnPayload>(
         };
         let correctUrl = url;
         if (correctUrl && Text.isUrl(correctUrl)) {
+            // Извлекаем фрагмент, если он есть (RFC 3986: # должен быть в конце)
+            const hashIndex = correctUrl.indexOf('#');
+            const baseUrl = hashIndex !== -1 ? correctUrl.substring(0, hashIndex) : correctUrl;
+            const fragment = hashIndex !== -1 ? correctUrl.substring(hashIndex) : '';
+
             if (appContext?.platformParams.utm_text === null) {
-                if (!correctUrl.includes('utm_source')) {
-                    correctUrl += `${getUrlSeparator(correctUrl)}utm_source=${options.utmSource || 'umBot'}&utm_medium=${options.utmMedium || 'cpc'}&utm_campaign=${options.utmCampaign || 'phone'}`;
+                if (!baseUrl.includes('utm_source')) {
+                    const separator = baseUrl.includes('?') ? '&' : '?';
+                    correctUrl = `${baseUrl}${separator}utm_source=${encodeURIComponent(options.utmSource || 'umBot')}&utm_medium=${encodeURIComponent(options.utmMedium || 'cpc')}&utm_campaign=${encodeURIComponent(options.utmCampaign || 'phone')}${fragment}`;
                 }
             } else if (appContext?.platformParams.utm_text) {
-                correctUrl += getUrlSeparator(correctUrl) + appContext?.platformParams.utm_text;
+                if (!baseUrl.includes('utm_source')) {
+                    const separator = baseUrl.includes('?') ? '&' : '?';
+                    correctUrl = `${baseUrl}${separator}${appContext?.platformParams.utm_text}${fragment}`;
+                }
             }
         } else {
             correctUrl = null;

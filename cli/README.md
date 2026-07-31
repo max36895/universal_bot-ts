@@ -26,14 +26,15 @@ npm start
 
 ### 📋 Команды CLI
 
-| Команда       | Описание                              | Параметры                                 |
-| ------------- | ------------------------------------- | ----------------------------------------- |
-| `create`      | Создание нового проекта               | `<project-name>` или `<config-file.json>` |
-| `generateEnv` | Сгенерировать файл .env               | -                                         |
-| add docker    | Добавить Dockerfile в текущую папку   | -                                         |
-| add deploy    | Добавить .github/workflows/deploy.yml | -                                         |
-| add env       | Сгенерировать .env в текущей папке    | -                                         |
-| -v, version   | Узнать версию CLI                     | -                                         |
+| Команда            | Описание                                  | Параметры                                 |
+| ------------------ | ----------------------------------------- | ----------------------------------------- |
+| `create`           | Создание нового проекта                   | `<project-name>` или `<config-file.json>` |
+| `create from-flow` | Создание проекта из визуального редактора | `<flow.json> [--output ./path]`           |
+| `generateenv`      | Сгенерировать файл .env                   | -                                         |
+| add docker         | Добавить Dockerfile в текущую папку       | -                                         |
+| add deploy         | Добавить .github/workflows/deploy.yml     | -                                         |
+| add env            | Сгенерировать .env в текущей папке        | -                                         |
+| -v, version        | Узнать версию CLI                         | -                                         |
 
 ### Флаги команды `create`
 
@@ -186,6 +187,59 @@ interface ProjectConfig {
 | `dev`        | Режим разработки           |
 | `dev-online` | Режим разработки с webhook |
 | `build`      | Режим сборки               |
+
+### Создание проекта из визуального редактора (from-flow)
+
+Команда `create from-flow` позволяет создать проект umbot из JSON-файла, экспортированного из [Umbot Flow Editor](https://umbot.dev) — визуального редактора для фреймворка umbot.
+
+**Цепочка:** Визуальный редактор → JSON-конфигурация → `npx umbot create from-flow` → TypeScript-проект
+
+> Подробное описание JSON-формата: [src/docs/json-format.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_json-format.html)
+
+#### Использование
+
+```bash
+npx umbot create from-flow flow.json
+npx umbot create from-flow flow.json --output ./my-bot
+```
+
+#### Параметры
+
+| Параметр          | Описание                                               |
+| ----------------- | ------------------------------------------------------ |
+| `flow.json`       | Путь к JSON-файлу, экспортированному из редактора      |
+| `--output ./path` | Путь для выходного проекта (по умолчанию: имя из JSON) |
+
+#### Генерируемая структура
+
+```
+my-bot/
+├── src/
+│   ├── index.ts              # Точка входа с регистрацией команд
+│   └── utils.ts              # Вспомогательные функции setText/setTTS
+├── package.json
+└── tsconfig.json
+```
+
+#### Режимы генерации
+
+- **Простой** (только команды): Вся логика в `index.ts`, контроллер не генерируется
+- **Сложный** (шаги, условия, переменные): Команды в `index.ts`, контроллер с логикой валидации и навигации
+
+#### Пример workflow
+
+1. Откройте визуальный редактор: `cd repos/umbot-flow-editor && npm run dev`
+2. Создайте флоу с командами, шагами и условиями
+3. Экспортируйте JSON через кнопку "Export JSON"
+4. Выполните: `npx umbot create from-flow flow.json --output ./my-bot`
+5. Зайдите в проект и запустите:
+
+```bash
+cd my-bot
+npm install
+npm run build
+npm start
+```
 
 ## Лучшие практики
 

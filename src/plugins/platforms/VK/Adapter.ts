@@ -136,6 +136,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                     controller.userId = query.object.user_id as number;
                     controller.payload = tryParse(query.object.payload);
                     controller.messageId = query.object.conversation_message_id || 0;
+                    controller.platformOptions.eventId = query.object.event_id;
                     return true;
                 }
                 return false;
@@ -150,13 +151,17 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
 
     async getContent(controller: BotController): Promise<string> {
         if (!controller.skipAutoReply) {
-            const keyboard = controller.isButtonsInit()
-                ? controller.buttons.getButtonJson(buttonProcessing)
-                : null;
-            const params: IVkParams = {};
-            if (keyboard) {
-                params.keyboard = keyboard;
+            const vkApi = new VkRequest(this.appContext as AppContext);
+
+            // Для callback-кнопок (message_event) отправляем sendMessageEvent вместо messagesSend
+            if (controller.platformOptions.eventId) {
+                await vkApi.sendMessageEvent(
+                    controller.userId as string,
+                    controller.platformOptions.eventId,
+                );
             }
+
+            const params: IVkParams = {};
             if (controller.isCardInit() && controller.card.images.length) {
                 const attach = await controller.card.getCards(cardProcessing, controller);
                 if ((attach as IVkCard).type === undefined) {
@@ -164,6 +169,12 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 } else {
                     params.template = attach;
                 }
+            }
+            const keyboard = controller.isButtonsInit()
+                ? controller.buttons.getButtonJson(buttonProcessing)
+                : null;
+            if (keyboard && params.template === undefined) {
+                params.keyboard = keyboard;
             }
             if (controller.isSoundInit() && controller.sound.sounds.length) {
                 const attach = await controller.sound.getSounds(
@@ -173,7 +184,6 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 );
                 params.attachments = [...(attach as string[]), ...(params.attachments || [])];
             }
-            const vkApi = new VkRequest(this.appContext as AppContext);
             await vkApi.messagesSend(
                 controller.userId as string,
                 Text.resize(controller.text, 4096),

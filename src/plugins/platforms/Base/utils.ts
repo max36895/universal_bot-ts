@@ -1,7 +1,7 @@
 import { ImageTokens, SoundTokens } from '../../../models';
 import { BotController } from '../../../controller';
 import { ISoundInfo } from '../../../core';
-import { Text } from '../../../utils';
+import { isFile, Text } from '../../../utils';
 import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
@@ -228,6 +228,37 @@ export function defaultSoundProcessing(
         }
     }
     return res;
+}
+
+/**
+ * Базовый метод для получения данный об изображении.
+ * @param soundInfo - Информация необходимая для обработки аудио
+ * @param controller - Контроллер приложения
+ * @param getSoundInDB - Функция обработчик для получения аудио токена
+ */
+export async function getBaseDataSoundProcessing(
+    soundInfo: ISoundInfo,
+    controller: BotController,
+    getSoundInDB: (controller: BotController, path: string) => Promise<string | null>,
+): Promise<string[]> {
+    const { sounds } = soundInfo;
+    const data: string[] = [];
+    if (sounds) {
+        for (let i = 0; i < sounds.length; i++) {
+            const sound = sounds[i];
+            if (sound.sounds !== undefined && sound.key !== undefined) {
+                let sText: string | null = Text.getText(sound.sounds);
+                if (Text.isUrl(sText) || (await isFile(sText))) {
+                    sText = await getSoundInDB(controller, sText);
+                }
+
+                if (sText) {
+                    data.push(sText);
+                }
+            }
+        }
+    }
+    return data;
 }
 
 /**

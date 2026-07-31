@@ -139,6 +139,20 @@ docker run -p 3000:3000 -e YANDEX_TOKEN=... my-bot
 
 ### Яндекс Cloud Functions
 
+При создании проекта через CLI можно автоматически сгенерировать конфигурацию для Yandex Cloud Functions:
+
+```bash
+npx umbot create from-flow flow.json --usecloud
+```
+
+Это добавит в проект:
+
+- Экспорт `handler` в `src/index.ts` для обработки запросов Cloud Functions
+- `serverless.yml` с конфигурацией функции
+- Скрипты `deploy` и `build` в `package.json`
+
+Ручная настройка Cloud Function:
+
 ```ts
 import { Bot } from 'umbot';
 import { fullPlatforms } from 'umbot/plugins';

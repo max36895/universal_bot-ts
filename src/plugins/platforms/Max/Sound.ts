@@ -49,15 +49,21 @@ export async function soundProcessing(
         }
     }
     if (text) {
-        const speechKit = new YandexSpeechKit(
-            controller.appContext.appConfig.tokens[T_MAX_APP].speech_kit_token + '',
-            controller.appContext,
-        );
+        const token = controller.appContext.appConfig.tokens[T_MAX_APP]?.speech_kit_token;
+        if (!token) {
+            controller.appContext.logWarn('Max: speech_kit_token не настроен, TTS недоступен');
+            return data.length ? data : null;
+        }
+        const speechKit = new YandexSpeechKit(token as string, controller.appContext);
         const content = await speechKit.getTts(text);
         let sText = null;
         if (content) {
             sText = await getSoundInDB(controller, content.fileName);
-            await unlink(content.fileName);
+            try {
+                await unlink(content.fileName);
+            } catch {
+                // Игнорируем ошибку удаления временного файла
+            }
         }
         if (sText) {
             data.push({ type: 'audio', payload: { token: sText } });

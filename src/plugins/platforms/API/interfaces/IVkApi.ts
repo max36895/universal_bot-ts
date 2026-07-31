@@ -270,6 +270,22 @@ export interface IVkParams {
      * Шаблон сообщения
      */
     template?: string[] | IVkCard | string;
+
+    /**
+     * Намерение при отправке сообщения от имени сообщества.
+     * Требуется для proactive-рассылок (вне 24-часового окна ответа).
+     * Возможные значения: 'promo' (рекламное сообщение), 'bot_notification' (уведомление от бота)
+     * @see https://dev.vk.com/en/method/messages.send#params
+     */
+    intent?: string;
+
+    /**
+     * ID подписки пользователя на уведомления от сообщества.
+     * Используется совместно с intent для отправки сообщений
+     * пользователям, подписавшимся на рассылку.
+     * @see https://dev.vk.com/en/method/messages.send#params
+     */
+    subscribe_id?: number;
 }
 
 /**

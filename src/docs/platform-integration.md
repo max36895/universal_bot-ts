@@ -14,7 +14,7 @@
 | Полный российский стек (Алиса+Маруся) |   ✅    |  ❌  |    ❌    |                          ❌                          |
 | TypeScript «из коробки»               |   ✅    |  ✅  |    ✅    |                  ⚠️ Зависит от sdk                   |
 
-> **`umbot` — единственное решение с полной поддержкой всего российского стека голосовых ассистентов (Алиса, Маруся, Сбер SmartApp) в одном коде.** Jovo поддерживает чат-боты (Telegram, VK, WhatsApp), но не интегрирован с российскими голосовыми платформами.
+> **`umbot` — единственное решение с полной поддержкой всего российского стека голосовых ассистентов (Алиса, Маруся, Сбер SmartApp) в одном коде.** Jovo поддерживает чат-боты (Telegram, VK, WhatsApp), но не интегрирован с российскими голосовыми платформами. Нативные SDK (telegraf, alice-sdk, vk-io) ориентированы на одну платформу и требуют дублирования логики при мультиплатформенности.
 
 ### Список платформ
 
@@ -203,7 +203,7 @@ class TelegramController extends BotController {
 bot.use(
     new VkAdapter('YOUR_BOT_TOKEN', {
         vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
-        vk_api_version: 'v5.131',
+        vk_api_version: '5.199',
     }),
 ); // Способ 1: токен и опции в конструкторе (приоритет выше)
 // bot.setAppConfig({                             // Способ 2: токен в конфиге (альтернатива)
@@ -211,7 +211,7 @@ bot.use(
 //         vk: {
 //             token: 'YOUR_BOT_TOKEN',
 //             confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
-//             api_version: 'v5.131',
+//             api_version: '5.199',
 //         },
 //     },
 // });
@@ -519,8 +519,26 @@ class MyAdapter extends BasePlatformAdapter {
 
 - **Нет локального хранилища.** `isLocalStorage: true` не работает — нужна БД для `userData`.
 - **TTS через SpeechKit.** Для озвучки нужен `appConfig.tokens.telegram.speech_kit_token`. Без него `controller.tts` игнорируется.
-- **Markdown по умолчанию.** `parse_mode='markdown'`. Экранируйте спецсимволы или переопределяйте через middleware.
+- **HTML по умолчанию.** `parse_mode='HTML'`. Базовое экранирование (`&`, `<`, `>`) применяется автоматически. Для MarkdownV2 используйте константу `T_FORMAT_MARKDOWN` из `umbot/plugins` при создании адаптера.
 - **Проактивная отправка.** `bot.send(userId, text, T_TELEGRAM)` работает (в отличие от голосовых платформ).
+
+```ts
+import { TelegramAdapter, T_FORMAT_MARKDOWN, escapeMarkdownV2 } from 'umbot/plugins';
+
+// Вариант 1: По умолчанию — HTML (экранирование & < > автоматическое)
+const botHtml = new Bot().use(new TelegramAdapter('TOKEN'));
+
+// Вариант 2: Явно MarkdownV2 (фреймворк не экранирует — разработчик отвечает за валидность)
+const botMd = new Bot().use(
+    new TelegramAdapter('TOKEN', {
+        telegram_parse_mode: T_FORMAT_MARKDOWN,
+    }),
+);
+
+// Безопасная вставка пользовательского ввода в MarkdownV2
+const userName = escapeMarkdownV2('Иван. Петров');
+ctx.text = `*Пользователь:* ${userName}`;
+```
 
 ### VK
 

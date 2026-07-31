@@ -191,7 +191,7 @@ export interface IEnvConfigStatus {
  * Загружает переменные окружения из файла .env
  *
  * @param {string} envPath - Путь к файлу .env
- * @returns {IEnvConfig} Объект с переменными окружения
+ * @returns {IEnvConfigStatus} Результат загрузки со статусом и данными
  *
  * @remarks
  * Функция:
@@ -203,14 +203,16 @@ export interface IEnvConfigStatus {
  * @example
  * ```ts
  * // Загрузка конфигурации
- * const config = loadEnvFile('.env');
+ * const result = loadEnvFile('.env');
  *
  * // Использование значений
- * const telegramToken = config.TELEGRAM_TOKEN;
- * const dbHost = config.DB_HOST;
+ * if (result.status) {
+ *   const telegramToken = result.data?.TELEGRAM_TOKEN;
+ *   const dbHost = result.data?.DB_HOST;
+ * } else {
+ *   console.error(result.error);
+ * }
  * ```
- *
- * @throws {Error} Если файл не найден или не может быть прочитан
  */
 export function loadEnvFile(envPath: string): IEnvConfigStatus {
     const fileData = freadSync(path.resolve(envPath));
@@ -222,7 +224,18 @@ export function loadEnvFile(envPath: string): IEnvConfigStatus {
             const trimmedLine = line.trim();
             if (trimmedLine && !trimmedLine.startsWith('#')) {
                 const [key, ...valueParts] = trimmedLine.split('=');
-                const value = valueParts.join('=').trim();
+                let value = valueParts.join('=').trim();
+                // Убираем inline comments (текст после # не внутри кавычек)
+                const commentIndex = value.indexOf('#');
+                if (commentIndex !== -1) {
+                    // Проверяем, что # не внутри кавычек
+                    const beforeComment = value.substring(0, commentIndex);
+                    const singleQuotes = (beforeComment.match(/'/g) || []).length;
+                    const doubleQuotes = (beforeComment.match(/"/g) || []).length;
+                    if (singleQuotes % 2 === 0 && doubleQuotes % 2 === 0) {
+                        value = beforeComment.trim();
+                    }
+                }
                 if (key && value) {
                     envVars[key.trim() as keyof IEnvConfig] = value.replace(/^["']|["']$/g, '');
                 }

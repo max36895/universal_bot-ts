@@ -8,10 +8,12 @@ import {
     IMarusiaButtonCard,
     IMarusiaBigImage,
     IMarusiaItemsList,
+    IMarusiaImageGallery,
 } from './interfaces/IMarusiaPlatform';
 import {
     T_MARUSIA,
     MARUSIA_MAX_IMAGES,
+    MARUSIA_MAX_GALLERY_IMAGES,
     MARUSIA_CARD_BIG_IMAGE,
     MARUSIA_CARD_ITEMS_LIST,
 } from './constants';
@@ -74,13 +76,16 @@ export async function getImageInDB(
  */
 async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise<IMarusiaImage[]> {
     const items: IMarusiaImage[] = [];
-    const images = cardInfo.images.slice(0, MARUSIA_MAX_IMAGES);
+    const maxCount = cardInfo.usedGallery ? MARUSIA_MAX_GALLERY_IMAGES : MARUSIA_MAX_IMAGES;
+    const images = cardInfo.images.slice(0, maxCount);
     for (let i = 0; i < images.length; i++) {
         const image = images[i];
-        let button: IMarusiaButtonCard | null =
-            image.button?.getButtons<IMarusiaButtonCard>(marusiaCardButton) || null;
-        if (!button?.text) {
-            button = null;
+        let button: IMarusiaButtonCard | null = null;
+        if (!cardInfo.usedGallery) {
+            button = image.button?.getButtons<IMarusiaButtonCard>(marusiaCardButton) || null;
+            if (!button?.text) {
+                button = null;
+            }
         }
         if (!image.imageToken) {
             if (image.imageDir) {
@@ -90,7 +95,9 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
         const item: IMarusiaImage = {
             title: Text.resize(image.title, 128),
         };
-        item.description = Text.resize(image.desc, 256);
+        if (!cardInfo.usedGallery) {
+            item.description = Text.resize(image.desc, 256);
+        }
 
         if (image.imageToken) {
             item.image_id = image.imageToken;
@@ -112,7 +119,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
 export async function cardProcessing(
     cardInfo: ICardInfo,
     controller: BotController,
-): Promise<IMarusiaButtonCard | IMarusiaItemsList | IMarusiaBigImage | null> {
+): Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null> {
     const countImage = cardInfo.images.length;
     if (countImage) {
         if (cardInfo.showOne) {
@@ -130,7 +137,7 @@ export async function cardProcessing(
                 let button: IMarusiaButtonCard | null =
                     cardInfo.images[0].button?.getButtons(marusiaCardButton) || null;
                 if (!button?.text) {
-                    button = cardInfo.buttons.getButtons(marusiaCardButton) || null;
+                    button = cardInfo.buttons.getButtons(marusiaCardButton);
                 }
                 const object: IMarusiaBigImage = {
                     type: MARUSIA_CARD_BIG_IMAGE,
@@ -143,6 +150,12 @@ export async function cardProcessing(
                 }
                 return object;
             }
+        } else if (cardInfo.usedGallery) {
+            const object: IMarusiaImageGallery = {
+                type: 'ImageGallery',
+            };
+            object.items = await _getItem(cardInfo, controller);
+            return object;
         } else {
             const object: IMarusiaItemsList = {
                 type: MARUSIA_CARD_ITEMS_LIST,

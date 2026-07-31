@@ -64,10 +64,12 @@ export function initButton(button: TButton, buttonInst: Buttons): void {
     if (typeof button === 'string') {
         buttonInst.addBtn(button);
     } else {
-        const title: string | null = button.title || button.text || null;
-        const url: string | null = button.url || null;
-        const payload = button.payload || null;
-        buttonInst.addBtn(title, url, payload as Record<string, unknown>);
+        buttonInst.addBtn(
+            button.title || button.text || null,
+            button.url || null,
+            (button.payload || null) as Record<string, unknown>,
+            button.options || {},
+        );
     }
 }
 

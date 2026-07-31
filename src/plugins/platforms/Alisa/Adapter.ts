@@ -15,7 +15,7 @@ import {
     IAlisaWebhookRequest,
     IAlisaWebhookResponse,
 } from './interfaces/IAlisaPlatform';
-import { T_ALISA, VERSION } from './constants';
+import { T_ALISA, VERSION, ALISA_STATE_MAX_BYTES } from './constants';
 import { initUserCommand } from '../Base/utils';
 
 interface IState {
@@ -253,7 +253,17 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
             result.response = await this._getResponse(controller);
         }
         if (controller.platformOptions.stateName && stateData) {
-            result[controller.platformOptions.stateName as keyof IState] = stateData;
+            const stateJson = JSON.stringify(stateData);
+            if (Buffer.byteLength(stateJson, 'utf8') > ALISA_STATE_MAX_BYTES) {
+                this.appContext?.logError(
+                    `AlisaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
+                        `(${Buffer.byteLength(stateJson, 'utf8')} байт) превышает лимит API ` +
+                        `(${ALISA_STATE_MAX_BYTES} байт). Состояние будет очищено.`,
+                );
+                result[controller.platformOptions.stateName as keyof IState] = {};
+            } else {
+                result[controller.platformOptions.stateName as keyof IState] = stateData;
+            }
         }
         this._timeLimitLog(controller);
         return result;

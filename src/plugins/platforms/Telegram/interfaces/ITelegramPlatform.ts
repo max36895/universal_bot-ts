@@ -850,6 +850,11 @@ export interface ITelegramReplyButton {
     text?: string;
     request_contact?: boolean;
     request_location?: boolean;
+    /**
+     * Стиль кнопки (Telegram Bot API 9.4+).
+     * Возможные значения: 'primary', 'secondary', 'destructive'
+     */
+    style?: string;
 }
 
 /**
@@ -883,6 +888,11 @@ export interface ITelegramInlineKeyboard {
      * Дополнительные параметры, которые передадутся после нажатия на кнопку
      */
     callback_data?: TButtonPayload | string;
+    /**
+     * Стиль кнопки (Telegram Bot API 9.4+).
+     * Возможные значения: 'primary', 'secondary', 'destructive'
+     */
+    style?: string;
 }
 
 /**

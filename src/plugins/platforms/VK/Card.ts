@@ -4,7 +4,7 @@ import { buttonProcessing } from './Button';
 import { VkRequest } from '../API';
 import { getImageToken } from '../Base/utils';
 import { IVkButton, IVkButtonObject, IVkCard, IVkCardElement } from './interfaces/IVkPlatform';
-import { T_VK } from './constants';
+import { T_VK, VK_MAX_CAROUSEL_ELEMENTS } from './constants';
 
 /**
  * Получение токена, необходимого для отображения картинок в карточке ВК
@@ -42,8 +42,9 @@ async function getElements(
     cardInfo: ICardInfo,
     controller: BotController,
 ): Promise<IVkCardElement[]> {
+    const maxImages = Math.min(cardInfo.images.length, VK_MAX_CAROUSEL_ELEMENTS);
     const elements = [];
-    for (let i = 0; i < cardInfo.images.length; i++) {
+    for (let i = 0; i < maxImages; i++) {
         const image = cardInfo.images[i];
         if (!image.imageToken && image.imageDir) {
             image.imageToken = await getImageInDB(controller, image.imageDir);

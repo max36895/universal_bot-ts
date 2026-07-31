@@ -293,6 +293,9 @@ export class Card {
         controller: BotController,
     ): TResult {
         if (this.template) {
+            this.#appContext.logWarn(
+                'Card.getCards(): Используется Card.template — обход адаптеров платформ. Ответ отправляется без преобразования.',
+            );
             return this.template as TResult;
         }
         return cardProcessing(

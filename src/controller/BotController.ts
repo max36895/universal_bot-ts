@@ -17,7 +17,7 @@ import { isPromise } from '../utils/isPromise';
 import { IGroupData } from '../core/utils/CommandReg';
 
 /*
- * magick
+ * Оптимизация производительности:
  * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать.
  * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты
  */
@@ -225,6 +225,15 @@ export interface IPlatformOptions {
      * ID callback-запроса
      */
     callbackQueryId?: string;
+
+    /**
+     * ID callback-события (для callback-кнопок)
+     */
+    eventId?: string;
+    /**
+     * Версия api с которой работает платформа. Для случаев, когда сама платформа говорит какая версия api должна быть
+     */
+    apiVersion?: string | number;
 }
 
 /**
@@ -433,7 +442,7 @@ export abstract class BotController<
     public payload: Record<string, unknown> | string | null | undefined = null;
 
     /**
-     * Пользовательские данные, который были сохранены.
+     * Пользовательские данные, которые были сохранены.
      *
      * @example
      * ```ts
@@ -459,7 +468,7 @@ export abstract class BotController<
     public isAuth: boolean = false;
 
     /**
-     * Пользовательские событий.
+     * Пользовательские события.
      * Содержит информацию об авторизации или оценке.
      *
      * @see IUserEvent
@@ -508,7 +517,7 @@ export abstract class BotController<
     public state: TPlatformState | null = null;
 
     /**
-     * Определяет, с колонки пользователь запустил приложение или с устройства с экраном.
+     * Определяет, запущено ли приложение с колонки или с устройства с экраном.
      *
      * @example
      * ```ts
@@ -938,7 +947,7 @@ export abstract class BotController<
 
     /**
      * Запуск кастомной обработки команд.
-     * @param startTimer
+     * @param startTimer — Время начала обработки (для замера метрик)
      * @private
      */
     #sendCustomCommandResolver(startTimer: number): void | null | Promise<void> {
@@ -1183,8 +1192,8 @@ export abstract class BotController<
 
     /**
      * Выполнение команды.
-     * @param commandName
-     * @param command
+     * @param commandName — Имя команды для выполнения
+     * @param command — Параметры зарегистрированной команды
      */
     #commandExecute(commandName: string, command?: ICommandParam): void | Promise<void> {
         const errorCb = (e: Error | Record<string, unknown>): void => {
@@ -1271,7 +1280,7 @@ export abstract class BotController<
                         });
                 } else if (res === false) {
                     // Если передали false, значит хотят чтобы шаг не выполнялся, и дальше пошла логика с обработкой команд.
-                    // Как правило, нужно в случаях, когда был записан какой-то шал, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
+                    // Как правило, нужно в случаях, когда был записан какой-то шаг, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
                     return null;
                 }
                 this._actionMetric(step.stepName, false, true);
