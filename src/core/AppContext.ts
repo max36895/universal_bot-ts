@@ -65,6 +65,12 @@ import {
 import { CommandReg, ICommandParam, IGroupData, IStepParam } from './utils/CommandReg';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
 import { saveData, safeStringify } from '../utils';
+import {
+    WELCOME_INTENT_NAME,
+    WELCOME_INTENT_SLOTS,
+    HELP_INTENT_NAME,
+    HELP_INTENT_SLOTS,
+} from './constants';
 import * as process from 'node:process';
 import { join } from 'node:path';
 
@@ -72,17 +78,6 @@ import { join } from 'node:path';
  * Тип платформы: Автоопределение
  */
 export const T_AUTO = 'auto';
-
-/**
- * Идентификатор интента приветствия
- */
-export const WELCOME_INTENT_NAME = 'welcome';
-export const WELCOME_INTENT_SLOTS = ['привет', 'здравст'];
-/**
- * Идентификатор интента помощи
- */
-export const HELP_INTENT_NAME = 'help';
-export const HELP_INTENT_SLOTS = ['помощь', 'что ты умеешь'];
 
 const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
 const regVk = /vk1a[a-z0-9]{79}/g;
@@ -316,6 +311,11 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     envVars.VK_CONFIRMATION_TOKEN || this.appConfig.tokens.vk.confirmation_token;
             }
 
+            if (envVars.VK_SECRET_KEY) {
+                this.appConfig.tokens.vk ??= {};
+                this.appConfig.tokens.vk.secret_key = envVars.VK_SECRET_KEY;
+            }
+
             if (envVars.MAX_TOKEN) {
                 this.appConfig.tokens.max_app ??= {};
                 this.appConfig.tokens.max_app.token = envVars.MAX_TOKEN;
@@ -326,9 +326,9 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 this.appConfig.tokens.marusia.token = envVars.MARUSIA_TOKEN;
             }
 
-            if (envVars.YANDEX_TOKEN) {
+            if (envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN) {
                 this.appConfig.tokens.alisa ??= {};
-                this.appConfig.tokens.alisa.token = envVars.YANDEX_TOKEN;
+                this.appConfig.tokens.alisa.token = envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN;
             }
         }
     }
@@ -354,9 +354,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     MAX_TOKEN,
                     // Получаем токен для подтверждения vk
                     VK_CONFIRMATION_TOKEN,
+                    // Получаем секретный ключ VK Callback API
+                    VK_SECRET_KEY,
                     // Получаем токен для маруси
                     MARUSIA_TOKEN,
-                    // Получаем токен для работы с api яндекса
+                    // Получаем токен для работы с api яндекса (каноническое имя)
+                    ALISA_TOKEN,
+                    // Устаревшее имя токена Алисы — сохранено для обратной совместимости
                     YANDEX_TOKEN,
                     // Получаем хост для подключения к базе
                     DB_HOST,
@@ -373,7 +377,9 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     VK_TOKEN,
                     MAX_TOKEN,
                     VK_CONFIRMATION_TOKEN,
+                    VK_SECRET_KEY,
                     MARUSIA_TOKEN,
+                    ALISA_TOKEN,
                     YANDEX_TOKEN,
                     DB_HOST,
                     DB_USER,
@@ -517,15 +523,15 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * ```
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
+        const [maskedText, maskedMeta] = this.#maskLogData(str, meta);
         if (this.#logger?.error) {
-            this.#logger.error(str, meta);
+            this.#logger.error(maskedText, maskedMeta);
         } else {
-            const masked = this.appMode.includes('strict') ? this.#maskSecrets(str) : str;
-            const data = meta
-                ? { ...meta, trace: new Error().stack }
+            const data = maskedMeta
+                ? { ...maskedMeta, trace: new Error().stack }
                 : { trace: new Error().stack };
             const serialized = safeStringify(data, null, '\t');
-            this.#errWarnLog(`${masked}\n${serialized}`, true);
+            this.#errWarnLog(`${maskedText}\n${serialized}`, true);
         }
     }
 
@@ -598,15 +604,15 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * ```
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
+        const [maskedText, maskedMeta] = this.#maskLogData(str, meta);
         if (this.#logger?.warn) {
-            this.#logger.warn(str, meta);
+            this.#logger.warn(maskedText, maskedMeta);
         } else {
-            const masked = this.appMode.includes('strict') ? this.#maskSecrets(str) : str;
             if (this.appMode === 'dev') {
-                console.warn(masked, meta);
+                console.warn(maskedText, maskedMeta);
             }
-            const serialized = safeStringify(meta, null, '\t');
-            this.#errWarnLog(`${masked}\n${serialized}`, false);
+            const serialized = safeStringify(maskedMeta, null, '\t');
+            this.#errWarnLog(`${maskedText}\n${serialized}`, false);
         }
     }
 
@@ -645,6 +651,74 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         }
 
         return result;
+    }
+
+    /**
+     * Маскирует текст и метаданные перед передачей в любой логгер.
+     *
+     * Копия метаданных создаётся рекурсивно, чтобы пользовательский объект не
+     * изменялся. Набор текущего пути нужен именно для циклов: повторная ссылка
+     * в другой ветке должна быть обработана повторно, а не ошибочно считаться циклом.
+     */
+    #maskLogData(
+        text: string,
+        meta?: Record<string, unknown>,
+    ): [string, Record<string, unknown> | undefined] {
+        if (this.#logger?.maskSecrets === false) {
+            return [text, meta];
+        }
+
+        let maskedMeta: Record<string, unknown> | undefined;
+        if (meta) {
+            try {
+                maskedMeta = this.#maskUnknown(meta, new Set()) as Record<string, unknown>;
+            } catch {
+                // Кидающий геттер или revoked Proxy в meta не должны ломать логирование:
+                // logError вызывается в catch-блоках, и исключение там потеряет исходную ошибку.
+                maskedMeta = { meta: '[meta unserializable]' };
+            }
+        }
+        return [this.#maskSecrets(text), maskedMeta];
+    }
+
+    /**
+     * Рекурсивно создаёт безопасную для логирования копию неизвестного значения.
+     */
+    #maskUnknown(value: unknown, parents: Set<object>): unknown {
+        if (typeof value === 'string') {
+            return this.#maskSecrets(value);
+        }
+        if (value === null || typeof value !== 'object') {
+            return value;
+        }
+        if (value instanceof Date) {
+            return value.toISOString();
+        }
+        if (parents.has(value)) {
+            return '[Circular]';
+        }
+
+        parents.add(value);
+        try {
+            if (value instanceof Error) {
+                return {
+                    name: value.name,
+                    message: this.#maskSecrets(value.message),
+                    ...(value.stack ? { stack: this.#maskSecrets(value.stack) } : {}),
+                };
+            }
+            if (Array.isArray(value)) {
+                return value.map((item) => this.#maskUnknown(item, parents));
+            }
+
+            const result: Record<string, unknown> = {};
+            for (const [key, item] of Object.entries(value)) {
+                result[key] = this.#maskUnknown(item, parents);
+            }
+            return result;
+        } finally {
+            parents.delete(value);
+        }
     }
 
     /**

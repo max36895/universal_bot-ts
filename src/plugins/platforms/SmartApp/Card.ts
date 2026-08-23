@@ -1,4 +1,4 @@
-import { IButtonType, ICardInfo, IImageType } from '../../../index';
+import { IButtonType, ICardInfo, IImageType, Text } from '../../../index';
 import { buttonProcessing } from './Button';
 import {
     ISberSmartAppCardItem,
@@ -7,6 +7,8 @@ import {
     ISberSmartAppCardAction,
     ISberSmartAppSuggestionButton,
     ISberSmartImageParam,
+    TSberSmartAppTextColor,
+    TSberSmartAppTypeface,
 } from './interfaces/ISmartAppPlatform';
 
 function buttonCardProcessing(
@@ -15,9 +17,14 @@ function buttonCardProcessing(
     return buttonProcessing(buttons, true);
 }
 
+/** Возвращает только явно заданную разработчиком подпись кнопки карточки. */
+function getButtonTitle(image: IImageType<ISberSmartImageParam>): string {
+    return Text.resize(image.button?.buttons[0]?.title || '', 64);
+}
+
 function getOneElement(image: IImageType<ISberSmartImageParam>): ISberSmartAppCardItem[] {
     const res: ISberSmartAppCardItem[] = [];
-    if (image.imageDir) {
+    if (image.imageDir && Text.isUrl(image.imageDir)) {
         res.push({
             type: 'image_cell_view',
             content: {
@@ -57,31 +64,86 @@ function getOneElement(image: IImageType<ISberSmartImageParam>): ISberSmartAppCa
     }
     const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction | null;
     if (button && !Array.isArray(button)) {
-        res.push({
-            type: 'text_cell_view',
-            paddings: {
-                top: '12x',
-                left: '8x',
-                right: '8x',
-            },
-            content: {
-                actions: [button],
-                text: button.text,
-                typeface: 'button1',
-                text_color: 'brand',
-            },
-        });
+        const buttonTitle = button.text || getButtonTitle(image) || image.title || image.desc;
+        if (buttonTitle) {
+            res.push({
+                type: 'text_cell_view',
+                paddings: {
+                    top: '12x',
+                    left: '8x',
+                    right: '8x',
+                },
+                content: {
+                    actions: [button],
+                    text: buttonTitle,
+                    typeface: 'button1',
+                    text_color: 'brand',
+                },
+            });
+        }
     }
     return res;
+}
+
+/** Формирует карточку только с изображением, не создавая отсутствующую подпись. */
+function getImageOnlyItem(
+    image: IImageType<ISberSmartImageParam>,
+    button: ISberSmartAppCardAction | null,
+): ISberSmartAppCardItem | null {
+    if (!image.imageDir || !Text.isUrl(image.imageDir)) {
+        return null;
+    }
+    return {
+        type: 'image_cell_view',
+        content: {
+            url: image.imageDir,
+            ...(button && !Array.isArray(button) ? { actions: [button] } : {}),
+        },
+    };
 }
 
 function getCardItem(
     image: IImageType<ISberSmartImageParam>,
     showOne: boolean = false,
-): ISberSmartAppCardItem | ISberSmartAppCardItem[] {
+): ISberSmartAppCardItem | ISberSmartAppCardItem[] | null {
     if (showOne) {
         return getOneElement(image);
     }
+    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction | null;
+    const title = image.title || image.desc || getButtonTitle(image);
+    if (!title) {
+        return getImageOnlyItem(image, button);
+    }
+    const description = image.desc || image.title || getButtonTitle(image);
+    const displayText = title === description ? title : `${title}\n${description}`;
+    const left: {
+        type: 'simple_left_view';
+        icon_vertical_gravity: 'top';
+        icon?: {
+            address: { type: 'url'; url: string };
+            size: { width: 'xlarge'; height: 'xlarge' };
+            margins: { left: '0x'; right: '6x' };
+        };
+        texts: {
+            title: {
+                text: string;
+                typeface: TSberSmartAppTypeface;
+                text_color: TSberSmartAppTextColor;
+                max_lines: number;
+            };
+        };
+    } = {
+        type: 'simple_left_view',
+        icon_vertical_gravity: 'top',
+        texts: {
+            title: {
+                text: displayText,
+                typeface: image.params.titleTypeface || 'headline2',
+                text_color: image.params.titleText_color || 'default',
+                max_lines: image.params.titleMax_lines || image.params.descMax_lines || 0,
+            },
+        },
+    };
     const cardItem: ISberSmartAppCardItem = {
         type: 'left_right_cell_view',
         paddings: {
@@ -90,27 +152,10 @@ function getCardItem(
             right: '4x',
             bottom: '4x',
         },
-        left: {
-            type: 'fast_answer_left_view',
-            icon_vertical_gravity: 'top',
-            icon_and_value: {
-                value: {
-                    text: image.desc,
-                    typeface: image.params.descTypeface || 'body3',
-                    text_color: image.params.descText_color || 'default',
-                    max_lines: image.params.descMax_lines || 0,
-                },
-            },
-            label: {
-                text: image.title,
-                typeface: image.params.titleTypeface || 'headline2',
-                text_color: image.params.titleText_color || 'default',
-                max_lines: image.params.titleMax_lines || 0,
-            },
-        },
+        left,
     };
-    if (image.imageDir) {
-        (cardItem as Required<ISberSmartAppCardItem>).left.icon_and_value.icon = {
+    if (image.imageDir && Text.isUrl(image.imageDir)) {
+        left.icon = {
             address: {
                 type: 'url',
                 url: image.imageDir,
@@ -119,20 +164,14 @@ function getCardItem(
                 width: 'xlarge',
                 height: 'xlarge',
             },
-            margin: {
+            margins: {
                 left: '0x',
                 right: '6x',
             },
         };
     }
-    const button = image.button?.getButtons(buttonCardProcessing) as ISberSmartAppCardAction | null;
     if (button && !Array.isArray(button)) {
-        cardItem.bottom_text ??= {
-            text: image.title,
-            typeface: image.params.descTypeface || 'body3',
-            text_color: image.params.descText_color || 'default',
-        };
-        cardItem.bottom_text.actions = button;
+        cardItem.actions = [button];
     }
     return cardItem;
 }
@@ -152,7 +191,7 @@ export function cardProcessing(cardInfo: ICardInfo): ISberSmartAppItem | null {
                 cardInfo.images[0] as IImageType<ISberSmartImageParam>,
                 true,
             ) as ISberSmartAppCardItem[];
-            return { card };
+            return card.cells.length ? { card } : null;
         } else {
             const card: ISberSmartAppCard = {
                 type: 'list_card',
@@ -174,11 +213,12 @@ export function cardProcessing(cardInfo: ICardInfo): ISberSmartAppItem | null {
                 });
             }
             cardInfo.images.forEach((image) => {
-                (card as Required<ISberSmartAppCard>).cells.push(
-                    getCardItem(image as IImageType<ISberSmartImageParam>) as ISberSmartAppCardItem,
-                );
+                const item = getCardItem(image as IImageType<ISberSmartImageParam>);
+                if (item && !Array.isArray(item)) {
+                    (card as Required<ISberSmartAppCard>).cells.push(item);
+                }
             });
-            return { card };
+            return (card as Required<ISberSmartAppCard>).cells.length ? { card } : null;
         }
     }
     return null;

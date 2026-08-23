@@ -1,0 +1,14 @@
+# Секреты и локальные данные не должны попадать в образ
+.env
+.ENV
+logs/
+json/
+coverage/
+docs/
+node_modules/
+dist/
+.git/
+.github/
+.idea/
+.vscode/
+*.log

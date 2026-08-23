@@ -38,19 +38,19 @@ class CleanRouter {
         this.ctxStore = new Map();
     }
 
-    addCommand(name, triggers, handler) {
-        this.commands.push({ name, triggers, handler });
+    addCommand(name, slots, handler) {
+        this.commands.push({ name, slots, handler });
     }
 
-    isMatch(trigger, text) {
+    isMatch(slot, text) {
         const t = (text || '').trim().toLowerCase();
-        if (typeof trigger === 'string') {
-            const tr = trigger.trim().toLowerCase();
+        if (typeof slot === 'string') {
+            const tr = slot.trim().toLowerCase();
             return t.includes(tr) || tr.includes(t);
         }
-        if (trigger instanceof RegExp) {
-            trigger.lastIndex = 0;
-            return trigger.test(t);
+        if (slot instanceof RegExp) {
+            slot.lastIndex = 0;
+            return slot.test(t);
         }
         return false;
     }
@@ -61,8 +61,8 @@ class CleanRouter {
 
         const text = req.request?.original_utterance || '';
         for (const cmd of this.commands) {
-            for (const tr of cmd.triggers) {
-                if (this.isMatch(tr, text)) {
+            for (const slot of cmd.slots) {
+                if (this.isMatch(slot, text)) {
                     const controller = {
                         text: '',
                     };
@@ -82,7 +82,10 @@ class CleanRouter {
         this.ctxStore.delete(id);
         return JSON.stringify({
             version: req.version,
-            response: { text: 'Команда не найдена. Попробуйте ещё раз.', end_session: false },
+            response: {
+                text: 'Команда не найдена. Попробуйте ещё раз.',
+                end_session: false,
+            },
         });
     }
 }
@@ -99,6 +102,7 @@ function initUmbot() {
         warn: () => {},
         log: () => {},
     });
+    // bot.setCommandGroupMode('no-group');
     bot.use(new AlisaAdapter());
     bot.setAppConfig({ isLocalStorage: true });
     /* bot.setCustomCommandResolver((_, commands) => {
@@ -176,7 +180,7 @@ const SCENARIOS = [
                 const handler = (cmd, ctrl) => {
                     ctrl.text = `handled_${i}`;
                 };
-                router.addCommand(`cmd_${i}`, [new RegExp(`^/cmd_${i}_\\d+$`)], handler);
+                router.addCommand(`cmd_${i}`, [new RegExp(`^${i * 100}_cmd_${i}_\\d+$`)], handler);
             }
         },
         getRequests: () =>
@@ -196,7 +200,7 @@ const SCENARIOS = [
         },
         getRequests: () =>
             Array.from({ length: REQUEST_COUNT + 1 }, (_, i) =>
-                createAliceReq(`${i * 100}_cmd_${i}_123`),
+                createAliceReq(`${i * 100}_cmd_${i}_${i}`),
             ),
     },
     {
@@ -245,7 +249,25 @@ const SCENARIOS = [
             }
         },
         getRequests: () =>
-            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`${i} привет ${i}`)),
+            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`привет`)),
+    },
+    {
+        name: 'Точно совпадение',
+        setup: (router) => {
+            const cmds = [
+                { t: 'стоп', r: 'stop' },
+                { t: '2 привет 2', r: 'hello' },
+                { t: 'отбой', r: 'bye' },
+            ];
+            for (const c of cmds) {
+                const handler = (cmd, ctrl) => {
+                    ctrl.text = c.r;
+                };
+                router.addCommand(c.r, [c.t], handler);
+            }
+        },
+        getRequests: () =>
+            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`2 привет 2`)),
     },
     {
         name: 'Найдена на 30 позиции',
@@ -264,7 +286,7 @@ const SCENARIOS = [
             }
         },
         getRequests: () =>
-            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`${i} привет ${i}`)),
+            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`привет`)),
     },
     {
         name: 'ассихронный handler',
@@ -282,7 +304,7 @@ const SCENARIOS = [
             }
         },
         getRequests: () =>
-            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`${i} привет ${i}`)),
+            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`30 привет 30`)),
     },
     {
         name: 'Запрос длиннее триггера',
@@ -296,7 +318,7 @@ const SCENARIOS = [
         },
         getRequests: () =>
             Array.from({ length: REQUEST_COUNT }, (_, i) =>
-                createAliceReq(`${i} привет, как дела?`),
+                createAliceReq(`_${i}_ привет, как дела?`),
             ),
     },
     {
@@ -310,7 +332,7 @@ const SCENARIOS = [
             setEmptyCommand(router);
         },
         getRequests: () =>
-            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`включи свет ${i}`)),
+            Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`включи свет ${i}_`)),
     },
 ];
 
@@ -439,7 +461,7 @@ function pad(s, len) {
 
 function printFirstTable(results) {
     console.log('\n========== ТАБЛИЦА 1: АБСОЛЮТНЫЕ МЕТРИКИ (МЕДИАНА) ==========');
-    const header = `${pad('Сценарий', 35)} | ${pad('Тип', 6)} | ${pad('Cold Время(ms)', 14)} | ${pad('Cold RPS', 9)} | ${pad('Cold Память(KB/запр)', 18)} | ${pad('Warm Время(ms)', 14)} | ${pad('Warm RPS', 9)} | ${pad('Warm Память(KB/запр)', 18)}`;
+    const header = `${pad('Сценарий', 30)} | ${pad('Тип', 5)} | ${pad('C Время(ms)', 8)} | ${pad('C RPS', 6)} | ${pad('C Память(KB/запр)', 10)} | ${pad('W Время(ms)', 8)} | ${pad('W RPS', 6)} | ${pad('W Память(KB/запр)', 10)}`;
     console.log(header);
     console.log('─'.repeat(header.length));
 
@@ -449,21 +471,21 @@ function printFirstTable(results) {
         const printLine = (type, metrics) => {
             const { cold, warm } = metrics;
             console.log(
-                pad(scenarioName, 35) +
+                pad(scenarioName, 30) +
                     ' | ' +
-                    pad(type, 6) +
+                    pad(type, 5) +
                     ' | ' +
-                    pad(cold.time.toFixed(5), 14) +
+                    pad(cold.time.toFixed(5), 8) +
                     ' | ' +
-                    pad(cold.rps.toString(), 9) +
+                    pad(cold.rps.toString(), 6) +
                     ' | ' +
-                    pad(cold.memKB.toFixed(3), 18) +
+                    pad(cold.memKB.toFixed(3), 10) +
                     ' | ' +
-                    pad(warm.time.toFixed(5), 14) +
+                    pad(warm.time.toFixed(5), 8) +
                     ' | ' +
-                    pad(warm.rps.toString(), 9) +
+                    pad(warm.rps.toString(), 6) +
                     ' | ' +
-                    pad(warm.memKB.toFixed(3), 18),
+                    pad(warm.memKB.toFixed(3), 10),
             );
         };
         printLine('clean', clean);
@@ -474,7 +496,7 @@ function printFirstTable(results) {
 
 function printDeltaTable(results) {
     console.log('\n========== ТАБЛИЦА 2: РАЗНИЦА (UMBOT ОТНОСИТЕЛЬНО CLEAN) ==========');
-    const header = `${pad('Сценарий', 35)} | ${pad('Режим', 6)} | ${pad('Δ Время(%)', 12)} | ${pad('Δ RPS(%)', 10)} | ${pad('Δ Память(KB/запр)', 16)} | Вердикт`;
+    const header = `${pad('Сценарий', 30)} | ${pad('Режим', 5)} | ${pad('Δ Время(%)', 10)} | ${pad('Δ RPS(%)', 10)} | ${pad('Δ Память(KB/запр)', 10)} | Вердикт`;
     console.log(header);
     console.log('─'.repeat(header.length));
 
@@ -501,15 +523,15 @@ function printDeltaTable(results) {
         const coldVerdict = getVerdict(coldTimeDelta, coldMemDelta);
 
         console.log(
-            pad(scenarioName, 35) +
+            pad(scenarioName, 30) +
                 ' | ' +
-                pad('Cold', 6) +
+                pad('Cold', 5) +
                 ' | ' +
-                pad(formatDelta(coldTimeDelta, '%'), 12) +
+                pad(formatDelta(coldTimeDelta, '%'), 10) +
                 ' | ' +
                 pad(formatDelta(coldRpsDelta, '%'), 10) +
                 ' | ' +
-                pad(formatDelta(coldMemDelta, ' KB'), 16) +
+                pad(formatDelta(coldMemDelta, ' KB'), 10) +
                 ' | ' +
                 coldVerdict,
         );
@@ -521,15 +543,15 @@ function printDeltaTable(results) {
         const warmVerdict = getVerdict(warmTimeDelta, warmMemDelta);
 
         console.log(
-            pad('', 35) +
+            pad('', 30) +
                 ' | ' +
-                pad('Warm', 6) +
+                pad('Warm', 5) +
                 ' | ' +
-                pad(formatDelta(warmTimeDelta, '%'), 12) +
+                pad(formatDelta(warmTimeDelta, '%'), 10) +
                 ' | ' +
                 pad(formatDelta(warmRpsDelta, '%'), 10) +
                 ' | ' +
-                pad(formatDelta(warmMemDelta, ' KB'), 16) +
+                pad(formatDelta(warmMemDelta, ' KB'), 10) +
                 ' | ' +
                 warmVerdict,
         );
@@ -576,28 +598,28 @@ function printDeltaTable(results) {
     const warmMemDeltaTotal = avgUmbotWarmMem - avgCleanWarmMem;
 
     console.log(
-        pad('ИТОГО (среднее/сумма)', 35) +
+        pad('ИТОГО (среднее/сумма)', 30) +
             ' | ' +
-            pad('Cold', 6) +
+            pad('Cold', 5) +
             ' | ' +
-            pad(formatDelta(coldTimeDeltaTotal, '%'), 12) +
+            pad(formatDelta(coldTimeDeltaTotal, '%'), 10) +
             ' | ' +
             pad(formatDelta(coldRpsDeltaTotal, '%'), 10) +
             ' | ' +
-            pad(formatDelta(coldMemDeltaTotal, ' KB'), 16) +
+            pad(formatDelta(coldMemDeltaTotal, ' KB'), 10) +
             ' | ' +
             getVerdict(coldTimeDeltaTotal, coldMemDeltaTotal),
     );
     console.log(
-        pad('', 35) +
+        pad('', 30) +
             ' | ' +
-            pad('Warm', 6) +
+            pad('Warm', 5) +
             ' | ' +
-            pad(formatDelta(warmTimeDeltaTotal, '%'), 12) +
+            pad(formatDelta(warmTimeDeltaTotal, '%'), 10) +
             ' | ' +
             pad(formatDelta(warmRpsDeltaTotal, '%'), 10) +
             ' | ' +
-            pad(formatDelta(warmMemDeltaTotal, ' KB'), 16) +
+            pad(formatDelta(warmMemDeltaTotal, ' KB'), 10) +
             ' | ' +
             getVerdict(warmTimeDeltaTotal, warmMemDeltaTotal),
     );

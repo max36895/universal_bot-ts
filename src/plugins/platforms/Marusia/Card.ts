@@ -80,6 +80,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     const images = cardInfo.images.slice(0, maxCount);
     for (let i = 0; i < images.length; i++) {
         const image = images[i];
+        const title = Text.resize(image.title || cardInfo.title || '', 128);
         let button: IMarusiaButtonCard | null = null;
         if (!cardInfo.usedGallery) {
             button = image.button?.getButtons<IMarusiaButtonCard>(marusiaCardButton) || null;
@@ -93,7 +94,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
             }
         }
         const item: IMarusiaImage = {
-            title: Text.resize(image.title, 128),
+            title,
         };
         if (!cardInfo.usedGallery) {
             item.description = Text.resize(image.desc, 256);
@@ -110,69 +111,75 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     return items;
 }
 
+/** Собирает одиночную карточку Маруси и загружает изображение при необходимости. */
+async function getBigImage(
+    cardInfo: ICardInfo,
+    controller: BotController,
+): Promise<IMarusiaBigImage | null> {
+    const image = cardInfo.images[0];
+    if (!image.imageToken && image.imageDir) {
+        image.imageToken = await getImageInDB(controller, image.imageDir);
+    }
+    if (!image.imageToken) {
+        return null;
+    }
+    let button: IMarusiaButtonCard | null = image.button?.getButtons(marusiaCardButton) || null;
+    if (!button?.text) {
+        button = cardInfo.buttons.getButtons(marusiaCardButton);
+    }
+    const object: IMarusiaBigImage = {
+        type: MARUSIA_CARD_BIG_IMAGE,
+        image_id: image.imageToken,
+        title: Text.resize(image.title || cardInfo.title, 128),
+        description: Text.resize(image.desc || cardInfo.description, 256),
+    };
+    if (button?.text) {
+        object.button = button;
+    }
+    return object;
+}
+
 /**
  * Получает карточку для отображения в Марусе.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IMarusiaButtonCard | IMarusiaItemsList | IMarusiaBigImage | null>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
+ * @returns {Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null>} Одна карточка или null, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,
     controller: BotController,
 ): Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null> {
     const countImage = cardInfo.images.length;
-    if (countImage) {
-        if (cardInfo.showOne) {
-            if (!(cardInfo.title || cardInfo.images[0].title)) {
-                return null;
-            }
-            if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
-                // eslint-disable-next-line require-atomic-updates
-                cardInfo.images[0].imageToken = await getImageInDB(
-                    controller,
-                    cardInfo.images[0].imageDir,
-                );
-            }
-            if (cardInfo.images[0].imageToken) {
-                let button: IMarusiaButtonCard | null =
-                    cardInfo.images[0].button?.getButtons(marusiaCardButton) || null;
-                if (!button?.text) {
-                    button = cardInfo.buttons.getButtons(marusiaCardButton);
-                }
-                const object: IMarusiaBigImage = {
-                    type: MARUSIA_CARD_BIG_IMAGE,
-                    image_id: cardInfo.images[0].imageToken,
-                    title: Text.resize(cardInfo.images[0].title || cardInfo.title, 128),
-                    description: Text.resize(cardInfo.images[0].desc || cardInfo.description, 256),
-                };
-                if (button?.text) {
-                    object.button = button;
-                }
-                return object;
-            }
-        } else if (cardInfo.usedGallery) {
-            const object: IMarusiaImageGallery = {
-                type: 'ImageGallery',
-            };
-            object.items = await _getItem(cardInfo, controller);
-            return object;
-        } else {
-            const object: IMarusiaItemsList = {
-                type: MARUSIA_CARD_ITEMS_LIST,
-                header: {
-                    text: Text.resize(cardInfo.title || '', 64),
-                },
-            };
-            object.items = await _getItem(cardInfo, controller);
-            const btn: IMarusiaButtonCard | null = cardInfo.buttons.getButtons(marusiaCardButton);
-            if (btn?.text) {
-                object.footer = {
-                    text: btn.text,
-                    button: btn,
-                };
-            }
-            return object;
-        }
+    if (!countImage) {
+        return null;
     }
-    return null;
+    if (cardInfo.showOne) {
+        return getBigImage(cardInfo, controller);
+    }
+    if (cardInfo.usedGallery) {
+        const object: IMarusiaImageGallery = {
+            type: 'ImageGallery',
+        };
+        object.items = await _getItem(cardInfo, controller);
+        return object.items.length ? object : null;
+    }
+    const object: IMarusiaItemsList = {
+        type: MARUSIA_CARD_ITEMS_LIST,
+    };
+    const headerText = Text.resize(cardInfo.title || cardInfo.images[0]?.title || '', 64);
+    if (headerText) {
+        object.header = { text: headerText };
+    }
+    object.items = await _getItem(cardInfo, controller);
+    if (!object.items.length) {
+        return null;
+    }
+    const btn: IMarusiaButtonCard | null = cardInfo.buttons.getButtons(marusiaCardButton);
+    if (btn?.text) {
+        object.footer = {
+            text: btn.text,
+            button: btn,
+        };
+    }
+    return object;
 }

@@ -59,7 +59,7 @@ export async function getImageInDB(
  *
  * Процесс работы:
  * 1. Определяет максимальное количество изображений:
- *    - Для галереи: ALISA_MAX_GALLERY_IMAGES (7)
+ *    - Для галереи: ALISA_MAX_GALLERY_IMAGES (10)
  *    - Для списка: ALISA_MAX_IMAGES (5)
  * 2. Обрабатывает каждое изображение:
  *    - Создает токен изображения, если его нет
@@ -76,6 +76,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     const images = cardInfo.images.slice(0, maxCount);
     for (let i = 0; i < images.length; i++) {
         const image = images[i];
+        const title = Text.resize(image.title || cardInfo.title || '', 128);
         let button: IAlisaButtonCard | null = null;
         if (!cardInfo.usedGallery && image.button) {
             button = image.button.getButtons<IAlisaButtonCard>(alisaCardButton);
@@ -89,7 +90,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
             }
         }
         const item: IAlisaImage = {
-            title: Text.resize(image.title, 128),
+            title,
         };
         if (!cardInfo.usedGallery) {
             item.description = Text.resize(image.desc, 256);
@@ -105,6 +106,34 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     return items;
 }
 
+/** Собирает одиночную карточку Алисы и загружает изображение при необходимости. */
+async function getBigImage(
+    cardInfo: ICardInfo,
+    controller: BotController,
+): Promise<IAlisaBigImage | null> {
+    const image = cardInfo.images[0];
+    if (!image.imageToken && image.imageDir) {
+        image.imageToken = await getImageInDB(controller, image.imageDir);
+    }
+    if (!image.imageToken) {
+        return null;
+    }
+    let button: IAlisaButtonCard | null = image.button?.getButtons(alisaCardButton) || null;
+    if (!button?.text) {
+        button = cardInfo.buttons.getButtons(alisaCardButton);
+    }
+    const object: IAlisaBigImage = {
+        type: ALISA_CARD_BIG_IMAGE,
+        image_id: image.imageToken,
+        title: Text.resize(image.title || cardInfo.title, 128),
+        description: Text.resize(image.desc || cardInfo.description, 1024),
+    };
+    if (button?.text) {
+        object.button = button;
+    }
+    return object;
+}
+
 /**
  * Получает карточку для отображения в Алисе.
  * @param cardInfo Информация о карточке
@@ -116,58 +145,36 @@ export async function cardProcessing(
     controller: BotController,
 ): Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null> {
     const countImage = cardInfo.images.length;
-    if (countImage) {
-        if (cardInfo.showOne) {
-            if (!(cardInfo.title || cardInfo.images[0].title)) {
-                return null;
-            }
-            if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
-                // eslint-disable-next-line require-atomic-updates
-                cardInfo.images[0].imageToken = await getImageInDB(
-                    controller,
-                    cardInfo.images[0].imageDir,
-                );
-            }
-            if (cardInfo.images[0].imageToken) {
-                let button: IAlisaButtonCard | null =
-                    cardInfo.images[0].button?.getButtons(alisaCardButton) || null;
-                if (!button?.text) {
-                    button = cardInfo.buttons.getButtons(alisaCardButton);
-                }
-                const object: IAlisaBigImage = {
-                    type: ALISA_CARD_BIG_IMAGE,
-                    image_id: cardInfo.images[0].imageToken,
-                    title: Text.resize(cardInfo.images[0].title || cardInfo.title, 128),
-                    description: Text.resize(cardInfo.images[0].desc || cardInfo.description, 256),
-                };
-                if (button?.text) {
-                    object.button = button;
-                }
-                return object;
-            }
-        } else if (cardInfo.usedGallery) {
-            const object: IAlisaImageGallery = {
-                type: 'ImageGallery',
-            };
-            object.items = await _getItem(cardInfo, controller);
-            return object;
-        } else {
-            const object: IAlisaItemsList = {
-                type: ALISA_CARD_ITEMS_LIST,
-                header: {
-                    text: Text.resize(cardInfo.title || '', 64),
-                },
-            };
-            object.items = await _getItem(cardInfo, controller);
-            const btn: IAlisaButtonCard | null = cardInfo.buttons.getButtons(alisaCardButton);
-            if (btn?.text) {
-                object.footer = {
-                    text: btn.text,
-                    button: btn,
-                };
-            }
-            return object;
-        }
+    if (!countImage) {
+        return null;
     }
-    return null;
+    if (cardInfo.showOne) {
+        return getBigImage(cardInfo, controller);
+    }
+    if (cardInfo.usedGallery) {
+        const object: IAlisaImageGallery = {
+            type: 'ImageGallery',
+        };
+        object.items = await _getItem(cardInfo, controller);
+        return object.items.length ? object : null;
+    }
+    const object: IAlisaItemsList = {
+        type: ALISA_CARD_ITEMS_LIST,
+    };
+    const headerText = Text.resize(cardInfo.title || '', 64);
+    if (headerText) {
+        object.header = { text: headerText };
+    }
+    object.items = await _getItem(cardInfo, controller);
+    if (!object.items.length) {
+        return null;
+    }
+    const btn: IAlisaButtonCard | null = cardInfo.buttons.getButtons(alisaCardButton);
+    if (btn?.text) {
+        object.footer = {
+            text: btn.text,
+            button: btn,
+        };
+    }
+    return object;
 }

@@ -156,7 +156,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      *
      * Этот метод вызывается внутренней логикой фреймворка для обновления данных.
      * Вы обязаны вернуть:
-     *   - `true` — если запись успешно добавлена,
+     *   - `true` — если запись успешно обновлена,
      *   - `false` — при любой ошибке (подключение, валидация и т.п.).
      *
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
@@ -171,7 +171,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      *
      * Этот метод вызывается внутренней логикой фреймворка для удаления данных.
      * Вы обязаны вернуть:
-     *   - `true` — если запись успешно добавлена,
+     *   - `true` — если запись успешно удалена,
      *   - `false` — при любой ошибке (подключение, валидация и т.п.).
      *
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
@@ -298,8 +298,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * - Если `isNew === true` → вызывается `insert`
      * - Иначе → сначала делается `selectOne` по `saveData.query`,
      *   и если запись найдена — вызывается `update`, иначе — `insert`
-     *  *
-     * @param saveData Данные для запроса. Включает как запроса, так и сами данные
+     *
+     * @param saveData Данные для запроса. Включает как запрос, так и сами данные
      * @param isNew Флаг, говорящий о том, что точно происходит добавление новой записи
      */
     public async save(saveData: IQuery, isNew: boolean): Promise<boolean> {
@@ -319,7 +319,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     /**
      * Выполняет SELECT с ограничением до одной записи.
      * @param selectData Дополнительные данные для запроса
-     * @param where Сам запроса
+     * @param where Сам запрос (условие выборки). При `null` или `undefined` вернётся `null`
+     * @returns Первая найденная запись или `null`, если условие не передано или ничего не найдено.
      */
     public async selectOne(
         selectData: IQuery,
@@ -336,7 +337,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      *
      * ⚠️ По умолчанию просто приводит значение к строке.
      * Если ваша БД требует экранирования (например, SQL), обязательно переопределите этот метод.
-     * @param str Экранируемый запрос
+     * @param str Экранируемая строка
      */
     public escapeString(str: string | number): string {
         return str + '';

@@ -246,6 +246,7 @@ describe('umbot', () => {
                 });
                 bot.setAppConfig({ isLocalStorage: true });
                 bot.addCommand('sound', ['звук'], (_, botController) => {
+                    botController.text = 'Звук';
                     botController.tts = `${SoundConstants.S_AUDIO_GAME_WIN} `.repeat(i).trim();
                 });
 
@@ -277,6 +278,7 @@ describe('umbot', () => {
                 bot.setAppConfig({ isLocalStorage: true });
 
                 bot.addCommand('sound', ['звук'], (_, botController) => {
+                    botController.text = 'Звук';
                     botController.tts = ``;
                     for (let j = 1; j <= i; j++) {
                         botController.tts += `$s_${j} `;

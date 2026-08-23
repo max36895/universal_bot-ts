@@ -1,6 +1,6 @@
 import { IModelRules } from './interface';
 
-import { IModelState, Model } from './db/Model';
+import { IModelState, ISelectOneModelRes, Model } from './db/Model';
 import { AppContext } from '../core';
 import { TKey } from './db';
 
@@ -58,9 +58,9 @@ export interface ISoundModelState extends IModelState {
  * const sound = new SoundTokens(appContext);
  * sound.path = '/path/to/audio.mp3';
  * sound.platform = T_TELEGRAM;
- * const token = await sound.selectOne();
- * if (token) {
- *     console.log('Токен для звукового файла успешно получен, токен:', token);
+ * const found = await sound.selectOne();
+ * if (found.status) {
+ *     console.log('Токен для звукового файла успешно получен, токен:', found.data.soundToken);
  * } else {
  *     // Загрузка аудиофайла
  *     const newToken = await sound.save();
@@ -145,6 +145,34 @@ export class SoundTokens extends Model<ISoundModelState> {
      */
     set platform(platform: string) {
         this.state.platform = platform;
+    }
+
+    /**
+     * Находит token звукового файла по пути и платформе.
+     *
+     * Для SoundTokens логичный lookup идёт по `path`+`platform`, а не по `soundToken`
+     * (он ещё null на новой модели).
+     *
+     * @returns Promise с результатом поиска `{status, data, error}`. При успехе
+     * `data` содержит найденную запись модели, а не сам токен.
+     */
+    public async selectOne(): Promise<ISelectOneModelRes> {
+        if (this._appContext.database.adapter) {
+            this.queryData.query = {
+                path: this.state.path,
+                platform: this.state.platform,
+            };
+            this.queryData.data = null;
+            return (await this._appContext.database.adapter.select(
+                this.queryData,
+                this.queryData.query,
+                true,
+            )) as ISelectOneModelRes;
+        }
+        return {
+            status: false,
+            error: 'Не указан источник для базы данных',
+        };
     }
 
     /**

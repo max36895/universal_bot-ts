@@ -79,27 +79,31 @@ export interface IUserDataModelState extends IModelState {
  * - Автоматическая сериализация/десериализация данных
  *
  * @example
- * Сохранение прогресса пользователя:
+ * Сохранение прогресса пользователя (через addCommand — колбэк фреймворк ожидает):
  * ```ts
- * class GameController extends BotController {
- *   public async action(intentName: string): Promise<void> {
- *     // Загрузка данных пользователя
- *     const userData = new UsersData(this.appContext);
- *     userData.userId = this.userId;
+ * import { UsersData } from 'umbot';
  *
- *     // Если есть сохраненные данные - загружаем их
- *     if (await userData.getOne()) {
- *       const progress = userData.data.progress || 0;
- *       this.text = `Ваш текущий прогресс: ${progress}%`;
- *     } else {
- *       // Создаем новые данные
- *       userData.data = { progress: 0 };
- *       userData.meta = { firstVisit: new Date() };
- *       await userData.save();
- *       this.text = 'Добро пожаловать в игру!';
- *     }
- *   }
+ * interface IGameProgress {
+ *     progress?: number;
  * }
+ *
+ * bot.addCommand('progress', ['прогресс'], async (_text, ctx) => {
+ *     // Загрузка данных пользователя
+ *     const userData = new UsersData(ctx.appContext);
+ *     userData.userId = ctx.userId;
+ *
+ *     if (await userData.getOne()) {
+ *         // data может быть string | Record<string,unknown> | null — сужаем тип
+ *         const data = userData.data as IGameProgress | null;
+ *         const progress = data?.progress ?? 0;
+ *         ctx.text = `Ваш текущий прогресс: ${progress}%`;
+ *     } else {
+ *         userData.data = { progress: 0 };
+ *         userData.meta = { firstVisit: new Date().toISOString() };
+ *         await userData.save();
+ *         ctx.text = 'Добро пожаловать в игру!';
+ *     }
+ * });
  * ```
  *
  * @example

@@ -89,6 +89,13 @@ export function keysCount(obj: object | Record<string, unknown>): number {
 }
 
 /**
+ * Максимальная суммарная длина сравниваемых строк.
+ * Ограничивает алгоритм LCS (O(n·m)) от блокировки event loop
+ * на очень длинных пользовательских входах или больших словарях.
+ */
+const MAX_SIMILAR_TEXT_TOTAL_LENGTH = 2000;
+
+/**
  * Вычисляет процент схожести двух текстов
  * Использует алгоритм LCS (Longest Common Subsequence)
  *
@@ -109,6 +116,27 @@ export function similarText(first: string, second: string): number {
     }
     if (first.length === 0 || second.length === 0) {
         return 0;
+    }
+
+    // Защита от O(n·m) DoS при очень длинных строках.
+    // Для типичных сценариев (максимум 30-50 символов в команде) лимит не достигается.
+    if (first.length + second.length > MAX_SIMILAR_TEXT_TOTAL_LENGTH) {
+        // Для длинных строк используем дешёвую эвристику по длине и префиксу,
+        // чтобы не грузить event loop на квадратичном DP.
+        const lengthDiff = Math.abs(first.length - second.length);
+        const maxLen = Math.max(first.length, second.length);
+        if (lengthDiff / maxLen > 0.5) {
+            return 0;
+        }
+        // Проверяем только начало и конец
+        const prefixLen = Math.min(50, Math.min(first.length, second.length));
+        const firstPrefix = first.slice(0, prefixLen);
+        const secondPrefix = second.slice(0, prefixLen);
+        if (firstPrefix !== secondPrefix) {
+            return 0;
+        }
+        // Если префиксы совпали — возвращаем примерную оценку по длине
+        return Math.round(((maxLen - lengthDiff) / maxLen) * 100);
     }
 
     // Вычисление длины LCS (Longest Common Subsequence) методом динамического программирования
@@ -291,7 +319,13 @@ export function fwriteSync(
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): FileOperationResult<void> {
-    const tmpPath = mode === 'w' ? `${fileName}.tmp` : undefined;
+    // Уникальный tmp-суффикс защищает от race condition при параллельной записи
+    // одного и того же файла из разных частей кода (или процессов).
+    // Без него два writer'а используют один tmp-файл и данные чередуются.
+    const tmpPath =
+        mode === 'w'
+            ? `${fileName}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 9)}.tmp`
+            : undefined;
     try {
         if (mode === 'w') {
             fs.writeFileSync(tmpPath!, fileContent);
@@ -550,7 +584,12 @@ export async function fwrite(
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): Promise<FileOperationResult<void>> {
-    const tmpPath = mode === 'w' ? `${fileName}.tmp` : undefined;
+    // Уникальный tmp-суффикс — защита от race condition при параллельной записи.
+    // См. fwriteSync — та же логика.
+    const tmpPath =
+        mode === 'w'
+            ? `${fileName}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 9)}.tmp`
+            : undefined;
     try {
         if (mode === 'w') {
             await fsPromises.writeFile(tmpPath!, fileContent);
@@ -609,20 +648,14 @@ export async function saveData(
     if (!(await isDir(dir.path))) {
         await mkdir(dir.path);
     }
-    if (data.startsWith('{') || data.startsWith('[')) {
-        try {
-            JSON.parse(data);
-        } catch (e) {
-            errorLogger?.(
-                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}", так как данные не в json формате. Ошибка: ${(e as Error).message}`,
-                {
-                    error: e,
-                    data,
-                    mode,
-                },
-            );
-        }
-    }
+    // Валидация JSON здесь намеренно не выполняется (в отличие от saveDataSync):
+    // асинхронная запись никогда не блокируется на невалидном JSON, а единственные
+    // реальные вызывающие передают либо только что сериализованный JSON
+    // (AppContext.saveFileData), либо не-JSON строки лога в режиме дозаписи
+    // (AppContext.#saveLog, mode='a'). Повторный JSON.parse всего объёма данных
+    // приводил к лишней сериализации всей таблицы при каждом сохранении FileAdapter,
+    // а для строк лога, начинающихся с "[timestamp]", гарантированно падал и через
+    // errorLogger запускал бесконечный цикл самовоспроизводящихся ошибок.
     const res = await fwrite(join(dir.path, dir.fileName), data, mode);
     if (!res.success) {
         errorLogger?.(
@@ -660,13 +693,22 @@ export async function saveData(
  * ```
  */
 export function httpBuildQuery(formData: IGetParams, separator: string = '&'): string {
-    return Object.entries(formData)
-        .map(([key, value]) => {
-            const encodedKey = encodeURIComponent(key);
-            const encodedValue = encodeURIComponent(String(value)).replace(/%20/g, '+');
-            return `${encodedKey}=${encodedValue}`;
-        })
-        .join(separator);
+    let result = '';
+    let isFirst = true;
+    for (const key in formData) {
+        if (!Object.prototype.hasOwnProperty.call(formData, key)) {
+            continue;
+        }
+        const encodedKey = encodeURIComponent(key);
+        const encodedValue = encodeURIComponent(String(formData[key])).replace(/%20/g, '+');
+        if (isFirst) {
+            result = `${encodedKey}=${encodedValue}`;
+            isFirst = false;
+        } else {
+            result += `${separator}${encodedKey}=${encodedValue}`;
+        }
+    }
+    return result;
 }
 
 /**

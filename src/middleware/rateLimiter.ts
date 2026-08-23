@@ -123,6 +123,88 @@ function startCleanupFn(
 }
 
 /**
+ * Ищет самую старую неактивную запись в stateMap (LRU-подобное поведение).
+ * Ожидающие в её очереди промисы отклоняются, чтобы не зависнуть навсегда.
+ * @param stateMap Карта состояний по ключу {platform}:{userId}
+ * @returns Ключ найденной записи или null, если карта пуста
+ */
+function findOldestKey(stateMap: Map<string, PlatformState>): string | null {
+    let oldestKey: string | null = null;
+    let oldestActivity = Infinity;
+    let fallbackKey: string | null = null;
+    let fallbackActivity = Infinity;
+    for (const [k, v] of stateMap) {
+        if (v.lastActivity < fallbackActivity) {
+            fallbackActivity = v.lastActivity;
+            fallbackKey = k;
+        }
+        // Не вытесняем запись, которая прямо сейчас обрабатывает очередь:
+        // её промисы отклонятся, но цикл продолжит исполнять задачи, и новый
+        // запрос того же ключа создаст вторую параллельную очередь.
+        if (v.processing || v.queue.length > 0) {
+            continue;
+        }
+        if (v.lastActivity < oldestActivity) {
+            oldestActivity = v.lastActivity;
+            oldestKey = k;
+        }
+    }
+    // Если свободных записей нет совсем — вытесняем самую старую из любых,
+    // иначе карта будет расти без ограничений.
+    return oldestKey ?? fallbackKey;
+}
+
+/**
+ * Удаляет запись из stateMap, отклоняя все ожидающие в её очереди промисы.
+ * @param stateMap Карта состояний
+ * @param key Ключ записи для удаления
+ */
+function evictEntry(stateMap: Map<string, PlatformState>, key: string): void {
+    const old = stateMap.get(key);
+    if (old) {
+        for (const item of old.queue) {
+            try {
+                item.reject(new Error('rateLimiter: eviction due to overflow'));
+            } catch {
+                // ignore
+            }
+        }
+    }
+    stateMap.delete(key);
+}
+
+/**
+ * Возвращает состояние для ключа, создавая новую запись при необходимости.
+ * При переполнении карты вытесняет самую старую неактивную запись.
+ * @param stateMap Карта состояний
+ * @param key Ключ {platform}:{userId}
+ */
+function getOrCreateState(stateMap: Map<string, PlatformState>, key: string): PlatformState {
+    let st = stateMap.get(key);
+    if (!st) {
+        // Защита от переполнения: если stateMap слишком большой — выкидываем самую старую
+        // неактивную запись (LRU-подобное поведение) вместо полного отказа от ограничения.
+        // Так мы избегаем скрытого снятия защиты (fail-open) под нагрузкой от
+        // множества уникальных userId.
+        if (stateMap.size >= MAX_STATE_MAP_SIZE) {
+            const oldestKey = findOldestKey(stateMap);
+            if (oldestKey !== null) {
+                evictEntry(stateMap, oldestKey);
+            }
+        }
+        st = {
+            queue: [],
+            processing: false,
+            lastReset: Date.now(),
+            count: 0,
+            lastActivity: Date.now(),
+        };
+        stateMap.set(key, st);
+    }
+    return st;
+}
+
+/**
  * Создаёт middleware для ограничения частоты входящих запросов (rate limiting) на уровне платформы.
  *
  * **Для чего используется:**
@@ -200,22 +282,7 @@ export function rateLimiter(
         }
 
         const key = `${platform}:${userId}`;
-
-        let st = stateMap.get(key);
-        if (!st) {
-            // Защита от переполнения: если stateMap слишком большой — пропускаем добавление
-            if (stateMap.size >= MAX_STATE_MAP_SIZE) {
-                return next();
-            }
-            st = {
-                queue: [],
-                processing: false,
-                lastReset: Date.now(),
-                count: 0,
-                lastActivity: Date.now(),
-            };
-            stateMap.set(key, st);
-        }
+        const st = getOrCreateState(stateMap, key);
 
         const now = (st.lastActivity = Date.now());
         if (now - st.lastReset >= 1000) {
@@ -265,7 +332,7 @@ export function rateLimiter(
 
 /**
  * Очищает все ресурсы rateLimiter: интервал очистки и карту состояний.
- * Используйте при завершении приложения или.hot-reload для предотвращения утечек памяти.
+ * Используйте при завершении приложения или hot-reload для предотвращения утечек памяти.
  *
  * @example
  * ```ts

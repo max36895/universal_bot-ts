@@ -7,7 +7,7 @@
  * - Проверки схожести текстов
  * - Работы с окончаниями слов
  */
-import { getRegExp, isRegex, TPatternRegExp as PatternItem } from './RegExp';
+import { getRegExp, getRegExpOrSelf, isRegex, TPatternRegExp as PatternItem } from './RegExp';
 import { rand, similarText } from './util';
 import os from 'os';
 
@@ -140,10 +140,19 @@ const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|
  */
 export class Text {
     /**
-     * Кэш для скомпилированных регулярных выражений.
-     * Улучшает производительность при повторном использовании шаблонов
+     * Кэш для скомпилированных регулярных выражений, заданных строкой.
+     * Ключ — исходная строка шаблона.
      */
     static readonly #regexCache = new Map<string, ICacheItem>();
+
+    /**
+     * Кэш для регулярных выражений, переданных как объект RegExp.
+     * Используем WeakMap: когда исходный RegExp-объект умирает,
+     * запись удаляется автоматически, поэтому eviction-логика не нужна.
+     * Это устраняет горячую конкатенацию `${flags}@@${source}` и Map.get(string)
+     * на каждый вызов isSayText с RegExp-слотами.
+     */
+    static readonly #regexObjectCache = new WeakMap<RegExp, RegExp>();
 
     /**
      * Минимальное количество использований среди записей в кэше.
@@ -288,10 +297,13 @@ export class Text {
                 if (isRegex(patternBase)) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
-                        : Text.#getCachedRegex(patternBase, customReg);
+                        : (Text.#regexObjectCache.get(patternBase) ??
+                          ((): RegExp => {
+                              const re = getRegExpOrSelf(patternBase, 'ium', customReg);
+                              Text.#regexObjectCache.set(patternBase, re);
+                              return re;
+                          })());
                     if (cachedRegex.global) {
-                        // На случай если кто-то задал флаг g, сбрасываем lastIndex,
-                        // так как это может привести к некорректному результату
                         cachedRegex.lastIndex = 0;
                     }
                     const res = cachedRegex.test(text);
@@ -385,13 +397,6 @@ export class Text {
     }
 
     /**
-     * Получает или создает регулярное выражение из кэша
-     *
-     * @param {string} pattern - Шаблон регулярного выражения
-     * @param {RegExpConstructor} customReg - Произвольный обработчик для регулярных выражений
-     * @returns {RegExp} Скомпилированное регулярное выражение
-     */
-    /**
      * Удаляет из кэша записи с минимальным количеством использований.
      * Вместо сортировки всего кэша (O(n log n)) удаляет записи на уровне минимума (O(n)).
      * Гарантирует удаление хотя бы 30% записей для предотвращения частых промахов.
@@ -426,30 +431,39 @@ export class Text {
         Text.#minCacheUsage = 0;
     }
 
+    /**
+     * Получает регулярное выражение из кэша либо компилирует и сохраняет его.
+     * Если кэш переполнен, вызывает {@link #evictRegexCache}.
+     *
+     * @param pattern - Строка шаблона или уже готовое `RegExp` (в виде объекта паттерна).
+     * @param customReg - Произвольная реализация для компиляции регулярного выражения.
+     * @returns Скомпилированное `RegExp`.
+     */
     static #getCachedRegex(
         pattern: PatternItem,
         customReg: RegExpConstructor | undefined = undefined,
     ): RegExp {
-        const key = typeof pattern === 'string' ? pattern : `${pattern.flags}@@${pattern.source}`;
-        const cache = Text.#regexCache.get(key);
+        // Hot-path: если это RegExp-объект, используем WeakMap без eviction.
+        // Быстро (нет string concat), и не накапливает записи.
+        if (typeof pattern !== 'string') {
+            let cached = Text.#regexObjectCache.get(pattern);
+            if (!cached) {
+                cached = getRegExpOrSelf(pattern, 'ium', customReg);
+                Text.#regexObjectCache.set(pattern, cached);
+            }
+            return cached;
+        }
+        const cache = Text.#regexCache.get(pattern);
         let regex = cache?.regex;
         if (!regex) {
             if (Text.#regexCache.size >= MAX_CACHE_SIZE) {
                 Text.#evictRegexCache();
             }
-            if (typeof pattern === 'string') {
-                regex = getRegExp(pattern, 'ium', customReg);
-                Text.#regexCache.set(pattern, {
-                    cReq: 1,
-                    regex,
-                });
-            } else {
-                regex = getRegExp(pattern, 'ium', customReg);
-                Text.#regexCache.set(key, {
-                    cReq: 1,
-                    regex,
-                });
-            }
+            regex = getRegExp(pattern, 'ium', customReg);
+            Text.#regexCache.set(pattern, {
+                cReq: 1,
+                regex,
+            });
         } else if (cache) {
             cache.cReq++;
         }

@@ -100,12 +100,12 @@ export interface IViberContent {
     /** Время события в формате Unix timestamp */
     timestamp?: number;
     /** Уникальный идентификатор сообщения */
-    message_token: number;
+    message_token?: number;
     /**
      * Информация об отправителе
      * Для event='message' содержит данные отправителя
      */
-    sender: IViberUser;
+    sender?: IViberUser;
     /**
      * Информация о пользователе
      * Для event='message' содержит данные отправителя
@@ -368,7 +368,7 @@ export interface IViberButtonObject {
  * - Позволяет настраивать размеры карточки (Columns и Rows от 1 до 6)
  * - Может содержать изображения и кнопки
  * - Поддерживает различные стили текста
- * - Требует обязательные поля ActionType и ActionBody
+ * - ActionBody обязателен только для действий reply, open-url, share-phone и location-picker
  *
  * @example
  * ```ts

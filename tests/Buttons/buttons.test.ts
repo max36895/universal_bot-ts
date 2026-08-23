@@ -4,6 +4,7 @@ import {
     AlisaCard,
     MarusiaButton,
     MaxButton,
+    SmartAppButton,
     TelegramButton,
     ViberButton,
     VkButton,
@@ -18,6 +19,7 @@ describe('Buttons test', () => {
 
     beforeEach(() => {
         appContext = new AppContext();
+        appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
         appContext.platformParams.utm_text = '';
         defaultButtons = new Buttons(appContext);
         for (let i = 0; i < 3; i++) {
@@ -82,6 +84,46 @@ describe('Buttons test', () => {
         expect(defaultButtons.getButtons(AlisaCard.alisaCardButton)).toEqual({
             text: '1',
         });
+    });
+
+    it('сохраняет payload кнопки Алисы и Маруси размером ровно 4096 байт', () => {
+        const payload = 'x'.repeat(4096);
+        defaultButtons.clear();
+        defaultButtons.addBtn('Граница', null, payload);
+
+        expect(defaultButtons.getButtons(AlisaButton.buttonProcessing)).toEqual([
+            expect.objectContaining({ payload }),
+        ]);
+        expect(defaultButtons.getButtons(MarusiaButton.buttonProcessing)).toEqual([
+            expect.objectContaining({ payload }),
+        ]);
+    });
+
+    it('Алиса и Маруся не переписывают невалидные payload и URL кнопок', () => {
+        const warn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+        const oversizedPayload = {
+            title: 'Payload',
+            type: null,
+            payload: 'x'.repeat(4097),
+            hide: true,
+            options: {},
+        };
+        const oversizedUrl = {
+            title: 'URL',
+            type: null,
+            payload: null,
+            url: `https://example.com/${'x'.repeat(1025)}`,
+            hide: false,
+            options: {},
+        };
+
+        expect(
+            AlisaButton.buttonProcessing([oversizedPayload, oversizedUrl], false, appContext),
+        ).toEqual([]);
+        expect(
+            MarusiaButton.buttonProcessing([oversizedPayload, oversizedUrl], false, appContext),
+        ).toEqual([]);
+        expect(warn).toHaveBeenCalled();
     });
 
     it('Get buttons Marusia', () => {
@@ -289,6 +331,54 @@ describe('Buttons test', () => {
         expect(defaultButtons.getButtons(ViberButton.buttonProcessing)).toEqual(viberButtons);
     });
 
+    it('Viber сопоставляет универсальные опции и не отправляет чужие поля', () => {
+        const result = ViberButton.buttonProcessing([
+            {
+                title: 'Контакт',
+                type: null,
+                payload: null,
+                hide: false,
+                options: {
+                    request_contact: true,
+                    color: 'primary',
+                    TextSize: 'large',
+                },
+            },
+        ]);
+
+        expect(result?.Buttons).toEqual([
+            {
+                Text: 'Контакт',
+                ActionType: ViberButton.T_SHARE_PHONE,
+                ActionBody: 'Контакт',
+                TextSize: 'large',
+            },
+        ]);
+        expect(result?.Buttons[0]).not.toHaveProperty('request_contact');
+        expect(result?.Buttons[0]).not.toHaveProperty('color');
+    });
+
+    it('Get buttons SmartApp with documented actions array', () => {
+        defaultButtons.clear();
+        defaultButtons.addBtn('Открыть заказ', null, { orderId: 42 });
+
+        expect(defaultButtons.getButtons(SmartAppButton.buttonProcessing)).toEqual([
+            {
+                title: 'Открыть заказ',
+                actions: [
+                    {
+                        type: 'server_action',
+                        message_name: 'SERVER_ACTION',
+                        server_action: {
+                            action_id: 'umbot_action',
+                            payload: { orderId: 42 },
+                        },
+                    },
+                ],
+            },
+        ]);
+    });
+
     it('Get buttons Telegram', () => {
         const telegramButtons = {
             inline_keyboard: [
@@ -330,6 +420,7 @@ describe('Buttons test', () => {
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
         expect(result).toEqual({
             keyboard: [[{ text: 'ОК' }], [{ text: 'Удалить' }]],
+            resize_keyboard: true,
         });
     });
 
@@ -358,33 +449,12 @@ describe('Buttons test', () => {
     it('Get buttons Max', () => {
         const maxButtons = {
             buttons: [
-                {
-                    text: '1',
-                    type: 'message',
-                },
-                {
-                    text: '1',
-                    type: 'link',
-                    url: 'https://test.ru',
-                },
-                {
-                    text: '2',
-                    type: 'message',
-                },
-                {
-                    text: '2',
-                    type: 'link',
-                    url: 'https://test.ru',
-                },
-                {
-                    text: '3',
-                    type: 'message',
-                },
-                {
-                    text: '3',
-                    type: 'link',
-                    url: 'https://test.ru',
-                },
+                [{ text: '1', type: 'message' }],
+                [{ text: '1', type: 'link', url: 'https://test.ru' }],
+                [{ text: '2', type: 'message' }],
+                [{ text: '2', type: 'link', url: 'https://test.ru' }],
+                [{ text: '3', type: 'message' }],
+                [{ text: '3', type: 'link', url: 'https://test.ru' }],
             ],
         };
 
@@ -400,19 +470,47 @@ describe('Buttons test', () => {
         defaultButtons.addBtn('Run', null, { action: 'run' });
 
         expect(defaultButtons.getButtons(MaxButton.buttonProcessing)).toEqual({
-            buttons: [
+            buttons: [[{ text: 'Run', type: 'callback', payload: '{"action":"run"}' }]],
+        });
+    });
+
+    it('Max не переписывает слишком длинную ссылку кнопки', () => {
+        const warn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+        const result = MaxButton.buttonProcessing(
+            [
                 {
-                    text: 'Run',
-                    type: 'callback',
-                    payload: '{"action":"run"}',
+                    title: 'Ссылка',
+                    url: `https://example.com/${'x'.repeat(2049)}`,
+                    type: null,
+                    payload: null,
+                    hide: false,
+                    options: {},
                 },
             ],
-        });
+            appContext,
+        );
+
+        expect(result).toEqual({ buttons: [] });
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('2048'));
+    });
+
+    it('Max не формирует клавиатуру больше документированных 30 рядов', () => {
+        const warn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+        const buttons = Array.from({ length: 31 }, (_, index) => ({
+            title: `Кнопка ${index}`,
+            type: null,
+            payload: null,
+            hide: true,
+            options: {},
+        }));
+
+        expect(MaxButton.buttonProcessing(buttons, appContext).buttons).toHaveLength(30);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('30 рядов'));
     });
 
     // === Тесты на критические сценарии ===
 
-    it('Telegram callback_data truncation when exceeding 64 bytes', () => {
+    it('Telegram не меняет callback_data при превышении 64 байт', () => {
         // Создаём payload, который при JSON.stringify превысит 64 байта
         const longPayload = {
             action: 'very_long_action_name_that_exceeds_the_limit_of_sixty_four_bytes',
@@ -423,13 +521,18 @@ describe('Buttons test', () => {
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
         expect(result).toBeDefined();
-        expect(result!.inline_keyboard).toBeDefined();
-        expect(result!.inline_keyboard!.length).toBe(1);
+        expect(result).toEqual({ remove_keyboard: true });
+    });
 
-        // Проверяем, что callback_data обрезан до 64 байт
-        const callbackData = result!.inline_keyboard![0][0].callback_data as string;
-        const byteLength = Buffer.byteLength(callbackData, 'utf8');
-        expect(byteLength).toBeLessThanOrEqual(64);
+    it('VK не отправляет обрезанный payload кнопки', () => {
+        const logWarn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+        defaultButtons.clear();
+        defaultButtons.addBtn('Кнопка', null, { data: 'я'.repeat(255) });
+
+        expect(
+            defaultButtons.getButtons((buttons) => VkButton.buttonProcessing(buttons, appContext)),
+        ).toEqual({ one_time: false, buttons: [] });
+        expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('255 байт'));
     });
 
     it('VK button protected keys are not overwritten by options', () => {
@@ -454,6 +557,54 @@ describe('Buttons test', () => {
         expect(button.action.type).toBe(VkButton.VK_TYPE_TEXT);
         // action.label должен остаться 'Текст', а не стать 'Hacked'
         expect(button.action.label).toBe('Текст');
+    });
+
+    it('VK does not mutate a universal button or leak foreign options', () => {
+        const source = {
+            title: 'Текст',
+            type: null,
+            payload: null,
+            hide: true,
+            options: {
+                request_contact: true,
+                style: 'primary',
+            },
+        };
+
+        const result = VkButton.buttonProcessing([source]);
+        const row = result?.buttons[0];
+        const button = Array.isArray(row) ? row[0] : row;
+
+        expect(source.type).toBeNull();
+        expect(button).toEqual({ action: { type: 'text', label: 'Текст' } });
+        expect(button).not.toHaveProperty('request_contact');
+        expect(button).not.toHaveProperty('style');
+    });
+
+    it('platform button adapters do not throw on a cyclic payload', () => {
+        const payload: Record<string, unknown> = {};
+        payload.self = payload;
+        const source = {
+            title: 'Цикл',
+            type: null,
+            payload,
+            hide: true,
+            options: {},
+        };
+
+        expect(() => AlisaButton.buttonProcessing([source], false, appContext)).not.toThrow();
+        expect(AlisaButton.buttonProcessing([source], false, appContext)).toEqual([]);
+        expect(MarusiaButton.buttonProcessing([source], false, appContext)).toEqual([]);
+        expect(TelegramButton.buttonProcessing([source], appContext)).toEqual({
+            remove_keyboard: true,
+        });
+        expect(VkButton.buttonProcessing([source], appContext)).toEqual({
+            one_time: false,
+            buttons: [],
+        });
+        expect(MaxButton.buttonProcessing([source], appContext)).toEqual({ buttons: [] });
+        expect(ViberButton.buttonProcessing([source], appContext)).toBeNull();
+        expect(SmartAppButton.buttonProcessing([source], false, appContext)).toEqual([]);
     });
 
     it('UTM with URL fragment and existing params', () => {

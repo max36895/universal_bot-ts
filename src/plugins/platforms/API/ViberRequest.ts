@@ -17,6 +17,15 @@ import { getErrorMsg, getErrorToken } from './constants';
  *
  */
 const API_ENDPOINT = 'https://chatapi.viber.com/pa/';
+const VIBER_MAX_FILE_SIZE = 50 * 1024 * 1024;
+const VIBER_MAX_TEXT_LENGTH = 7000;
+const VIBER_MAX_REQUEST_BYTES = 30 * 1024;
+
+/** Приводит версию Viber API к документированному целому числу. */
+function normalizeApiVersion(value: unknown): number {
+    const version = Number(value);
+    return Number.isInteger(version) && version >= 1 ? version : VIBER_DEFAULT_API_VERSION;
+}
 
 /**
  * Класс для взаимодействия с API Viber
@@ -77,6 +86,33 @@ export class ViberRequest {
         this.token = token;
     }
 
+    /** Возвращает валидный объект отправителя для обязательного поля Viber API. */
+    #getSender(sender?: IViberSender | string): { name: string; avatar?: string } | null {
+        const configuredSender = this.#appContext.appConfig.tokens[T_VIBER]?.sender;
+        const source = sender ?? configuredSender;
+        if (!source) {
+            this.#appContext.logWarn(
+                'ViberRequest: обязательное имя sender не задано; сообщение не будет отправлено.',
+            );
+            return null;
+        }
+        if (typeof source !== 'object') {
+            const name = Text.resize(String(source), 28);
+            return name ? { name } : null;
+        }
+        const name = Text.resize(source.name, 28);
+        if (!name) {
+            this.#appContext.logWarn(
+                'ViberRequest: обязательное имя sender пусто; сообщение не будет отправлено.',
+            );
+            return null;
+        }
+        return {
+            ...source,
+            name,
+        };
+    }
+
     /**
      * Отправляет запрос к Viber API
      * @param method Название метода API
@@ -90,10 +126,35 @@ export class ViberRequest {
                     'X-Viber-Auth-Token': this.token,
                 };
                 this.#request.post ??= {};
-                (this.#request.post as Record<string, unknown>).min_api_version =
-                    this.apiVersion ||
-                    this.#appContext.appConfig.tokens[T_VIBER].api_version ||
-                    VIBER_DEFAULT_API_VERSION;
+                const post = this.#request.post as Record<string, unknown>;
+                post.min_api_version = normalizeApiVersion(
+                    post.min_api_version ??
+                        this.apiVersion ??
+                        this.#appContext.appConfig.tokens[T_VIBER].api_version,
+                );
+                // Сериализуем тело один раз: строка используется и для проверки
+                // размера, и как тело запроса (postInString). Раньше JSON.stringify
+                // выполнялся дважды — здесь и внутри Request._getOptions, — что
+                // вдвое увеличивало CPU-стоимость каждого исходящего запроса.
+                // Для FormData сериализация бессмысленна — он отправляется как есть.
+                if (!(this.#request.post instanceof FormData)) {
+                    let serializedPost: string;
+                    try {
+                        serializedPost = JSON.stringify(post);
+                    } catch (e) {
+                        this.#error = e as Error;
+                        this.#log((e as Error).message);
+                        return null;
+                    }
+                    const requestBytes = Buffer.byteLength(serializedPost, 'utf8');
+                    if (requestBytes > VIBER_MAX_REQUEST_BYTES) {
+                        this.#appContext.logWarn(
+                            `ViberRequest.call(): размер запроса ${requestBytes} байт превышает лимит ${VIBER_MAX_REQUEST_BYTES} байт. Запрос не отправлен.`,
+                        );
+                        return null;
+                    }
+                    this.#request.postInString = serializedPost;
+                }
                 const sendData = await this.#request.send<IViberApi>(API_ENDPOINT + method);
                 if (sendData.status && sendData.data) {
                     const data = sendData.data;
@@ -173,21 +234,24 @@ export class ViberRequest {
         text: string,
         params: IViberParams | null = null,
     ): Promise<IViberApi | null> {
+        const normalizedSender = this.#getSender(sender);
+        if (!normalizedSender) {
+            return Promise.resolve(null);
+        }
         this.#request.post ??= {};
         if (!(this.#request.post instanceof FormData)) {
-            this.#request.post.receiver = receiver;
-            if (typeof sender === 'string') {
-                this.#request.post.sender = {
-                    name: sender,
-                };
-            } else {
-                this.#request.post.sender = sender;
+            if (text.length > VIBER_MAX_TEXT_LENGTH) {
+                this.#appContext.logWarn(
+                    `ViberRequest.sendMessage(): текст превышает лимит ${VIBER_MAX_TEXT_LENGTH} символов и будет сокращён.`,
+                );
             }
-            this.#request.post.text = text;
-            this.#request.post.type = 'text';
-            if (params) {
-                this.#request.post = { ...this.#request.post, ...params };
-            }
+            this.#request.post = {
+                ...(params ?? {}),
+                receiver,
+                sender: normalizedSender,
+                text: Text.resize(text, VIBER_MAX_TEXT_LENGTH),
+                type: 'text',
+            };
         }
         return this.call<IViberApi>('send_message');
     }
@@ -207,7 +271,6 @@ export class ViberRequest {
     ): Promise<IViberApi | null> {
         if (url) {
             this.#request.post = {
-                url,
                 event_types: [
                     'delivered',
                     'seen',
@@ -218,14 +281,14 @@ export class ViberRequest {
                 ],
                 send_name: true,
                 send_photo: true,
+                ...(params ?? {}),
+                url,
             };
         } else {
             this.#request.post = {
+                ...(params ?? {}),
                 url: '',
             };
-        }
-        if (params) {
-            this.#request.post = { ...this.#request.post, ...params };
         }
         return this.call<IViberApi>('set_webhook');
     }
@@ -238,27 +301,32 @@ export class ViberRequest {
      * - tracking_data: данные для отслеживания
      * - min_api_version: минимальная версия API
      * - alt_text: альтернативный текст
+     * @param sender Отправитель. Если не задан, используется sender из конфигурации
      * @returns Результат отправки или null при ошибке
      */
     public richMedia(
         receiver: string,
         richMedia: IViberButton[],
         params: IViberRichMediaParams | null = null,
+        sender?: IViberSender | string,
     ): Promise<IViberApi | null> {
+        const normalizedSender = this.#getSender(sender);
+        if (!normalizedSender) {
+            return Promise.resolve(null);
+        }
         this.#request.post = {
+            ...(params ?? {}),
             receiver,
+            sender: normalizedSender,
             type: 'rich_media',
             rich_media: {
                 Type: 'rich_media',
                 ButtonsGroupColumns: 6,
-                ButtonsGroupRows: richMedia.length,
+                ButtonsGroupRows: 7,
                 BgColor: '#FFFFFF',
                 Buttons: richMedia,
             },
         };
-        if (params) {
-            this.#request.post = { ...this.#request.post, ...params };
-        }
         return this.call<IViberApi>('send_message');
     }
 
@@ -271,24 +339,55 @@ export class ViberRequest {
      * - min_api_version: минимальная версия API
      * - file_name: имя файла
      * - size: размер файла
+     * @param sender Отправитель. Если не задан, используется sender из конфигурации
      * @returns Результат отправки или null при ошибке
      */
     public sendFile(
         receiver: string,
         file: string,
         params: IViberParams | null = null,
+        sender?: IViberSender | string,
     ): Promise<IViberApi | null> | null {
-        this.#request.post = {
-            receiver,
-        };
         if (Text.isSayText(['http://', 'https://'], file)) {
-            this.#request.post.type = 'file';
-            this.#request.post.media = file;
-            this.#request.post.size = 10e4;
-            this.#request.post.file_name = Text.resize(file, 150);
-            if (params) {
-                this.#request.post = { ...this.#request.post, ...params };
+            const normalizedSender = this.#getSender(sender);
+            if (!normalizedSender) {
+                return null;
             }
+            if (
+                !params?.size ||
+                !Number.isInteger(params.size) ||
+                params.size < 1 ||
+                params.size > VIBER_MAX_FILE_SIZE
+            ) {
+                this.#appContext.logWarn(
+                    'ViberRequest.sendFile(): params.size должен содержать фактический размер файла от 1 байта до 50 МБ.',
+                );
+                return null;
+            }
+            let fileName: string;
+            try {
+                fileName = new URL(file).pathname.split('/').pop() || 'file.bin';
+            } catch {
+                this.#appContext.logWarn(
+                    'ViberRequest.sendFile(): передан некорректный URL файла.',
+                );
+                return null;
+            }
+            if (!fileName.includes('.') || fileName.endsWith('.')) {
+                this.#appContext.logWarn(
+                    'ViberRequest.sendFile(): имя файла в URL должно содержать расширение.',
+                );
+                return null;
+            }
+            this.#request.post = {
+                ...params,
+                receiver,
+                sender: normalizedSender,
+                type: 'file',
+                media: file,
+                size: params.size,
+                file_name: Text.resize(params.file_name || fileName, 256),
+            };
             return this.call<IViberApi>('send_message');
         }
         return null;

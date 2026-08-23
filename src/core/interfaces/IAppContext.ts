@@ -405,8 +405,7 @@ export type IAppPluginFn<TArgs extends unknown[] = unknown[], TResult = unknown>
  * Общий тип, который объединяет IAppPlugin и IAppPluginFn
  */
 export type TAppPluginData<TArgs extends unknown[] = unknown[], TResult = unknown> =
-    | IAppPlugin<TArgs, TResult>
-    | IAppPluginFn<TArgs, TResult>;
+    IAppPlugin<TArgs, TResult> | IAppPluginFn<TArgs, TResult>;
 
 /**
  * Тип для подключения любого пользовательского плагина.

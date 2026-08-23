@@ -1,8 +1,17 @@
 import { ISoundInfo, SoundTokens, unlink, BotController } from '../../../index';
 import { TelegramRequest, YandexSpeechKit } from '../API';
 import { TTelegramChatId } from './interfaces/ITelegramPlatform';
-import { getBaseDataSoundProcessing, getSoundToken } from '../Base/utils';
+import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';
 import { T_TELEGRAM } from './constants';
+
+/** Возвращает ID чата, в котором нужно отправить аудио. */
+function getChatId(controller: BotController): TTelegramChatId {
+    const requestData = getPlatformRequestData<{ chatId?: TTelegramChatId }>(
+        controller,
+        T_TELEGRAM,
+    );
+    return requestData.chatId ?? (controller.userId as TTelegramChatId);
+}
 
 /**
  * Получение токена, необходимого для воспроизведения звуков в Telegram
@@ -16,7 +25,7 @@ export async function getSoundInDB(
     let isCbCalled = false;
     const result = await getSoundToken(path, T_TELEGRAM, controller, async (model: SoundTokens) => {
         const api = new TelegramRequest(controller.appContext);
-        const sound = await api.sendAudio(controller.userId as string, path);
+        const sound = await api.sendAudio(getChatId(controller), path);
         isCbCalled = true;
 
         if (sound?.ok && sound.result?.audio?.file_id !== undefined) {
@@ -29,10 +38,7 @@ export async function getSoundInDB(
     });
 
     if (!isCbCalled && result) {
-        await new TelegramRequest(controller.appContext).sendAudio(
-            controller.userId as string,
-            result,
-        );
+        await new TelegramRequest(controller.appContext).sendAudio(getChatId(controller), result);
     }
 
     return result;
@@ -59,7 +65,7 @@ export async function soundProcessing(
         const content = await speechKit.getTts(text);
         if (content) {
             await new TelegramRequest(controller.appContext).sendAudio(
-                controller.userId as TTelegramChatId,
+                getChatId(controller),
                 content.fileName,
             );
             try {

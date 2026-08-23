@@ -1,6 +1,6 @@
 import { Buttons, IButtonType } from '../../../index';
 import { IVkButton, IVkButtonObject } from './interfaces/IVkPlatform';
-import { getCorrectButtons } from '../Base/utils';
+import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
 /**
  * Поле для группировки
@@ -45,91 +45,100 @@ export const VK_TYPE_PAY = 'vkpay';
  */
 export const VK_TYPE_APPS = 'open_app';
 
-function _validateVkPayload(payload: unknown): string {
+type TVkButtonLogger = {
+    logWarn(message: string, meta?: Record<string, unknown>): void;
+};
+
+function _validateVkPayload(payload: unknown, appContext?: TVkButtonLogger): string | null {
     if (payload == null) return '';
 
-    const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const str = serializePlatformPayload(payload, 'VK', appContext);
+    if (str === null) return null;
 
     const encoder = new TextEncoder();
     const bytes = encoder.encode(str);
     if (bytes.length > 255) {
-        return new TextDecoder().decode(bytes.slice(0, 255));
+        appContext?.logWarn(
+            `[VK] payload кнопки превышает лимит 255 байт (${bytes.length} байт). Кнопка будет пропущена без изменения данных.`,
+        );
+        return null;
     }
 
     return str;
 }
 
-/**
- * Ключи options, которые управляются фреймворком и не должны перезаписываться пользователем.
- * Spread оператор не должен инжектить эти поля во избежание нарушения контрактов VK API.
- */
-const VK_PROTECTED_KEYS = new Set(['action', 'color', 'hash', GROUP_NAME]);
+/** Возвращает hash для кнопки VK Pay, если он явно задан в payload. */
+function _getVkPayHash(payload: unknown): string | null {
+    let payloadObj: Record<string, unknown> | null = null;
+    if (typeof payload === 'string') {
+        try {
+            payloadObj = JSON.parse(payload) as Record<string, unknown>;
+        } catch {
+            return null;
+        }
+    } else if (typeof payload === 'object' && payload !== null) {
+        payloadObj = payload as Record<string, unknown>;
+    }
+    return typeof payloadObj?.hash === 'string' ? payloadObj.hash : null;
+}
 
-/**
- * Фильтрует options, исключая защищённые ключи фреймворка.
- * Предотвращает инжекцию критических полей через spread оператор.
- * @param options Пользовательские опции кнопки
- * @returns Новый объект без защищённых ключей
- */
-function _filterSafeOptions(options: Record<string, unknown>): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
-    for (const key of Object.keys(options)) {
-        if (!VK_PROTECTED_KEYS.has(key)) {
-            result[key] = options[key];
+/** Преобразует одну универсальную кнопку в документированный объект VK. */
+function _getVkButton<TPayload>(
+    button: IButtonType<TPayload>,
+    appContext?: TVkButtonLogger,
+): IVkButton | null {
+    const buttonType =
+        button.type ?? (button.hide === Buttons.B_LINK ? VK_TYPE_LINK : VK_TYPE_TEXT);
+    const object: IVkButton = {
+        action: {
+            type: buttonType,
+            label: button.title,
+        },
+    };
+    if (button.url) {
+        object.action.type = VK_TYPE_LINK;
+        object.action.link = button.url;
+    }
+    if (button.payload) {
+        const payload = _validateVkPayload(button.payload, appContext);
+        if (payload === null && !button.url) {
+            return null;
+        }
+        if (payload !== null) {
+            object.action.payload = payload;
         }
     }
-    return result;
+
+    const payloadColor =
+        typeof button.payload === 'object' && button.payload !== null
+            ? ((button.payload as Record<string, unknown>).color as string | undefined)
+            : undefined;
+    const buttonColor = (button.options?.color ?? payloadColor) as string | undefined;
+    if (buttonColor !== undefined && !button.url) {
+        object.color = buttonColor;
+    }
+    if (buttonType === VK_TYPE_PAY) {
+        object.hash = _getVkPayHash(button.payload);
+    }
+    return object;
 }
 
 /**
  * Получение кнопок в формате ВК
  * @param buttons Кнопки, которые необходимо отобразить
  */
-export function buttonProcessing(buttons: IButtonType<IVkButton>[]): IVkButtonObject | null {
+export function buttonProcessing<TPayload>(
+    buttons: IButtonType<TPayload>[],
+    appContext?: TVkButtonLogger,
+): IVkButtonObject | null {
     const groups: number[] = [];
     const finalButtons: IVkButton[] | IVkButton[][] = [];
     let index = 0;
     getCorrectButtons(buttons).forEach((button) => {
-        if (button.type === null) {
-            button.type = button.hide === Buttons.B_LINK ? VK_TYPE_LINK : VK_TYPE_TEXT;
+        const object = _getVkButton(button, appContext);
+        if (!object) {
+            return;
         }
-        let object: IVkButton = {
-            action: {
-                type: button.type,
-            },
-        };
-        if (button.url) {
-            object.action.type = VK_TYPE_LINK;
-            object.action.link = button.url;
-        }
-        object.action.label = button.title;
-        if (button.payload) {
-            if (typeof button.payload === 'string') {
-                object.action.payload = _validateVkPayload(button.payload);
-            } else {
-                object.action.payload = _validateVkPayload(JSON.stringify(button.payload));
-            }
-        }
-
-        // Приоритет: options.color > payload.color (обратная совместимость)
-        const buttonColor = (button.options?.color ?? button.payload?.color) as string | undefined;
-        if (buttonColor !== undefined && !button.url) {
-            object.color = buttonColor;
-        }
-        if (button.type === VK_TYPE_PAY) {
-            const payloadObj =
-                typeof button.payload === 'string'
-                    ? ((): Record<string, string> | null => {
-                          try {
-                              return JSON.parse(button.payload);
-                          } catch {
-                              return null;
-                          }
-                      })()
-                    : button.payload;
-            object.hash = payloadObj?.hash || null;
-        }
-        object = { ...object, ..._filterSafeOptions(button.options) } as IVkButton;
         const groupOptions = button.options[GROUP_NAME];
         if (groupOptions === undefined) {
             finalButtons[index] = [object];

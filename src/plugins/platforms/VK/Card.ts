@@ -1,8 +1,8 @@
-import { ICardInfo, ImageTokens, BotController } from '../../../index';
+import { ICardInfo, ImageTokens, BotController, Text } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { VkRequest } from '../API';
-import { getImageToken } from '../Base/utils';
+import { getImageToken, getPlatformRequestData } from '../Base/utils';
 import { IVkButton, IVkButtonObject, IVkCard, IVkCardElement } from './interfaces/IVkPlatform';
 import { T_VK, VK_MAX_CAROUSEL_ELEMENTS } from './constants';
 
@@ -17,7 +17,12 @@ export async function getImageInDB(
 ): Promise<string | null> {
     return getImageToken(path, T_VK, controller, async (model: ImageTokens) => {
         const api = new VkRequest(controller.appContext);
-        const server = await api.photosGetMessagesUploadServer(controller.userId as string);
+        const requestData = getPlatformRequestData<Record<string, unknown> & { peerId?: number }>(
+            controller,
+            T_VK,
+        );
+        const peerId = (requestData.peerId ?? controller.userId) as string;
+        const server = await api.photosGetMessagesUploadServer(peerId);
         if (!server?.upload_url) {
             return null;
         }
@@ -54,28 +59,32 @@ async function getElements(
         }
         if (cardInfo.usedGallery) {
             const element: IVkCardElement = {
-                title: image.title,
-                description: image.desc,
+                title: Text.resize(image.title, 80),
+                description: Text.resize(image.desc, 80),
                 photo_id: image.imageToken.replace('photo', ''),
             };
-            const button = image.button?.getButtons<IVkButtonObject, IVkButton>(buttonProcessing);
+            const button = image.button?.getButtons<IVkButtonObject, IVkButton>((buttons) =>
+                buttonProcessing(buttons, controller.appContext),
+            );
             if (button?.buttons?.length) {
-                element.buttons = button.buttons.slice(0, 3) as IVkButton[];
+                element.buttons = button.buttons.flat().slice(0, 3) as IVkButton[];
             }
             elements.push(element);
         } else {
             const element: IVkCardElement = {
-                title: image.title,
-                description: image.desc,
+                title: Text.resize(image.title, 80),
+                description: Text.resize(image.desc, 80),
                 photo_id: image.imageToken.replace('photo', ''),
             };
-            const button = image.button?.getButtons<IVkButtonObject, IVkButton>(buttonProcessing);
+            const button = image.button?.getButtons<IVkButtonObject, IVkButton>((buttons) =>
+                buttonProcessing(buttons, controller.appContext),
+            );
             /*
              * У карточки в любом случае должна быть хоть одна кнопка.
              * Максимальное количество кнопок 3
              */
             if (button?.one_time && button.buttons?.length) {
-                element.buttons = button.buttons.slice(0, 3) as IVkButton[];
+                element.buttons = button.buttons.flat().slice(0, 3) as IVkButton[];
                 element.action = { type: 'open_photo' };
                 elements.push(element);
             }

@@ -125,10 +125,10 @@ const bot = new Bot();
 bot.use(new FileAdapter()); // Подключаем файловую бд
 bot.use(
     new MongoAdapter({
-        host: process.env.host,
-        user: process.env.user,
-        pass: process.env.pass,
-        database: process.env.database,
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        pass: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
     }),
 ); // Подключаем MongoDb
 ```

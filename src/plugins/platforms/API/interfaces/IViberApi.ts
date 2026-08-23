@@ -336,7 +336,7 @@ export interface IViberParams {
      * Минимальная версия API
      * @defaultValue "1"
      */
-    min_api_version?: string;
+    min_api_version?: string | number;
 
     /**
      * Текст сообщения

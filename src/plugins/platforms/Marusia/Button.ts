@@ -1,6 +1,6 @@
 import { Text, IButtonType, AppContext } from '../../../index';
 import { IMarusiaButtonCard, IMarusiaButton } from './interfaces/IMarusiaPlatform';
-import { getCorrectButtons } from '../Base/utils';
+import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
 /**
  * Максимальный размер payload в байтах для кнопок Marusia API.
@@ -30,20 +30,27 @@ function _getButton(
             };
         }
         if (button.payload) {
-            const payloadStr =
-                typeof button.payload === 'string'
-                    ? button.payload
-                    : JSON.stringify(button.payload);
-            if (Buffer.byteLength(payloadStr, 'utf8') < MARUSIA_PAYLOAD_MAX_BYTES) {
+            const payloadStr = serializePlatformPayload(button.payload, 'Marusia', appContext);
+            if (payloadStr === null) {
+                return null;
+            }
+            if (Buffer.byteLength(payloadStr, 'utf8') <= MARUSIA_PAYLOAD_MAX_BYTES) {
                 object.payload = button.payload;
             } else {
                 appContext?.logWarn(
-                    `[Marusia] Payload кнопки превышает ${MARUSIA_PAYLOAD_MAX_BYTES} байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Он будет проигнорирован.`,
+                    `[Marusia] Payload кнопки превышает ${MARUSIA_PAYLOAD_MAX_BYTES} байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Кнопка будет пропущена без изменения payload.`,
                 );
+                return null;
             }
         }
         if (button.url) {
-            object.url = Text.resize(button.url, 1024);
+            if (button.url.length > 1024) {
+                appContext?.logWarn(
+                    '[Marusia] URL кнопки превышает 1024 символа. Кнопка будет пропущена без изменения ссылки.',
+                );
+                return null;
+            }
+            object.url = button.url;
         }
         return object;
     }

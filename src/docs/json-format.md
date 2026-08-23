@@ -7,7 +7,7 @@
 
 ## Быстрый старт
 
-Если вы скачали JSON-файл из [визуального редактора](https://umbot.dev), выполните три шага:
+Если вы скачали JSON-файл из [визуального редактора](https://flow.maxim-m.ru), выполните три шага:
 
 1. Установите [Node.js](https://nodejs.org) (версия 20+)
 2. Положите скачанный `flow.json` в любую папку
@@ -17,15 +17,20 @@
 npx umbot create from-flow flow.json --output ./my-bot
 ```
 
-Готовый TypeScript-проект появится в папке `my-bot`. Установите зависимости и запустите:
+Готовый TypeScript-проект появится в папке `my-bot`. Установите зависимости, соберите и запустите:
 
 ```bash
 cd my-bot
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
-Подробнее о CLI: [документация umbot CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.cli_README.html)
+> Проект, сгенерированный через `from-flow`, не содержит dev-сервера с hot-reload — скрипта `npm run dev` нет.
+> Для разработки используйте классический цикл: изменить код → `npm run build` → `npm start`.
+> Если нужен hot-reload, используйте [шаблон `default`/`quiz` через CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html).
+
+Подробнее о CLI: [документация umbot CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html)
 
 ---
 
@@ -39,7 +44,6 @@ npm run dev
     "description": "Описание бота",
     "platforms": ["telegram", "alisa"],
     "database": { "type": "file", "config": {} },
-    "mode": "dev",
     "isLocalStorage": true,
     "nodes": [],
     "edges": [],
@@ -58,7 +62,6 @@ npm run dev
 | `description`    | string   | Описание бота.                                                                                              |
 | `platforms`      | string[] | Платформы: `"telegram"`, `"alisa"`, `"marusia"`, `"vk"`, `"smart_app"`, `"max_app"`, `"viber"`.             |
 | `database`       | object   | Конфигурация БД (см. ниже).                                                                                 |
-| `mode`           | string   | `"dev"` / `"prod"` / `"strict_prod"`.                                                                       |
 | `isLocalStorage` | boolean  | Сохранять userData в localStorage (для тестов).                                                             |
 | `nodes`          | array    | Все узлы графа (команды, шаги, условия, действия, ответы).                                                  |
 | `edges`          | array    | Связи между узлами.                                                                                         |
@@ -201,7 +204,7 @@ npm run dev
 | `isSayFalse` | `Text.isSayFalse(String(a))`    | Пользователь сказал «нет» |
 | `isUrl`      | `Text.isUrl(String(a))`         | Пользователь ввёл URL     |
 
-> Операторы isSayTrue, isSayFalse, isUrl требуют импорта `Text` из `umbot/utils`.
+> Операторы isSayTrue, isSayFalse, isUrl требуют импорта `Text` из `umbot`.
 
 ### Action Node (блок действия)
 
@@ -662,7 +665,8 @@ bot.addCommand('tts_demo', ['озвучь'], (cmd, ctrl) => {
 
 ```typescript
 bot.addStep('fetch_data', async (ctrl) => {
-    const response = await fetch('https://api.example.com/data');
+    // fetchWithTimeout — обёртка с таймаутом ~8 сек, генерируется автоматически в ./utils
+    const response = await fetchWithTimeout('https://api.example.com/data');
     ctrl.userData.apiResult = await response.json();
     setText(ctrl, `Получено: ${ctrl.userData.apiResult}`);
 });
@@ -744,7 +748,7 @@ bot.addStep('show_help', (ctrl) => {
 
 ```typescript
 // body передаётся как template literal вместо JSON.parse
-const response = await fetch('https://api.com', {
+const response = await fetchWithTimeout('https://api.com', {
     method: 'POST',
     body: `{"user": "${ctrl.userData.userName}", "score": "${ctrl.userData.score}"}`,
 });
@@ -757,33 +761,29 @@ ctrl.userData.result = await response.json();
 
 ```typescript
 import { Bot, FALLBACK_COMMAND } from 'umbot';
-import { fullPlatforms, telegram, ... } from 'umbot/plugins';
-import { setText } from './utils';                    // всегда
-import { setText, setTTS } from './utils';            // только при наличии TTS
-import { rand } from 'umbot/utils';                   // только при random_number
-import { Text } from 'umbot/utils';                   // только при isSayTrue/isSayFalse/isUrl
-import { FileAdapter } from 'umbot/plugins';           // только при database.type === 'file'
-import { MongoAdapter } from 'umbot/plugins';          // только при database.type === 'mongo'
+import { fullPlatforms } from 'umbot/plugins'; // если 7 платформ
+import { Text } from 'umbot'; // только при isSayTrue/isSayFalse/isUrl
+import { setText, setTTS, fetchWithTimeout } from './utils'; // условно
+import { FileAdapter, MongoAdapter } from 'umbot/plugins'; // по database.type
 ```
 
-| Условие                         | Импорт                                          |
-| ------------------------------- | ----------------------------------------------- |
-| Есть TTS у любого узла          | `import { setText, setTTS } from './utils'`     |
-| Нет TTS                         | `import { setText } from './utils'`             |
-| Есть random_number действия     | `import { rand } from 'umbot/utils'`            |
-| Есть isSayTrue/isSayFalse/isUrl | `import { Text } from 'umbot/utils'`            |
-| database.type === 'file'        | `import { FileAdapter } from 'umbot/plugins'`   |
-| database.type === 'mongo'       | `import { MongoAdapter } from 'umbot/plugins'`  |
-| 7 платформ                      | `import { fullPlatforms } from 'umbot/plugins'` |
-| Менее 7 платформ                | `import { telegram, ... } from 'umbot/plugins'` |
+| Условие                         | Импорт                                                            |
+| ------------------------------- | ----------------------------------------------------------------- |
+| Есть TTS у любого узла          | `import { setText, setTTS } from './utils'`                       |
+| Нет TTS                         | `import { setText } from './utils'`                               |
+| Есть http_request действия      | `import { fetchWithTimeout } from './utils'` (генерируется cli)   |
+| Есть isSayTrue/isSayFalse/isUrl | `import { Text } from 'umbot'`                                    |
+| database.type === 'file'        | `import { FileAdapter } from 'umbot/plugins'`                     |
+| database.type === 'mongo'       | `import { MongoAdapter } from 'umbot/plugins'`                    |
+| 7 платформ                      | `import { fullPlatforms } from 'umbot/plugins'`                   |
+| Менее 7 платформ                | `import { TelegramAdapter, VkAdapter, ... } from 'umbot/plugins'` |
 
 ---
 
 ## Валидация имён
 
-- **Имена узлов (name)** — санитизируются в валидные JS-идентификаторы через `sanitizeIdentifier()`:
-    - Пробелы и спецсимволы → `_`
-    - Кириллица сохраняется (Unicode)
-    - Имена, начинающиеся с цифры → префикс `_`
+- **Имена узлов (name)** используются как идентификаторы команд в сгенерированном коде.
+  Генерируемый код преобразует их в строковые slug-идентификаторы (`__` + name); санитизации имён
+  в валидные JS-символы не производится — для надёжности используйте ASCII-идентификаторы без пробелов.
 - **Имена переменных (saveTo, field)** — имена, начинающиеся с цифры, оборачиваются в скобки: `ctrl.userData['123field']`
 - **Package name** — начинается с буквы, валидный npm identifier

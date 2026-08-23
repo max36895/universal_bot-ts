@@ -1,6 +1,6 @@
 ---
 name: umbot-doc-audit
-description: "Аудит и проверка документации проекта"
+description: 'Аудит и проверка документации проекта'
 ---
 
 # Documentation Audit & Refactoring
@@ -21,6 +21,8 @@ processable by AI agents. Remove filler, eliminate contradictions, fill gaps.
   specialized plugins.
 - **Sources of truth**:
     - `src/` (source code). Code is always authoritative.
+    - `cli/` and `cli/template/` when documentation describes project generation, Docker, cloud deployment, tokens,
+      generated HTTP requests, or `flow.json`.
     - `tests/` — use only when uncertain about behavior or API.
     - `benchmark/` — do not read (token economy).
 - **Platforms**: Any platform info (limits, formats, API specifics) must strictly match official documentation.
@@ -57,6 +59,8 @@ After confirmation:
 - **Do not remove** existing explanations of basic concepts if they help understand the framework's specifics.
 - Add missing sections: error handling, request lifecycle, caching (`Preload`), strict mode (`strict_prod`), testing (
   `BotTest`), metrics.
+- When documenting CLI-generated projects, verify examples against `cli/flowGenerator.js` and `cli/template/`. Do not
+  document generated `fetch` without timeout, plaintext tokens in commit-prone files, or silent overwrite behavior.
 - Structure material for quick onboarding: Quick Start → Architecture → Core Concepts → Platform/DB Adapters → Testing →
   Performance → FAQ/Recipes.
 

@@ -13,6 +13,9 @@ export async function getImageInDB(
     controller: BotController,
     path: string,
 ): Promise<string | null> {
+    if (Text.isUrl(path)) {
+        return path;
+    }
     return getImageToken(path, T_MAX_APP, controller, async (model: ImageTokens) => {
         const api = new MaxRequest(controller.appContext);
         const upload = await api.upload(path, 'image');
@@ -62,25 +65,23 @@ export async function cardProcessing(
             ];
         }
     } else {
-        const elements = [];
-        for (let i = 0; i < cardInfo.images.length; i++) {
+        const elements: IMaxCard[] = [];
+        for (let i = 0; i < cardInfo.images.length && elements.length < 12; i++) {
             const image = cardInfo.images[i];
             if (!image.imageToken && image.imageDir) {
                 image.imageToken = await getImageInDB(controller, image.imageDir);
             }
             if (image.imageToken) {
-                elements.push(image.imageToken);
+                elements.push({
+                    type: 'image',
+                    payload: {
+                        [Text.isUrl(image.imageToken) ? 'url' : 'token']: image.imageToken,
+                    },
+                });
             }
         }
         if (elements.length) {
-            return [
-                {
-                    type: 'image',
-                    payload: {
-                        photos: elements,
-                    },
-                },
-            ];
+            return elements;
         }
     }
     return null;

@@ -67,6 +67,8 @@
 | addStep                  | stepName: string, handler: IStepParam['cb']                                                                                                          | Bot                           | Регистрация шага (цепочки диалога)                          |
 | removeStep               | stepName: string                                                                                                                                     | Bot                           | Удаление шага по имени                                      |
 | clearSteps               | -                                                                                                                                                    | Bot                           | Удаление всех шагов                                         |
+| addForm                  | formName: string, options: IAddFormOptions                                                                                                           | Bot                           | Регистрация многошаговой формы с валидацией полей           |
+| removeForm               | formName: string                                                                                                                                     | Bot                           | Удаление формы и всех её шагов                              |
 | use                      | fn: MiddlewareFn \| platform: TAppType, fn: MiddlewareFn \| plugin: TPlugin                                                                          | Bot                           | Подключение middleware или плагина                          |
 | clearUse                 | -                                                                                                                                                    | Bot                           | Удаление всех плагинов и middleware                         |
 | setCustomCommandResolver | resolver: TCommandResolver                                                                                                                           | Bot                           | Установка кастомного резолвера команд                       |
@@ -224,6 +226,46 @@ type TCommandResolver = (
     commands: Map<string, ICommandParam>,
 ) => string | null | Promise<string | null>;
 ```
+
+### Формы (`addForm`)
+
+Многошаговая форма — обёртка над шагами: каждое поле становится отдельным шагом, ответы собираются в объект и передаются в `onComplete`.
+
+```ts
+// Одно поле формы
+interface IAddFormField<TBotController extends BotController = BotController> {
+    name: string; // Ключ поля в объекте ответов
+    prompt: string | ((ctx: TBotController) => string); // Вопрос пользователю
+    // true — принято; false — повторить prompt; string — текст ошибки пользователю
+    validate?: (value: string) => boolean | string | Promise<boolean | string>;
+}
+
+// Параметры addForm
+interface IAddFormOptions<TBotController extends BotController = BotController> {
+    fields: IAddFormField<TBotController>[]; // Поля, обрабатываются последовательно
+    onComplete: (ctx: TBotController, answers: Record<string, string>) => void | Promise<void>; // Вызывается после заполнения всех полей
+    cancelText?: string; // Текст при отмене (по умолчанию 'Форма отменена.')
+    cancelCommands?: string[]; // Команды отмены (по умолчанию ['отмена', 'cancel'])
+}
+```
+
+```ts
+bot.addForm('registration', {
+    fields: [
+        { name: 'name', prompt: 'Как вас зовут?' },
+        {
+            name: 'email',
+            prompt: 'Укажите email',
+            validate: (v) => /\S+@\S+/.test(v) || 'Некорректный email',
+        },
+    ],
+    onComplete: (ctx, answers) => {
+        ctx.text = `Спасибо, ${answers.name}! Мы записали ваш email: ${answers.email}`;
+    },
+});
+```
+
+> `removeForm('registration')` удаляет форму и все её внутренние шаги. Имена шагов формы имеют префикс `__form_<имя>_`, поэтому `removeForm('user')` удалит и форму `user_2` — используйте уникальные имена.
 
 ### Утилиты для кнопок
 
@@ -523,12 +565,12 @@ await Promise.all(preload.loadImages(['./img.jpg'], [T_TELEGRAM], { telegramUseI
 
 #### Методы Preload
 
-| Метод          | Параметры                                              | Возвращаемое значение | Описание              |
-| -------------- | ------------------------------------------------------ | --------------------- | --------------------- |
-| `loadImages`   | `paths: string[]`, `platforms: TAppType[]`, `options?` | `Promise<boolean>[]`  | Загрузить изображения |
-| `loadSounds`   | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`  | Загрузить звуки       |
-| `removeImages` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`  | Удалить изображения   |
-| `removeSounds` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`  | Удалить звуки         |
+| Метод          | Параметры                                              | Возвращаемое значение       | Описание                                                                      |
+| -------------- | ------------------------------------------------------ | --------------------------- | ----------------------------------------------------------------------------- |
+| `loadImages`   | `paths: string[]`, `platforms: TAppType[]`, `options?` | `Promise<string \| null>[]` | Загрузить изображения (разрешается токеном изображения или `null` при ошибке) |
+| `loadSounds`   | `paths: string[]`, `platforms: TAppType[]`, `options?` | `Promise<string \| null>[]` | Загрузить звуки (разрешается токеном звука или `null` при ошибке)             |
+| `removeImages` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`        | Удалить изображения                                                           |
+| `removeSounds` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`        | Удалить звуки                                                                 |
 
 ### ILogger
 
@@ -561,6 +603,20 @@ interface IPluginFn {
     isPlugin: boolean; // ОБЯЗАТЕЛЬНО: myPlugin.isPlugin = true;
 }
 ```
+
+> **Рекомендация:** вместо ручного присваивания `myPlugin.isPlugin = true` используйте хелпер `createPlugin()` — он выставляет флаг автоматически, и забыть его невозможно:
+>
+> ```ts
+> import { createPlugin } from 'umbot';
+>
+> const myPlugin = createPlugin((appContext, bot) => {
+>     // логика инициализации
+>     return () => {
+>         // логика очистки при уничтожении
+>     };
+> });
+> bot.use(myPlugin);
+> ```
 
 ### SoundConstants
 
@@ -674,3 +730,93 @@ export class ScoreModel extends Model<IScoreState> {
 ### ImageTokens / SoundTokens
 
 Встроенные модели для кэширования токенов загруженных медиа. Управляются фреймворком автоматически через `Preload` и компоненты `Card`/`Sound`.
+
+---
+
+## Схема встроенных таблиц БД
+
+Когда вы подключаете `MongoAdapter` или `FileAdapter`, umbot автоматически заводит следующие таблицы (коллекции).
+
+### Таблица: `UsersData`
+
+Хранит состояние между запросами для каждого пользователя на каждой платформе.
+
+| Поле       | Тип                     | Описание                                              |
+| ---------- | ----------------------- | ----------------------------------------------------- |
+| `userId`   | string \| number        | ID пользователя (primary key)                         |
+| `data`     | Record<string, unknown> | Содержимое `ctx.userData` — произвольный JSON         |
+| `meta`     | Record<string, unknown> | Метаданные: когда создан, последний запрос, платформа |
+| `platform` | string                  | Имя платформы ('telegram', 'alisa', ...)              |
+
+Индексы: по `userId + platform`.
+
+### Таблица: `ImageTokens`
+
+Кэш для изображений, которые нужно загрузить в платформу про их отправке.
+
+| Поле         | Тип    | Описание                                             |
+| ------------ | ------ | ---------------------------------------------------- |
+| `imageToken` | string | Уникальный ID изображения на платформе (primary key) |
+| `path`       | string | Локальный путь или CDN URL оригинала                 |
+| `platform`   | string | Имя платформы для которой загружено                  |
+
+Повторное использование одного и того же `path` не перезагружает изображение.
+
+### Таблица: `SoundTokens`
+
+Аналог ImageTokens для аудиофайлов.
+
+| Поле         | Тип    | Описание                                       |
+| ------------ | ------ | ---------------------------------------------- |
+| `soundToken` | string | Уникальный ID звука на платформе (primary key) |
+| `path`       | string | Локальный путь или CDN URL оригинала           |
+| `platform`   | string | Имя платформы                                  |
+
+### Пользовательские таблицы
+
+Если вы создаёте свою модель — наследуйте от `Model`:
+
+```ts
+import { Model, IModelState, IModelRules, AppContext } from 'umbot';
+
+interface IMyState extends IModelState {
+    id: string | null;
+    name: string | null;
+    age: number | null;
+}
+
+const RULES: IModelRules[] = [
+    { name: ['name'], type: 'string', max: 200 },
+    { name: ['age'], type: 'integer' },
+];
+
+class MyTable extends Model<IMyState> {
+    constructor(appContext: AppContext) {
+        super(appContext);
+        this.state = { id: null, name: null, age: null };
+    }
+
+    rules() {
+        return RULES;
+    }
+
+    attributeLabels() {
+        return { id: 'ID', name: 'Имя', age: 'Возраст' };
+    }
+
+    tableName() {
+        return 'my_table';
+    }
+}
+```
+
+> **Обратите внимание:** `tableName()`, `rules()` и `attributeLabels()` — публичные абстрактные методы, переопределять их нужно без модификатора `protected`. Допустимые типы полей в `rules()`: `'text' | 'string' | 'integer' | 'int' | 'date' | 'bool'`. Первичный ключ определяется автоматически по метке `'id'`/`'ID'` в `attributeLabels()`.
+
+### Требования к БД-провайдеру
+
+| Провайдер        | Заметки                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| **FileAdapter**  | Простой JSON-файл в `./json`. Не потокобезопасен, только для разработки/локальных тестов. |
+| **MongoAdapter** | Production-ready. Требует MongoDB >= 5.                                                   |
+
+Все таблицы создаются автоматически на первом запросе.

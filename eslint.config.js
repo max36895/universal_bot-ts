@@ -5,7 +5,17 @@ const globals = require('globals');
 
 module.exports = [
     {
-        ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'doc/**', 'examples/**'],
+        ignores: [
+            'node_modules/**',
+            'dist/**',
+            'coverage/**',
+            'doc/**',
+            'examples/**',
+            // Сгенерированные CLI-проекты — это выход генератора, а не исходники umbot
+            'build_mode_test/**',
+            'dev_min_test/**',
+            'dev_mode_test/**',
+        ],
     },
     {
         files: ['**/*.ts'],
@@ -108,11 +118,25 @@ module.exports = [
     {
         files: ['cli/**/*.js', 'cli/**/*.ts'],
         languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'commonjs',
             parserOptions: {
                 projectService: false,
             },
+            globals: {
+                ...globals.node,
+            },
+        },
+        plugins: {
+            '@typescript-eslint': tseslint.plugin,
+            security: require('eslint-plugin-security'),
         },
         rules: {
+            ...eslint.configs.recommended.rules,
+            'security/detect-unsafe-regex': 'error',
+            'no-eval': 'error',
+            'no-implied-eval': 'error',
+            'no-new-func': 'error',
             '@typescript-eslint/await-thenable': 'off',
             '@typescript-eslint/no-misused-promises': 'off',
             '@typescript-eslint/no-floating-promises': 'off',

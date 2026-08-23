@@ -2,6 +2,7 @@ import { Sound, BaseBotController, SoundConstants } from '../../src';
 import { T_ALISA, AlisaSound, pUtils } from '../../src/plugins';
 
 const botController = new BaseBotController();
+botController.appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 botController.appType = T_ALISA;
 
 describe('sound', () => {

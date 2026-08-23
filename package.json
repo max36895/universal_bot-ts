@@ -1,6 +1,6 @@
 {
     "name": "umbot",
-    "version": "3.0.15",
+    "version": "3.1.0",
     "description": "Мультиплатформенный фреймворк для создания голосовых навыков и чат-ботов с единой бизнес-логикой. Встроенная поддержка ВКонтакте, Telegram, Viber, MAX, Яндекс Алисы, Маруси и Сбера SmartApp. Архитектура на адаптерах позволяет подключать любые другие платформы без изменения основного кода.",
     "keywords": [
         "vk",
@@ -111,14 +111,14 @@
         "bt": "npm run build && npm test",
         "deploy": "npm run build && npm publish",
         "create": "umbot",
-        "clean": "node clean.js",
+        "clean": "node scripts/clean.js",
         "test": "node --expose-gc ./node_modules/jest/bin/jest.js",
         "test:coverage": "jest --coverage",
         "doc": "typedoc --excludePrivate --excludeExternals",
         "doc:fix": "node scripts/fix-doc.js",
         "prettier": "prettier --write .",
-        "lint": "eslint . --ext .ts",
-        "lint:fix": "eslint . --ext .ts --fix",
+        "lint": "eslint . --ext .ts,.js",
+        "lint:fix": "eslint . --ext .ts,.js --fix",
         "typecheck": "tsc --noEmit",
         "check": "npm run doc:fix && npm run prettier && npm run typecheck && npm run lint",
         "bench": "node --expose-gc ./benchmark/command.js",
@@ -128,7 +128,8 @@
         "stress:long": "node --expose-gc ./benchmark/stress-test.js long",
         "stress:prof": "node --prof --expose-gc ./benchmark/stress-test.js",
         "comparison": "node --expose-gc ./benchmark/um.js",
-        "comparison:logic": "node --expose-gc ./benchmark/um.js logic"
+        "comparison:logic": "node --expose-gc ./benchmark/um.js logic",
+        "audit:load": "node --expose-gc ./scripts/audit-load.js"
     },
     "engines": {
         "node": ">=20.19.0"
@@ -161,6 +162,9 @@
     },
     "peerDependenciesMeta": {
         "typescript": {
+            "optional": true
+        },
+        "mongodb": {
             "optional": true
         }
     },

@@ -17,6 +17,7 @@ bot.setAppConfig({ env: './.env' });
 TELEGRAM_TOKEN=123456:ABC-DEF...
 VK_TOKEN=vk1.a.abc123...
 VK_CONFIRMATION_TOKEN=abcdef       # обязательно для VK (для подтверждения вебхука)
+VK_SECRET_KEY=abc123...              # опционально: секретный ключ VK для проверки подлинности запросов
 VIBER_TOKEN=1234567890-ABCDEF...
 YANDEX_TOKEN=OAuth y0_AgAAAAA...   # OAuth-токен навыка (для аплоада медиа)
 MARUSIA_TOKEN=abc.123...
@@ -209,4 +210,4 @@ npm install --save re2@latest
 
 ---
 
-Подробнее о конфигурации (`IAppConfig`, `IAppParam`), приоритете токенов и содержимом `.env` — в разделе [Конфигурация: IAppConfig и IAppParam](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html#конфигурация-iappconfig-и-iappparam).
+Подробнее о конфигурации (`IAppConfig`, `IAppParam`), приоритете токенов и содержимом `.env` — в разделе [Конфигурация: IAppConfig и IAppParam](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html#конфигурация-iappconfig-и-iappparam).

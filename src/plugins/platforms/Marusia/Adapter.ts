@@ -1,5 +1,5 @@
 import { Text, BotController, AppContext, IButtonType } from '../../../index';
-import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
+import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
@@ -7,6 +7,7 @@ import { T_MARUSIA, VERSION, MARUSIA_STATE_MAX_BYTES } from './constants';
 import {
     IMarusiaRequest,
     IMarusiaRequestState,
+    IMarusiaSession,
     IMarusiaItemsList,
     IMarusiaBigImage,
     IMarusiaImageGallery,
@@ -75,8 +76,11 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
             return false;
         }
         if (query.request && query.version && query.session) {
-            if (query.meta?.client_id?.includes('MailRu')) {
+            const clientId = query.meta?.client_id ?? '';
+            if (clientId.includes('MailRu')) {
                 return true;
+            } else if (clientId.includes('yandex.searchplugin')) {
+                return false;
             } else if (query.session.application?.application_id) {
                 return (
                     query.session.application?.application_id ===
@@ -116,18 +120,31 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
     setQueryData(query: IMarusiaWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
-                if (query.session === undefined && query.request === undefined) {
-                    if (query.account_linking_complete_event) {
-                        controller.userEvents = {
-                            auth: {
-                                status: true,
-                            },
-                        };
-                        return true;
-                    }
+                if (query.account_linking_complete_event && !query.session && !query.request) {
+                    controller.userEvents = {
+                        auth: {
+                            status: true,
+                        },
+                    };
+                    return true;
+                }
+                if (!query.session || !query.request) {
                     controller.platformOptions.error =
                         'MarusiaAdapter:setQueryData(): Переданы некорректные данные!';
                     return false;
+                }
+
+                // Обработка health-check (ping → pong)
+                if (!query.request.command && query.request.original_utterance === 'ping') {
+                    controller.text = 'pong';
+                    controller.platformOptions.sendInInit = {
+                        version: VERSION,
+                        response: {
+                            text: 'pong',
+                            end_session: false,
+                        },
+                    };
+                    return true;
                 }
 
                 controller.requestObject = query;
@@ -145,13 +162,11 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
 
                 controller.platformOptions.appId = query.session.skill_id;
                 controller.isScreen =
-                    (controller.userMeta as IMarusiaRequestMeta).interfaces.screen !== undefined;
+                    (controller.userMeta as IMarusiaRequestMeta).interfaces?.screen !== undefined;
                 return true;
             } else {
                 controller.platformOptions.error = `MarusiaAdapter:setQueryData(): ${EMPTY_QUERY_ERROR}`;
             }
-        } else {
-            console.error(`MarusiaAdapter:setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
         }
         return false;
     }
@@ -187,6 +202,11 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                   ) as IMarusiaButton[])
                 : [];
         }
+        if (!response.text) {
+            this.appContext?.logWarn(
+                'MarusiaAdapter._getResponse(): response.text пуст. Ответ сохранён без подстановки и исключения.',
+            );
+        }
         return response;
     }
 
@@ -200,18 +220,30 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
 
         await this._initTTS(controller);
         result.response = await this._getResponse(controller);
-        result.session = controller.platformOptions.session as IMarusiaWebhookResponse['session'];
+        const sessionObj = controller.platformOptions.session as IMarusiaSession | undefined;
+        result.session = {
+            session_id: sessionObj?.session_id ?? '',
+            message_id: sessionObj?.message_id ?? 0,
+            user_id: (sessionObj?.user_id ?? controller.userId) + '',
+        };
         if (controller.platformOptions.stateName && stateData) {
-            const stateJson = JSON.stringify(stateData);
-            if (Buffer.byteLength(stateJson, 'utf8') > MARUSIA_STATE_MAX_BYTES) {
+            try {
+                const stateJson = JSON.stringify(stateData);
+                const stateBytes = Buffer.byteLength(stateJson, 'utf8');
+                if (stateBytes <= MARUSIA_STATE_MAX_BYTES) {
+                    result[controller.platformOptions.stateName as TState] = stateData;
+                } else {
+                    this.appContext?.logError(
+                        `MarusiaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
+                            `(${stateBytes} байт) превышает лимит API ` +
+                            `(${MARUSIA_STATE_MAX_BYTES} байт). Поле не будет отправлено.`,
+                    );
+                }
+            } catch (error) {
                 this.appContext?.logError(
-                    `MarusiaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
-                        `(${Buffer.byteLength(stateJson, 'utf8')} байт) превышает лимит API ` +
-                        `(${MARUSIA_STATE_MAX_BYTES} байт). Состояние будет очищено.`,
+                    `MarusiaAdapter.getContent(): state "${controller.platformOptions.stateName}" не сериализуется и не будет отправлен.`,
+                    { error },
                 );
-                result[controller.platformOptions.stateName as TState] = {};
-            } else {
-                result[controller.platformOptions.stateName as TState] = stateData;
             }
         }
         this._timeLimitLog(controller);

@@ -1,6 +1,6 @@
 ---
 name: umbot-platform-code-audit
-description: "Аудит кода платформы"
+description: 'Аудит кода платформы'
 ---
 
 ## Роль: Principal Architect Conversational AI & Cross-Platform Voice Frameworks
@@ -84,6 +84,13 @@ description: "Аудит кода платформы"
 Одобрять (и искать их реализацию): Фичи с аналогами в voice.
 Примеры: Клиентское хранилище (Telegram Local API ~ Алиса user_state), показ картинок (Gallery), Account Linking.
 Анализ IButtonOptions: Поля request_contact, request_location. Если голосовые платформы не умеют запрашивать контакт по кнопке, то наличие этих полей в базовом интерфейсе без безопасной деградации в адаптерах — это архитектурная ошибка.
+
+### CLI-generated platform surface
+
+`cli/` is a user-facing platform surface too. If an audit touches platform response formats, cards, buttons, HTTP
+actions, Docker/cloud deployment, or tokens, inspect `cli/flowGenerator.js`, `cli/template/`, and
+`tests/cli/flowGenerator.test.ts`. Generated projects must keep the same platform limits, bounded HTTP behavior, and
+secret-handling rules as `src/plugins/`.
 
 ### 3. Целостность адаптеров
 

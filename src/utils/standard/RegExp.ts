@@ -1,9 +1,9 @@
 type TRe2 = RegExpConstructor;
 let Re2: TRe2;
 /**
- * Флаг говорящий о том используется ли re2 для обработки регулярок или нет.
- * Нужен для того, чтобы можно было задать различные ограничения в зависимости от наличия библиотеки.
- * @private
+ * Флаг, говорящий о том, используется ли `re2` для обработки регулярных выражений.
+ * Экспортируется наружу, чтобы потребители могли адаптировать ограничения
+ * под наличие/отсутствие `re2`.
  */
 let __$usedRe2: boolean;
 try {
@@ -76,6 +76,21 @@ export function getRegExp(
         return new customReg(pattern, flag);
     }
     return new Re2(pattern, flag);
+}
+
+/**
+ * Возвращает RegExp напрямую если передан объект RegExp, иначе компилирует через getRegExp.
+ * Избегает повторной компиляции regexp при повторной обработке объекта.
+ */
+export function getRegExpOrSelf(
+    reg: TPatternRegExp | TPatternRegExp[],
+    flags: string = 'ium',
+    customReg?: RegExpConstructor,
+): customRegExp {
+    if (!Array.isArray(reg) && isRegex(reg) && !customReg) {
+        return reg;
+    }
+    return getRegExp(reg, flags, customReg);
 }
 
 export { __$usedRe2 };

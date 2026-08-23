@@ -18,6 +18,7 @@ import { AppContext } from '../../src';
 import { YandexSoundRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('YandexSoundRequest', () => {
     let soundApi: YandexSoundRequest;

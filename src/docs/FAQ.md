@@ -28,13 +28,19 @@
 
 ### Почему не срабатывает команда, хотя слот вроде бы подходит?
 
+- **Порядок диспетчера** (важно!). Входящий запрос проходит такую цепочку:
+    1. **middleware** (`bot.use(...)`, глобально).
+    2. **Шаг** (`thisIntentName`, если пользователь внутри мультишага).
+    3. **Команды** — проверяется каждая в порядке регистрации, **первая подошедшая** побеждает и выполняется (цепочка прерывается).
+    4. **Интенты** из `platformParams` (включая встроенные `welcome`/`help`).
+    5. **FALLBACK_COMMAND** (`*`).
+       Значит, если вы ожидали интент, а попадает команда — сначала проверьте, нет ли более ранней команды,
+       которая перекрывает её по слоту.
 - Регистр: `this.userCommand` автоматически приводится к нижнему регистру. Ваши слоты тоже должны быть в нижнем
   регистре.
 - Тип поиска: Если слот — строка, ищется через `includes()`. Если нужно точное совпадение, используйте регулярное
   выражение (например, `/^привет$/i`).
-- Порядок регистрации: Команды проверяются в порядке добавления. Первая подошедшая выполняется. Убедитесь, что ваша
-  команда не перекрывается более ранней.
-- Fallback-команда: Если команда не найдена, срабатывает команда с именем FALLBACK_COMMAND (или \*), если она
+- Fallback-команда: если ничего не подошло, срабатывает команда с именем `FALLBACK_COMMAND` (эквивалент `*`), если она
   зарегистрирована.
 
 ### В чём разница между `addCommand` и интентом из `platformParams`?
@@ -84,26 +90,21 @@ ctx.text = `Привет, ${ctx.userData.name}!`;
 Пример кода:
 
 ```ts
-import { Bot } from 'umbot';
+import { Bot, createPlugin } from 'umbot';
 import { fullPlatforms, MongoAdapter } from 'umbot/plugins';
 
 const bot = new Bot();
 
 // 1. Подключение готовых плагинов (платформы и БД)
 bot.use(fullPlatforms);
-bot.use(
-    new MongoAdapter({
-        /* конфиг */
-    }),
-);
+bot.use(new MongoAdapter({/* конфиг */}));
 
 // 2. Подключение кастомного плагина (пример)
-const myPlugin = (appContext, bot) => {
+const myPlugin = createPlugin((appContext, bot) => {
     appContext.plugins['myPlugin'] = {
         getData: (key) => `Value: ${key}`,
     };
-};
-myPlugin.isPlugin = true; // Маркер, что это плагин
+});
 
 bot.use(myPlugin);
 
@@ -126,19 +127,18 @@ bot.start('localhost', 3000);
 
 ```ts
 // plugins/game.ts
-import { Bot, AppContext, BotController, IUserData, IPluginFn } from 'umbot';
+import { Bot, AppContext, BotController, IUserData, createPlugin } from 'umbot';
 
 interface GameData extends IUserData {
     score: number;
 }
 
-export const gamePlugin: IPluginFn = (appContext: AppContext, bot: Bot): void => {
+export const gamePlugin = createPlugin((appContext: AppContext, bot: Bot): void => {
     bot.addCommand('game_start', ['играть'], (_, bc: BotController<GameData>) => {
         bc.userData.score = 0;
         bc.text = 'Игра началась!';
     });
-};
-gamePlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО
+});
 ```
 
 ```ts
@@ -158,7 +158,7 @@ bot.use(gamePlugin); // подключаем плагин
 | Нужно включать/выключать функции   | Да                  |
 | Интеграция со сторонними API       | Да                  |
 
-Подробнее о создании плагинов — в разделе [Архитектура расширений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_readme.html).
+Подробнее о создании плагинов — в разделе [Архитектура расширений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_readme.html).
 
 ## Установка и настройка
 
@@ -226,7 +226,7 @@ const bot = new Bot()
     .start('localhost', 3000);
 ```
 
-Подробнее об изменениях можно прочитать [тут](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release.html)
+Подробнее об изменениях можно прочитать [тут](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_migration-2x-to-3x.html)
 
 ### Как перейти с 2.1.x на 2.2.x?
 
@@ -262,7 +262,7 @@ npm list umbot
 | 10000             | до 1 сек                                      | < 20 мс                              | Проверьте сервер |
 | 20000             | до 1 сек                                      | 22.44 мс                             | Используйте re2  |
 
-> Примечание: «Холодный запуск» — кэш RegExp пуст, выражения компилируются впервые. Значение «до 30 мс» для 1000 команд — worst case (все команды с RegExp, кэш пуст). В типичном сценарии (500 команд, строки) время составляет 0.26 мс. «С re2, кэш прогрет» — `re2` установлен, кэш уже заполнен. Подробные результаты — в разделе [BENCHMARKS](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_BENCHMARKS.html).
+> Примечание: «Холодный запуск» — кэш RegExp пуст, выражения компилируются впервые. Значение «до 30 мс» для 1000 команд — worst case (все команды с RegExp, кэш пуст). В типичном сценарии (500 команд, строки) время составляет 0.26 мс. «С re2, кэш прогрет» — `re2` установлен, кэш уже заполнен. Подробные результаты — в разделе [BENCHMARKS](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html).
 
 ### Что такое re2 и зачем он нужен?
 
@@ -331,8 +331,10 @@ const bot = new Bot();
 bot.use(new FileAdapter());
 
 bot.addCommand('test', ['сохранить'], (_, cBot) => {
-    cBot.userData = {}; // Сохраняем данные в базу данных.
-    cBot.state = {}; // Сохраняем данные в локальное хранилище платформы.
+    // ⚠️ Не делайте `cBot.userData = {}` — это перезаписывает ссылку и ломает отслеживание изменений.
+    // Вместо этого мутируйте объект:
+    Object.assign(cBot.userData, { key: 'value' }); // Данные в базу данных
+    Object.assign(cBot.state, { key: 'value' }); // Данные в локальное хранилище платформы
     // Ваша логика
 });
 ```
@@ -354,7 +356,7 @@ bot.setAppConfig({
 });
 
 bot.addCommand('test', ['сохранить'], (_, ctx) => {
-    ctx.userData = {}; // Сохраняем данные в хранилище платформы.
+    ctx.userData.myKey = 'значение'; // Сохраняем через мутацию, а не переприсваивание
     // Ваша логика
 });
 ```
@@ -504,9 +506,9 @@ bot.setAppMode('dev');
 1. Переключитесь на MongoAdapter или другую БД
 2. Очистите старые данные при необходимости
 
-### Время ответа превышает 3 секунды
+### Время ответа превышает лимит платформы
 
-Платформы (Алиса, Сбер и др.) дают максимум 3 секунды на ответ.
+Алиса ожидает ответ не дольше 4,5 секунды. У других платформ лимит отличается и может меняться.
 Оптимизация:
 
 1. ✅ Используйте re2
@@ -624,13 +626,12 @@ class MyI18nPlugin implements IPlugin {
     destroy(_bot: Bot) {}
 }
 
-// Вариант 2: функция
-const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
+// Вариант 2: функция (через createPlugin — флаг isPlugin выставится автоматически)
+const myI18nPlugin = createPlugin((appContext: AppContext, bot: Bot) => {
     appContext.plugins['i18n'] = (key: string, ...params: unknown[]) => {
         return `Перевод для: ${key}`;
     };
-};
-myI18nPlugin.isPlugin = true; // маркер обязательного наличия
+});
 
 bot.use(myI18nPlugin);
 bot.use(new MyI18nPlugin());

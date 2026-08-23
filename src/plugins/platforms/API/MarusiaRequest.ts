@@ -68,6 +68,8 @@ export class MarusiaRequest extends VkRequest {
         super(appContext);
         if (appContext.appConfig.tokens[T_MARUSIA]?.token) {
             this.initToken(appContext.appConfig.tokens[T_MARUSIA].token);
+        } else {
+            this.token = null;
         }
     }
 
@@ -242,7 +244,7 @@ export class MarusiaRequest extends VkRequest {
      */
     public async marusiaCreateAudio(audio_meta: object): Promise<IMarusiaApiCreateAudio | null> {
         this._request.post = {
-            audio_meta,
+            audio_meta: JSON.stringify(audio_meta),
         };
         return await this.call<IMarusiaApiCreateAudio>('marusia.createAudio');
     }

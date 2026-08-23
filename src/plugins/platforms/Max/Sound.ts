@@ -38,7 +38,13 @@ export async function soundProcessing(
             const sound = sounds[i];
             if (sound.sounds !== undefined && sound.key !== undefined) {
                 let sText: string | null = Text.getText(sound.sounds);
-                if (Text.isUrl(sText) || (await isFile(sText))) {
+                if (Text.isUrl(sText)) {
+                    controller.appContext.logWarn(
+                        'Max.soundProcessing(): MAX принимает аудио только по upload-token; URL пропущен.',
+                    );
+                    continue;
+                }
+                if (await isFile(sText)) {
                     sText = await getSoundInDB(controller, sText);
                 }
 

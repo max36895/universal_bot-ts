@@ -203,6 +203,7 @@ class TelegramController extends BotController {
 bot.use(
     new VkAdapter('YOUR_BOT_TOKEN', {
         vk_confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
+        vk_secret_key: 'YOUR_SECRET_KEY', // опционально: для проверки подлинности запросов
         vk_api_version: '5.199',
     }),
 ); // Способ 1: токен и опции в конструкторе (приоритет выше)
@@ -211,6 +212,7 @@ bot.use(
 //         vk: {
 //             token: 'YOUR_BOT_TOKEN',
 //             confirmation_token: 'YOUR_CONFIRMATION_TOKEN',
+//             secret_key: 'YOUR_SECRET_KEY',
 //             api_version: '5.199',
 //         },
 //     },
@@ -218,8 +220,8 @@ bot.use(
 ```
 
 > **Примечание:** В конструкторе `VkAdapter` ключи передаются с префиксом `vk_`
-> (`vk_confirmation_token`, `vk_api_version`), а в `appConfig.tokens.vk` — без префикса
-> (`confirmation_token`, `api_version`). Оба формата валидны и фреймворком поддерживаются.
+> (`vk_confirmation_token`, `vk_secret_key`, `vk_api_version`), а в `appConfig.tokens.vk` — без префикса
+> (`confirmation_token`, `secret_key`, `api_version`). Оба формата валидны и фреймворком поддерживаются.
 
 ### Особенности
 
@@ -509,8 +511,9 @@ class MyAdapter extends BasePlatformAdapter {
 
 ### Алиса
 
-- **Таймаут 3 секунды.** Включая время обработки фреймворком + вашей логики + сетевые запросы. Используйте `Preload` для медиа.
-- **Лимит userData: 4 КБ.** Если данные больше — используйте MongoAdapter.
+- **Таймаут 4,5 секунды.** Включая время обработки фреймворком, вашей логики и сетевых запросов. Используйте `Preload` для медиа.
+- **Лимит state Алисы: 1 КБ.** Если данные больше или не сериализуются, поле state не отправляется и прежнее состояние не очищается. Для больших данных используйте адаптер базы данных.
+- **Пустой ответ не дополняется фреймворком.** Пустой `text` допустим по документации, когда заполнен `tts`. Если разработчик оставил пустыми оба поля, umbot сохранит их как есть и запишет предупреждение: эмпирически такой ответ может приниматься, но документация Алисы не гарантирует этот сценарий.
 - **`isScreen = false` на колонках.** Кнопки и карточки не отображаются. Проверяйте `this.isScreen` перед `this.card.addImage(...)`.
 - **Health check (ping).** Яндекс периодически шлёт `ping`. Фреймворк автоматически отвечает `pong`.
 - **Удаление полей.** `delete this.userData.foo` не работает — платформа вернёт старое значение. Используйте `this.userData.foo = null`.
@@ -519,14 +522,14 @@ class MyAdapter extends BasePlatformAdapter {
 
 - **Нет локального хранилища.** `isLocalStorage: true` не работает — нужна БД для `userData`.
 - **TTS через SpeechKit.** Для озвучки нужен `appConfig.tokens.telegram.speech_kit_token`. Без него `controller.tts` игнорируется.
-- **HTML по умолчанию.** `parse_mode='HTML'`. Базовое экранирование (`&`, `<`, `>`) применяется автоматически. Для MarkdownV2 используйте константу `T_FORMAT_MARKDOWN` из `umbot/plugins` при создании адаптера.
+- **Разметка выключена по умолчанию.** `parse_mode` передаётся только при явном `telegram_parse_mode`. При включённом HTML/MarkdownV2 разработчик отвечает за экранирование динамических данных.
 - **Проактивная отправка.** `bot.send(userId, text, T_TELEGRAM)` работает (в отличие от голосовых платформ).
 
 ```ts
 import { TelegramAdapter, T_FORMAT_MARKDOWN, escapeMarkdownV2 } from 'umbot/plugins';
 
-// Вариант 1: По умолчанию — HTML (экранирование & < > автоматическое)
-const botHtml = new Bot().use(new TelegramAdapter('TOKEN'));
+// Вариант 1: обычный текст без parse_mode
+const botPlain = new Bot().use(new TelegramAdapter('TOKEN'));
 
 // Вариант 2: Явно MarkdownV2 (фреймворк не экранирует — разработчик отвечает за валидность)
 const botMd = new Bot().use(
@@ -543,6 +546,7 @@ ctx.text = `*Пользователь:* ${userName}`;
 ### VK
 
 - **Два токена.** Бот-токен + `vk_confirmation_token` (для подтверждения вебхука при первичной настройке).
+- **Секретный ключ.** Опционально: укажите `vk_secret_key` в конструкторе адаптера или `VK_SECRET_KEY` в `.env` для проверки подлинности каждого запроса от VK Callback API. Если секретный ключ включён в настройках группы, VK присылает поле `secret` в теле каждого события — адаптер сверяет его с сохранённым значением.
 - **Группировка кнопок.** Кнопки с одинаковым `options._group` окажутся в одной строке.
 - **Цвет кнопок.** `options.color: 'primary' | 'secondary' | 'positive' | 'negative'`.
 

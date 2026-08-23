@@ -19,6 +19,7 @@ import { AppContext } from '../../src';
 import { MarusiaRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('MarusiaRequest', () => {
     let marusia: MarusiaRequest;
@@ -79,7 +80,7 @@ describe('MarusiaRequest', () => {
         expect(body).toContain('HASH789');
     });
 
-    it('should send audio_meta as nested object', async () => {
+    it('should send audio_meta as JSON string', async () => {
         const meta = { file: 'audio_file_123' };
         (global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
@@ -89,8 +90,9 @@ describe('MarusiaRequest', () => {
         await marusia.marusiaCreateAudio(meta);
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
+        // JSON.stringify({file: 'audio_file_123'}) -> '%7B%22file%22%3A%22audio_file_123%22%7D'
         expect(body).toContain(
-            'audio_meta=%5Bobject+Object%5D&access_token=test-marusia-token&v=5.199',
+            'audio_meta=%7B%22file%22%3A%22audio_file_123%22%7D&access_token=test-marusia-token&v=5.199',
         );
     });
 
@@ -112,6 +114,18 @@ describe('MarusiaRequest', () => {
         appContext.appConfig.tokens.vk = { token: undefined };
         const localMarusia = new MarusiaRequest(appContext);
 
+        const result = await localMarusia.marusiaGetPictureUploadLink();
+        expect(result).toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('не подставляет VK-токен, если токен Маруси не задан', async () => {
+        // Раньше MarusiaRequest наследовал токен VK от родителя и слал его в API Маруси
+        appContext.appConfig.tokens.marusia = { token: undefined };
+        appContext.appConfig.tokens.vk = { token: 'vk-secret-token' };
+        const localMarusia = new MarusiaRequest(appContext);
+
+        expect(localMarusia.token).toBeNull();
         const result = await localMarusia.marusiaGetPictureUploadLink();
         expect(result).toBeNull();
         expect(global.fetch).not.toHaveBeenCalled();

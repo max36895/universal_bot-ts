@@ -80,7 +80,7 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Время ответа навыка в миллисекундах при превышении этого времени, будет отправлено предупреждение
      */
-    protected WARMING_TIME_REQUEST = 2000;
+    protected WARNING_TIME_REQUEST = 2000;
     /**
      * Максимальное время ответа навыка в миллисекундах при превышении этого времени, будет отправлена ошибка
      */
@@ -182,9 +182,23 @@ export abstract class BasePlatform<TQuery = unknown>
 
     /**
      * Проверяет полученный запрос от платформы на корректность.
-     * Из коробки проверка идет по sha256. Если по какой-то причине поведение по умолчанию не подходит, то просто переопределите метод.
+     * Из коробки проверка идет по sha256-hmac и **включается только если одновременно заданы**:
+     * - `appConfig.tokens[<platformName>].token` — секретный ключ
+     * - `this.signatureName` — имя http-заголовка с подписью
+     *
+     * Если хотя бы один из этих параметров не задан, метод вернёт `true` без проверки — это **opt-in** механизм.
+     *
+     * ⚠️ **Важно:** не все платформы используют HMAC-SHA256 от тела. Переопределите этот метод
+     * в адаптере платформы, если её формат подписи отличается:
+     * - **Telegram** — переопределён (использует plain `x-telegram-bot-api-secret-token`).
+     * - **Viber** — умолчание корректно (Viber шлёт `x-viber-content-signature` как HMAC-SHA256(auth_token, body)).
+     * - **VK** — НЕ используйте умолчание, формат подписи VK иной (sha256 от конкатенации полей
+     *   с групповым `secret_key`). См. документацию VK Callback API.
+     * - Для платформ без подписи (Alisa, Marusia, SmartApp, Max) проверка skip-able через отсутствие `signatureName`.
+     *
      * @param {TQuery} query - Объект запроса от платформы
      * @param {Record<string, unknown>} [headers] - HTTP-заголовки запроса
+     * @returns `true` — запрос валиден / проверка не включена, `false` — подпись не сошлась или отсутствует.
      */
     isCorrectQuery(query: TQuery, headers?: Record<string, unknown>): boolean {
         if (this.appContext?.appConfig.tokens[this.platformName]?.token && this.signatureName) {
@@ -278,16 +292,17 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
-     * Устанавливает время начала обработки запроса.
-     * Используется для измерения времени обработки запроса
+     * Сбрасывает таймер начала обработки запроса (private).
+     * Вызывается из {@link updateTimeStart}.
      */
     #initProcessingTime(controller: BotController): void {
         controller.platformOptions.timeStart = Date.now();
     }
 
     /**
-     * Устанавливает время начала обработки запроса.
-     * Используется для измерения времени выполнения
+     * Публичная точка входа для сброса времени начала обработки запроса.
+     * Вызывайте перед началом бизнес-логики, чтобы метрики
+     * (см. {@link getProcessingTime}) считались отсюда.
      */
     public updateTimeStart(controller: BotController): void {
         this.#initProcessingTime(controller);
@@ -302,15 +317,18 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
-     * При превышении установленного времени исполнения, пишет информацию в лог
-     * После вызова getContent() автоматически проверяется время выполнения.
-     * Если оно превышает 2000 мс — пишется warning, если >2900 мс — ошибка.
+     * При превышении допустимого времени обработки запроса пишет информацию в лог.
+     * Вызывается автоматически после `getContent()`.
+     * - `>= MAX_TIME_REQUEST` (по умолчанию 2900 мс) — ошибка.
+     * - `>= WARNING_TIME_REQUEST` (по умолчанию 2000 мс) — warning.
+     *
+     * Пороги вынесены в `protected` поля — при необходимости переопределите в потомке.
      */
     protected _timeLimitLog(controller: BotController): void {
         const timeEnd: number = this.getProcessingTime(controller);
         if (timeEnd >= this.MAX_TIME_REQUEST) {
             controller.platformOptions.error = `${this.constructor.name}:getContent(): Превышено ограничение на отправку ответа. Время ответа составило: ${timeEnd / 1000} сек.`;
-        } else if (timeEnd >= this.WARMING_TIME_REQUEST) {
+        } else if (timeEnd >= this.WARNING_TIME_REQUEST) {
             this.appContext?.logWarn(
                 `${this.constructor.name}:getContent(): Время ответа составило: ${timeEnd / 1000} сек, рекомендуется проверить нагрузку на сервер, и корректность работы самого приложения.`,
             );
@@ -333,8 +351,13 @@ export abstract class BasePlatform<TQuery = unknown>
      * @protected
      */
     protected _initTTS(controller: BotController): void | Promise<void> {
-        if (controller.sound.sounds.length || controller.sound.isUsedStandardSound) {
-            controller.tts ??= controller.text;
+        const tts = controller.tts ?? controller.text;
+        const sound =
+            controller.isSoundInit() || tts.includes('#') || tts.includes('<')
+                ? controller.sound
+                : null;
+        if (sound && (sound.sounds.length || sound.isUsedStandardSound)) {
+            controller.tts = tts;
             return this.soundProcessing(controller);
         }
     }

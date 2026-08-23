@@ -352,7 +352,7 @@ export class Navigation<ElementType = TElementType> {
         let number: number | null = null;
         const data = /(\d+)/imu.exec(text);
         if (data) {
-            number = +data[0][0];
+            number = +data[0];
         }
 
         const start: number = this.thisPage * this.maxVisibleElements;

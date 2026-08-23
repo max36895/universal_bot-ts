@@ -2,8 +2,19 @@ import { ICardInfo, ImageTokens, Text, BotController } from '../../../index';
 
 import { TelegramRequest } from '../API';
 import { ITelegramMedia, TTelegramChatId } from './interfaces/ITelegramPlatform';
-import { getImageToken } from '../Base/utils';
+import { getImageToken, getPlatformRequestData } from '../Base/utils';
 import { T_TELEGRAM } from './constants';
+
+const MAX_TELEGRAM_MEDIA_GROUP_ITEMS = 10;
+
+/** Возвращает ID чата, в котором нужно отправить медиа. */
+function getChatId(controller: BotController): TTelegramChatId {
+    const requestData = getPlatformRequestData<{ chatId?: TTelegramChatId }>(
+        controller,
+        T_TELEGRAM,
+    );
+    return requestData.chatId ?? (controller.userId as TTelegramChatId);
+}
 
 /**
  * Получение токена, необходимого для отображения картинок в карточке Телеграм
@@ -19,11 +30,12 @@ export async function getImageInDB(
     let isCbCalled = false;
     const result = await getImageToken(path, T_TELEGRAM, controller, async (model: ImageTokens) => {
         const api = new TelegramRequest(controller.appContext);
-        const photo = await api.sendPhoto(controller.userId as string, path, caption || undefined);
+        const photo = await api.sendPhoto(getChatId(controller), path, caption || undefined);
         isCbCalled = true;
 
-        if (photo?.ok && photo.result?.photo?.file_id) {
-            model.imageToken = photo.result.photo.file_id;
+        if (photo?.ok && photo.result?.photo?.length) {
+            const lastPhoto = photo.result.photo[photo.result.photo.length - 1];
+            model.imageToken = lastPhoto.file_id;
             if (await model.save(true)) {
                 return model.imageToken;
             }
@@ -33,7 +45,7 @@ export async function getImageInDB(
 
     if (!isCbCalled && result) {
         await new TelegramRequest(controller.appContext).sendPhoto(
-            controller.userId as string,
+            getChatId(controller),
             result,
             caption || undefined,
         );
@@ -46,7 +58,7 @@ export async function getImageInDB(
  * Получает карточку для отображения в Telegram.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<ITelegramMedia[]>} Карточка или null
+ * @returns {Promise<ITelegramMedia[] | null>} Массив медиа-объектов или null, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,
@@ -70,7 +82,7 @@ export async function cardProcessing(
                 }
             } else {
                 await new TelegramRequest(controller.appContext).sendPhoto(
-                    controller.userId as TTelegramChatId,
+                    getChatId(controller),
                     image.imageToken,
                     Text.resize(image.desc, 1024),
                 );
@@ -87,7 +99,11 @@ export async function cardProcessing(
         return object;
     } else {
         object = [];
-        for (let i = 0; i < cardInfo.images.length; i++) {
+        for (
+            let i = 0;
+            i < cardInfo.images.length && object.length < MAX_TELEGRAM_MEDIA_GROUP_ITEMS;
+            i++
+        ) {
             const image = cardInfo.images[i];
             let field: string | null;
             if (!image.imageToken) {
@@ -110,10 +126,11 @@ export async function cardProcessing(
         if (object.length === 1) {
             const media = object[0];
             await new TelegramRequest(controller.appContext).sendPhoto(
-                controller.userId as TTelegramChatId,
+                getChatId(controller),
                 media.media,
                 media.caption || undefined,
             );
+            return null;
         }
     }
 

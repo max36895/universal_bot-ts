@@ -1,6 +1,6 @@
 import { IModelRules } from './interface';
 
-import { IModelState, Model } from './db/Model';
+import { IModelState, ISelectOneModelRes, Model } from './db/Model';
 import { AppContext } from '../core';
 import { TKey } from './db';
 
@@ -30,7 +30,7 @@ export interface IImageModelState extends IModelState {
     /**
      * Идентификатор/токен изображения.
      * Уникальный идентификатор, используемый для ссылки на изображение в API различных платформ.
-     * @example "photo123456789" для Telegram, "123456789" для VK
+     * @example "photo123_456" для VK, "AgACAgIAAxk..." (file_id) для Telegram, "123456/abcdef" для Алисы
      */
     imageToken: string | null;
     /**
@@ -57,9 +57,9 @@ export interface IImageModelState extends IModelState {
  * const image = new ImageTokens(appContext);
  * image.path = '/path/to/image.png';
  * image.platform = T_TELEGRAM;
- * const token = await image.selectOne();
- * if (token) {
- *     console.log('Токен для изображения успешно получен, токен:', token);
+ * const found = await image.selectOne();
+ * if (found.status) {
+ *     console.log('Токен для изображения успешно получен, токен:', found.data.imageToken);
  * } else {
  *     // Загрузка изображения
  *     const newToken = await image.save();
@@ -140,6 +140,34 @@ export class ImageTokens extends Model<IImageModelState> {
      */
     set platform(platform: string) {
         this.state.platform = platform;
+    }
+
+    /**
+     * Находит token изображения по пути и платформе.
+     *
+     * Для ImageTokens логичный lookup идёт по `path`+`platform`, а не по `imageToken`
+     * (он ещё null на новой модели).
+     *
+     * @returns Promise с результатом поиска `{status, data, error}`. При успехе
+     * `data` содержит найденную запись модели, а не сам токен.
+     */
+    public async selectOne(): Promise<ISelectOneModelRes> {
+        if (this._appContext.database.adapter) {
+            this.queryData.query = {
+                path: this.state.path,
+                platform: this.state.platform,
+            };
+            this.queryData.data = null;
+            return (await this._appContext.database.adapter.select(
+                this.queryData,
+                this.queryData.query,
+                true,
+            )) as ISelectOneModelRes;
+        }
+        return {
+            status: false,
+            error: 'Не указан источник для базы данных',
+        };
     }
 
     /**

@@ -12,13 +12,16 @@
         "build": "tsc",
         "update": "npm update umbot",
         "start:pm2": "pm2 start dist/index.js --name \"{{name}}\"",
-        "deploy": "npm run build && pm2 restart dist/index.js --name \"{{name}}\""
+        "deploy": "npm run build && pm2 startOrRestart dist/index.js --name \"{{name}}\""
     },
     "devDependencies": {
-        "typescript": "^6.0.0",
-        "@types/node": "^24.0.0"
+        "typescript": "5.9.3",
+        "@types/node": "20.19.43"
     },
     "dependencies": {
-        "umbot": "^3.0.0"
+        "umbot": "3.1.0"
+    },
+    "engines": {
+        "node": ">=20.19.0"
     }
 }

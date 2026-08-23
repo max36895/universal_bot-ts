@@ -196,8 +196,11 @@ export interface IMarusiaWebhookRequest {
     request: IMarusiaRequest;
     /** Данные сессии */
     session: IMarusiaSession;
-    /** Событие связки аккаунтов */
-    account_linking_complete_event?: boolean;
+    /**
+     * Событие связки аккаунтов.
+     * Может быть `true` (подтверждение) или объектом с данными пользователя
+     */
+    account_linking_complete_event?: object | boolean;
     /** Состояние приложения */
     state?: IMarusiaRequestState;
     /** Версия протокола (текущая: 1.0) */

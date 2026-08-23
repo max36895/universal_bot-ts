@@ -1,4 +1,4 @@
-import { BotController, IUserData } from './BotController';
+import { BotController, IPlatformData, IUserData } from './BotController';
 import { Text } from '../utils';
 
 function i18n(controller: BaseBotController): void {
@@ -20,7 +20,8 @@ function i18n(controller: BaseBotController): void {
  */
 export class BaseBotController<
     TUserData extends IUserData = IUserData,
-> extends BotController<TUserData> {
+    TPlatformState extends IPlatformData = IPlatformData,
+> extends BotController<TUserData, TPlatformState> {
     /**
      * Обработка команд, добавленных через slots.
      * Вызывается фреймворком последним, после поиска команд и шагов.

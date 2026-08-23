@@ -5,6 +5,7 @@ import { YandexSpeechKit } from '../../src/plugins';
 import { unlink } from '../../src/utils';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('YandexSpeechKit', () => {
     let tts: YandexSpeechKit;

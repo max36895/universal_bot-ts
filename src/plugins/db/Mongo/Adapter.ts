@@ -9,15 +9,12 @@ import {
     IDatabaseInfo,
     IAppDB,
 } from '../../../index';
-import {
-    MongoClient,
-    MongoClientOptions,
-    ServerApiVersion,
-    Db,
-    Document,
-    Filter,
-    OptionalId,
-} from 'mongodb';
+import type { MongoClient, MongoClientOptions, Db, Document, Filter, OptionalId } from 'mongodb';
+
+/**
+ * Тип модуля mongodb, получаемого через ленивую загрузку (`import('mongodb')`).
+ */
+type TMongoModule = typeof import('mongodb');
 
 /**
  * Интерфейс для сохранения информации работы базы данных
@@ -47,6 +44,43 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     }
 
     /**
+     * Кэш лениво загруженного модуля mongodb.
+     * Загружается только при реальном подключении, чтобы пользователи,
+     * которым Mongo не нужен, не обязаны были его устанавливать.
+     */
+    #mongoModule: TMongoModule | null = null;
+
+    /**
+     * Лениво загружает модуль mongodb (один раз) и кэширует его.
+     *
+     * `mongodb` объявлен как опциональная peer-зависимость: он нужен только тем,
+     * кто реально использует `MongoAdapter`. Статический `import` в шапке файла
+     * заставил бы Node требовать пакет у всех, кто импортирует `umbot/plugins`,
+     * даже при использовании только `FileAdapter`. Поэтому модуль подгружается
+     * динамически в момент первого подключения.
+     *
+     * @returns Загруженный модуль mongodb
+     * @throws Если пакет не установлен — понятная ошибка с инструкцией по установке
+     * @protected
+     */
+    protected async _loadMongo(): Promise<TMongoModule> {
+        if (this.#mongoModule) {
+            return this.#mongoModule;
+        }
+        try {
+            this.#mongoModule = await import('mongodb');
+            return this.#mongoModule;
+        } catch (err) {
+            throw new Error(
+                'MongoAdapter: пакет "mongodb" не установлен. Он является опциональной ' +
+                    'peer-зависимостью umbot. Установите его командой: npm install mongodb. ' +
+                    `Исходная ошибка: ${(err as Error).message}`,
+                { cause: err },
+            );
+        }
+    }
+
+    /**
      * Метод инициализации плагина.
      * Вызывается один раз при подключении через `bot.use()`.
      * @param appContext Контекст приложения
@@ -65,85 +99,145 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         super.init(appContext);
     }
 
-    public async connect(): Promise<boolean> {
-        const errors = [];
-        let mongoClient: MongoClient | null = null;
-        let mongoConnect: MongoClient | null = null;
-        if (this._appContext.appConfig.db) {
+    /**
+     * Формирует опции подключения к MongoDB из конфига приложения.
+     * @param mongo Лениво загруженный модуль mongodb
+     * @returns Опции клиента MongoDB
+     * @protected
+     */
+    protected _buildConnectOptions(mongo: TMongoModule): MongoClientOptions {
+        const dbConfig = this._appContext.appConfig.db!;
+        const options: MongoClientOptions = {
+            timeoutMS: 3000,
+            serverSelectionTimeoutMS: 2000,
+            connectTimeoutMS: 2000,
+            socketTimeoutMS: 2000,
+            maxPoolSize: 50,
+            ...dbConfig.options,
+            serverApi: {
+                version: mongo.ServerApiVersion.v1,
+                strict: true,
+                deprecationErrors: true,
+                ...(dbConfig.options?.serverApi as object),
+            },
+        };
+
+        if (dbConfig.user) {
+            options.auth = {
+                username: dbConfig.user,
+                password: dbConfig.pass,
+            };
+        }
+        return options;
+    }
+
+    /**
+     * Закрывает предыдущее соединение, если оно было сохранено в databaseInfo.
+     * Это предотвращает утечку соединений при повторных вызовах connect().
+     * @protected
+     */
+    protected async _closePreviousClient(): Promise<void> {
+        const databaseInfo = this._appContext.database.databaseInfo;
+        const oldClient = databaseInfo?.mongoClient;
+        if (oldClient) {
+            await oldClient.close(true).catch(() => {});
+            if (databaseInfo) {
+                databaseInfo.mongoClient = null;
+                databaseInfo.mongoConnect = null;
+            }
+        }
+    }
+
+    /**
+     * Выполняет до двух попыток подключения с проверкой живучести соединения.
+     * Каждая попытка создаёт НОВЫЙ клиент — после неудачного connect() MongoClient
+     * переходит в состояние "closed" и его нельзя переиспользовать.
+     * @param mongo Лениво загруженный модуль mongodb
+     * @param options Опции подключения
+     * @returns Пара {client, connect} при успехе
+     * @throws Последняя ошибка, если все попытки провалились
+     * @protected
+     */
+    protected async _attemptConnect(
+        mongo: TMongoModule,
+        options: MongoClientOptions,
+    ): Promise<{ client: MongoClient; connect: MongoClient }> {
+        let lastError: Error | null = null;
+        for (let tryNum = 0; tryNum < 2; tryNum++) {
+            const client = new mongo.MongoClient(this._appContext.appConfig.db!.host, options);
             try {
-                const options: MongoClientOptions = {
-                    timeoutMS: 3000,
-                    serverSelectionTimeoutMS: 2000, // Тайм-аут на выбор сервера
-                    connectTimeoutMS: 2000,
-                    socketTimeoutMS: 2000,
-                    maxPoolSize: 50,
-                    ...this._appContext.appConfig.db.options,
-                    serverApi: {
-                        version: ServerApiVersion.v1,
-                        strict: true,
-                        deprecationErrors: true,
-                        ...(this._appContext.appConfig.db.options?.serverApi as object),
-                    },
-                };
-
-                if (this._appContext.appConfig.db.user) {
-                    options.auth = {
-                        username: this._appContext.appConfig.db.user,
-                        password: this._appContext.appConfig.db.pass,
-                    };
+                const connected = await client.connect();
+                // Проверяем подключение сразу после установки
+                if (await this.isConnectedWith(client)) {
+                    return { client, connect: connected };
                 }
-
-                mongoClient = new MongoClient(this._appContext.appConfig.db.host, options);
-                const connect = async (): Promise<boolean> => {
-                    if (!mongoClient) {
-                        return false;
-                    }
-                    // Проверяем, есть ли активное соединение перед закрытием
-                    if (this._appContext.database.databaseInfo?.mongoClient) {
-                        await mongoClient.close(true);
-                    }
-                    mongoConnect = await mongoClient.connect();
-                    // Проверяем подключение сразу после установки
-                    return await this.isConnected();
-                };
-
-                if (!(await connect())) {
+                // Соединение видимо "мёртвое" — пробуем ещё раз
+                lastError = new Error('Failed to verify database connection');
+                await client.close(true).catch(() => {});
+            } catch (e) {
+                lastError = e as Error;
+                await client.close(true).catch(() => {});
+                if (tryNum === 0) {
+                    // Небольшая пауза перед повторной попыткой
                     await new Promise((resolve) => {
                         setTimeout(resolve, 2000).unref();
                     });
-                    if (!(await connect())) {
-                        throw new Error('Failed to verify database connection');
-                    }
                 }
-                if (this._appContext.database.databaseInfo) {
-                    this._appContext.database.databaseInfo.mongoClient = mongoClient;
-                    this._appContext.database.databaseInfo.mongoConnect = mongoConnect;
-                } else {
-                    this._appContext.database.databaseInfo = {
-                        mongoClient,
-                        mongoConnect,
-                    };
-                }
-                return true;
-            } catch (err) {
-                errors.push((err as Error).message);
-                const client = mongoClient;
-                if (client) {
-                    await client.close(true).catch(() => {});
-                }
-                this._saveLog('При подключении в базе данных произошла ошибка:', err as Error);
-                return false;
             }
-        } else {
-            errors.push('Отсутствуют данные для подключения!');
         }
-        if (errors.length > 0) {
+        throw lastError ?? new Error('Failed to connect to MongoDB');
+    }
+
+    /**
+     * Подключается к MongoDB.
+     *
+     * Поведение:
+     * - Если подключение не удалось — делает ещё одну попытку с очищенным hostname.
+     * - Валидирует, что кластер реально отвечает (`verifyConnection`).
+     * - При ошибке пишет причину в error_log и возвращает `false`.
+     *
+     * @returns `true` — подключение активно, `false` — ошибка подключения.
+     */
+    public async connect(): Promise<boolean> {
+        if (!this._appContext.appConfig.db) {
             this._saveLog(
-                `При подключении в базе данных произошли следующие ошибки: ${JSON.stringify(errors)}`,
+                'При подключении в базе данных произошли следующие ошибки: ["Отсутствуют данные для подключения!"]',
             );
             return false;
         }
-        return true;
+        try {
+            const mongo = await this._loadMongo();
+            const options = this._buildConnectOptions(mongo);
+            await this._closePreviousClient();
+            const { client, connect } = await this._attemptConnect(mongo, options);
+            if (this._appContext.database.databaseInfo) {
+                this._appContext.database.databaseInfo.mongoClient = client;
+                this._appContext.database.databaseInfo.mongoConnect = connect;
+            } else {
+                this._appContext.database.databaseInfo = {
+                    mongoClient: client,
+                    mongoConnect: connect,
+                };
+            }
+            return true;
+        } catch (err) {
+            this._saveLog('При подключении в базе данных произошла ошибка:', err as Error);
+            return false;
+        }
+    }
+
+    /**
+     * Проверяет, установлено ли соединение, для конкретного клиента.
+     *
+     * @param client Клиент, у которого проверяем соединение
+     */
+    protected async isConnectedWith(client: MongoClient): Promise<boolean> {
+        try {
+            await client.db().command({ ping: 1 });
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -156,6 +250,14 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         if (this._appContext.database.databaseInfo) {
             update = this.validate(updateData, update);
             select = this.validate(updateData, select);
+            // Удаляем ключи со значением undefined — иначе Mongo запишет BSON-undefined и затирает поле.
+            if (update && typeof update === 'object') {
+                update = Object.fromEntries(
+                    Object.entries(update as Record<string, unknown>).filter(
+                        ([, v]) => v !== undefined,
+                    ),
+                ) as IQueryData;
+            }
             if (updateData.primaryKeyName) {
                 return !!(await this.query(async (_client, db: Db) => {
                     try {

@@ -12,6 +12,12 @@ import { getErrorMsg, getErrorToken } from './constants';
  * Базовый URL для всех методов Telegram API
  */
 const API_ENDPOINT = 'https://api.telegram.org/bot';
+const TELEGRAM_MESSAGE_MAX_LENGTH = 4096;
+const TELEGRAM_CAPTION_MAX_LENGTH = 1024;
+const TELEGRAM_CALLBACK_TEXT_MAX_LENGTH = 200;
+const TELEGRAM_POLL_QUESTION_MAX_LENGTH = 300;
+const TELEGRAM_POLL_OPTION_MAX_LENGTH = 100;
+const TELEGRAM_POLL_OPTIONS_MAX_COUNT = 12;
 
 /**
  * Экранирует спецсимволы MarkdownV2 для безопасной вставки пользовательского ввода.
@@ -236,19 +242,32 @@ export class TelegramRequest {
     }
 
     /**
+     * Отправляет результаты inline-запроса в Telegram.
+     * @param inlineQueryId Идентификатор входящего inline-запроса
+     * @param results Элементы, которые пользователь увидит в inline-поиске
+     * @returns Ответ Telegram API или `null` при ошибке
+     */
+    public async answerInlineQuery(
+        inlineQueryId: string,
+        results: Record<string, unknown>[],
+    ): Promise<ITelegramResult | null> {
+        this.#request.post = {
+            inline_query_id: inlineQueryId,
+            results,
+        };
+        return await this.call('answerInlineQuery');
+    }
+
+    /**
      * Санитизировать текст сообщения.
      *
-     * Для HTML: экранирует &, <, > (базовая защита от XSS, не ломает валидные теги).
-     * Для MarkdownV2: текст отправляется как есть (raw) — разработчик отвечает за валидность.
-     * Для остальных режимов: текст отправляется как есть.
+     * Текст отправляется как есть: при явном parse_mode разработчик отвечает за валидность
+     * разметки и экранирует пользовательские данные через escapeHtml/escapeMarkdownV2.
      *
      * @param text Текст сообщения
      * @param parseMode Режим разметки (HTML, MarkdownV2 или undefined)
      */
-    #sanitizeTelegramMessage(text: string, parseMode?: string): string {
-        if (parseMode === 'HTML') {
-            return escapeHtml(text);
-        }
+    #sanitizeTelegramMessage(text: string, _parseMode?: string): string {
         return text;
     }
 
@@ -313,7 +332,21 @@ export class TelegramRequest {
         message: string,
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        const safeMessage = this.#sanitizeTelegramMessage(message, params?.parse_mode);
+        if (!message.trim()) {
+            this.#appContext.logWarn(
+                'TelegramRequest.sendMessage(): Telegram не принимает пустой текст сообщения.',
+            );
+            return Promise.resolve(null);
+        }
+        if (message.length > TELEGRAM_MESSAGE_MAX_LENGTH) {
+            this.#appContext.logWarn(
+                `TelegramRequest.sendMessage(): текст превышает лимит ${TELEGRAM_MESSAGE_MAX_LENGTH} символов и будет сокращён.`,
+            );
+        }
+        const safeMessage = this.#sanitizeTelegramMessage(
+            Text.resize(message, TELEGRAM_MESSAGE_MAX_LENGTH),
+            params?.parse_mode,
+        );
         this.#request.post = {
             chat_id: chatId,
             text: safeMessage,
@@ -328,14 +361,15 @@ export class TelegramRequest {
      * Отправляет опрос
      * @param chatId ID чата или пользователя
      * @param question Текст вопроса
-     * @param options Массив вариантов ответов (2-10 вариантов)
+     * @param options Массив вариантов ответов (1-12 вариантов)
      * @param params Дополнительные параметры:
      * - is_anonymous: анонимный опрос (по умолчанию true)
      * - type: тип опроса
      *   - 'regular': обычный опрос (по умолчанию)
      *   - 'quiz': викторина с одним правильным ответом
      * - allows_multiple_answers: разрешить несколько ответов (только для regular)
-     * - correct_option_id: ID правильного ответа (0-9, только для quiz)
+     * - correct_option_ids: ID правильных ответов по возрастанию (только для quiz)
+     * - correct_option_id: устаревший алиас одного правильного ответа
      * - explanation: пояснение правильного ответа (только для quiz)
      * - explanation_parse_mode: формат пояснения (HTML/Markdown)
      * - open_period: время в секундах, когда опрос активен
@@ -357,7 +391,7 @@ export class TelegramRequest {
      *   ['Санкт-Петербург', 'Москва', 'Новосибирск'],
      *   {
      *     type: 'quiz',
-     *     correct_option_id: 1,
+     *     correct_option_ids: [1],
      *     explanation: 'Москва - столица России с 1918 года',
      *     explanation_parse_mode: 'HTML'
      *   }
@@ -372,35 +406,51 @@ export class TelegramRequest {
         options: string[],
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> | null {
-        this.#request.post = {
-            chat_id: chatId,
-            question,
-        };
-        let isSend = true;
-        if (options) {
-            const countOptions = options.length;
-            if (countOptions > 1) {
-                if (countOptions > 10) {
-                    this.#request.post.options = options.slice(0, 10);
-                } else {
-                    this.#request.post.options = options;
-                }
-            } else {
-                isSend = false;
-            }
-        }
-        if (isSend) {
-            if (params) {
-                this.#request.post = { ...params, ...this.#request.post };
-            }
-            return this.call('sendPoll');
-        } else {
+        if (
+            !question.trim() ||
+            options.length < 1 ||
+            options.length > TELEGRAM_POLL_OPTIONS_MAX_COUNT ||
+            options.some((option) => !option.trim())
+        ) {
             this.#log(
-                'sendPoll() Указано недостаточное количество вариантов. Платформа ожидает от 2 - 10 вариантов, указано ' +
-                    (options?.length || 0),
+                'sendPoll() Telegram ожидает непустой вопрос и от 1 до 12 непустых вариантов ответа.',
             );
             return null;
         }
+        const normalizedOptions = options.map((option) => ({
+            text: Text.resize(option, TELEGRAM_POLL_OPTION_MAX_LENGTH),
+        }));
+        const normalizedParams: ITelegramParams = { ...(params ?? {}) };
+        if (
+            normalizedParams.correct_option_ids === undefined &&
+            normalizedParams.correct_option_id !== undefined
+        ) {
+            normalizedParams.correct_option_ids = [normalizedParams.correct_option_id];
+        }
+        delete normalizedParams.correct_option_id;
+        if (
+            normalizedParams.correct_option_ids !== undefined &&
+            (normalizedParams.correct_option_ids.length < 1 ||
+                normalizedParams.correct_option_ids.some(
+                    (optionId, index, ids) =>
+                        !Number.isInteger(optionId) ||
+                        optionId < 0 ||
+                        optionId >= normalizedOptions.length ||
+                        (index > 0 && optionId <= ids[index - 1]),
+                ))
+        ) {
+            this.#log(
+                'sendPoll() correct_option_ids должен содержать уникальные ID вариантов по возрастанию.',
+            );
+            return null;
+        }
+        this.#request.post = {
+            ...normalizedParams,
+            chat_id: chatId,
+            question: Text.resize(question, TELEGRAM_POLL_QUESTION_MAX_LENGTH),
+            options: normalizedOptions,
+        };
+        return this.call('sendPoll');
     }
 
     /**
@@ -420,7 +470,7 @@ export class TelegramRequest {
     ): Promise<ITelegramResult | null> {
         this.#request.post = {
             callback_query_id: callbackQueryId,
-            text,
+            text: text ? Text.resize(text, TELEGRAM_CALLBACK_TEXT_MAX_LENGTH) : undefined,
             show_alert: showAlert,
             url,
             cache_time: cacheTime,
@@ -455,7 +505,10 @@ export class TelegramRequest {
         this.#request.post ??= {};
         await this.#initPostFile('photo', file);
         if (desc) {
-            (this.#request.post as Record<string, unknown>).caption = desc;
+            (this.#request.post as Record<string, unknown>).caption = Text.resize(
+                desc,
+                TELEGRAM_CAPTION_MAX_LENGTH,
+            );
         }
         if (params) {
             this.#request.post = { ...params, ...this.#request.post };
@@ -482,7 +535,13 @@ export class TelegramRequest {
     ): Promise<ITelegramResult | null> {
         await this.#initPostFile('document', file);
         if (params) {
-            this.#request.post = { ...params, ...this.#request.post };
+            this.#request.post = {
+                ...params,
+                ...(params.caption
+                    ? { caption: Text.resize(params.caption, TELEGRAM_CAPTION_MAX_LENGTH) }
+                    : {}),
+                ...this.#request.post,
+            };
         }
         return this.call('sendDocument', userId);
     }
@@ -509,7 +568,13 @@ export class TelegramRequest {
     ): Promise<ITelegramResult | null> {
         await this.#initPostFile('audio', file);
         if (params) {
-            this.#request.post = { ...params, ...this.#request.post };
+            this.#request.post = {
+                ...params,
+                ...(params.caption
+                    ? { caption: Text.resize(params.caption, TELEGRAM_CAPTION_MAX_LENGTH) }
+                    : {}),
+                ...this.#request.post,
+            };
         }
         return this.call('sendAudio', userId);
     }
@@ -536,7 +601,13 @@ export class TelegramRequest {
     ): Promise<ITelegramResult | null> {
         await this.#initPostFile('video', file);
         if (params) {
-            this.#request.post = { ...params, ...this.#request.post };
+            this.#request.post = {
+                ...params,
+                ...(params.caption
+                    ? { caption: Text.resize(params.caption, TELEGRAM_CAPTION_MAX_LENGTH) }
+                    : {}),
+                ...this.#request.post,
+            };
         }
         return this.call('sendVideo', userId);
     }
@@ -552,9 +623,37 @@ export class TelegramRequest {
         media: ITelegramMedia[],
         params: ITelegramParams | null = null,
     ): Promise<ITelegramResult | null> {
-        await this.#initPostFile('media', media);
+        if (media.length < 2 || media.length > 10) {
+            this.#appContext.logWarn(
+                'TelegramRequest.sendMediaGroup(): Telegram ожидает от 2 до 10 элементов.',
+            );
+            return null;
+        }
+        const normalizedMedia = media.map((item) => ({
+            ...item,
+            ...(item.caption
+                ? { caption: Text.resize(item.caption, TELEGRAM_CAPTION_MAX_LENGTH) }
+                : {}),
+        }));
+        await this.#initPostFile('media', normalizedMedia);
         if (params) {
-            this.#request.post = { ...this.#request.post, ...params };
+            if (this.#request.post instanceof FormData) {
+                const formData = this.#request.post;
+                Object.entries(params).forEach(([name, value]) => {
+                    if (value !== undefined) {
+                        formData.append(
+                            name,
+                            typeof value === 'string'
+                                ? value
+                                : typeof value === 'object'
+                                  ? JSON.stringify(value)
+                                  : String(value),
+                        );
+                    }
+                });
+            } else {
+                this.#request.post = { ...this.#request.post, ...params };
+            }
         }
         return this.call('sendMediaGroup', userId);
     }

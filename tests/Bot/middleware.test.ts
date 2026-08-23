@@ -1,4 +1,5 @@
 import { Bot, unlinkSync } from '../../src';
+import { BotController } from '../../src/controller';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
 import { join } from 'node:path';
@@ -97,6 +98,14 @@ describe('Middleware', () => {
     });
 
     it('should skip BotController.action() if next() is not called', async () => {
+        const actionSpy = jest.fn();
+        bot.initBotController(
+            class extends BotController {
+                action(): void {
+                    actionSpy();
+                }
+            },
+        );
         bot.use((ctx, _) => {
             ctx.text = 'Прервано middleware';
             ctx.isEnd = true;
@@ -106,7 +115,10 @@ describe('Middleware', () => {
         bot.setContent(getContent('test'));
         const result = (await bot.run()) as IAlisaWebhookResponse;
 
-        expect(result.response?.text).toBe(undefined);
+        // action() не выполняется — middleware прервал цепочку
+        expect(actionSpy).not.toHaveBeenCalled();
+        // Текст, выставленный middleware, доставляется пользователю через адаптер платформы
+        expect(result.response?.text).toBe('Прервано middleware');
     });
 
     it('should execute middlewares in order', async () => {

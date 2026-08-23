@@ -1,7 +1,8 @@
 'use strict';
+const path = require('node:path');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
-const utils = require(__dirname + '/../utils.js').utils;
+const utils = require(path.join(__dirname, '..', 'utils.js')).utils;
 
 /**
  * Класс, создающий пустой проект, или шаблон для готового проекта.
@@ -86,12 +87,12 @@ class CreateController {
      */
     _initConfig(defaultConfig) {
         let config;
-        if (this.params.config) {
+        if (this.params && this.params.config) {
             config = { ...defaultConfig, ...this.params.config };
         } else {
             config = defaultConfig;
         }
-        if (this.params.isEnv) {
+        if (this.params && this.params.isEnv) {
             config.env = `./.env`;
         }
         let content = this._getHeaderContent();
@@ -144,25 +145,27 @@ class CreateController {
             '{{name}}',
             '{{className}}',
             '__className__',
+            '{{imageName}}',
             '{{}}',
             '{{hostname}}',
             '{{port}}',
         ];
         const rawName = this.#name || 'project';
         const name = rawName.substring(0, 1).toUpperCase() + rawName.substring(1);
+        // Имя Docker-образа обязано быть в нижнем регистре
+        const imageName = rawName.toLowerCase();
         const now = new Date();
         const date = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`;
         const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        const replace = [
-            date,
-            time,
-            rawName,
-            name,
-            name,
-            '',
-            '"' + (this.params?.hostname || '0.0.0.0') + '"',
-            this.params?.port || 3000,
-        ];
+        // Параметры могут быть прочитаны из пользовательского JSON. JSON.stringify сохраняет
+        // строковый литерал валидным даже при кавычках и переводах строки.
+        const hostname = JSON.stringify(String(this.params?.hostname || '0.0.0.0'));
+        const requestedPort = Number(this.params?.port);
+        const port =
+            Number.isInteger(requestedPort) && requestedPort >= 0 && requestedPort <= 65535
+                ? requestedPort
+                : 3000;
+        const replace = [date, time, rawName, name, name, imageName, '', hostname, port];
         fileName = this._replace(find, replace, fileName);
         const content = this._replace(find, replace, templateContent);
         utils.fwrite(fileName, content);
@@ -174,12 +177,12 @@ class CreateController {
      * @param {string} path Путь к шаблонам
      * @private
      */
-    _getConfigFile(path) {
+    _getConfigFile(dirPath) {
         console.log('Создается файл с конфигурацией приложения: ...');
         const configFile = `${this.#path}/src/config/{{name}}Config.ts`;
         let configContent;
-        if (utils.isFile(`${path}/config/defaultConfig.js`)) {
-            const config = require(`${path}/config/defaultConfig`);
+        if (utils.isFile(`${dirPath}/config/defaultConfig.js`)) {
+            const config = require(`${dirPath}/config/defaultConfig`);
             configContent = this._initConfig(config.config);
         } else {
             configContent = '';
@@ -190,16 +193,16 @@ class CreateController {
 
     /**
      * Создает файл параметров проекта
-     * @param {string} path Путь к шаблонам
+     * @param {string} dirPath Путь к шаблонам
      * @param {string} type Тип приложения
      * @private
      */
-    _getParamsFile(path, type) {
+    _getParamsFile(dirPath, type) {
         console.log('Создается файл с параметрами приложения: ...');
         const paramsFile = `${this.#path}/src/config/{{name}}Params.ts`;
         let paramsContent;
-        if (utils.isFile(`${path}/config/${type}Params.js`)) {
-            const param = require(`${path}/config/${type}Params`);
+        if (utils.isFile(`${dirPath}/config/${type}Params.js`)) {
+            const param = require(`${dirPath}/config/${type}Params`);
             paramsContent = this._initParams(param.params);
         } else {
             paramsContent = '';
@@ -208,19 +211,31 @@ class CreateController {
         console.log('Файл с параметрами успешно создан');
     }
 
-    createDockerFile(path) {
-        const standardPath = __dirname + '/../template';
-        const dockerFile = `${path}/Dockerfile`;
+    createDockerFile(dirPath) {
+        const standardPath = path.join(__dirname, '..', 'template');
+        const dockerFile = `${dirPath}/Dockerfile`;
+        this.#assertFileCanBeWritten(dockerFile);
         const dockerContent = this._getFileContent(`${standardPath}/docker/DockerFile.text`);
         this._generateFile(dockerContent, dockerFile);
         console.log('Dockerfile успешно создан');
+
+        // .dockerignore не даёт секретам (.env), логам и node_modules попасть
+        // в слои образа при COPY . . на этапе сборки.
+        const dockerIgnoreFile = `${dirPath}/.dockerignore`;
+        this.#assertFileCanBeWritten(dockerIgnoreFile);
+        const dockerIgnoreContent = this._getFileContent(
+            `${standardPath}/docker/.dockerignore.text`,
+        );
+        this._generateFile(dockerIgnoreContent, dockerIgnoreFile);
+        console.log('.dockerignore успешно создан');
     }
 
-    createDeployFile(path) {
-        const standardPath = __dirname + '/../template';
-        const deployFile = `${path}/.github/workflows/deploy.yml`;
-        fs.mkdirSync(`${path}/.github`, { recursive: true });
-        fs.mkdirSync(`${path}/.github/workflows`, { recursive: true });
+    createDeployFile(dirPath) {
+        const standardPath = path.join(__dirname, '..', 'template');
+        const deployFile = `${dirPath}/.github/workflows/deploy.yml`;
+        this.#assertFileCanBeWritten(deployFile);
+        fs.mkdirSync(`${dirPath}/.github`, { recursive: true });
+        fs.mkdirSync(`${dirPath}/.github/workflows`, { recursive: true });
         const deployContent = this._getFileContent(`${standardPath}/github/deploy.yml`);
         this._generateFile(deployContent, deployFile);
         console.log('deploy.yml успешно создан');
@@ -237,7 +252,7 @@ class CreateController {
                 'Не удалось создать проект, так как не удалось определить тип создаваемого приложения',
             );
         } else {
-            const standardPath = __dirname + '/../template';
+            const standardPath = path.join(__dirname, '..', 'template');
             const srcPath = `${this.#path}/src`;
             if (!utils.isDir(srcPath)) {
                 fs.mkdirSync(srcPath);
@@ -266,20 +281,20 @@ class CreateController {
             }
 
             console.log('Создается index файл: ...');
-            let path = 'index';
+            let indexTemplate = 'index';
             const mode = this.params?.mode;
             if (mode === 'dev') {
-                path += 'Dev';
+                indexTemplate += 'Dev';
             } else if (mode === 'dev-online') {
-                path += 'DevOnline';
+                indexTemplate += 'DevOnline';
             } else if (mode === 'build') {
-                path += 'Build';
+                indexTemplate += 'Build';
             }
             if (this.flags.includes('--minimal') && type === CreateController.T_DEFAULT) {
-                path += 'Min';
+                indexTemplate += 'Min';
             }
             const indexFile = `${srcPath}/index.ts`;
-            const indexContent = this._getFileContent(`${standardPath}/${path}.ts.text`);
+            const indexContent = this._getFileContent(`${standardPath}/${indexTemplate}.ts.text`);
             this._generateFile(indexContent, indexFile);
             console.log('index.ts успешно создан');
 
@@ -323,9 +338,44 @@ class CreateController {
     format() {
         try {
             const prettier = process.platform === 'win32' ? 'prettier.cmd' : 'prettier';
-            execFileSync(prettier, ['--write', this.#path], { stdio: 'ignore' });
+            // timeout защищает CLI от зависания, если prettier впадёт в deadlock/бесконечный цикл
+            execFileSync(prettier, ['--write', this.#path], {
+                stdio: 'ignore',
+                timeout: 30000,
+            });
         } catch {
             console.warn('Предупреждение: не удалось отформатировать код');
+        }
+    }
+
+    /**
+     * Проверяет, можно ли создавать проект в указанной директории.
+     * Если директория существует и не пуста, генерация требует явный флаг --force.
+     * @param {string} dirPath — путь к целевой директории
+     * @returns {Promise<void>}
+     * @private
+     */
+    _checkOutputDir(dirPath) {
+        if (utils.isDir(dirPath) && !this.flags.includes('--force')) {
+            const entries = fs.readdirSync(dirPath);
+            if (entries.length > 0) {
+                throw new Error(
+                    `Директория для генерации не пустая: ${dirPath}. Укажите --force, чтобы перезаписать файлы.`,
+                );
+            }
+        }
+    }
+
+    /**
+     * Не даёт служебным командам случайно заменить пользовательский файл.
+     * @param {string} filePath — путь к создаваемому файлу
+     * @private
+     */
+    #assertFileCanBeWritten(filePath) {
+        if (utils.isFile(filePath) && !this.flags.includes('--force')) {
+            throw new Error(
+                `Файл уже существует: ${filePath}. Укажите --force, чтобы перезаписать его.`,
+            );
         }
     }
 
@@ -335,28 +385,18 @@ class CreateController {
      * @param type Тип проекта
      * @public
      */
-    init(name = null, type = CreateController.T_DEFAULT) {
+    async init(name = null, type = CreateController.T_DEFAULT) {
         const correctName = name?.replace(/\W/g, '_');
         if (correctName) {
             this.#name = correctName;
-            this.#path = '';
             if (this.params && this.params.path) {
-                this.#path = this.params.path;
-                const paths = this.#path.split('/');
-                let path = '';
-                paths.forEach((dir) => {
-                    path += `${dir}/`;
-                    if (dir !== './' && path !== '../') {
-                        if (!utils.isDir(path)) {
-                            fs.mkdirSync(path);
-                        }
-                    }
-                });
+                this.#path = path.resolve(this.params.path);
             } else {
-                this.#path += correctName;
-                if (!utils.isDir(this.#path)) {
-                    fs.mkdirSync(this.#path);
-                }
+                this.#path = path.resolve(correctName);
+            }
+            this._checkOutputDir(this.#path);
+            if (!utils.isDir(this.#path)) {
+                fs.mkdirSync(this.#path, { recursive: true });
             }
             this._create(type);
         } else {

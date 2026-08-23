@@ -1,6 +1,6 @@
 ---
 name: umbot-code-audit
-description: "Аудит кода проекта"
+description: 'Аудит кода проекта'
 ---
 
 # Code Audit: Security, Performance & Architecture
@@ -19,6 +19,8 @@ security, performance, or production stability — it's not worth mentioning.
 - **Architecture**: Plugins (`IPlugin`), `bot.use()`, DB/platform adapters.
 - **Sources of truth**:
     - `src/` — source code (Priority #1).
+    - `cli/` — product generator. Treat generated TypeScript/templates/configs as production code because users run
+      them directly.
     - `tests/` — only for verifying expected behavior (if code contradicts tests — it's a bug, ask the user).
     - `benchmark/` — do not touch.
 - **Enterprise context**: Library for banks and government agencies. Priorities: Security > Stability > Performance >
@@ -82,6 +84,7 @@ For each step, verify:
 
 - RateLimiter (concurrency, memory management)
 - Request.ts HTTP client (timeouts, error handling)
+- CLI generator and templates: generated TypeScript, Dockerfile, cloud configs, overwrite safety, token handling
 - Nlu processing
 - Sound processing
 - Navigation component
@@ -92,9 +95,11 @@ For each step, verify:
 Find specific problems, not general discussions:
 
 1. **SECURITY**: ReDoS (check `isRegexLikelySafe`), Prototype Pollution, token leaks in logs (especially in
-   `strict_prod`), injections, XSS.
+   `strict_prod` and custom loggers), plaintext secrets in generated files (`serverless.yml`, source files,
+   package.json), injections, XSS.
 2. **PERFORMANCE**: Event Loop Blocking (synchronous operations in async), memory leaks (caches, timers without
-   `.unref()`), O-complexity, HTTP timeouts.
+   `.unref()`), O-complexity, HTTP timeouts. Generated HTTP code must not create unbounded `fetch` calls inside bot
+   handlers.
 3. **CONCURRENCY**: Race conditions, forgotten `await`, incorrect `Promise.all`, Shared State access.
 4. **RESOURCE MANAGEMENT**: Connection closing (Mongo/File), timer cleanup, streams, file descriptors.
 5. **ERROR HANDLING**: Swallowed errors, crashes, incorrect Graceful Shutdown.
@@ -106,6 +111,9 @@ Find specific problems, not general discussions:
    characters), default values that hide bugs.
 10. **REGEX COMPILATION IN HOT PATHS**: `new RegExp()` calls inside loops or per-request methods. Prefer
     `String.prototype.replaceAll()` for literal replacements, cache compiled RegExp for repeated use.
+11. **GENERATED PRODUCT QUALITY**: For every CLI/template change, inspect the generated project as if it were user code.
+    It must compile with the generated tsconfig, keep Docker/cloud deployment working, avoid silent overwrites, and avoid
+    persisting real secrets outside ignored local files.
 
 ## Workflow
 
@@ -123,19 +131,22 @@ Find specific problems, not general discussions:
    per-request methods. Search for `.replace(new RegExp(`, `.forEach.*new RegExp(`, `Array.sort` inside hot paths.
 5. **Type coercion check (Dimension 8)**: Find all `+variable` and `Number(variable)` conversions. Verify empty strings
    and nullish values are handled.
-6. **Generation & Challenge (Senior Review)**: Find problems and **immediately challenge them yourself**.
+6. **CLI/generated project scan**: If the task touches generated behavior or broad product quality, inspect `cli/`,
+   `cli/template/`, `cli/AGENTS.md`, and `tests/cli/`. Check generated HTTP timeouts, safe JSON interpolation,
+   Docker build stages, cloud config secrets, and overwrite protection.
+7. **Generation & Challenge (Senior Review)**: Find problems and **immediately challenge them yourself**.
     - _Example_: "Found `readFileSync`. But it's `FileAdapter` for dev mode, not hot path. Finding dismissed."
     - _Example_: "Found `getButtonJson` returns null. But maybe it's intentional? No — the code calls it and expects a
       string. Finding confirmed."
-7. **Verification BEFORE reporting**: For EACH finding, perform ALL of these checks before adding it to the report:
+8. **Verification BEFORE reporting**: For EACH finding, perform ALL of these checks before adding it to the report:
     - **Read surrounding code**: Does the context change the interpretation?
     - **Check callers**: Is the code path actually reachable in production?
     - **Assess impact**: What ACTUALLY breaks? Not "could break" — what WILL break?
     - **Consider alternatives**: Is there a reason the code is written this way?
     - **Challenge yourself**: Can you dismiss this finding with a concrete reason? If yes — dismiss it.
-8. **Report formation**: Output a report in the format below. Include **ONLY** findings you could NOT challenge after
+9. **Report formation**: Output a report in the format below. Include **ONLY** findings you could NOT challenge after
    the verification above. Dismissed findings go in a separate block at the end with brief reason (1 sentence).
-9. **STOP and wait for user response "Plan approved"**.
+10. **STOP and wait for user response "Plan approved"**.
 
 **Report Format:**
 
@@ -173,15 +184,15 @@ After user confirmation "Plan approved":
 
 ### Step 2: Final Verification
 
-After all fixes, run `npm run build && npm run test && npm run lint`. Output final status: which findings are closed,
-which remain and why.
+After all fixes, run verification in the project order: `npm run build`, then `npm run test`, then `npm run prettier`,
+then `npm run lint`. Output final status: which findings are closed, which remain and why.
 
 ## Output Rules
 
 1. **SCOPE (CRITICAL)**:
-    - You change **ONLY** code (`.ts` files in `src/`).
-    - **FORBIDDEN** to change comments, Markdown, or tests for style. BUT if fixing a bug requires updating a test —
-      this is allowed.
+    - Default audit scope is code in `src/` plus `cli/` when generated product behavior is relevant.
+    - **FORBIDDEN** to change comments, Markdown, or tests for style. BUT if fixing a bug requires updating a test,
+      changelog, AGENTS.md, or this skill to prevent repeated mistakes — this is allowed after user approval.
 2. **No filler**: No introductions. Straight to business.
 3. **Questions**: If uncertain about platform behavior — stop execution and ask.
 4. **Verification**: Every finding MUST be verified by reading surrounding code. False positives waste time and erode

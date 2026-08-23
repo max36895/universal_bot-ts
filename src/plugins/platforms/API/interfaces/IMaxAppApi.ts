@@ -24,7 +24,8 @@ export interface IMaxCard {
          */
         token?: string;
         /**
-         * Массив токенов изображений.
+         * @deprecated MAX принимает одно изображение на attachment. Поле сохранено только для
+         * обратной совместимости типов и не формируется адаптером.
          */
         photos?: string[];
     };
@@ -59,7 +60,7 @@ export type TMaxUploadFile = 'image' | 'video' | 'audio' | 'file';
 /**
  * Интерфейс для загрузки файла в Max
  */
-export interface IMaxUploadFile {
+export interface IMaxUploadFile extends IMaxAppApi {
     /**
      * URL для загрузки файла
      */

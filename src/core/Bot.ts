@@ -15,15 +15,14 @@ import {
 
 import { ICommandParam, TSlots, TCommandResolver, IStepParam } from './utils/CommandReg';
 import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
-import { BaseBotController, BotController, IPlatformData, IUserData } from '../controller';
+import type { BotController, IPlatformData, IUserData } from '../controller';
+import { AppContext, T_AUTO } from './AppContext';
 import {
-    AppContext,
     HELP_INTENT_NAME,
     HELP_INTENT_SLOTS,
-    T_AUTO,
     WELCOME_INTENT_NAME,
     WELCOME_INTENT_SLOTS,
-} from './AppContext';
+} from './constants';
 import { UsersData } from '../models';
 import { ILogger } from './interfaces/ILogger';
 import { Text, isPromise, keysCount } from '../utils';
@@ -36,9 +35,10 @@ const DEFAULT_WELCOME_INTENT_SLOTS = WELCOME_INTENT_SLOTS;
 /**
  * Тип для класса контроллера приложения
  */
-export type TBotControllerClass<T extends IUserData = IUserData> = new (
-    appContext: AppContext,
-) => BotController<T>;
+export type TBotControllerClass<
+    TUserData extends IUserData = IUserData,
+    TPlatformState extends IPlatformData = IPlatformData,
+> = new (appContext: AppContext) => BotController<TUserData, TPlatformState>;
 
 /**
  * Результат выполнения запроса от платформы - ответ, который будет отправлен пользователю
@@ -237,11 +237,117 @@ export type TPlatformResolver = (
  *     pass: 'password'
  *   }));
  * ```
+ * Параметры типов позволяют написать типобезопасный бот без `as any`:
+ * ```ts
+ * import { Bot, IUserData, IPlatformData } from 'umbot';
  *
- * @template TUserData Тип пользовательских данных, по умолчанию {@link IUserData}
+ * interface MyUserData extends IUserData { name?: string; age?: number }
+ * interface MyPlatformState extends IPlatformData { cartCount?: number }
+ *
+ * const bot = new Bot<MyUserData, MyPlatformState>();
+ * bot.addCommand('view', [], (_, ctx) => {
+ *     ctx.userData.name = 'Bob';        // ✅ типизировано
+ *     ctx.state!.cartCount = 5;          // ✅ типизировано
+ *     ctx.userData.foo = 1;              // ❌ TS error
+ * });
+ * ```
+ *
+ * @template TUserData - Тип пользовательских данных, по умолчанию {@link IUserData}.
+ * @template TPlatformState - Тип данных в локальном хранилище платформы, по умолчанию {@link IPlatformData}.
  * @see BotController
  */
-export class Bot<TUserData extends IUserData = IUserData> {
+/**
+ * Описание одного поля формы в {@link Bot.addForm}.
+ *
+ * @template TBotController Контроллер (по умолчанию `BotController`)
+ */
+export interface IAddFormField<TBotController extends BotController = BotController> {
+    /**
+     * Имя поля. Станет ключом в объекте ответов, который получит `onComplete`.
+     * Должно быть валидным ключом объекта.
+     * @example 'name', 'email', 'age'
+     */
+    name: string;
+
+    /**
+     * Текст, который бот отправит пользователю с просьбой ввести это поле.
+     * Может быть строкой или функцией от контроллера (для dynamic-content).
+     * @example 'Как вас зовут?' | (ctx) => `Привет, ${ctx.userData.name}! Ваш email?`
+     */
+    prompt: string | ((ctx: TBotController) => string);
+
+    /**
+     * Валидатор пользовательского ввода.
+     *
+     * Может быть синхронным или асинхронным.
+     * Возвращаемое значение:
+     * - `true` — значение принято, переходим к следующему полю.
+     * - `false` — валидация не прошла, повторяем prompt без сообщения об ошибке.
+     * - `string` — эта строка отправляется пользователю как текст ошибки.
+     *
+     * @example
+     * ```ts
+     * // Синхронная валидация
+     * validate: (v) => v.length > 0
+     *
+     * // Сообщение, если неверно
+     * validate: (v) => /\S+@\S+/.test(v) || 'Некорректный email'
+     *
+     * // Асинхронная (например, проверка через API)
+     * validate: async (v) => {
+     *     const exists = await db.users.findOne({ email: v });
+     *     return exists ? 'Email уже занят' : true;
+     * }
+     * ```
+     */
+    validate?: (value: string) => boolean | string | Promise<boolean | string>;
+}
+
+/**
+ * Ключевые параметры метода {@link Bot.addForm} — регистрации многошаговой формы.
+ *
+ * @template TBotController Контроллер
+ */
+export interface IAddFormOptions<TBotController extends BotController = BotController> {
+    /**
+     * Список полей формы. Обрабатываются последовательно — каждое поле становится своим шагом.
+     */
+    fields: IAddFormField<TBotController>[];
+
+    /**
+     * Колбек, вызываемый после того как заполнены ВСЕ поля.
+     * Может быть синхронным или асинхронным — фреймворк дождётся его завершения
+     * перед формированием ответа.
+     *
+     * @param ctx BotController — имеет доступ к userData, тексту, кнопкам и т.д.
+     * @param answers Объект с ответами: ключ — name поля, значение — введённый пользователем текст.
+     *
+     * @example
+     * ```ts
+     * onComplete: (ctx, answers) => {
+     *     ctx.text = `Спасибо, ${answers.name}! Мы вас записали (${answers.email}).`;
+     * }
+     * ```
+     */
+    onComplete: (ctx: TBotController, answers: Record<string, string>) => void | Promise<void>;
+
+    /**
+     * Текст, который получит пользователь при отмене формы.
+     * @defaultValue 'Форма отменена.'
+     */
+    cancelText?: string;
+
+    /**
+     * Список команд, которые отменяют форму. Работают в любом регистре.
+     * @defaultValue ['отмена', 'cancel']
+     */
+    cancelCommands?: string[];
+}
+
+export class Bot<
+    TUserData extends IUserData = IUserData,
+    TPlatformState extends IPlatformData = IPlatformData,
+> {
     /** Экземпляр HTTP-сервера */
     #serverInst: Server | undefined;
 
@@ -270,7 +376,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Обрабатывает команды и формирует ответы
      * @see TBotControllerClass
      */
-    #botControllerClass: TBotControllerClass<TUserData>;
+    #botControllerClass: TBotControllerClass<TUserData, TPlatformState>;
 
     /**
      * Тип платформы по умолчанию
@@ -291,13 +397,19 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param botController — Класс контроллера (если не передан, используется BaseBotController)
      */
     #getBotController(
-        botController?: TBotControllerClass<TUserData>,
-    ): TBotControllerClass<TUserData> {
+        botController?: TBotControllerClass<TUserData, TPlatformState>,
+    ): TBotControllerClass<TUserData, TPlatformState> {
         if (botController) {
             return botController;
-        } else {
-            return BaseBotController<TUserData>;
         }
+        // Ленивая загрузка дефолтного контроллера разрывает runtime-цикл
+        // core/Bot → controller → core: статический импорт BaseBotController
+        // заставил бы Bot.js требовать модуль controller в момент загрузки,
+        // когда баррель core ещё не доинициализирован. К моменту вызова
+        // конструктора все модули уже загружены, поэтому require безопасен
+        // (тот же приём, что и с опциональным re2 в utils/standard/RegExp.ts).
+        const { BaseBotController } = require('../controller') as typeof import('../controller');
+        return BaseBotController<TUserData, TPlatformState>;
     }
 
     /**
@@ -323,7 +435,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * const bot = new Bot();
      * ```
      */
-    constructor(type?: TAppType, botController?: TBotControllerClass<TUserData>) {
+    constructor(type?: TAppType, botController?: TBotControllerClass<TUserData, TPlatformState>) {
         this.#botControllerClass = this.#getBotController(botController);
         this.#appContext = new AppContext();
         this.#defaultAppType = type || T_AUTO;
@@ -631,6 +743,164 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     /**
+     * Регистрирует многошаговую форму (опросник) с автоматической последовательностью шагов.
+     *
+     * Под капотом создаётся цепочка `addStep` — по одному на каждое поле. Состояние формы
+     * (частичные ответы) сохраняется в `ctx.userData[<formName>]`.
+     *
+     * Чтобы запустить форму из команды, вызовите `ctx.thisIntentName = '__form_<formName>_0'` —
+     * тогда следующий ответ пользователя пойдёт в обработчик первого поля.
+     *
+     * @remarks
+     * Метод использует зарезервированные префиксы:
+     * - имена шагов — `__form_<formName>_<idx>`
+     * - ключ хранения промежуточных ответов — `userData.__formdata_<formName>`
+     *
+     * Не создавайте свои команды, шаги или поля `userData` с такими префиксами —
+     * они будут перезаписаны или удалены при `removeForm`.
+     *
+     * @param formName — Уникальное имя формы. Используется как префикс для шагов
+     *   и как ключ в `userData`. Должно совпадать с регуляркой `[a-zA-Z_$][\w$]*` или
+     *   содержать только `.` (для dotted-имён).
+     * @param options — Настройки формы: поля, `onComplete`, `cancelText` и т.п.
+     * @returns Текущий экземпляр `Bot` (для цепочки).
+     *
+     * @example
+     * ```ts
+     * bot.addForm('registration', {
+     *     fields: [
+     *         { name: 'name',  prompt: 'Как вас зовут?',  validate: (v) => v.length > 0 },
+     *         { name: 'email', prompt: 'Ваш email?',     validate: (v) => /\S+@\S+/.test(v) || 'Некорректный email' },
+     *         { name: 'age',   prompt: 'Сколько вам лет?', validate: (v) => +v > 0 || 'Возраст должен быть числом' },
+     *     ],
+     *     onComplete: (ctx, answers) => {
+     *         ctx.text = `Спасибо, ${answers.name}!`;
+     *     },
+     * });
+     *
+     * // Запуск из команды
+     * bot.addCommand('start_signup', ['зарегистрироваться'], (_, ctx) => {
+     *     ctx.thisIntentName = '__form_registration_0';
+     *     ctx.text = 'Как вас зовут?'; // первый prompt
+     * });
+     * ```
+     *
+     * @see addStep
+     */
+    public addForm<TBotController extends BotController = BotController>(
+        formName: string,
+        options: IAddFormOptions<TBotController>,
+    ): this {
+        const cancelCommands = (options.cancelCommands ?? ['отмена', 'cancel']).map((s) =>
+            s.toLowerCase(),
+        );
+        const cancelText = options.cancelText ?? 'Форма отменена.';
+        const stepPrefix = `__form_${formName}_`;
+        const dataKey = `__formdata_${formName}` as const;
+
+        options.fields.forEach((field, index) => {
+            const isLast = index === options.fields.length - 1;
+            const currentStep = `${stepPrefix}${index}`;
+            const nextStep = isLast ? null : `${stepPrefix}${index + 1}`;
+            const nextField = options.fields[index + 1];
+
+            this.addStep(currentStep, async (ctx: BotController) => {
+                const userCtx = ctx as unknown as TBotController;
+                const dataRec = userCtx.userData as unknown as Record<string, unknown>;
+                const userText = (userCtx.userCommand ?? '').trim();
+                // Ответ сохраняем в исходном регистре: userCommand адаптеры приводят
+                // к нижнему регистру, что исказило бы имена, email и адреса.
+                const answerText = (
+                    userCtx.originalUserCommand ??
+                    userCtx.userCommand ??
+                    ''
+                ).trim();
+
+                // Команда отмены
+                if (cancelCommands.includes(userText.toLowerCase())) {
+                    delete dataRec[dataKey];
+                    userCtx.thisIntentName = null;
+                    userCtx.text = cancelText;
+                    return;
+                }
+
+                // Валидация — поддерживаем и sync, и async валидаторы.
+                let isValid: boolean | string = true;
+                if (field.validate) {
+                    const validateResult = field.validate(answerText);
+                    isValid =
+                        validateResult instanceof Promise ? await validateResult : validateResult;
+                }
+                if (isValid !== true) {
+                    const customError = typeof isValid === 'string' ? isValid : null;
+                    const promptText =
+                        typeof field.prompt === 'function' ? field.prompt(userCtx) : field.prompt;
+                    userCtx.text = (customError ? `${customError}\n` : '') + promptText;
+                    // Остаёмся на этом же шаге: явно проставляем thisIntentName,
+                    // чтобы на следующий запрос пользователь попал именно сюда.
+                    userCtx.thisIntentName = currentStep;
+                    return;
+                }
+
+                // Сохраняем ответ
+                const formAnswers = (dataRec[dataKey] ?? {}) as Record<string, string>;
+                formAnswers[field.name] = answerText;
+                dataRec[dataKey] = formAnswers;
+
+                if (isLast) {
+                    delete dataRec[dataKey];
+                    userCtx.thisIntentName = null;
+                    // Дожидаемся onComplete: async-колбек иначе не успеет выставить
+                    // ctx.text до формирования ответа, а его reject станет
+                    // unhandled promise rejection.
+                    await Promise.resolve(options.onComplete(userCtx, formAnswers));
+                    return;
+                }
+
+                // Переходим к следующему полю
+                userCtx.thisIntentName = nextStep as string;
+                userCtx.text =
+                    typeof nextField.prompt === 'function'
+                        ? nextField.prompt(userCtx)
+                        : nextField.prompt;
+            });
+        });
+
+        return this;
+    }
+
+    /**
+     * Удаляет зарегистрированный многошаговые формы по имени.
+     *
+     * После удаления форма больше не будет обрабатываться, даже если она активна у пользователя.
+     * (Рекомендуется завершать активные сценарии через `ctx.thisIntentName = null` перед удалением.)
+     *
+     * @remarks
+     * Сравнение идёт по префиксу `__form_<formName>_`. Осторожно: если у вас
+     * есть формы `user` и `user_2`, вызов `removeForm('user')` также удалит
+     * шаги формы `user_2` (её имя начинается с `__form_user_`).
+     * Чтобы избежать этого, выбирайте `formName` с уникальным суффиксом,
+     * не являющимся префиксом другой формы (например, `signup` vs `signupV2`).
+     *
+     * @param {string} formName — Имя формы для удаления.
+     * @returns {this} Текущий экземпляр `Bot`.
+     *
+     * @example
+     * ```ts
+     * bot.removeForm('registration');
+     * ```
+     */
+    public removeForm(formName: string): this {
+        const stepPrefix = `__form_${formName}_`;
+        this.#appContext.steps.forEach((step) => {
+            if (step.stepName.startsWith(stepPrefix)) {
+                this.removeStep(step.stepName);
+            }
+        });
+        return this;
+    }
+
+    /**
      * Удаляет зарегистрированный шаг по имени.
      *
      * После удаления шаг больше не будет обрабатываться, даже если активен у пользователя.
@@ -897,7 +1167,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Контроллер по умолчанию уже обрабатывает интенты `welcome`, `help` и `fallback`,
      * но вы можете заменить его, если нужно кастомное поведение.
      *
-     * @param {TBotControllerClass<TUserData>} fn - Класс контроллера, наследующий `BotController<TUserData>`
+     * @param {TBotControllerClass<TUserData, TPlatformState>} fn - Класс контроллера, наследующий `BotController<TUserData, TPlatformState>`
      *
      * @example
      * ```ts
@@ -940,7 +1210,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * ```
      * @returns {this} Текущий экземпляр Bot для цепочки вызовов
      */
-    public initBotController(fn: TBotControllerClass<TUserData>): this {
+    public initBotController(fn: TBotControllerClass<TUserData, TPlatformState>): this {
         if (fn) {
             this.#botControllerClass = fn;
         }
@@ -1015,7 +1285,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         return this.#defaultPlatformDetect(uBody, headers);
     }
 
-    #initNLU(botController: BotController<TUserData>): void {
+    #initNLU(botController: BotController<TUserData, TPlatformState>): void {
         if (this.#appContext.plugins.nlu) {
             const nlu =
                 typeof this.#appContext.plugins.nlu === 'function'
@@ -1071,20 +1341,17 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
     /* eslint-disable require-atomic-updates*/
     async #initUserData(
-        botController: BotController<TUserData>,
+        botController: BotController<TUserData, TPlatformState>,
         userData?: UsersData,
         localStateData?: unknown,
     ): Promise<boolean> {
         if (botController.platformOptions.usedLocalStorage) {
-            botController.state = localStateData as IPlatformData;
+            botController.state = localStateData as TPlatformState;
         }
         if (userData && !this.#appContext.appConfig.isLocalStorage) {
             const query = {
                 userId: botController.userId,
             };
-            if (botController.userToken) {
-                query.userId = userData.escapeString(botController.userToken as string);
-            }
             if (await userData.whereOne(query)) {
                 botController.userData = userData.data as TUserData;
                 return false;
@@ -1106,7 +1373,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param appType - Тип приложения
      */
     async #runApp(
-        botController: BotController<TUserData>,
+        botController: BotController<TUserData, TPlatformState>,
         platformClass: IPlatformAdapter,
         appType: TAppType,
     ): Promise<TRunResult> {
@@ -1155,9 +1422,15 @@ export class Bot<TUserData extends IUserData = IUserData> {
                 : true;
         let content: string | object | null;
         try {
-            content = shouldProceed
-                ? await this.#getAppContent(botController, platformClass, appType)
-                : 'Request blocked by middleware';
+            if (shouldProceed) {
+                content = await this.#getAppContent(botController, platformClass, appType);
+            } else {
+                // Middleware прервал обработку (next() не вызван). Возвращаем не сырую
+                // строку, а полноценный ответ платформы: getContent() адаптера отправит
+                // выставленный middleware текст (например, deniedText) и сформирует
+                // валидный для платформы ответ.
+                content = await this.#getPlatformContent(botController, platformClass);
+            }
         } finally {
             await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
         }
@@ -1180,7 +1453,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * @param isLocalStorage true, если данные хранятся в локальном хранилище платформы
      */
     async #saveUserData(
-        botController: BotController<TUserData>,
+        botController: BotController<TUserData, TPlatformState>,
         userData: UsersData | undefined,
         isNewUser: boolean,
         isLocalStorage: boolean,
@@ -1188,7 +1461,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
         if (
             !userData ||
             (isLocalStorage &&
-                (!botController.state || botController.state === botController.userData))
+                (!botController.state ||
+                    (botController.state as unknown as object) ===
+                        (botController.userData as unknown as object)))
         ) {
             return;
         }
@@ -1212,7 +1487,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         }
     }
 
-    #setOldIntentName(botController: BotController<TUserData>): void {
+    #setOldIntentName(botController: BotController<TUserData, TPlatformState>): void {
         if (
             !botController.oldIntentName &&
             botController.userData &&
@@ -1237,7 +1512,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      */
     #validateAdapterResult(
         content: object | string | Promise<object | string>,
-        botController: BotController<TUserData>,
+        botController: BotController<TUserData, TPlatformState>,
     ): object | string | Promise<object | string> {
         if (content === null || content === undefined) {
             this.#appContext.logWarn(
@@ -1250,7 +1525,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     }
 
     async #getPlatformContent(
-        botController: BotController<TUserData>,
+        botController: BotController<TUserData, TPlatformState>,
         platformClass: IPlatformAdapter,
     ): Promise<string | object> {
         let userDataLength = keysCount(botController.userData);
@@ -1292,7 +1567,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
             content = platformClass.getRatingContext(botController);
         } else {
             if (botController.state && userDataLength === 0) {
-                botController.userData = botController.state as TUserData;
+                // При isLocalStorage=true state и userData могут совпадать.
+                // Безопасное приведение через unknown, т.к. в этом режиме типы эквивалентны.
+                botController.userData = botController.state as unknown as TUserData;
             }
             content = this.#validateAdapterResult(
                 platformClass.getContent(botController, stateData),
@@ -1311,7 +1588,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
     /* eslint-enable require-atomic-updates*/
 
     async #getAppContent(
-        botController: BotController<TUserData>,
+        botController: BotController<TUserData, TPlatformState>,
         platformClass: IPlatformAdapter,
         appType: TAppType,
     ): Promise<string | object> {
@@ -1474,14 +1751,14 @@ export class Bot<TUserData extends IUserData = IUserData> {
         return true;
     }
 
-    #$botController: BotController<TUserData> | null = null;
+    #$botController: BotController<TUserData, TPlatformState> | null = null;
 
     /**
      * Установка контроллера. Используется только для тестирования
      * @param botController
      * @protected
      */
-    protected _setBotController(botController: BotController<TUserData>): void {
+    protected _setBotController(botController: BotController<TUserData, TPlatformState>): void {
         this.#$botController = botController;
     }
 
@@ -1490,7 +1767,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
      * Не использовать!
      * @private
      */
-    public getBotController(): BotController<TUserData> | null {
+    public getBotController(): BotController<TUserData, TPlatformState> | null {
         return this.#$botController;
     }
 
@@ -1520,6 +1797,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
         appType: TAppType | null = null,
         content: string | object | null = null,
         auth: TBotAuth = null,
+        clientIp?: string,
     ): Promise<TRunResult> {
         if (!this.#botControllerClass) {
             const errMsg =
@@ -1533,7 +1811,7 @@ export class Bot<TUserData extends IUserData = IUserData> {
             this.#appContext.logError(msg);
             throw new Error(msg);
         }
-        const botController: BotController<TUserData> =
+        const botController: BotController<TUserData, TPlatformState> =
             this.#$botController || new this.#botControllerClass(this.#appContext);
         if (this.#$botController) {
             botController.setAppContext(this.#appContext);
@@ -1544,6 +1822,9 @@ export class Bot<TUserData extends IUserData = IUserData> {
             : null;
         if (platformClass) {
             botController.userToken ??= auth;
+            if (clientIp) {
+                botController.platformOptions.clientIp = clientIp;
+            }
 
             platformClass.updateTimeStart(botController);
             let res = platformClass.setQueryData(correctContent, botController);
@@ -1726,17 +2007,23 @@ export class Bot<TUserData extends IUserData = IUserData> {
             appType = this.#getAppType(query, req.headers);
             if (appType && this.#appContext.platforms[appType]) {
                 if (!this.#appContext.platforms[appType].isCorrectQuery(data, req.headers)) {
+                    // Логируем ТОЛЬКО мета-информацию, не весь req/res.
+                    // IncomingMessage содержит сырые sockets, headers с cookies/etc —
+                    // сериализация создаёт огромные логи и теневую утечку данных.
                     this.#appContext.logError(
                         `Bot:webhookHandle(): Для платформы "${appType}", пришел запрос с неверным токеном. Дальнейшая обработка запроса остановлена.`,
                         {
-                            res,
-                            req,
+                            method: req.method,
+                            url: req.url,
+                            // Маскируем потенциально чувствительные заголовки явно
+                            remoteAddress: req.socket?.remoteAddress,
+                            userAgent: req.headers?.['user-agent'],
                         },
                     );
                     return this.#webhookHandleError(req, res, 401, responseCb);
                 }
             }
-            const result = await this.run(appType, query, auth);
+            const result = await this.run(appType, query, auth, req.socket?.remoteAddress);
             const statusCode = result === 'notFound' ? 404 : 200;
             if (this.#appContext.usedMetric) {
                 this.#appContext.logMetric(EMetric.END_WEBHOOK, performance.now() - startTimer, {
@@ -1882,10 +2169,24 @@ export class Bot<TUserData extends IUserData = IUserData> {
     async #gracefulShutdown(): Promise<void> {
         this.#appContext.log('Получен сигнал завершения. Выполняется graceful shutdown...');
 
-        await this.close();
-        this.#appContext.command.clearCommands();
-        this.#appContext.command.clearSteps();
-        Text.clearCache();
+        try {
+            await this.close();
+        } catch (err) {
+            // Если БД-адаптер или плагин не смог закрыться, это не должно блокировать выход.
+            // Иначе процесс зависнет и не ответит на SIGTERM (например, в Docker).
+            this.#appContext.logError('Ошибка при graceful shutdown (close):', {
+                error: err as Error,
+            });
+        }
+        try {
+            this.#appContext.command.clearCommands();
+            this.#appContext.command.clearSteps();
+            Text.clearCache();
+        } catch (err) {
+            this.#appContext.logError('Ошибка при graceful shutdown (cleanup):', {
+                error: err as Error,
+            });
+        }
 
         this.#appContext.log('Graceful shutdown завершён.');
         // Даём event loop завершить отложенные I/O-операции (запись в файл, закрытие сокетов)

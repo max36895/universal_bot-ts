@@ -63,6 +63,18 @@ export interface IEnvConfig {
     VK_CONFIRMATION_TOKEN?: string;
 
     /**
+     * Секретный ключ для VK Callback API (опционально).
+     * Если включён в настройках группы VK, VK присылает поле `secret` в теле каждого callback-запроса.
+     * Адаптер сверяет его с этим значением для проверки подлинности запроса.
+     *
+     * @example
+     * ```ts
+     * VK_SECRET_KEY=abc123def456
+     * ```
+     */
+    VK_SECRET_KEY?: string;
+
+    /**
      * Токен для Viber API
      * Используется для авторизации в Viber API
      *
@@ -77,12 +89,31 @@ export interface IEnvConfig {
      * Токен для Яндекс.Диалоги (Алиса)
      * Используется для авторизации в API Яндекс.Диалогов
      *
+     * ⚠️ **Deprecated:** используйте {@link ALISA_TOKEN}. Этот ключ сохранён
+     * для обратной совместимости и будет удалён в следующей мажорной версии.
+     * Если заданы оба — приоритет у `ALISA_TOKEN`.
+     *
+     * @deprecated Используйте `ALISA_TOKEN`
      * @example
      * ```ts
      * YANDEX_TOKEN=1234567890abcdef
      * ```
      */
     YANDEX_TOKEN?: string;
+
+    /**
+     * Токен для Яндекс.Диалоги (Алиса)
+     * Используется для авторизации в API Яндекс.Диалогов.
+     *
+     * Заменяет `YANDEX_TOKEN` (сохранён для BC). При одновременном задании обоих
+     * приоритет у `ALISA_TOKEN`.
+     *
+     * @example
+     * ```ts
+     * ALISA_TOKEN=1234567890abcdef
+     * ```
+     */
+    ALISA_TOKEN?: string;
 
     /**
      * Токен для Маруси

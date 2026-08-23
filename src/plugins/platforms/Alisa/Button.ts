@@ -1,6 +1,6 @@
 import { Text, IButtonType, AppContext } from '../../../index';
 import { IAlisaButton, IAlisaButtonCard } from './interfaces/IAlisaPlatform';
-import { getCorrectButtons } from '../Base/utils';
+import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
 /**
  * Создание кнопки в формате Алисы
@@ -24,20 +24,27 @@ function _getButton(
             };
         }
         if (button.payload) {
-            const payloadStr =
-                typeof button.payload === 'string'
-                    ? button.payload
-                    : JSON.stringify(button.payload);
-            if (Buffer.byteLength(payloadStr, 'utf8') < 4096) {
+            const payloadStr = serializePlatformPayload(button.payload, 'Alisa', appContext);
+            if (payloadStr === null) {
+                return null;
+            }
+            if (Buffer.byteLength(payloadStr, 'utf8') <= 4096) {
                 object.payload = button.payload;
             } else {
                 appContext?.logWarn(
-                    `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Он будет проигнорирован.`,
+                    `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Кнопка будет пропущена без изменения payload.`,
                 );
+                return null;
             }
         }
         if (button.url) {
-            object.url = Text.resize(button.url, 1024);
+            if (button.url.length > 1024) {
+                appContext?.logWarn(
+                    '[Alisa] URL кнопки превышает 1024 символа. Кнопка будет пропущена без изменения ссылки.',
+                );
+                return null;
+            }
+            object.url = button.url;
         }
         return object;
     }

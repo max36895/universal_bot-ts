@@ -143,7 +143,13 @@ this.card.addImage('image.jpg').setTitle('Заголовок').setDescription('�
 #### Управление состоянием пользователя
 
 ```ts
-// Сохранение данных
+// Для TypeScript, объявите интерфейс и передайте его в BotController
+interface IUserState {
+    counter?: number;
+}
+class MyController extends BotController<IUserState> {}
+
+// Внутри controller.userData теперь знает про counter
 this.userData.counter = 42;
 
 // Прочитать данные
@@ -225,12 +231,16 @@ if (!this.userData.initialized) {
     this.userData.score = 0;
 }
 
-// Сброс состояния
+// Сброс состояния — мутируйте, а не переприсваивайте
 if (intentName === 'restart') {
-    this.userData = {};
+    Object.keys(this.userData).forEach((key) => delete this.userData[key]);
     this.text = 'Игра начата заново';
 }
 ```
+
+> **Важно:** не делайте `this.userData = {};` — фреймворк хранит ссылку на объект
+> и при полном переприсваивании отслеживание изменений может сломаться.
+> Вместо этого мутируйте или удаляйте поля по одному.
 
 ## Отладка
 
@@ -353,9 +363,9 @@ bot.setAppConfig({ isLocalStorage: false });
 
 ### Пустой ответ вместо "Не поняла"
 
-**Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`. Если вы наследуетесь от `BotController` напрямую, текст не выставится автоматически — бот вернёт пустой ответ.
+**Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`. Если вы наследуетесь от `BotController` напрямую, задайте `this.text` в `action()`. Адаптеры не придумывают ответ: Алиса и Маруся сохранят пустые поля и запишут предупреждение, а чат-платформы не станут отправлять недопустимое пустое сообщение.
 
-Подробнее об этом механизме — в разделе [«Порядок диспетчера»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html#порядок-диспетчера) в GUIDE.md.
+Подробнее об этом механизме — в разделе [«Порядок диспетчера»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html#порядок-диспетчера) в GUIDE.md.
 
 ```ts
 // Решение: вручную обрабатывайте default-case в action()
@@ -396,7 +406,7 @@ bot.setAppMode('strict_prod'); // ← обязательно включите!
 
 ### Как добавить поддержку новой платформы?
 
-Достаточно создать адаптер для нужной платформы согласно [документации по созданию адаптера платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_platformAdapter.html) и после подключить его к приложению.
+Достаточно создать адаптер для нужной платформы согласно [документации по созданию адаптера платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html) и после подключить его к приложению.
 Если все сделано верно, то при получении запроса от новой платформы, фреймворк корректно отработает запрос, и вернет
 данные в нужном для платформы виде.
 
@@ -425,6 +435,9 @@ DB_USER=user
 DB_PASSWORD=password
 DB_NAME=bot_db
 ```
+
+> ⚠️ **Не коммитьте `.env` в git!** Он уже добавлен в шаблонный `.gitignore` при генерации через CLI,
+> но если создаёте файл вручную — проверьте, что он в исключениях.
 
 Если все необходимые токены лежат в `process.env`, то можно в свойство `env` передать значение `local`.
 
@@ -462,4 +475,4 @@ this.card
     .setTitle('Галерея изображений');
 ```
 
-Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ.html).
+Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html).

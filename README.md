@@ -14,7 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
 [![Security](https://img.shields.io/badge/Security-A+-green)](https://github.com/max36895/universal_bot-ts/blob/main/SECURITY.md)
-[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration.html)
+[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html)
 
 ---
 
@@ -132,12 +132,13 @@
 npm install umbot
 ```
 
-Создайте и запустите проект за четыре команды:
+Создайте и запустите проект за пять команд:
 
 ```bash
 npx umbot create echo
 cd echo
 npm i
+npm run build
 npm run start
 ```
 
@@ -174,7 +175,7 @@ export class EchoController extends BotController {
 
 Протестируйте приложение, и в случае необходимости опубликуйте его.
 
-👉 [Подробное руководство по запуску](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started.html)
+👉 [Подробное руководство по запуску](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_getting-started.html)
 
 ## Производительность
 
@@ -191,7 +192,7 @@ export class EchoController extends BotController {
 
 - Тесты проводились без сетевых вызовов и операций с базами данных, поэтому цифры показывают потенциал ядра фреймворка.
 - В реальном проекте итоговый RPS будет определяться внешними факторами (сеть, БД, логика приложения).
-- На реальном сервере (2 ядра / 4 ГБ RAM) с фоновой нагрузкой фреймворк показывает **16 000+ RPS** — подробнее в [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_performance-and-guarantees.html).
+- На реальном сервере (2 ядра / 4 ГБ RAM) с фоновой нагрузкой фреймворк показывает **16 000+ RPS** — подробнее в [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html).
 
 Длительное тестирование (48 часов) не выявило утечек памяти или снижения производительности: средняя пропускная
 способность в последовательном сценарии осталась на уровне **~67 000 RPS**, а потребление памяти стабильно.
@@ -200,20 +201,20 @@ export class EchoController extends BotController {
 
 Подробная документация доступна в следующих разделах:
 
-- [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started.html) - Подробное описание, для
+- [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_getting-started.html) - Подробное описание, для
   быстрого старта проекта
-- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html)
-- [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_api-reference.html) - Подробное описание всех классов,
+- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html)
+- [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html) - Подробное описание всех классов,
   методов и интерфейсов
-- [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration.html) - Руководство по
+- [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html) - Руководство по
   интеграции с различными платформами
-- [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_configuration.html)
-- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_http-client.html)
-- [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_performance-and-guarantees.html)
-- [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_testing.html)
-- [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_deployment.html)
-- [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_middleware.html)
-- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ.html)
+- [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html)
+- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_http-client.html)
+- [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)
+- [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_testing.html)
+- [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_deployment.html)
+- [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_middleware.html)
+- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html)
 
 ### Полезные ссылки
 
@@ -224,25 +225,25 @@ export class EchoController extends BotController {
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
 - [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples)
 - [Список изменений](https://github.com/max36895/universal_bot-ts/blob/main/CHANGELOG.md)
-- [Миграция с umbot 2.x на 3.0](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release.html)
+- [Миграция с umbot 2.x на 3.0](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_migration-2x-to-3x.html)
 
 ## 🛠 Инструменты разработчика
 
-- [CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.cli_README.html) команды
+- [CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html) команды
 
 ### Визуальный редактор (Umbot Flow Editor)
 
-[Umbot Flow Editor](https://umbot.dev) — визуальный редактор для создания ботов на фреймворке umbot. Собирайте логику на холсте, экспортируйте JSON-конфигурацию и генерируйте TypeScript-проект через CLI.
+[Umbot Flow Editor](https://flow.maxim-m.ru) — визуальный редактор для создания ботов на фреймворке umbot. Собирайте логику на холсте, экспортируйте JSON-конфигурацию и генерируйте TypeScript-проект через CLI.
 
 **Цепочка:**
 
 ```
-Визуальный редактор → JSON-конфигурация → npx umbot create → TypeScript-проект → Ваш сервер
+Визуальный редактор → JSON-конфигурация → npx umbot create from-flow → TypeScript-проект → Ваш сервер
 ```
 
 **Быстрый старт с редактором:**
 
-1. Откройте [редактор](https://umbot.dev) в браузере
+1. Откройте [редактор](https://flow.maxim-m.ru) в браузере
 2. Соберите логику бота на холсте
 3. Нажмите «Проверить и экспортировать» → скачайте `flow.json`
 4. Выполните:
@@ -251,7 +252,7 @@ export class EchoController extends BotController {
     ```
 5. Готовый проект в папке `my-bot`
 
-[Описание JSON-формата](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_json-format.html) — полная спецификация всех типов узлов, связей и правил генерации кода.
+[Описание JSON-формата](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_json-format.html) — полная спецификация всех типов узлов, связей и правил генерации кода.
 
 ## 📝 Лицензия
 

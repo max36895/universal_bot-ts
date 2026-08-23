@@ -97,7 +97,7 @@ function init<TButtonPayload = TBtnPayload>(
  * @param {AppContext} appContext Контекст приложения
  * @param {string | null} title Текст кнопки
  * @param {string | null} [url=''] URL для перехода (должен начинаться с http:// или https://)
- * @param {TButtonPayload | null} [payload=null] Дополнительные данные для обработки нажатия
+ * @param {TBtnPayload | null} [payload=null] Дополнительные данные для обработки нажатия
  * @param {IButtonOptions} [options={}] Дополнительные параметры:
  * - utmSource: источник перехода
  * - utmMedium: тип рекламного канала
@@ -140,7 +140,7 @@ export function getLinkButton<TButtonPayload = TBtnPayload>(
  * @param {AppContext} appContext Контекст приложения
  * @param {string | null} title Текст кнопки
  * @param {string | null} [url=''] URL для перехода
- * @param {TButtonPayload | null} [payload=null] Дополнительные данные для обработки нажатия.
+ * @param {TBtnPayload | null} [payload=null] Дополнительные данные для обработки нажатия.
  *                                        Может быть строкой или объектом.
  * @param {IButtonOptions} [options={}] Дополнительные параметры:
  * - utmSource: источник перехода

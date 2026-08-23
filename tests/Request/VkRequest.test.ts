@@ -18,6 +18,7 @@ import { AppContext } from '../../src';
 import { VkRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('VkRequest', () => {
     let vk: VkRequest;
@@ -82,6 +83,25 @@ describe('VkRequest', () => {
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('attachment=photo123_456%2Cdoc789_012');
+    });
+
+    it('should enforce the VK 4096 character limit', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ response: {} }),
+        });
+
+        await vk.messagesSend(12345, 'x'.repeat(4097));
+
+        const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
+        const params = new URLSearchParams(body);
+        expect(params.get('message')).toHaveLength(4096);
+    });
+
+    it('should not call VK for a completely empty message', async () => {
+        await expect(vk.messagesSend(12345, '', {})).resolves.toBeNull();
+
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     // === usersGet ===
@@ -152,6 +172,34 @@ describe('VkRequest', () => {
         expect(result).toEqual({ id: 200 });
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('file=FILE123&title=MyDoc&tags=tag1%2Ctag2&access_token=test-token');
+    });
+
+    it('should answer message_event through the documented method with peer_id', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ response: 1 }),
+        });
+
+        await vk.sendMessageEvent(12345, 'event-1', { type: 'show_snackbar', text: 'Готово' }, 77);
+
+        expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+            'https://api.vk.ru/method/messages.sendMessageEventAnswer',
+        );
+        const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
+        expect(body).toContain('user_id=12345');
+        expect(body).toContain('event_id=event-1');
+        expect(body).toContain('peer_id=77');
+        expect(body).toContain('event_data=');
+    });
+
+    it('should reject non-numeric message_event ids and event_data over 1000 characters', async () => {
+        await expect(
+            vk.sendMessageEvent('domain', 'event-1', undefined, 'peer'),
+        ).resolves.toBeNull();
+        await expect(
+            vk.sendMessageEvent(1, 'event-1', { type: 'show_snackbar', text: 'x'.repeat(1001) }, 1),
+        ).resolves.toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     // === Ошибки ===

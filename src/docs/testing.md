@@ -123,6 +123,37 @@ describe('MyController', () => {
 });
 ```
 
+### Симуляция запроса: `simulate()`
+
+Вместо ручной сборки JSON-запроса платформы можно использовать `simulate()` — метод сам сгенерирует корректный payload для указанной платформы и вызовет `run()`:
+
+```ts
+import { BotTest } from 'umbot/test';
+import { TelegramAdapter } from 'umbot/plugins';
+
+const bot = new BotTest();
+bot.use(new TelegramAdapter());
+bot.addCommand('start', ['привет'], (_, ctx) => {
+    ctx.text = 'Привет!';
+});
+
+// Автоматически сгенерирует Telegram-update и вызовет run()
+const res = await bot.simulate('привет', { platform: 'telegram' });
+console.log(res.response.text); // 'Привет!'
+```
+
+Параметры `simulate(query, options)`:
+
+| Параметр           | Тип                | По умолчанию                                         | Описание                                          |
+| ------------------ | ------------------ | ---------------------------------------------------- | ------------------------------------------------- |
+| `query`            | `string`           | —                                                    | Текст пользователя                                |
+| `options.platform` | `TAppType`         | платформа конструктора или первая зарегистрированная | Платформа, для которой генерируется запрос        |
+| `options.userId`   | `string`           | `'test_user'`                                        | ID пользователя                                   |
+| `options.count`    | `number`           | `0`                                                  | Номер сообщения (`0` — новый пользователь/сессия) |
+| `options.state`    | `object \| string` | `{}`                                                 | Предзаполненное состояние сессии                  |
+
+Метод возвращает ответ платформы — тот же результат, что и `run()`.
+
 ### Jest-тесты с полной настройкой
 
 Более детальный пример с настройкой платформы и проверкой ответа:

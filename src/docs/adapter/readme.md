@@ -20,9 +20,9 @@
 ### Вариант 1: Функция-плагин (рекомендуется)
 
 ```ts
-import { Bot, AppContext, IPluginFn } from 'umbot';
+import { Bot, AppContext, createPlugin } from 'umbot';
 
-const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
+const myI18nPlugin = createPlugin((appContext: AppContext, bot: Bot) => {
     // Регистрируем плагин в слоте 'i18n'
     appContext.plugins['i18n'] = (key: string, ...params: unknown[]) => {
         return `Перевод для: ${key}`;
@@ -33,12 +33,13 @@ const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
         // Освобождение ресурсов при уничтожении плагина
         console.log('i18n plugin destroyed');
     };
-};
-myI18nPlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО — без этого bot.use() воспримет функцию как middleware
+});
 
 const bot = new Bot();
 bot.use(myI18nPlugin);
 ```
+
+> `createPlugin()` автоматически выставляет маркер `isPlugin = true`. Без него `bot.use()` воспримет функцию как middleware, а не как плагин. Если по какой-то причине не используете хелпер — выставьте флаг вручную: `myI18nPlugin.isPlugin = true`.
 
 ### Вариант 2: Класс-плагин
 
@@ -75,7 +76,7 @@ bot.use(new MyI18nPlugin());
 ### Пример i18n плагина
 
 ```ts
-const i18nPlugin: IPluginFn = (appContext) => {
+const i18nPlugin = createPlugin((appContext) => {
     const translations = {
         hello: 'Привет',
         bye: 'Пока',
@@ -84,8 +85,7 @@ const i18nPlugin: IPluginFn = (appContext) => {
     appContext.plugins['i18n'] = (key: string) => {
         return translations[key] || key;
     };
-};
-i18nPlugin.isPlugin = true;
+});
 
 bot.use(i18nPlugin);
 ```
@@ -93,7 +93,7 @@ bot.use(i18nPlugin);
 ### Пример NLU плагина
 
 ```ts
-const nluPlugin: IPluginFn = (appContext) => {
+const nluPlugin = createPlugin((appContext) => {
     appContext.plugins['nlu'] = (
         text: string,
         platformNlu: INlu,
@@ -109,8 +109,7 @@ const nluPlugin: IPluginFn = (appContext) => {
             },
         };
     };
-};
-nluPlugin.isPlugin = true;
+});
 
 bot.use(nluPlugin);
 ```
@@ -121,7 +120,7 @@ bot.use(nluPlugin);
 
 ```ts
 // 1. Создаем и регистрируем плагин
-const myCustomCachePlugin: IPluginFn = (appContext: AppContext) => {
+const myCustomCachePlugin = createPlugin((appContext: AppContext) => {
     const cache = new Map();
 
     // Регистрируем под своим уникальным ключом
@@ -129,8 +128,7 @@ const myCustomCachePlugin: IPluginFn = (appContext: AppContext) => {
         set: (key: string, value: unknown) => cache.set(key, value),
         get: (key: string) => cache.get(key),
     };
-};
-myCustomCachePlugin.isPlugin = true; // Обязательный маркер
+});
 
 bot.use(myCustomCachePlugin);
 

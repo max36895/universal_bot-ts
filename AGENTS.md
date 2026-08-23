@@ -44,6 +44,9 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
    tests/ # UNIT TESTS (Jest). The folder structure strictly follows the src/ structure.
    cli/ # Source code of the CLI utility (npx umbot create).
    benchmark/ # Scripts for stress testing performance (RPS, memory).
+   Important: cli/ is a product surface, not a helper sandbox. It generates code that users run in production. Any audit
+   or change that affects project creation, templates, generated TypeScript, generated Docker/Yandex Cloud config, or
+   flow.json processing MUST inspect cli/ and tests/cli/.
 2. Architectural Invariants (Strict Rules)
    Dependency Direction: Modules from src/plugins/ MAY import from src/core/, src/components/, and src/utils/. Modules from src/core/ or src/components/ MUST NOT import anything from src/plugins/.
    Public API Stability: Changing method signatures, class names, or removing exports from src/index.ts and other public entry points (src/plugins.ts, src/build.ts) is prohibited. Doing so will break code for library users. Any extension must be backwards compatible.
@@ -64,14 +67,18 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
    Performance:
    Avoid creating heavy objects or compiling RegExp inside hot loops. Use caching (see src/utils/standard/Text.ts and RegExp.ts).
    Strictly enforce ReDoS protection. The framework validates RegExp, but you also shouldn't generate vulnerable patterns (e.g., nested quantifiers (a+)+).
-   Security: Never log tokens or sensitive data in cleartext. Use built-in escaping.
+   Generated HTTP code and framework HTTP clients must have bounded timeouts. Do not generate or add unbounded fetch/request calls in request handlers.
+   Security: Never log tokens or sensitive data in cleartext. Use built-in escaping. Custom loggers must receive masked secrets by default, including nested metadata; an explicit opt-out such as maskSecrets: false may keep raw values only when already supported by the public API.
+   Generated artifacts must not persist plaintext tokens in commit-prone files such as serverless.yml, package.json, Dockerfile, README, or source files. Prefer environment variable references and keep real secrets only in ignored local files.
+   CLI safety: generators must not silently overwrite user files. Any overwrite of a non-empty output directory requires an explicit force option and tests.
 5. Testing Rules (Jest)
    Coverage: Any new logic branch (if, switch, try/catch) or new public method must be covered. Unit tests.
    Isolation: External dependencies (network, filesystem, database) must be locked (jest.fn(), jest.mock()). Do not make real network requests in tests.
    Structure: Test files should be located in the tests/ folder and follow the src/ folder structure. Naming: \*.test.ts.
+   CLI tests: changes in cli/flowGenerator.js or cli/templates must be covered in tests/cli/. Generated projects must compile under their generated tsconfig assumptions, and production templates must be tested as user-facing product code.
 6. Documentation
    JSDoc: Required for all public classes, methods, interfaces, and types exported externally. Must contain @param, @returns, and @example.
-   CHANGELOG.md: If a change adds a new public feature, changes API behavior, or fixes a critical bug, add an entry in the [Unreleased] section of the CHANGELOG.md file using the Keep a Changelog format.
+   CHANGELOG.md: If a change adds a new public feature, changes API behavior, or fixes a critical bug, add an entry in the active target release section of CHANGELOG.md (for example, 3.0.15 when that release is being prepared) using the Keep a Changelog format. Use [Unreleased] only when no target release is specified.
 7. Forbidden Actions
    Breaking dependency direction (the core does not depend on plugins).
    Breaking backward compatibility of the public API.
@@ -79,3 +86,34 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
    Write tests that depend on the order of other tests.
    Ignore linter errors, assuming "it doesn't matter."
    If the task is ambiguous or requires violating architectural invariants, stop at the "Plan" stage, ask a clarifying question, and wait for a response.
+8. Available Skills (for umbot contributors)
+   The following skills are available via `.agents/skills/`. Use them when the task matches their scope:
+    - **`umbot-platform-add`** — add a new platform adapter from scratch (skeleton in `src/plugins/platforms/<Name>/`, registration, tests).
+    - **`umbot-core-engineer`** — changes in `src/core/` (Bot.ts, AppContext, CommandReg) with backward compatibility checks.
+    - **`umbot-add-middleware`** — add middleware in `src/middleware/` (production standards: factory pattern, types, tests, docs).
+    - **`umbot-release-prepare`** — run pre-release checklist: build/test/prettier/lint, version bump, CHANGELOG audit, `npm pack` verification.
+    - **`umbot-fix-bug`** — workflow for fixing a bug: reproducer test → root cause → minimal fix → regression test.
+    - **`umbot-write-tests`** — how to write unit tests and integration tests with `BotTest`, how to stub logger, mock fetch, isolate DB.
+9. Platform compatibility matrix (reference for contributors)
+
+    | Platform | Text limit   | Buttons/row | Card types                                | Webhook signature                 |
+    | -------- | ------------ | ----------- | ----------------------------------------- | --------------------------------- |
+    | Alisa    | 1024         | unlimited   | BigImage, ItemsList, ImageGallery (до 10) | (none)                            |
+    | Marusia  | 1024         | unlimited   | BigImage                                  | (none)                            |
+    | Telegram | 4096         | unlimited   | Photo, MediaGroup                         | `x-telegram-bot-api-secret-token` |
+    | VK       | 4096         | unlimited   | Carousel                                  | `secret_key` in body              |
+    | Max      | 4000         | 7x30        | Inline keyboard                           | `Authorization: token`            |
+    | Viber    | 7000         | 6x7         | RichMedia                                 | `x-viber-content-signature`       |
+    | SmartApp | 250 (bubble) | -           | ListCard                                  | (none)                            |
+
+    When changing limits or adding platforms, update this table.
+
+10. Anti-patterns — what NOT to do
+    1. ❌ Do not reassign `ctx.userData = {...}` — merge keys instead (`Object.assign(ctx.userData, ...)` or direct assignments).
+    2. ❌ Do not create `setTimeout`/`setInterval` without `.unref()` in library code — it blocks `process.exit()`.
+    3. ❌ Do not call `console.log`/`console.error` directly in `src/` — always use `AppContext.logError`/`logWarn`/`log`.
+    4. ❌ Do not return `null` where Promise<T> is declared without catching callers — use explicit `null` returns only where documented.
+    5. ❌ Do not modify `ctx.requestObject` — it's the platform's raw payload, treat as read-only.
+    6. ❌ Do not remove public methods from `src/index.ts` or signatures — treat as breaking change requiring major version bump and CHANGELOG entry.
+    7. ❌ Do not use `eval`, `Function()`, `new Function()` in runtime code — ReDoS/injection risk.
+    8. ❌ Do not create a file lock on `FileAdapter` — it's documented as single-process.

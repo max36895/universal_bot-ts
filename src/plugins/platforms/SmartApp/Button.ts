@@ -1,10 +1,52 @@
-import { Text, IButtonType } from '../../../index';
+import { AppContext, Text, IButtonType } from '../../../index';
 
 import {
     ISberSmartAppSuggestionButton,
     ISberSmartAppCardAction,
 } from './interfaces/ISmartAppPlatform';
-import { getCorrectButtons } from '../Base/utils';
+import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
+
+/**
+ * Приводит универсальный payload к обязательной структуре server_action.
+ * SmartApp API принимает в payload только объект, поэтому строковые данные
+ * сохраняются в поле value без потери информации.
+ */
+function getServerAction(
+    payload: unknown,
+    appContext?: AppContext,
+): NonNullable<ISberSmartAppSuggestionButton['actions']>[0] | null {
+    if (serializePlatformPayload(payload, 'SmartApp', appContext) === null) {
+        return null;
+    }
+    const payloadObject =
+        typeof payload === 'object' && payload !== null && !Array.isArray(payload)
+            ? (payload as Record<string, unknown>)
+            : null;
+    if (typeof payloadObject?.action_id === 'string') {
+        return {
+            type: 'server_action',
+            message_name: 'SERVER_ACTION',
+            server_action: {
+                action_id: payloadObject.action_id,
+                payload:
+                    typeof payloadObject.payload === 'object' &&
+                    payloadObject.payload !== null &&
+                    !Array.isArray(payloadObject.payload)
+                        ? (payloadObject.payload as Record<string, unknown>)
+                        : {},
+            },
+        };
+    }
+
+    return {
+        type: 'server_action',
+        message_name: 'SERVER_ACTION',
+        server_action: {
+            action_id: 'umbot_action',
+            payload: payloadObject ?? { value: payload },
+        },
+    };
+}
 
 /**
  * Получение кнопок в формате SmartApp
@@ -14,6 +56,7 @@ import { getCorrectButtons } from '../Base/utils';
 export function buttonProcessing(
     buttons: IButtonType[],
     isCard: boolean = false,
+    appContext?: AppContext,
 ): ISberSmartAppSuggestionButton[] | ISberSmartAppCardAction | null {
     const objects: ISberSmartAppSuggestionButton[] = [];
     if (isCard) {
@@ -43,15 +86,15 @@ export function buttonProcessing(
                     title,
                 };
                 if (button.payload) {
-                    object.action = {
-                        server_action: button.payload,
-                        type: 'server_action',
-                    };
+                    const action = getServerAction(button.payload, appContext);
+                    if (!action) {
+                        return;
+                    }
+                    object.actions = [action];
+                } else if (button.url) {
+                    object.actions = [{ text: title, type: 'text' }];
                 } else {
-                    object.action = {
-                        text: title,
-                        type: 'text',
-                    };
+                    object.actions = [{ text: title, type: 'text' }];
                 }
                 objects.push(object);
             }

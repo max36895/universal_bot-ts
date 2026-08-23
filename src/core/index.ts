@@ -11,10 +11,11 @@ export * from './interfaces/ILogger';
 export * from './interfaces/IAppContext';
 export * from './Bot';
 export * from './AppContext';
+export * from './constants';
 export {
-    FALLBACK_COMMAND,
     type ICommandParam,
     type TCommandResolver,
     type TSlots,
     type IStepParam,
 } from './utils/CommandReg';
+export { createPlugin } from './plugin';

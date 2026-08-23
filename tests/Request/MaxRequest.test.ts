@@ -18,6 +18,7 @@ import { AppContext } from '../../src';
 import { IMaxButtonObject, MaxRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('MaxRequest', () => {
     let max: MaxRequest;
@@ -30,7 +31,7 @@ describe('MaxRequest', () => {
     });
 
     // === Базовый вызов call ===
-    it('should set Authorization header and access_token', async () => {
+    it('should set Authorization header without duplicating the token in body', async () => {
         (global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ result: 'ok' }),
@@ -39,17 +40,22 @@ describe('MaxRequest', () => {
         await max.call('test_method');
 
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://platform-api.max.ru/test_method',
+            'https://platform-api2.max.ru/test_method',
             expect.objectContaining({
                 headers: { Authorization: 'test-max-token' },
-                body: expect.stringContaining('"access_token":"test-max-token"'),
+                body: '{}',
             }),
         );
     });
 
     // === Загрузка файла ===
     it('should upload file with FormData', async () => {
-        const mockResponse = { file_id: 'file_123', url: 'https://max.ru/file_123' };
+        const uploadTarget = { url: 'https://upload.max.test/file' };
+        const mockResponse = { token: 'file_123' };
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => uploadTarget,
+        });
         (global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
             json: async () => mockResponse,
@@ -57,17 +63,34 @@ describe('MaxRequest', () => {
 
         const result = await max.upload('test.jpg', 'image');
 
-        expect(result).toEqual(mockResponse);
+        expect(result).toEqual({ ...mockResponse, url: uploadTarget.url });
         expect(global.fetch).toHaveBeenCalledWith(
-            'https://platform-api.max.ru/uploads',
+            'https://platform-api2.max.ru/uploads?type=image',
+            expect.objectContaining({
+                headers: { Authorization: 'test-max-token' },
+                method: 'POST',
+            }),
+        );
+        expect(global.fetch).toHaveBeenLastCalledWith(
+            uploadTarget.url,
             expect.objectContaining({
                 body: expect.any(FormData),
             }),
         );
 
-        const formData = (global.fetch as jest.Mock).mock.calls[0][1].body as FormData;
-        expect(formData.get('type')).toBe('image');
-        expect(formData.has('file')).toBe(true);
+        const formData = (global.fetch as jest.Mock).mock.calls[1][1].body as FormData;
+        expect(formData.has('data')).toBe(true);
+    });
+
+    it('should keep audio token returned by the upload target request', async () => {
+        const uploadTarget = { url: 'https://upload.max.test/audio', token: 'audio-token' };
+        (global.fetch as jest.Mock)
+            .mockResolvedValueOnce({ ok: true, json: async () => uploadTarget })
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ retval: 'ok' }) });
+
+        const result = await max.upload('test.mp3', 'audio');
+
+        expect(result).toEqual({ url: uploadTarget.url, token: 'audio-token', retval: 'ok' });
     });
 
     // === Отправка сообщения ===
@@ -82,8 +105,31 @@ describe('MaxRequest', () => {
 
         expect(result).toEqual(mockResponse);
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"user_id":12345');
         expect(body).toContain('"text":"Hello from MAX!"');
+        expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+            'https://platform-api2.max.ru/messages?user_id=12345',
+        );
+    });
+
+    it('should queue messages to the same dialog at the documented rate', async () => {
+        jest.useFakeTimers();
+        try {
+            (global.fetch as jest.Mock).mockResolvedValue({
+                ok: true,
+                json: async () => ({ message_id: 999 }),
+            });
+
+            const first = max.messagesSend(909_001, 'Первое');
+            const second = max.messagesSend(909_001, 'Второе');
+            await first;
+
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(500);
+            await second;
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+        } finally {
+            jest.useRealTimers();
+        }
     });
 
     it('should send message with attachments', async () => {
@@ -98,6 +144,66 @@ describe('MaxRequest', () => {
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"attachments":[{"type":"image","payload":{"token":"file_123"}}]');
+    });
+
+    it('should omit empty text when an attachment is present', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ message_id: 1000 }),
+        });
+
+        await max.messagesSend(12345, '', {
+            attachments: [{ type: 'image', payload: { token: 'file_123' } }],
+        });
+
+        expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string)).toEqual({
+            attachments: [{ type: 'image', payload: { token: 'file_123' } }],
+        });
+    });
+
+    it('should reject a message without developer-provided content', async () => {
+        await expect(max.messagesSend(12345, '')).resolves.toBeNull();
+
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should enforce the MAX 4000 character text limit for direct requests', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ message_id: 1000 }),
+        });
+
+        await max.messagesSend(12345, 'x'.repeat(4001));
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            text: string;
+        };
+        expect(body.text).toHaveLength(4000);
+    });
+
+    it('should reserve one of twelve MAX attachment slots for the keyboard', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ message_id: 1000 }),
+        });
+
+        await max.messagesSend(12345, 'With attachments', {
+            attachments: Array.from({ length: 12 }, (_, index) => ({
+                type: 'image' as const,
+                payload: { token: `file_${index}` },
+            })),
+            keyboard: {
+                buttons: [[{ type: 'callback', text: 'OK', payload: 'ok' }]],
+            },
+        });
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            attachments: unknown[];
+        };
+        expect(body.attachments).toHaveLength(12);
+        expect(body.attachments.at(-1)).toEqual(
+            expect.objectContaining({ type: 'inline_keyboard' }),
+        );
     });
 
     it('should send message with inline keyboard', async () => {
@@ -119,6 +225,41 @@ describe('MaxRequest', () => {
         expect(body).toContain('"payload":{"buttons"');
     });
 
+    it('should acknowledge callback without inventing a replacement message', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ success: true }),
+        });
+
+        await expect(max.answerCallback('callback-id', '')).resolves.toEqual({ success: true });
+
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://platform-api2.max.ru/answers?callback_id=callback-id',
+            expect.objectContaining({ body: '{}' }),
+        );
+    });
+
+    it('should queue callback answers to the same dialog at the documented rate', async () => {
+        jest.useFakeTimers();
+        try {
+            (global.fetch as jest.Mock).mockResolvedValue({
+                ok: true,
+                json: async () => ({ success: true }),
+            });
+
+            const first = max.answerCallback('callback-1', '', null, 909_002);
+            const second = max.answerCallback('callback-2', '', null, 909_002);
+            await first;
+
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(500);
+            await second;
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     // === Подписка (webhook) ===
     it('should set subscription webhook', async () => {
         (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -131,6 +272,34 @@ describe('MaxRequest', () => {
         expect(result).toEqual({ status: 'ok' });
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"url":"https://mybot.com/webhook"');
+    });
+
+    it('should pass webhook secret and update types to MAX subscription', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ status: 'ok' }),
+        });
+
+        await max.subscriptions('https://mybot.com/webhook', {
+            secret: 'webhook-secret',
+            update_types: ['message_created'],
+        });
+
+        const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
+        expect(JSON.parse(body)).toEqual({
+            url: 'https://mybot.com/webhook',
+            secret: 'webhook-secret',
+            update_types: ['message_created'],
+        });
+    });
+
+    it('should reject an insecure webhook URL and malformed subscription secret', async () => {
+        await expect(max.subscriptions('http://mybot.com/webhook')).resolves.toBeNull();
+        await expect(max.subscriptions('https://mybot.com:8443/webhook')).resolves.toBeNull();
+        await expect(
+            max.subscriptions('https://mybot.com/webhook', { secret: 'bad secret' }),
+        ).resolves.toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     // === Обработка ошибок ===

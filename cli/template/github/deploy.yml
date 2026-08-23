@@ -4,6 +4,9 @@ on:
     push:
         branches: [main]
 
+env:
+    IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/{{imageName}}
+
 jobs:
     deploy:
         runs-on: ubuntu-latest
@@ -15,10 +18,12 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: '24'
-                  cache: 'npm'
 
             - name: Install dependencies
               run: npm ci
+
+            - name: Run tests
+              run: npm test --if-present
 
             - name: Build project
               run: npm run build
@@ -34,7 +39,7 @@ jobs:
               with:
                   context: .
                   push: true
-                  tags: ${{ secrets.DOCKERHUB_USERNAME }}/my-umbot-bot:latest
+                  tags: ${{ env.IMAGE_NAME }}:latest,${{ env.IMAGE_NAME }}:${{ github.sha }}
 
             - name: Deploy to server via SSH
               uses: appleboy/ssh-action@v1
@@ -43,17 +48,15 @@ jobs:
                   username: ${{ secrets.USERNAME }}
                   key: ${{ secrets.SSH_KEY }}
                   script: |
-                      docker stop my-umbot-bot || true
-                      docker rm my-umbot-bot || true
-                      docker pull ${{ secrets.DOCKERHUB_USERNAME }}/my-umbot-bot:latest
+                      # Секреты передаются через env-файл на сервере, а не флагами -e,
+                      # чтобы токены не были видны в `ps` и истории docker.
+                      # Создайте /etc/umbot/{{imageName}}.env на сервере заранее (chmod 600).
+                      docker stop {{imageName}} || true
+                      docker rm {{imageName}} || true
+                      docker pull ${{ secrets.DOCKERHUB_USERNAME }}/{{imageName}}:latest
                       docker run -d \
-                        --name my-umbot-bot \
+                        --name {{imageName}} \
+                        --restart unless-stopped \
                         -p 3000:3000 \
-                        -e YANDEX_TOKEN=${{ secrets.YANDEX_TOKEN }} \
-                        -e TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }} \
-                        -e VK_TOKEN=${{ secrets.VK_TOKEN }} \
-                        -e VK_CONFIRMATION_TOKEN=${{ secrets.VK_CONFIRMATION_TOKEN }} \
-                        -e VIBER_TOKEN=${{ secrets.VIBER_TOKEN }} \
-                        -e MARUSIA_TOKEN=${{ secrets.MARUSIA_TOKEN }} \
-                        -e MAX_TOKEN=${{ secrets.MAX_TOKEN }} \
-                        ${{ secrets.DOCKERHUB_USERNAME }}/my-umbot-bot:latest
+                        --env-file /etc/umbot/{{imageName}}.env \
+                        ${{ secrets.DOCKERHUB_USERNAME }}/{{imageName}}:latest

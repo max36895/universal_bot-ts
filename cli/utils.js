@@ -10,7 +10,7 @@ function isFile(file) {
     try {
         const stat = fs.lstatSync(file);
         return stat.isFile();
-    } catch (e) {
+    } catch {
         return false;
     }
 }
@@ -24,7 +24,7 @@ function isDir(file) {
     try {
         const stat = fs.lstatSync(file);
         return stat.isDirectory();
-    } catch (e) {
+    } catch {
         return false;
     }
 }

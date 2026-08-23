@@ -58,7 +58,7 @@ export class Request {
     /** Кастомный HTTP-метод (DELETE и т.д.) */
     public customRequest: string | null;
 
-    /** Максимальное время ожидания ответа (мс) */
+    /** Максимальное время ожидания ответа (мс). По умолчанию 2000 мс. Переопределить можно через свойство. */
     public maxTimeQuery: number | null;
 
     /**
@@ -96,7 +96,7 @@ export class Request {
         this.isAttachContent = false;
         this.attachName = 'file';
         this.customRequest = null;
-        this.maxTimeQuery = null;
+        this.maxTimeQuery = 2000;
         this.isConvertJson = true;
         this.#error = null;
         this.isBinaryResponse = false;
@@ -202,7 +202,7 @@ export class Request {
     /**
      * Формирует параметры для http запроса
      *
-     * @returns {RequestInit|undefined} Параметры запроса
+     * @returns {Promise<RequestInit|undefined>} Параметры запроса или undefined, если произошла ошибка
      */
     protected async _getOptions(): Promise<RequestInit | undefined> {
         const options: RequestInit = {};

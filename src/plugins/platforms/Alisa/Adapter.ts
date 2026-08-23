@@ -1,5 +1,5 @@
 import { Text, BotController, AppContext, IButtonType } from '../../../index';
-import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
+import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
@@ -80,8 +80,11 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
             return false;
         }
         if (query.request && query.version && query.session) {
-            if (query.meta?.client_id?.includes('yandex.searchplugin')) {
+            const clientId = query.meta?.client_id ?? '';
+            if (clientId.includes('yandex.searchplugin')) {
                 return true;
+            } else if (clientId.includes('MailRu')) {
+                return false;
             } else if (query.session.application?.application_id) {
                 return (
                     query.session.application?.application_id !==
@@ -150,15 +153,15 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     setQueryData(query: IAlisaWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
-                if (query.session === undefined && query.request === undefined) {
-                    if (query.account_linking_complete_event) {
-                        controller.userEvents = {
-                            auth: {
-                                status: true,
-                            },
-                        };
-                        return true;
-                    }
+                if (query.account_linking_complete_event && !query.session && !query.request) {
+                    controller.userEvents = {
+                        auth: {
+                            status: true,
+                        },
+                    };
+                    return true;
+                }
+                if (!query.session || !query.request) {
                     controller.platformOptions.error =
                         'AlisaAdapter.setQueryData(): Переданы некорректные данные для авторизации!';
                     return false;
@@ -180,7 +183,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
 
                 controller.platformOptions.appId = query.session.skill_id;
                 controller.isScreen =
-                    (controller.userMeta as IAlisaRequestMeta).interfaces.screen !== undefined;
+                    (controller.userMeta as IAlisaRequestMeta).interfaces?.screen !== undefined;
                 /*
                  * Раз в какое-то время Яндекс отправляет запрос ping, для проверки корректности работы навыка.
                  * @see (https://yandex.ru/dev/dialogs/alice/doc/health-check-docpage/) Смотри тут
@@ -198,8 +201,6 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
             } else {
                 controller.platformOptions.error = `AlisaAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
             }
-        } else {
-            console.error(`AlisaAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
         }
         return false;
     }
@@ -233,6 +234,11 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 response.buttons = [];
             }
         }
+        if (!response.text && !response.tts) {
+            this.appContext?.logWarn(
+                'AlisaAdapter._getResponse(): text и tts пусты. Ответ сохранён без подстановки; такой вариант находится вне документированного контракта Алисы.',
+            );
+        }
         return response;
     }
 
@@ -243,26 +249,32 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         const result: IAlisaWebhookResponse = {
             version: VERSION,
         };
+        const resTts = this._initTTS(controller);
+        if (resTts) {
+            await resTts;
+        }
+        result.response = await this._getResponse(controller);
         if (controller.isAuth && controller.userToken === null) {
-            result.start_account_linking = {};
-        } else {
-            const resTts = this._initTTS(controller);
-            if (resTts) {
-                await resTts;
-            }
-            result.response = await this._getResponse(controller);
+            result.response.directives = { start_account_linking: {} };
         }
         if (controller.platformOptions.stateName && stateData) {
-            const stateJson = JSON.stringify(stateData);
-            if (Buffer.byteLength(stateJson, 'utf8') > ALISA_STATE_MAX_BYTES) {
+            try {
+                const stateJson = JSON.stringify(stateData);
+                const stateBytes = Buffer.byteLength(stateJson, 'utf8');
+                if (stateBytes <= ALISA_STATE_MAX_BYTES) {
+                    result[controller.platformOptions.stateName as keyof IState] = stateData;
+                } else {
+                    this.appContext?.logError(
+                        `AlisaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
+                            `(${stateBytes} байт) превышает лимит API ` +
+                            `(${ALISA_STATE_MAX_BYTES} байт). Поле не будет отправлено.`,
+                    );
+                }
+            } catch (error) {
                 this.appContext?.logError(
-                    `AlisaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
-                        `(${Buffer.byteLength(stateJson, 'utf8')} байт) превышает лимит API ` +
-                        `(${ALISA_STATE_MAX_BYTES} байт). Состояние будет очищено.`,
+                    `AlisaAdapter.getContent(): state "${controller.platformOptions.stateName}" не сериализуется и не будет отправлен.`,
+                    { error },
                 );
-                result[controller.platformOptions.stateName as keyof IState] = {};
-            } else {
-                result[controller.platformOptions.stateName as keyof IState] = stateData;
             }
         }
         this._timeLimitLog(controller);

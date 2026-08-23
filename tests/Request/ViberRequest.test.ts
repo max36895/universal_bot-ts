@@ -18,12 +18,17 @@ import { AppContext } from '../../src';
 import { ViberRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('ViberRequest', () => {
     let viber: ViberRequest;
 
     beforeEach(() => {
-        appContext.appConfig.tokens.viber = { token: 'test-viber-token', api_version: 2 };
+        appContext.appConfig.tokens.viber = {
+            token: 'test-viber-token',
+            api_version: 2,
+            sender: 'Configured Bot',
+        };
         viber = new ViberRequest(appContext);
         (global.fetch as jest.Mock).mockClear();
         appContext.logError = jest.fn();
@@ -112,6 +117,55 @@ describe('ViberRequest', () => {
         expect(body).toContain('"sender":{"name":"BotName"}');
     });
 
+    it('should not invent a visible Viber sender name', async () => {
+        delete appContext.appConfig.tokens.viber.sender;
+
+        await expect(viber.richMedia('user123', [{ Text: 'Card' }])).resolves.toBeNull();
+
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should keep required text fields and enforce the 7000 character limit', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ status: 0, status_message: 'ok' }),
+        });
+
+        await viber.sendMessage('user123', 'BotName', 'x'.repeat(7001), {
+            receiver: 'other-user',
+            sender: { name: 'Other Bot' },
+            text: 'overridden',
+            type: 'picture',
+            min_api_version: '7',
+        });
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            receiver: string;
+            sender: { name: string };
+            text: string;
+            type: string;
+            min_api_version: number;
+        };
+        expect(body).toEqual(
+            expect.objectContaining({
+                receiver: 'user123',
+                sender: { name: 'BotName' },
+                type: 'text',
+                min_api_version: 7,
+            }),
+        );
+        expect(body.text).toHaveLength(7000);
+    });
+
+    it('should not send a request larger than the Viber 30 KB limit', async () => {
+        const result = await viber.sendMessage('user123', 'BotName', 'ok', {
+            tracking_data: 'x'.repeat(31 * 1024),
+        });
+
+        expect(result).toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
     // === setWebhook ===
     it('should set webhook with default event types', async () => {
         (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -140,6 +194,25 @@ describe('ViberRequest', () => {
         expect(body).toContain('"url":""');
     });
 
+    it('should not allow webhook params to replace the explicit URL', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ status: 0, status_message: 'ok' }),
+        });
+
+        await viber.setWebhook('https://mybot.com/webhook', {
+            url: 'https://other.example/webhook',
+            event_types: ['message'],
+        });
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            url: string;
+            event_types: string[];
+        };
+        expect(body.url).toBe('https://mybot.com/webhook');
+        expect(body.event_types).toEqual(['message']);
+    });
+
     // === richMedia ===
     it('should send rich media message', async () => {
         const buttons = [
@@ -161,8 +234,38 @@ describe('ViberRequest', () => {
 
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"type":"rich_media"');
-        expect(body).toContain('"ButtonsGroupRows":1');
+        expect(body).toContain('"ButtonsGroupRows":7');
         expect(body).toContain('"Text":"Button 1"');
+        expect(body).toContain('"sender":{"name":"Configured Bot"}');
+    });
+
+    it('should protect required rich media fields from params', async () => {
+        const buttons = [{ Text: 'Expected' }];
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ status: 0, status_message: 'ok' }),
+        });
+
+        await viber.richMedia('user123', buttons, {
+            receiver: 'other-user',
+            type: 'text',
+            rich_media: {
+                Type: 'rich_media',
+                ButtonsGroupColumns: 1,
+                ButtonsGroupRows: 1,
+                BgColor: '#000000',
+                Buttons: [{ Text: 'Unexpected' }],
+            },
+        });
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            receiver: string;
+            type: string;
+            rich_media: { Buttons: Array<{ Text?: string }> };
+        };
+        expect(body.receiver).toBe('user123');
+        expect(body.type).toBe('rich_media');
+        expect(body.rich_media.Buttons).toEqual(buttons);
     });
 
     // === sendFile ===
@@ -172,12 +275,39 @@ describe('ViberRequest', () => {
             json: async () => ({ status: 0, status_message: 'ok' }),
         });
 
-        const result = await viber.sendFile('user123', 'https://example.com/file.pdf');
+        const result = await viber.sendFile('user123', 'https://example.com/file.pdf', {
+            size: 4096,
+        });
 
         expect(result).not.toBeNull();
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"type":"file"');
         expect(body).toContain('"media":"https://example.com/file.pdf"');
+        expect(body).toContain('"file_name":"file.pdf"');
+        expect(body).toContain('"size":4096');
+        expect(body).toContain('"sender":{"name":"Configured Bot"}');
+    });
+
+    it('should reject a remote file when its real size is unknown', async () => {
+        const result = await viber.sendFile('user123', 'https://example.com/file.pdf');
+
+        expect(result).toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should reject a malformed file URL without throwing', () => {
+        expect(viber.sendFile('user123', 'http://', { size: 10 })).toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should reject a file without extension or larger than 50 MB', () => {
+        expect(viber.sendFile('user123', 'https://example.com/file', { size: 10 })).toBeNull();
+        expect(
+            viber.sendFile('user123', 'https://example.com/file.pdf', {
+                size: 50 * 1024 * 1024 + 1,
+            }),
+        ).toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('should return null for local file path', async () => {

@@ -4,7 +4,8 @@
 
 ## Что делает CLI
 
-CLI берёт `flow.json` (экспорт из visual editor) и генерирует готовый TypeScript-проект umbot.
+CLI берёт `flow.json` (экспорт из visual editor) и генерирует готовый TypeScript-проект umbot. Считай CLI
+production-поверхностью продукта: ошибка в шаблоне или генераторе сразу становится ошибкой в пользовательском проекте.
 
 **Команда:**
 
@@ -30,7 +31,8 @@ my-bot/
 | `flowGenerator.js` | Основной генератор. Читает JSON, генерирует `src/index.ts`, `src/utils.ts`, `package.json`, `tsconfig.json`. |
 | `umbot.js`         | Точка входа CLI (`npx umbot create from-flow`).                                                              |
 
-Тесты: `tests/cli/flowGenerator.test.ts` (Jest, 38 тестов).
+Тесты: `tests/cli/flowGenerator.test.ts` (Jest). При изменении генератора или шаблонов добавляй проверку именно того
+кода/файла, который получит пользователь.
 
 ## Архитектура генератора
 
@@ -43,7 +45,7 @@ my-bot/
 | `userDataAccess(name)`                         | Безопасное обращение к userData: `ctrl.userData.x` или `ctrl.userData['x']`. |
 | `textExpr(text)`                               | Конвертирует `{{var}}` → `` `${ctrl.userData.var}` `` (template literal).    |
 | `collectVarNames(doc)`                         | Собирает имена переменных из всех узлов.                                     |
-| `resolveVars(expr, varNames)`                  | Заменяет имена переменных на `ctrl.userData.name` в выражениях.              |
+| `parseArithmeticExpression(expr, varNames)`    | Разбирает ограниченную арифметику flow без исполнения произвольного кода.    |
 | `generateActionFunc(block, varNames, indent)`  | Генерирует код действия (set_variable, random_number, http_request).         |
 | `generateConditionFunc(cond, ...)`             | Генерирует `if/else` из условия (7 параметров).                              |
 | `generateButtonCode(buttons, indent, shuffle)` | Генерирует `addBtn()` / `addLink()`.                                         |
@@ -51,7 +53,7 @@ my-bot/
 | `generateBlockFunc(block, ...)`                | Генерирует функцию `__name(ctrl)` из блока (5 параметров).                   |
 | `findNextNonBlockNode(doc, fromId)`            | Ищет следующий command/step в цепочке (лимит 20).                            |
 | `generateIndexTs(doc)`                         | Главная функция. Генерирует полный `src/index.ts`.                           |
-| `generateUtils()`                              | Генерирует `src/utils.ts` с setText/setTTS.                                  |
+| `generateUtils()`                              | Генерирует `src/utils.ts` с setText/setTTS/fetchWithTimeout.                 |
 | `generatePackageJson(doc)`                     | Генерирует `package.json`.                                                   |
 | `generateTsConfig()`                           | Генерирует `tsconfig.json`.                                                  |
 | `generateFromFlow(flowJsonPath, outputPath)`   | Точка входа: читает JSON, вызывает все генераторы, записывает файлы.         |
@@ -95,14 +97,28 @@ generateFromFlow(jsonPath, outputPath)
 7. **Branch → response/action/condition** — генерируется `__name(ctrl)`.
 8. **Переменные** — `{{name}}` → `` `${ctrl.userData.name}` `` (template literal).
 9. **Текст** — экранирование `` ` `` и `$` перед оборачиванием в template literal.
-10. **set_variable** — текст оборачивается в кавычки, переменные/числа остаются как есть.
-11. **resolveVars** — escapeRegExp для спецсимволов, longest-first sort.
+10. **set_variable** — поддерживает текст, `{{var}}`, системные значения и ограниченную арифметику; произвольный JavaScript остаётся текстом.
+11. **Арифметика** — допускает только числа, известные переменные, скобки и операции `+`, `-`, `*`, `/`, `%`; переменные приводятся через `Number()`.
+12. **HTTP** — generated code обязан использовать `fetchWithTimeout`, а не прямой `fetch` без ограничения времени.
+13. **JSON body** — переменные `{{var}}` внутри JSON body нельзя подставлять через `JSON.parse(template)`: значения
+    пользователя должны безопасно сериализоваться через объект и `JSON.stringify`.
+14. **Secrets** — реальные токены из `flow.json` нельзя писать в `serverless.yml`, `package.json`, исходники или README.
+    В commit-prone файлах используй ссылки на env-переменные.
+15. **Output safety** — генератор не должен молча перезаписывать непустую папку. Перезапись разрешена только через
+    явный `--force`/`options.force` и должна быть покрыта тестом.
+16. **Docker** — production Docker template должен собирать TypeScript с devDependencies в builder-stage, а runtime
+    stage оставлять production-only.
 
 ### Исправленные баги
 
 - **textExpr** — экранирование `` ` `` и `${` в шаблонных литералах.
-- **resolveVars** — escapeRegExp для спецсимволов в именах переменных.
+- **set_variable** — выражения разбираются ограниченным парсером, поэтому значения flow не могут внедрить произвольный TypeScript.
 - **HTTP headers** — передаются в fetch через fetchOpts.
+- **HTTP timeout** — generated HTTP использует `fetchWithTimeout`.
+- **HTTP body** — JSON body с `{{var}}` сериализуется безопасно без `JSON.parse(template)`.
+- **serverless.yml** — хранит ссылки вида `${env:TOKEN_NAME}`, а не значения токенов.
+- **outputPath** — непустая папка защищена от случайной перезаписи без `force`.
+- **Dockerfile** — builder устанавливает devDependencies перед `npm run build`.
 - **isNotEmpty** — добавлен case в switch.
 - **needsText** — убрана проверка кнопок, проверяет только isSay\*/isUrl.
 - **setTTS** — условный импорт через needsTTS.
@@ -128,11 +144,11 @@ npx jest tests/cli/flowGenerator.test.ts
 | 7       | Полный цикл             | command → action → step → condition            |
 | 8       | Карточка                | `card.addImage`                                |
 | 9       | TTS                     | `setTTS`                                       |
-| 10      | HTTP                    | `async fetch`                                  |
+| 10      | HTTP                    | `async fetchWithTimeout`                       |
 | 11      | Response блок           | `__help(ctrl)` вызов                           |
 | 12      | Карточка в response     | Много изображений                              |
 | 13      | isEnd                   | `ctrl.isEnd = true`                            |
-| 14      | set_variable expression | `resolveVars`                                  |
+| 14      | set_variable expression | ограниченная арифметика и `Number(userData)`   |
 | 15      | isEmpty                 | `!ctrl.userData.x`                             |
 | 16      | saveAs lowercase        | `toLowerCase()`                                |
 | 17      | Мульти-шаг цепочка      | 3 шага подряд                                  |

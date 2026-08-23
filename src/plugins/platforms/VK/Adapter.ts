@@ -1,12 +1,18 @@
 import { BotController, AppContext, Text } from '../../../index';
 import { VkRequest, IVkParams } from '../API';
-import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
+import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VK } from './constants';
 import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPlatform';
-import { tryParse } from '../Base/utils';
+import { getPlatformRequestData, tryParse } from '../Base/utils';
+import { timingSafeEqual } from 'crypto';
+
+type IVkRequestData = Record<string, unknown> & {
+    eventId?: string;
+    peerId?: number;
+};
 
 /**
  * Адаптер, обеспечивающий поддержку платформы VK. Позволяет разрабатывать чат-ботов для мессенджера ВК на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
@@ -51,7 +57,6 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     platformName = T_VK;
     isVoice = false;
     limit = 30;
-    signatureName = 'x-vk-signature';
 
     init(appContext: AppContext): void {
         super.init(appContext);
@@ -61,6 +66,10 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         if (this._platformOptions?.vk_confirmation_token) {
             appContext.appConfig.tokens[this.platformName].confirmation_token = this
                 ._platformOptions.vk_confirmation_token as string;
+        }
+        if (this._platformOptions?.vk_secret_key) {
+            appContext.appConfig.tokens[this.platformName].secret_key = this._platformOptions
+                .vk_secret_key as string;
         }
         if (this._platformOptions?.vk_api_version) {
             appContext.appConfig.tokens[this.platformName].api_version = this._platformOptions
@@ -86,9 +95,106 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         );
     }
 
+    /**
+     * Проверяет секретный ключ из тела запроса VK Callback API.
+     * Если в настройках группы VK включён «Secret key», он приходит в поле `secret` каждого callback-запроса.
+     * Метод сверяет его со значением `secret_key`, сохранённым в конфигурации.
+     * Включается автоматически при наличии `secret_key` в `tokens.vk`.
+     * Для `confirmation` проверка допускает отсутствие secret, остальные события без secret отклоняются.
+     *
+     * @param query — тело запроса от VK
+     * @returns `true`, если секрет совпадает или проверка не включена; `false` при отсутствии или несовпадении
+     */
+    isCorrectQuery(query: IVkRequestContent | string): boolean {
+        const expectedSecret = this.appContext?.appConfig.tokens[this.platformName]?.secret_key as
+            string | undefined;
+        // Если secret_key не настроен — проверка не требуется
+        if (!expectedSecret) {
+            return true;
+        }
+        let content: IVkRequestContent;
+        if (typeof query === 'string') {
+            try {
+                const parsed: unknown = JSON.parse(query);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    return false;
+                }
+                content = parsed as IVkRequestContent;
+            } catch {
+                return false;
+            }
+        } else {
+            content = query;
+        }
+        // Confirmation нужен для первоначального подключения callback-сервера.
+        if (!content.secret) {
+            return content.type === 'confirmation';
+        }
+        // Сравнение через timingSafeEqual: plain !== уязвимо к тайминг-оракулу,
+        // позволяющему побайтово восстановить секрет по времени ответа.
+        const a = Buffer.from(String(content.secret));
+        const b = Buffer.from(String(expectedSecret));
+        if (a.length !== b.length || !timingSafeEqual(a, b)) {
+            this.appContext?.logWarn(
+                'VkAdapter.isCorrectQuery(): secret в теле запроса не совпадает с secret_key из конфигурации.',
+            );
+            return false;
+        }
+        return true;
+    }
+
+    /** Заполняет контроллер данными нового сообщения VK. */
+    async #setMessageNew(query: IVkRequestContent, controller: BotController): Promise<boolean> {
+        if (!query.object) {
+            return false;
+        }
+        const object: IVkRequestObject = query.object;
+        controller.userId = object.message.from_id;
+        getPlatformRequestData<IVkRequestData>(controller, this.platformName).peerId =
+            object.message.peer_id ?? object.peer_id ?? object.message.from_id;
+        const rawText = object.message.text ?? '';
+        controller.userCommand = rawText.toLowerCase().trim();
+        controller.originalUserCommand = rawText.trim();
+        controller.messageId = object.message.id;
+        controller.payload = tryParse(object.message.payload || null);
+        const users = await new VkRequest(this.appContext as AppContext).usersGet(
+            controller.userId,
+        );
+        // Fix: users.get возвращает массив — берём первого пользователя.
+        // Раньше читались user.first_name/user.last_name у массива, поэтому имя всегда было null.
+        const user = users?.[0];
+        if (user) {
+            const thisUser = {
+                username: null,
+                first_name: user.first_name || null,
+                last_name: user.last_name || null,
+            };
+            controller.nlu.setNlu({ thisUser });
+        }
+        return true;
+    }
+
+    /** Заполняет контроллер данными callback-кнопки VK. */
+    #setMessageEvent(query: IVkRequestContent, controller: BotController): boolean {
+        if (!query.object?.payload) {
+            return false;
+        }
+        controller.userCommand = (
+            typeof query.object.payload === 'string'
+                ? query.object.payload
+                : JSON.stringify(query.object.payload)
+        )?.toLowerCase();
+        controller.userId = query.object.user_id as number;
+        const requestData = getPlatformRequestData<IVkRequestData>(controller, this.platformName);
+        requestData.peerId = query.object.peer_id ?? query.object.user_id ?? 0;
+        controller.payload = tryParse(query.object.payload);
+        controller.messageId = query.object.conversation_message_id || 0;
+        requestData.eventId = query.object.event_id;
+        return true;
+    }
+
     async setQueryData(query: IVkRequestContent, controller: BotController): Promise<boolean> {
         if (!this.appContext) {
-            console.error(`VkAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
             return false;
         }
         if (!query) {
@@ -103,43 +209,10 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 return true;
 
             case 'message_new':
-                if (query.object !== undefined) {
-                    const object: IVkRequestObject = query.object;
-                    controller.userId = object.message.from_id;
-                    const rawText = object.message.text ?? '';
-                    controller.userCommand = rawText.toLowerCase().trim();
-                    controller.originalUserCommand = rawText.trim();
-                    controller.messageId = object.message.id;
-                    controller.payload = tryParse(object.message.payload || null);
-                    const user = await new VkRequest(this.appContext as AppContext).usersGet(
-                        controller.userId,
-                    );
-                    if (user) {
-                        const thisUser = {
-                            username: null,
-                            first_name: user.first_name || null,
-                            last_name: user.last_name || null,
-                        };
-                        controller.nlu.setNlu({ thisUser });
-                    }
-                    return true;
-                }
-                return false;
+                return this.#setMessageNew(query, controller);
 
             case 'message_event':
-                if (query.object?.payload) {
-                    controller.userCommand = (
-                        typeof query.object.payload === 'string'
-                            ? query.object.payload
-                            : JSON.stringify(query.object.payload)
-                    )?.toLowerCase();
-                    controller.userId = query.object.user_id as number;
-                    controller.payload = tryParse(query.object.payload);
-                    controller.messageId = query.object.conversation_message_id || 0;
-                    controller.platformOptions.eventId = query.object.event_id;
-                    return true;
-                }
-                return false;
+                return this.#setMessageEvent(query, controller);
 
             default:
                 controller.platformOptions.error =
@@ -152,12 +225,34 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     async getContent(controller: BotController): Promise<string> {
         if (!controller.skipAutoReply) {
             const vkApi = new VkRequest(this.appContext as AppContext);
+            const requestData = getPlatformRequestData<IVkRequestData>(
+                controller,
+                this.platformName,
+            );
+            const eventId = requestData.eventId ?? controller.platformOptions.eventId;
+            const callbackPeerId = requestData.peerId ?? controller.userId ?? undefined;
 
-            // Для callback-кнопок (message_event) отправляем sendMessageEvent вместо messagesSend
-            if (controller.platformOptions.eventId) {
+            // Для callback-кнопок (message_event) отправляем sendMessageEvent вместо messagesSend.
+            // Если в процессе обработки возникла ошибка — показываем её пользователю через show_snackbar
+            // и не отправляем обычное сообщение.
+            if (eventId) {
+                if (controller.platformOptions.error) {
+                    await vkApi.sendMessageEvent(
+                        controller.userId as string,
+                        eventId,
+                        {
+                            type: 'show_snackbar',
+                            text: Text.resize(controller.platformOptions.error as string, 90),
+                        },
+                        callbackPeerId,
+                    );
+                    return 'ok';
+                }
                 await vkApi.sendMessageEvent(
                     controller.userId as string,
-                    controller.platformOptions.eventId,
+                    eventId,
+                    undefined,
+                    callbackPeerId,
                 );
             }
 
@@ -171,7 +266,9 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 }
             }
             const keyboard = controller.isButtonsInit()
-                ? controller.buttons.getButtonJson(buttonProcessing)
+                ? controller.buttons.getButtonJson((buttons) =>
+                      buttonProcessing(buttons, this.appContext),
+                  )
                 : null;
             if (keyboard && params.template === undefined) {
                 params.keyboard = keyboard;
@@ -185,7 +282,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 params.attachments = [...(attach as string[]), ...(params.attachments || [])];
             }
             await vkApi.messagesSend(
-                controller.userId as string,
+                (requestData.peerId ?? controller.userId) as string,
                 Text.resize(controller.text, 4096),
                 params,
             );

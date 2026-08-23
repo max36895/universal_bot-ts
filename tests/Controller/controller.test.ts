@@ -2,6 +2,7 @@ import { MyController } from './MyController';
 import { AppContext } from '../../src';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('Controller', () => {
     const uController = new MyController(appContext);

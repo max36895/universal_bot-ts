@@ -1,7 +1,13 @@
-import { ISoundInfo, unlink, BotController } from '../../../index';
+import { ISoundInfo, Text, unlink, BotController } from '../../../index';
 import { YandexSpeechKit, VkRequest } from '../API';
-import { getBaseDataSoundProcessing, getSoundToken } from '../Base/utils';
+import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';
 import { T_VK } from './constants';
+
+/** Возвращает peer_id диалога, из которого пришёл запрос. */
+function getPeerId(controller: BotController): string | number {
+    const requestData = getPlatformRequestData<{ peerId?: string | number }>(controller, T_VK);
+    return requestData.peerId ?? (controller.userId as string | number);
+}
 
 /**
  * Получение токена, необходимого для воспроизведения звуков в Vk
@@ -14,11 +20,17 @@ export async function getSoundInDB(
     path: string,
     isAttachContent: boolean = false,
 ): Promise<string | null> {
+    if (Text.isUrl(path)) {
+        controller.appContext.logWarn(
+            'VK.getSoundInDB(): VK принимает голосовые сообщения только после загрузки файла; URL пропущен.',
+        );
+        return null;
+    }
     return getSoundToken(path, T_VK, controller, async (model) => {
         const vkApi = new VkRequest(controller.appContext);
         vkApi.isAttachContent = isAttachContent;
         const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
-            controller.userId as string,
+            getPeerId(controller),
             'audio_message',
         );
         if (uploadServerResponse) {

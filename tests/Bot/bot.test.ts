@@ -55,6 +55,7 @@ class TestBotController extends BotController {
             this.state = {
                 data: 'test',
             };
+            this.text = 'test';
             return;
         }
         this.text = 'test';
@@ -378,6 +379,108 @@ describe('Bot', () => {
             bot.clearCommands();
         });
 
+        it('addForm проходит полный цикл до onComplete', async () => {
+            const tBot = new TestBot();
+            tBot.setAppConfig({
+                isLocalStorage: true,
+            });
+            tBot.initBotController(TestBotController);
+
+            let completedPayload: Record<string, string> | null = null;
+
+            // Стартовая команда запускает форму
+            tBot.addCommand('regForm', ['формы'], (_, bc) => {
+                bc.text = 'Как вас зовут?';
+                bc.thisIntentName = '__form_onboarding_0';
+            });
+
+            tBot.addForm('onboarding', {
+                fields: [
+                    {
+                        name: 'name',
+                        prompt: 'Как вас зовут?',
+                        validate: (v): boolean => v.length > 0,
+                    },
+                    {
+                        name: 'email',
+                        prompt: 'Ваш email?',
+                        validate: (v): string | boolean =>
+                            /\S+@\S+/.test(v) || 'Некорректный email',
+                    },
+                ],
+                onComplete: (ctx, answers) => {
+                    completedPayload = answers;
+                    ctx.text = `Готово, ${answers.name}!`;
+                },
+            });
+            tBot.use(new AlisaAdapter());
+
+            // Запускаем форму
+            let res = (await tBot.run(T_ALISA, getContent('формы', 1))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Как вас зовут?');
+
+            // Валидный ответ на первый вопрос → переход на второй
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('Иван', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Ваш email?');
+
+            // Невалидный email → ошибка + повторный prompt
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('не-email', 3, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Некорректный email\nВаш email?');
+
+            // Валидный email → onComplete
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('ivan@test.ru', 4, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            // Ответы формы сохраняются в исходном регистре (originalUserCommand),
+            // а не в нижнем, в который адаптер нормализует userCommand.
+            expect(res.response?.text).toBe('Готово, Иван!');
+            expect(completedPayload).toEqual({ name: 'Иван', email: 'ivan@test.ru' });
+        });
+
+        it('addForm корректно отменяется командой', async () => {
+            const tBot = new TestBot();
+            tBot.setAppConfig({ isLocalStorage: true });
+            tBot.initBotController(TestBotController);
+
+            let completed = false;
+
+            tBot.addCommand('signForm', ['signup'], (_, bc) => {
+                bc.text = 'Начался опрос';
+                bc.thisIntentName = '__form_signup_0';
+            });
+            tBot.addForm('signup', {
+                fields: [
+                    { name: 'q1', prompt: 'Первый вопрос?', validate: (): boolean => true },
+                    { name: 'q2', prompt: 'Второй?', validate: (): boolean => true },
+                ],
+                onComplete: (ctx) => {
+                    completed = true;
+                    ctx.text = 'complete';
+                },
+                cancelText: 'Опрос отменён',
+                cancelCommands: ['отмена'],
+            });
+            tBot.use(new AlisaAdapter());
+
+            let res = (await tBot.run(T_ALISA, getContent('signup', 1))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Начался опрос');
+
+            // Пользователь пишет "отмена"
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('отмена', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Опрос отменён');
+            expect(completed).toBe(false);
+        });
+
         it('local store', async () => {
             const tBot = new TestBot();
             tBot.initBotController(TestBotController);
@@ -442,12 +545,9 @@ describe('Bot', () => {
             expect(await bot.run(T_ALISA, getContent('карточка'))).toEqual({
                 response: {
                     card: {
-                        header: {
-                            text: '',
-                        },
                         items: [
                             {
-                                description: ' ',
+                                description: '',
                                 title: 'Header',
                             },
                         ],
@@ -567,6 +667,70 @@ describe('Bot', () => {
             expect(JSON.parse(select.data?.data as string).cool).toBe(true);
             bot.clearCommands();
             await userData.remove();
+            await bot.close();
+        });
+
+        it('userData читается по userId при наличии userToken (авторизованный пользователь)', async () => {
+            // Регресс: раньше #initUserData читал запись по userToken, а #saveUserData
+            // писал по userId — данные авторизованных пользователей терялись между запросами.
+            bot.setAppConfig({
+                isLocalStorage: false,
+            });
+            bot.use(new FileAdapter());
+            bot.initBotController(TestBotController);
+            bot.getAppContext().platformParams.isAuthUser = true;
+
+            let readVisits: unknown;
+            bot.addCommand('set', ['auth-set'], (_, botC) => {
+                botC.text = 'set';
+                botC.userData.visits = 42;
+            });
+            bot.addCommand('get', ['auth-get'], (_, botC) => {
+                botC.text = 'get';
+                readVisits = botC.userData.visits;
+            });
+            saveSpy.mockRestore();
+            updateSpy.mockRestore();
+            bot.use(new AlisaAdapter());
+
+            const authContent = (query: string): string =>
+                JSON.stringify({
+                    meta: {
+                        locale: 'ru-Ru',
+                        timezone: 'UTC',
+                        client_id: 'test',
+                        interfaces: {},
+                    },
+                    session: {
+                        message_id: 0,
+                        session_id: 'local',
+                        skill_id: 'local_test',
+                        user_id: 'test',
+                        new: true,
+                        user: {
+                            user_id: 'auth-user-id',
+                            access_token: 'auth-token-123',
+                        },
+                    },
+                    request: {
+                        command: query,
+                        original_utterance: query,
+                        nlu: {},
+                        type: 'SimpleUtterance',
+                    },
+                    version: '1.0',
+                });
+
+            await bot.run(T_ALISA, authContent('auth-set'));
+            await bot.run(T_ALISA, authContent('auth-get'));
+
+            expect(readVisits).toBe(42);
+
+            const userData = new UsersData(bot.getAppContext());
+            userData.platform = T_ALISA;
+            userData.userId = 'auth-user-id';
+            await userData.remove();
+            bot.clearCommands();
             await bot.close();
         });
 
@@ -1087,6 +1251,28 @@ describe('Bot', () => {
             expect(res.response?.text).toBe('by');
         });
 
+        it('обрабатывает pattern-команду с дефисом после создания первой группы', async () => {
+            bot.initBotController(TestBotController);
+            for (let i = 0; i <= 300; i++) {
+                bot.addCommand(
+                    `command-${i}`,
+                    [`^command-${i}$`],
+                    (_, botC) => {
+                        botC.text = `handled-${i}`;
+                    },
+                    true,
+                );
+            }
+            bot.use(new AlisaAdapter());
+
+            const res = (await bot.run(
+                T_ALISA,
+                getContent('command-300', 2),
+            )) as IAlisaWebhookResponse;
+
+            expect(res.response?.text).toBe('handled-300');
+        });
+
         it('used group and used regexp', async () => {
             bot.initBotController(TestBotController);
             bot.addCommand(
@@ -1422,6 +1608,17 @@ describe('Bot', () => {
                     token: 'your-vk-token',
                 },
             });
+        });
+
+        it('ALISA_TOKEN имеет приоритет над YANDEX_TOKEN, VK_SECRET_KEY читается', () => {
+            const envBot = new TestBot();
+            envBot.setLogger({ error: () => {}, warn: () => {} });
+            envBot.setAppConfig({
+                env: __dirname + '/env-alisa',
+            });
+            const tokens = envBot.getAppContext().appConfig.tokens;
+            expect(tokens.alisa?.token).toBe('alisa-canonical-token');
+            expect(tokens.vk?.secret_key).toBe('vk-secret-value');
         });
     });
 });

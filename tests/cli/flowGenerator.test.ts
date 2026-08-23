@@ -1,9 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { generateFromFlow } from './../../cli/flowGenerator';
+import * as ts from 'typescript';
+import { generateFromFlow, validateFlowSchema } from './../../cli/flowGenerator';
 
 const TEST_DIR = path.join(__dirname, '__test_output__');
 const JSON_DIR = path.join(TEST_DIR, 'json');
+const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 beforeEach(() => {
     if (fs.existsSync(TEST_DIR)) {
@@ -18,12 +20,46 @@ afterEach(() => {
     }
 });
 
-function writeJsonAndGenerate(name: string, doc: object): string {
+function writeJsonAndGenerate(
+    name: string,
+    doc: object,
+    options: Record<string, unknown> = {},
+): string {
     const jsonPath = path.join(JSON_DIR, `${name}.json`);
     const outputPath = path.join(TEST_DIR, name);
     fs.writeFileSync(jsonPath, JSON.stringify(doc, null, 2));
-    generateFromFlow(jsonPath, outputPath);
+    generateFromFlow(jsonPath, outputPath, options);
     return fs.readFileSync(path.join(outputPath, 'src', 'index.ts'), 'utf8');
+}
+
+function expectProjectToTypeCheck(projectPath: string): void {
+    const configPath = path.join(projectPath, 'tsconfig.json');
+    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+    expect(configFile.error).toBeUndefined();
+
+    const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, projectPath);
+    const program = ts.createProgram(parsedConfig.fileNames, {
+        ...parsedConfig.options,
+        baseUrl: PROJECT_ROOT,
+        ignoreDeprecations: '6.0',
+        noEmit: true,
+        outDir: undefined,
+        types: ['node'],
+        typeRoots: [path.join(PROJECT_ROOT, 'node_modules', '@types')],
+        paths: {
+            umbot: ['dist/index.d.ts'],
+            'umbot/*': ['dist/*'],
+        },
+        rootDir: undefined,
+    });
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+    expect(
+        ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+            getCanonicalFileName: (fileName) => fileName,
+            getCurrentDirectory: () => PROJECT_ROOT,
+            getNewLine: () => ts.sys.newLine,
+        }),
+    ).toBe('');
 }
 
 describe('flowGenerator', () => {
@@ -372,8 +408,44 @@ describe('flowGenerator', () => {
                 isLocalStorage: true,
             });
             expect(code).toContain('async (cmd: string, ctrl: BotController)');
-            expect(code).toContain("await fetch('https://api.weather.com')");
+            expect(code).toContain("import { setText, fetchWithTimeout } from './utils'");
+            expect(code).toContain("await fetchWithTimeout('https://api.weather.com')");
             expect(code).toContain('ctrl.userData.data = data');
+        });
+
+        it('generates safe JSON body with variables', () => {
+            const code = writeJsonAndGenerate('p10_body_vars', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'send',
+                        slots: ['send'],
+                        isPattern: false,
+                        actions: [
+                            {
+                                type: 'http_request',
+                                url: 'https://api.example.com/send',
+                                method: 'POST',
+                                body: { message: '{{name}}' },
+                            },
+                        ],
+                        response: { text: 'ok', buttons: [], sounds: [] },
+                    },
+                ],
+                edges: [],
+                fallback: { text: 'no' },
+                welcome: { text: 'hi' },
+                database: { type: 'file', config: {} },
+                isLocalStorage: true,
+            });
+
+            expect(code).toContain('body: JSON.stringify({ "message": `${ctrl.userData.name}` })');
+            expect(code).not.toContain('JSON.parse(`');
+            expect(code).toContain(
+                'const errorMessage = e instanceof Error ? e.message : String(e);',
+            );
         });
     });
 
@@ -571,7 +643,7 @@ describe('flowGenerator', () => {
                 isLocalStorage: true,
             });
             expect(code).toContain('ctrl.userData.a = 5;');
-            expect(code).toContain('ctrl.userData.b = ctrl.userData.a + 3;');
+            expect(code).toContain('ctrl.userData.b = Number(ctrl.userData.a) + 3;');
         });
     });
 
@@ -820,6 +892,116 @@ describe('flowGenerator', () => {
             expect(() => generateFromFlow(jsonPath, path.join(TEST_DIR, 'nonodes'))).toThrow(
                 'отсутствует поле "nodes"',
             );
+        });
+    });
+
+    describe('Output safety', () => {
+        it('does not overwrite non-empty output directory without force', () => {
+            const jsonPath = path.join(JSON_DIR, 'overwrite.json');
+            const outputPath = path.join(TEST_DIR, 'existing');
+            fs.mkdirSync(outputPath, { recursive: true });
+            fs.writeFileSync(path.join(outputPath, 'package.json'), '{"name":"old"}');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'test',
+                    nodes: [],
+                    edges: [],
+                }),
+            );
+
+            expect(() => generateFromFlow(jsonPath, outputPath)).toThrow(
+                'Папка для генерации не пустая',
+            );
+            expect(fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8')).toBe(
+                '{"name":"old"}',
+            );
+        });
+
+        it('overwrites non-empty output directory with force', () => {
+            const jsonPath = path.join(JSON_DIR, 'force.json');
+            const outputPath = path.join(TEST_DIR, 'force');
+            fs.mkdirSync(outputPath, { recursive: true });
+            fs.writeFileSync(path.join(outputPath, 'package.json'), '{"name":"old"}');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'test',
+                    nodes: [],
+                    edges: [],
+                }),
+            );
+
+            generateFromFlow(jsonPath, outputPath, { force: true });
+
+            expect(fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8')).toContain(
+                '"name": "test"',
+            );
+        });
+    });
+
+    describe('Production templates', () => {
+        it('keeps TypeScript dev dependency available in Docker builder stage', () => {
+            const dockerFile = fs.readFileSync(
+                path.join(__dirname, '../../cli/template/docker/DockerFile.text'),
+                'utf8',
+            );
+
+            // На этапе сборки зависимости ставятся вместе с devDependencies
+            // (без --omit=dev), чтобы был доступен tsc для npm run build.
+            expect(dockerFile).toContain('COPY package*.json ./');
+            expect(dockerFile).toContain('npm ci');
+            expect(dockerFile).toContain('npm install');
+            // До npm run build не должно быть --omit=dev
+            const buildStage = dockerFile.split('npm run build')[0];
+            expect(buildStage).not.toContain('--omit=dev');
+        });
+
+        it('pins generated dependencies and does not enable a lock-file cache without a lock file', () => {
+            const packageTemplate = JSON.parse(
+                fs.readFileSync(
+                    path.join(__dirname, '../../cli/template/package.json.text'),
+                    'utf8',
+                ),
+            ) as {
+                dependencies: Record<string, string>;
+                devDependencies: Record<string, string>;
+            };
+            const workflow = fs.readFileSync(
+                path.join(__dirname, '../../cli/template/github/deploy.yml'),
+                'utf8',
+            );
+
+            expect(packageTemplate.dependencies.umbot).toBe('3.1.0');
+            expect(packageTemplate.devDependencies.typescript).toBe('5.9.3');
+            expect(packageTemplate.devDependencies['@types/node']).toBe('20.19.43');
+            expect(workflow).not.toContain("cache: 'npm'");
+            expect(
+                fs.readFileSync(path.join(__dirname, '../../cli/template/.gitignore'), 'utf8'),
+            ).not.toContain('package-lock.json');
+        });
+
+        it('does not write token values to serverless.yml', () => {
+            const token = 'bot123:' + 'a'.repeat(35);
+            const jsonPath = path.join(JSON_DIR, 'cloud.json');
+            const outputPath = path.join(TEST_DIR, 'cloud');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'cloud-bot',
+                    nodes: [],
+                    edges: [],
+                    tokens: {
+                        telegram: token,
+                    },
+                }),
+            );
+
+            generateFromFlow(jsonPath, outputPath, { useCloud: true });
+
+            const serverlessYml = fs.readFileSync(path.join(outputPath, 'serverless.yml'), 'utf8');
+            expect(serverlessYml).toContain('TELEGRAM_TOKEN: "${env:TELEGRAM_TOKEN}"');
+            expect(serverlessYml).not.toContain(token);
         });
     });
 
@@ -1238,6 +1420,348 @@ describe('flowGenerator', () => {
             expect(code).not.toContain('rand(1, 10)');
             expect(code).toContain('rand(0, 100)');
             expect(code).toContain('ctrl.userData.score');
+        });
+    });
+
+    describe('validateFlowSchema', () => {
+        function writeFlowJson(name: string, doc: unknown): string {
+            const jsonPath = path.join(JSON_DIR, `${name}.json`);
+            fs.writeFileSync(jsonPath, JSON.stringify(doc, null, 2));
+            return jsonPath;
+        }
+
+        it('возвращает пустой массив для валидного flow.json', () => {
+            const jsonPath = writeFlowJson('valid', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'cmd1',
+                        name: 'test',
+                        slots: ['test'],
+                        isPattern: false,
+                        response: { text: 'hi', buttons: [], sounds: [] },
+                        conditions: [],
+                        actions: [],
+                        next: 'end1',
+                    },
+                    { type: 'end', id: 'end1' },
+                ],
+                edges: [],
+                fallback: { text: 'No' },
+                welcome: { text: 'Hi' },
+                database: { type: 'none', config: {} },
+                isLocalStorage: true,
+            });
+            expect(validateFlowSchema(jsonPath)).toEqual([]);
+        });
+
+        it('находит узел без id', () => {
+            const jsonPath = writeFlowJson('missing_id', {
+                name: 'test',
+                nodes: [{ type: 'command', name: 'test' }],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('`id`'))).toBe(true);
+        });
+
+        it('находит дублирующиеся id', () => {
+            const jsonPath = writeFlowJson('duplicate_id', {
+                name: 'test',
+                nodes: [
+                    { type: 'command', id: 'a', name: 'one' },
+                    { type: 'command', id: 'a', name: 'two' },
+                ],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('дублирующийся'))).toBe(true);
+        });
+
+        it('находит битое ребро (ссылка на несуществующий узел)', () => {
+            const jsonPath = writeFlowJson('broken_edge', {
+                name: 'test',
+                nodes: [{ type: 'command', id: 'a', name: 'one' }],
+                edges: [{ from: 'a', to: 'nonexistent', type: 'next' }],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('несуществующий узел'))).toBe(true);
+        });
+
+        it('находит ребро с неизвестным type', () => {
+            const jsonPath = writeFlowJson('bad_edge_type', {
+                name: 'test',
+                nodes: [
+                    { type: 'command', id: 'a', name: 'one' },
+                    { type: 'command', id: 'b', name: 'two' },
+                ],
+                edges: [{ from: 'a', to: 'b', type: 'teleport' }],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('неизвестный type'))).toBe(true);
+        });
+
+        it('сообщает об отсутствии name', () => {
+            const jsonPath = writeFlowJson('missing_name', {
+                nodes: [{ type: 'command', id: 'a', name: 'one' }],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('`name`'))).toBe(true);
+        });
+
+        it('сообщает об отсутствии nodes', () => {
+            const jsonPath = writeFlowJson('missing_nodes', { name: 'test' });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('`nodes`'))).toBe(true);
+        });
+
+        it('циклы в графе допустимы (например, генератор примеров в игре)', () => {
+            const jsonPath = writeFlowJson('cycle', {
+                name: 'test',
+                nodes: [
+                    { type: 'command', id: 'a', name: 'a' },
+                    { type: 'command', id: 'b', name: 'b' },
+                ],
+                edges: [
+                    { from: 'a', to: 'b', type: 'next' },
+                    { from: 'b', to: 'a', type: 'next' },
+                ],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors).toEqual([]);
+        });
+
+        it('возвращает ошибку для несуществующего файла', () => {
+            const errors = validateFlowSchema('/definitely/not/existing/flow.json');
+            expect(errors.length).toBeGreaterThan(0);
+            expect(errors[0]).toContain('Не удалось прочитать');
+        });
+
+        it('определяет невалидный saveTo', () => {
+            const jsonPath = writeFlowJson('bad_saveTo', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'a',
+                        name: 'a',
+                        saveTo: 'invalid identifier!',
+                    },
+                ],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.some((e) => e.includes('saveTo'))).toBe(true);
+        });
+    });
+
+    describe('Регрессии генерации и cloud-режима', () => {
+        it('сохраняет HTTP-метод для запроса без body', () => {
+            const code = writeJsonAndGenerate('post_without_body', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'remove',
+                        actions: [
+                            {
+                                type: 'http_request',
+                                method: 'DELETE',
+                                url: 'https://api.example.com/resource/1',
+                            },
+                        ],
+                    },
+                ],
+                edges: [],
+            });
+
+            expect(code).toContain(
+                "fetchWithTimeout('https://api.example.com/resource/1', { method: 'DELETE' })",
+            );
+        });
+
+        it('нормализует имена блоков и сохраняет сгенерированный проект компилируемым', () => {
+            const name = 'unsafe_block_names';
+            const code = writeJsonAndGenerate(name, {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'command',
+                        name: 'start',
+                        response: { text: 'start' },
+                    },
+                    {
+                        type: 'action',
+                        id: 'action-one',
+                        name: 'send message',
+                        text: 'first',
+                    },
+                    {
+                        type: 'response',
+                        id: 'response-one',
+                        name: 'send message',
+                        response: { text: 'second' },
+                    },
+                ],
+                edges: [
+                    { from: 'command', to: 'action-one', type: 'next' },
+                    { from: 'action-one', to: 'response-one', type: 'next' },
+                ],
+            });
+
+            expect(code).toContain('function __send_message(');
+            expect(code).toContain('function __send_message_2(');
+            expectProjectToTypeCheck(path.join(TEST_DIR, name));
+        });
+
+        it('проверяет текущий ввод для isSayTrue без выбранной переменной', () => {
+            const code = writeJsonAndGenerate('say_true_user_command', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'confirm',
+                        conditions: [
+                            {
+                                operator: 'isSayTrue',
+                                responseTrue: { text: 'yes' },
+                                responseFalse: { text: 'no' },
+                            },
+                        ],
+                    },
+                ],
+                edges: [],
+            });
+
+            expect(code).toContain("Text.isSayTrue(ctrl.userCommand || '')");
+        });
+
+        it('генерирует Cloud Function без локального listener и с compiled entrypoint', () => {
+            const name = 'cloud_project';
+            const code = writeJsonAndGenerate(
+                name,
+                {
+                    name: 'Cloud bot!',
+                    nodes: [],
+                    edges: [],
+                },
+                { useCloud: true },
+            );
+            const outputPath = path.join(TEST_DIR, name);
+            const serverlessYml = fs.readFileSync(path.join(outputPath, 'serverless.yml'), 'utf8');
+            const packageJson = fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8');
+
+            expect(code).not.toContain("bot.start('localhost', 3000)");
+            expect(serverlessYml).toContain('name: cloud-bot');
+            expect(serverlessYml).toContain('runtime: nodejs22');
+            expect(serverlessYml).toContain('entrypoint: dist/index.handler');
+            expect(packageJson).toContain('--entrypoint dist/index.handler');
+            expectProjectToTypeCheck(outputPath);
+        });
+    });
+
+    describe('Security and generated-source regressions', () => {
+        it('does not treat a successful empty HTTP response as an error', () => {
+            const code = writeJsonAndGenerate('empty_http_response', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'remove',
+                        actions: [
+                            {
+                                type: 'http_request',
+                                method: 'DELETE',
+                                url: 'https://api.example.com/resource/1',
+                                saveResponseTo: 'result',
+                            },
+                        ],
+                    },
+                ],
+                edges: [],
+            });
+
+            expect(code).toContain('const responseText = await response.text();');
+            expect(code).toContain('let data: unknown = null;');
+            expect(code).not.toContain('await response.json()');
+            expectProjectToTypeCheck(path.join(TEST_DIR, 'empty_http_response'));
+        });
+
+        it('does not insert arbitrary code from set_variable or random_number bounds', () => {
+            const code = writeJsonAndGenerate('safe_action_values', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'start',
+                        actions: [
+                            { type: 'set_variable', field: 'value', value: 'Math.random(); run()' },
+                            { type: 'set_variable', field: 'sum', value: 'value + 3' },
+                            {
+                                type: 'random_number',
+                                field: 'random',
+                                min: '1); run()',
+                                max: '20',
+                            },
+                        ],
+                    },
+                ],
+                edges: [],
+            });
+
+            expect(code).toContain("ctrl.userData.value = 'Math.random(); run()';");
+            expect(code).toContain('ctrl.userData.sum = Number(ctrl.userData.value) + 3;');
+            expect(code).toContain('ctrl.userData.random = rand(1, 20);');
+            expectProjectToTypeCheck(path.join(TEST_DIR, 'safe_action_values'));
+        });
+
+        it('restricts HTTP methods to the standard set', () => {
+            const code = writeJsonAndGenerate('safe_http_method', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'start',
+                        actions: [
+                            {
+                                type: 'http_request',
+                                method: "DELETE'); run(); ('",
+                                url: 'https://api.example.com/resource/1',
+                            },
+                        ],
+                    },
+                ],
+                edges: [],
+            });
+
+            expect(code).toContain("fetchWithTimeout('https://api.example.com/resource/1')");
+            expect(code).not.toContain("DELETE'); run(); ('");
+            expectProjectToTypeCheck(path.join(TEST_DIR, 'safe_http_method'));
+        });
+
+        it('pins dependencies in a project generated from flow', () => {
+            writeJsonAndGenerate('pinned_flow_dependencies', {
+                name: 'test',
+                nodes: [],
+                edges: [],
+            });
+            const packageJson = JSON.parse(
+                fs.readFileSync(
+                    path.join(TEST_DIR, 'pinned_flow_dependencies', 'package.json'),
+                    'utf8',
+                ),
+            ) as {
+                dependencies: Record<string, string>;
+                devDependencies: Record<string, string>;
+            };
+
+            expect(packageJson.dependencies.umbot).toBe('3.1.0');
+            expect(packageJson.devDependencies.typescript).toBe('5.9.3');
+            expect(packageJson.devDependencies['@types/node']).toBe('20.19.43');
         });
     });
 });

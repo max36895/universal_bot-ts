@@ -67,13 +67,13 @@ export interface ITelegramContent {
     /** ID обновления */
     update_id?: number;
     /** Входящее сообщение */
-    message: ITelegramMessage;
+    message?: ITelegramMessage;
     /**
      * Отредактированное сообщение.
      * Содержит новую версию сообщения после редактирования
      * @see ITelegramMessage
      */
-    edited_message?: Record<string, unknown>;
+    edited_message?: ITelegramMessage;
     /**
      * Пост в канале
      * Новое сообщение в канале (текст, фото, стикер и т.д.)
@@ -85,7 +85,7 @@ export interface ITelegramContent {
      * Новая версия поста после редактирования
      * @see ITelegramMessage
      */
-    edited_channel_post?: Record<string, unknown>;
+    edited_channel_post?: ITelegramMessage;
     /**
      * Встроенный запрос
      * Новый запрос для inline-режима
@@ -102,7 +102,18 @@ export interface ITelegramContent {
      * Выбранный пользователем результат inline-запроса
      * @see https://core.telegram.org/bots/api#choseninlineresult
      */
-    chosen_inline_result?: Record<string, unknown>;
+    chosen_inline_result?: {
+        /** Идентификатор выбранного результата. */
+        result_id: string;
+        /** Пользователь, выбравший результат. */
+        from: ITelegramMessageFrom;
+        /** Исходный inline-запрос. */
+        query: string;
+        /** Геопозиция пользователя, если она была доступна. */
+        location?: Record<string, unknown>;
+        /** Идентификатор отправленного inline-сообщения. */
+        inline_message_id?: string;
+    };
     /**
      * Запрос обратного вызова
      * Новый запрос от inline-кнопки
@@ -243,15 +254,15 @@ export interface ITelegramParams {
     // Параметры для опросов
     /**
      * Вопрос для опроса.
-     * 1-255 символов
+     * 1-300 символов
      */
     question?: string;
 
     /**
      * Варианты ответов для опроса.
-     * JSON-сериализованный список из 2-10 строк по 1-100 символов
+     * Список из 1-12 объектов InputPollOption по 1-100 символов
      */
-    options?: Record<string, unknown>;
+    options?: Array<{ text: string; text_parse_mode?: string }>;
 
     /**
      * Флаг анонимности опроса.
@@ -275,8 +286,14 @@ export interface ITelegramParams {
     /**
      * ID правильного варианта ответа.
      * Требуется только для опросов типа "quiz"
+     * @deprecated Используйте `correct_option_ids`.
      */
     correct_option_id?: number;
+
+    /**
+     * Идентификаторы правильных вариантов ответа в актуальном Telegram Bot API.
+     */
+    correct_option_ids?: number[];
 
     /**
      * Флаг закрытия опроса.
@@ -494,8 +511,14 @@ export interface ITelegramPoll {
     /**
      * ID правильного варианта ответа.
      * Доступно только для закрытых опросов типа "quiz"
+     * @deprecated Актуальный Telegram Bot API возвращает `correct_option_ids`.
      */
-    correct_option_id: number;
+    correct_option_id?: number;
+
+    /**
+     * Идентификаторы правильных вариантов ответа в актуальном Telegram Bot API.
+     */
+    correct_option_ids?: number[];
 }
 
 /**
@@ -764,9 +787,12 @@ export interface ITelegramResultContent {
     poll?: ITelegramPoll;
 
     /**
-     * Информация о фотографии
+     * Информация о фотографии.
+     * Внимание: Telegram Bot API возвращает массив PhotoSize[],
+     * где последний элемент — самое большое разрешение.
+     * Для получения file_id нужно использовать photo[photo.length - 1].file_id.
      */
-    photo?: ITelegramPhoto;
+    photo?: ITelegramPhoto[];
 
     /**
      * Информация о документе
@@ -827,9 +853,10 @@ export interface ITelegramResult {
     ok: boolean;
 
     /**
-     * Содержимое результата
+     * Содержимое результата.
+     * Отсутствует, если ok === false.
      */
-    result: ITelegramResultContent;
+    result?: ITelegramResultContent | null;
 
     /**
      * Код ошибки.
@@ -938,4 +965,20 @@ export interface ITelegramKeyboard {
      * Удалить все кнопки
      */
     remove_keyboard?: boolean;
+    /**
+     * Автоматически подогнать размер reply-клавиатуры под экран устройства.
+     * Рекомендуется всегда устанавливать true для reply-клавиатур.
+     * @defaultValue false
+     */
+    resize_keyboard?: boolean;
+    /**
+     * Скрыть reply-клавиатуру после нажатия на кнопку.
+     * @defaultValue false
+     */
+    one_time_keyboard?: boolean;
+    /**
+     * Плейсхолдер в поле ввода при активной reply-клавиатуре.
+     * Максимум 64 символа.
+     */
+    input_field_placeholder?: string;
 }

@@ -533,11 +533,7 @@ export interface ISberSmartAppWebhookRequest {
  * ERROR — возвращается, если смартап недоступен или вернул ошибку
  */
 export type TSberResponseMessageName =
-    | 'ANSWER_TO_USER'
-    | 'CALL_RATING'
-    | 'POLICY_RUN_APP'
-    | 'NOTHING_FOUND'
-    | 'ERROR';
+    'ANSWER_TO_USER' | 'CALL_RATING' | 'POLICY_RUN_APP' | 'NOTHING_FOUND' | 'ERROR';
 
 /**
  * Идентификатор эмоции, определяющий эмоцию персонажа.
@@ -597,7 +593,15 @@ export interface ISberSmartAppSuggestionAction {
      * Данные для сервера
      * Для type='server_action'
      */
-    server_action?: Record<string, unknown> | string;
+    server_action?: {
+        action_id: string;
+        payload?: Record<string, unknown>;
+    };
+
+    /**
+     * Имя сообщения для действия на сервере.
+     */
+    message_name?: 'SERVER_ACTION' | 'RUN_APP';
 
     /**
      * Тип действия
@@ -616,7 +620,14 @@ export interface ISberSmartAppSuggestionButton {
     /** Текст кнопки */
     title: string;
 
-    /** Действие при нажатии */
+    /** Массив действий при нажатии согласно SmartApp API. */
+    actions?: ISberSmartAppSuggestionAction[];
+
+    /**
+     * Устаревшее одиночное действие. Оставлено для обратной совместимости
+     * при обработке существующих пользовательских объектов, но адаптер его не формирует.
+     * @deprecated Используйте `actions`.
+     */
     action?: ISberSmartAppSuggestionAction;
 }
 
@@ -659,17 +670,7 @@ export interface ISberSmartAppBubble {
  * @enum {string}
  */
 export type TSberSmartAppPadding =
-    | '0x'
-    | '1x'
-    | '2x'
-    | '4x'
-    | '5x'
-    | '6x'
-    | '8x'
-    | '9x'
-    | '10x'
-    | '12x'
-    | '16x';
+    '0x' | '1x' | '2x' | '4x' | '5x' | '6x' | '8x' | '9x' | '10x' | '12x' | '16x';
 
 /**
  * Действие карточки.
@@ -743,14 +744,7 @@ export type TSberSmartAppTypeface =
  * @enum {string}
  */
 export type TSberSmartAppTextColor =
-    | 'default'
-    | 'secondary'
-    | 'tertiary'
-    | 'inverse'
-    | 'brand'
-    | 'warning'
-    | 'critical'
-    | 'link';
+    'default' | 'secondary' | 'tertiary' | 'inverse' | 'brand' | 'warning' | 'critical' | 'link';
 
 /**
  * Текст карточки.
@@ -777,7 +771,7 @@ export interface ISberSmartAppCardText {
     max_lines?: number;
 
     /** Действия */
-    actions?: ISberSmartAppCardAction;
+    actions?: ISberSmartAppCardAction | ISberSmartAppCardAction[];
 }
 
 /**
@@ -914,14 +908,39 @@ export interface ISberSmartAppCardItem {
          * Иконка
          */
         icon_vertical_gravity?: string;
+        /** Иконка в актуальном формате SmartApp API. */
+        icon?: {
+            /** Адрес изображения. */
+            address: {
+                /** Тип адреса. */
+                type: string;
+                /** URL изображения. */
+                url: string;
+            };
+            /** Размер иконки. */
+            size: {
+                /** Ширина иконки. */
+                width: string;
+                /** Высота иконки. */
+                height: string;
+            };
+            /** Внешние отступы. */
+            margins?: ISberSmartAppCardPadding;
+        };
+        /** Тексты в актуальном формате SmartApp API. */
+        texts?: {
+            /** Основной непустой текст. */
+            title: ISberSmartAppCardText;
+        };
         /**
          * Метка
          */
         label?: ISberSmartAppCardText;
         /**
-         * Иконка и значение
+         * Иконка и значение в устаревшем формате карточек.
+         * @deprecated Актуальный SmartApp API использует поля `icon` и `texts`.
          */
-        icon_and_value: {
+        icon_and_value?: {
             /**
              * Иконка
              */
@@ -1021,8 +1040,13 @@ export interface ISberSmartAppItem {
     /** Текст */
     bubble?: ISberSmartAppBubble;
 
-    /** Команда */
-    command?: object;
+    /**
+     * Команда для выполнения платформой (например, close_app для завершения диалога)
+     */
+    command?: {
+        /** Тип команды */
+        type: string;
+    };
 }
 
 /**
@@ -1082,7 +1106,7 @@ export interface ISberSmartAppResponsePayload {
      * true - диалог завершен
      * false - диалог продолжается
      */
-    finished?: boolean;
+    finished: boolean;
 }
 
 /**

@@ -5,7 +5,7 @@ import {
     ITelegramInlineKeyboard,
     ITelegramReplyButton,
 } from './interfaces/ITelegramPlatform';
-import { getCorrectButtons } from '../Base/utils';
+import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 import { TG_CALLBACK_DATA_MAX_LENGTH } from './constants';
 
 /**
@@ -22,23 +22,20 @@ export function buttonProcessing(
     const reply: ITelegramReplyButton[] = [];
 
     getCorrectButtons(buttons, 40).forEach((button) => {
-        let callbackData =
-            button.payload && typeof button.payload !== 'string'
-                ? JSON.stringify(button.payload)
-                : button.payload || undefined;
+        const callbackData = button.payload
+            ? serializePlatformPayload(button.payload, 'Telegram', appContext)
+            : undefined;
+        if (callbackData === null) {
+            return;
+        }
         // Проверяем лимит callback_data (Telegram Bot API: 1-64 байта)
         if (typeof callbackData === 'string') {
             const byteLength = Buffer.byteLength(callbackData, 'utf8');
             if (byteLength > TG_CALLBACK_DATA_MAX_LENGTH) {
                 appContext?.logWarn(
-                    `[Telegram] callback_data превышает лимит ${TG_CALLBACK_DATA_MAX_LENGTH} байт (${byteLength} байт). Данные будут обрезаны.`,
+                    `[Telegram] callback_data превышает лимит ${TG_CALLBACK_DATA_MAX_LENGTH} байт (${byteLength} байт). Кнопка будет пропущена без изменения данных.`,
                 );
-                // Обрезаем до 64 байт, сохраняя валидный UTF-8
-                const encoder = new TextEncoder();
-                const bytes = encoder.encode(callbackData);
-                callbackData = new TextDecoder().decode(
-                    bytes.slice(0, TG_CALLBACK_DATA_MAX_LENGTH),
-                );
+                return;
             }
         }
         if (button.url) {
@@ -68,6 +65,7 @@ export function buttonProcessing(
             object.inline_keyboard = inlines.map((btn) => [btn]);
         } else if (rCount) {
             object.keyboard = reply.map((btn) => [btn]);
+            object.resize_keyboard = true;
         }
     } else {
         // Удаляем клавиатуру из-за ненадобности

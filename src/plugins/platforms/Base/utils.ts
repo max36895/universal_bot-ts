@@ -114,7 +114,8 @@ export async function getSoundToken(
 const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
 
 /**
- * Ищет в запросе команду для паузы, и заменяет ее на корректный вид(sil).
+ * Ищет в тексте команды паузы вида `#pause_<ms>#` (например, `#pause_500#`)
+ * и заменяет их на SSML-формат `sil <[ms]>`, поддерживаемый голосовыми платформами.
  *
  * @param {string} text - Текст, который будет озвучен пользователю
  * @returns {string} - Строка с паузой в формате sil <[ms]>
@@ -231,10 +232,13 @@ export function defaultSoundProcessing(
 }
 
 /**
- * Базовый метод для получения данный об изображении.
- * @param soundInfo - Информация необходимая для обработки аудио
+ * Базовая обработка аудио: получает токены звуков через `getSoundInDB`
+ * и собирает их в массив строк для отправки платформе.
+ *
+ * @param soundInfo - Описание звуков для обработки (из контроллера)
  * @param controller - Контроллер приложения
- * @param getSoundInDB - Функция обработчик для получения аудио токена
+ * @param getSoundInDB - Функция-обработчик, которая возвращает токен аудио по пути
+ * @returns Массив готовых аудио-строк в формате конкретной платформы
  */
 export async function getBaseDataSoundProcessing(
     soundInfo: ISoundInfo,
@@ -299,6 +303,64 @@ export function getCorrectButtons<TButton = IButtonType>(
         return buttons.slice(0, limit);
     }
     return buttons;
+}
+
+/**
+ * Проверяет, что payload можно безопасно передать в JSON платформы.
+ *
+ * @param payload Данные кнопки.
+ * @param platform Название платформы для диагностического сообщения.
+ * @param appContext Контекст приложения для логирования.
+ * @returns Строковое представление payload или `null`, если значение не сериализуется.
+ */
+export function serializePlatformPayload(
+    payload: unknown,
+    platform: string,
+    appContext?: { logWarn(message: string, meta?: Record<string, unknown>): void },
+): string | null {
+    try {
+        const serialized = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        if (serialized !== undefined) {
+            return serialized;
+        }
+    } catch (error) {
+        appContext?.logWarn(`[${platform}] payload кнопки не сериализуется и будет пропущен.`, {
+            error,
+        });
+        return null;
+    }
+    appContext?.logWarn(`[${platform}] payload кнопки не сериализуется и будет пропущен.`);
+    return null;
+}
+
+/**
+ * Возвращает изолированное техническое хранилище адаптера для текущего запроса.
+ *
+ * Общий контроллер не должен знать о полях конкретных транспортов, поэтому
+ * каждый адаптер хранит их только под собственным ключом.
+ *
+ * @param controller Контроллер текущего запроса
+ * @param adapterKey Уникальный ключ адаптера
+ * @returns Объект технических данных адаптера
+ *
+ * @example
+ * ```ts
+ * const data = getPlatformRequestData<{ callbackId?: string }>(controller, 'my_adapter');
+ * data.callbackId = 'callback-123';
+ * ```
+ */
+export function getPlatformRequestData<T extends Record<string, unknown>>(
+    controller: BotController,
+    adapterKey: string,
+): T {
+    const requestData = (controller.platformOptions.requestData ??= {});
+    const stored = requestData[adapterKey];
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+        return stored as T;
+    }
+    const result: T = {} as T;
+    requestData[adapterKey] = result;
+    return result;
 }
 
 /**

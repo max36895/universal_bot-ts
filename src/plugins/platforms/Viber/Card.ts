@@ -33,9 +33,13 @@ function getElement(image: IImageType, countImage: number = 1): IViberCard {
     }
     const btn: IViberButtonObject | null =
         image.button?.getButtons<IViberButtonObject>(buttonProcessing) || null;
+    const title = Text.resize(image.title, 256);
+    const description = Text.resize(image.desc, 512);
     if (btn?.Buttons !== undefined) {
         element = { ...element, ...btn.Buttons[0] };
-        element.Text = `<font color=#000><b>${escapeHtml(image.title)}</b></font><font color=#000>${escapeHtml(image.desc)}</font>`;
+        element.Text = `<font color=#000><b>${escapeHtml(title)}</b></font><font color=#000>${escapeHtml(description)}</font>`;
+    } else {
+        element.ActionType = 'none';
     }
     return element;
 }

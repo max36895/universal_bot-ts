@@ -1,5 +1,5 @@
 import { Text, BotController, Request, IRequestSend } from '../../../index';
-import { BasePlatform, EMPTY_CONTEXT_ERROR, EMPTY_QUERY_ERROR } from '../Base/Base';
+import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { T_SMART_APP, DEVICE, ANNOTATIONS, SMART_APP_STORAGE_URL } from './constants';
@@ -24,6 +24,14 @@ import {
  * Поддерживает:
  * - голосовые и текстовые запросы;
  * - карточки, кнопки, TTS-эффекты;
+ *
+ * === Локальное хранилище ===
+ * Адаптер использует внешнее SmartApp Code API для хранения данных пользователя.
+ * По умолчанию URL хранилища: `https://smartapp-code.sberdevices.ru/tools/api/data`.
+ * URL можно переопределить через конфиг:
+ * ```ts
+ * appConfig.tokens.smart_app.storage_url = 'https://your-custom-storage-url';
+ * ```
  *
  * Подключается как любой другой адаптер: `bot.use(new SmartAppAdapter(token))`.
  * Несколько адаптеров могут работать одновременно — система сама выберет подходящий
@@ -87,13 +95,17 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         controller.requestObject = content;
         controller.messageId = content.messageId;
         switch (content.messageName) {
-            case 'MESSAGE_TO_SKILL':
-            case 'CLOSE_APP': {
+            case 'MESSAGE_TO_SKILL': {
                 const msg = content.payload?.message;
                 controller.userCommand = msg?.normalized_text ?? '';
                 controller.originalUserCommand = msg?.original_text ?? '';
                 break;
             }
+
+            case 'CLOSE_APP':
+                controller.userCommand = '';
+                controller.isEnd = true;
+                break;
 
             case 'SERVER_ACTION':
             case 'RUN_APP':
@@ -162,8 +174,6 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
             } else {
                 controller.platformOptions.error = `SmartAppAdapter.setQueryData(): ${EMPTY_QUERY_ERROR}`;
             }
-        } else {
-            console.error(`SmartAppAdapter.setQueryData(): ${EMPTY_CONTEXT_ERROR}`);
         }
         return false;
     }
@@ -216,8 +226,8 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
             }
             payload.suggestions = {
                 buttons: controller.isButtonsInit()
-                    ? (controller.buttons.getButtons(
-                          buttonProcessing,
+                    ? (controller.buttons.getButtons((buttons) =>
+                          buttonProcessing(buttons, false, controller.appContext),
                       ) as ISberSmartAppSuggestionButton[])
                     : [],
             };
@@ -241,7 +251,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
             uuid: (controller.platformOptions.session as ISberSmartAppSession).uuid,
         };
 
-        if (controller.sound.sounds.length) {
+        if (controller.isSoundInit() && controller.sound.sounds.length) {
             controller.tts ??= controller.text;
         }
         result.payload = this.#getPayload(controller);

@@ -217,7 +217,7 @@ export class Card {
      * Добавляет изображение в карточку.
      * @param {string | null} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
+     * @param {string} [desc=''] - Описание изображения
      * @param {TButton | null} [button=null] - Кнопки для элемента
      * @returns {Card}
      *
@@ -249,8 +249,8 @@ export class Card {
      */
     public addImage(
         image: string | null,
-        title: string = ' ',
-        desc: string = ' ',
+        title: string = '',
+        desc: string = '',
         button: TButton | null = null,
     ): this {
         const img = getImage(this.#appContext, image, title, desc, button);
@@ -266,14 +266,14 @@ export class Card {
      * Стоит использовать в том случае, если у вас всегда должно отобразиться только 1 изображение.
      * @param {string | null} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
+     * @param {string} [desc=''] - Описание изображения
      * @param {TButton | null} [button=null] - Кнопки для элемента
      * @returns {Card}
      */
     public addOneImage(
         image: string | null,
-        title: string = ' ',
-        desc: string = ' ',
+        title: string = '',
+        desc: string = '',
         button: TButton | null = null,
     ): this {
         this.isOne = true;

@@ -1,13 +1,53 @@
 import { IMaxSendMessage, IMaxParams, IMaxAppApi } from './interfaces';
 import { IMaxUploadFile, TMaxUploadFile } from './interfaces/IMaxAppApi';
-import { AppContext, keysCount, Request } from '../../../index';
+import { AppContext, Request, Text } from '../../../index';
 import { T_MAX_APP } from '../Max/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
 /**
  * Базовый URL для всех методов Max API
  */
-const MAX_API_ENDPOINT = 'https://platform-api.max.ru/';
+const MAX_API_ENDPOINT = 'https://platform-api2.max.ru/';
+const MAX_MESSAGE_INTERVAL_MS = 500;
+const MAX_TEXT_LENGTH = 4000;
+const MAX_ATTACHMENTS = 12;
+const maxMessageQueues = new Map<string, Promise<void>>();
+const maxLastMessageAt = new Map<string, number>();
+
+/** Создаёт неблокирующую процесс задержку для соблюдения лимита MAX. */
+function waitForMaxInterval(timeout: number): Promise<void> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(resolve, timeout);
+        timer.unref();
+    });
+}
+
+/** Ставит отправки в один диалог в очередь с интервалом не менее 500 мс. */
+async function waitForMaxMessageTurn(key: string): Promise<void> {
+    const previous = maxMessageQueues.get(key) ?? Promise.resolve();
+    const current = previous
+        .catch(() => undefined)
+        .then(async () => {
+            const lastMessageAt = maxLastMessageAt.get(key) ?? 0;
+            const timeout = Math.max(0, MAX_MESSAGE_INTERVAL_MS - (Date.now() - lastMessageAt));
+            if (timeout) {
+                await waitForMaxInterval(timeout);
+            }
+            const sentAt = Date.now();
+            maxLastMessageAt.set(key, sentAt);
+            const cleanupTimer = setTimeout(() => {
+                if (maxLastMessageAt.get(key) === sentAt && !maxMessageQueues.has(key)) {
+                    maxLastMessageAt.delete(key);
+                }
+            }, MAX_MESSAGE_INTERVAL_MS);
+            cleanupTimer.unref();
+        });
+    maxMessageQueues.set(key, current);
+    await current;
+    if (maxMessageQueues.get(key) === current) {
+        maxMessageQueues.delete(key);
+    }
+}
 
 /**
  * Класс для взаимодействия с API Max
@@ -78,8 +118,46 @@ export class MaxRequest {
             this.#request.header = {} as Record<string, string>;
         }
         (this.#request.header as Record<string, string>).Authorization = accessToken;
-        this.#request.post ??= {};
-        (this.#request.post as Record<string, unknown>).access_token = this.token;
+    }
+
+    /** Собирает тело сообщения MAX, сохраняя совместимость со старым плоским массивом кнопок. */
+    #buildMessage(text: string, params: IMaxParams | null): Record<string, unknown> | null {
+        const message: Record<string, unknown> = {};
+        if (text) {
+            if (text.length > MAX_TEXT_LENGTH) {
+                this.#appContext.logWarn(
+                    `MaxRequest: текст превышает лимит ${MAX_TEXT_LENGTH} символов и будет сокращён.`,
+                );
+            }
+            message.text = Text.resize(text, MAX_TEXT_LENGTH);
+        }
+        if (!params) {
+            return message.text ? message : null;
+        }
+
+        const mediaLimit = params.keyboard ? MAX_ATTACHMENTS - 1 : MAX_ATTACHMENTS;
+        const sourceAttachments = params.attachments || [];
+        if (sourceAttachments.length > mediaLimit) {
+            this.#appContext.logWarn(
+                `MaxRequest: число медиавложений превышает доступный лимит ${mediaLimit}; лишние вложения не будут отправлены.`,
+            );
+        }
+        const attachments: Record<string, unknown>[] = sourceAttachments
+            .slice(0, mediaLimit)
+            .map((attachment) => attachment as unknown as Record<string, unknown>);
+        if (params.keyboard) {
+            const buttons = params.keyboard.buttons;
+            attachments.push({
+                type: 'inline_keyboard',
+                payload: {
+                    buttons: buttons.length && !Array.isArray(buttons[0]) ? [buttons] : buttons,
+                },
+            });
+        }
+        if (attachments.length) {
+            message.attachments = attachments;
+        }
+        return message.text || message.attachments ? message : null;
     }
 
     /**
@@ -111,15 +189,28 @@ export class MaxRequest {
      */
     public async upload(file: string, type: TMaxUploadFile): Promise<IMaxUploadFile | null> {
         if (this.token) {
+            // MAX сначала выдаёт временный upload URL, а файл принимается уже этим URL.
+            this.#request.get = { type };
+            this.#request.post = null;
+            this.#request.customRequest = 'POST';
+            const uploadTarget = await this.call<IMaxUploadFile>('uploads');
+            this.#request.get = null;
+            this.#request.customRequest = null;
+            if (!uploadTarget?.url) {
+                return null;
+            }
+
             this.#request.attach = file;
+            this.#request.attachName = 'data';
             this.#request.isAttachContent = this.isAttachContent;
             this.#request.header = Request.HEADER_FORM_DATA;
-            this.#request.post ??= {};
-            (this.#request.post as Record<string, unknown>).type = type;
-            this.#setAccessToken(this.token);
-            const data = await this.#request.send<IMaxUploadFile>(MAX_API_ENDPOINT + 'uploads');
+            const data = await this.#request.send<IMaxUploadFile>(uploadTarget.url);
             if (data.status && data.data) {
-                return data.data;
+                return {
+                    ...data.data,
+                    url: uploadTarget.url,
+                    ...(uploadTarget.token ? { token: uploadTarget.token } : {}),
+                };
             }
             this.#log(data.err);
         } else {
@@ -139,49 +230,96 @@ export class MaxRequest {
         peerId: number | string,
         message: string,
         params: IMaxParams | null = null,
+        recipientType: 'user' | 'chat' = 'user',
     ): Promise<IMaxSendMessage | null> {
-        const method = 'messages';
-        this.#request.post = {
-            user_id: peerId,
-            text: message,
-        };
-
-        if (params) {
-            if (params.attachments || params.keyboard) {
-                const attachment = [];
-                if (params.attachments !== undefined) {
-                    if (Array.isArray(params.attachments)) {
-                        attachment.push(...params.attachments);
-                    } else {
-                        attachment.push(params.attachments);
-                    }
-                    params.attachments = undefined;
-                }
-                if (params.keyboard !== undefined) {
-                    attachment.push({
-                        type: 'inline_keyboard',
-                        payload: params.keyboard,
-                    });
-                    params.keyboard = undefined;
-                }
-
-                this.#request.post.attachments = attachment;
-            }
-
-            if (keysCount(params)) {
-                this.#request.post = { ...params, ...this.#request.post };
-            }
+        const requestBody = this.#buildMessage(message, params);
+        if (!requestBody) {
+            this.#appContext.logWarn(
+                'MaxRequest.messagesSend(): сообщение не содержит текста или вложений и не будет отправлено.',
+            );
+            return null;
         }
-        return await this.call(method);
+        await waitForMaxMessageTurn(`${this.token ?? ''}:${recipientType}:${peerId}`);
+        this.#request.get = { [`${recipientType}_id`]: String(peerId) };
+        this.#request.post = requestBody;
+        try {
+            return await this.call<IMaxSendMessage>('messages');
+        } finally {
+            this.#request.get = null;
+        }
+    }
+
+    /**
+     * Отправляет результат обработки нажатия callback-кнопки MAX.
+     *
+     * @param callbackId Идентификатор callback из входящего webhook
+     * @param text Текст сообщения, отображаемого после нажатия
+     * @param params Клавиатура и вложения для сообщения
+     * @param dialogId Идентификатор диалога для соблюдения лимита двух callback-ответов в секунду
+     * @returns Ответ MAX API или `null`, если запрос не выполнен
+     *
+     * @example
+     * ```ts
+     * await api.answerCallback('callback-id', 'Заказ добавлен в корзину');
+     * ```
+     */
+    public async answerCallback(
+        callbackId: string,
+        text: string,
+        params: IMaxParams | null = null,
+        dialogId?: number | string,
+    ): Promise<IMaxAppApi | null> {
+        const message = this.#buildMessage(text, params);
+        if (dialogId !== undefined) {
+            await waitForMaxMessageTurn(`${this.token ?? ''}:answer:${dialogId}`);
+        }
+        this.#request.get = { callback_id: callbackId };
+        this.#request.post = message ? { message } : {};
+        try {
+            return await this.call<IMaxAppApi>('answers');
+        } finally {
+            this.#request.get = null;
+        }
     }
 
     /**
      * Регистрирует событие для получения уведомлений о новых сообщениях в MAX
-     * @param {string} url - URL для получения уведомлений
+     * @param url URL для получения уведомлений
+     * @param params Секрет webhook и список получаемых типов обновлений
+     * @returns Ответ MAX API или null при ошибке
      */
-    public subscriptions(url: string): Promise<unknown> {
+    public subscriptions(
+        url: string,
+        params: { update_types?: string[]; secret?: string } | null = null,
+    ): Promise<IMaxAppApi | null> {
+        let webhookUrl: URL;
+        try {
+            webhookUrl = new URL(url);
+        } catch {
+            this.#appContext.logWarn('MaxRequest.subscriptions(): передан некорректный URL.');
+            return Promise.resolve(null);
+        }
+        if (webhookUrl.protocol !== 'https:') {
+            this.#appContext.logWarn(
+                'MaxRequest.subscriptions(): webhook должен использовать HTTPS.',
+            );
+            return Promise.resolve(null);
+        }
+        if (webhookUrl.port) {
+            this.#appContext.logWarn(
+                'MaxRequest.subscriptions(): webhook MAX должен использовать стандартный HTTPS-порт 443 без явного порта в URL.',
+            );
+            return Promise.resolve(null);
+        }
+        if (params?.secret && !/^[a-zA-Z0-9_-]{5,256}$/.test(params.secret)) {
+            this.#appContext.logWarn(
+                'MaxRequest.subscriptions(): secret должен содержать 5–256 символов A-Z, a-z, 0-9, _ или -.',
+            );
+            return Promise.resolve(null);
+        }
         this.#request.post = {
-            url,
+            url: webhookUrl.toString(),
+            ...(params ?? {}),
         };
         return this.call('subscriptions');
     }

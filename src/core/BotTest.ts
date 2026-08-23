@@ -242,4 +242,62 @@ export class BotTest extends Bot {
         this._botController.appType = appType || 'alisa';
         return super.run(appType, content);
     }
+
+    /**
+     * Упрощённый способ вызвать `bot.run(...)` с автоматической подготовкой query.
+     *
+     * Если запрашиваемая платформа зарегистрирована в `platforms` — используется её
+     * `getQueryExample` для генерации валидного payload. Иначе возвращается ошибка.
+     *
+     * @example
+     * ```ts
+     * const tester = new BotTest();
+     * tester.use(new TelegramAdapter());
+     * tester.addCommand('start', ['привет'], (_, ctx) => { ctx.text = 'Привет!'; });
+     *
+     * // Автоматически сгенерирует Telegram-update и вызовет run()
+     * const res = await tester.simulate('привет', { platform: 'telegram' });
+     * console.log(res.response.text); // 'Привет!'
+     * ```
+     *
+     * @param query Текст пользователя (например, "привет")
+     * @param options Параметры симуляции: platform, userId, count, state
+     * @returns Ответ платформы (результат `run()`)
+     */
+    public async simulate(
+        query: string,
+        options: {
+            platform?: TAppType;
+            userId?: string;
+            count?: number;
+            state?: Record<string, unknown> | string;
+        } = {},
+    ): Promise<TRunResult> {
+        const {
+            platform = this.appType !== 'auto' ? (this.appType as TAppType) : undefined,
+            userId = 'test_user',
+            count = 0,
+            state = {},
+        } = options;
+        // appType по умолчанию — 'auto', поэтому при отсутствии явной платформы
+        // берём первую зарегистрированную (как в getSkillContent).
+        const targetPlatform =
+            platform ?? (Object.keys(this.getAppContext().platforms)[0] as TAppType | undefined);
+        if (!targetPlatform || !this.getAppContext().platforms[targetPlatform]) {
+            throw new Error(
+                `BotTest.simulate: платформа "${platform ?? 'auto'}" не зарегистрирована. ` +
+                    `Сначала вызовите bot.use(new <Platform>Adapter()).`,
+            );
+        }
+        const content = this.getAppContext().platforms[targetPlatform].getQueryExample(
+            query,
+            userId,
+            count,
+            state,
+        );
+        return this.run(
+            targetPlatform,
+            typeof content === 'string' ? content : JSON.stringify(content),
+        );
+    }
 }

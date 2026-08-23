@@ -8,6 +8,7 @@ describe('rateLimiter middleware', () => {
 
     beforeEach(() => {
         ctx = new BaseBotController();
+        ctx.appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
         new TelegramAdapter().init(ctx.appContext);
         // Эмулируем ограничение в 2 запроса в минуту
         ctx.appContext.platforms[T_TELEGRAM].limit = 2;

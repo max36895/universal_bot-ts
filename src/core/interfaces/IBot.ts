@@ -20,9 +20,9 @@ import { Bot } from '../Bot';
  *   ```ts
  *   const content: TBotContent = '{"text": "Привет мир!"}';
  *   ```
- * - boolean: Флаг состояния запроса
+ * - object: Уже распарсенный объект запроса
  *   ```ts
- *   const content: TBotContent = true; // запрос успешно обработан
+ *   const content: TBotContent = { request: { command: 'Привет' } };
  *   ```
  * - null: Пустой запрос или ошибка
  *   ```ts

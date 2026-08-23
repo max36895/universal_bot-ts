@@ -3,13 +3,14 @@
 /**
  * cli универсального фреймворка umbot для создания голосовых навыков и чат-ботов для различных платформ.
  * Скрипт позволяет создавать готовые шаблоны для вашего приложения.
- * @version 3.0.15
+ * @version 3.1.0
  * @author Maxim-M maximco36895@yandex.ru
  * @module
  */
 
-const consoleController = require(__dirname + '/controllers/ConsoleController.js');
-const utils = require(__dirname + '/utils.js').utils;
+const path = require('node:path');
+const consoleController = require(path.join(__dirname, 'controllers', 'ConsoleController.js'));
+const utils = require(path.join(__dirname, 'utils.js')).utils;
 
 const argv = process.argv;
 
@@ -44,9 +45,11 @@ if (argv[2]) {
         }
     }
 }
-try {
-    consoleController.main(param, argv);
-} catch (e) {
-    console.error(`Ошибка: ${e.message}`);
-    process.exit(1);
-}
+(async () => {
+    try {
+        await consoleController.main(param, argv);
+    } catch (e) {
+        console.error(`Ошибка: ${e.message}`);
+        process.exit(1);
+    }
+})();

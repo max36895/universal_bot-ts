@@ -6,6 +6,7 @@ import { BotController } from '../../controller';
 import { TAppPlugin } from '../interfaces/IAppContext';
 import { TCommandGroupMode } from '../interfaces/IBot';
 import { Text } from '../../utils';
+import { FALLBACK_COMMAND } from '../constants';
 
 /**
  * Данные группы команд для оптимизации поиска.
@@ -53,29 +54,6 @@ function setMemoryLimit(): void {
 }
 
 setMemoryLimit();
-
-/**
- * Специальное имя команды для обработки неизвестных запросов.
- *
- * Если ни одна из зарегистрированных команд не сработала,
- * и существует команда с именем `FALLBACK_COMMAND`,
- * её callback будет выполнен как fallback-обработчик.
- *
- * @example
- * ```ts
- * bot.addCommand(FALLBACK_COMMAND, [], (cmd, ctrl) => {
- *   ctrl.text = 'Извините, я вас не понял. Скажите "помощь" для списка команд.';
- *   ctrl.buttons.addBtn('Помощь');
- * });
- * ```
- *
- * @remarks
- * - Fallback срабатывает только если нет совпадений по слотам.
- * - Не влияет на стандартные интенты (`welcome`, `help`).
- * - Можно зарегистрировать только одну fallback-команду (последняя перезапишет предыдущую).
- * - Можно просто передать "*"
- */
-export const FALLBACK_COMMAND = '*';
 
 interface IDangerRegex {
     status: boolean;
@@ -290,8 +268,14 @@ export class CommandReg {
     }
 
     /**
-     * Определяет опасная передана регулярка или нет
-     * @param slots
+     * Проверяет, что переданное регулярное выражение не содержит уязвимых к ReDoS конструкций.
+     *
+     * Если выражение признано небезопасным:
+     * - В обычном режиме — пишется warning, и выражение используется как есть.
+     * - В `strictMode` — падает ошибка, и слоты возвращаются пустыми (`status: false`).
+     *
+     * @param slots Слот(ы) или регулярное выражение для проверки.
+     * @returns Исходные слоты или пустой массив с флагом ошибки.
      */
     isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
         if (isRegex(slots)) {
@@ -451,7 +435,10 @@ export class CommandReg {
                 const parts = slots.map((s) => {
                     return `(${typeof s === 'string' ? s : s.source})`;
                 });
-                butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
+                // Имя команды — публичный произвольный идентификатор и не может быть
+                // именем capture-группы: например, дефис недопустим в RegExp.
+                // Поиск группы всегда использует числовые имена _0, _1, … .
+                butchRegexp.push(`(?<_0>${parts.join('|')})`);
                 const regExp = getRegExp(`${butchRegexp.join('|')}`, 'ium', this.getCustomRegExp());
                 this.#noFullGroups = {
                     name: commandName,
@@ -504,6 +491,10 @@ export class CommandReg {
                 const newCommands = group?.commands.filter((gCommand) => {
                     return gCommand !== commandName;
                 });
+                // Если других команд в группе не осталось — группа не нужна
+                if (!newCommands.length) {
+                    return;
+                }
                 const newCommandName = newCommands[0];
                 const nGroup: IGroup = {
                     name: newCommandName,
@@ -533,7 +524,8 @@ export class CommandReg {
                         return gCommand !== commandName;
                     });
                     const nGroup: IGroup = {
-                        name: commandName,
+                        // Хост группы не меняется — удаляемая команда не была хостом
+                        name: command.__$groupName as string,
                         regLength: 0,
                         butchRegexp: [],
                         regExpSize: 0,
@@ -544,7 +536,7 @@ export class CommandReg {
                     };
                     getReg(
                         groupData,
-                        commandName,
+                        command.__$groupName as string,
                         newCommands,
                         nGroup,
                         typeof group.regExp !== 'string',
@@ -730,9 +722,15 @@ export class CommandReg {
                     this.#exactMatchMap.delete(slot);
                 }
             });
+            // Сначала удаляем из regexp-групп (пока информация о команде ещё доступна),
+            // и только потом удаляем из this.commands — иначе #removeRegexpInGroup
+            // не сможет найти принадлежность к группе через __$groupName.
+            this.#removeRegexpInGroup(commandName);
             this.commands.delete(commandName);
+        } else {
+            // Команды нет в this.commands, но она могла остаться хостом группы
+            this.#removeRegexpInGroup(commandName);
         }
-        this.#removeRegexpInGroup(commandName);
     }
 
     /**

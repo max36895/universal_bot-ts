@@ -3,7 +3,7 @@
 > **О руководстве**
 > Это подробное руководство по разработке кроссплатформенных голосовых навыков и чат-ботов на фреймворке `umbot`. Документ содержит архитектурные паттерны, примеры кода и справочник API.
 >
-> **Версия фреймворка:** `umbot@3.0.x`
+> **Версия фреймворка:** `umbot@3.1.x`
 > **Репозиторий:** https://github.com/max36895/universal_bot-ts
 > **npm:** https://www.npmjs.com/package/umbot
 
@@ -46,7 +46,7 @@
 Ключевые свойства:
 
 - **Единая бизнес-логика.** Один и тот же код работает одновременно на всех зарегистрированных платформах. Различия в форматах запросов/ответов берёт на себя фреймворк.
-- **Производительность.** Обработка запроса внутри фреймворка — менее 30 мс даже при 1000 команд. Это критично для голосовых платформ, где жёсткий лимит — 3 секунды на ответ.
+- **Производительность.** Обработка запроса внутри фреймворка — менее 30 мс даже при 1000 команд. Это критично для голосовых платформ: например, Алиса ждёт ответ не дольше 4,5 секунды.
 - **Безопасность RegExp.** Встроенная защита от ReDoS-атак. Опционально используется `re2` (в 2–15 раз быстрее).
 - **Кэширование медиа.** Изображения и звуки загружаются на платформу один раз, токены кэшируются в БД — повторные ответы не тратят время на upload.
 - **TypeScript-first.** Полная типизация, строгий режим, автодополнение.
@@ -81,7 +81,7 @@
 │   5. Запуск NLU-плагина (если установлен) — обогащение controller.nlu                                         │
 │   6. Запуск middleware-цепочки:                                                                               │
 │        глобальные → платформенные                                                                             │
-│        если middleware не вызвал next() —кобрыв уепочки (или прерывание выполнения), action() не запускается │
+│        если middleware не вызвал next() — обрыв цепочки (или прерывание выполнения), action() не запускается │
 │   7. controller.run() — диспетчер:                                                                            │
 │        a) если oldIntentName зарегистрирован как step → вызвать шаг                                           │
 │        b) иначе искать подходящую команду (точное совпадение → regex-группа → линейно)                        │
@@ -334,6 +334,7 @@ import {
     IModelRules,
     IPlugin,
     IPluginFn,
+    createPlugin,
     Text,
     getRegExp,
     isRegex,
@@ -471,14 +472,14 @@ bot.start('0.0.0.0', 3000);
 
 ```ts
 // src/plugins/game.ts
-import { Bot, AppContext, BotController, IUserData, IPluginFn } from 'umbot';
+import { Bot, AppContext, BotController, IUserData, createPlugin } from 'umbot';
 
 // Описываем тип userData один раз — он используется в нескольких командах
 interface GameData extends IUserData {
     score: number;
 }
 
-export const gamePlugin: IPluginFn = (appContext: AppContext, bot: Bot): void => {
+export const gamePlugin = createPlugin((appContext: AppContext, bot: Bot): void => {
     // Передаём GameData как generic-параметр и аннотируем bc
     bot.addCommand('game_start', ['играть', 'начать игру'], (_, bc: BotController<GameData>) => {
         bc.userData.score = 0;
@@ -500,15 +501,14 @@ export const gamePlugin: IPluginFn = (appContext: AppContext, bot: Bot): void =>
     bot.addCommand('game_score', ['счёт', 'мой счёт'], (_, bc: BotController<GameData>) => {
         bc.text = `Ваш счёт: ${bc.userData.score || 0}`;
     });
-};
-gamePlugin.isPlugin = true; // ОБЯЗАТЕЛЬНО — см. заметку ниже
+});
 ```
 
 ```ts
 // src/plugins/shop.ts
-import { Bot, AppContext, IPluginFn } from 'umbot';
+import { Bot, AppContext, createPlugin } from 'umbot';
 
-export const shopPlugin: IPluginFn = (appContext: AppContext, bot: Bot): void => {
+export const shopPlugin = createPlugin((appContext: AppContext, bot: Bot): void => {
     bot.addCommand('catalog', ['каталог'], (_, bc) => {
         /* ... */
     });
@@ -518,8 +518,7 @@ export const shopPlugin: IPluginFn = (appContext: AppContext, bot: Bot): void =>
     bot.addStep('order_email', (bc) => {
         /* ... */
     });
-};
-shopPlugin.isPlugin = true;
+});
 ```
 
 ```ts
@@ -546,7 +545,7 @@ bot.start('0.0.0.0', 3000);
 - Модули можно переиспользовать в других проектах.
 - Команды можно тестировать независимо.
 
-> **⚠️ Внимание!** Свойство `isPlugin = true` **критически обязательно**. Без него `bot.use(fn)` воспримет функцию как middleware (глобальный перехватчик запросов), а не как плагин — и команды внутри неё **не зарегистрируются**. Это частая и неочевидная ошибка: код выглядит правильно, ошибки нет, но команды не работают.
+> **⚠️ Внимание!** Функция-плагин обязана иметь маркер `isPlugin = true`. Без него `bot.use(fn)` воспримет функцию как middleware (глобальный перехватчик запросов), а не как плагин — и команды внутри неё **не зарегистрируются**. Это частая и неочевидная ошибка: код выглядит правильно, ошибки нет, но команды не работают. Чтобы не выставлять флаг вручную и не забыть его, используйте хелпер `createPlugin()` — он делает это автоматически (см. примеры выше).
 
 ### Классовый подход (контроллер) — для кросс-разрезающей логики
 
@@ -614,11 +613,11 @@ import { BotController, WELCOME_INTENT_NAME } from 'umbot';
 // Контроллер: добавляет кнопку "Помощь" ко всем ответам и пишет аналитику
 bot.initBotController(
     class extends BotController {
-        async action(
-            intentName: string | null,
-            isCommand?: boolean,
-            isStep?: boolean,
-        ): Promise<void> {
+        // action() вызывается синхронно — фреймворк не дожидается возвращаемого
+        // значения. Не объявляйте метод async: всё, что выполнится после первого
+        // await, не попадёт в ответ пользователю. Для асинхронной логики
+        // используйте addCommand/addStep.
+        action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
             // Общая кнопка для всех ответов — пишется один раз
             this.buttons.addBtn('Помощь');
 
@@ -635,10 +634,15 @@ bot.initBotController(
                     if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
             }
 
-            // Аналитика — асинхронно, не блокируя ответ
-            // (fire-and-forget: не ждём await, чтобы не задерживать пользователя)
+            // Аналитика — fire-and-forget: запрос уходит фоном и не блокирует ответ.
+            // Обязательно ограничиваем время, чтобы медленный аналитический
+            // endpoint не «повесил» исходящий запрос навсегда.
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), 8000);
+            timer.unref();
             fetch('https://analytics.example.com/event', {
                 method: 'POST',
+                signal: ac.signal,
                 body: JSON.stringify({
                     intent: intentName,
                     platform: this.appType,
@@ -647,7 +651,11 @@ bot.initBotController(
                     isStep,
                 }),
                 headers: { 'Content-Type': 'application/json' },
-            }).catch(() => {}); // ошибки аналитики не должны влиять на пользователя
+            })
+                .catch(() => {
+                    // ошибки аналитики не должны влиять на пользователя
+                })
+                .finally(() => clearTimeout(timer));
         }
     },
 );
@@ -837,8 +845,11 @@ ctx.logMetric('name', value, { platform: 'telegram' });
 ## Класс `Bot` — полный API
 
 ```ts
-class Bot<TUserData extends IUserData = IUserData> {
-    constructor(type?: TAppType, botController?: TBotControllerClass<TUserData>);
+class Bot<
+    TUserData extends IUserData = IUserData,
+    TPlatformState extends IPlatformData = IPlatformData,
+> {
+    constructor(type?: TAppType, botController?: TBotControllerClass<TUserData, TPlatformState>);
 }
 ```
 
@@ -868,15 +879,17 @@ class Bot<TUserData extends IUserData = IUserData> {
 
 ### Команды и шаги
 
-| Метод                                           | Назначение                     |
-| ----------------------------------------------- | ------------------------------ |
-| `addCommand(name, slots, cb, isPattern?): this` | Зарегистрировать команду       |
-| `removeCommand(name): this`                     | Удалить команду                |
-| `clearCommands(): this`                         | Очистить все команды           |
-| `addStep(name, cb): this`                       | Зарегистрировать шаг           |
-| `removeStep(name): this`                        | Удалить шаг                    |
-| `clearSteps(): this`                            | Очистить все шаги              |
-| `clearUse(): this`                              | Удалить все плагины/middleware |
+| Метод                                           | Назначение                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `addCommand(name, slots, cb, isPattern?): this` | Зарегистрировать команду                                                                                                  |
+| `removeCommand(name): this`                     | Удалить команду                                                                                                           |
+| `clearCommands(): this`                         | Очистить все команды                                                                                                      |
+| `addStep(name, cb): this`                       | Зарегистрировать шаг                                                                                                      |
+| `removeStep(name): this`                        | Удалить шаг                                                                                                               |
+| `clearSteps(): this`                            | Очистить все шаги                                                                                                         |
+| `addForm(name, options): this`                  | Зарегистрировать многошаговую форму с валидацией полей (подробнее — [api-reference.md](./api-reference.md#формы-addform)) |
+| `removeForm(name): this`                        | Удалить форму и все её шаги                                                                                               |
+| `clearUse(): this`                              | Удалить все плагины/middleware                                                                                            |
 
 ### Запуск
 
@@ -1268,7 +1281,7 @@ public action(intentName, isCommand, isStep): void {
 
 > **Важно про welcome/help:** фреймворк устанавливает `controller.text = platformParams.welcome_text` (или `help_text`) **перед** вызовом `action()`. Если в `action()` вы тоже установите `this.text`, **ваше значение перекроет** автоматически установленное. Это полезно для динамического приветствия (например, другое приветствие для вернувшегося пользователя).
 
-> **⚠️ Важно про `BaseBotController` и `empty_text`:** автоматическая установка `controller.text = platformParams.empty_text` (когда ничего не подошло) происходит **только** если вы наследуетесь от `BaseBotController`. Во всех примерах этой инструкции используется наследование напрямую от `BotController` — в этом случае при несовпадении текст **не выставится автоматически**, и если вы не зададите `this.text` вручную в `action()`, бот вернёт **пустой ответ**.
+> **⚠️ Важно про `BaseBotController` и `empty_text`:** автоматическая установка `controller.text = platformParams.empty_text` (когда ничего не подошло) происходит **только** если вы наследуетесь от `BaseBotController`. При наследовании напрямую от `BotController` задавайте `this.text` вручную в `action()`. Платформенные адаптеры не придумывают пользовательскую реплику: Алиса и Маруся сохранят пустой ответ с предупреждением, Telegram и MAX не отправят недопустимое пустое сообщение во внешнее API.
 >
 > Поэтому в `action()` всегда обрабатывайте `default:` в switch или добавляйте проверку в конце:
 >
@@ -1466,7 +1479,7 @@ export class MyController extends BotController<MyUserData> {
 ### Когда нужна БД (Mongo)
 
 - Бот работает на нескольких платформах (Telegram, VK, ...) — там нет локального хранилища, userData без БД не сохранится.
-- Объём данных > 4 КБ (лимит локального хранилища Алисы).
+- Объём state > 1 КБ (лимит локального хранилища Алисы).
 - Несколько инстансов бота (load balancing) — FileAdapter не безопасен для multi-process.
 
 ### Когда хватит FileAdapter
@@ -1589,7 +1602,7 @@ this.card
     })
     .addButton('В каталог', 'https://shop.example.com');
 
-// Галерея (только изображения, до 7 на Алисе)
+// Галерея (только изображения, до 10 на Алисе)
 this.card.isUsedGallery = true;
 this.card
     .addImage('https://example.com/1.jpg', 'Свадьба')
@@ -1880,7 +1893,7 @@ bot.use(new MarusiaAdapter('MARUSIA_TOKEN'));
 bot.use(new SmartAppAdapter()); // без токена — аутентификация через Sber-экосистему
 ```
 
-> Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_platformAdapter.html).
+> Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных адаптеров через `BasePlatformAdapter`. Подробное руководство — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html).
 
 ### Авто-определение платформы
 
@@ -1904,12 +1917,12 @@ bot.setPlatformResolver((query, headers, detect) => {
 
 - Если вы добавили 15 кнопок, а платформа поддерживает только 10 — в платформу уйдут первые 10, остальные будут отброшены (с warning в логах).
 - Если текст длиннее лимита — он будет обрезан до допустимой длины.
-- Если payload кнопки превышает лимит байтов — будет обрезан (или отброшен с warning).
+- Если payload кнопки превышает лимит байтов — кнопка будет пропущена с warning; данные разработчика не обрезаются и не переписываются.
 - Если устройство без экрана (колонка Алисы) — кнопки и карточки просто не отправляются.
 
-То есть ваш код остаётся кроссплатформенным: вы пишете `this.buttons.addBtn(...)` 15 раз — на Алисе уйдёт 10, на Telegram — 15 (там лимит 40), на Viber — 6. Без `if (this.appType === 'alisa')` в коде.
+То есть ваш код остаётся кроссплатформенным: вы пишете `this.buttons.addBtn(...)` 15 раз — на Алисе уйдёт 10, на Telegram — 15 (там лимит 100 кнопок в inline-клавиатуре), на Viber — до 7 в ряд (всего до 24 в клавиатуре). Без `if (this.appType === 'alisa')` в коде.
 
-> Единственное исключение — **время ответа для голосовых платформ** (Алиса/Маруся — 3 секунды, SmartApp — ~5 секунд). Фреймворк не может «обрезать» вашу бизнес-логику, поэтому следите, чтобы `action()` отрабатывал быстро. Используйте `Preload` для медиа и не делайте долгих синхронных операций.
+> Единственное исключение — **время ответа для голосовых платформ** (Алиса — 4,5 секунды; лимиты Маруси и SmartApp проверяйте в актуальной документации платформ). Фреймворк не может «обрезать» вашу бизнес-логику, поэтому следите, чтобы `action()` отрабатывал быстро. Используйте `Preload` для медиа и не делайте долгих синхронных операций.
 
 ### Особенности платформ из коробки
 
@@ -1930,7 +1943,7 @@ bot.setPlatformResolver((query, headers, detect) => {
 - **Проактивная отправка** — `bot.send(userId, text, T_TELEGRAM)` работает (в отличие от голосовых платформ).
 - **TTS через SpeechKit** — для озвучки текста нужен `appConfig.tokens.telegram.speech_kit_token`. Без него `controller.tts` игнорируется.
 - **Callback-кнопки** — при нажатии inline-кнопки с payload, payload приходит в `controller.payload` (как строка — JSON). См. [Рецепт 9](#рецепт-9-кнопка-с-payload--кроссплатформенный-паттерн).
-- **HTML по умолчанию** — `parse_mode='HTML'`. Базовое экранирование (`&`, `<`, `>`) применяется автоматически. Для MarkdownV2 используйте константу `T_FORMAT_MARKDOWN` из `umbot/plugins` при создании адаптера — фреймворк не экранирует текст в этом режиме, разработчик отвечает за валидность. Безопасная вставка пользовательского ввода — через `escapeMarkdownV2()`.
+- **Разметка выключена по умолчанию** — `parse_mode` передаётся только при явном `telegram_parse_mode`. При HTML или MarkdownV2 разработчик отвечает за валидность и экранирование динамических данных. Для MarkdownV2 используйте `T_FORMAT_MARKDOWN` и `escapeMarkdownV2()`.
 
 #### VK
 
@@ -2022,7 +2035,7 @@ bot.setAppConfig({
 
 ### Свой DB-адаптер (PostgreSQL, Redis, ...)
 
-Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`, `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_adapter_dbAdapter.html) и в `examples/skills/userDbConnect/` репозитория.
+Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`, `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации — в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_dbAdapter.html) и в `examples/skills/userDbConnect/` репозитория.
 
 ### Что фреймворк хранит в БД автоматически
 
@@ -2211,7 +2224,7 @@ bot.use(rateLimiter(200, 120_000)); // queue=200, idle=2 мин
 
 **Что делает:**
 
-- Читает `appContext.platforms[platform].limit` (для TG/VK/Viber/Max = 30).
+- Читает `appContext.platforms[platform].limit` (TG/VK/Viber = 30, MAX = 2).
 - Поддерживает sliding-1s-window per `{platform, userId}`.
 - При превышении — ставит в очередь (до `maxQueueSize`).
 - Переполнение очереди → бросает исключение.
@@ -2593,7 +2606,7 @@ process.on('SIGTERM', async () => {
 
 Единственное, за что вы отвечаете:
 
-- **Время ответа** — для голосовых платформ (Алиса, Маруся — 3 сек, SmartApp — ~5 сек). Это ограничение самой платформы, и фреймворк не может «обрезать» вашу бизнес-логику. Делайте `action()` быстрым.
+- **Время ответа** — для Алисы 4,5 секунды; лимиты остальных голосовых платформ сверяйте с их актуальной документацией. Это ограничение самой платформы, и фреймворк не может «обрезать» вашу бизнес-логику. Делайте `action()` быстрым.
 - **Объём `userData` при `isLocalStorage=true`** — локальное хранилище Алисы ограничено 4 КБ на тип состояния. Если данные большие — используйте БД.
 - **Размер HTTP-запроса** — встроенный сервер принимает до 2 МБ в теле. Платформы присылают гораздо меньше, так что это редко проблема.
 
@@ -2804,7 +2817,7 @@ bot.setLogger({
 - `isLocalStorage: false` и не подключён DB-адаптер → данные не сохраняются.
 - `isLocalStorage: true` на Telegram/VK (нет локального хранилища) и не подключён DB-адаптер.
 - Поле равно `undefined` → Алиса его не сохранит. Используйте `null` для удаления.
-- Объём превысил 4 КБ (Алиса) → данные обрезаются.
+- Объём превысил 1 КБ (state Алисы) → состояние очищается с записью ошибки.
 
 ### Платформа не определяется
 
@@ -2995,7 +3008,7 @@ bot.addCommand('select_item', items, (userCommand, bc: BotController<ListData>) 
 
 ### Рецепт 7: HTTP-запрос к внешнему API
 
-Для HTTP-запросов используйте стандартный `fetch` (доступен в Node.js 18+). Обязательно ставьте таймаут через `AbortController` — иначе внешний API может зависнуть и съесть весь лимит времени ответа.
+Для HTTP-запросов используйте стандартный `fetch` (доступен в Node.js 20.19+). Обязательно ставьте таймаут через `AbortController` — иначе внешний API может зависнуть и съесть весь лимит времени ответа.
 
 ```ts
 bot.addCommand('weather', ['погода'], async (_, bc) => {
@@ -3252,9 +3265,7 @@ bot.use(T_TELEGRAM, async (ctx, next) => {
         // формируем результаты inline
         await telegramApi.call('answerInlineQuery', {
             inline_query_id: req.inline_query.id,
-            results: JSON.stringify([
-                /* ... */
-            ]),
+            results: JSON.stringify([/* ... */]),
         });
         ctx.skipAutoReply = true;
         return;

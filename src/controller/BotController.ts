@@ -3,23 +3,20 @@
  */
 import { Buttons, Card, Sound, Nlu } from '../components';
 import { Text, getRegExp, isRegex } from '../utils';
-import {
-    AppContext,
-    FALLBACK_COMMAND,
-    HELP_INTENT_NAME,
-    IAppIntent,
-    ICommandParam,
-    WELCOME_INTENT_NAME,
-    TAppType,
-    EMetric,
-} from '../core';
+import { AppContext, IAppIntent, ICommandParam, TAppType, EMetric } from '../core';
+import { FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from '../core/constants';
 import { isPromise } from '../utils/isPromise';
 import { IGroupData } from '../core/utils/CommandReg';
 
 /*
  * Оптимизация производительности:
  * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать.
- * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты
+ * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты.
+ *
+ * ВАЖНО: константы импортируются из листового модуля `../core/constants`, а НЕ из барреля `../core`.
+ * Баррель `core` реэкспортирует `Bot` раньше констант, и при циклической загрузке
+ * (core → Bot → controller → core) константы из барреля ещё `undefined`. Листовой модуль
+ * без импортов всегда полностью инициализирован, поэтому захват значений безопасен.
  */
 const DEFAULT_FALLBACK_COMMAND = FALLBACK_COMMAND;
 const DEFAULT_HELP_INTENT_NAME = HELP_INTENT_NAME;
@@ -177,6 +174,14 @@ export interface IUserData {
  */
 export interface IPlatformData {
     /**
+     * Название предыдущего интента.
+     * Специальное служебное поле: позволяет Bot восстановить шаг диалога
+     * после сериализации state в локальное хранилище платформы.
+     *
+     * @internal — заполняется фреймворком, не предназначено для прямой записи в пользовательском коде.
+     */
+    oldIntentName?: string | null;
+    /**
      * Дополнительные данные.
      * Может содержать любые поля, специфичные для приложения
      */
@@ -199,6 +204,14 @@ export interface IPlatformOptions {
      * Флаг говорящий о том, что результат выполнения приложения был получен при обработке запроса
      */
     sendInInit?: string | object | null;
+
+    /**
+     * Нейтральные технические данные обработчика запроса.
+     *
+     * Адаптеры используют собственный ключ верхнего уровня, поэтому общий
+     * контроллер не содержит сведений о форматах и идентификаторах платформ.
+     */
+    requestData?: Record<string, Record<string, unknown>>;
 
     /**
      * Поле куда должны сохраниться пользовательские данные
@@ -227,6 +240,12 @@ export interface IPlatformOptions {
     callbackQueryId?: string;
 
     /**
+     * Явно заданный текст всплывающего уведомления для callback-запроса.
+     * Если поле не задано, адаптер только подтверждает callback без показа текста.
+     */
+    callbackNotificationText?: string;
+
+    /**
      * ID callback-события (для callback-кнопок)
      */
     eventId?: string;
@@ -234,6 +253,16 @@ export interface IPlatformOptions {
      * Версия api с которой работает платформа. Для случаев, когда сама платформа говорит какая версия api должна быть
      */
     apiVersion?: string | number;
+    /**
+     * ID чата для платформ, поддерживающих групповые чаты (например, Max, Telegram)
+     */
+    chatId?: number;
+    /**
+     * IP-адрес клиента, с которого пришёл webhook-запрос.
+     * Заполняется фреймворком в `webhookHandle` из сокета HTTP-запроса.
+     * Используется middleware `ipFilter`. При вызове `run()` напрямую не заполняется.
+     */
+    clientIp?: string;
 }
 
 /**
@@ -1068,7 +1097,8 @@ export abstract class BotController<
             return null;
         }
         const start = this.#getStartMetric();
-        if (this.appContext.command.customCommandResolver) {
+        const commandReg = this.appContext.command;
+        if (commandReg.customCommandResolver) {
             return this.#sendCustomCommandResolver(start);
         }
         const exactCommand = this.#getExactCommand(start);
@@ -1077,8 +1107,14 @@ export abstract class BotController<
         }
 
         let contCount = 0;
-        const useDirectRegExp = this.appContext.commands.size < 500;
-        for (const [commandName, command] of this.appContext.commands) {
+        // Используем локальные переменные чтобы избежать повторных getter-вызовов
+        // в hot path, которые приводят к деоптимизации через "generic named access".
+        const commands = commandReg.commands as Map<string, ICommandParam>;
+        const regexpGroups = commandReg.regexpGroup as Map<string, IGroupData>;
+        const useDirectRegExp = commands.size < 500;
+        const getCustomRegExp = this.#getCustomRegExp;
+
+        for (const [commandName, command] of commands) {
             if (commandName === DEFAULT_FALLBACK_COMMAND || !command || contCount !== 0) {
                 if (contCount) {
                     contCount--;
@@ -1089,7 +1125,7 @@ export abstract class BotController<
                 continue;
             }
             if (command.isPattern) {
-                const groups = this.appContext.regexpGroup.get(commandName);
+                const groups = regexpGroups.get(commandName);
 
                 if (groups) {
                     contCount = groups.commands.length - 1;
@@ -1100,15 +1136,10 @@ export abstract class BotController<
                     continue;
                 }
             }
-            if (
-                Text.isSayText(
-                    command.regExp || command.slots,
-                    this.userCommand,
-                    command.isPattern,
-                    command.isRegExpString || useDirectRegExp,
-                    this.#getCustomRegExp,
-                )
-            ) {
+            const slots = command.regExp || command.slots;
+            const isPattern = command.isPattern;
+            const directRegExp = command.isRegExpString || useDirectRegExp;
+            if (Text.isSayText(slots, this.userCommand, isPattern, directRegExp, getCustomRegExp)) {
                 return this.#commandCb(commandName, command, start);
             }
         }
@@ -1134,20 +1165,21 @@ export abstract class BotController<
         const match = reg.exec(userCommand);
         if (match) {
             // Находим первую совпавшую подгруппу (index в массиве parts)
+            const commands = this.appContext.commands;
             for (const key in match.groups) {
                 if (match.groups[key] !== undefined) {
                     const commandName = groups.commands[+key.slice(1)];
-                    if (commandName && this.appContext.commands.has(commandName)) {
+                    if (commandName && commands.has(commandName)) {
                         return this.#commandCb(
                             commandName,
-                            this.appContext.commands.get(commandName) as ICommandParam,
+                            commands.get(commandName) as ICommandParam,
                             startTimer,
                         );
                     }
                 }
             }
         }
-        return null; //continue;
+        return null;
     }
 
     /**
@@ -1161,6 +1193,11 @@ export abstract class BotController<
      * Либо использовать в качестве обработки команд, что не рекомендуется, так как из-за подобного подхода, размер метода может быть большим.
      *
      * Метод необходимо обязательно реализовать в дочерних классах.
+     *
+     * ⚠️ Метод вызывается синхронно: фреймворк не дожидается возвращаемого значения.
+     * Не объявляйте его `async` — всё, что выполнится после первого `await`, не попадёт
+     * в ответ пользователю, а ошибки промиса останутся необработанными.
+     * Для асинхронной логики используйте `addCommand`/`addStep` — их колбэки фреймворк ожидает.
      *
      * @param {string | null} intentName - Название интента или команды
      * @param {boolean} [isCommand=false] - Флаг, указывающий что это команда
@@ -1264,7 +1301,19 @@ export abstract class BotController<
                 }
             }
             if (step) {
-                const res = step.cb(this);
+                let res: void | Promise<void> | false;
+                try {
+                    res = step.cb(this);
+                } catch (error) {
+                    this.appContext.logError(
+                        `BotController: Произошла ошибка во время обработки шага "${step.stepName}". Текст ошибки: "${error}"`,
+                        {
+                            error,
+                        },
+                    );
+                    this.text = 'Не удалось выполнить шаг диалога. Попробуйте ещё раз.';
+                    return;
+                }
                 if (res) {
                     return res
                         .then(() => {
@@ -1277,6 +1326,11 @@ export abstract class BotController<
                                     error,
                                 },
                             );
+                            // Без fallback-текста платформа получила бы пустой ответ.
+                            // Не затираем текст, если обработчик успел его задать до ошибки.
+                            if (!this.text) {
+                                this.text = 'Не удалось выполнить шаг диалога. Попробуйте ещё раз.';
+                            }
                         });
                 } else if (res === false) {
                     // Если передали false, значит хотят чтобы шаг не выполнялся, и дальше пошла логика с обработкой команд.

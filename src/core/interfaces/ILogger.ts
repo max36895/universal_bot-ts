@@ -41,7 +41,11 @@ export interface ILogger {
      *
      * @example
      * // Отключить маскировку (только для отладки!)
-     * setLogger(customLogger, { maskSecrets: false });
+     * const customLogger: ILogger = {
+     *     error: (msg, meta) => console.error(msg, meta),
+     *     maskSecrets: false
+     * };
+     * bot.setLogger(customLogger);
      *
      * @remarks Устанавливайте `false` ТОЛЬКО в безопасных окружениях (локальная отладка,
      *          изолированный тестовый стенд). В production отключение маскировки

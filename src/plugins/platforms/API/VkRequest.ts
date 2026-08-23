@@ -11,7 +11,7 @@ import {
     TVkDocType,
     TVkPeerId,
 } from './interfaces';
-import { AppContext, Request, httpBuildQuery, keysCount } from '../../../index';
+import { AppContext, Request, Text, httpBuildQuery, keysCount } from '../../../index';
 import { T_VK } from '../VK/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
@@ -19,6 +19,7 @@ import { getErrorMsg, getErrorToken } from './constants';
  * Версия VK API по умолчанию
  */
 const VK_API_VERSION = '5.199';
+const VK_MESSAGE_MAX_LENGTH = 4096;
 
 /**
  * Базовый URL для всех методов VK API
@@ -315,16 +316,30 @@ export class VkRequest {
         message: string,
         params: IVkParams | null = null,
     ): Promise<IVKSendMessage | null> {
+        const hasParamsContent = !!params && Object.keys(params).some((key) => key !== 'random_id');
+        if (!message.trim() && !hasParamsContent) {
+            this._appContext.logWarn(
+                'VkRequest.messagesSend(): сообщение не содержит текста, вложений, клавиатуры или шаблона и не будет отправлено.',
+            );
+            return null;
+        }
+        if (message.length > VK_MESSAGE_MAX_LENGTH) {
+            this._appContext.logWarn(
+                `VkRequest.messagesSend(): текст превышает лимит ${VK_MESSAGE_MAX_LENGTH} символов и будет сокращён.`,
+            );
+        }
         const method = 'messages.send';
         this._request.post = {
             peer_id: peerId,
-            message,
+            message: Text.resize(message, VK_MESSAGE_MAX_LENGTH),
             random_id: this.#generateRandomId(),
         };
 
         if (typeof peerId !== 'number') {
+            // peer_id может быть строкой (screen_name). В форме VK API `undefined` превращается в
+            // строку "undefined" и ломает запрос — удаляем поле полностью.
             this._request.post.domain = peerId;
-            this._request.post.peer_id = undefined;
+            delete this._request.post.peer_id;
         }
         if (params) {
             const p = { ...params };
@@ -372,12 +387,12 @@ export class VkRequest {
      * Получает информацию о пользователе или списке пользователей
      * @param userId ID пользователя или массив ID
      * @param params Дополнительные параметры запроса
-     * @returns Информация о пользователях или null при ошибке
+     * @returns Массив пользователей или null при ошибке
      */
     public async usersGet(
         userId: TVkPeerId | string[],
         params: IVkParamsUsersGet | null = null,
-    ): Promise<IVkUsersGet | null> {
+    ): Promise<IVkUsersGet[] | null> {
         if (typeof userId === 'number') {
             this._request.post = { user_id: userId };
         } else {
@@ -386,7 +401,7 @@ export class VkRequest {
         if (params) {
             this._request.post = { ...this._request.post, ...params };
         }
-        return this.call<IVkUsersGet>('users.get');
+        return (await this.call<IVkUsersGet>('users.get')) as unknown as IVkUsersGet[];
     }
 
     /**
@@ -483,6 +498,7 @@ export class VkRequest {
      * @param userId ID пользователя
      * @param eventId ID события из message_event
      * @param eventData Данные события (опционально): show_snackbar, open_link или open_modal
+     * @param peerId ID диалога из message_event. Для обратной совместимости используется userId
      * @returns Результат выполнения или null при ошибке
      *
      * @example
@@ -507,23 +523,41 @@ export class VkRequest {
             Intent?: string;
             title?: string;
         },
+        peerId?: TVkPeerId,
     ): Promise<IVKSendMessage | null> {
+        const numericUserId = Number(userId);
+        const numericPeerId = Number(peerId ?? userId);
+        if (!Number.isSafeInteger(numericUserId) || !Number.isSafeInteger(numericPeerId)) {
+            this._appContext.logWarn(
+                'VkRequest.sendMessageEvent(): user_id и peer_id должны быть целыми числовыми ID.',
+            );
+            return null;
+        }
         this._request.post = {
-            user_id: userId,
+            user_id: numericUserId,
             event_id: eventId,
+            peer_id: numericPeerId,
         };
         if (eventData) {
-            this._request.post.event_data = JSON.stringify(eventData);
+            const serializedEventData = JSON.stringify(eventData);
+            if (serializedEventData.length > 1000) {
+                this._appContext.logWarn(
+                    'VkRequest.sendMessageEvent(): event_data превышает лимит VK в 1000 символов.',
+                );
+                return null;
+            }
+            this._request.post.event_data = serializedEventData;
         }
-        return this.call<IVKSendMessage>('messages.sendEvent');
+        return this.call<IVKSendMessage>('messages.sendMessageEventAnswer');
     }
 
     /**
      * Генерирует уникальный ID для избежания повторной отправки сообщения.
-     * Использует комбинацию timestamp и случайного числа для минимизации коллизий.
+     * VK API ограничивает random_id диапазоном int32 (-2^31 .. 2^31-1).
      */
     #generateRandomId(): number {
-        return Date.now() * 1000 + Math.floor(Math.random() * 1000000);
+        // 2^31 - 1 = 2 147 483 647 — верхняя граница int32
+        return Math.floor(Math.random() * 2_147_483_647);
     }
 
     /**

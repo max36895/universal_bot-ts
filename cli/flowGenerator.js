@@ -50,6 +50,50 @@ function userDataAccess(name) {
 }
 
 /**
+ * Назначает блокам безопасные и уникальные имена функций в сгенерированном коде.
+ * Имя из визуального редактора нельзя вставлять в TypeScript как идентификатор без нормализации.
+ * @param {Array} blocks — блоки, для которых будут сгенерированы функции
+ */
+function assignBlockFunctionNames(blocks) {
+    const usedNames = new Map();
+    for (const block of blocks) {
+        const rawName = String(block.name || block.id || 'block');
+        let safeName = rawName.replace(/[^a-zA-Z0-9_$]/g, '_');
+        if (!safeName || !/^[a-zA-Z_$]/.test(safeName)) {
+            safeName = `_${safeName || 'block'}`;
+        }
+
+        const baseName = `__${safeName}`;
+        const occurrence = (usedNames.get(baseName) || 0) + 1;
+        usedNames.set(baseName, occurrence);
+        block.generatedFunctionName = occurrence === 1 ? baseName : `${baseName}_${occurrence}`;
+    }
+}
+
+/**
+ * Возвращает имя функции, назначенное блоку перед генерацией.
+ * @param {Object} block — блок сценария
+ * @returns {string} безопасное имя TypeScript-функции
+ */
+function getBlockFunctionName(block) {
+    return block.generatedFunctionName || '__block';
+}
+
+/**
+ * Приводит имя Cloud Function к допустимому имени ресурса и исключает YAML-инъекции.
+ * @param {unknown} name — исходное имя проекта
+ * @returns {string} имя Cloud Function
+ */
+function getCloudFunctionName(name) {
+    const normalized = String(name || 'my-bot')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    return normalized || 'my-bot';
+}
+
+/**
  * Маппинг системных переменных на JavaScript выражения.
  * Системные переменные начинаются с __ и заменяются на нативный JS-код.
  */
@@ -94,10 +138,10 @@ function textExpr(text) {
         let escaped = text.replace(/\\/g, '\\\\');
         escaped = escaped.replace(/`/g, '\\`');
         escaped = escaped.replace(/\$\{/g, '\\${');
-        // Убираем лишние скобки: {{{{var}}}} → {{var}}
-        escaped = escaped.replace(/\{{4,}(\w+)\}{4,}/g, '{{$1}}');
-        // Заменяем {{var}} на ${...}
-        const converted = escaped.replace(/\{\{(\w+)\}\}/g, (_, name) => {
+        // Убираем лишние скобки: {{{{var}}}} → {{var}} (поддерживаем и dotted-имена user.name)
+        escaped = escaped.replace(/\{{4,}([\w.]+)\}{4,}/g, '{{$1}}');
+        // Заменяем {{var}} на ${...} — поддерживаем как identifier, так и dotted path (user.name)
+        const converted = escaped.replace(/\{\{([\w.]+)\}\}/g, (_, name) => {
             if (isSystemVar(name)) {
                 return `\${${getSystemVarExpr(name)}}`;
             }
@@ -106,6 +150,29 @@ function textExpr(text) {
         return '`' + converted + '`';
     }
     return `'${escapeStr(text)}'`;
+}
+
+function templateValueExpr(value) {
+    if (typeof value === 'string') {
+        return textExpr(value);
+    }
+    if (Array.isArray(value)) {
+        return `[${value.map((item) => templateValueExpr(item)).join(', ')}]`;
+    }
+    if (value && typeof value === 'object') {
+        return `{ ${Object.entries(value)
+            .map(([key, item]) => `${JSON.stringify(key)}: ${templateValueExpr(item)}`)
+            .join(', ')} }`;
+    }
+    return JSON.stringify(value);
+}
+
+function httpBodyExpr(body) {
+    try {
+        return `JSON.stringify(${templateValueExpr(JSON.parse(String(body)))})`;
+    } catch {
+        return textExpr(String(body));
+    }
 }
 
 /**
@@ -127,43 +194,141 @@ function collectVarNames(doc) {
 }
 
 /**
- * Заменяет имена переменных на ctrl.userData.* в выражении.
- * Сортирует по длине (длинные имена первые) для корректной замены.
- * Экранирует спецсимволы regex в именах переменных.
- * @param {string} expr — выражение с именами переменных
- * @param {string[]} varNames — имена переменных для замены
- * @returns {string} выражение с ctrl.userData.* вместо имён переменных
+ * Возвращает конечное число для генерации кода либо безопасное значение по умолчанию.
+ * Flow — пользовательский JSON, поэтому его нельзя вставлять в TypeScript как выражение.
+ * @param {unknown} value — значение границы диапазона из flow
+ * @param {number} fallback — значение, используемое при некорректном вводе
+ * @returns {number} безопасное конечное число
  */
-function resolveVars(expr, varNames) {
-    let result = expr;
+function getFiniteNumber(value, fallback) {
+    const numberValue = typeof value === 'number' ? value : Number(String(value).trim());
+    return Number.isFinite(numberValue) ? numberValue : fallback;
+}
 
-    // Сортируем один раз по убыванию длины, чтобы не заменять "name" внутри "userName"
-    const sorted = [...varNames].sort((a, b) => b.length - a.length);
-    for (const name of sorted) {
-        if (isSystemVar(name)) continue;
-        const access = userDataAccess(name);
-        // Экранируем спецсимволы regex в имени переменной
-        const safeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        result = result.replace(new RegExp(`\\b${safeName}\\b`, 'g'), access);
+/**
+ * Разбирает ограниченное арифметическое выражение из flow.
+ * Поддерживаются только числа, переменные сценария, системные переменные и арифметические операторы.
+ * @param {string} source — выражение из действия set_variable
+ * @param {string[]} varNames — известные переменные сценария
+ * @returns {string|null} безопасное TypeScript-выражение или null для обычного текста
+ */
+function parseArithmeticExpression(source, varNames) {
+    const tokens = [];
+    let offset = 0;
+    // Регулярное выражение заякорено и разбирает только один токен фиксированной грамматики.
+    // eslint-disable-next-line security/detect-unsafe-regex -- нет вложенных повторителей и обратных ссылок.
+    const tokenPattern = /^\s*(?:(\d+(?:\.\d*)?|\.\d+)|([A-Za-z_$][A-Za-z0-9_$]*)|([()+\-*/%]))/;
+
+    while (offset < source.length) {
+        const match = tokenPattern.exec(source.slice(offset));
+        if (!match) return null;
+        offset += match[0].length;
+        if (match[1]) tokens.push({ type: 'number', value: match[1] });
+        else if (match[2]) tokens.push({ type: 'name', value: match[2] });
+        else tokens.push({ type: 'operator', value: match[3] });
     }
 
-    // Обрабатываем системные переменные после переменных пользователя
-    // Сортируем по убыванию длины ключа, чтобы __currentTimestamp заменялся раньше __currentTime
-    const sortedSysVars = Object.entries(SYSTEM_VARS).sort((a, b) => b[0].length - a[0].length);
-    for (const [name, jsExpr] of sortedSysVars) {
-        if (result.includes(name)) {
-            const safeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            result = result.replace(new RegExp(`\\b${safeName}\\b`, 'g'), `(${jsExpr})`);
+    const allowedVariables = new Set(varNames.filter((name) => isValidJSIdentifier(name)));
+    let position = 0;
+
+    const parsePrimary = () => {
+        const token = tokens[position];
+        if (!token) return null;
+        if (token.type === 'number') {
+            position += 1;
+            return token.value;
         }
+        if (token.type === 'name') {
+            position += 1;
+            if (isSystemVar(token.value)) return `(${getSystemVarExpr(token.value)})`;
+            if (allowedVariables.has(token.value)) return `Number(${userDataAccess(token.value)})`;
+            return null;
+        }
+        if (token.value === '(') {
+            position += 1;
+            const expression = parseAdditive();
+            if (!expression || tokens[position]?.value !== ')') return null;
+            position += 1;
+            return `(${expression})`;
+        }
+        return null;
+    };
+
+    const parseUnary = () => {
+        const token = tokens[position];
+        if (token?.value === '+' || token?.value === '-') {
+            position += 1;
+            const operand = parseUnary();
+            return operand ? `${token.value}${operand}` : null;
+        }
+        return parsePrimary();
+    };
+
+    const parseMultiplicative = () => {
+        let expression = parseUnary();
+        while (expression && ['*', '/', '%'].includes(tokens[position]?.value)) {
+            const operator = tokens[position].value;
+            position += 1;
+            const right = parseUnary();
+            if (!right) return null;
+            expression = `${expression} ${operator} ${right}`;
+        }
+        return expression;
+    };
+
+    const parseAdditive = () => {
+        let expression = parseMultiplicative();
+        while (expression && ['+', '-'].includes(tokens[position]?.value)) {
+            const operator = tokens[position].value;
+            position += 1;
+            const right = parseMultiplicative();
+            if (!right) return null;
+            expression = `${expression} ${operator} ${right}`;
+        }
+        return expression;
+    };
+
+    const expression = parseAdditive();
+    return expression && position === tokens.length ? expression : null;
+}
+
+/**
+ * Преобразует значение set_variable в безопасное TypeScript-выражение.
+ * Неподдерживаемые конструкции сохраняются как текст, а не исполняются как код.
+ * @param {unknown} value — значение из flow
+ * @param {string[]} varNames — известные переменные сценария
+ * @returns {string} TypeScript-выражение
+ */
+function getSetVariableExpression(value, varNames) {
+    const source = String(value).trim();
+    if (source.includes('{{')) return textExpr(source);
+    if (varNames.includes(source)) return userDataAccess(source);
+    if (isSystemVar(source)) return `(${getSystemVarExpr(source)})`;
+
+    const numericValue = getFiniteNumber(source, Number.NaN);
+    if (source && Number.isFinite(numericValue)) {
+        return String(numericValue);
     }
 
-    return result;
+    return parseArithmeticExpression(source, varNames) || `'${escapeStr(source)}'`;
+}
+
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+
+/**
+ * Возвращает разрешённый HTTP-метод. Неизвестный метод нельзя вставлять в исходный код.
+ * @param {unknown} value — метод из flow
+ * @returns {string} разрешённый HTTP-метод
+ */
+function getHttpMethod(value) {
+    const method = String(value || 'GET').toUpperCase();
+    return HTTP_METHODS.has(method) ? method : 'GET';
 }
 
 /**
  * Генерирует код для блока действия (random_number, set_variable, http_request).
  * @param {Object} block — блок действия из FlowDocument
- * @param {string[]} varNames — имена переменных для resolveVars
+ * @param {string[]} varNames — имена переменных для ограниченных выражений
  * @param {string} indent — отступ (по умолчанию 4 пробела)
  * @returns {string[]} массив строк кода
  */
@@ -173,45 +338,21 @@ function generateActionFunc(block, varNames, indent) {
         case 'random_number':
             // Пропускаем если имя переменной пустое или содержит только пробелы
             if (block.field && block.field.trim()) {
-                lines.push(
-                    `${indent}${userDataAccess(block.field)} = rand(${block.min ?? 1}, ${block.max ?? 10});`,
-                );
+                const min = getFiniteNumber(block.min, 1);
+                const max = getFiniteNumber(block.max, 10);
+                lines.push(`${indent}${userDataAccess(block.field)} = rand(${min}, ${max});`);
             }
             break;
         case 'set_variable':
             // Пропускаем если имя переменной пустое или значение пустое
-            if (block.field && block.field.trim() && block.value && block.value.trim()) {
-                let expr;
-                // Если значение содержит {{var}} — генерируем template literal
-                if (block.value.includes('{{')) {
-                    expr = textExpr(block.value);
-                } else {
-                    expr = resolveVars(block.value, varNames);
-                    // Если выражение содержит ctrl.userData или ${ — это уже код (переменная/шаблон)
-                    // Если это число — тоже код
-                    // Иначе оборачиваем в кавычки как строковый литерал
-                    const isCode =
-                        expr.includes('ctrl.userData') ||
-                        expr.includes('${') ||
-                        !isNaN(Number(expr)) ||
-                        expr.startsWith('(') ||
-                        expr.startsWith('Math.') ||
-                        expr.startsWith('new ') ||
-                        expr.startsWith('Date.');
-                    if (!isCode) {
-                        expr = `'${escapeStr(expr)}'`;
-                    }
-                }
-                // @ts-ignore — выражения с переменными могут нарушить строгие типы TS
-                if (expr.includes('ctrl.userData')) {
-                    lines.push(`${indent}// @ts-ignore`);
-                }
+            if (block.field && block.field.trim() && String(block.value ?? '').trim()) {
+                const expr = getSetVariableExpression(block.value, varNames);
                 lines.push(`${indent}${userDataAccess(block.field)} = ${expr};`);
             }
             break;
         case 'http_request':
             if (block.url) {
-                const method = block.method || 'GET';
+                const method = getHttpMethod(block.method);
                 let safeHeaders = null;
                 if (block.headers && block.headers !== '{}') {
                     try {
@@ -232,63 +373,63 @@ function generateActionFunc(block, varNames, indent) {
                     const hasVars = /\{\{/.test(String(body));
                     if (hasVars) {
                         // Экранируем backticks и ${ перед заменой {{var}}
-                        let templateBody = String(body)
-                            .replace(/\\/g, '\\\\')
-                            .replace(/`/g, '\\`')
-                            .replace(/\$\{/g, '\\${');
-                        templateBody = templateBody.replace(/\{\{(\w+)\}\}/g, (_, name) => {
-                            if (isSystemVar(name)) return '${' + getSystemVarExpr(name) + '}';
-                            return '${' + userDataAccess(name) + '}';
-                        });
                         const fetchOpts = [`method: '${method}'`];
                         if (safeHeaders) {
                             fetchOpts.push(`headers: ${safeHeaders}`);
                         } else {
                             fetchOpts.push(`headers: { 'Content-Type': 'application/json' }`);
                         }
-                        fetchOpts.push(`body: JSON.parse(\`${templateBody}\`)`);
+                        fetchOpts.push(`body: ${httpBodyExpr(body)}`);
                         lines.push(
-                            `${indent}    const response = await fetch('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
+                            `${indent}    const response = await fetchWithTimeout('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
                         );
                     } else {
-                        let parsedBody;
-                        try {
-                            parsedBody = JSON.parse(String(body));
-                        } catch {
-                            parsedBody = body;
-                        }
                         const fetchOpts = [`method: '${method}'`];
                         if (safeHeaders) {
                             fetchOpts.push(`headers: ${safeHeaders}`);
                         } else {
                             fetchOpts.push(`headers: { 'Content-Type': 'application/json' }`);
                         }
-                        fetchOpts.push(`body: JSON.stringify(${JSON.stringify(parsedBody)})`);
+                        fetchOpts.push(`body: ${httpBodyExpr(body)}`);
                         lines.push(
-                            `${indent}    const response = await fetch('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
+                            `${indent}    const response = await fetchWithTimeout('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
                         );
                     }
                 } else {
-                    // GET без body
+                    // Запрос без body: метод всё равно нужен для POST/PUT/PATCH/DELETE.
                     const fetchOpts = [];
+                    if (method !== 'GET') {
+                        fetchOpts.push(`method: '${method}'`);
+                    }
                     if (safeHeaders) {
                         fetchOpts.push(`headers: ${safeHeaders}`);
                     }
                     const optsStr = fetchOpts.length > 0 ? `, { ${fetchOpts.join(', ')} }` : '';
                     lines.push(
-                        `${indent}    const response = await fetch('${escapeStr(block.url)}'${optsStr});`,
+                        `${indent}    const response = await fetchWithTimeout('${escapeStr(block.url)}'${optsStr});`,
                     );
                 }
                 lines.push(
                     `${indent}    if (!response.ok) throw new Error(\`HTTP \${response.status}\`);`,
                 );
-                lines.push(`${indent}    const data = await response.json();`);
+                lines.push(`${indent}    const responseText = await response.text();`);
+                lines.push(`${indent}    let data: unknown = null;`);
+                lines.push(`${indent}    if (responseText.trim()) {`);
+                lines.push(`${indent}        try {`);
+                lines.push(`${indent}            data = JSON.parse(responseText);`);
+                lines.push(`${indent}        } catch {`);
+                lines.push(`${indent}            data = responseText;`);
+                lines.push(`${indent}        }`);
+                lines.push(`${indent}    }`);
                 if (block.saveResponseTo) {
                     lines.push(`${indent}    ${userDataAccess(block.saveResponseTo)} = data;`);
                 }
+                lines.push(`${indent}} catch (e) {`);
                 lines.push(
-                    `${indent}} catch (e) { setText(ctrl, \`Ошибка запроса: \${e.message}\`); }`,
+                    `${indent}    const errorMessage = e instanceof Error ? e.message : String(e);`,
                 );
+                lines.push(`${indent}    setText(ctrl, \`Ошибка запроса: \${errorMessage}\`);`);
+                lines.push(`${indent}}`);
             }
             break;
     }
@@ -324,10 +465,11 @@ function generateConditionFunc(
         varName = varName.slice(2, -2);
     }
     // Пропускаем пустые условия — генерация невалидного кода
-    if (!varName) {
+    const supportsUserCommand = ['isSayTrue', 'isSayFalse', 'isUrl'].includes(cond.operator);
+    if (!varName && !supportsUserCommand) {
         return [];
     }
-    const condVar = userDataAccess(varName);
+    const condVar = varName ? userDataAccess(varName) : "ctrl.userCommand ?? ''";
     let condVal;
 
     // Очищаем значение от {{ }} если они есть (VariablePicker вставляет {{var}})
@@ -377,13 +519,14 @@ function generateConditionFunc(
         case 'lte':
             ifExpr = `Number(${condVar}) <= Number(${condVal})`;
             break;
-        case 'contains':
+        case 'contains': {
             // Если condVal число, не оборачиваем в String()
             const isNumVal = !isNaN(Number(condVal)) && String(condVal).trim() !== '';
             ifExpr = isNumVal
                 ? `String(${condVar}).includes(${condVal})`
                 : `String(${condVar}).includes(String(${condVal}))`;
             break;
+        }
         case 'isEmpty':
             ifExpr = `!${condVar}`;
             break;
@@ -415,7 +558,7 @@ function generateConditionFunc(
         // Проверяем, нужен ли await для целевой функции
         let trueAwait = '';
         if (doc && connectedBlocks) {
-            const trueNode = doc.nodes.find((n) => `__${n.name || n.id}` === trueFuncName);
+            const trueNode = doc.nodes.find((n) => getBlockFunctionName(n) === trueFuncName);
             if (trueNode && blockNeedsAsync(trueNode, doc, connectedBlocks)) {
                 trueAwait = 'await ';
             }
@@ -438,7 +581,7 @@ function generateConditionFunc(
         // Проверяем, нужен ли await для целевой функции
         let falseAwait = '';
         if (doc && connectedBlocks) {
-            const falseNode = doc.nodes.find((n) => `__${n.name || n.id}` === falseFuncName);
+            const falseNode = doc.nodes.find((n) => getBlockFunctionName(n) === falseFuncName);
             if (falseNode && blockNeedsAsync(falseNode, doc, connectedBlocks)) {
                 falseAwait = 'await ';
             }
@@ -558,7 +701,7 @@ function generateOutgoingBlockCalls(blocks, indent, doc, connectedBlocks) {
     const lines = [];
     for (const block of blocks) {
         const needsAsync = blockNeedsAsync(block, doc, connectedBlocks);
-        lines.push(`${indent}${needsAsync ? 'await ' : ''}__${block.name || block.id}(ctrl);`);
+        lines.push(`${indent}${needsAsync ? 'await ' : ''}${getBlockFunctionName(block)}(ctrl);`);
     }
     return lines;
 }
@@ -604,7 +747,7 @@ function generateCardCode(card, indent) {
  */
 function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
     const lines = [];
-    const funcName = `__${block.name || block.id}`;
+    const funcName = getBlockFunctionName(block);
 
     if (block.type === 'action') {
         // Комментарий: описание действия
@@ -624,7 +767,9 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
             .join(', ');
         const hasHttp = blockNeedsAsync(block, doc, connectedBlocks);
         lines.push(`/** Действие: ${actionTypes || 'выполнить действие'} */`);
-        lines.push(`${hasHttp ? 'async ' : ''}function ${funcName}(ctrl: BotController) {`);
+        lines.push(
+            `${hasHttp ? 'async ' : ''}function ${funcName}(ctrl: BotController): ${hasHttp ? 'Promise<void>' : 'void'} {`,
+        );
         if (block.actions) {
             for (const action of block.actions) {
                 lines.push(...generateActionFunc(action, varNames, indent));
@@ -671,7 +816,9 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
             `/** Условие: проверяем ${block.variable || 'ввод пользователя'} ${opName} ${block.value || ''} */`,
         );
         const condNeedsAsync = blockNeedsAsync(block, doc, connectedBlocks);
-        lines.push(`${condNeedsAsync ? 'async ' : ''}function ${funcName}(ctrl: BotController) {`);
+        lines.push(
+            `${condNeedsAsync ? 'async ' : ''}function ${funcName}(ctrl: BotController): ${condNeedsAsync ? 'Promise<void>' : 'void'} {`,
+        );
 
         // Ищем response функции для branch_true и branch_false
         let trueFuncName = null;
@@ -693,7 +840,7 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
                     trueNode.type === 'action' ||
                     trueNode.type === 'condition'
                 ) {
-                    trueFuncName = `__${trueNode.name || trueNode.id}`;
+                    trueFuncName = getBlockFunctionName(trueNode);
                 }
             }
         }
@@ -708,7 +855,7 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
                     falseNode.type === 'action' ||
                     falseNode.type === 'condition'
                 ) {
-                    falseFuncName = `__${falseNode.name || falseNode.id}`;
+                    falseFuncName = getBlockFunctionName(falseNode);
                 }
             }
         }
@@ -736,7 +883,9 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
             `/** Ответ: "${responsePreview}${block.response?.text?.length > 50 ? '...' : ''}" */`,
         );
         const respNeedsAsync = blockNeedsAsync(block, doc, connectedBlocks);
-        lines.push(`${respNeedsAsync ? 'async ' : ''}function ${funcName}(ctrl: BotController) {`);
+        lines.push(
+            `${respNeedsAsync ? 'async ' : ''}function ${funcName}(ctrl: BotController): ${respNeedsAsync ? 'Promise<void>' : 'void'} {`,
+        );
         if (block.response) {
             if (block.response.text)
                 lines.push(`${indent}setText(ctrl, ${textExpr(block.response.text)});`);
@@ -811,6 +960,7 @@ function generateIndexTs(doc, useCloud = false) {
             }
         }
     }
+    assignBlockFunctionNames(connectedBlocks);
 
     const needsRand =
         doc.nodes.some((n) => n.actions && n.actions.some((a) => a.type === 'random_number')) ||
@@ -829,6 +979,9 @@ function generateIndexTs(doc, useCloud = false) {
             (n) =>
                 n.type === 'condition' && ['isSayTrue', 'isSayFalse', 'isUrl'].includes(n.operator),
         );
+    const needsHttp =
+        doc.nodes.some((n) => (n.actions || []).some((a) => a.type === 'http_request')) ||
+        connectedBlocks.some((n) => (n.actions || []).some((a) => a.type === 'http_request'));
 
     // Импорты
     const umbotImports = ['Bot', 'BotController', 'FALLBACK_COMMAND'];
@@ -857,11 +1010,10 @@ function generateIndexTs(doc, useCloud = false) {
             if (n.prompt?.tts) return true;
             return false;
         });
-    if (needsTTS) {
-        lines.push(`import { setText, setTTS } from './utils';`);
-    } else {
-        lines.push(`import { setText } from './utils';`);
-    }
+    const utilsImports = ['setText'];
+    if (needsTTS) utilsImports.push('setTTS');
+    if (needsHttp) utilsImports.push('fetchWithTimeout');
+    lines.push(`import { ${utilsImports.join(', ')} } from './utils';`);
 
     // Обработка платформ
     const platforms = doc.platforms || [];
@@ -931,9 +1083,9 @@ function generateIndexTs(doc, useCloud = false) {
         lines.push(`bot.use(new FileAdapter());`);
     } else if (doc.database && doc.database.type === 'mongo') {
         const dbConfig = doc.database.config || {};
-        lines.push(
-            `bot.use(new MongoAdapter({ host: 'localhost', database: '${escapeStr(dbConfig.database || 'bot_db')}' }));`,
-        );
+        const dbHost = escapeStr(dbConfig.host || 'localhost');
+        const dbName = escapeStr(dbConfig.database || 'bot_db');
+        lines.push(`bot.use(new MongoAdapter({ host: '${dbHost}', database: '${dbName}' }));`);
     }
     lines.push(``);
 
@@ -963,6 +1115,7 @@ function generateIndexTs(doc, useCloud = false) {
         }
     }
 
+    let usedFallback = false;
     // Регистрация команд
     for (const node of doc.nodes) {
         if (node.type !== 'command') continue;
@@ -977,20 +1130,32 @@ function generateIndexTs(doc, useCloud = false) {
         // Определяем имя команды: welcome/help используют константы
         const isWelcome = cmd.name === 'welcome' || cmd.role === 'welcome';
         const isHelp = cmd.name === 'help' || cmd.role === 'help';
+        const isFallback = cmd.name === 'fallback' || cmd.role === 'fallback';
+        if (isFallback) {
+            usedFallback = true;
+        }
         const cmdName = isWelcome
             ? 'WELCOME_INTENT_NAME'
             : isHelp
               ? 'HELP_INTENT_NAME'
-              : `'${escapeStr(cmd.name)}'`;
+              : isFallback
+                ? 'FALLBACK_COMMAND'
+                : `'${escapeStr(cmd.name)}'`;
 
         // Комментарий: описание команды
         const slotsPreview = (cmd.slots || []).slice(0, 3).join(', ');
-        const commentName = isWelcome ? 'welcome (Старт)' : isHelp ? 'help (Помощь)' : cmd.name;
+        const commentName = isWelcome
+            ? 'welcome (Старт)'
+            : isHelp
+              ? 'help (Помощь)'
+              : isFallback
+                ? 'fallback (Неизвестная команда)'
+                : cmd.name;
         lines.push(
             `/** Команда "${commentName}": активируется на [${slotsPreview}${(cmd.slots || []).length > 3 ? '...' : ''}] */`,
         );
         lines.push(
-            `bot.addCommand(${cmdName}, [${slotsStr}]${isPattern}, ${isAsync ? 'async ' : ''}(cmd: string, ctrl: BotController) => {`,
+            `bot.addCommand(${cmdName}, [${slotsStr}]${isPattern}, ${isAsync ? 'async ' : ''}(cmd: string, ctrl: BotController): ${isAsync ? 'Promise<void>' : 'void'} => {`,
         );
 
         // Инлайн действия
@@ -1086,7 +1251,7 @@ function generateIndexTs(doc, useCloud = false) {
             `/** Шаг "${step.name}": ${promptPreview ? `"${promptPreview}..."` : 'ожидание ввода'}${saveInfo} */`,
         );
         lines.push(
-            `bot.addStep('${escapeStr(step.name)}', ${isAsync ? 'async ' : ''}(ctrl: BotController) => {`,
+            `bot.addStep('${escapeStr(step.name)}', ${isAsync ? 'async ' : ''}(ctrl: BotController): ${isAsync ? 'Promise<void>' : 'void'} => {`,
         );
 
         // Текст
@@ -1166,16 +1331,30 @@ function generateIndexTs(doc, useCloud = false) {
         lines.push(``);
     }
 
-    // Fallback
-    lines.push(`bot.addCommand(FALLBACK_COMMAND, [], (cmd: string, ctrl: BotController) => {`);
-    lines.push(
-        `    setText(ctrl, '${escapeStr((doc.fallback && doc.fallback.text) || 'Извините, я вас не понял.')}');`,
-    );
-    lines.push(`});`);
-    lines.push(``);
+    if (!usedFallback) {
+        // Fallback
+        lines.push(
+            `bot.addCommand(FALLBACK_COMMAND, [], (cmd: string, ctrl: BotController): void => {`,
+        );
+        lines.push(
+            `    setText(ctrl, '${escapeStr((doc.fallback && doc.fallback.text) || 'Извините, я вас не понял.')}');`,
+        );
+        lines.push(`});`);
+        lines.push(``);
+    }
 
-    lines.push(`bot.start('localhost', 3000);`);
-    lines.push(``);
+    if (!useCloud) {
+        // Хост и порт можно задать в flow.json (поля hostname/port). По умолчанию
+        // localhost:3000. Хост экранируем через JSON.stringify, порт валидируем.
+        const hostname = JSON.stringify(String(doc.hostname || 'localhost'));
+        const requestedPort = Number(doc.port);
+        const port =
+            Number.isInteger(requestedPort) && requestedPort >= 0 && requestedPort <= 65535
+                ? requestedPort
+                : 3000;
+        lines.push(`bot.start(${hostname}, ${port});`);
+        lines.push(``);
+    }
 
     // Если useCloud — добавляем экспорт cloud function handler
     if (useCloud) {
@@ -1208,8 +1387,8 @@ function generatePackageJson(doc) {
         version: doc.version || '1.0.0',
         main: './dist/index.js',
         scripts: { start: 'node ./dist/index.js', build: 'tsc' },
-        dependencies: { umbot: '^3.0.0' },
-        devDependencies: { typescript: '^5.7.0' },
+        dependencies: { umbot: '3.1.0' },
+        devDependencies: { typescript: '5.9.3', '@types/node': '20.19.43' },
     };
     return JSON.stringify(pkg, null, 2);
 }
@@ -1236,7 +1415,7 @@ function generateTsConfig() {
 }
 
 function generateGitIgnore() {
-    const file = __dirname + '/template';
+    const file = __dirname + '/template/.gitignore';
     if (file && utils.isFile(file)) {
         return utils.fread(file);
     }
@@ -1268,6 +1447,24 @@ export function setTTS(ctrl: BotController, text: string): void {
         ctrl.tts = text;
     }
 }
+
+/**
+ * Выполнить HTTP-запрос с ограничением по времени, чтобы обработчик бота не зависал на внешнем API.
+ */
+export async function fetchWithTimeout(
+    url: string,
+    init: RequestInit = {},
+    timeoutMs = 2000,
+): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 `;
 }
 
@@ -1287,7 +1484,8 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
     try {
         doc = JSON.parse(content);
     } catch (e) {
-        throw new Error(`Ошибка парсинга JSON: ${e.message}`);
+        const message = e instanceof Error ? e.message : String(e);
+        throw new Error(`Ошибка парсинга JSON: ${message}`, { cause: e });
     }
 
     if (!doc.name) throw new Error('В JSON отсутствует поле "name"');
@@ -1324,7 +1522,21 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
         console.log('');
     }
 
-    if (!fs.existsSync(outputPath)) {
+    if (fs.existsSync(outputPath)) {
+        const stats = fs.statSync(outputPath);
+        if (!stats.isDirectory()) {
+            throw new Error(
+                `Путь для генерации уже существует и не является папкой: ${outputPath}`,
+            );
+        }
+
+        const entries = fs.readdirSync(outputPath);
+        if (entries.length > 0 && !options.force) {
+            throw new Error(
+                `Папка для генерации не пустая: ${outputPath}. Укажите --force, чтобы перезаписать файлы.`,
+            );
+        }
+    } else {
         fs.mkdirSync(outputPath, { recursive: true });
     }
 
@@ -1338,6 +1550,8 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
     fs.writeFileSync(path.join(outputPath, '.gitignore'), generateGitIgnore(), 'utf8');
 
     // Генерация .env файла если есть токены
+    // ALISA_TOKEN — каноническое имя для Алисы (ранее был YANDEX_TOKEN,
+    // он поддерживается через fallback в AppContext для обратной совместимости).
     const TOKEN_ENV_NAMES = {
         telegram: 'TELEGRAM_TOKEN',
         vk: 'VK_TOKEN',
@@ -1348,11 +1562,20 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
         viber: 'VIBER_TOKEN',
     };
     const tokens = doc.tokens || {};
-    const tokenEntries = Object.entries(tokens).filter(([, v]) => v && v.trim());
+    // Поддержка двух форматов tokens:
+    //   - плоский: { telegram: "abc123" }
+    //   - вложенный (как в README): { telegram: { token: "abc123" } }
+    const getTokenValue = (v) => {
+        if (!v) return '';
+        if (typeof v === 'string') return v.trim();
+        if (typeof v === 'object' && typeof v.token === 'string') return v.token.trim();
+        return '';
+    };
+    const tokenEntries = Object.entries(tokens).filter(([, v]) => getTokenValue(v) !== '');
     if (tokenEntries.length > 0) {
-        const envLines = tokenEntries.map(([platform, token]) => {
+        const envLines = tokenEntries.map(([platform, tokenRaw]) => {
             const envName = TOKEN_ENV_NAMES[platform] || `${platform.toUpperCase()}_TOKEN`;
-            return `${envName}=${token}`;
+            return `${envName}=${getTokenValue(tokenRaw)}`;
         });
         fs.writeFileSync(path.join(outputPath, '.env'), envLines.join('\n') + '\n', 'utf8');
         console.log('  .env');
@@ -1360,10 +1583,13 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
 
     // Генерация для Yandex Cloud Functions
     if (options.useCloud) {
+        const cloudFunctionName = getCloudFunctionName(doc.name);
         const pkg = JSON.parse(fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8'));
         pkg.scripts = pkg.scripts || {};
         pkg.scripts.deploy =
-            'yc serverless function invoke ' + (doc.name || 'my-bot') + ' --file-path src/index.js';
+            'npm run build && yc serverless function version create --function-name ' +
+            cloudFunctionName +
+            ' --runtime nodejs22 --entrypoint dist/index.handler --memory 128m --execution-timeout 10s --source-path .';
         pkg.scripts.build = 'tsc';
         fs.writeFileSync(
             path.join(outputPath, 'package.json'),
@@ -1372,23 +1598,23 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
         );
 
         const serverlessYml = `functions:
-  - name: ${doc.name || 'my-bot'}
-    runtime: nodejs18
-    entrypoint: src/index.handler
+  - name: ${cloudFunctionName}
+    runtime: nodejs22
+    entrypoint: dist/index.handler
     memory: 128m
     environment:
 ${
     tokenEntries.length > 0
         ? tokenEntries
-              .map(([platform, token]) => {
+              .map(([platform]) => {
                   const envName = TOKEN_ENV_NAMES[platform] || `${platform.toUpperCase()}_TOKEN`;
-                  return `      ${envName}: "${token}"`;
+                  return `      ${envName}: "\${env:${envName}}"`;
               })
               .join('\n')
-        : '      # Добавьте переменные окружения here'
+        : '      # Добавьте переменные окружения здесь'
 }
     secrets:
-      - id: ${doc.name || 'my-bot'}-secrets
+      - id: ${cloudFunctionName}-secrets
         version: latest
 `;
         fs.writeFileSync(path.join(outputPath, 'serverless.yml'), serverlessYml, 'utf8');
@@ -1403,4 +1629,90 @@ ${
     console.log(`  tsconfig.json`);
 }
 
-module.exports = { generateFromFlow };
+/**
+ * Валидирует flow.json перед генерацией проекта.
+ * Возвращает массив ошибок (пустой массив = valid).
+ *
+ * Проверяет:
+ * - Наличие обязательных полей (name, nodes)
+ * - Что каждый node имеет id, type
+ * - Что указанные nextId ссылаются на существующие узлы
+ * - Что stepResolver saveTo — валидный JS-идентификатор или dotted path
+ * - Что нет циклических ссылок, которые приведут к бесконечному циклу
+ *
+ * @param {string} flowJsonPath — Путь к flow.json
+ * @returns {string[]} Массив ошибок (пустой = OK)
+ */
+function validateFlowSchema(flowJsonPath) {
+    const errors = [];
+    let doc;
+    try {
+        const raw = fs.readFileSync(flowJsonPath, 'utf8');
+        doc = JSON.parse(raw);
+    } catch (e) {
+        return [`Не удалось прочитать ${flowJsonPath}: ${e.message}`];
+    }
+
+    if (!doc || typeof doc !== 'object') {
+        return ['flow.json должен быть JSON-объектом'];
+    }
+    if (!Array.isArray(doc.nodes)) {
+        errors.push('Отсутствует обязательное поле `nodes` (должно быть массивом)');
+    }
+    if (!doc.name || typeof doc.name !== 'string') {
+        errors.push('Отсутствует или некорректно поле `name` (строка-имя бота)');
+    }
+
+    if (Array.isArray(doc.nodes)) {
+        const ids = new Set();
+        doc.nodes.forEach((n, idx) => {
+            const hasId = n.id !== undefined && n.id !== null && n.id !== '';
+            if (!hasId) {
+                errors.push(`nodes[${idx}]: отсутствует \`id\``);
+            }
+            if (hasId && ids.has(n.id)) {
+                errors.push(`nodes[${idx}]: дублирующийся id="${n.id}"`);
+            }
+            if (hasId) ids.add(n.id);
+            if (!n.type) {
+                errors.push(`nodes[${idx}]: отсутствует \`type\``);
+            }
+            if (n.saveTo && !/^[\w.]+$/.test(n.saveTo)) {
+                errors.push(
+                    `nodes[${idx}]: saveTo="${n.saveTo}" — некорректный идентификатор (используйте [a-zA-Z0-9_.]+)`,
+                );
+            }
+        });
+
+        // Навигация в flow.json осуществляется через edges, а не через поле next —
+        // проверяем целостность именно рёбер (существование from/to, валидный type).
+        // Циклы в графе допустимы (например, генератор примеров в игре), поэтому
+        // проверка на зацикленность не выполняется.
+        const EDGE_TYPES = new Set(['next', 'branch_true', 'branch_false', 'slot_match']);
+        if (doc.edges !== undefined && !Array.isArray(doc.edges)) {
+            errors.push('Поле `edges` должно быть массивом');
+        } else if (Array.isArray(doc.edges)) {
+            doc.edges.forEach((e, idx) => {
+                if (!e || typeof e !== 'object') {
+                    errors.push(`edges[${idx}]: ребро должно быть объектом`);
+                    return;
+                }
+                if (!e.from || !ids.has(e.from)) {
+                    errors.push(`edges[${idx}]: from="${e.from}" ссылается на несуществующий узел`);
+                }
+                if (!e.to || !ids.has(e.to)) {
+                    errors.push(`edges[${idx}]: to="${e.to}" ссылается на несуществующий узел`);
+                }
+                if (e.type && !EDGE_TYPES.has(e.type)) {
+                    errors.push(
+                        `edges[${idx}]: неизвестный type="${e.type}" (допустимы: next, branch_true, branch_false, slot_match)`,
+                    );
+                }
+            });
+        }
+    }
+
+    return errors;
+}
+
+module.exports = { generateFromFlow, validateFlowSchema };

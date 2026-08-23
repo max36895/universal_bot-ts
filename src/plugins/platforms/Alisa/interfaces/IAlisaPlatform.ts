@@ -362,7 +362,7 @@ export interface IAlisaImage {
      * Тип карточки
      * - BigImage: одно изображение
      * - ItemsList: список изображений (1-5)
-     * - ImageGallery: галерея (1-7)
+     * - ImageGallery: галерея (1-10)
      */
     type?: string;
 
@@ -437,7 +437,7 @@ export interface IAlisaItemsList {
 
 /**
  * Интерфейс для галереи изображений
- * От 1 до 7 изображений
+ * От 1 до 10 изображений
  */
 export interface IAlisaImageGallery {
     /** Тип карточки */
@@ -445,7 +445,7 @@ export interface IAlisaImageGallery {
 
     /**
      * Изображения
-     * От 1 до 7 элементов
+     * От 1 до 10 элементов
      */
     items?: IAlisaImage[];
 }
@@ -542,6 +542,12 @@ export interface IAlisaResponse {
      */
     buttons?: IAlisaButton[] | null;
 
+    /** Директивы платформы, выполняемые вместе с ответом пользователю. */
+    directives?: {
+        /** Запустить связку аккаунтов. */
+        start_account_linking?: object;
+    };
+
     /**
      * Завершить сессию
      * true: завершить диалог
@@ -565,6 +571,9 @@ export interface IAlisaWebhookResponse {
     user_state_update?: IPlatformData;
     /** Версия протокола (текущая: 1.0) */
     version: string;
-    /** Начать авторизацию */
+    /**
+     * Устаревшее расположение директивы авторизации.
+     * @deprecated Используйте `response.directives.start_account_linking`.
+     */
     start_account_linking?: object;
 }

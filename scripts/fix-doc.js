@@ -19,7 +19,7 @@ const config = {
         'eslint.config.js',
         '.pretterrc',
     ],
-    excludeDirs: ['node_modules', '.git', '.idea', '.github', '.vscode'],
+    excludeDirs: ['node_modules', '.git', '.idea', '.github', '.vscode', '.agents'],
     rootExcludeDirs: ['dist', 'coverage', 'docs'],
     ignoredExtensions: [
         '.png',

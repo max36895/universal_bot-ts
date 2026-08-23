@@ -174,9 +174,7 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  * 1. Проверяет тип изображения (токен или путь):
  *    - Если isToken=true, использует image как токен
  *    - Иначе проверяет валидность URL или файла
- * 2. Устанавливает заголовок и описание:
- *    - Если заголовок пустой, возвращает false
- *    - Если описание пустое, устанавливает пробел
+ * 2. Устанавливает заголовок и описание без подстановки пользовательского содержимого.
  * 3. Добавляет кнопки, если они есть:
  *    - Поддерживает строковые кнопки
  *    - Поддерживает объекты кнопок
@@ -184,7 +182,7 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  * @param {AppContext} appContext - Контекст приложения
  * @param {string | null} image - Путь к изображению или токен
  * @param {string} title - Заголовок изображения
- * @param {string} [desc=' '] - Описание изображения
+ * @param {string} [desc=''] - Описание изображения
  * @param {TButton | null} [button=null] - Кнопки для изображения
  * @param {boolean} isToken - Флаг, говорящий о том, что явно передается токен
  * @returns {IImageType | null} объект если инициализация успешна, null в противном случае
@@ -214,7 +212,7 @@ export function getImage(
     appContext: AppContext,
     image: string | null,
     title: string,
-    desc: string = ' ',
+    desc: string = '',
     button: TButton | null = null,
     isToken: boolean = false,
 ): IImageType | null {

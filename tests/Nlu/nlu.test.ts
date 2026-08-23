@@ -79,7 +79,7 @@ describe('Nlu test', () => {
         expect(Nlu.getPhone('123456').status).toBe(true);
         expect(Nlu.getPhone('12-34-56').status).toBe(true);
         expect(Nlu.getPhone('89999999999').status).toBe(true);
-        expect(Nlu.getPhone('8(999).toBe(true)999-99-99').status);
+        expect(Nlu.getPhone('8(999)999-99-99').status).toBe(true);
         expect(Nlu.getPhone('512').status).toBe(false);
         expect(Nlu.getPhone('test').status).toBe(false);
     });
@@ -189,7 +189,9 @@ describe('Nlu test', () => {
             },
         };
         nlu.setNlu(nluConfig);
-        expect(nlu.isIntentConfirm('да')).toBe(true);
+        // Если платформа прислала REJECT-интент (даже с пустыми slots),
+        // он в приоритете над текстовой эвристикой: 'да' трактуется как отказ.
+        expect(nlu.isIntentReject('да')).toBe(true);
     });
 
     it('isIntentHelp', () => {

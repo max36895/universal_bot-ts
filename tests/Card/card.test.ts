@@ -18,10 +18,12 @@ import {
     IMaxCard,
     IMarusiaItemsList,
     IMarusiaBigImage,
+    IVkCard,
 } from '../../src/plugins';
 import { IViberCard } from '../../src/plugins/platforms/Viber/interfaces/IViberPlatform';
 
 const botController = new BaseBotController();
+botController.appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 const URL = 'https://test.ru';
 
@@ -30,6 +32,7 @@ describe('Card test', () => {
     let defaultCard: Card;
     beforeEach(() => {
         appContext = new AppContext();
+        appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
         appContext.platformParams.utm_text = '';
         defaultCard = new Card(appContext);
         defaultCard.title = 'title';
@@ -191,6 +194,26 @@ describe('Card test', () => {
             alisaCardOneNew,
         );
     });
+
+    it('не придумывает заголовки карточек Алисы и Маруси', async () => {
+        defaultCard.clear();
+        defaultCard.title = null;
+        defaultCard.desc = null;
+        defaultCard.addImage('123456', '', '');
+
+        await expect(
+            defaultCard.getCards(AlisaCard.cardProcessing, botController),
+        ).resolves.toEqual({
+            type: AlisaConstants.ALISA_CARD_ITEMS_LIST,
+            items: [{ image_id: '123456', title: '', description: '' }],
+        });
+        await expect(
+            defaultCard.getCards(MarusiaCard.cardProcessing, botController),
+        ).resolves.toEqual({
+            type: MarusiaConstants.MARUSIA_CARD_ITEMS_LIST,
+            items: [{ image_id: '123456', title: '', description: '' }],
+        });
+    });
     it('Get Alisa card for addOneImage', async () => {
         const alisaCard = {
             type: AlisaConstants.ALISA_CARD_BIG_IMAGE,
@@ -269,6 +292,9 @@ describe('Card test', () => {
         defaultCard.addImage('123456', '6');
         defaultCard.addImage('123456', '7');
         defaultCard.addImage('123456', '8');
+        defaultCard.addImage('123456', '9');
+        defaultCard.addImage('123456', '10');
+        defaultCard.addImage('123456', '11');
 
         alisaGallery.items.push(
             {
@@ -287,6 +313,18 @@ describe('Card test', () => {
                 title: '7',
                 image_id: '123456',
             },
+            {
+                title: '8',
+                image_id: '123456',
+            },
+            {
+                title: '9',
+                image_id: '123456',
+            },
+            {
+                title: '10',
+                image_id: '123456',
+            },
         );
         expect(await defaultCard.getCards(AlisaCard.cardProcessing, botController)).toEqual(
             alisaGallery,
@@ -299,6 +337,34 @@ describe('Card test', () => {
             description: 'запись: 1',
             image_id: '123456',
         });
+    });
+
+    it('не отбрасывает BigImage Алисы без необязательного заголовка', async () => {
+        defaultCard = new Card(appContext);
+        defaultCard.addOneImage('123456');
+        botController.appType = T_ALISA;
+
+        await expect(
+            defaultCard.getCards(AlisaCard.cardProcessing, botController),
+        ).resolves.toEqual({
+            type: AlisaConstants.ALISA_CARD_BIG_IMAGE,
+            image_id: '123456',
+            title: '',
+            description: '',
+        });
+    });
+
+    it('сохраняет документированный лимит описания BigImage Алисы в 1024 символа', async () => {
+        defaultCard = new Card(appContext);
+        defaultCard.addOneImage('123456', 'Изображение', 'x'.repeat(2_000));
+        botController.appType = T_ALISA;
+
+        const result = (await defaultCard.getCards(
+            AlisaCard.cardProcessing,
+            botController,
+        )) as IAlisaBigImage;
+
+        expect(result.description).toHaveLength(1024);
     });
 
     it('Get Marusia card', async () => {
@@ -460,16 +526,19 @@ describe('Card test', () => {
                 Columns: 3,
                 Rows: 2,
                 Image: '123456',
+                ActionType: 'none',
             },
             {
                 Columns: 3,
                 Rows: 2,
                 Image: '123456',
+                ActionType: 'none',
             },
             {
                 Columns: 3,
                 Rows: 2,
                 Image: '123456',
+                ActionType: 'none',
             },
         ];
         botController.appType = T_VIBER;
@@ -509,14 +578,12 @@ describe('Card test', () => {
                     description: 'запись: 1',
                     photo_id: '123456',
                     buttons: [
-                        [
-                            {
-                                action: {
-                                    type: VkButton.VK_TYPE_TEXT,
-                                    label: '1',
-                                },
+                        {
+                            action: {
+                                type: VkButton.VK_TYPE_TEXT,
+                                label: '1',
                             },
-                        ],
+                        },
                     ],
                     action: {
                         type: 'open_photo',
@@ -539,6 +606,35 @@ describe('Card test', () => {
         expect(await defaultCard.getCards(VkCard.cardProcessing, botController)).toEqual(vkCard);
     });
 
+    it('ограничивает заголовок и описание VK-карусели 80 символами', async () => {
+        botController.appType = T_VK;
+        defaultCard.images = [
+            {
+                imageToken: 'photo1_1',
+                title: 't'.repeat(81),
+                desc: 'd'.repeat(81),
+                button: new Buttons(appContext),
+                params: {},
+            },
+            {
+                imageToken: 'photo1_2',
+                title: 'Вторая',
+                desc: 'Описание',
+                button: new Buttons(appContext),
+                params: {},
+            },
+        ];
+        defaultCard.isUsedGallery = true;
+
+        const result = (await defaultCard.getCards(
+            VkCard.cardProcessing,
+            botController,
+        )) as IVkCard;
+
+        expect(result.elements[0].title).toHaveLength(80);
+        expect(result.elements[0].description).toHaveLength(80);
+    });
+
     it('Get MAX card', async () => {
         const maxCard: IMaxCard = {
             type: 'image',
@@ -553,10 +649,10 @@ describe('Card test', () => {
         ]);
 
         defaultCard.isOne = false;
-        delete maxCard.payload.token;
-        maxCard.payload.photos = ['123456', '123456', '123456'];
         expect(await defaultCard.getCards(MaxCard.cardProcessing, botController)).toEqual([
-            maxCard,
+            { type: 'image', payload: { token: '123456' } },
+            { type: 'image', payload: { token: '123456' } },
+            { type: 'image', payload: { token: '123456' } },
         ]);
         defaultCard.clear();
         expect(await defaultCard.getCards(MaxCard.cardProcessing, botController)).toEqual(null);
