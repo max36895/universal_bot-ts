@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "target": "ES2023",
+        "lib": ["ES2023", "DOM"],
+        "moduleResolution": "node",
+        "removeComments": true,
+        "sourceMap": false,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "resolveJsonModule": true,
+        "outDir": "dist",
+        "types": ["node", "jest"]
+    },
+    // Тесты компилирует ts-jest со своими настройками из этого же файла;
+    // в dist/ они не попадают, чтобы не менять пути запуска (dist/dev.js).
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "tests"]
+}
