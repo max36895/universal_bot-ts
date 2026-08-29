@@ -255,6 +255,20 @@ export interface IVkButtonAction {
      * ```
      */
     payload?: string | object;
+
+    /**
+     * Хеш оплаты для кнопки vkpay.
+     * По документации VK API поле hash у vkpay-кнопки находится именно внутри action,
+     * а не на верхнем уровне объекта кнопки.
+     * @example
+     * ```ts
+     * const action: IVkButtonAction = {
+     *     type: 'vkpay',
+     *     hash: 'action=pay-to-group&group_id=1'
+     * };
+     * ```
+     */
+    hash?: string;
 }
 
 /**
@@ -310,12 +324,12 @@ export interface IVkButton {
 
     /**
      * Хеш кнопки.
-     * Используется для верификации кнопки.
+     * @deprecated VK API принимает hash только внутри action (см. {@link IVkButtonAction.hash}).
+     * Поле оставлено для обратной совместимости типов, фреймворк его больше не заполняет.
      * @example
      * ```ts
      * const button: IVkButton = {
-     *     action: { type: 'text', label: 'Нажми меня' },
-     *     hash: 'abc123'
+     *     action: { type: 'vkpay', hash: 'abc123' }
      * };
      * ```
      */

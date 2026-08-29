@@ -35,6 +35,7 @@ export type TImageCallback = (model: ImageTokens) => Promise<string | null>;
  * @param platform Платформа для которой нужно получить токен
  * @param controller Контроллер приложения
  * @param cb Обработчик, который вернет токен.
+ * @returns Токен из БД, результат обработчика `cb` либо `null`, если путь пуст
  */
 export async function getImageToken(
     path: string,
@@ -88,6 +89,7 @@ export type TSoundCallback = (model: SoundTokens) => Promise<string | null>;
  * @param platform Платформа для которой нужно получить токен
  * @param controller Контроллер приложения
  * @param cb Обработчик, который вернет токен.
+ * @returns Токен из БД, результат обработчика `cb` либо `null`, если путь пуст
  */
 export async function getSoundToken(
     path: string,
@@ -114,7 +116,7 @@ export async function getSoundToken(
 const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
 
 /**
- * Ищет в тексте команды паузы вида `#pause_<ms>#` (например, `#pause_500#`)
+ * Ищет в тексте команды паузы вида `#pause_<[ms]>#` (например, `#pause_<[500]>#`)
  * и заменяет их на SSML-формат `sil <[ms]>`, поддерживаемый голосовыми платформами.
  *
  * @param {string} text - Текст, который будет озвучен пользователю
@@ -160,16 +162,17 @@ export function replaceSound(key: string, value: string | string[], text: string
 }
 
 /**
- * Удаляет все звуковые токены из текста
+ * Удаляет SSML-разметку звуков из текста: теги `<speaker ...>` и паузы `sil <[N]>`.
+ * Пользовательские ключи вида `#ключ#` не удаляются.
  *
  * @param {string} text - Исходный текст
- * @returns {string} - Текст без звуковых токенов
+ * @returns {string} - Текст без SSML-разметки звуков
  *
  * @example
  * ```ts
- * // Удаление звуковых токенов
- * const text = removeSound('Текст #game_win# без #nature_rain# звуков');
- * // Результат: 'Текст без звуков'
+ * // Удаление SSML-тегов звуков
+ * const text = removeSound('Текст <speaker audio="a.opus"> без звуков');
+ * // Результат: 'Текст  без звуков'
  * ```
  */
 export function removeSound(text: string): string {
@@ -194,7 +197,7 @@ export function removeSound(text: string): string {
  *
  * @example
  * ```ts
- * getChatText('', 'Привет <speaker audio="a.opus">'); // -> 'Привет '
+ * getChatText('', 'Привет <speaker audio="a.opus">'); // -> 'Привет'
  * getChatText('Привет', 'что угодно'); // -> 'Привет'
  * ```
  */
@@ -218,6 +221,7 @@ export function getChatText(text: string, tts: string | null): string {
  * @param soundInfo - Информация необходимая для обработки аудио
  * @param defaultSounds - Стандартные звуки
  * @param defaultEffects - Стандартные эффекты
+ * @returns Обработанный текст с подставленными звуками и эффектами
  */
 export function defaultSoundProcessing(
     soundInfo: ISoundInfo,
@@ -398,6 +402,7 @@ export function getPlatformRequestData<T extends Record<string, unknown>>(
 /**
  * Утилита для безопасного преобразования строки в объект
  * @param {Record<string, unknown> | object | string | null | undefined} data - Данные для преобразования
+ * @returns Разобранный объект либо исходное значение (строку) при невозможности разбора; null не возвращается
  */
 export function tryParse<TResult = Record<string, unknown>>(
     data: Record<string, unknown> | object | string | null | undefined,

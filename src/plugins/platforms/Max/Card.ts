@@ -33,7 +33,7 @@ export async function getImageInDB(
  * Получает карточку для отображения в Max.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IMaxCard[]>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
+ * @returns {Promise<IMaxCard[] | null>} Массив вложений-изображений (в т.ч. из одного элемента) либо `null`, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

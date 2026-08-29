@@ -35,6 +35,29 @@ describe('Telegram Button', () => {
             });
         });
 
+        it('url-кнопка не отбрасывается из-за payload больше 64 байт', () => {
+            // callback_data к url-кнопке не применяется, поэтому лимит 64 байта
+            // на payload других платформ не должен ронять валидную кнопку
+            const bigPayload = 'x'.repeat(200);
+            const result = TelegramButton.buttonProcessing(
+                [{ title: 'Сайт', url: 'https://example.com', payload: bigPayload }],
+                appContext,
+            );
+
+            expect(result).toEqual({
+                inline_keyboard: [[{ text: 'Сайт', url: 'https://example.com' }]],
+            });
+        });
+
+        it('callback-кнопка с payload больше 64 байт пропускается с предупреждением', () => {
+            const result = TelegramButton.buttonProcessing(
+                [{ title: 'Купить', payload: 'x'.repeat(100) }],
+                appContext,
+            );
+
+            expect(result).toBeNull();
+        });
+
         it('создаёт inline-кнопку с JSON payload', () => {
             const result = TelegramButton.buttonProcessing(
                 [{ title: 'Действие', payload: { action: 'open', id: 5 } }],

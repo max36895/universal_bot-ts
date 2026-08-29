@@ -427,6 +427,8 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
         return {
             type: 'message_new',
+            // group_id обязателен: isPlatformOnQuery распознаёт VK по этому полю
+            group_id: 1,
             object: {
                 message: {
                     from_id: +userId,

@@ -22,6 +22,13 @@ describe('Telegram Card', () => {
         appContext.appConfig.tokens.telegram = {
             token: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
         };
+        // Заглушка логгера: cardProcessing пишет предупреждения о молчаливом
+        // усечении медиа-группы, и без заглушки они сыпятся в консоль после тестов
+        appContext.setLogger({
+            log: () => {},
+            warn: () => {},
+            error: () => {},
+        });
         controller = new TestController(appContext);
         controller.userId = 12345;
     });

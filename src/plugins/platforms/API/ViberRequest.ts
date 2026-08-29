@@ -66,6 +66,8 @@ export class ViberRequest {
     /**
      * Создает экземпляр класса для работы с API Viber
      * Устанавливает токен из конфигурации приложения, если он доступен
+     *
+     * @param appContext Контекст приложения (обязателен)
      */
     public constructor(appContext: AppContext) {
         this.#request = new Request(appContext);
@@ -338,7 +340,7 @@ export class ViberRequest {
     /**
      * Отправляет файл
      * @param receiver ID пользователя Viber
-     * @param file Путь к файлу или его содержимое
+     * @param file URL файла (поддерживаются только http/https-ссылки; локальные пути и содержимое не принимаются)
      * @param params Дополнительные параметры:
      * - tracking_data: данные для отслеживания
      * - min_api_version: минимальная версия API
@@ -402,7 +404,7 @@ export class ViberRequest {
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      */
-    #log(error: string = ''): void {
+    #log(error: Error | string = ''): void {
         this.#appContext.logError(getErrorMsg(error, 'ViberRequest', this.#request.url), {
             error: this.#error,
         });

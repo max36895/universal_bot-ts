@@ -175,10 +175,15 @@ export class Request {
         if (this.url) {
             try {
                 const start = this.#appContext?.usedMetric ? performance.now() : 0;
-                const response = await this.#getHttpClient()(
-                    this._getUrl(),
-                    await this._getOptions(),
-                );
+                const options = await this._getOptions();
+                // _getOptions() возвращает undefined, когда attach-файл не удалось
+                // прочитать или найти (причина уже записана в #error). Без проверки
+                // отсюда уходил fetch(url, undefined) — паразитный GET-запрос к API
+                // платформы без тела и метода, затиравший причину отказа.
+                if (!options || this.#error) {
+                    return null;
+                }
+                const response = await this.#getHttpClient()(this._getUrl(), options);
                 if (this.#appContext?.usedMetric) {
                     this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
                         url: this.url,

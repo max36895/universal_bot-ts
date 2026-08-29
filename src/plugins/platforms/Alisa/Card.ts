@@ -148,7 +148,7 @@ async function getBigImage(
  * Получает карточку для отображения в Алисе.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
+ * @returns {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null>} Объект карточки (BigImage, ItemsList или ImageGallery) либо `null`, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

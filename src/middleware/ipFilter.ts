@@ -8,13 +8,22 @@ import { MiddlewareNext } from '../core';
 export interface IIpFilterOptions {
     /**
      * Белый список IP/CIDR. Если задан — разрешены только эти адреса.
-     * Примеры: `'10.0.0.1'`, `'192.168.0.0/24'`, `'127.0.0.1'`.
+     * Поддерживаются IPv4 и IPv6.
+     * Примеры: `'10.0.0.1'`, `'192.168.0.0/24'`, `'127.0.0.1'`, `'2001:db8::/32'`, `'::1'`.
+     *
+     * ⚠️ Правила сравниваются по версии адреса: если заданы только IPv4-правила,
+     * IPv6-клиенты под whitelist не попадут и будут заблокированы.
      */
     whitelist?: string[];
 
     /**
      * Чёрный список IP/CIDR. Если задан — перечисленные запрещены.
+     * Поддерживаются IPv4 и IPv6.
      * Игнорируется, если задан `whitelist`.
+     *
+     * ⚠️ Правила сравниваются по версии адреса: если заданы только IPv4-правила,
+     * IPv6-клиенты под blacklist не попадут и не будут заблокированы —
+     * добавляйте IPv6-правила явно.
      */
     blacklist?: string[];
 
@@ -26,49 +35,137 @@ export interface IIpFilterOptions {
 }
 
 /**
- * Разбирает CIDR и строковый IP нотацию в числовое представление.
- * Примеры:
- *   - "192.168.0.1" → ipInt 3232235521, prefix 32
- *   - "192.168.0.0/24" → network 3232235520, prefix 24
+ * Разобранный IP-адрес: версия и числовое представление (для IPv6 — BigInt).
  */
-function parseCidr(cidr: string): { network: number; prefix: number } | null {
-    const [ipStr, prefixStr] = cidr.split('/');
-    const ipParts = ipStr.trim().split('.');
-    if (ipParts.length !== 4) return null;
-    let ipInt = 0;
-    for (const part of ipParts) {
-        const n = parseInt(part, 10);
-        if (isNaN(n) || n < 0 || n > 255) return null;
-        ipInt = (ipInt << 8) | n;
-    }
-    const prefix = prefixStr !== undefined ? parseInt(prefixStr, 10) : 32;
-    if (isNaN(prefix) || prefix < 0 || prefix > 32) return null;
-    // Сдвигаем адрес так, чтобы сравнивалась только network часть
-    const network = (ipInt >>> 0) & (prefix === 0 ? 0 : ~((1 << (32 - prefix)) - 1));
-    return { network: network >>> 0, prefix };
+interface IParsedIp {
+    version: 4 | 6;
+    value: bigint;
 }
 
-function ipToInt(ip: string): number | null {
+/** Разбирает dotted-quad IPv4 в число. Возвращает null для некорректных строк. */
+function parseIpv4(ip: string): bigint | null {
     const parts = ip.trim().split('.');
     if (parts.length !== 4) return null;
-    let n = 0;
-    for (const p of parts) {
-        const v = parseInt(p, 10);
-        if (isNaN(v) || v < 0 || v > 255) return null;
-        n = (n << 8) | v;
+    let value = 0n;
+    for (const part of parts) {
+        // Строгая проверка: parseInt принимал "1e2" и "0x1A" как валидные октеты
+        if (!/^\d{1,3}$/.test(part)) return null;
+        const n = Number(part);
+        if (n > 255) return null;
+        value = (value << 8n) | BigInt(n);
     }
-    return n >>> 0;
+    return value;
+}
+
+/** Разбирает IPv6 (включая `::`-сжатие и IPv4-хвост) в 128-битное число. */
+function parseIpv6(ip: string): bigint | null {
+    let addr = ip.trim().replace(/^\[/, '').replace(/\]$/, '');
+    const zoneIndex = addr.indexOf('%');
+    if (zoneIndex !== -1) {
+        addr = addr.slice(0, zoneIndex);
+    }
+    const halves = addr.split('::');
+    if (halves.length > 2) {
+        return null;
+    }
+    const parseGroups = (part: string): bigint[] | null => {
+        if (part === '') {
+            return [];
+        }
+        const groups = part.split(':');
+        const values: bigint[] = [];
+        for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            // IPv4-хвост допустим только в конце (::ffff:192.168.0.1)
+            if (group.includes('.')) {
+                if (i !== groups.length - 1) {
+                    return null;
+                }
+                const v4 = parseIpv4(group);
+                if (v4 === null) {
+                    return null;
+                }
+                values.push(v4 >> 16n, v4 & 0xffffn);
+                continue;
+            }
+            if (!/^[0-9a-fA-F]{1,4}$/.test(group)) {
+                return null;
+            }
+            values.push(BigInt(parseInt(group, 16)));
+        }
+        return values;
+    };
+    const head = parseGroups(halves[0]);
+    const tail = parseGroups(halves[1] ?? '');
+    if (!head || !tail) {
+        return null;
+    }
+    const missing = 8 - head.length - tail.length;
+    // `::` обязан ровно один раз компенсировать недостающие группы;
+    // без `::` адрес должен содержать ровно 8 групп
+    if (missing < 0 || (halves.length === 1 && missing !== 0)) {
+        return null;
+    }
+    const groups = [...head, ...new Array(missing).fill(0n), ...tail];
+    let value = 0n;
+    for (const group of groups) {
+        value = (value << 16n) | group;
+    }
+    return value;
+}
+
+/**
+ * Разбирает IP-адрес любой версии.
+ * IPv4-mapped IPv6 (`::ffff:a.b.c.d`) приводится к IPv4, чтобы правила
+ * для IPv4 применялись и к mapped-адресам dual-stack хостов.
+ */
+function parseIp(ip: string): IParsedIp | null {
+    if (ip.includes(':')) {
+        const value = parseIpv6(ip);
+        if (value === null) {
+            return null;
+        }
+        if (value >> 32n === 0xffffn) {
+            return { version: 4, value: value & 0xffffffffn };
+        }
+        return { version: 6, value };
+    }
+    const value = parseIpv4(ip);
+    return value === null ? null : { version: 4, value };
+}
+
+/**
+ * Разбирает CIDR-нотацию для IPv4 ("192.168.0.0/24") и IPv6 ("2001:db8::/32").
+ */
+function parseCidr(cidr: string): { version: 4 | 6; value: bigint; prefix: number } | null {
+    const [ipStr, prefixStr] = cidr.split('/');
+    const parsed = parseIp(ipStr.trim());
+    if (!parsed) return null;
+    const maxPrefix = parsed.version === 4 ? 32 : 128;
+    let prefix = maxPrefix;
+    if (prefixStr !== undefined) {
+        if (!/^\d{1,3}$/.test(prefixStr.trim())) return null;
+        prefix = Number(prefixStr);
+        if (prefix > maxPrefix) return null;
+    }
+    const mask = prefix === 0 ? 0n : ((1n << BigInt(prefix)) - 1n) << BigInt(maxPrefix - prefix);
+    return { version: parsed.version, value: parsed.value & mask, prefix };
 }
 
 function ipInCidr(ip: string, cidr: string): boolean {
     const cidrParsed = parseCidr(cidr);
-    const ipInt = ipToInt(ip);
-    if (!cidrParsed || ipInt === null) return false;
-    const { network, prefix } = cidrParsed;
-    if (prefix === 0) return true; // 0.0.0.0/0 совпадает со всем
-    const mask = ~((1 << (32 - prefix)) - 1) >>> 0;
-    // JS побитовые операции возвращают signed int32 — без >>>0 сравнение падает на IP >127.255.x.x
-    return (ipInt & mask) >>> 0 === network;
+    const ipParsed = parseIp(ip);
+    if (!cidrParsed || !ipParsed) return false;
+    // Сравниваем адреса только одной версии: IPv6-клиент под правило IPv4
+    // не попадает (и наоборот). Для фильтрации IPv6-трафика добавляйте
+    // IPv6-правила в whitelist/blacklist.
+    if (cidrParsed.version !== ipParsed.version) return false;
+    const maxPrefix = cidrParsed.version === 4 ? 32 : 128;
+    const mask =
+        cidrParsed.prefix === 0
+            ? 0n
+            : ((1n << BigInt(cidrParsed.prefix)) - 1n) << BigInt(maxPrefix - cidrParsed.prefix);
+    return (ipParsed.value & mask) === cidrParsed.value;
 }
 
 /**
@@ -119,8 +216,13 @@ export function ipFilter(
             return;
         }
 
-        // Нормализация IPv4-mapped IPv6: "::ffff:127.0.0.1" → "127.0.0.1"
-        const ip = remoteIp.startsWith('::ffff:') ? remoteIp.slice(7) : remoteIp;
+        // Нормализация IPv4-mapped IPv6: "::ffff:127.0.0.1" → "127.0.0.1".
+        // Строку срезаем только когда хвост — dotted-quad: hex-форму "::ffff:102:304"
+        // разбирает parseIp, и преждевременный срез портил её в некорректный адрес.
+        const ip =
+            remoteIp.startsWith('::ffff:') && remoteIp.slice(7).includes('.')
+                ? remoteIp.slice(7)
+                : remoteIp;
 
         // Если задан whitelist — должен быть match
         if (whitelist && whitelist.length) {

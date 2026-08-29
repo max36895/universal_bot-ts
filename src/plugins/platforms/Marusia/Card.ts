@@ -153,7 +153,7 @@ async function getBigImage(
  * Получает карточку для отображения в Марусе.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null>} Одна карточка или null, если нечего отобразить
+ * @returns {Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null>} Объект карточки (BigImage, ItemsList или ImageGallery) либо `null`, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

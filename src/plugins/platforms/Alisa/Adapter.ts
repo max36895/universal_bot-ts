@@ -80,7 +80,7 @@ interface IState {
  * import { AlisaAdapter } from 'umbot/plugins';
  *
  * const bot = new Bot()
- *     .use(new AlisaAdapter('YOUR_OAUTH_TOKEN')) // Подключаем адаптер для Алисы
+ *     .use(new AlisaAdapter('YOUR_OAUTH_TOKEN')) // Токен нужен только для загрузки изображений/звуков; альтернатива — env ALISA_TOKEN
  *     .addCommand('start', ['привет'], (_text, ctx) => {
  *         ctx.text = 'Привет! Я твой первый навык для Алисы';
  *     });
@@ -370,7 +370,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     ): Record<string, unknown> {
         return {
             meta: {
-                locale: 'ru-Ru',
+                locale: 'ru-RU',
                 timezone: 'UTC',
                 client_id: 'yandex.searchplugin_local',
                 interfaces: {

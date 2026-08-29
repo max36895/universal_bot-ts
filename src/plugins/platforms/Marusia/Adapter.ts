@@ -324,7 +324,7 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
     ): Record<string, unknown> {
         return {
             meta: {
-                locale: 'ru-Ru',
+                locale: 'ru-RU',
                 timezone: 'UTC',
                 client_id: 'MailRu_local',
                 interfaces: {

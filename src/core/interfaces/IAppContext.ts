@@ -14,7 +14,7 @@ import { INlu } from '../../components';
 /**
  * Режим работы приложения.
  * - `dev` — разработка: включены логи, отладка, нет строгих проверок.
- * - `prod` — продакшн: минимальные логи, валидация включена.
+ * - `prod` — продакшн: минимальные логи; ReDoS-проверка выполняется, но небезопасные выражения не отклоняются (только логируются).
  * - `strict_prod` — строгий продакшн: запрещены любые отклонения от спецификации платформ, включена полная валидация.
  */
 export type TAppMode = 'dev' | 'prod' | 'strict_prod';
@@ -372,14 +372,14 @@ export interface IAppParam {
      *
      * Рекомендуется тестировать регулярные выражения в режиме `dev` перед выкаткой в продакшн.
      *
-     * @see {@link Bot.setAppMode} для настройки режима.
+     * @see `Bot.setAppMode()` — метод для настройки режима работы приложения.
      */
     intents: IAppIntent[] | null;
 
     /**
      * UTM-метка для ссылок
      *
-     * @defaultValue utm_source=umbot&utm_medium=cpc&utm_campaign=phone
+     * @defaultValue null — при этом к кнопкам-ссылкам автоматически добавляется utm_source=umbot&utm_medium=cpc&utm_campaign=phone
      */
     utm_text?: string | null;
 }

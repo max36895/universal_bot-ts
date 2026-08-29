@@ -698,6 +698,8 @@ describe('TelegramAdapter', () => {
         it('генерирует пример запроса с текстом и userId', () => {
             const result = adapter.getQueryExample('тест', '42', 5);
             expect(result).toEqual({
+                // update_id обязателен: isPlatformOnQuery распознаёт Telegram по этому полю
+                update_id: 5,
                 message: {
                     chat: {
                         id: 42,

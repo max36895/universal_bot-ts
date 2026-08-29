@@ -327,6 +327,14 @@ export class FileAdapter extends Base<IFileDbInfo> {
         content: TFileData = {},
     ): IModelRes {
         const whereKey = where[selectData.primaryKeyName as string];
+        // Запись и удаление по зарезервированным ключам уже защищены #isForbiddenKey;
+        // чтение защищаем тоже: content['__proto__'] возвращает Object.prototype,
+        // и пользователь с таким platform-id ошибочно считался «найденным»,
+        // из-за чего его данные потом молча не сохранялись.
+        if (typeof whereKey === 'string' && this.#isForbiddenKey(whereKey)) {
+            this._appContext?.logError(`Попытка использовать запрещённый ключ: ${whereKey}`);
+            return { status: false };
+        }
         if ((typeof whereKey === 'string' || typeof whereKey === 'number') && content[whereKey]) {
             if (keysCount(where) === 1) {
                 return {
@@ -372,6 +380,16 @@ export class FileAdapter extends Base<IFileDbInfo> {
         let result: Record<string, unknown> | Record<string, unknown>[] | null = null;
         const content = this.getFileData(selectData.tableName);
         if (where) {
+            // Зарезервированные ключи в условиях выборки недопустимы: чтение по ним
+            // возвращало унаследованные свойства Object.prototype как «найденную запись».
+            for (const whereField in where) {
+                if (this.#isForbiddenKey(whereField)) {
+                    this._appContext?.logError(
+                        `Попытка использовать запрещённый ключ: ${whereField}`,
+                    );
+                    return { status: false };
+                }
+            }
             const whereKey = where[selectData.primaryKeyName as string];
             if (whereKey) {
                 return this.#selectInPrimaryKey(selectData, where, isOne, content);

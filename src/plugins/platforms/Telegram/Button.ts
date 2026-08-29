@@ -26,6 +26,17 @@ export function buttonProcessing(
             appContext?.logWarn('[Telegram] Кнопка с пустым text пропущена.');
             return;
         }
+        // URL-кнопка не использует callback_data, поэтому лимит 64 байта к ней
+        // неприменим: проверка payload до ветки url отбрасывала валидную url-кнопку,
+        // у которой просто задан крупный payload для других платформ.
+        if (button.url) {
+            // url и callback_data взаимоисключающие в Telegram API
+            inlines.push({
+                text: button.title,
+                url: button.url,
+            });
+            return;
+        }
         const callbackData = button.payload
             ? serializePlatformPayload(button.payload, 'Telegram', appContext)
             : undefined;
@@ -42,14 +53,7 @@ export function buttonProcessing(
                 return;
             }
         }
-        if (button.url) {
-            // url и callback_data взаимоисключающие в Telegram API
-            const inline: ITelegramInlineKeyboard = {
-                text: button.title,
-                url: button.url,
-            };
-            inlines.push(inline);
-        } else if (button.payload) {
+        if (button.payload) {
             const inline: ITelegramInlineKeyboard = {
                 text: button.title,
                 callback_data: callbackData,

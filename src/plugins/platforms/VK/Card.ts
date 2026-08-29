@@ -48,6 +48,12 @@ async function getElements(
     controller: BotController,
 ): Promise<IVkCardElement[]> {
     const maxImages = Math.min(cardInfo.images.length, VK_MAX_CAROUSEL_ELEMENTS);
+    if (cardInfo.images.length > VK_MAX_CAROUSEL_ELEMENTS) {
+        controller.appContext.logWarn(
+            `[VK] Карусель ограничена ${VK_MAX_CAROUSEL_ELEMENTS} элементами; ` +
+                `лишние изображения (${cardInfo.images.length - VK_MAX_CAROUSEL_ELEMENTS}) пропущены.`,
+        );
+    }
     const elements = [];
     for (let i = 0; i < maxImages; i++) {
         const image = cardInfo.images[i];
@@ -55,6 +61,13 @@ async function getElements(
             image.imageToken = await getImageInDB(controller, image.imageDir);
         }
         if (!image.imageToken) {
+            // Дальнейшие изображения тоже отбрасываются: карусель собирается до
+            // первого сбоя. Без предупреждения в продакшене выглядело как
+            // «карточки пропали» без причины в логах.
+            controller.appContext.logWarn(
+                `[VK] Не удалось получить image_id для изображения ${i} — ` +
+                    `карточка и все последующие (${maxImages - i}) пропущены.`,
+            );
             return elements;
         }
         if (cardInfo.usedGallery) {
@@ -97,7 +110,7 @@ async function getElements(
  * Получает карточку для отображения в VK.
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IVkCard | string[]>} Одна карточка, массив карточек или пустой массив, если нечего отобразить
+ * @returns {Promise<IVkCard | string[]>} Шаблон карусели (IVkCard) либо массив строк-вложений (attachment ID), либо пустой массив, если нечего отобразить
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

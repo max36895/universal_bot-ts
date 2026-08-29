@@ -311,4 +311,32 @@ describe('AppContext: маскирование секретов (logError / logW
         const [msg] = errorSpy.mock.calls[0];
         expect(msg).toBe('обычная ошибка: БД недоступна, повторим позже');
     });
+
+    // ---------------------------------------------
+    // logMetric: label идёт в кастомный логгер и обязан маскироваться
+    // ---------------------------------------------
+
+    it('logMetric маскирует токен в label (url запроса Telegram)', () => {
+        const metricSpy = jest.fn();
+        ctx.setLogger({ error: errorSpy, warn: warnSpy, metric: metricSpy } as ILogger);
+
+        const tgToken = 'bot1234567890:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+        // Request.#run() кладёт в метрику полный URL, который содержит токен бота
+        ctx.logMetric('request', 12.5, { url: `https://api.telegram.org/${tgToken}/sendMessage` });
+
+        expect(metricSpy).toHaveBeenCalledTimes(1);
+        const [, , label] = metricSpy.mock.calls[0] as [string, unknown, { url: string }];
+        expect(label.url).not.toContain('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+        expect(label.url).toContain('bot***');
+    });
+
+    it('logMetric оставляет label без изменений, если секретов нет', () => {
+        const metricSpy = jest.fn();
+        ctx.setLogger({ error: errorSpy, warn: warnSpy, metric: metricSpy } as ILogger);
+
+        ctx.logMetric('db_select', 3.5, { tableName: 'UsersData' });
+
+        const [, , label] = metricSpy.mock.calls[0] as [string, unknown, { tableName: string }];
+        expect(label.tableName).toBe('UsersData');
+    });
 });

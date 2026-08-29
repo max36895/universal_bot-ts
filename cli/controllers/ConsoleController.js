@@ -158,7 +158,10 @@ async function main(
                         .filter(
                             ([, value]) => value !== undefined && value !== null && value !== '',
                         )
-                        .map(([key, value]) => `${key}=${value}`)
+                        // Переводы строк в значении дописали бы в .env произвольные
+                        // переменные (атака "TELEGRAM_TOKEN=x\nFOO=bar"). flow.json —
+                        // недоверенный ввод, поэтому санитизируем так же, как flowGenerator.
+                        .map(([key, value]) => `${key}=${String(value).replace(/[\r\n\0]+/g, '')}`)
                         .join('\n');
 
                     delete create.params?.config?.db;

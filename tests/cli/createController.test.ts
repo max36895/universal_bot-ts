@@ -83,6 +83,26 @@ describe('CreateController', () => {
             expect(fs.existsSync(path.join(projectDir, 'package.json'))).toBe(true);
         });
 
+        it('имя проекта, начинающееся с цифры, получает префикс "_"', async () => {
+            // '2025bot' без префикса давало import { 2025botController } —
+            // сгенерированный проект не собирался компилятором TypeScript
+            const ctrl = new CreateController();
+            ctrl.params = { path: path.join(TEST_DIR, 'digit') };
+            await ctrl.init('2025bot', CreateController.T_DEFAULT);
+
+            const projectDir = path.join(TEST_DIR, 'digit');
+            expect(fs.existsSync(path.join(projectDir, 'src', 'config', '_2025botConfig.ts'))).toBe(
+                true,
+            );
+            expect(
+                fs.existsSync(path.join(projectDir, 'src', 'controller', '_2025botController.ts')),
+            ).toBe(true);
+            const indexContent = fs.readFileSync(path.join(projectDir, 'src', 'index.ts'), 'utf8');
+            expect(indexContent).toContain('_2025botConfig');
+            // Идентификатор начинается с '_': голого '2025bot' в коде быть не должно
+            expect(indexContent).not.toMatch(/[^_\d\w]2025bot/);
+        });
+
         it('выводит ошибку при пустом имени проекта', () => {
             const ctrl = new CreateController();
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation();

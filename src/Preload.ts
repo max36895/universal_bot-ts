@@ -203,8 +203,8 @@ export class Preload {
      * Возвращает внутренний тип звука, используемый в `SoundTokens`, для указанной платформы.
      *
      * @param {TAppType} platform - Тип платформы.
-     * @returns {string | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается
-     *                               или не требует предзагрузки (например, Telegram).
+     * @returns {string | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается.
+     *                               Для Telegram предзагрузка требует отправки файла пользователю (см. `telegramUseId`).
      */
     protected _getSoundType(platform: TAppType): string | undefined {
         switch (platform) {
@@ -228,8 +228,9 @@ export class Preload {
      *
      * @param {string[]} images - Массив путей к файлам изображений для удаления.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @returns {Promise<boolean>[]} Массив промисов, каждый из которых разрешается `true` при успешном удалении
-     *                              или `false` при ошибке.
+     * @returns {Promise<boolean>[]} Массив промисов. Промис разрешается `true`, если процедура завершилась
+     *                              без исключения (включая случай, когда записи нет или платформа не поддерживает
+     *                              удаление — удаление реализовано только для Алисы и Маруси), и `false` при ошибке.
      */
     public removeImages(images: string[], platforms?: TAppType[]): Promise<boolean>[] {
         const allowedPlatforms = this._getPlatforms(platforms);
@@ -300,8 +301,9 @@ export class Preload {
      *
      * @param {string[]} sounds - Массив путей к файлам звуков для удаления.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @returns {Promise<boolean>[]} Массив промисов, каждый из которых разрешается `true` при успешном удалении
-     *                              или `false` при ошибке.
+     * @returns {Promise<boolean>[]} Массив промисов. Промис разрешается `true`, если процедура завершилась
+     *                              без исключения (включая случай, когда записи нет или платформа не поддерживает
+     *                              удаление — удаление реализовано только для Алисы и Маруси), и `false` при ошибке.
      */
     public removeSounds(sounds: string[], platforms?: TAppType[]): Promise<boolean>[] {
         const allowedPlatforms = this._getPlatforms(platforms);

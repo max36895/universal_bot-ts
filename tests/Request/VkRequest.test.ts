@@ -106,7 +106,7 @@ describe('VkRequest', () => {
 
     // === usersGet ===
 
-    it('should call users.get with user_id', async () => {
+    it('should call users.get with documented user_ids param for numeric id', async () => {
         (global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ response: [{ id: 123 }] }),
@@ -115,7 +115,9 @@ describe('VkRequest', () => {
         const result = await vk.usersGet(123);
         expect(result).toEqual([{ id: 123 }]);
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('user_id=123&access_token=test-token');
+        // users.get документирует только user_ids: legacy user_id больше не отправляется
+        expect(body).toContain('user_ids=123&access_token=test-token');
+        expect(body).not.toContain('user_id=123&');
     });
 
     it('should call users.get with user_ids array', async () => {

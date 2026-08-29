@@ -451,6 +451,9 @@ export class Bot<
      *
      * @example
      * ```ts
+     * import { Bot } from 'umbot';
+     * import { T_ALISA, T_TELEGRAM, T_VK } from 'umbot/plugins';
+     *
      * // Создание навыка для Алисы
      * const bot = new Bot(T_ALISA, MyController);
      *
@@ -642,7 +645,7 @@ export class Bot<
      * // Асинхронная команда (работа с API):
      * ```ts
      * bot.addCommand('weather', ['погода'], async (text, controller) => {
-     *   const weather = await fetch('Какой-то сервис для получения погоды');
+     *   const weather = await fetch('https://api.example.com/weather?city=Москва');
      *   controller.text = `Погода: ${await weather.text()}`;
      * });
      * ```
@@ -1193,8 +1196,9 @@ export class Bot<
      * > 💡 **Рекомендация**: основную бизнес-логику размещайте в командах (`addCommand`) и шагах (`addStep`),
      * > а в `action()` — только **сквозную** логику, которую не хочется дублировать.
      *
-     * Контроллер по умолчанию уже обрабатывает интенты `welcome`, `help` и `fallback`,
-     * но вы можете заменить его, если нужно кастомное поведение.
+     * Стандартные интенты `welcome`, `help` и fallback-команда обрабатываются фреймворком автоматически
+     * (в `BotController`) — при замене контроллера они продолжат работать. Базовый `BaseBotController`
+     * дополнительно подставляет `empty_text`, если ответ пуст.
      *
      * @param {TBotControllerClass<TUserData, TPlatformState>} fn - Класс контроллера, наследующий `BotController<TUserData, TPlatformState>`
      *

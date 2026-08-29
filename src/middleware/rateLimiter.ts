@@ -2,6 +2,34 @@
 import { BotController } from '../controller';
 import { AppContext, MiddlewareNext } from '../core';
 
+declare module '../controller/BotController' {
+    interface IPlatformOptions {
+        /**
+         * Флаг, который выставляется middleware `rateLimiter()` перед выбросом
+         * исключения о переполнении очереди. Позволяет вызывающему коду
+         * (например, в responseCb) понять, что запрос отклонён по перегрузке,
+         * а не упал из-за ошибки в бизнес-логике.
+         */
+        rateLimitOverflow?: boolean;
+    }
+}
+
+/**
+ * Ошибка переполнения очереди rateLimiter.
+ *
+ * Выбрасывается, когда очередь запросов одного пользователя превысила
+ * `maxQueueSize`. Ядро перехватывает исключения middleware и обрабатывает их
+ * как «обработка прервана» (платформа получает 200), поэтому по классу ошибки
+ * и флагу `platformOptions.rateLimitOverflow` приложение может отличить
+ * осознанный отказ из-за перегрузки от ошибки в бизнес-логике.
+ */
+export class RateLimitQueueOverflowError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'RateLimitQueueOverflowError';
+    }
+}
+
 interface QueueItem {
     resolve: () => void;
     reject: (err: Error) => void;
@@ -14,9 +42,15 @@ interface PlatformState {
     lastReset: number; // время последнего сброса счётчика (мс)
     count: number; // количество запросов за текущую секунду
     lastActivity: number; // время последней активности (для очистки)
+    /**
+     * Запись вытеснена из stateMap (eviction/destroy) и больше не обслуживается.
+     * Нужна, чтобы processQueue не исполнял задачи вытесненной записи: их промисы
+     * уже отклонены, а новый запрос того же ключа создаёт отдельную запись.
+     */
+    dead: boolean;
 }
 
-/** Максимальный размер stateMap. При превышении новые записи не добавляются. */
+/** Максимальный размер stateMap. При достижении лимита вытесняется самая старая неактивная запись (см. getOrCreateState). */
 const MAX_STATE_MAP_SIZE = 10000;
 
 /**
@@ -36,7 +70,7 @@ async function processQueue(
     appContext: AppContext,
 ): Promise<void> {
     try {
-        while (st.queue.length > 0) {
+        while (st.queue.length > 0 && !st.dead) {
             const now = Date.now();
             const timePassed = now - st.lastReset;
 
@@ -44,16 +78,29 @@ async function processQueue(
             if (timePassed < 1000) {
                 await new Promise((r) => setTimeout(r, 1000 - timePassed).unref());
             }
-            // eslint-disable-next-line require-atomic-updates
+            if (st.dead) {
+                return;
+            }
             st.count = 0;
-            // eslint-disable-next-line require-atomic-updates
             st.lastReset = Date.now();
 
             // Счётчик только что обнулён, поэтому в этом окне доступен весь лимит.
-            // Берём из очереди ровно столько, сколько можем выполнить.
+            // Берём из очереди потенциальную пачку.
             const batch = st.queue.splice(0, Math.min(limit, st.queue.length));
 
-            for (const item of batch) {
+            for (let i = 0; i < batch.length; i++) {
+                const item = batch[i];
+                if (st.dead) {
+                    break;
+                }
+                // Свежие запросы, приходящие параллельно с пачкой, занимают тот же
+                // счётчик (st.count < limit в обработчике middleware). Без проверки
+                // здесь за одно окно исполнялось до limit задач из пачки + до limit
+                // свежих запросов — реальный rps вдвое превышал лимит платформы.
+                if (st.count >= limit) {
+                    st.queue.unshift(...batch.slice(i));
+                    break;
+                }
                 st.count++;
                 try {
                     await item.task();
@@ -85,15 +132,17 @@ async function processQueue(
         // подкинуть новые задачи. Если это произошло — перезапускаем обработку,
         // не сбрасывая флаг processing. Это закрывает race condition,
         // из-за которого Promise мог навсегда зависнуть в очереди.
-        if (st.queue.length > 0) {
+        // Для вытесненной (dead) записи перезапуск запрещён: её очередь больше
+        // никем не обслуживается, а новый запрос того же ключа создал отдельную запись.
+        if (!st.dead && st.queue.length > 0) {
             processQueue(st, limit, appContext).catch((e) => {
                 appContext.logError(
                     `rateLimiter: Произошла ошибка при обработке очереди: ${e.message}`,
                     { error: e },
                 );
             });
-        } else {
-            // Очередь пуста — безопасно сбрасываем флаг
+        } else if (st.queue.length === 0 || st.dead) {
+            // Очередь пуста (или запись вытеснена) — безопасно сбрасываем флаг
             st.processing = false;
         }
     }
@@ -165,6 +214,9 @@ function findOldestKey(stateMap: Map<string, PlatformState>): string | null {
 function evictEntry(stateMap: Map<string, PlatformState>, key: string): void {
     const old = stateMap.get(key);
     if (old) {
+        // Помечаем запись мёртвой ДО отклонения промисов: иначе работающий
+        // processQueue продолжил бы исполнять задачи уже вытесненной записи.
+        old.dead = true;
         for (const item of old.queue) {
             try {
                 item.reject(new Error('rateLimiter: eviction due to overflow'));
@@ -201,6 +253,7 @@ function getOrCreateState(stateMap: Map<string, PlatformState>, key: string): Pl
             lastReset: Date.now(),
             count: 0,
             lastActivity: Date.now(),
+            dead: false,
         };
         stateMap.set(key, st);
     }
@@ -219,10 +272,14 @@ function getOrCreateState(stateMap: Map<string, PlatformState>, key: string): Pl
  * - Лимит берётся из свойства `limit` адаптера платформы (`platformAdapter.limit`).
  *   Если свойство не задано или равно 0, ограничение не применяется.
  * - Для каждой комбинации `{platform}:{userId}` ведётся отдельная очередь и счётчик запросов.
- * - Счётчик сбрасывается каждую секунду, что позволяет точно соблюдать лимит в скользящем окне.
+ * - Счётчик обнуляется при первом запросе спустя секунду после предыдущего сброса,
+ *   что позволяет соблюдать лимит в секундном (фиксированном) окне.
  * - Если лимит исчерпан, запрос помещается в очередь и будет выполнен, когда появится свободное «окно».
- * - Очередь имеет максимальный размер (`maxQueueSize`); при переполнении выбрасывается ошибка.
- * - Запросы в очереди выполняются с равномерной задержкой (⌈1000/limit⌉ мс), чтобы не превышать лимит.
+ * - Очередь имеет максимальный размер (`maxQueueSize`); при переполнении выбрасывается
+ *   исключение {@link RateLimitQueueOverflowError}, а в `ctx.platformOptions.rateLimitOverflow`
+ *   выставляется флаг: исключение перехватывается ядром как «обработка прервана» (платформа
+ *   получит 200), поэтому флаг — способ понять, что запрос отклонён из-за перегрузки.
+ * - Запросы в очереди выполняются с равномерной задержкой (⌈1000/limit⌉ − 1 мс), чтобы не превышать лимит.
  * - Неактивные записи (без запросов дольше `inactivityTimeout`) автоматически удаляются из памяти.
  *
  * **Важные особенности:**
@@ -304,7 +361,10 @@ export function rateLimiter(
             return next();
         }
         if (st.queue.length >= maxQueueSize) {
-            throw new Error(
+            // Флаг позволяет вызывающему коду (например, в responseCb webhookHandle)
+            // отличить осознанный отказ из-за перегрузки от ошибки в бизнес-логике.
+            ctx.platformOptions.rateLimitOverflow = true;
+            throw new RateLimitQueueOverflowError(
                 `rateLimit - Превышено ограничение на размер очереди. Убедитесь, что значение указано корректно, текущее значение - ${maxQueueSize}.`,
             );
         }
@@ -363,6 +423,9 @@ export function destroyRateLimiter(): void {
         }
         // Очищаем все очереди, отклоняя ожидающие промисы
         instance.stateMap.forEach((state) => {
+            // Помечаем запись мёртвой, чтобы работающий processQueue не исполнял
+            // задачи уничтоженного лимитера.
+            state.dead = true;
             while (state.queue.length > 0) {
                 const item = state.queue.shift();
                 if (item) {

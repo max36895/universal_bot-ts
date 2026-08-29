@@ -1165,8 +1165,6 @@ describe('Bot', () => {
 
         const noop = (): void => {};
         const UNSAFE_PATTERNS: [string, () => void][] = [
-            ['.*', (): void => bot.addCommand('redos', [/.*/], noop) && undefined],
-            ['/.*/', (): void => bot.addCommand('redos2', ['/.*/'], noop, true) && undefined],
             [
                 `/${'test'.repeat(777)}/`,
                 (): void =>
@@ -1187,6 +1185,12 @@ describe('Bot', () => {
             const safe = captureRegexLog((): void => {
                 bot.addCommand('normal', [/\d+/], noop);
                 bot.addCommand('normal2', ['/\\d+/'], noop, true);
+                // Одиночный any-quantifier линеен и не является ReDoS:
+                // раньше он отбраковывался общим правилом REG_BAD
+                bot.addCommand('normal3', [/.*/], noop);
+                bot.addCommand('normal4', ['/.*/'], noop, true);
+                // Простая фиксированная группа под квантификатором тоже безопасна
+                bot.addCommand('normal5', [/(abc)+/], noop);
             });
             expect(safe.warn).toBeUndefined();
             expect(safe.error).toBeUndefined();

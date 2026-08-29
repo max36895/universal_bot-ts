@@ -71,10 +71,10 @@ export function escapeHtml(text: string): string {
  *
  * @example
  * ```ts
- * import { TelegramRequest } from './api/TelegramRequest';
+ * import { TelegramRequest } from 'umbot/plugins';
  *
- * // Создание экземпляра
- * const telegram = new TelegramRequest();
+ * // Создание экземпляра (appContext обязателен)
+ * const telegram = new TelegramRequest(appContext);
  * telegram.initToken('your-bot-token');
  *
  * // Отправка простого сообщения
@@ -137,6 +137,8 @@ export class TelegramRequest {
     /**
      * Создает экземпляр класса для работы с API Telegram
      * Устанавливает токен из конфигурации приложения, если он доступен
+     *
+     * @param appContext Контекст приложения (обязателен)
      */
     public constructor(appContext: AppContext) {
         this.#request = new Request(appContext);
@@ -514,11 +516,10 @@ export class TelegramRequest {
      * Поддерживаемые форматы:
      * - JPEG, JPG, PNG, GIF, WEBP
      * - Максимальный размер: 10MB
-     * - Максимальное разрешение: 10000x10000
+     * - Сумма ширины и высоты не более 10000 пикселей
      * @param desc Подпись к фотографии
      * @param params Дополнительные параметры:
      * - caption: подпись к фото (0-1024 символа)
-     * - caption: подпись к фото
      * - parse_mode: формат текста
      * - disable_notification: отключить уведомление
      * - reply_to_message_id: ID сообщения для ответа
@@ -699,7 +700,7 @@ export class TelegramRequest {
      * @param error Текст ошибки для логирования
      *
      */
-    #log(error: string = ''): void {
+    #log(error: Error | string = ''): void {
         this.#appContext.logError(getErrorMsg(error, 'TelegramRequest', this.#request.url), {
             error: this.#error,
         });

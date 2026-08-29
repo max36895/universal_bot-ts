@@ -11,6 +11,12 @@ const MAX_API_ENDPOINT = 'https://platform-api2.max.ru/';
 const MAX_MESSAGE_INTERVAL_MS = 500;
 const MAX_TEXT_LENGTH = 4000;
 const MAX_ATTACHMENTS = 12;
+/**
+ * Таймаут загрузки файла на временный upload-URL MAX.
+ * На медленном восходящем канале стандартные 5.5 с обрывали загрузку,
+ * и карточка/звук молча терялись.
+ */
+const MAX_UPLOAD_TIMEOUT = 30_000;
 const maxMessageQueues = new Map<string, Promise<void>>();
 const maxLastMessageAt = new Map<string, number>();
 
@@ -86,6 +92,8 @@ export class MaxRequest {
     /**
      * Создает экземпляр класса для работы с API Max
      * Устанавливает токен из конфигурации приложения, если он доступен
+     *
+     * @param appContext Контекст приложения (обязателен)
      */
     public constructor(appContext: AppContext) {
         this.#request = new Request(appContext);
@@ -204,7 +212,14 @@ export class MaxRequest {
             this.#request.attachName = 'data';
             this.#request.isAttachContent = this.isAttachContent;
             this.#request.header = Request.HEADER_FORM_DATA;
-            const data = await this.#request.send<IMaxUploadFile>(uploadTarget.url);
+            const previousTimeout = this.#request.maxTimeQuery;
+            this.#request.maxTimeQuery = MAX_UPLOAD_TIMEOUT;
+            let data;
+            try {
+                data = await this.#request.send<IMaxUploadFile>(uploadTarget.url);
+            } finally {
+                this.#request.maxTimeQuery = previousTimeout;
+            }
             if (data.status && data.data) {
                 return {
                     ...data.data,
@@ -328,7 +343,7 @@ export class MaxRequest {
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      */
-    #log(error: string = ''): void {
+    #log(error: Error | string = ''): void {
         this.#appContext.logError(getErrorMsg(error, 'MaxRequest', this.#request.url), {
             error: this.#error,
         });

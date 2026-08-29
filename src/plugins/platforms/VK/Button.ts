@@ -131,7 +131,13 @@ function _getVkButton<TPayload>(
         object.color = buttonColor;
     }
     if (buttonType === VK_TYPE_PAY) {
-        object.hash = _getVkPayHash(button.payload);
+        // По документации VK API hash у vkpay-кнопки находится внутри action.
+        // Верхнеуровневый hash — недокументированное поле, а hash: null приводило
+        // к отклонению всей клавиатуры ошибкой 100.
+        const hash = _getVkPayHash(button.payload);
+        if (hash) {
+            object.action.hash = hash;
+        }
     }
     return object;
 }
@@ -152,7 +158,9 @@ export function buttonProcessing<TPayload>(
         if (!object) {
             return;
         }
-        const groupOptions = button.options[GROUP_NAME];
+        // Опциональная цепочка на случай кнопок, собранных вне компонента Buttons:
+        // интерфейс требует options, но TypeError на кривом вводе не нужен.
+        const groupOptions = button.options?.[GROUP_NAME];
         if (groupOptions === undefined) {
             finalButtons[index] = [object];
             index++;

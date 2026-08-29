@@ -7,7 +7,11 @@
  * @packageDocumentation
  * @module middleware
  */
-export { rateLimiter, destroyRateLimiter } from './middleware/rateLimiter';
+export {
+    rateLimiter,
+    destroyRateLimiter,
+    RateLimitQueueOverflowError,
+} from './middleware/rateLimiter';
 export { authGuard } from './middleware/authGuard';
 export type { TAuthCheck, IAuthGuardOptions } from './middleware/authGuard';
 export { requestId } from './middleware/requestId';

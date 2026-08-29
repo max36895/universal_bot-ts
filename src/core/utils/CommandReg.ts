@@ -19,6 +19,41 @@ export interface IGroupData {
     regExp: RegExp | null | string;
 }
 
+/**
+ * Кэш скомпилированных регулярных выражений групп, чей паттерн хранится строкой
+ * (случай, когда количество групп превысило MAX_COUNT_FOR_GROUP). Ключ — объект
+ * группы, значение — паттерн, для которого собран RegExp: строка паттерна растёт
+ * при добавлении команд, поэтому кэш сверяет её и пересобирает только при изменении.
+ */
+const groupCompiledRegExp = new WeakMap<IGroupData, { pattern: string; regExp: RegExp }>();
+
+/**
+ * Возвращает скомпилированное регулярное выражение группы.
+ * Для строкового паттерна результат кэшируется: перекомпиляция на каждом запросе
+ * в горячем пути поиска команд стоила заметного CPU.
+ * @param groupData Данные группы
+ * @param customReg Кастомный конструктор RegExp (например, re2)
+ * @returns Скомпилированное выражение или null, если группа пуста
+ */
+export function getGroupRegExpCompiled(
+    groupData: IGroupData,
+    customReg?: RegExpConstructor,
+): RegExp | null {
+    if (groupData.regExp === null) {
+        return null;
+    }
+    if (typeof groupData.regExp !== 'string') {
+        return groupData.regExp;
+    }
+    const cached = groupCompiledRegExp.get(groupData);
+    if (cached && cached.pattern === groupData.regExp) {
+        return cached.regExp;
+    }
+    const regExp = getRegExp(groupData.regExp, 'ium', customReg);
+    groupCompiledRegExp.set(groupData, { pattern: groupData.regExp, regExp });
+    return regExp;
+}
+
 const LIMIT_COMMANDS = [1e4, 5e4, 1e5];
 // Глобальные лимиты, возможно, можно вынести в конфигурацию
 let MAX_COUNT_FOR_GROUP = 0;

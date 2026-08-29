@@ -194,7 +194,8 @@ export abstract class BasePlatform<TQuery = unknown>
      * - **Viber** — умолчание корректно (Viber шлёт `x-viber-content-signature` как HMAC-SHA256(auth_token, body)).
      * - **VK** — переопределён: сверяет поле `secret` из тела запроса с `secret_key` из конфигурации
      *   (plain-сравнение через timingSafeEqual, без HMAC).
-     * - **Max** — переопределён: сверяет заголовок `x-max-bot-api-secret` с токеном бота.
+     * - **Max** — переопределён: сверяет заголовок `x-max-bot-api-secret` со значением webhook-secret
+     *   (`options.secret` / `tokens.max_app.webhookSecret`).
      * - Для платформ без подписи (Alisa, Marusia, SmartApp) проверка пропускается из-за отсутствия `signatureName`.
      *
      * @param {TQuery} query - Объект запроса от платформы
@@ -319,7 +320,8 @@ export abstract class BasePlatform<TQuery = unknown>
 
     /**
      * При превышении допустимого времени обработки запроса пишет информацию в лог.
-     * Вызывается автоматически после `getContent()`.
+     * Вызывается вручную в конце `getContent()` голосовых адаптеров (Alisa, Marusia, SmartApp);
+     * адаптеры чат-платформ его не вызывают.
      * - `>= MAX_TIME_REQUEST` (по умолчанию 2900 мс) — ошибка.
      * - `>= WARNING_TIME_REQUEST` (по умолчанию 2000 мс) — warning.
      *

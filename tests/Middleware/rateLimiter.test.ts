@@ -1,4 +1,8 @@
-import { rateLimiter, destroyRateLimiter } from '../../src/middleware/rateLimiter';
+import {
+    rateLimiter,
+    destroyRateLimiter,
+    RateLimitQueueOverflowError,
+} from '../../src/middleware/rateLimiter';
 import { BaseBotController } from '../../src';
 import { T_TELEGRAM, TelegramAdapter } from '../../src/plugins';
 
@@ -60,11 +64,37 @@ describe('rateLimiter middleware', () => {
         // Третий должен выбросить ошибку
         const p3 = middleware(ctx, next);
 
+        await expect(p3).rejects.toBeInstanceOf(RateLimitQueueOverflowError);
         await expect(p3).rejects.toThrow('rateLimit - Превышено ограничение на размер очереди');
+        // Флаг позволяет вызывающему коду отличить отказ из-за перегрузки
+        expect(ctx.platformOptions.rateLimitOverflow).toBe(true);
         // Проверяем, что p1 и p2 выполнятся после таймера
         jest.advanceTimersByTime(1000);
         await Promise.all([p1, p2]);
         expect(next).toHaveBeenCalledTimes(4); // два первых + два из очереди
+    });
+
+    it('батч из очереди не превышает лимит за счёт свежих запросов того же окна', async () => {
+        const middleware = rateLimiter(10);
+        // Окно 1: исчерпываем лимит (2 запроса)
+        await middleware(ctx, next);
+        await middleware(ctx, next);
+        // Две задачи встают в очередь
+        const p1 = middleware(ctx, next);
+        const p2 = middleware(ctx, next);
+        // Окно 2: пачка из очереди исполняется, счётчик сбрасывается в 0
+        jest.advanceTimersByTime(1000);
+        await Promise.all([p1, p2]);
+        expect(next).toHaveBeenCalledTimes(4);
+        // Всё ещё окно 2: счётчик исчерпан пачкой, поэтому свежий запрос не
+        // проходит мгновенно, а встаёт в очередь. Раньше он проходил сразу,
+        // и реальный rps за окно доходил до 2x лимита.
+        const fresh = middleware(ctx, next);
+        expect(next).toHaveBeenCalledTimes(4);
+        // Окно 3: задача из очереди исполняется
+        jest.advanceTimersByTime(1000);
+        await fresh;
+        expect(next).toHaveBeenCalledTimes(5);
     });
 
     it('should handle multiple users separately', async () => {

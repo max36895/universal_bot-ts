@@ -23,10 +23,10 @@ export interface ITTSResult {
  *
  * @example
  * ```ts
- * import { YandexSpeechKit } from './api/YandexSpeechKit';
+ * import { YandexSpeechKit } from 'umbot/plugins';
  *
- * // Создание экземпляра с токеном
- * const speechKit = new YandexSpeechKit('your-oauth-token');
+ * // Создание экземпляра с токеном (appContext обязателен)
+ * const speechKit = new YandexSpeechKit('your-oauth-token', appContext);
  *
  * // Настройка параметров синтеза
  * speechKit.lang = YandexSpeechKit.L_RU;     // Русский язык
@@ -88,11 +88,11 @@ export class YandexSpeechKit extends YandexRequest {
      */
     public static readonly V_ERMIL = 'ermil';
     /**
-     * Голос для синтеза речи Сильвер (tr)
+     * Голос для синтеза речи Сила Эркан (tr)
      */
     public static readonly V_SILAERKAN = 'silaerkan';
     /**
-     * Голос для синтеза речи Эркан (tr)
+     * Голос для синтеза речи Эркан Яваш (tr)
      */
     public static readonly V_ERKANYAVAS = 'erkanyavas';
     /**
@@ -175,7 +175,8 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Эмоциональная окраска голоса
-     * Поддерживается только для ru-RU и голосов jane/omazh
+     * Отправляется для всех русских голосов; платформа документирует поддержку
+     * эмоций только для jane/omazh — для остальных голосов поле может игнорироваться API
      * good - доброжелательный
      * evil - злой
      * neutral (по умолчанию) - нейтральный
@@ -188,7 +189,7 @@ export class YandexSpeechKit extends YandexRequest {
      * 3.0 - самый быстрый
      * 1.0 (по умолчанию) - средняя скорость
      * 0.1 - самый медленный
-     * Не поддерживается для премиум-голосов
+     * Не поддерживается для премиум-голосов (alena, filipp, kirkorov, lera, madusa)
      */
     public speed: number;
 
@@ -290,8 +291,9 @@ export class YandexSpeechKit extends YandexRequest {
      * - Максимальная длина текста: 5000 символов
      *
      * Ограничения:
-     * - Эмоции (emotion) поддерживаются только для ru-RU и голосов jane/omazh
-     * - Скорость (speed) не поддерживается для премиум-голосов (alena, filipp)
+     * - Эмоции (emotion) отправляются для всех русских голосов; платформа документирует
+     *   поддержку только для jane/omazh — для остальных голосов поле может игнорироваться API
+     * - Скорость (speed) не поддерживается для премиум-голосов (alena, filipp, kirkorov, lera, madusa)
      *
      * Важно! после выполнения запроса, не забудьте удалить файл с результатом.
      *

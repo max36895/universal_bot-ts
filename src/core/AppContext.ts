@@ -8,7 +8,7 @@
  * - Логирования и сохранения данных
  *
  * Основные возможности:
- * - Поддержка множества платформ (Алиса, Маруся, Telegram, Viber, VK)
+ * - Поддержка множества платформ (Алиса, Маруся, SmartApp, Telegram, Viber, VK, MAX)
  * - Гибкая система конфигурации
  * - Управление командами и интентами
  * - Работа с базой данных
@@ -614,6 +614,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Логирование метрики
+     *
+     * Имя метрики и label проходят тот же конвейер маскирования секретов, что и
+     * logError/logWarn: в label может попасть, например, полный URL запроса, а
+     * для Telegram он содержит токен бота (`https://api.telegram.org/bot<ТОКЕН>/...`).
+     * Раньше label уходил в кастомный логгер как есть, и токен утекал в системы
+     * наблюдаемости.
+     *
      * @param name - имя метрики
      * @param value - значение
      * @param label - Дополнительные метаданные
@@ -626,7 +633,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      */
     public logMetric(name: string, value: unknown, label: Record<string, unknown>): void {
         if (this.#logger?.metric) {
-            this.#logger.metric(name, value, label);
+            const [maskedName, maskedLabel] = this.#maskLogData(name, label);
+            this.#logger.metric(maskedName, value, maskedLabel ?? label);
         }
     }
 

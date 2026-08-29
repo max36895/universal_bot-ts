@@ -99,6 +99,12 @@ export async function cardProcessing(
         return object;
     } else {
         object = [];
+        if (cardInfo.images.length > MAX_TELEGRAM_MEDIA_GROUP_ITEMS) {
+            controller.appContext.logWarn(
+                `[Telegram] Медиа-группа ограничена ${MAX_TELEGRAM_MEDIA_GROUP_ITEMS} изображениями; ` +
+                    `лишние изображения (${cardInfo.images.length - MAX_TELEGRAM_MEDIA_GROUP_ITEMS}) пропущены.`,
+            );
+        }
         for (
             let i = 0;
             i < cardInfo.images.length && object.length < MAX_TELEGRAM_MEDIA_GROUP_ITEMS;
@@ -112,6 +118,9 @@ export async function cardProcessing(
                         ? image.imageDir
                         : `attach://${image.imageDir}`;
                 } else {
+                    controller.appContext.logWarn(
+                        '[Telegram] У изображения не заданы ни imageToken, ни imageDir — элемент пропущен.',
+                    );
                     continue;
                 }
             } else {

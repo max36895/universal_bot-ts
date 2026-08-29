@@ -72,6 +72,19 @@ describe('Text', () => {
         expect(Text.isSayTrue('неа')).toBe(false);
     });
 
+    it('Is say true: ответы с пунктуацией распознаются', () => {
+        // Самые частые формы подтверждения — с пунктуацией на конце
+        expect(Text.isSayTrue('Да!')).toBe(true);
+        expect(Text.isSayTrue('да.')).toBe(true);
+        expect(Text.isSayTrue('Да, конечно')).toBe(true);
+        expect(Text.isSayTrue('Конечно!')).toBe(true);
+        expect(Text.isSayTrue('(да)')).toBe(true);
+        // Отрицания и слова, содержащие ключи внутри, не подтверждение
+        expect(Text.isSayTrue('незнайка')).toBe(false);
+        expect(Text.isSayTrue('даже не пробуй')).toBe(false);
+        expect(Text.isSayTrue('дата встречи')).toBe(false);
+    });
+
     it('Is say false', () => {
         expect(Text.isSayFalse('конечно да')).toBe(false);
         expect(Text.isSayFalse('наверное да')).toBe(false);
@@ -93,6 +106,14 @@ describe('Text', () => {
         expect(Text.isSayFalse('не знаю')).toBe(true);
         expect(Text.isSayFalse('наверное нет')).toBe(true);
         expect(Text.isSayFalse('наверное нет но я надо подумать')).toBe(true);
+    });
+
+    it('Is say false: ответы с пунктуацией распознаются', () => {
+        expect(Text.isSayFalse('Нет!')).toBe(true);
+        expect(Text.isSayFalse('нет, спасибо')).toBe(true);
+        expect(Text.isSayFalse('Не хочу.')).toBe(true);
+        expect(Text.isSayFalse('нету')).toBe(false);
+        expect(Text.isSayFalse('окно')).toBe(false);
     });
 
     it('Is say text', () => {

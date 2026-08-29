@@ -268,11 +268,13 @@ export function loadEnvFile(envPath: string): IEnvConfigStatus {
             if (trimmedLine && !trimmedLine.startsWith('#')) {
                 const [key, ...valueParts] = trimmedLine.split('=');
                 let value = valueParts.join('=').trim();
-                // Убираем inline comments (текст после # не внутри кавычек)
-                const commentIndex = value.indexOf('#');
-                if (commentIndex !== -1) {
+                // Убираем inline comments, но только если `#` начинается с пробела
+                // (конвенция dotenv). `DB_PASSWORD=pass#word` — это значение с
+                // решёткой, а не комментарий: раньше оно молча обрезалось до `pass`.
+                const commentMatch = value.match(/(?:^|\s)#/);
+                if (commentMatch && commentMatch.index !== undefined) {
                     // Проверяем, что # не внутри кавычек
-                    const beforeComment = value.substring(0, commentIndex);
+                    const beforeComment = value.substring(0, commentMatch.index);
                     const singleQuotes = (beforeComment.match(/'/g) || []).length;
                     const doubleQuotes = (beforeComment.match(/"/g) || []).length;
                     if (singleQuotes % 2 === 0 && doubleQuotes % 2 === 0) {

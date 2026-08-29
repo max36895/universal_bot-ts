@@ -1,0 +1,31 @@
+{
+    "name": "umbot-examples",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Примеры использования фреймворка umbot: навыки, чат-боты, кастомные адаптеры",
+    "author": "Maxim-M",
+    "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/skills/standard/index.js",
+        "standard": "node dist/skills/standard/index.js",
+        "add-command": "node dist/skills/addCommand/index.js",
+        "add-step": "node dist/skills/addStep/index.js",
+        "auth": "node dist/skills/auth/index.js",
+        "game": "node dist/skills/game/index.js",
+        "game-in-command": "node dist/skills/gameInCommand/index.js",
+        "http-client": "node dist/skills/httpClient/index.js",
+        "local-storage": "node dist/skills/localStorage/index.js",
+        "user-app": "node dist/skills/UserApp/index.js",
+        "user-db": "node dist/skills/userDbConnect/index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/max36895/universal_bot-ts/"
+    },
+    "devDependencies": {
+        "@types/node": "^20.19.30",
+        "typescript": "^5.9.3",
+        "umbot": "file:.."
+    }
+}

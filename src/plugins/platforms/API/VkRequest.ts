@@ -20,6 +20,12 @@ import { getErrorMsg, getErrorToken } from './constants';
  */
 const VK_API_VERSION = '5.199';
 const VK_MESSAGE_MAX_LENGTH = 4096;
+/**
+ * Таймаут загрузки файлов на сервера VK.
+ * Файлы могут передаваться долго, поэтому для upload он увеличен
+ * относительно стандартных 5.5 с.
+ */
+const VK_UPLOAD_TIMEOUT = 30_000;
 
 /**
  * Базовый URL для всех методов VK API
@@ -33,10 +39,10 @@ const VK_API_ENDPOINT = 'https://api.vk.ru/method/';
  *
  * @example
  * ```ts
- * import { VkRequest } from './api/VkRequest';
+ * import { VkRequest } from 'umbot/plugins';
  *
- * // Создание экземпляра
- * const vk = new VkRequest();
+ * // Создание экземпляра (appContext обязателен)
+ * const vk = new VkRequest(appContext);
  * vk.initToken('your-vk-token');
  *
  * // Отправка простого сообщения
@@ -113,6 +119,8 @@ export class VkRequest {
     /**
      * Создает экземпляр класса для работы с API ВКонтакте
      * Устанавливает токен из конфигурации приложения, если он доступен
+     *
+     * @param appContext Контекст приложения (обязателен)
      */
     public constructor(appContext: AppContext) {
         this._request = new Request(appContext);
@@ -231,17 +239,26 @@ export class VkRequest {
         this._request.attach = file;
         this._request.isAttachContent = this.isAttachContent;
         this._request.header = Request.HEADER_FORM_DATA;
-        const data = await this._request.send<IVkUploadFile>(url);
-        if (data.status && data.data) {
-            if (data.data.error !== undefined) {
-                this._error = data;
-                this._log();
-                return null;
+        // Загрузка файла — тяжёлая операция: на медленном восходящем канале дефолтные
+        // 5.5 с обрывали загрузку по AbortSignal, и карточка молча терялась.
+        // Telegram для тех же операций использует 30 с.
+        const previousTimeout = this._request.maxTimeQuery;
+        this._request.maxTimeQuery = VK_UPLOAD_TIMEOUT;
+        try {
+            const data = await this._request.send<IVkUploadFile>(url);
+            if (data.status && data.data) {
+                if (data.data.error !== undefined) {
+                    this._error = data;
+                    this._log();
+                    return null;
+                }
+                return data.data;
             }
-            return data.data;
+            this._log(data.err);
+            return null;
+        } finally {
+            this._request.maxTimeQuery = previousTimeout;
         }
-        this._log(data.err);
-        return null;
     }
 
     /**
@@ -397,9 +414,14 @@ export class VkRequest {
         params: IVkParamsUsersGet | null = null,
     ): Promise<IVkUsersGet[] | null> {
         if (typeof userId === 'number') {
-            this._request.post = { user_id: userId };
+            // Документированный параметр users.get — user_ids (список через запятую).
+            // Числовая ветка раньше отправляла legacy-алиас user_id, которого нет
+            // в документации API 5.199.
+            this._request.post = { user_ids: String(userId) };
         } else {
-            this._request.post = { user_ids: userId };
+            this._request.post = {
+                user_ids: Array.isArray(userId) ? userId.join(',') : String(userId),
+            };
         }
         if (params) {
             this._request.post = { ...this._request.post, ...params };
@@ -567,7 +589,7 @@ export class VkRequest {
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      */
-    protected _log(error: string = ''): void {
+    protected _log(error: Error | string = ''): void {
         this._appContext.logError(getErrorMsg(error, 'VkRequest', this._request.url), {
             error: this._error,
         });

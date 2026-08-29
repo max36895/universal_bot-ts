@@ -166,7 +166,10 @@ describe('flowGenerator', () => {
                 isLocalStorage: true,
             });
             expect(code).toContain("bot.addStep('ask_name'");
-            expect(code).toContain("ctrl.userData.name = ctrl.userCommand ?? ''");
+            // saveAs: 'original' — сохраняем ввод в исходном регистре (originalUserCommand)
+            expect(code).toContain(
+                "ctrl.userData.name = ctrl.originalUserCommand ?? ctrl.userCommand ?? ''",
+            );
             expect(code).toContain("setText(ctrl, 'Как зовут?')");
         });
     });
@@ -769,6 +772,34 @@ describe('flowGenerator', () => {
             });
             expect(code).toContain("(ctrl.userCommand ?? '').toLowerCase()");
         });
+
+        it('generates originalUserCommand for saveAs original (case is not lost)', () => {
+            // Fix: адаптеры приводят ctrl.userCommand к нижнему регистру для матчинга,
+            // поэтому «оригинальный» ввод нужно брать из ctrl.originalUserCommand.
+            // Регрессия: «Иван» сохранялся как «иван».
+            const code = writeJsonAndGenerate('p16b', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'step',
+                        id: 's1',
+                        name: 'ask_name',
+                        prompt: { text: 'Как вас зовут?', buttons: [] },
+                        saveTo: 'userName',
+                        saveAs: 'original',
+                    },
+                ],
+                edges: [],
+                fallback: { text: 'Не понял' },
+                welcome: { text: 'Привет!' },
+                database: { type: 'file', config: {} },
+                isLocalStorage: true,
+            });
+            expect(code).toContain(
+                "ctrl.userData.userName = ctrl.originalUserCommand ?? ctrl.userCommand ?? ''",
+            );
+            expect(code).not.toContain('ctrl.userData.userName = ctrl.userCommand ??');
+        });
     });
 
     describe('Pattern 17: Multi-step chain', () => {
@@ -1157,6 +1188,34 @@ describe('flowGenerator', () => {
             );
             expect(deployScript).toContain("args.push('--environment', environment)");
             expect(deployScript).toContain("path.join(root, '.umbot-deploy')");
+        });
+
+        it('deploy.js экранирует аргументы для cmd.exe и санитизирует значения .env', () => {
+            const jsonPath = path.join(JSON_DIR, 'cloud-quote.json');
+            const outputPath = path.join(TEST_DIR, 'cloud-quote');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'cloud-quote',
+                    nodes: [],
+                    edges: [],
+                    tokens: { telegram: 'plain-token' },
+                }),
+            );
+
+            generateFromFlow(jsonPath, outputPath, { useCloud: true });
+
+            const deployScript = fs.readFileSync(
+                path.join(outputPath, 'scripts', 'deploy.js'),
+                'utf8',
+            );
+            // Инъекция через shell:true (Windows): аргументы оборачиваются в кавычки,
+            // значения .env чистятся от переводов строк, управляющих символов и кавычек
+            expect(deployScript).toContain('shell: useShell');
+            expect(deployScript).toContain('args.map(quoteArg)');
+            expect(deployScript).toContain('sanitizeEnvValue');
+            expect(deployScript).toMatch(/replace\(\s*\/"\/g/);
+            expect(deployScript).toMatch(/\\r\\n/);
         });
     });
 

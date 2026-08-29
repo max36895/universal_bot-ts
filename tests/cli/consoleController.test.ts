@@ -126,6 +126,41 @@ describe('CLI stats (computeLogStats)', () => {
         warnSpy.mockRestore();
     });
 
+    it('санитизирует переводы строк в значениях .env при create (инъекция переменных)', async () => {
+        const projectDir = path.join(tmpDir, 'env-inject-bot');
+        const logSpy = jest.spyOn(console, 'log').mockImplementation();
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+        await main(
+            {
+                command: 'create',
+                appName: 'env_inject_bot',
+                mode: 'prod',
+                hostname: '0.0.0.0',
+                port: 3000,
+                params: {
+                    path: projectDir,
+                    isEnv: true,
+                    params: {
+                        welcome_text: 'Привет!',
+                        // Значение из недоверенного JSON с попыткой дописать
+                        // произвольную переменную в .env
+                        telegram_token: 'x\nMALICIOUS_VAR=pwned',
+                    },
+                },
+            },
+            ['node', 'umbot', 'create', 'env_inject_bot'],
+        );
+
+        const envContent = fs.readFileSync(path.join(projectDir, '.env'), 'utf8');
+        expect(envContent).toContain('TELEGRAM_TOKEN=xMALICIOUS_VAR=pwned');
+        // Значение дописано в ту же строку, отдельной переменной не стало
+        expect(envContent).not.toContain('\nMALICIOUS_VAR=');
+
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+    });
+
     it('возвращает ненулевой код при ошибке from-flow', async () => {
         const errorSpy = jest.spyOn(console, 'error').mockImplementation();
         const originalExitCode = process.exitCode;

@@ -1282,10 +1282,13 @@ function generateIndexTs(doc, useCloud = false) {
 
         // saveTo
         if (step.saveTo && step.saveTo.trim()) {
+            // Fix: адаптеры приводят ctrl.userCommand к нижнему регистру для матчинга слотов,
+            // поэтому «оригинальный» ввод нужно брать из ctrl.originalUserCommand —
+            // иначе имена и email сохранялись бы искажёнными («Иван» -> «иван»).
             const saveExpr =
                 step.saveAs === 'lowercase'
                     ? `(ctrl.userCommand ?? '').toLowerCase()`
-                    : `ctrl.userCommand ?? ''`;
+                    : `ctrl.originalUserCommand ?? ctrl.userCommand ?? ''`;
             lines.push(`    ${userDataAccess(step.saveTo)} = ${saveExpr};`);
         }
 
@@ -1476,7 +1479,9 @@ export async function fetchWithTimeout(
     timeoutMs = 2000,
 ): Promise<Response> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    // unref(): таймер не должен удерживать процесс при завершении,
+    // если в этот момент больше нет активных запросов.
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs).unref();
 
     try {
         return await fetch(url, { ...init, signal: controller.signal });
@@ -1645,7 +1650,11 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
             'utf8',
         );
 
-        const serverlessYml = `functions:
+        const serverlessYml = `# СПРАВОЧНЫЙ ФАЙЛ: описывает целевую конфигурацию функции в Yandex Cloud.
+# Деплой выполняется командой 'npm run deploy' (scripts/deploy.js через yc CLI),
+# которая собирает аргументы сама и НЕ читает этот файл. Правки сюда эффекта
+# не дают — меняйте scripts/deploy.js или переменные в .env.
+functions:
   - name: ${cloudFunctionName}
     runtime: nodejs22
     entrypoint: dist/index.handler
@@ -1690,16 +1699,34 @@ for (const file of ['package.json', 'package-lock.json']) {
 }
 
 const envPath = path.join(root, '.env');
+// Значения .env попадают в аргументы командной строки. При shell:true (Windows)
+// Node склеивает команду и аргументы в одну строку БЕЗ экранирования, поэтому
+// спецсимволы (&, |, ^) из значения токена исполнялись бы командной оболочкой.
+// Вырезаем переводы строк, управляющие символы и кавычки (кавычка переключает
+// режим парсинга cmd и позволила бы вырваться из квотинга аргумента).
+const sanitizeEnvValue = (value) => String(value)
+    .replace(/[\\r\\n\\0]/g, '')
+    .replace(/[\\u0000-\\u001f\\u007f]/g, '')
+    .replace(/"/g, '');
 const environment = fs.existsSync(envPath)
     ? fs.readFileSync(envPath, 'utf8').split(/\\r?\\n/).map((line) => line.trim())
-          .filter((line) => line && !line.startsWith('#')).join(',')
+          .filter((line) => line && !line.startsWith('#')).map((line) => {
+              const eq = line.indexOf('=');
+              return eq === -1 ? line : line.slice(0, eq + 1) + sanitizeEnvValue(line.slice(eq + 1));
+          }).join(',')
     : '';
 const args = ['serverless', 'function', 'version', 'create',
     '--function-name', '${cloudFunctionName}', '--runtime', 'nodejs22',
     '--entrypoint', 'dist/index.handler', '--memory', '128m',
     '--execution-timeout', '10s', '--source-path', stage];
 if (environment) args.push('--environment', environment);
-const result = spawnSync('yc', args, { stdio: 'inherit', shell: process.platform === 'win32' });
+// На Windows spawnSync использует cmd.exe: аргументы оборачиваются в двойные
+// кавычки (для cmd внутри кавычек & | <> ^ литеральны), что также чинит пути
+// и значения с пробелами. На POSIX shell не используется — spawnSync
+// передаёт аргументы как есть.
+const useShell = process.platform === 'win32';
+const quoteArg = (arg) => (useShell ? '"' + String(arg).replace(/"/g, '') + '"' : String(arg));
+const result = spawnSync('yc', args.map(quoteArg), { stdio: 'inherit', shell: useShell });
 fs.rmSync(stage, { recursive: true, force: true });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

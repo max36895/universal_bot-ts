@@ -12,8 +12,8 @@ import { getErrorMsg } from './constants';
  *
  * @example
  * ```ts
- * // Создание экземпляра
- * const api = new YandexRequest('your-token');
+ * // Создание экземпляра (appContext обязателен)
+ * const api = new YandexRequest('your-token', appContext);
  *
  * // Установка нового токена
  * api.setOAuth('new-token');
@@ -25,7 +25,7 @@ import { getErrorMsg } from './constants';
  *   console.log(result);
  * } else {
  *   // Обработка ошибки
- *   console.error(api.#error);
+ *   console.error('Ошибка запроса к API Яндекса');
  * }
  * ```
  */
@@ -64,22 +64,20 @@ export class YandexRequest {
      * параметры HTTP-запросов.
      *
      * @param {string | null} [oauth=null] - OAuth-токен для авторизации
-     * @param {AppContext} [appContext] - Контекст приложения
+     * @param {AppContext} appContext - Контекст приложения (обязательный параметр)
      *
      * @remarks
-     * Если токен не указан, будет использован токен из appContext.platformParams.yandex_token.
+     * Если токен не указан, будет использован токен из `appConfig.tokens.alisa.token`
+     * (env-переменная `ALISA_TOKEN`, устаревший вариант — `YANDEX_TOKEN`).
      * Если и там токена нет, запросы будут выполняться без авторизации.
      *
      * @example
      * ```ts
      * // Создание с токеном
-     * const api = new YandexRequest('your-token');
+     * const api = new YandexRequest('your-token', appContext);
      *
-     * // Создание без токена (будет использован токен из appContext.platformParams)
-     * const api = new YandexRequest();
-     *
-     * // Создание без авторизации
-     * const api = new YandexRequest(null);
+     * // Создание без токена (будет использован ALISA_TOKEN из конфигурации)
+     * const api = new YandexRequest(null, appContext);
      * ```
      */
     public constructor(oauth: string | null = null, appContext: AppContext) {
@@ -144,8 +142,6 @@ export class YandexRequest {
      * @param {string | null} [url=null] - URL-адрес эндпоинта API
      * @returns {Promise<T | null>} - Результат запроса или null в случае ошибки
      *
-     * @throws {Error} Если произошла ошибка сети или сервера
-     *
      * @example
      * ```ts
      * interface MyApiResponse extends IYandexApi {
@@ -155,23 +151,19 @@ export class YandexRequest {
      *   };
      * }
      *
-     * const api = new YandexRequest('token');
+     * const api = new YandexRequest('token', appContext);
      *
-     * try {
-     *   // Выполнение запроса
-     *   const response = await api.call<MyApiResponse>('...');
+     * // Выполнение запроса (метод не выбрасывает исключений —
+     * // ошибки сети/сервера логируются и возвращается null)
+     * const response = await api.call<MyApiResponse>('...');
      *
-     *   if (response) {
-     *     // Обработка успешного ответа
-     *     console.log('ID:', response.data.id);
-     *     console.log('Name:', response.data.name);
-     *   } else {
-     *     // Обработка ошибки API
-     *     console.error('Ошибка API:', api.#error);
-     *   }
-     * } catch (error) {
-     *   // Обработка ошибок сети или сервера
-     *   console.error('Ошибка запроса:', error);
+     * if (response) {
+     *   // Обработка успешного ответа
+     *   console.log('ID:', response.data.id);
+     *   console.log('Name:', response.data.name);
+     * } else {
+     *   // Обработка ошибки API
+     *   console.error('Ошибка запроса к API Яндекса');
      * }
      * ```
      */
@@ -195,9 +187,9 @@ export class YandexRequest {
      * Записывает детальную информацию об ошибке в файл логов,
      * включая время возникновения, URL запроса и текст ошибки.
      *
-     * @param {string} [error=''] - Текст ошибки для логирования
+     * @param {Error | string} [error=''] - Текст ошибки или объект ошибки
      */
-    protected _log(error: string = ''): void {
+    protected _log(error: Error | string = ''): void {
         this._appContext.logError(getErrorMsg(error, 'YandexRequest', this._request.url), {
             error: this.#error,
         });

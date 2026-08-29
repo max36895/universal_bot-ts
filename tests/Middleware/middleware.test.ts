@@ -219,6 +219,74 @@ describe('middleware', () => {
             await ipFilter({ blacklist: ['*'] })(ctx as never, next.fn);
             expect(next.called).toBe(true);
         });
+
+        it('IPv6: whitelist с точным адресом ::1 пропускает ::1', async () => {
+            const ctx = makeCtxWithIp('::1');
+            const next = makeNext();
+            await ipFilter({ whitelist: ['::1'] })(ctx as never, next.fn);
+            expect(next.called).toBe(true);
+        });
+
+        it('IPv6: whitelist с префиксом 2001:db8::/32 пропускает адрес из префикса', async () => {
+            const ctx = makeCtxWithIp('2001:db8::1');
+            const next = makeNext();
+            await ipFilter({ whitelist: ['2001:db8::/32'] })(ctx as never, next.fn);
+            expect(next.called).toBe(true);
+        });
+
+        it('IPv6: whitelist с префиксом 2001:db8::/32 блокирует чужой IPv6', async () => {
+            const ctx = makeCtxWithIp('2001:db9::1');
+            const next = makeNext();
+            await ipFilter({ whitelist: ['2001:db8::/32'], deniedText: 'No' })(
+                ctx as never,
+                next.fn,
+            );
+            expect(next.called).toBe(false);
+            expect(ctx.text).toBe('No');
+        });
+
+        it('IPv6: blacklist с префиксом блокирует адрес из префикса', async () => {
+            const ctx = makeCtxWithIp('2001:db8::dead');
+            const next = makeNext();
+            await ipFilter({ blacklist: ['2001:db8::/32'], deniedText: 'Blocked' })(
+                ctx as never,
+                next.fn,
+            );
+            expect(next.called).toBe(false);
+            expect(ctx.text).toBe('Blocked');
+        });
+
+        it('IPv6-клиент под IPv4-правило whitelist не попадает (задокументированный fail-closed)', async () => {
+            const ctx = makeCtxWithIp('::1');
+            const next = makeNext();
+            await ipFilter({ whitelist: ['192.168.1.0/24'] })(ctx as never, next.fn);
+            expect(next.called).toBe(false);
+        });
+
+        it('IPv6-клиент под IPv4-правило blacklist не попадает (задокументированный fail-open)', async () => {
+            const ctx = makeCtxWithIp('::1');
+            const next = makeNext();
+            await ipFilter({ blacklist: ['1.2.3.4'] })(ctx as never, next.fn);
+            expect(next.called).toBe(true);
+        });
+
+        it('IPv6-mapped в hex-форме ::ffff:102:304 приводится к IPv4', async () => {
+            const ctx = makeCtxWithIp('::ffff:102:304'); // = 1.2.3.4
+            const next = makeNext();
+            await ipFilter({ blacklist: ['1.2.3.4'], deniedText: 'Blocked' })(
+                ctx as never,
+                next.fn,
+            );
+            expect(next.called).toBe(false);
+            expect(ctx.text).toBe('Blocked');
+        });
+
+        it('IPv4-адрес выше 127.255.x.x корректно сравнивается по маске', async () => {
+            const ctx = makeCtxWithIp('200.100.50.25');
+            const next = makeNext();
+            await ipFilter({ whitelist: ['200.100.50.0/24'] })(ctx as never, next.fn);
+            expect(next.called).toBe(true);
+        });
     });
 });
 

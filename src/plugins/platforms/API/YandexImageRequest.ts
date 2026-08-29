@@ -19,7 +19,7 @@ const STANDARD_URL: string = 'https://dialogs.yandex.net/api/v1/';
 const ALLOWED_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 /**
- * Класс отвечающий за загрузку изображений в навык Алисы.
+ * Класс, отвечающий за загрузку изображений в навык Алисы.
  * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
  *
  * @class YandexImageRequest

@@ -53,7 +53,8 @@ export function buttonProcessing(
         }
         // Не переносим универсальные/чужие опции платформ в тело MAX: API
         // принимает только документированные поля кнопки и отклоняет неизвестные.
-        const options = button.options;
+        // Опциональная цепочка — на случай кнопок, собранных вне компонента Buttons.
+        const options = button.options ?? {};
         if (options.request_contact === true) {
             object.type = 'request_contact';
             delete object.payload;

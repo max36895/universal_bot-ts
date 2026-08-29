@@ -182,6 +182,16 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         message: NonNullable<ITelegramContent['message']>,
         controller: BotController,
     ): boolean {
+        // Битый апдейт без chat обработать невозможно: раньше здесь падал
+        // TypeError на message.chat.id и запрос уходил на платформу как 500,
+        // а Telegram бесконечно повторял такой апдейт.
+        if (!message.chat) {
+            this.appContext?.logWarn(
+                'TelegramAdapter.setQueryData(): апдейт message без объекта chat пропущен как некорректный.',
+            );
+            controller.skipAutoReply = true;
+            return true;
+        }
         // В групповых чатах chat.id — это ID группы, а не человека. Раньше userId
         // всегда ставился из chat.id, из-за чего один и тот же человек в группе
         // получал две разные записи в БД: сообщения шли под ID группы, а нажатия
@@ -415,6 +425,8 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
 
     getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
         return {
+            // update_id обязателен: isPlatformOnQuery распознаёт Telegram по этому полю
+            update_id: count,
             message: {
                 chat: {
                     id: +userId,

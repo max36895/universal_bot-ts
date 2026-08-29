@@ -29,7 +29,7 @@ export interface ILogger {
      * Метод для логирования метрик
      * @param name - имя метрики
      * @param value - значение метрики
-     * @param labels - Дополнительная информация
+     * @param labels - Дополнительные метки метрики (опционально)
      */
     metric?: (name: string, value: unknown, labels?: Record<string, unknown>) => void;
 

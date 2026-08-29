@@ -2,11 +2,11 @@
  * Модуль контроллера - основной компонент для обработки бизнес-логики вашего приложения
  */
 import { Buttons, Card, Sound, Nlu } from '../components';
-import { Text, getRegExp, isRegex } from '../utils';
+import { Text } from '../utils';
 import { AppContext, IAppIntent, ICommandParam, TAppType, EMetric } from '../core';
 import { FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from '../core/constants';
 import { isPromise } from '../utils/isPromise';
-import { IGroupData } from '../core/utils/CommandReg';
+import { IGroupData, getGroupRegExpCompiled } from '../core/utils/CommandReg';
 
 /*
  * Оптимизация производительности:
@@ -1169,12 +1169,12 @@ export abstract class BotController<
         userCommand: string,
         startTimer: number,
     ): void | null | Promise<void> {
-        if (!groups.regExp) {
+        // Компиляция с кэшем: строковые паттерны групп больше не пересобираются
+        // на каждый запрос (горячий путь поиска команд).
+        const reg = getGroupRegExpCompiled(groups, this.#getCustomRegExp);
+        if (!reg) {
             return null;
         }
-        const reg = isRegex(groups.regExp)
-            ? groups.regExp
-            : getRegExp(groups.regExp, 'ium', this.#getCustomRegExp);
         const match = reg.exec(userCommand);
         if (match) {
             // Находим первую совпавшую подгруппу (index в массиве parts)

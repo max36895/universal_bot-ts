@@ -81,7 +81,7 @@ function getElement(image: IImageType, columns: number, rows: number): IViberCar
 /**
  * Получает карточку для отображения в Viber.
  * @param cardInfo Информация о карточке
- * @returns {IViberCard[] | IViberCard} Одна карточка, массив карточек или пустой массив, если нечего отобразить
+ * @returns {IViberCard[] | IViberCard} Массив элементов RichMedia (для галереи) либо один объект карточки; пустой массив, если валидных изображений нет
  */
 export function cardProcessing(
     cardInfo: ICardInfo,

@@ -17,10 +17,10 @@ import { getErrorMsg } from './constants';
  *
  * @example
  * ```ts
- * import { MarusiaRequest } from './api/MarusiaRequest';
+ * import { MarusiaRequest } from 'umbot/plugins';
  *
- * // Создание экземпляра
- * const marusia = new MarusiaRequest();
+ * // Создание экземпляра (appContext обязателен)
+ * const marusia = new MarusiaRequest(appContext);
  * marusia.initToken('your-marusia-token');
  *
  * // Загрузка изображения
@@ -29,7 +29,7 @@ import { getErrorMsg } from './constants';
  *   const uploadLink = await marusia.marusiaGetPictureUploadLink();
  *   if (uploadLink) {
  *     // Загружаем изображение
- *     const upload = await marusia.upload(uploadLink.upload_url, imagePath);
+ *     const upload = await marusia.upload(uploadLink.picture_upload_link, imagePath);
  *     if (upload) {
  *       // Сохраняем изображение
  *       const picture = await marusia.marusiaSavePicture(
@@ -49,7 +49,7 @@ import { getErrorMsg } from './constants';
  *   const uploadLink = await marusia.marusiaGetAudioUploadLink();
  *   if (uploadLink) {
  *     // Загружаем аудиофайл
- *     const upload = await marusia.upload(uploadLink.upload_url, audioPath);
+ *     const upload = await marusia.upload(uploadLink.audio_upload_link, audioPath);
  *     if (upload) {
  *       // Сохраняем аудио
  *       const audio = await marusia.marusiaCreateAudio(upload);
@@ -63,6 +63,8 @@ import { getErrorMsg } from './constants';
 export class MarusiaRequest extends VkRequest {
     /**
      * Создает экземпляр класса для работы с API Маруси
+     *
+     * @param appContext Контекст приложения (обязателен)
      */
     public constructor(appContext: AppContext) {
         super(appContext);
@@ -88,7 +90,7 @@ export class MarusiaRequest extends VkRequest {
      * const uploadLink = await marusia.marusiaGetPictureUploadLink();
      * if (uploadLink) {
      *   // Загрузка изображения
-     *   const upload = await marusia.upload(uploadLink.upload_url, 'image.jpg');
+     *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg');
      *   if (upload) {
      *     console.log('Изображение загружено:', upload);
      *   }
@@ -116,7 +118,7 @@ export class MarusiaRequest extends VkRequest {
      * // Полный процесс загрузки и сохранения изображения
      * const uploadLink = await marusia.marusiaGetPictureUploadLink();
      * if (uploadLink) {
-     *   const upload = await marusia.upload(uploadLink.upload_url, 'image.jpg');
+     *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg');
      *   if (upload) {
      *     const picture = await marusia.marusiaSavePicture(
      *       upload.photo,
@@ -203,7 +205,7 @@ export class MarusiaRequest extends VkRequest {
      * const uploadLink = await marusia.marusiaGetAudioUploadLink();
      * if (uploadLink) {
      *   // Загрузка аудио
-     *   const upload = await marusia.upload(uploadLink.upload_url, 'audio.mp3');
+     *   const upload = await marusia.upload(uploadLink.audio_upload_link, 'audio.mp3');
      *   if (upload) {
      *     console.log('Аудио загружено:', upload);
      *   }
@@ -229,7 +231,7 @@ export class MarusiaRequest extends VkRequest {
      * // Полный процесс загрузки и сохранения аудио
      * const uploadLink = await marusia.marusiaGetAudioUploadLink();
      * if (uploadLink) {
-     *   const upload = await marusia.upload(uploadLink.upload_url, 'audio.mp3');
+     *   const upload = await marusia.upload(uploadLink.audio_upload_link, 'audio.mp3');
      *   if (upload) {
      *     const audio = await marusia.marusiaCreateAudio(upload);
      *     if (audio) {
@@ -266,7 +268,7 @@ export class MarusiaRequest extends VkRequest {
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      */
-    protected _log(error: string): void {
+    protected _log(error: Error | string = ''): void {
         this._appContext.logError(getErrorMsg(error, 'MarusiaRequest', this._request.url), {
             error: this._error,
         });
