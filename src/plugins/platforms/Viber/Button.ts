@@ -10,14 +10,12 @@ import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
  *
  * @example
  * ```ts
- * import { getButton } from 'umbot';
  * import { ViberButton } from 'umbot/plugins';
  *
- * controller.buttons.add(
- *     getButton(appContext, 'Подтвердить', null, { action: 'confirm' })
- * );
- * // Дальше можно дополнительно подсказать платформе через options:
- * // { ActionType: ViberButton.T_REPLY, ActionBody: 'custom_payload' }
+ * controller.buttons.addBtn('Подтвердить', '', { action: 'confirm' }, {
+ *     ActionType: ViberButton.T_REPLY, // тип кнопки Viber
+ *     // ActionBody: 'custom_payload' — если не задан, уйдёт title
+ * });
  * ```
  */
 export const T_REPLY = 'reply';
@@ -29,13 +27,11 @@ export const T_REPLY = 'reply';
  *
  * @example
  * ```ts
- * import { getLinkButton } from 'umbot';
  * import { ViberButton } from 'umbot/plugins';
  *
- * controller.buttons.add(
- *     getLinkButton(appContext, 'Открыть сайт', 'https://example.com')
- * );
- * // Опционально: уточнить платформенный тип через options.
+ * controller.buttons.addLink('Открыть сайт', 'https://example.com', '', {
+ *     ActionType: ViberButton.T_OPEN_URL,
+ * });
  * ```
  */
 export const T_OPEN_URL = 'open-url';
@@ -48,12 +44,11 @@ export const T_OPEN_URL = 'open-url';
  *
  * @example
  * ```ts
- * import { getButton } from 'umbot';
  * import { ViberButton } from 'umbot/plugins';
  *
- * controller.buttons.add(
- *     getButton(appContext, 'Выбрать адрес', null, null, { ActionType: ViberButton.T_LOCATION_PICKER })
- * );
+ * controller.buttons.addBtn('Выбрать адрес', '', '', {
+ *     ActionType: ViberButton.T_LOCATION_PICKER,
+ * });
  * ```
  */
 export const T_LOCATION_PICKER = 'location-picker';
@@ -66,12 +61,11 @@ export const T_LOCATION_PICKER = 'location-picker';
  *
  * @example
  * ```ts
- * import { getButton } from 'umbot';
  * import { ViberButton } from 'umbot/plugins';
  *
- * controller.buttons.add(
- *     getButton(appContext, 'Поделиться телефоном', null, null, { ActionType: ViberButton.T_SHARE_PHONE })
- * );
+ * controller.buttons.addBtn('Поделиться телефоном', '', '', {
+ *     ActionType: ViberButton.T_SHARE_PHONE,
+ * });
  * ```
  */
 export const T_SHARE_PHONE = 'share-phone';
@@ -83,11 +77,9 @@ export const T_SHARE_PHONE = 'share-phone';
  *
  * @example
  * ```ts
- * import { getButton } from 'umbot';
  * import { ViberButton } from 'umbot/plugins';
  *
- * controller.buttons.add(
- *     getButton(appContext, 'Информация', null, null, {
+ * controller.buttons.addBtn('Информация', '', '', {
  *         ActionType: ViberButton.T_NONE,
  *         TextSize: 'small',
  *         TextColor: '#cccccc',

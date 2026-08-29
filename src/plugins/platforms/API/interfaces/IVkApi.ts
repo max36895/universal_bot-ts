@@ -58,24 +58,24 @@ export interface IVkApi<T = Record<string, unknown> | unknown> {
  */
 export interface IVkUploadFile extends IVkApi {
     /**
-     * Путь к файлу
+     * Путь к файлу (заполняется только при загрузке документов — docs.getMessagesUploadServer)
      */
-    file: string;
+    file?: string;
 
     /**
-     * Путь к фотографии
+     * Путь к фотографии (заполняется только при загрузке фото — photos.getMessagesUploadServer)
      */
-    photo: string;
+    photo?: string;
 
     /**
-     * Сервер для загрузки
+     * Сервер для загрузки (только для фото)
      */
-    server: string;
+    server?: string;
 
     /**
-     * Хэш для проверки загрузки
+     * Хэш для проверки загрузки (только для фото)
      */
-    hash: string;
+    hash?: string;
 }
 
 /**

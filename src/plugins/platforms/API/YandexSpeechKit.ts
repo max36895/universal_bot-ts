@@ -120,7 +120,7 @@ export class YandexSpeechKit extends YandexRequest {
      */
     public static readonly V_LERA = 'lera';
     /**
-     * Голос для синтеза речи Мадуза (ru)
+     * Голос для синтеза речи Мадуса (ru)
      */
     public static readonly V_MADUSA = 'madusa';
 

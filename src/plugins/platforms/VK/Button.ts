@@ -45,7 +45,11 @@ export const VK_TYPE_PAY = 'vkpay';
  */
 export const VK_TYPE_APPS = 'open_app';
 
-type TVkButtonLogger = {
+/**
+ * Минимальный интерфейс логгера, используемый buttonProcessing для предупреждений
+ * о невалидных payload кнопок (совместим с AppContext).
+ */
+export type TVkButtonLogger = {
     logWarn(message: string, meta?: Record<string, unknown>): void;
 };
 

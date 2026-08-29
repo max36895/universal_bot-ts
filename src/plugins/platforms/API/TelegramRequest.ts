@@ -119,7 +119,7 @@ export class TelegramRequest {
     readonly #request: Request;
 
     /**
-     * Текст последней возникшей ошибки
+     * Последняя ошибка (объект ответа API, Error или текст)
      *
      */
     #error: object | string | null | undefined;

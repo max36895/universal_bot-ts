@@ -211,7 +211,7 @@ npm install mongodb   # если используете MongoDB вместо ф�
 служит «выходом» из неё.
 
 ```
-my-bot/                        # имя my_bot: дефисы и спецсимволы заменяются на _
+my-bot/                        # директория: имя my_bot (дефисы и спецсимволы → _)
 ├── .env                       # токены (не коммитить!)
 ├── .gitignore                 # генерируется CLI, .env уже внутри
 ├── media/                     # изображения и звуки для предзагрузки
@@ -219,11 +219,11 @@ my-bot/                        # имя my_bot: дефисы и спецсимв
 ├── errors/                    # логи ошибок
 ├── src/
 │   ├── controller/
-│   │   └── MyBotController.ts # extends BotController (если используете контроллер)
+│   │   └── My_botController.ts # extends BotController (если используете контроллер)
 │   ├── plugins/               # логические модули с командами (game.ts, shop.ts, ...)
 │   ├── config/
-│   │   ├── myBotConfig.ts     # функция (): IAppConfig
-│   │   └── myBotParams.ts     # функция (): IAppParam
+│   │   ├── my_botConfig.ts    # функция (): IAppConfig
+│   │   └── my_botParams.ts    # функция (): IAppParam
 │   ├── models/                # кастомные модели БД (опционально)
 │   └── index.ts               # точка входа — здесь собирается бот
 ├── package.json
@@ -827,14 +827,20 @@ export default function (): IAppParam {
 
 ### Приоритет токенов
 
-Если токен платформы указан в нескольких местах, приоритет такой (от высшего к низшему):
+Жёсткой иерархии нет — итоговое значение зависит от **порядка вызовов**. Механика такая: токен конструктора адаптера
+(`new AlisaAdapter('token')`) записывается в конфиг при вызове `bot.use()`, а `setAppConfig({ env })` при вызове
+**перезаписывает** токены платформ значениями из `.env`/`process.env`. Поэтому:
 
-1. **Аргумент конструктора адаптера**: `new AlisaAdapter('token')` — перезаписывает токен из `.env`/`process.env` при
-   вызове `bot.use()`.
-2. **`.env` файл** (загружается через `config.env`) — используется, если адаптер создан без токена (
-   `new AlisaAdapter()`).
-3. **`process.env`** (если `config.env === 'local'`) — используется, если `.env` не найден.
-4. **Inline-объект `config.tokens`** — наименьший приоритет.
+1. **Явно настроенный `env`** (файл или `'local'`) — если `setAppConfig({ env })` вызван после `bot.use()`,
+   значения из env перезапишут и токен конструктора, и inline-`tokens`.
+2. **Аргумент конструктора адаптера** — побеждает, если `env` не настроен или `setAppConfig` вызван до `bot.use()`.
+3. **Inline-объект `tokens`** в `setAppConfig` — сливается с уже сохранёнными токенами платформы и на момент вызова
+   перезаписывает их.
+4. **`process.env` без настроенного `env`** — только дозаполняет отсутствующие токены, ничего не перезаписывая.
+
+> Практический совет: не смешивайте способы для одной платформы. Либо передавайте токен в конструкторе адаптера
+> и не настраивайте `env`, либо используйте `.env`/`process.env` и создавайте адаптеры без токена
+> (подробнее — в разделе [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html)).
 
 ### Содержимое `.env`
 
@@ -1236,7 +1242,9 @@ interface PhoneData extends IUserData {
 // Срабатывает после шага, потому что step.cb вернет false.
 bot.addCommand('weather', ['погода'], async (userCommand, bc) => {
     const city = userCommand.replace('погода', '').trim() || 'москва';
-    const res = await fetch(`https://api.weather.example.com/current?city=${city}`);
+    const res = await fetch(`https://api.weather.example.com/current?city=${city}`, {
+        signal: AbortSignal.timeout(3000), // таймаут обязателен (см. антипаттерны)
+    });
     const data = (await res.json()) as { temp: number };
     bc.text = `Сейчас ${data.temp}°C. `;
     // Не трогаем bc.thisIntentName — он сохранится из предыдущего шага,
@@ -1876,7 +1884,7 @@ if (geo.status) {
     this.text = `Город: ${g.city}, улица: ${g.street}`;
 }
 
-// Имя пользователя (Алиса/Telegram)
+// Имя пользователя (Telegram, VK, Viber, Max — адаптеры заполняют thisUser)
 const user = this.nlu.getUserName();
 if (user?.first_name) {
     this.text = `Привет, ${user.first_name}!`;
@@ -1920,7 +1928,7 @@ if (myIntent) {
 | -------------------------------------------- | ----- | ------ | -------- | -------- | --- | ----- | --- |
 | FIO, GEO, DateTime, Number                   | ✅    | ✅     | ❌       | ❌       | ❌  | ❌    | ❌  |
 | Кастомные интенты                            | ✅    | ✅     | ✅       | ❌       | ❌  | ❌    | ❌  |
-| `getUserName()`                              | ✅    | ❌     | ❌       | ✅       | ❌  | ❌    | ❌  |
+| `getUserName()`                              | ❌    | ❌     | ❌       | ✅       | ✅  | ✅    | ✅  |
 | `isIntentConfirm/Reject` (через userCommand) | ✅    | ✅     | ✅       | ✅       | ✅  | ✅    | ✅  |
 | `getLink/getPhone/getEMail` (regex, static)  | ✅    | ✅     | ✅       | ✅       | ✅  | ✅    | ✅  |
 
@@ -2992,7 +3000,9 @@ bot.start('0.0.0.0', 3002);
 ```ts
 // Фреймворк автоматически обернёт этот код в try/catch:
 bot.addCommand('risk', ['риск'], async (_, bc) => {
-    const res = await fetch('https://external-api.com/data'); // может упасть
+    const res = await fetch('https://external-api.com/data', {
+        signal: AbortSignal.timeout(3000), // может упасть или зависнуть
+    });
     const data = await res.json();
     bc.text = data.answer;
 });
@@ -3004,7 +3014,9 @@ bot.addCommand('risk', ['риск'], async (_, bc) => {
 ```ts
 bot.addCommand('risk', ['риск'], async (_, bc) => {
     try {
-        const res = await fetch('https://external-api.com/data');
+        const res = await fetch('https://external-api.com/data', {
+            signal: AbortSignal.timeout(3000),
+        });
         const data = await res.json();
         bc.text = data.answer;
     } catch (error) {
@@ -3576,9 +3588,10 @@ bot.use(new MyNluPlugin());
 
 ### Рецепт 16: i18n-плагин
 
-Фреймворк вызывает i18n-слот с **одним аргументом** — текущим `controller.text` — и ожидает получить переведённую
-строку. Вызов происходит автоматически после отработки команды (в дефолтном `BaseBotController`), перед отправкой
-ответа. Функция или объект с методом `getData(text)` — оба варианта поддерживаются.
+Слот i18n типизирован как `(key: string, ...params: unknown[]) => string`, но на практике фреймворк вызывает его с
+**единственным аргументом** — текущим `controller.text` в роли `key` — и ожидает получить переведённую строку. Вызов
+происходит автоматически после отработки команды (в дефолтном `BaseBotController`), перед отправкой ответа. Функция
+или объект с методом `getData(key)` — оба варианта поддерживаются.
 
 ```ts
 // plugins/I18nPlugin.ts
@@ -3908,7 +3921,9 @@ bot.addCommand(
 // Асинхронная команда — через fetch
 bot.addCommand('weather', ['погода'], async (_, bc) => {
     try {
-        const res = await fetch('https://api.weather.example.com/current');
+        const res = await fetch('https://api.weather.example.com/current', {
+            signal: AbortSignal.timeout(3000),
+        });
         const data = (await res.json()) as { temp: number };
         bc.text = `Температура: ${data.temp}`;
     } catch {

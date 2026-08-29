@@ -17,5 +17,6 @@ export {
     type TCommandResolver,
     type TSlots,
     type IStepParam,
+    type IGroupData,
 } from './utils/CommandReg';
 export { createPlugin } from './plugin';

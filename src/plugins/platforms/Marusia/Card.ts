@@ -43,7 +43,7 @@ export async function getImageInDB(
         }
 
         const upload = await mImage.upload(uploadLink.picture_upload_link, path);
-        if (!upload) {
+        if (!upload?.photo || !upload.server || !upload.hash) {
             return null;
         }
 

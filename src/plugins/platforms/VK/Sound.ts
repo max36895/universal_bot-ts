@@ -35,7 +35,7 @@ export async function getSoundInDB(
         );
         if (uploadServerResponse) {
             const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, path);
-            if (uploadResponse) {
+            if (uploadResponse?.file) {
                 const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
                 if (doc) {
                     model.soundToken = `doc${doc.owner_id}_${doc.id}`;

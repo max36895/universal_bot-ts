@@ -75,6 +75,9 @@ bot.use(new MyI18nPlugin());
 
 ### Пример i18n плагина
 
+Фреймворк вызывает слот с одним аргументом — текущим `controller.text` в роли `key`
+(дополнительные параметры сигнатуры зарезервированы на будущее).
+
 ```ts
 const i18nPlugin = createPlugin((appContext) => {
     const translations: Record<string, string> = {

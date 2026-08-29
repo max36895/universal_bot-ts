@@ -28,7 +28,7 @@ export async function getImageInDB(
         }
 
         const upload = await api.upload(server.upload_url, path);
-        if (!upload?.photo) {
+        if (!upload?.photo || !upload.server || !upload.hash) {
             return null;
         }
 

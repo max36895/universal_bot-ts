@@ -18,12 +18,12 @@ export type TButtonPayload = Record<string, unknown> | string;
  */
 export class Buttons {
     /**
-     * Константа для создания кнопки в виде ссылки (саджест).
+     * Значение флага `hide` для кнопки-ссылки (саджеста): `false`.
      */
     public static readonly B_LINK: boolean = false;
 
     /**
-     * Константа для создания кнопки в виде интерактивной кнопки.
+     * Значение флага `hide` для интерактивной кнопки: `true`.
      */
     public static readonly B_BTN: boolean = true;
     /**

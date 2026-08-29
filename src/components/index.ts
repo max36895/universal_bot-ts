@@ -52,12 +52,12 @@
  * const maxVisibleElements: number = 5;
  * const nav = new Navigation<number>(maxVisibleElements);
  *
- * // Навигация вперед
- * let showElements = nav.getPageElements(elements, 'Дальше');
+ * // Навигация вперед (текст — в нижнем регистре, как controller.userCommand)
+ * let showElements = nav.getPageElements(elements, 'дальше');
  * console.log(showElements); // -> [6, 7, 8, 9, 0]
  *
- * // Навигация назад
- * showElements = nav.getPageElements(elements, 'Назад');
+ * // Навигация назад (регистр важен: сравнение чувствительно к регистру)
+ * showElements = nav.getPageElements(elements, 'назад');
  * console.log(showElements); // -> [1, 2, 3, 4, 5]
  * ```
  *
@@ -73,10 +73,10 @@
  * nav.thisPage = 1;
  *
  * // Проверка границ навигации
- * let showElements = nav.getPageElements(elements, 'Дальше');
+ * let showElements = nav.getPageElements(elements, 'дальше');
  * console.log(nav.thisPage); // -> 1 (не выходит за пределы)
  *
- * showElements = nav.getPageElements(elements, 'Назад');
+ * showElements = nav.getPageElements(elements, 'назад');
  * console.log(nav.thisPage); // -> 0
  * ```
  *
