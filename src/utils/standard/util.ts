@@ -266,7 +266,7 @@ export function isFileSync(file: string): boolean {
  *
  * @example
  * ```ts
- * const result = getFileInfo('file.txt');
+ * const result = getFileInfoSync('file.txt');
  * if (result.success) {
  *   console.log(result.data.size); // размер файла
  *   console.log(result.data.mtime); // время последнего изменения
@@ -295,7 +295,7 @@ export function getFileInfoSync(fileName: string): FileOperationResult<fs.Stats>
  *
  * @example
  * ```ts
- * const result = fread('file.txt');
+ * const result = freadSync('file.txt');
  * if (result.success) {
  *   console.log(result.data); // содержимое файла
  * } else {
@@ -328,10 +328,10 @@ export function freadSync(fileName: string): FileOperationResult<string> {
  * @example
  * ```ts
  * // Перезапись файла
- * fwrite('file.txt', 'new content');
+ * fwriteSync('file.txt', 'new content');
  *
  * // Добавление в конец файла
- * fwrite('file.txt', 'additional content', 'a');
+ * fwriteSync('file.txt', 'additional content', 'a');
  * ```
  */
 export function fwriteSync(
@@ -378,7 +378,7 @@ export function fwriteSync(
  *
  * @example
  * ```ts
- * const result = unlink('file.txt');
+ * const result = unlinkSync('file.txt');
  * if (result.success) {
  *   console.log('Файл успешно удалён');
  * } else {
@@ -399,15 +399,18 @@ export function unlinkSync(fileName: string): FileOperationResult<void> {
 }
 
 /**
- * Синхронно проверяет существование директории
+ * Синхронно проверяет существование пути в файловой системе
  *
- * @param {string} path - Путь к директории
- * @returns {boolean} true, если директория существует, иначе false
+ * Реализация использует fs.existsSync, поэтому вернёт true и для обычного файла,
+ * а не только для директории.
+ *
+ * @param {string} path - Путь для проверки
+ * @returns {boolean} true, если путь существует в файловой системе (не обязательно директория), иначе false
  *
  * @example
  * ```ts
- * isDir('path/to/directory'); // -> true
- * isDir('nonexistent/dir'); // -> false
+ * isDirSync('path/to/directory'); // -> true
+ * isDirSync('nonexistent/dir'); // -> false
  * ```
  */
 export function isDirSync(path: string): boolean {
@@ -427,7 +430,7 @@ export function isDirSync(path: string): boolean {
  *
  * @example
  * ```ts
- * const result = mkdir('new/directory');
+ * const result = mkdirSync('new/directory');
  * if (result.success) {
  *   console.log('Директория успешно создана');
  * } else {
@@ -500,7 +503,7 @@ export function saveDataSync(
  *
  * @example
  * ```ts
- * const result = getFileInfo('file.txt');
+ * const result = await getFileInfo('file.txt');
  * if (result.success) {
  *   console.log(result.data.size); // размер файла
  *   console.log(result.data.mtime); // время последнего изменения

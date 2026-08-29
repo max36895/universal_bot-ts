@@ -239,11 +239,11 @@ export interface INluThisUser {
      */
     username?: string | null;
     /**
-     * Фамилия пользователя
+     * Имя пользователя (given name)
      */
     first_name?: string | null;
     /**
-     * Отчество пользователя
+     * Фамилия пользователя
      */
     last_name?: string | null;
 }

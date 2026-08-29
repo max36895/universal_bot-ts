@@ -148,7 +148,8 @@ function parseCidr(cidr: string): { version: 4 | 6; value: bigint; prefix: numbe
         prefix = Number(prefixStr);
         if (prefix > maxPrefix) return null;
     }
-    const mask = prefix === 0 ? 0n : ((1n << BigInt(prefix)) - 1n) << BigInt(maxPrefix - prefix);
+    const mask =
+        prefix === 0 ? 0n : ((1n << BigInt(prefix)) - 1n) << BigInt(maxPrefix - prefix);
     return { version: parsed.version, value: parsed.value & mask, prefix };
 }
 
@@ -216,13 +217,8 @@ export function ipFilter(
             return;
         }
 
-        // Нормализация IPv4-mapped IPv6: "::ffff:127.0.0.1" → "127.0.0.1".
-        // Строку срезаем только когда хвост — dotted-quad: hex-форму "::ffff:102:304"
-        // разбирает parseIp, и преждевременный срез портил её в некорректный адрес.
-        const ip =
-            remoteIp.startsWith('::ffff:') && remoteIp.slice(7).includes('.')
-                ? remoteIp.slice(7)
-                : remoteIp;
+        // Нормализация IPv4-mapped IPv6: "::ffff:127.0.0.1" → "127.0.0.1"
+        const ip = remoteIp.startsWith('::ffff:') ? remoteIp.slice(7) : remoteIp;
 
         // Если задан whitelist — должен быть match
         if (whitelist && whitelist.length) {

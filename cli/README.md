@@ -35,10 +35,10 @@ npm start
 | `validate`         | Проверить корректность flow.json          | `<flow.json>`                                          |
 | `stats`            | Агрегировать метрики из лога              | `--log <path>`                                         |
 | `generateenv`      | Сгенерировать файл .env в текущей папке   | `[--force]`                                            |
-| add docker         | Добавить Dockerfile в текущую папку       | -                                                      |
-| add deploy         | Добавить .github/workflows/deploy.yml     | -                                                      |
-| add env            | Сгенерировать .env в текущей папке        | `[--force]`                                            |
-| -v, version        | Узнать версию CLI                         | -                                                      |
+| `add docker`       | Добавить Dockerfile в текущую папку       | -                                                      |
+| `add deploy`       | Добавить .github/workflows/deploy.yml     | -                                                      |
+| `add env`          | Сгенерировать .env в текущей папке        | `[--force]`                                            |
+| `-v`, `version`    | Узнать версию CLI                         | -                                                      |
 
 ### Флаги команды `create`
 

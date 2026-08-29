@@ -20,7 +20,7 @@ import { BasePlugin } from '../../Base';
  *   - _insert - Добавление данных
  *   - _update - Обновление данных
  *   - _remove - Удаление данных
- *   - isConnected - Проверка не то, есть ли подключение к базе или нет
+ *   - isConnected - Проверяет, установлено ли подключение к базе или нет
  *
  * Эти методы вызываются внутренней логикой фреймворка и определяют, как именно выполняются операции с вашей БД.
  *
@@ -96,7 +96,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Проверяет `res.status` и возвращает `res.data` только при успехе.
      *
      * Используется в моделях и контроллерах для безопасного доступа к данным.
-     * @param res Результат запроса. В случае успешного запроса вернутся данные, в противном случае null
+     * @param res Результат запроса (IModelRes)
+     * @returns Данные из res.data при status = true, иначе null
      */
     public getValue(res: IModelRes<IDbResult>): IDbResult | null {
         if (res?.status) {
@@ -147,7 +148,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
      * Метод может быть синхронным или асинхронным.
      *
-     * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public abstract _insert(insertData: IQuery): boolean | Promise<boolean>;
 
@@ -162,7 +163,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
      * Метод может быть синхронным или асинхронным.
      *
-     * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public abstract _update(updateData: IQuery): boolean | Promise<boolean>;
 
@@ -177,7 +178,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
      * Метод может быть синхронным или асинхронным.
      *
-     * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public abstract _remove(removeData: IQuery): boolean | Promise<boolean>;
 
@@ -198,6 +199,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param selectData Дополнительная информация для запроса. Содержит информацию о таблице и структуре.
      * @param where Сам запрос
      * @param isOne Определяет нужно ли вернуть только 1 найденную запись, либо отдать все доступные данные.
+     * @returns Результат SELECT-запроса (IModelRes)
      */
     public async select(
         selectData: IQuery,
@@ -223,7 +225,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Выполняет INSERT-запрос.
      *
      * Внутри себя вызывает this._insert, основное отличие в том, что в данном методе пишутся метрики.
-     * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешной вставке, иначе false
      */
     public async insert(insertData: IQuery): Promise<boolean> {
         if (!this._appContext?.usedMetric) {
@@ -244,7 +247,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Выполняет UPDATE-запрос.
      *
      * Внутри себя вызывает this._update, основное отличие в том, что в данном методе пишутся метрики.
-     * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешном обновлении, иначе false
      */
     public async update(updateData: IQuery): Promise<boolean> {
         if (!this._appContext?.usedMetric) {
@@ -265,7 +269,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Выполняет DELETE-запрос.
      *
      * Внутри себя вызывает this._remove, основное отличие в том, что в данном методе пишутся метрики.
-     * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешном удалении, иначе false
      */
     public async remove(removeData: IQuery): Promise<boolean> {
         if (!this._appContext?.usedMetric) {
@@ -285,7 +290,8 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     /**
      * Выполняет произвольный запрос через callback.
      *
-     * Внутри себя вызывает this._query, основное отличие в том, что в данном методе пишутся метрики.
+     * Внутри себя вызывает this._query. Метрики времени выполнения не записываются
+     * (в отличие от select/insert/update/remove).
      * @param callback функция обработчик
      */
     public query(callback: TQueryCb): Promise<unknown> | unknown {
@@ -301,6 +307,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      *
      * @param saveData Данные для запроса. Включает как запрос, так и сами данные
      * @param isNew Флаг, говорящий о том, что точно происходит добавление новой записи
+     * @returns true при успешном сохранении, иначе false
      */
     public async save(saveData: IQuery, isNew: boolean): Promise<boolean> {
         if (isNew) {
@@ -320,7 +327,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Выполняет SELECT с ограничением до одной записи.
      * @param selectData Дополнительные данные для запроса
      * @param where Сам запрос (условие выборки). При `null` или `undefined` вернётся `null`
-     * @returns Первая найденная запись или `null`, если условие не передано или ничего не найдено.
+     * @returns IModelRes с результатом выборки (одна запись — в data), либо `null`, если условие не передано. При отсутствии записей возвращается `{ status: false }`.
      */
     public async selectOne(
         selectData: IQuery,
@@ -338,6 +345,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * ⚠️ По умолчанию просто приводит значение к строке.
      * Если ваша БД требует экранирования (например, SQL), обязательно переопределите этот метод.
      * @param str Экранируемая строка
+     * @returns Экранированная строка
      */
     public escapeString(str: string | number): string {
         return str + '';

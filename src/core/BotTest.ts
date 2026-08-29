@@ -236,7 +236,7 @@ export class BotTest extends Bot {
     /**
      * Запускает обработку запроса
      * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит за классом.
-     * @param {TAppType | null} [appType] - Тип платформы
+     * @param {TAppType | null} [appType] - Тип платформы. Если не передан, принудительно используется `alisa` (автоопределение в BotTest не выполняется)
      * @param {string | null} [content] - Содержимое запроса
      * @returns {Promise<TRunResult>} Результат обработки запроса
      */

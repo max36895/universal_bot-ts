@@ -140,8 +140,9 @@ export class Card {
     }
 
     /**
-     * Устанавливает контекст приложения.
+     * Устанавливает контекст приложения (обновляет и вложенную коллекцию кнопок).
      * @param {AppContext} appContext - Контекст приложения
+     * @returns {this} Текущий экземпляр для цепочки вызовов
      */
     public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;

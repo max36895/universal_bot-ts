@@ -394,9 +394,9 @@ export class Request {
     }
 
     /**
-     * Возвращает текст последней ошибки
+     * Возвращает последнюю ошибку запроса
      *
-     * @returns {string|null} Текст ошибки или null
+     * @returns {Error | string | null} Ошибка (объект Error либо текст) или null, если ошибок не было
      */
     public getError(): Error | string | null {
         return this.#error;

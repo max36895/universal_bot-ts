@@ -192,8 +192,9 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
      * Подключается к MongoDB.
      *
      * Поведение:
-     * - Если подключение не удалось — делает ещё одну попытку с очищенным hostname.
-     * - Валидирует, что кластер реально отвечает (`verifyConnection`).
+     * - При неудачном connect() или «мёртвом» соединении создаёт новый MongoClient
+     *   и выполняет до двух попыток подключения.
+     * - Живучесть соединения проверяется ping-командой (`isConnectedWith`).
      * - При ошибке пишет причину в error_log и возвращает `false`.
      *
      * @returns `true` — подключение активно, `false` — ошибка подключения.
@@ -242,7 +243,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
     /**
      * Выполняет UPDATE-запрос.
-     * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public async _update(updateData: IQuery): Promise<boolean> {
         let update = updateData.data;
@@ -283,7 +284,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
     /**
      * Выполняет INSERT-запрос.
-     * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public async _insert(insertData: IQuery): Promise<boolean> {
         let insert = insertData.data;
@@ -312,7 +313,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
     /**
      * Выполняет DELETE-запрос.
-     * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public async _remove(removeData: IQuery): Promise<boolean> {
         let remove = removeData.query;

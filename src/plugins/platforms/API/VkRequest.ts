@@ -39,10 +39,10 @@ const VK_API_ENDPOINT = 'https://api.vk.ru/method/';
  *
  * @example
  * ```ts
- * import { VkRequest } from 'umbot/plugins';
+ * import { VkRequest } from './api/VkRequest';
  *
- * // Создание экземпляра (appContext обязателен)
- * const vk = new VkRequest(appContext);
+ * // Создание экземпляра
+ * const vk = new VkRequest();
  * vk.initToken('your-vk-token');
  *
  * // Отправка простого сообщения
@@ -419,9 +419,7 @@ export class VkRequest {
             // в документации API 5.199.
             this._request.post = { user_ids: String(userId) };
         } else {
-            this._request.post = {
-                user_ids: Array.isArray(userId) ? userId.join(',') : String(userId),
-            };
+            this._request.post = { user_ids: userId.join(',') };
         }
         if (params) {
             this._request.post = { ...this._request.post, ...params };
@@ -589,7 +587,7 @@ export class VkRequest {
      * Записывает информацию об ошибках в лог-файл
      * @param error Текст ошибки для логирования
      */
-    protected _log(error: Error | string = ''): void {
+    protected _log(error: string = ''): void {
         this._appContext.logError(getErrorMsg(error, 'VkRequest', this._request.url), {
             error: this._error,
         });

@@ -23,10 +23,10 @@ export class BaseBotController<
     TPlatformState extends IPlatformData = IPlatformData,
 > extends BotController<TUserData, TPlatformState> {
     /**
-     * Обработка команд, добавленных через slots.
+     * Обработка запроса по умолчанию.
      * Вызывается фреймворком последним, после поиска команд и шагов.
      * Если команда или шаг уже обработали запрос (isCommand/isStep = true), метод просто применяет i18n и выходит.
-     * Если ничего не подошло — устанавливает текст из platformParams.empty_text.
+     * Если ничего не подошло — устанавливает текст из platformParams.empty_text, затем применяет i18n.
      *
      * @param intentName - Имя сработавшего интента/команды/шага. null если ничего не найдено.
      * @param isCommand - true если запрос обработан командой из addCommand

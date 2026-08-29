@@ -18,7 +18,7 @@ export type TButtonPayload = Record<string, unknown> | string;
  */
 export class Buttons {
     /**
-     * Константа для создания кнопки в виде ссылки (сайджест).
+     * Константа для создания кнопки в виде ссылки (саджест).
      */
     public static readonly B_LINK: boolean = false;
 
@@ -43,8 +43,8 @@ export class Buttons {
     #isRemove: boolean = false;
 
     /**
-     * Создает новый экземпляр коллекции кнопок.
-     * Инициализирует все массивы и устанавливает тип кнопок по умолчанию для Алисы.
+     * Создает новый экземпляр коллекции кнопок: инициализирует пустой массив
+     * кнопок и сохраняет контекст приложения.
      * @param appContext Контекст приложения
      * ⚠️ Обычно НЕ создаётся вручную — автоматически передаётся через контроллер:
      * ```ts
@@ -63,6 +63,7 @@ export class Buttons {
     /**
      * Устанавливает контекст приложения.
      * @param {AppContext} appContext - Контекст приложения
+     * @returns {this} Текущий экземпляр для цепочки вызовов
      */
     public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
@@ -199,9 +200,13 @@ export class Buttons {
     }
 
     /**
-     * Возвращает массив кнопок, адаптированный для указанной платформы.
+     * Возвращает кнопки в формате указанной платформы.
      *
-     * @param {TButtonProcessing} buttonProcessing - Функция обработки кнопок для платформы
+     * Метод сам не преобразует кнопки: он передаёт массив во внешнюю функцию
+     * `buttonProcessing` (её предоставляет адаптер платформы) и возвращает её результат.
+     *
+     * @param {TButtonProcessing<T | null, TType>} buttonProcessing - Функция обработки кнопок для платформы
+     * @returns {T | null} Результат функции обработки (формат зависит от платформы) или null
      */
     public getButtons<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,

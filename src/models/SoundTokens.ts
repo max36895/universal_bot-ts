@@ -62,9 +62,11 @@ export interface ISoundModelState extends IModelState {
  * if (found.status) {
  *     console.log('Токен для звукового файла успешно получен, токен:', found.data.soundToken);
  * } else {
- *     // Загрузка аудиофайла
- *     const newToken = await sound.save();
- *     console.log('Новый токен:', newToken);
+ *     // Загрузка аудиофайла в платформу — токен выдаёт API платформы,
+ *     // затем он присваивается модели и запись сохраняется в БД
+ *     sound.soundToken = tokenFromPlatform;
+ *     const saved = await sound.save(true); // save() возвращает boolean, а не токен
+ *     console.log('Запись сохранена:', saved);
  * }
  * ```
  */

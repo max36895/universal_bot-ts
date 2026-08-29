@@ -184,7 +184,7 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  * @param {string} title - Заголовок изображения
  * @param {string} [desc=''] - Описание изображения
  * @param {TButton | null} [button=null] - Кнопки для изображения
- * @param {boolean} isToken - Флаг, говорящий о том, что явно передается токен
+ * @param {boolean} [isToken=false] - Флаг, говорящий о том, что явно передается токен
  * @returns {IImageType | null} объект если инициализация успешна, null в противном случае
  *
  * @example

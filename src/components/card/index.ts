@@ -10,17 +10,20 @@
  *
  * @example
  * ```ts
- * import { Card } from './card';
+ * // Внутри контроллера используйте this.card — там карточка уже создана.
+ * // Ручное создание (для плагинов/middleware) требует appContext:
+ * import { Card } from 'umbot';
  *
  * // Создание карточки
- * const card = new Card();
+ * const card = new Card(appContext);
  * card.setTitle('Название товара')
  *     .setDescription('Описание товара')
  *     .addImage('product.jpg', 'Изображение товара', 'Описание изображения')
- *     .addButton('Купить');
+ *     .addButton({ title: 'Купить' });
  *
- * // Получение данных карточки для текущей платформы
- * const cardData = await card.getCards();
+ * // Получение данных карточки для текущей платформы:
+ * // передаётся процессор адаптера платформы и контроллер (синхронный метод)
+ * const cardData = card.getCards(myCardProcessing, controller);
  * ```
  */
 

@@ -310,7 +310,10 @@ export async function getBaseDataSoundProcessing(
 export function initUserCommand(request: IAlisaRequest, controller: BotController): void {
     if (request.type === 'SimpleUtterance') {
         controller.userCommand = request.command?.trim() || '';
-        controller.originalUserCommand = request.original_utterance.trim() || '';
+        // `?.` обязателен: malformed-запрос без original_utterance проходит
+        // isPlatformOnQuery (проверяются только request/version/session),
+        // и раньше здесь падал TypeError, уходивший на платформу как 500.
+        controller.originalUserCommand = request.original_utterance?.trim() || '';
     } else {
         if (typeof request.payload === 'string') {
             controller.userCommand = request.payload;

@@ -202,28 +202,32 @@ npm install mongodb   # если используете MongoDB вместо ф�
 
 ### Структура типичного проекта
 
+Файлы называются по имени проекта (CLI подставляет его в шаблоны): для `npx umbot create mybot` конфиги будут
+`mybotConfig.ts` / `mybotParams.ts`, контроллер — `MybotController.ts`. Не-буквенно-цифровые символы в имени заменяются
+на `_` (`my-bot` → `my_bot`).
+
 Внутри `src/` папки расположены от частного к общему: сначала предметные модули (`controller`, `plugins`, `models`,
 `config`), а в самом низу — `index.ts`, который всё это собирает. Так в дереве IDE видна логика проекта, а `index.ts`
 служит «выходом» из неё.
 
 ```
-my-skill/
-├── .env                      # токены (не коммитить!)
-├── media/                    # изображения и звуки для предзагрузки
-├── json/                     # файлы БД (если FileAdapter)
-├── errors/                   # логи ошибок
+my-bot/                        # имя my_bot: дефисы и спецсимволы заменяются на _
+├── .env                       # токены (не коммитить!)
+├── .gitignore                 # генерируется CLI, .env уже внутри
+├── media/                     # изображения и звуки для предзагрузки
+├── json/                      # файлы БД (если FileAdapter)
+├── errors/                    # логи ошибок
 ├── src/
 │   ├── controller/
-│   │   └── AppController.ts  # extends BotController (если используете контроллер)
-│   ├── plugins/              # логические модули с командами (game.ts, shop.ts, ...)
+│   │   └── MyBotController.ts # extends BotController (если используете контроллер)
+│   ├── plugins/               # логические модули с командами (game.ts, shop.ts, ...)
 │   ├── config/
-│   │   ├── AppConfig.ts      # функция (): IAppConfig
-│   │   └── AppParam.ts       # функция (): IAppParam
-│   ├── models/               # кастомные модели БД (опционально)
-│   └── index.ts              # точка входа — здесь собирается бот
+│   │   ├── myBotConfig.ts     # функция (): IAppConfig
+│   │   └── myBotParams.ts     # функция (): IAppParam
+│   ├── models/                # кастомные модели БД (опционально)
+│   └── index.ts               # точка входа — здесь собирается бот
 ├── package.json
 └── tsconfig.json
-
 ```
 
 > Если используете `isLocalStorage: true` без БД — папки `json/` и `errors/` можно не создавать (они появятся
@@ -841,12 +845,14 @@ export default function (): IAppParam {
 TELEGRAM_TOKEN=123456:ABC-DEF...
 VK_TOKEN=vk1.a.abc123...
 VK_CONFIRMATION_TOKEN=abcdef       # обязательно для VK (для подтверждения вебхука)
+VK_SECRET_KEY=secret123            # опционально: проверка подписи запросов VK Callback API
 VIBER_TOKEN=1234567890-ABCDEF...
-YANDEX_TOKEN=OAuth y0_AgAAAAA...  # OAuth-токен навыка (для аплоада медиа)
+ALISA_TOKEN=y0_AgAAAAA...          # OAuth-токен навыка (для аплоада медиа), без префикса "OAuth "
 MARUSIA_TOKEN=abc.123...
 MAX_TOKEN=abc123...
 
-# Yandex SpeechKit — для TTS на чат-ботах (Telegram/VK/Max)
+# Yandex SpeechKit — для TTS на чат-ботах (Telegram/VK/Max).
+# Значение автоматически записывается в speech_kit_token всех трёх платформ.
 SPEECH_KIT_TOKEN=t1.9eud...
 
 # Подключение к MongoDB (если используете MongoAdapter)
@@ -856,8 +862,10 @@ DB_PASSWORD=secret
 DB_NAME=umbot
 ```
 
-> Токены в `.env` — это просто переменные окружения. Фреймворк читает их через `process.env` и подставляет в нужные
-> адаптеры автоматически. **Не коммитьте `.env` в git** — добавьте его в `.gitignore`.
+> `ALISA_TOKEN` — каноническое имя для Алисы. Старое имя `YANDEX_TOKEN` сохранено для обратной совместимости: если
+> заданы оба — приоритет у `ALISA_TOKEN`. Токены в `.env` — это просто переменные окружения. Фреймворк читает их через
+> `process.env` и подставляет в нужные адаптеры автоматически. **Не коммитьте `.env` в git** — добавьте его
+> в `.gitignore` (сгенерированный CLI `.gitignore` уже содержит его).
 
 ### Доступ к контексту в рантайме
 
@@ -953,9 +961,12 @@ class Bot<
 
 **Что делает `strict_prod`:**
 
-- **Блокирует опасные RegExp.** При регистрации команды с потенциально уязвимым регулярным выражением (вложенные
-  квантификаторы `(a+)+`, `.*` без якорей и т.д.) фреймворк выбросит ошибку в лог и **не зарегистрирует** команду. Это
-  защищает от ReDoS-атак. В режимах `dev` и `prod` опасные RegExp регистрируются с предупреждением.
+- **Отключает опасные RegExp.** При регистрации команды с потенциально уязвимым регулярным выражением (вложенные
+  квантификаторы `(a+)+`, `.*` без якорей и т.д.) фреймворк пишет ошибку в лог и **исключает опасный слот** из
+  зарегистрированной команды: команда остаётся, но по уязвимому выражению совпадать перестает (исключение не бросается).
+  Это защищает от ReDoS-атак. В режимах `dev` и `prod` опасные RegExp регистрируются как есть — с предупреждением,
+  если установлен `re2`, и с ошибкой в логах, если нет (без `re2` штатный движок Node уязвим к катастрофическому
+  бэктрекингу).
 - **Сокращает логи.** Выводятся только ошибки и предупреждения — без трассировки запросов и отладочной информации.
 
 > **Рекомендация:** используйте `strict_prod` для продакшена. `dev` — для разработки и тестирования через `BotTest`.
@@ -1039,7 +1050,7 @@ run(
 | `userCommand`         | `string \| null`                                         | Текст пользователя в нижнем регистре               |
 | `originalUserCommand` | `string \| null`                                         | Оригинальный текст (с заглавными, пунктуацией)     |
 | `userId`              | `string \| number \| null`                               | ID пользователя на платформе                       |
-| `userToken`           | `string \| null`                                         | OAuth-тoken (для авторизованных запросов Алисы)    |
+| `userToken`           | `string \| null`                                         | OAuth-токен (для авторизованных запросов Алисы)    |
 | `userMeta`            | `unknown \| null`                                        | Метаданные (timezone, locale, ...)                 |
 | `messageId`           | `number \| string \| null`                               | Номер сообщения. 0 = начало новой сессии           |
 | `payload`             | `Record<string, unknown> \| string \| null \| undefined` | Payload от кнопки (если нажали кнопку с payload)   |
@@ -1071,15 +1082,11 @@ run(
 ### Главный метод — `action`
 
 ```ts
-public abstract
-action(
-    intentName
-:
-string | null,
-    isCommand ? : boolean,
-    isStep ? : boolean,
-):
-void;
+public abstract action(
+    intentName: string | null,
+    isCommand?: boolean,
+    isStep?: boolean,
+): void;
 ```
 
 - **`intentName`** — имя сработавшего интента/команды/шага. Может быть null (если ничего не подошло и нет fallback).
@@ -1110,18 +1117,11 @@ void;
 
 ```ts
 bot.addCommand(
-    name
-:
-string,                                  // имя (уникальное)
-    slots
-:
-TSlots,                                 // (string | RegExp)[]
-    cb
-:
-(userCommand: string, controller: TBotController) => void | string | Promise<void | string>,
-    isPattern ? : boolean,                           // трактовать строки как regex
-):
-this;
+    name: string, // имя (уникальное)
+    slots: TSlots, // (string | RegExp)[]
+    cb: (userCommand: string, controller: TBotController) => void | string | Promise<void | string>,
+    isPattern?: boolean, // трактовать строки как regex
+): this;
 ```
 
 Поведение слотов:
@@ -1143,7 +1143,11 @@ this;
 > ```ts
 > bot.addCommand('weather', ['погода'], async (userCommand, bc) => {
 >     const city = userCommand.replace('погода', '').trim() || 'москва';
->     const res = await fetch(`https://api.weather.example.com/current?city=${city}`);
+>     // Обязательно ставьте таймаут — внешний API может зависнуть и съесть
+>     // весь лимит времени ответа платформы (подробнее — Рецепт 7)
+>     const res = await fetch(`https://api.weather.example.com/current?city=${city}`, {
+>         signal: AbortSignal.timeout(3000),
+>     });
 >     const data = (await res.json()) as { temp: number };
 >     bc.text = `Сейчас ${data.temp}°C`;
 > });
@@ -1179,14 +1183,9 @@ bot.addCommand(FALLBACK_COMMAND, [], (userCommand, bc) => {
 
 ```ts
 bot.addStep(
-    stepName
-:
-string,
-    cb
-:
-(controller: TBotController) => void | Promise<void> | false,
-):
-this;
+    stepName: string,
+    cb: (controller: TBotController) => void | Promise<void> | false,
+): this;
 ```
 
 #### Как работают шаги — по шагам
@@ -1333,27 +1332,22 @@ bot.addStep('reg_age', (bc: BotController<RegData>) => {
 ### Доступ к oldIntentName
 
 ```ts
-public
-action(intentName, isCommand, isStep)
-:
-void {
-    if(intentName === 'back'
-)
-{
-    // Возврат на предыдущий шаг
-    switch (this.oldIntentName) {
-        case 'reg_age':
-            this.text = 'Сколько вам лет?';
-            this.thisIntentName = 'reg_age';
-            break;
-        case 'reg_name':
-            this.text = 'Как вас зовут?';
-            this.thisIntentName = 'reg_name';
-            break;
-        default:
-            this.text = 'Некуда возвращаться.';
+public action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
+    if (intentName === 'back') {
+        // Возврат на предыдущий шаг
+        switch (this.oldIntentName) {
+            case 'reg_age':
+                this.text = 'Сколько вам лет?';
+                this.thisIntentName = 'reg_age';
+                break;
+            case 'reg_name':
+                this.text = 'Как вас зовут?';
+                this.thisIntentName = 'reg_name';
+                break;
+            default:
+                this.text = 'Некуда возвращаться.';
+        }
     }
-}
 }
 ```
 
@@ -1374,8 +1368,8 @@ void {
     - иначе → `controller.text = platformParams.empty_text` (только если наследуетесь от `BaseBotController`)
 6. **`action(intentName, isCommand, isStep)`** — вызывается всегда в конце.
 
-> **Важно про welcome/help:** фреймворк устанавливает `controller.text = platformParams.welcome_text` (или `help_text`)*
-> _перед_* вызовом `action()`. Если в `action()` вы тоже установите `this.text`, **ваше значение перекроет**автоматически
+> **Важно про welcome/help:** фреймворк устанавливает `controller.text = platformParams.welcome_text` (или `help_text`)
+> _перед_ вызовом `action()`. Если в `action()` вы тоже установите `this.text`, **ваше значение перекроет** автоматически
 > установленное. Это полезно для динамического приветствия (например, другое приветствие для вернувшегося пользователя).
 
 > **⚠️ Важно про `BaseBotController` и `empty_text`:** автоматическая установка
@@ -1437,9 +1431,9 @@ Telegram/VK/Viber/Max локального хранилища нет — `state`
 
 - Когда БД подключена + `isLocalStorage: true` → у вас **два независимых хранилища**: `userData` (БД, тяжёлые данные) и
   `state` (локальное, лёгкие временные). Они никак не связаны.
-- Когда БД не подключена + `isLocalStorage: true` → `userData` и `state` ссылаются на **один и тот же объект**локального
-  хранилища. Записали в `userData.foo` — то же самое увидите в `state.foo`. Это сделано для удобства:работаете с тем
-  полем, которое больше нравится.
+- Когда БД не подключена + `isLocalStorage: true` → `userData` и `state` ссылаются на **один и тот же объект**
+  локального хранилища. Записали в `userData.foo` — то же самое увидите в `state.foo`. Это сделано для удобства:
+  работаете с тем полем, которое больше нравится.
 
 ### Типичные сценарии — что выбрать
 
@@ -1678,11 +1672,13 @@ bot.use(async (ctx, next) => {
 
 #### Лимиты и рекомендации
 
-У каждой платформы свой максимальный лимит кнопок (от 6 до 40), но адаптеры автоматически обрезают лишнее — вам не нужно
-следить за этим вручную.
+У каждой платформы свой максимальный лимит кнопок, но адаптеры автоматически обрезают лишнее — вам не нужно
+следить за этим вручную. Актуальные лимиты адаптеров: **Алиса, Маруся, VK — 10 кнопок; Telegram — 40; Viber — 6;
+SmartApp — 8; Max — 30** (у Max каждая кнопка уходит отдельной строкой клавиатуры, поэтому фактическое ограничение
+в первую очередь по общему количеству).
 
-> **UX-рекомендация:** не перегружайте интерфейс кнопками. Для голосовых платформ и большинства чат-ботов оптимально *
-> _3–5 кнопок_* на одном экране. Пользователь (особенно голосовой) не сможет быстро произнести 10 вариантов, а на экране
+> **UX-рекомендация:** не перегружайте интерфейс кнопками. Для голосовых платформ и большинства чат-ботов оптимально
+> _3–5 кнопок_ на одном экране. Пользователь (особенно голосовой) не сможет быстро произнести 10 вариантов, а на экране
 > более 5 кнопок начинают сливаться.
 
 Платформо-специфичные опции (через `options`):
@@ -1751,8 +1747,8 @@ this.card
 
 #### Важно про изображения
 
-Если передать URL или путь к существующему файлу — фреймворк **загрузит** изображение на платформу (первый раз) и *
-_закэширует токен_* в БД (`ImageTokens` модель). Повторные запросы используют токен — без задержки на upload.
+Если передать URL или путь к существующему файлу — фреймворк **загрузит** изображение на платформу (первый раз) и
+_закэширует токен_ в БД (`ImageTokens` модель). Повторные запросы используют токен — без задержки на upload.
 
 ```ts
 // URL — будет загружен при первом использовании
@@ -1834,6 +1830,9 @@ this.tts = 'Внимание! #bell# Объявление.';
 | SmartApp        | ❌                | ❌                                 | ❌                                             | ❌    |
 | Telegram/VK/Max | ❌                | ✅ (загружается как аудио)         | ❌ (TTS через SpeechKit, отдельным сообщением) | ❌    |
 | Viber           | ❌                | ❌                                 | ❌                                             | ❌    |
+
+> ⚠️ SmartApp не поддерживает ни стандартные, ни кастомные звуки, ни TTS-эффекты — поля `tts`/`sound` на этой платформе
+> игнорируются.
 
 > **Важно.** На Telegram/VK/Max для TTS нужен токен Yandex SpeechKit. Укажите его в
 > `appConfig.tokens[platform].speech_kit_token` или в переменной окружения `SPEECH_KIT_TOKEN`.
@@ -2056,8 +2055,8 @@ bot.setPlatformResolver((query, headers, detect) => {
 
 ### Главное про лимиты платформ
 
-У каждой платформы есть свои лимиты: на длину текста, количество кнопок, размер карточки, длительность звука и т.д. *
-_Вам не нужно их запоминать._*
+У каждой платформы есть свои лимиты: на длину текста, количество кнопок, размер карточки, длительность звука и т.д.
+_Вам не нужно их запоминать._
 
 Адаптеры платформ знают о лимитах и **автоматически приводят данные к корректному виду**:
 
@@ -2073,8 +2072,8 @@ Telegram — 15 (адаптер обрезает клавиатуру начин
 `if (this.appType === 'alisa')` в коде.
 
 > Единственное исключение — **время ответа для голосовых платформ**. Фреймворк сам следит за временем обработки:
-> при ответе дольше 2000 мс пишется предупреждение, дольше 2900 мс — ошибка. Лимиты конкретных платформ проверяйте
-> в их актуальной документации. Фреймворк не может «обрезать» вашу бизнес-логику, поэтому следите, чтобы
+> при ответе за 2000 мс и более пишется предупреждение, за 2900 мс и более — ошибка. Лимиты конкретных платформ
+> проверяйте в их актуальной документации. Фреймворк не может «обрезать» вашу бизнес-логику, поэтому следите, чтобы
 > `action()` отрабатывал быстро. Используйте `Preload` для медиа и не делайте долгих синхронных операций.
 
 ### Особенности платформ из коробки
@@ -2150,6 +2149,12 @@ Telegram — 15 (адаптер обрезает клавиатуру начин
 
 > Где `❌` — фича не поддерживается платформой, фреймворк просто молча проигнорирует соответствующие поля в `controller`.
 > Код не сломается.
+
+> ⚠️ **Про «Проверка подписи webhook ❌»:** у Алисы, Маруси и SmartApp подписи запросов **нет вообще** — всё содержимое
+> payload (включая `user_id`) контролирует отправитель. Не интерполируйте эти данные в URL или query без экранирования
+> и не считайте такой запрос аутентифицированным. У Viber подпись проверяется автоматически всегда (`x-viber-content-signature`);
+> у Telegram и MAX проверка включается заданием секрета (`webhookSecret` / `x-max-bot-api-secret`), у VK — опциональным
+> `vk_secret_key`.
 
 ---
 
@@ -2410,7 +2415,7 @@ bot.use(rateLimiter(200, 120_000)); // queue=200, idle=2 мин
 **Что делает:**
 
 - Читает `appContext.platforms[platform].limit` (TG/VK/Viber/MAX = 30 для входящих запросов; исходящая очередь MAX отдельно соблюдает 2 сообщения/с на диалог).
-- Поддерживает sliding-1s-window per `{platform, userId}`.
+- Поддерживает фиксированное 1-секундное окно per `{platform, userId}`: счётчик запросов сбрасывается каждую секунду.
 - При превышении — ставит в очередь (до `maxQueueSize`).
 - Переполнение очереди → бросает исключение.
 - Все таймеры `.unref()` — не блокируют выход процесса.
@@ -2720,38 +2725,64 @@ app.listen(3000);
 
 ### Docker
 
-`npx umbot create --prod` генерирует `Dockerfile`:
+`npx umbot create --prod` генерирует `Dockerfile` (multi-stage, Node 20-alpine):
 
 ```dockerfile
-# Multi-stage, Node 20-alpine
+# Stage 1: сборка
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+# На этапе сборки ставим ВСЕ зависимости (включая dev): для `npm run build`
+# нужен typescript. npm ci используется, если есть package-lock.json.
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
 COPY . .
 RUN npm run build
 
+# Stage 2: runtime
 FROM node:20-alpine
+
+# Непривилегированный пользователь
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S umbot -u 1001
+
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.env.example .env
-RUN npm ci --only=production --omit=dev
-RUN adduser -D -u 1001 umbot && addgroup umbot nodejs
+
+# Копируем только необходимое
+COPY --from=builder --chown=umbot:nodejs /app/package*.json ./
+COPY --from=builder --chown=umbot:nodejs /app/dist ./dist
+
+# .env внутрь образа НЕ копируется — токены передаются при запуске
+# (docker run --env-file .env ...).
+
+# В runtime-этапе dev-зависимости не нужны
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
+
 USER umbot
+
 EXPOSE 3000
+
 CMD ["node", "dist/index.js"]
 ```
 
-Запуск:
+Запуск (токены — через переменные окружения, не внутрь образа):
 
 ```bash
 docker build -t my-bot .
 docker run -p 3000:3000 \
-  -e YANDEX_TOKEN=... \
+  --env-file .env \
+  my-bot
+# или точечно:
+docker run -p 3000:3000 \
+  -e ALISA_TOKEN=... \
   -e TELEGRAM_TOKEN=... \
   my-bot
 ```
+
+> `EXPOSE` в шаблоне подставляется из порта проекта (`{{port}}`, по умолчанию 3000). Если фреймворк не найдёт
+> настроенный `env`, он тихо дозаполнит токены из переменных окружения контейнера — явно писать `env: 'local'`
+> для этого не нужно (см. раздел [Конфигурация](#конфигурация-iappconfig-и-iappparam)).
 
 ### PM2
 
@@ -2803,8 +2834,8 @@ process.on('SIGTERM', async () => {
 
 ### Высокая нагрузка: несколько процессов и горизонтальное масштабирование
 
-Один экземпляр `Bot` — это один Node.js процесс. Обработка webhook`а полностью
-stateless по отношению к процессу: каждый запрос самодостаточен, `userData`читается из БД, а`state` голосовых платформ (Алиса, Маруся, SmartApp) приходит
+Один экземпляр `Bot` — это один Node.js процесс. Обработка вебхука полностью
+stateless по отношению к процессу: каждый запрос самодостаточен, `userData` читается из БД, а `state` голосовых платформ (Алиса, Маруся, SmartApp) приходит
 в теле самого запроса и не хранится на сервере. Благодаря этому бот масштабируется
 горизонтально без дополнительных механизмов (сессий, sticky-балансировки и т.п.).
 
@@ -2870,7 +2901,7 @@ bot.start('0.0.0.0', 3002);
 
 Плюс: падение или рестарт одного процесса не затрагивает остальные, лимиты и
 нагрузку каждой платформы видно отдельно. Минус: больше процессов — больше
-инфраструктуры (порты, health-check`и, деплой).
+инфраструктуры (порты, health-check'и, деплой).
 
 #### Serverless (Yandex Cloud Functions и аналоги)
 
@@ -2894,13 +2925,13 @@ bot.start('0.0.0.0', 3002);
 
 ### Про лимиты платформ
 
-Подробные лимиты платформ (1024 символа, 10 кнопок и т.д.) **адаптеры берут на себя** — Подробнее о лимитах платформ — в
-разделе [Главное про лимиты платформ](#главное-про-лимиты-платформ). Вам не нужно их запоминать: фреймворк сам обрежет
+Подробные лимиты платформ (1024 символа, 10 кнопок и т.д.) **адаптеры берут на себя** — об этом подробнее в разделе
+[Главное про лимиты платформ](#главное-про-лимиты-платформ). Вам не нужно их запоминать: фреймворк сам обрежет
 лишнее.
 
 Единственное, за что вы отвечаете:
 
-- **Время ответа** — фреймворк пишет предупреждение при обработке дольше 2000 мс и ошибку при дольше 2900 мс;
+- **Время ответа** — фреймворк пишет предупреждение при обработке за 2000 мс и более и ошибку при 2900 мс и более;
   лимиты голосовых платформ сверяйте с их актуальной документацией.
   Это ограничение самой платформы, и фреймворк не может «обрезать» вашу бизнес-логику. Делайте `action()` быстрым.
 - **Объём `userData` при `isLocalStorage=true`** — локальное хранилище Алисы ограничено 1 КБ на тип состояния. Если
@@ -2954,8 +2985,9 @@ bot.start('0.0.0.0', 3002);
 
 ### Уровень 1: Команды и шаги
 
-Если callback команды или шага выбрасывает исключение, фреймворк перехватывает его, логирует ошибку и возвращает
-пользователю стандартное сообщение «Не удалось выполнить команду. Попробуйте ещё раз.».
+Если callback команды выбрасывает исключение, фреймворк перехватывает его, логирует ошибку и возвращает
+пользователю стандартное сообщение «Не удалось выполнить команду. Попробуйте ещё раз.». Для шагов диалога текст
+аналогичный: «Не удалось выполнить шаг диалога. Попробуйте ещё раз.».
 
 ```ts
 // Фреймворк автоматически обернёт этот код в try/catch:
@@ -3544,37 +3576,38 @@ bot.use(new MyNluPlugin());
 
 ### Рецепт 16: i18n-плагин
 
+Фреймворк вызывает i18n-слот с **одним аргументом** — текущим `controller.text` — и ожидает получить переведённую
+строку. Вызов происходит автоматически после отработки команды (в дефолтном `BaseBotController`), перед отправкой
+ответа. Функция или объект с методом `getData(text)` — оба варианта поддерживаются.
+
 ```ts
 // plugins/I18nPlugin.ts
-import { AppContext, Bot } from 'umbot';
+import { AppContext, Bot, createPlugin } from 'umbot';
 
 const translations: Record<string, Record<string, string>> = {
     ru: { hello: 'Привет!', bye: 'Пока!' },
     en: { hello: 'Hello!', bye: 'Bye!' },
 };
 
-export class I18nPlugin {
-    init(appContext: AppContext, bot: Bot): void {
-        appContext.plugins.i18n = (key: string, lang = 'ru', ...args: unknown[]) => {
-            return translations[lang]?.[key] ?? key;
-        };
-    }
-}
+// Язык можно определять по данным пользователя или платформы — здесь для простоты константа
+const lang = 'ru';
 
-// В контроллере:
-public action(intentName: string | null): void {
-    const t = this.appContext.plugins.i18n;
-    if (t) {
-        // Плагин может быть функцией или объектом с методом getData
-        this.text = typeof t === 'function' ? t('hello', 'ru') : t.getData('hello', 'ru');
-    }
-}
+export const i18nPlugin = createPlugin((appContext: AppContext, bot: Bot): void => {
+    appContext.plugins.i18n = (text: string): string => {
+        return translations[lang]?.[text] ?? text;
+    };
+});
+
+// В контроллере ничего делать не нужно: BaseBotController сам прогоняет
+// this.text через плагин перед отправкой ответа:
+//   this.text = 'hello'  →  пользователю уйдёт «Привет!»
 ```
 
 ### Рецепт 17: Telegram inline mode
 
 Telegram отправляет `inline_query` в теле запроса. Обрабатывайте в `action()` или middleware и отвечайте через
-готовый метод `answerInlineQuery()` (не через `call()` — он принимает только имя метода и `chat_id`):
+готовый метод `answerInlineQuery()` (не через `call()` — он принимает `(method, userId)` и шлёт сообщения, а не
+результаты inline-поиска):
 
 ```ts
 bot.use(T_TELEGRAM, async (ctx, next) => {
@@ -3693,20 +3726,13 @@ if (res) {
 Алиса распознаёт "да"/"нет" автоматически как built-in интенты. Можно использовать без настройки в Яндекс.Диалогах:
 
 ```ts
-public
-action(intentName
-:
-string | null
-):
-void {
-    if(this.nlu.isIntentConfirm(this.userCommand || '')
-)
-{
-    // пользователь сказал "да", "конечно", "хорошо", ...
-}
-if (this.nlu.isIntentReject(this.userCommand || '')) {
-    // "нет", "не надо", "отмена", ...
-}
+public action(intentName: string | null): void {
+    if (this.nlu.isIntentConfirm(this.userCommand || '')) {
+        // пользователь сказал "да", "конечно", "хорошо", ...
+    }
+    if (this.nlu.isIntentReject(this.userCommand || '')) {
+        // "нет", "не надо", "отмена", ...
+    }
 }
 ```
 
@@ -3763,14 +3789,18 @@ bot.use(
 `card.addImage`). Но **нет** готовой функции "скачать картинку, обработать, upload" — нужна своя логика через `fetch`:
 
 ```ts
+import { promises as fsPromises } from 'node:fs';
+
 bot.addCommand('repost', ['репост'], async (_, bc) => {
     const userUrl = bc.originalUserCommand || '';
     try {
-        const res = await fetch(userUrl);
+        const res = await fetch(userUrl, {
+            signal: AbortSignal.timeout(3000), // не даём чужому URL зависнуть
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = Buffer.from(await res.arrayBuffer());
         const tmpPath = '/tmp/downloaded.jpg';
-        await require('fs').promises.writeFile(tmpPath, buf);
+        await fsPromises.writeFile(tmpPath, buf);
         bc.card.addImage(tmpPath, 'Загружено');
         bc.text = 'Вот ваша картинка.';
     } catch (e) {

@@ -127,7 +127,7 @@ export class Navigation<ElementType = TElementType> {
 
     /**
      * Создает экземпляр класса Navigation.
-     * @param {number} maxVisibleElements Максимальное количество отображаемых элементов на странице
+     * @param {number} [maxVisibleElements=5] Максимальное количество отображаемых элементов на странице
      * @example
      * ```ts
      * // Создание с 3 элементами на странице
@@ -317,8 +317,8 @@ export class Navigation<ElementType = TElementType> {
      *
      * @param {ElementType[] | null} elements Массив элементов для обработки
      * @param {string} text Пользовательский запрос
-     * @param {TKeys} keys Ключи для поиска по объектам
-     * @param {number} thisPage Текущая страница
+     * @param {TKeys | null} [keys=null] Ключи для поиска по объектам
+     * @param {number | null} [thisPage=null] Текущая страница (если передана — перезаписывает this.thisPage)
      * @returns Выбранный элемент или null
      * @example
      * ```ts
@@ -411,7 +411,7 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает массив команд навигации.
      * Формирует список доступных команд для навигации по страницам
      *
-     * @param {boolean} isNumber Включить команды с номерами страниц
+     * @param {boolean} [isNumber=false] Включить команды с номерами страниц
      * @returns {string[]} Массив команд навигации
      * @example
      * ```ts
@@ -419,9 +419,9 @@ export class Navigation<ElementType = TElementType> {
      * const commands = navigation.getPageNav();
      * // ['👈 Назад', 'Дальше 👉']
      *
-     * // Получение команд с номерами страниц
-     * const commands = navigation.getPageNav(true);
-     * // ['1', '2', '3']
+     * // Получение команд с номерами страниц (текущая выделяется скобками)
+     * const numbered = navigation.getPageNav(true);
+     * // ['[1]', '2']
      * ```
      */
     public getPageNav(isNumber: boolean = false): string[] {

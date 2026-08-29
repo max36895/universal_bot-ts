@@ -35,13 +35,15 @@ node index.js
 
 ### Тестирование конкретной платформы
 
-По умолчанию `BotTest` использует автоопределение платформы (`'auto'`). Чтобы протестировать конкретную платформу, передайте тип в конструктор:
+`BotTest` по умолчанию работает с «auto»-платформой: при вызове `test()` и `simulate()` без явного указания будет
+использована **первая зарегистрированная** (при `fullPlatforms` это Алиса). Платформа, переданная в конструктор,
+становится приоритетной для `run()`/`simulate()` — но сам адаптер всё равно нужно зарегистрировать через `bot.use(...)`.
 
 ```ts
 import { BotTest } from 'umbot/test';
 import { fullPlatforms } from 'umbot/plugins';
 
-// Тестирование Telegram
+// Приоритетная платформа — Telegram
 const bot = new BotTest('telegram');
 bot.use(fullPlatforms);
 ```
@@ -50,7 +52,7 @@ bot.use(fullPlatforms);
 import { BotTest } from 'umbot/test';
 import { fullPlatforms } from 'umbot/plugins';
 
-// Тестирование Алисы
+// Приоритетная платформа — Алиса
 const bot = new BotTest('alisa');
 bot.use(fullPlatforms);
 ```
@@ -119,16 +121,21 @@ describe('MyController', () => {
         bot.use(fullPlatforms); // без зарегистрированной платформы run() бросит ошибку
         bot.initBotController(MyController);
 
-        // Запуск обработки запроса
+        // Запуск обработки запроса. Важно: payload должен быть валидным для платформы —
+        // адаптер проверяет структуру (например, Алиса требует session + request),
+        // иначе setQueryData() вернёт false и запрос будет отклонён
         const result = await bot.run(
             'alisa',
             JSON.stringify({
+                version: '1.0',
+                session: { message_id: 0, user_id: 'test-user' },
                 request: { command: 'привет', original_utterance: 'Привет' },
             }),
         );
 
-        // Проверка результата
+        // Проверка результата — лучше проверять содержимое, а не только факт наличия
         expect(result).toBeDefined();
+        expect(JSON.stringify(result)).toContain('Привет');
     });
 });
 ```

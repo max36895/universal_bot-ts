@@ -566,16 +566,18 @@ class RatingController extends BotController {
 
 #### Основные свойства
 
-| Свойство         | Тип                                                                               | Описание                                           |
-| ---------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `appConfig`      | `IAppConfig`                                                                      | Текущая конфигурация                               |
-| `platformParams` | `IAppParam`                                                                       | Параметры платформы                                |
-| `platforms`      | `Record<TAppType, IPlatformAdapter>`                                              | Реестр подключенных платформ                       |
-| `database`       | `{ adapter?: IDatabaseAdapter, databaseInfo?: unknown, isSendConnect?: boolean }` | Подключенный DB-адаптер и информация о подключении |
-| `commands`       | `Map<string, ICommandParam>`                                                      | Реестр команд                                      |
-| `steps`          | `Map<string, IStepParam>`                                                         | Реестр шагов                                       |
-| `httpClient`     | `THttpClient`                                                                     | HTTP-клиент (кастомизируемый)                      |
-| `plugins`        | `Record<string, unknown>`                                                         | Реестр плагинов                                    |
+| Свойство         | Тип                                                                               | Описание                                                       |
+| ---------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `appConfig`      | `Required<IAppConfig>`                                                           | Текущая конфигурация (со всеми дефолтами)                     |
+| `platformParams` | `IAppParam`                                                                       | Параметры платформы                                            |
+| `platforms`      | `Record<TAppType, IPlatformAdapter>`                                              | Реестр подключенных платформ                                   |
+| `database`       | `{ adapter?: IDatabaseAdapter, databaseInfo?: unknown, isSendConnect?: boolean }` | Подключенный DB-адаптер и информация о подключении            |
+| `command`        | `CommandReg`                                                                      | Реестр команд (основной доступ; ниже — удобные геттеры)      |
+| `commands`       | `Map<string, ICommandParam>`                                                      | Все зарегистрированные команды (геттер поверх `command`)      |
+| `steps`          | `Map<string, IStepParam>`                                                        | Все зарегистрированные шаги (геттер поверх `command`)        |
+| `regexpGroup`    | `Map<string, IGroupData>`                                                        | Группы regex-команд (геттер поверх `command`)                 |
+| `httpClient`    | `THttpClient`                                                                    | HTTP-клиент (публичное поле, можно переопределить)            |
+| `plugins`        | `TAppPlugin`                                                                     | Реестр плагинов (слоты `i18n`, `nlu`, `regExp` + ваши)       |
 
 #### Методы
 
@@ -901,6 +903,6 @@ class MyTable extends Model<IMyState> {
 | Провайдер        | Заметки                                                                                   |
 | ---------------- | ----------------------------------------------------------------------------------------- |
 | **FileAdapter**  | Простой JSON-файл в `./json`. Не потокобезопасен, только для разработки/локальных тестов. |
-| **MongoAdapter** | Production-ready. Требует MongoDB >= 5.                                                   |
+| **MongoAdapter** | Production-ready. Использует официальный драйвер `mongodb` v7 (Stable API v1) — совместим с актуальными версиями MongoDB Server. |
 
 Все таблицы создаются автоматически на первом запросе.

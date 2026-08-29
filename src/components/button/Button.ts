@@ -35,9 +35,9 @@ export interface IButtonType<TButtonPayload = TBtnPayload> {
     payload: TButtonPayload | null;
 
     /**
-     * Флаг, определяющий отображение кнопки как сайджеста.
+     * Флаг, определяющий отображение кнопки как саджеста.
      * true - интерактивная кнопка
-     * false - кнопка-ссылка (сайджест)
+     * false - кнопка-ссылка (саджест)
      */
     hide: boolean;
 
@@ -92,7 +92,7 @@ function init<TButtonPayload = TBtnPayload>(
 }
 
 /**
- * Возвращает кнопку в виде сайджеста (ссылки под текстом).
+ * Возвращает кнопку в виде саджеста (ссылки под текстом).
  *
  * @param {AppContext} appContext Контекст приложения
  * @param {string | null} title Текст кнопки

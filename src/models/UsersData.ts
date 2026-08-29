@@ -293,7 +293,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * Валидирует значения перед сохранением.
      * Преобразует объекты meta и data в JSON при сохранении в БД.
      *
-     * @throws {Error} Если данные не прошли валидацию
+     * @remarks Не выбрасывает исключений: циклические ссылки в meta/data
+     * автоматически заменяются на '[Circular]'.
      *
      * @example
      * ```ts
@@ -319,7 +320,7 @@ export class UsersData extends Model<IUserDataModelState> {
      * @param data - Данные для инициализации
      * @remarks
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
-     * - Парсинг происходит только если включено сохранение в БД (appConfig.isLocalStorage !== true)
+     * - Парсинг выполняется всегда, когда meta/data — JSON-строка, начинающаяся с "{" или "["
      *
      * @example
      * ```ts
@@ -330,7 +331,7 @@ export class UsersData extends Model<IUserDataModelState> {
      *   data: '{"progress":75}',
      *   platform: T_TELEGRAM
      * });
-     * console.log(userData.meta.lastVisit); // Date object
+     * console.log(userData.meta.lastVisit); // строка '2024-03-20T12:00:00Z' (JSON.parse не создаёт Date)
      * console.log(userData.data.progress); // 75
      * ```
      */

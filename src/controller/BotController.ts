@@ -10,8 +10,8 @@ import { IGroupData, getGroupRegExpCompiled } from '../core/utils/CommandReg';
 
 /*
  * Оптимизация производительности:
- * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать.
- * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты.
+ * Если напрямую использовать переменные из другого модуля (например FALLBACK_COMMAND), то производительность может проседать.
+ * За счет данного хака мы решаем эту проблему, добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты.
  *
  * ВАЖНО: константы импортируются из листового модуля `../core/constants`, а НЕ из барреля `../core`.
  * Баррель `core` реэкспортирует `Bot` раньше констант, и при циклической загрузке
@@ -34,9 +34,9 @@ const DEFAULT_WELCOME_INTENT_NAME = WELCOME_INTENT_NAME;
  *
  * @example
  * ```ts
- * const status: TStatus = true; // операция успешна
- * const status: TStatus = false; // операция с ошибкой
- * const status: TStatus = null; // операция не выполнялась
+ * const okStatus: TStatus = true; // операция успешна
+ * const errStatus: TStatus = false; // операция с ошибкой
+ * const skipStatus: TStatus = null; // операция не выполнялась
  * ```
  */
 export type TStatus = true | false | null;
@@ -107,7 +107,7 @@ export interface IUserEvent {
  * @remarks
  * Базовое поле:
  * - oldIntentName: название предыдущего интента. Актуально для случаев, когда в приложении есть какая-то последовательность действий.
- * Также данное значение можно использовать при регистрации обработчика на шаг(bot.step('...', ()=>{...})).
+ * Также данное значение можно использовать при регистрации обработчика на шаг (bot.addStep('...', ()=>{...})).
  *
  * Дополнительные поля могут быть добавлены через:
  * 1. Расширение интерфейса (extends)
@@ -201,7 +201,7 @@ export interface IPlatformOptions {
      */
     timeStart?: number;
     /**
-     * Флаг говорящий о том, что результат выполнения приложения был получен при обработке запроса
+     * Флаг, говорящий о том, что результат выполнения приложения был получен при обработке запроса
      */
     sendInInit?: string | object | null;
 
@@ -273,7 +273,7 @@ export interface IPlatformOptions {
  * кнопкам, карточкам, состоянию диалога, пользовательским данным, NLU и многому другому.
  *
  * Адаптеры платформ (например, `AlisaAdapter`) автоматически наполняют контроллер данными,
- * вызывают внутренний метод `{@link run}` (он вызывает ваш `action()`), а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
+ * вызывают метод {@link run} (он вызывает ваш `action()`), а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
  *
  * **Ключевая особенность:** вся логика вашего голосового навыка или бота описывается в одном месте – в методе `action()`.
  * Фреймворк сам позаботится о маршрутизации: команды, интенты, шаги диалога – всё придёт в `action` с соответствующим флагом.
@@ -287,7 +287,7 @@ export interface IPlatformOptions {
  *
  * @example
  * ```ts
- * import { BotController } from 'umbot';
+ * import { BotController, IUserData, WELCOME_INTENT_NAME, HELP_INTENT_NAME } from 'umbot';
  * // Определение пользовательских данных
  * interface MyUserData extends IUserData {
  *   score: number;
@@ -316,14 +316,14 @@ export interface IPlatformOptions {
  *           .addImage('xxx', 'Добро пожаловать!', 'Выберите действие:')
  *           .addButton('Начать игру')
  *
- *         // Установка пользовательских данных
- *         this.userData = {
- *           score: 0,
- *           level: 1,
- *           preferences: {
- *             language: 'ru',
- *             theme: 'light'
- *           }
+ *         // Установка пользовательских данных.
+ *         // Важно: мутируйте поля, а не переприсваивайте this.userData целиком —
+ *         // фреймворк хранит ссылку на объект
+ *         this.userData.score = 0;
+ *         this.userData.level = 1;
+ *         this.userData.preferences = {
+ *           language: 'ru',
+ *           theme: 'light'
  *         };
  *         return;
  *       }
@@ -458,7 +458,7 @@ export abstract class BotController<
 
     /**
      * Дополнительные параметры запроса.
-     * Может содержать любые дополнительные данные полученные от платформы.
+     * Может содержать любые дополнительные данные, полученные от платформы.
      *
      * @example
      * ```ts
@@ -703,7 +703,7 @@ export abstract class BotController<
     public appContext: AppContext;
 
     /**
-     * Платформа от которой был получен запрос.
+     * Платформа, от которой был получен запрос.
      */
     public appType: TAppType | null = null;
 
@@ -718,7 +718,10 @@ export abstract class BotController<
 
     /**
      * Создает новый экземпляр контроллера.
-     * Инициализирует все необходимые компоненты.
+     * UI-компоненты (кнопки, карточки, звуки, NLU) инициализируются лениво —
+     * при первом обращении через соответствующие геттеры.
+     *
+     * @param {AppContext} [appContext] - Контекст приложения. Если не передан, будет создан новый AppContext
      */
     constructor(appContext?: AppContext) {
         // Для корректности выставляем контекст по умолчанию.
@@ -863,7 +866,7 @@ export abstract class BotController<
     }
 
     /**
-     * Флаг возвращающий информацию о том, были ли инициализирован nlu или нет
+     * Флаг, возвращающий информацию о том, был ли инициализирован NLU или нет
      * @returns {boolean} true если NLU был инициализирован
      */
     isNluInit(): boolean {
@@ -871,8 +874,10 @@ export abstract class BotController<
     }
 
     /**
-     * Устанавливает контекст приложения.
+     * Устанавливает контекст приложения (обновляет контекст в уже созданных
+     * компонентах `buttons` и `card`).
      * @param {AppContext} appContext - Контекст приложения
+     * @returns {this} Текущий экземпляр для цепочки вызовов
      */
     public setAppContext(appContext: AppContext): this {
         if (appContext) {
@@ -1103,7 +1108,8 @@ export abstract class BotController<
     /**
      * Извлекает нужную команду из запроса.
      *
-     * @returns {void | null | Promise<void>} найденная команда или null если не удалось найти команду
+     * @returns {void | null | Promise<void | null>} результат выполнения обработчика
+     * найденной команды или null, если подходящая команда не найдена
      */
     protected _getCommand(): void | null | Promise<void | null> {
         if (!this.userCommand || !this.appContext.commands) {

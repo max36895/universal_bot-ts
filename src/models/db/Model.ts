@@ -35,6 +35,10 @@ export interface ISelectOneModelRes extends Omit<IModelRes, 'data'> {
  * @example
  * ```ts
  * class UserModel extends Model<UserState> {
+ *   public constructor(appContext: AppContext) {
+ *     super(appContext);
+ *   }
+ *
  *   // Определение правил валидации
  *   rules(): IModelRules[] {
  *     return [
@@ -58,8 +62,8 @@ export interface ISelectOneModelRes extends Omit<IModelRes, 'data'> {
  *   }
  * }
  *
- * // Использование модели
- * const user = new UserModel();
+ * // Использование модели (конструктор требует контекст приложения)
+ * const user = new UserModel(appContext);
  * user.state.username = 'John';
  * user.state.age = 25;
  * await user.save();
@@ -329,7 +333,7 @@ export abstract class Model<TState extends IModelState> {
      * Подготавливает данные для сохранения или обновления
      */
     #initData(): void {
-        // Не назвать через "#", так как есть proxy
+        // Приватный метод подготовки queryData: вызывается из save() и update().
         this.validate();
         const idName = this.queryData.primaryKeyName;
         if (idName) {
@@ -484,9 +488,14 @@ export abstract class Model<TState extends IModelState> {
     /**
      * Выполняет произвольный запрос к базе данных
      *
+     * Типы client/db зависят от подключённого адаптера БД —
+     * для MongoAdapter это MongoClient и Db из драйвера mongodb.
+     *
      * @example
      * ```ts
-     * const result = await model.query(async (client, db) => {
+     * import type { MongoClient, Db } from 'mongodb';
+     *
+     * const result = await model.query(async (client: MongoClient, db: Db) => {
      *   const collection = db.collection('users');
      *   return await collection.aggregate([
      *     { $match: { age: { $gt: 18 } } },

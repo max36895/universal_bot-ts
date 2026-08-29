@@ -18,7 +18,7 @@ export type TFileData = Record<string, Record<string, unknown>>;
 /**
  * Интерфейс для хранения информации о файле
  *
- * @interface IFileInfo
+ * @interface IDBFileInfo
  */
 export interface IDBFileInfo {
     /**
@@ -135,7 +135,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     }
 
     /**
-     * Сохранение данные в базу
+     * Сохраняет значение поля в кэш таблицы (в памяти)
      * @param tableName Имя таблицы
      * @param field Поле, в которое происходит сохранение
      * @param data Данные для сохранения
@@ -243,7 +243,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
 
     /**
      * Выполняет UPDATE-запрос.
-     * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public _update(updateData: IQuery): boolean {
         const update = updateData.data;
@@ -268,7 +268,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
 
     /**
      * Выполняет INSERT-запрос.
-     * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public _insert(insertData: IQuery): boolean {
         const insert = insertData.data;
@@ -290,7 +290,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
 
     /**
      * Выполняет DELETE-запрос.
-     * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     public _remove(removeData: IQuery): boolean {
         const remove = removeData.query;
@@ -457,7 +457,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
             ? null
             : getFileInfoSync(file).data;
         if (fileInfo?.isFile()) {
-            // При размере базы более 400мб, может произойти падение приложения.
+            // При размере базы более 360 МБ (3.6e8) высок риск падения приложения (критично ~400 МБ).
             if (fileInfo.size > 3.6e8) {
                 this._appContext.logError(
                     'Размер файловой Базы данных приближается к 400мб! Велика вероятность падения приложения! Рекомендуется перейти на другой адаптер(Например MongoAdapter, или какое-то свое решение) для работы с базой данных!',

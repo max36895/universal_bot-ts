@@ -61,9 +61,11 @@ export interface IImageModelState extends IModelState {
  * if (found.status) {
  *     console.log('Токен для изображения успешно получен, токен:', found.data.imageToken);
  * } else {
- *     // Загрузка изображения
- *     const newToken = await image.save();
- *     console.log('Новый токен:', newToken);
+ *     // Загрузка изображения в платформу — токен выдаёт API платформы,
+ *     // затем он присваивается модели и запись сохраняется в БД
+ *     image.imageToken = tokenFromPlatform;
+ *     const saved = await image.save(true); // save() возвращает boolean, а не токен
+ *     console.log('Запись сохранена:', saved);
  * }
  * ```
  */
@@ -74,8 +76,9 @@ export class ImageTokens extends Model<IImageModelState> {
     protected static readonly TABLE_NAME = 'ImageTokens';
 
     /**
-     * Описание изображения (Не обязательное поле).
-     * Используется как подпись к изображению в некоторых платформах.
+     * Описание изображения (опционально).
+     * Не входит в attributeLabels() и не сохраняется в БД —
+     * предназначено только для пользовательского кода.
      */
     public caption: string | null;
 

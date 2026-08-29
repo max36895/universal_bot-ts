@@ -92,7 +92,9 @@ export interface IQuery {
  *
  * @example
  * ```ts
- * const query = QueryData.getQueryData('`id`=1 `name`="John Doe"');
+ * import { getQueryData } from './models/db';
+ *
+ * const query = getQueryData('`id`=1 `name`="John Doe"');
  * // Результат: { id: 1, name: 'John Doe' }
  * ```
  *
