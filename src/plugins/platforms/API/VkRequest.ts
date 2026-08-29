@@ -405,7 +405,7 @@ export class VkRequest {
 
     /**
      * Получает информацию о пользователе или списке пользователей
-     * @param userId ID пользователя или массив ID
+     * @param userId ID пользователя, список ID через запятую или массив ID
      * @param params Дополнительные параметры запроса
      * @returns Массив пользователей или null при ошибке
      */
@@ -418,8 +418,10 @@ export class VkRequest {
             // Числовая ветка раньше отправляла legacy-алиас user_id, которого нет
             // в документации API 5.199.
             this._request.post = { user_ids: String(userId) };
-        } else {
+        } else if (Array.isArray(userId)) {
             this._request.post = { user_ids: userId.join(',') };
+        } else {
+            this._request.post = { user_ids: userId };
         }
         if (params) {
             this._request.post = { ...this._request.post, ...params };
@@ -585,9 +587,9 @@ export class VkRequest {
 
     /**
      * Записывает информацию об ошибках в лог-файл
-     * @param error Текст ошибки для логирования
+     * @param error Текст или объект ошибки для логирования
      */
-    protected _log(error: string = ''): void {
+    protected _log(error: Error | string = ''): void {
         this._appContext.logError(getErrorMsg(error, 'VkRequest', this._request.url), {
             error: this._error,
         });

@@ -796,8 +796,7 @@ describe('flowGenerator', () => {
                 isLocalStorage: true,
             });
             expect(code).toContain(
-                'ctrl.userData.userName = ctrl.originalUserCommand ?? ctrl.userCommand ?? ' +
-                    "''",
+                'ctrl.userData.userName = ctrl.originalUserCommand ?? ctrl.userCommand ?? ' + "''",
             );
             expect(code).not.toContain('ctrl.userData.userName = ctrl.userCommand ??');
         });

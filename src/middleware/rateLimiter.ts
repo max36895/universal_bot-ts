@@ -81,9 +81,9 @@ async function processQueue(
             if (st.dead) {
                 return;
             }
-            // eslint-disable-next-line require-atomic-updates
+
             st.count = 0;
-            // eslint-disable-next-line require-atomic-updates
+
             st.lastReset = Date.now();
 
             // Счётчик только что обнулён, поэтому в этом окне доступен весь лимит.
@@ -103,7 +103,7 @@ async function processQueue(
                     st.queue.unshift(...batch.slice(i));
                     break;
                 }
-                // eslint-disable-next-line require-atomic-updates
+
                 st.count++;
                 try {
                     await item.task();
