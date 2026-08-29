@@ -192,9 +192,10 @@ export abstract class BasePlatform<TQuery = unknown>
      * в адаптере платформы, если её формат подписи отличается:
      * - **Telegram** — переопределён (использует plain `x-telegram-bot-api-secret-token`).
      * - **Viber** — умолчание корректно (Viber шлёт `x-viber-content-signature` как HMAC-SHA256(auth_token, body)).
-     * - **VK** — НЕ используйте умолчание, формат подписи VK иной (sha256 от конкатенации полей
-     *   с групповым `secret_key`). См. документацию VK Callback API.
-     * - Для платформ без подписи (Alisa, Marusia, SmartApp, Max) проверка skip-able через отсутствие `signatureName`.
+     * - **VK** — переопределён: сверяет поле `secret` из тела запроса с `secret_key` из конфигурации
+     *   (plain-сравнение через timingSafeEqual, без HMAC).
+     * - **Max** — переопределён: сверяет заголовок `x-max-bot-api-secret` с токеном бота.
+     * - Для платформ без подписи (Alisa, Marusia, SmartApp) проверка пропускается из-за отсутствия `signatureName`.
      *
      * @param {TQuery} query - Объект запроса от платформы
      * @param {Record<string, unknown>} [headers] - HTTP-заголовки запроса

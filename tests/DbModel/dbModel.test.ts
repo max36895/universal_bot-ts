@@ -282,6 +282,25 @@ describe('Db file connect', () => {
     });
 });
 
+describe('MongoAdapter.validate', () => {
+    it('не превращает отсутствующее числовое поле в NaN', () => {
+        const adapter = new MongoAdapter();
+        const result = adapter.validate(
+            {
+                query: null,
+                data: null,
+                tableName: 'Custom',
+                primaryKeyName: null,
+                rules: [{ name: ['count'], type: 'integer' }],
+            },
+            { title: 'без count' },
+        );
+
+        expect(result).toEqual({ title: 'без count' });
+        expect(result).not.toHaveProperty('count');
+    });
+});
+
 describe('Db is MongoDb', () => {
     let usersData: UsersData;
     let isConnected: boolean;

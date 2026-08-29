@@ -899,7 +899,9 @@ export abstract class BotController<
             this.card.clear();
         }
         if (this.isNluInit()) {
-            this.nlu.setNlu({});
+            // Второй аргумент обязателен: без него в Nlu остаётся кэш разобранных
+            // сущностей предыдущего запроса и getFio()/getGeo() вернут чужие данные.
+            this.nlu.setNlu({}, true);
         }
         this.text = '';
         this.tts = null;
@@ -923,6 +925,10 @@ export abstract class BotController<
         this.emotion = null;
         this.appeal = null;
         this.isSendRating = false;
+        // platformOptions — технические данные конкретного запроса (requestData адаптеров,
+        // sendInInit, session, stateName, error). Без сброса они утекают в следующий
+        // запрос: например, VK-подтверждение возвращалось бы в ответ на любое сообщение.
+        this.platformOptions = {};
     }
 
     /**
@@ -979,13 +985,13 @@ export abstract class BotController<
      * @param startTimer — Время начала обработки (для замера метрик)
      * @private
      */
-    #sendCustomCommandResolver(startTimer: number): void | null | Promise<void> {
+    #sendCustomCommandResolver(startTimer: number): void | null | Promise<void | null> {
         if (this.appContext.command.customCommandResolver) {
             const res = this.appContext.command.customCommandResolver(
                 this.userCommand as string,
                 this.appContext.commands,
             );
-            const cb = (result: string | null): void | Promise<void> => {
+            const cb = (result: string | null): void | null | Promise<void> => {
                 const command = result ? this.appContext.commands.get(result) : null;
                 if (result && command) {
                     const res = this.#commandExecute(result, command);
@@ -1002,6 +1008,7 @@ export abstract class BotController<
                                         },
                                     );
                                 }
+                                this._actionMetric(result, true);
                             })
                             .catch((error) => {
                                 this.appContext.logError(
@@ -1022,10 +1029,16 @@ export abstract class BotController<
                             },
                         );
                     }
+                    this._actionMetric(result, true);
                 } else if (this.appContext?.usedMetric) {
                     this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
                         status: false,
                     });
+                }
+                // null или неизвестное имя означают, что custom resolver не нашёл команду.
+                // Явный null нужен run(), чтобы продолжить цепочку intent → fallback → welcome.
+                if (!result || !command) {
+                    return null;
                 }
             };
             if (isPromise(res)) {
@@ -1092,7 +1105,7 @@ export abstract class BotController<
      *
      * @returns {void | null | Promise<void>} найденная команда или null если не удалось найти команду
      */
-    protected _getCommand(): void | null | Promise<void> {
+    protected _getCommand(): void | null | Promise<void | null> {
         if (!this.userCommand || !this.appContext.commands) {
             return null;
         }
@@ -1196,7 +1209,8 @@ export abstract class BotController<
      *
      * ⚠️ Метод вызывается синхронно: фреймворк не дожидается возвращаемого значения.
      * Не объявляйте его `async` — всё, что выполнится после первого `await`, не попадёт
-     * в ответ пользователю, а ошибки промиса останутся необработанными.
+     * в ответ пользователю. Если `action()` всё же вернёт Promise, фреймворк напишет
+     * предупреждение в лог, а ошибки промиса будут залогированы вместо unhandledRejection.
      * Для асинхронной логики используйте `addCommand`/`addStep` — их колбэки фреймворк ожидает.
      *
      * @param {string | null} intentName - Название интента или команды
@@ -1275,7 +1289,24 @@ export abstract class BotController<
         isStep: boolean = false,
     ): void {
         const start = this.appContext?.usedMetric ? performance.now() : 0;
-        this.action(commandName, isCommand, isStep);
+        const res = this.action(commandName, isCommand, isStep) as void | Promise<void>;
+        if (isPromise(res)) {
+            // Типичная ловушка: async-вариант action() компилируется без ошибки,
+            // но фреймворк не дожидается результата, и всё после первого await
+            // молча не попадало в ответ. Вместо тишины предупреждаем и вешаем catch,
+            // чтобы ошибка в пользовательском промисе не стала unhandledRejection.
+            this.appContext?.logWarn(
+                'BotController: action() вернул Promise. Метод action() должен быть синхронным: ' +
+                    'всё, что выполнится после первого await, не попадёт в ответ. ' +
+                    'Для асинхронной логики используйте колбэки addCommand/addStep/addForm — они поддерживают async.',
+            );
+            res.catch((error) => {
+                this.appContext?.logError(
+                    `BotController: Произошла ошибка внутри async action(). Текст ошибки: "${error}"`,
+                    { error },
+                );
+            });
+        }
         if (this.appContext?.usedMetric) {
             this.appContext.logMetric(EMetric.ACTION, performance.now() - start, {
                 commandName,
@@ -1345,6 +1376,72 @@ export abstract class BotController<
     }
 
     /**
+     * Обрабатывает интенты и fallback-команду.
+     * Вызывается из {@link run}, когда не сработал ни активный шаг, ни одна из команд.
+     * Если интент не найден и `messageId === 0` (начало диалога), используется welcome-интент.
+     *
+     * @returns {void | Promise<void>} Может быть асинхронным
+     */
+    #runIntentOrFallback(): void | Promise<void> {
+        let intent: string | null = this._getIntent(this.userCommand);
+        const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
+        if (!intent && fallbackCommand) {
+            const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
+            if (isPromise(res)) {
+                return res.then(() => {
+                    this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+                });
+            }
+            this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+            return res;
+        }
+        // if (
+        //     intent === null &&
+        //     this.originalUserCommand &&
+        //     this.userCommand !== this.originalUserCommand
+        // ) {
+        //     // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
+        //     // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
+        //     intent = this._getIntent(this.originalUserCommand.toLowerCase());
+        // }
+        if (intent === null && this.messageId === 0) {
+            intent = DEFAULT_WELCOME_INTENT_NAME;
+        }
+        let command: ICommandParam | undefined;
+        /*
+         * Для стандартных действий параметры заполняются автоматически.
+         * Есть возможность переопределить их в action() по названию действия
+         */
+        switch (intent) {
+            case DEFAULT_WELCOME_INTENT_NAME:
+                command = this.appContext.commands.get(DEFAULT_WELCOME_INTENT_NAME);
+                if (command) {
+                    return this.#commandCb(
+                        DEFAULT_WELCOME_INTENT_NAME,
+                        command,
+                        this.#getStartMetric(),
+                    );
+                }
+                this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                break;
+
+            case DEFAULT_HELP_INTENT_NAME:
+                command = this.appContext.commands.get(DEFAULT_HELP_INTENT_NAME);
+                if (command) {
+                    return this.#commandCb(
+                        DEFAULT_HELP_INTENT_NAME,
+                        command,
+                        this.#getStartMetric(),
+                    );
+                }
+                this.text = Text.getText(this.appContext.platformParams.help_text);
+                break;
+        }
+
+        this._actionMetric(intent);
+    }
+
+    /**
      * Основной метод обработки запроса, вызываемый автоматически фреймворком.
      *
      * @remarks
@@ -1398,68 +1495,16 @@ export abstract class BotController<
             return stepResult;
         }
         const commandResult = this._getCommand();
-        if (commandResult === null) {
-            let intent: string | null = this._getIntent(this.userCommand);
-            const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
-            if (!intent && fallbackCommand) {
-                const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
-                if (isPromise(res)) {
-                    return res.then(() => {
-                        this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
-                    });
+        if (isPromise(commandResult)) {
+            return commandResult.then((result) => {
+                if (result === null) {
+                    return this.#runIntentOrFallback();
                 }
-                this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
-                return res;
-            } else {
-                // if (
-                //     intent === null &&
-                //     this.originalUserCommand &&
-                //     this.userCommand !== this.originalUserCommand
-                // ) {
-                //     // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
-                //     // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
-                //     intent = this._getIntent(this.originalUserCommand.toLowerCase());
-                // }
-                if (intent === null && this.messageId === 0) {
-                    intent = DEFAULT_WELCOME_INTENT_NAME;
-                }
-                let command: ICommandParam | undefined;
-                /*
-                 * Для стандартных действий параметры заполняются автоматически.
-                 * Есть возможность переопределить их в action() по названию действия
-                 */
-                switch (intent) {
-                    case DEFAULT_WELCOME_INTENT_NAME:
-                        command = this.appContext.commands.get(DEFAULT_WELCOME_INTENT_NAME);
-                        if (command) {
-                            return this.#commandCb(
-                                DEFAULT_WELCOME_INTENT_NAME,
-                                command,
-                                this.#getStartMetric(),
-                            );
-                        } else {
-                            this.text = Text.getText(this.appContext.platformParams.welcome_text);
-                        }
-                        break;
-
-                    case DEFAULT_HELP_INTENT_NAME:
-                        command = this.appContext.commands.get(DEFAULT_HELP_INTENT_NAME);
-                        if (command) {
-                            return this.#commandCb(
-                                DEFAULT_HELP_INTENT_NAME,
-                                command,
-                                this.#getStartMetric(),
-                            );
-                        } else {
-                            this.text = Text.getText(this.appContext.platformParams.help_text);
-                        }
-                        break;
-                }
-
-                this._actionMetric(intent);
-            }
-        } else {
+            });
+        }
+        if (commandResult !== null) {
             return commandResult;
         }
+        return this.#runIntentOrFallback();
     }
 }

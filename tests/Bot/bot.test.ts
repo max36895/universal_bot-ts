@@ -2,6 +2,7 @@ import {
     AppContext,
     Bot,
     BotController,
+    FALLBACK_COMMAND,
     IPlatformData,
     IUserData,
     unlinkSync,
@@ -13,6 +14,10 @@ import {
     FileAdapter,
     IAlisaWebhookResponse,
     voicePlatforms,
+    TelegramAdapter,
+    TelegramRequest,
+    SmartAppAdapter,
+    T_SMART_APP,
 } from '../../src/plugins';
 import { Server } from 'http';
 import { join } from 'node:path';
@@ -106,6 +111,41 @@ let saveSpy: ReturnType<typeof jest.spyOn>;
 let updateSpy: ReturnType<typeof jest.spyOn>;
 describe('Bot', () => {
     let bot: TestBot;
+
+    // Токены из process.env теперь тихо подхватываются даже без настроенного env,
+    // поэтому изолируем тесты от реального окружения машины.
+    const ENV_KEYS = [
+        'VIBER_TOKEN',
+        'TELEGRAM_TOKEN',
+        'VK_TOKEN',
+        'MAX_TOKEN',
+        'VK_CONFIRMATION_TOKEN',
+        'VK_SECRET_KEY',
+        'MARUSIA_TOKEN',
+        'ALISA_TOKEN',
+        'YANDEX_TOKEN',
+        'SPEECH_KIT_TOKEN',
+        'DB_HOST',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_NAME',
+    ];
+    const savedEnv: Record<string, string | undefined> = {};
+    beforeAll(() => {
+        ENV_KEYS.forEach((key) => {
+            savedEnv[key] = process.env[key];
+            delete process.env[key];
+        });
+    });
+    afterAll(() => {
+        ENV_KEYS.forEach((key) => {
+            if (savedEnv[key] === undefined) {
+                delete process.env[key];
+            } else {
+                process.env[key] = savedEnv[key];
+            }
+        });
+    });
 
     beforeEach(() => {
         bot = new TestBot();
@@ -542,6 +582,8 @@ describe('Bot', () => {
                 },
                 version: '1.0',
             });
+            // Карточка с текстом, но без картинки — рабочий сценарий Алисы:
+            // документация не помечает image_id обязательным.
             expect(await bot.run(T_ALISA, getContent('карточка'))).toEqual({
                 response: {
                     card: {
@@ -563,7 +605,115 @@ describe('Bot', () => {
         });
     });
 
+    describe('webhookEvent', () => {
+        const tgBody = JSON.stringify({
+            update_id: 1,
+            message: {
+                message_id: 1,
+                text: 'hi',
+                chat: { id: 42, type: 'private' },
+                from: { id: 42 },
+            },
+        });
+
+        it('возвращает 400 для пустого тела', async () => {
+            const res = await bot.webhookEvent(null);
+            expect(res.statusCode).toBe(400);
+        });
+
+        it('возвращает 400 для невалидного JSON', async () => {
+            // Унифицировано с webhookHandle: некорректный запрос — это 400, не 422/500.
+            const res = await bot.webhookEvent('{broken');
+            expect(res.statusCode).toBe(400);
+        });
+
+        it('возвращает 400 для валидного JSON, не являющегося объектом', async () => {
+            // Регрессия: JSON-скаляр (строка/число/массив) проходил парсинг и падал
+            // с 500 внутри пайплайна. Платформы всегда присылают объект.
+            bot.initBotController(TestBotController);
+            for (const body of ['"just a string"', '42', '[1, 2, 3]']) {
+                const res = await bot.webhookEvent(body);
+                expect(res.statusCode).toBe(400);
+            }
+        });
+
+        it('возвращает 401, если webhookSecret задан, но заголовок отсутствует', async () => {
+            bot.setAppConfig({ tokens: { telegram: { token: 'tok', webhookSecret: 'secret' } } });
+            bot.use(new TelegramAdapter());
+            const res = await bot.webhookEvent(tgBody, {});
+            expect(res.statusCode).toBe(401);
+        });
+
+        it('пропускает запрос при совпадающем webhookSecret', async () => {
+            bot.initBotController(TestBotController);
+            bot.setAppConfig({ tokens: { telegram: { token: 'tok', webhookSecret: 'secret' } } });
+            bot.use(new TelegramAdapter());
+            bot.addCommand('hi', ['hi'], (_, ctrl) => {
+                ctrl.text = 'ok';
+            });
+            const callSpy = jest
+                .spyOn(TelegramRequest.prototype, 'call')
+                .mockResolvedValue(undefined);
+            const res = await bot.webhookEvent(tgBody, {
+                'x-telegram-bot-api-secret-token': 'secret',
+            });
+            expect(res.statusCode).not.toBe(401);
+            callSpy.mockRestore();
+        });
+
+        it('возвращает 400, а не 500, если платформа не определилась', async () => {
+            bot.initBotController(TestBotController);
+            const res = await bot.webhookEvent(JSON.stringify({ unknown_platform: true }));
+            // На 5xx Telegram и VK включают повторную доставку и в итоге отключают
+            // вебхук, поэтому нераспознанный запрос должен отдавать 4xx.
+            expect(res.statusCode).toBe(400);
+        });
+    });
+
+    describe('команды с регулярными выражениями', () => {
+        it('находит команду с глобальным regexp на каждом запросе', async () => {
+            const tBot = new TestBot();
+            tBot.initBotController(TestBotController);
+            tBot.use(new AlisaAdapter());
+            let hits = 0;
+            tBot.addCommand(
+                'hi',
+                [/привет/g],
+                (_, ctrl) => {
+                    hits++;
+                    ctrl.text = 'ok';
+                },
+                true,
+            );
+            for (let i = 0; i < 4; i++) {
+                await tBot.run(T_ALISA, getContent('привет', i));
+            }
+            // RegExp с флагом g продвигает lastIndex, поэтому кэшированный объект
+            // раньше срабатывал через раз, и половина запросов уходила в fallback.
+            expect(hits).toBe(4);
+        });
+    });
+
     describe('saved state and DB', () => {
+        it('не запрашивает SmartApp storage при выключенном isLocalStorage', async () => {
+            const tBot = new TestBot();
+            tBot.initBotController(TestBotController);
+            const smartApp = new SmartAppAdapter();
+            const getStorage = jest.spyOn(smartApp, 'getLocalStorage');
+            tBot.use(smartApp);
+            tBot.addCommand('hello', ['привет'], (_text, controller) => {
+                controller.text = 'Привет';
+            });
+
+            await tBot.run(
+                T_SMART_APP,
+                JSON.stringify(smartApp.getQueryExample('привет', 'user-1', 0)),
+            );
+
+            expect(getStorage).not.toHaveBeenCalled();
+            await tBot.close();
+        });
+
         it('get state is not isLocalStorage', async () => {
             const tBot = new TestBot();
             tBot.initBotController(TestBotController);
@@ -911,6 +1061,45 @@ describe('Bot', () => {
             expect(run1).toEqual(result2);
             expect(run2).toEqual(result1);
         });
+
+        it('вызывает action для команды, найденной custom resolver', async () => {
+            class ResolverController extends BotController {
+                action(_intentName: string | null, isCommand?: boolean): void {
+                    if (isCommand) {
+                        this.text = 'Action отработал';
+                    }
+                }
+            }
+            bot.addCommand('resolved', ['обычный слот'], (_, controller) => {
+                controller.text = 'Команда';
+            });
+            bot.use(new AlisaAdapter());
+            bot.initBotController(ResolverController);
+            bot.setCustomCommandResolver(() => 'resolved');
+
+            const result = (await bot.run(
+                T_ALISA,
+                getContent('кастомная команда', 1),
+            )) as IAlisaWebhookResponse;
+
+            expect(result.response?.text).toBe('Action отработал');
+        });
+
+        it('продолжает до fallback, когда custom resolver возвращает null', async () => {
+            bot.addCommand(FALLBACK_COMMAND, [], (_, controller) => {
+                controller.text = 'Fallback отработал';
+            });
+            bot.use(new AlisaAdapter());
+            bot.initBotController(TestBotController);
+            bot.setCustomCommandResolver(() => null);
+
+            const result = (await bot.run(
+                T_ALISA,
+                getContent('неизвестная команда', 1),
+            )) as IAlisaWebhookResponse;
+
+            expect(result.response?.text).toBe('Fallback отработал');
+        });
     });
 
     describe('customLogger', () => {
@@ -955,142 +1144,86 @@ describe('Bot', () => {
     });
 
     describe('findCommand', () => {
-        it('redos warning', () => {
-            let warmMessage;
-            let errorMessage;
+        /**
+         * Небезопасное выражение регистрируется, но без re2 движок Node уязвим
+         * к катастрофическому бэктрекингу: одно сообщение пользователя способно
+         * занять поток на минуты. Поэтому уровень лога зависит от окружения.
+         */
+        function captureRegexLog(fn: () => void): { warn?: string; error?: string } {
+            const captured: { warn?: string; error?: string } = {};
             bot.setLogger({
-                error: (message) => {
-                    errorMessage = message;
+                error: (message: string): void => {
+                    captured.error = message;
                 },
-                warn: (message) => {
-                    warmMessage = message;
+                warn: (message: string): void => {
+                    captured.warn = message;
                 },
             });
-            bot.addCommand('normal', [/\d+/], () => {});
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
-            bot.addCommand('normal2', ['/\\d+/'], () => {}, true);
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
+            fn();
+            return captured;
+        }
 
-            bot.addCommand('redos', [/.*/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: .*',
-            );
-            expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-
-            bot.addCommand('redos2', ['/.*/'], () => {}, true);
-            expect(warmMessage).toBe(
-                'Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /.*/',
-            );
-            expect(errorMessage).toBe(undefined);
-            bot.clearCommands();
-
-            bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], () => {}, true);
-            expect(warmMessage).toBe(
-                `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /${'test'.repeat(777)}/`,
-            );
-            expect(errorMessage).toBe(undefined);
-            bot.clearCommands();
-
+        const noop = (): void => {};
+        const UNSAFE_PATTERNS: [string, () => void][] = [
+            ['.*', (): void => bot.addCommand('redos', [/.*/], noop) && undefined],
+            ['/.*/', (): void => bot.addCommand('redos2', ['/.*/'], noop, true) && undefined],
+            [
+                `/${'test'.repeat(777)}/`,
+                (): void =>
+                    bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], noop, true) && undefined,
+            ],
             // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos4', [/(a*)*/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a*)*',
-            );
-            expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-
+            ['(a*)*', (): void => bot.addCommand('redos4', [/(a*)*/], noop) && undefined],
             // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos5', [/(a|a+)+/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a|a+)+',
-            );
-            expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a+){10,1000}',
-            );
-            expect(errorMessage).toBe(undefined);
+            ['(a|a+)+', (): void => bot.addCommand('redos5', [/(a|a+)+/], noop) && undefined],
+            [
+                '(a+){10,1000}',
+                // eslint-disable-next-line security/detect-unsafe-regex
+                (): void => bot.addCommand('redos6', [/(a+){10,1000}/], noop) && undefined,
+            ],
+        ];
 
+        it('не ругается на безопасные выражения', () => {
+            const safe = captureRegexLog((): void => {
+                bot.addCommand('normal', [/\d+/], noop);
+                bot.addCommand('normal2', ['/\\d+/'], noop, true);
+            });
+            expect(safe.warn).toBeUndefined();
+            expect(safe.error).toBeUndefined();
             bot.clearCommands();
         });
-        it('redos error', () => {
-            let warmMessage;
-            let errorMessage;
-            bot.setLogger({
-                error: (message) => {
-                    errorMessage = message;
-                },
-                warn: (message) => {
-                    warmMessage = message;
-                },
+
+        it('сообщает о каждом небезопасном выражении с объяснением последствий', () => {
+            UNSAFE_PATTERNS.forEach(([pattern, register]): void => {
+                const captured = captureRegexLog(register);
+                const message = captured.error ?? captured.warn;
+                expect(message).toContain('небезопасн');
+                expect(message).toContain(pattern);
+                // Без re2 это не предупреждение, а реальная возможность положить бота
+                // одним сообщением, поэтому сообщение уходит в error и объясняет, что делать.
+                expect(captured.error).toBeDefined();
+                expect(captured.error).toContain('re2');
+                bot.clearCommands();
             });
+        });
+
+        it('redos error', () => {
             bot.setAppMode('strict_prod');
-            bot.addCommand('normal', [/\d+/], () => {});
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
-            bot.addCommand('normal2', ['/\\d+/'], () => {}, true);
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
-
-            bot.addCommand('redos', [/.*/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: .*',
-            );
-            expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
+            const safe = captureRegexLog((): void => {
+                bot.addCommand('normal', [/\d+/], noop);
+                bot.addCommand('normal2', ['/\\d+/'], noop, true);
+            });
+            expect(safe.warn).toBeUndefined();
+            expect(safe.error).toBeUndefined();
             bot.clearCommands();
 
-            bot.addCommand('redos2', ['/.*/'], () => {}, true);
-            expect(errorMessage).toBe(
-                'Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /.*/',
-            );
-            expect(warmMessage).toBe(undefined);
-            bot.clearCommands();
-
-            bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], () => {}, true);
-            expect(errorMessage).toBe(
-                `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /${'test'.repeat(777)}/`,
-            );
-            expect(warmMessage).toBe(undefined);
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos4', [/(a*)*/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a*)*',
-            );
-            expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos5', [/(a|a+)+/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a|a+)+',
-            );
-            expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a+){10,1000}',
-            );
-            expect(warmMessage).toBe(undefined);
-
-            bot.clearCommands();
+            UNSAFE_PATTERNS.forEach(([pattern, register]): void => {
+                const captured = captureRegexLog(register);
+                expect(captured.error).toContain(pattern);
+                expect(captured.error).toContain('strictMode');
+                expect(captured.warn).toBeUndefined();
+                bot.clearCommands();
+            });
         });
 
         it('addCommand and base botController', async () => {
@@ -1619,6 +1752,38 @@ describe('Bot', () => {
             const tokens = envBot.getAppContext().appConfig.tokens;
             expect(tokens.alisa?.token).toBe('alisa-canonical-token');
             expect(tokens.vk?.secret_key).toBe('vk-secret-value');
+        });
+
+        it('SPEECH_KIT_TOKEN раскладывается в speech_kit_token чат-платформ', () => {
+            const envBot = new TestBot();
+            envBot.setLogger({ error: () => {}, warn: () => {} });
+            envBot.setAppConfig({
+                env: __dirname + '/env-speechkit',
+            });
+            const tokens = envBot.getAppContext().appConfig.tokens;
+            expect(tokens.telegram?.token).toBe('your-telegram-token');
+            expect(tokens.telegram?.speech_kit_token).toBe('speechkit-test-token');
+            expect(tokens.vk?.speech_kit_token).toBe('speechkit-test-token');
+            expect(tokens.max_app?.speech_kit_token).toBe('speechkit-test-token');
+        });
+    });
+
+    describe('async action()', () => {
+        it('пишет предупреждение в лог, если контроллер объявил action() как async', async () => {
+            class AsyncActionController extends BotController {
+                public async action(_intentName: string | null): Promise<void> {
+                    await Promise.resolve();
+                    this.text = 'test';
+                }
+            }
+            bot.initBotController(AsyncActionController);
+            bot.use(new AlisaAdapter());
+            const warnSpy = jest.spyOn(bot.getAppContext(), 'logWarn').mockImplementation(() => {});
+
+            await bot.run(T_ALISA, getContent('привет', 1));
+
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('action()'));
+            warnSpy.mockRestore();
         });
     });
 });

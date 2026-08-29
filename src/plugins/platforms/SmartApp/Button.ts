@@ -91,8 +91,6 @@ export function buttonProcessing(
                         return;
                     }
                     object.actions = [action];
-                } else if (button.url) {
-                    object.actions = [{ text: title, type: 'text' }];
                 } else {
                     object.actions = [{ text: title, type: 'text' }];
                 }

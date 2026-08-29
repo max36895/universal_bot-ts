@@ -59,13 +59,6 @@ export const ALISA_MAX_IMAGES = 5;
 export const ALISA_MAX_GALLERY_IMAGES = 10;
 
 /**
- * Максимальный размер state (user_state_update, application_state, session_state) в байтах.
- * Официальный лимит API Яндекс.Диалогов — 4096 байт.
- * Значение 3584 (≈3.5 KB) — осознанный безопасный запас (safe margin),
- * учитывающий возможные различия в сериализации JSON, HTTP-кодировке
- * и ошибки округления. При превышении state очищается, а в лог пишется ошибка.
- */
-/**
  * Лимит JSON-состояния в Алисе.
  * Платформа отклоняет `session_state` и `user_state_update` больше 1 КБ.
  */

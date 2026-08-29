@@ -19,7 +19,7 @@ const config = {
         'eslint.config.js',
         '.pretterrc',
     ],
-    excludeDirs: ['node_modules', '.git', '.idea', '.github', '.vscode', '.agents'],
+    excludeDirs: ['node_modules', '.git', '.idea', '.github', '.vscode', '.agents', 'tests'],
     rootExcludeDirs: ['dist', 'coverage', 'docs'],
     ignoredExtensions: [
         '.png',
@@ -165,21 +165,27 @@ function isRelativePath(p) {
 function resolveFilePath(urlOrPath, currentFile) {
     let localPath;
 
-    if (urlOrPath.startsWith(config.baseUrl)) {
+    // Fix: ссылка может содержать #якорь (например, ./GUIDE.md#раздел).
+    // Раньше фрагмент не отсекался, проверка endsWith('.md') не проходила,
+    // и корректная ссылка помечалась как битая.
+    const hashIndex = urlOrPath.indexOf('#');
+    const target = hashIndex !== -1 ? urlOrPath.substring(0, hashIndex) : urlOrPath;
+
+    if (target.startsWith(config.baseUrl)) {
         // URL - конвертируем в путь и резолвим от корня проекта
-        localPath = path.resolve(PROJECT_ROOT, urlToFilePath(urlOrPath));
-    } else if (urlOrPath.endsWith('.md') && !urlOrPath.startsWith('http')) {
-        if (isRelativePath(urlOrPath)) {
+        localPath = path.resolve(PROJECT_ROOT, urlToFilePath(target));
+    } else if (target.endsWith('.md') && !target.startsWith('http')) {
+        if (isRelativePath(target)) {
             // Относительный путь - резолвим относительно текущего файла
             if (currentFile) {
                 const currentDir = path.dirname(currentFile);
-                localPath = path.resolve(currentDir, urlOrPath);
+                localPath = path.resolve(currentDir, target);
             } else {
-                localPath = path.resolve(urlOrPath);
+                localPath = path.resolve(target);
             }
         } else {
             // Путь от корня проекта (например, src/docs/GUIDE.md)
-            localPath = path.resolve(PROJECT_ROOT, urlOrPath);
+            localPath = path.resolve(PROJECT_ROOT, target);
         }
     } else {
         return null;
@@ -325,8 +331,13 @@ function processFiles() {
                         updatedFiles.add(filePath);
                     }
                 } else if (link.type === 'path') {
+                    // Fix: сохраняем #якорь при переписывании ссылки,
+                    // раньше фрагмент молча терялся.
+                    const pathHashIndex = link.value.indexOf('#');
+                    const pathHash =
+                        pathHashIndex !== -1 ? link.value.substring(pathHashIndex) : '';
                     const relativePath = path.relative(PROJECT_ROOT, resolvedPath);
-                    const newUrl = filePathToUrl(relativePath, version);
+                    const newUrl = filePathToUrl(relativePath, version) + pathHash;
 
                     if (link.fullMatch) {
                         const newFullMatch = `[${link.text}](${newUrl})`;

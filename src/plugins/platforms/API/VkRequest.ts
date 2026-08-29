@@ -349,10 +349,10 @@ export class VkRequest {
                 this._request.post.random_id = p.random_id;
             }
 
-            if (p.attachments !== undefined) {
+            if (p.attachments?.length) {
                 this._request.post.attachment = p.attachments.join(',');
-                delete p.attachments;
             }
+            delete p.attachments;
 
             if (p.template !== undefined) {
                 if (typeof p.template !== 'string') {
@@ -367,7 +367,10 @@ export class VkRequest {
                     this._appContext.logWarn(
                         'VkRequest.messagesSend(): keyboard и template взаимоисключающи в VK API. Template будет удалён.',
                     );
-                    this._request.post.template = undefined;
+                    // Именно delete, а не `= undefined`: httpBuildQuery сериализует
+                    // значение через String(), и в тело запроса уходило `template=undefined`,
+                    // на что VK отвечает ошибкой 100 (invalid parameter).
+                    delete this._request.post.template;
                 }
                 if (typeof p.keyboard !== 'string') {
                     p.keyboard = JSON.stringify(p.keyboard);

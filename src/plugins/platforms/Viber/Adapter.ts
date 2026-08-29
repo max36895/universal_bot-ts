@@ -6,6 +6,7 @@ import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VIBER, VIBER_DEFAULT_API_VERSION } from './constants';
 import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
+import { getChatText } from '../Base/utils';
 
 /**
  * Адаптер, обеспечивающий поддержку платформы Viber. Позволяет разрабатывать чат-ботов для Viber на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
@@ -119,6 +120,12 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
                 query.event === 'subscribed' ? 'подписался на бота' : 'отписался от бота';
             this.appContext!.log(`ViberAdapter: пользователь ${query.user.id} ${action}`);
         }
+        // Отписавшемуся пользователю отправить сообщение нельзя — Viber API отклоняет
+        // send_message. Без skipAutoReply пайплайн прогонял fallback и получал
+        // гарантированную ошибку API на каждую отписку.
+        if (query.event === 'unsubscribed') {
+            controller.skipAutoReply = true;
+        }
         return true;
     }
 
@@ -193,8 +200,12 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
             case 'delivered':
             case 'seen':
             case 'failed':
+            case 'webhook':
                 // Служебные события не являются сообщениями пользователя. Ответ на них
                 // создавал запрос send_message без receiver и отклонялся Viber API.
+                // Событие 'webhook' Viber присылает при вызове set_webhook и ждёт 200:
+                // раньше здесь возвращался false, запрос падал с 500, и вебхук
+                // вообще не удавалось зарегистрировать.
                 controller.skipAutoReply = true;
                 return true;
 
@@ -202,7 +213,13 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
                 return this.#onMessage(query, controller);
         }
 
-        return false;
+        // Неизвестные/новые типы событий Viber тоже не должны приводить к 5xx:
+        // на ошибку сервера Viber повторяет доставку и в итоге отключает вебхук.
+        controller.skipAutoReply = true;
+        this.appContext?.log(
+            `ViberAdapter.setQueryData(): событие "${query.event}" не поддерживается и было пропущено.`,
+        );
+        return true;
     }
 
     async getContent(controller: BotController): Promise<string> {
@@ -222,13 +239,20 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
 
             // Viber отклоняет type=text с пустым text. Карточки и звуки
             // отправляются отдельными API-вызовами, поэтому пустое сообщение им не требуется.
-            if (controller.text) {
+            // Если заполнен только tts (общая логика писалась под голосовую платформу),
+            // используем его как текст: иначе Viber не получал вообще ничего.
+            const text = getChatText(controller.text, controller.tts);
+            if (text) {
                 await viberApi.sendMessage(
                     <string>controller.userId,
                     controller.appContext.appConfig.tokens[this.platformName].sender as
                         string | IViberSender,
-                    controller.text,
+                    text,
                     params,
+                );
+            } else if (keyboard) {
+                controller.appContext.logWarn(
+                    'ViberAdapter.getContent(): клавиатура задана без текста и не может быть отправлена отдельным сообщением.',
                 );
             }
 

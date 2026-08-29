@@ -38,9 +38,10 @@ function _getButton(
             }
         }
         if (button.url) {
-            if (button.url.length > 1024) {
+            const urlBytes = Buffer.byteLength(button.url, 'utf8');
+            if (urlBytes > 1024) {
                 appContext?.logWarn(
-                    '[Alisa] URL кнопки превышает 1024 символа. Кнопка будет пропущена без изменения ссылки.',
+                    `[Alisa] URL кнопки превышает 1024 байта (${urlBytes} байт). Кнопка будет пропущена без изменения ссылки.`,
                 );
                 return null;
             }

@@ -81,7 +81,8 @@ const ctx = bot.getAppContext();
 
 ctx.httpClient = async (input, init) => {
     const start = performance.now();
-    const url = typeof input === 'string' ? input : input.url;
+    // input может быть string | URL | Request — сужаем тип
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     console.log(`[HTTP] → ${init?.method ?? 'GET'} ${url}`);
 
     try {
@@ -111,7 +112,8 @@ const ctx = bot.getAppContext();
 
 // Подменяем fetch на мок
 ctx.httpClient = async (input, init) => {
-    const url = typeof input === 'string' ? input : input.url;
+    // input может быть string | URL | Request — сужаем тип
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
     if (url.includes('api.weather.com')) {
         return new Response(JSON.stringify({ temp: 25 }), {
@@ -123,7 +125,9 @@ ctx.httpClient = async (input, init) => {
     return new Response('Not Found', { status: 404 });
 };
 
-await bot.test();
+// Запускаем через simulate() — в отличие от интерактивного bot.test()
+// он не блокируется в ожидании ввода и не ходит в реальные API платформ
+await bot.simulate('какая сегодня погода?');
 ```
 
 ## Какой тип использовать?

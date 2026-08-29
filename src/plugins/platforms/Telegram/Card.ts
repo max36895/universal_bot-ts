@@ -108,7 +108,9 @@ export async function cardProcessing(
             let field: string | null;
             if (!image.imageToken) {
                 if (image.imageDir) {
-                    field = `attach://${image.imageDir}`;
+                    field = Text.isUrl(image.imageDir)
+                        ? image.imageDir
+                        : `attach://${image.imageDir}`;
                 } else {
                     continue;
                 }
@@ -125,9 +127,14 @@ export async function cardProcessing(
         // Если после фильтрации осталось < 2 элементов — отправляем через sendPhoto.
         if (object.length === 1) {
             const media = object[0];
+            // Префикс attach:// нужен только для FormData в sendMediaGroup:
+            // sendPhoto ожидает локальный путь, URL или file_id.
+            const photo = media.media.startsWith('attach://')
+                ? media.media.replace('attach://', '')
+                : media.media;
             await new TelegramRequest(controller.appContext).sendPhoto(
                 getChatId(controller),
-                media.media,
+                photo,
                 media.caption || undefined,
             );
             return null;

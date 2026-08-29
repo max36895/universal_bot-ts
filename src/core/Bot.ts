@@ -70,6 +70,21 @@ export type TBotControllerClass<
  */
 export type TRunResult = object | string;
 
+/**
+ * Результат обработки входящего события серверлесс-платформы (например, Yandex Cloud Functions).
+ * Содержит HTTP-статус и тело ответа, которые нужно вернуть из cloud-функции.
+ */
+export interface IWebhookEventResult {
+    /**
+     * HTTP-статус ответа (200, 400, 401, 404, 500).
+     */
+    statusCode: number;
+    /**
+     * Тело ответа платформы или `null`, если ответ отсутствует.
+     */
+    body: TRunResult | null;
+}
+
 export * from './interfaces/IBot';
 
 const MAX_REQUEST_SIZE = 1024 * 1024 * 2;
@@ -82,6 +97,20 @@ export type MiddlewareNext = () => Promise<void>;
  * Функция промежуточной обработки
  */
 export type MiddlewareFn = (ctx: BotController, next: MiddlewareNext) => void | Promise<void>;
+
+/**
+ * Ошибка «запрос платформы не может быть обработан».
+ *
+ * Отделена от прочих ошибок, чтобы webhook отдавал 400, а не 500: на 5xx
+ * Telegram и VK включают повторную доставку и в итоге отключают вебхук,
+ * хотя проблема не в сервере, а в самом запросе.
+ */
+class BotBadRequestError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'BotBadRequestError';
+    }
+}
 
 function defaultSend(res: ServerResponse, state: IBotResponse): void {
     res.statusCode = state.statusCode;
@@ -1406,9 +1435,12 @@ export class Bot<
         }
 
         let isNewUser = true;
-        let localStateData = platformClass.getLocalStorage(botController);
-        if (isPromise(localStateData)) {
-            localStateData = await localStateData;
+        let localStateData: unknown = botController.state;
+        if (isLocalStorage) {
+            localStateData = platformClass.getLocalStorage(botController);
+            if (isPromise(localStateData)) {
+                localStateData = await localStateData;
+            }
         }
         if (isLocalStorage) {
             botController.userData = localStateData as TUserData;
@@ -1511,9 +1543,9 @@ export class Bot<
      * @private
      */
     #validateAdapterResult(
-        content: object | string | Promise<object | string>,
+        content: object | string,
         botController: BotController<TUserData, TPlatformState>,
-    ): object | string | Promise<object | string> {
+    ): object | string {
         if (content === null || content === undefined) {
             this.#appContext.logWarn(
                 `Bot:#getPlatformContent(): Адаптер платформы вернул null/undefined из getContent(). Ответ будет пустым.`,
@@ -1524,10 +1556,13 @@ export class Bot<
         return content;
     }
 
-    async #getPlatformContent(
-        botController: BotController<TUserData, TPlatformState>,
-        platformClass: IPlatformAdapter,
-    ): Promise<string | object> {
+    /**
+     * Проставляет oldIntentName в userData или state и возвращает актуальный размер userData.
+     *
+     * @param botController Контроллер текущего запроса
+     * @returns Количество значимых полей в userData
+     */
+    #applyOldIntentName(botController: BotController<TUserData, TPlatformState>): number {
         let userDataLength = keysCount(botController.userData);
         if (botController.thisIntentName !== null) {
             if (botController.state && userDataLength === 0) {
@@ -1535,48 +1570,79 @@ export class Bot<
             } else {
                 botController.userData.oldIntentName = botController.thisIntentName;
             }
-        } else {
-            // В Алисе в любом случае будет какое-то поле, так как если ничего не будет, то данные просто не обновятся.
-            // Поэтому в oldIntentName в любом случае необходимо писать null
-            if (botController.userData.oldIntentName !== undefined) {
-                userDataLength--;
-                botController.userData.oldIntentName = null;
-            }
-            if (botController.state?.oldIntentName !== undefined) {
-                botController.state.oldIntentName = null;
-            }
+            return userDataLength;
         }
-        let stateData;
+        // В Алисе в любом случае будет какое-то поле, так как если ничего не будет, то данные просто не обновятся.
+        // Поэтому в oldIntentName в любом случае необходимо писать null
+        if (botController.userData.oldIntentName !== undefined) {
+            userDataLength--;
+            botController.userData.oldIntentName = null;
+        }
+        if (botController.state?.oldIntentName !== undefined) {
+            botController.state.oldIntentName = null;
+        }
+        return userDataLength;
+    }
+
+    /**
+     * Выбирает данные, которые нужно отдать платформе как состояние диалога.
+     *
+     * @param botController Контроллер текущего запроса
+     * @param userDataLength Количество значимых полей в userData
+     * @returns Данные состояния либо `undefined`, если сохранять нечего
+     */
+    #getStateData(
+        botController: BotController<TUserData, TPlatformState>,
+        userDataLength: number,
+    ): Record<string, unknown> | undefined {
         if (
             this.#appContext.appConfig.isLocalStorage &&
             botController.platformOptions.usedLocalStorage
         ) {
             if (this.#appContext.database.adapter) {
-                stateData =
+                return (
                     botController.state && keysCount(botController.state)
                         ? botController.state
-                        : botController.userData;
-            } else {
-                stateData = userDataLength ? botController.userData : botController.state;
+                        : botController.userData
+                ) as Record<string, unknown>;
             }
-        } else if (botController.state && keysCount(botController.state)) {
-            stateData = botController.state;
+            return (userDataLength ? botController.userData : botController.state) as Record<
+                string,
+                unknown
+            >;
         }
+        if (botController.state && keysCount(botController.state)) {
+            return botController.state as Record<string, unknown>;
+        }
+        return undefined;
+    }
+
+    async #getPlatformContent(
+        botController: BotController<TUserData, TPlatformState>,
+        platformClass: IPlatformAdapter,
+    ): Promise<string | object> {
+        const userDataLength = this.#applyOldIntentName(botController);
+        const stateData = this.#getStateData(botController, userDataLength);
         let content: string | object;
         if (botController.isSendRating) {
-            content = platformClass.getRatingContext(botController);
+            content = await platformClass.getRatingContext(botController);
         } else {
             if (botController.state && userDataLength === 0) {
                 // При isLocalStorage=true state и userData могут совпадать.
                 // Безопасное приведение через unknown, т.к. в этом режиме типы эквивалентны.
                 botController.userData = botController.state as unknown as TUserData;
             }
+            // Ответ адаптера дожидаемся до валидации: почти все адаптеры асинхронные,
+            // и без await проверка на null применялась бы к промису, то есть никогда
+            // не срабатывала. Заодно состояние сохраняется уже после готового ответа.
             content = this.#validateAdapterResult(
-                platformClass.getContent(botController, stateData),
+                await platformClass.getContent(botController, stateData),
                 botController,
             );
         }
-        if (botController.platformOptions.usedLocalStorage) {
+        // Пустое состояние сохранять нечего: у платформ с внешним хранилищем
+        // (SmartApp) такой вызов уходил лишним HTTP-запросом на каждый ответ.
+        if (botController.platformOptions.usedLocalStorage && stateData) {
             const res = platformClass.setLocalStorage(stateData, botController);
             if (res) {
                 await res;
@@ -1765,7 +1831,7 @@ export class Bot<
     /**
      * Получение контроллера приложения
      * Не использовать!
-     * @private
+     * @internal
      */
     public getBotController(): BotController<TUserData, TPlatformState> | null {
         return this.#$botController;
@@ -1783,6 +1849,9 @@ export class Bot<
      * @param {TAppType | null} [appType] - Тип приложения. Если не указан, будет определен автоматически в зависимости от запроса.
      * @param {string | object | null} [content] - Входные данные для обработки (например, текст сообщения или объект запроса).
      * @param {TBotAuth} [auth] - Авторизационный токен
+     * @param {string} [clientIp] - IP-адрес клиента. Заполняется автоматически при обработке
+     * запроса через {@link webhookHandle} или {@link webhookEvent} и доступен middleware
+     * (например, `ipFilter`) через `controller.platformOptions.clientIp`.
      * @returns {Promise<TRunResult>} Результат обработки запроса
      * @throws {Error} Если не удаётся определить платформу или отсутствуют данные для обработки.
      *
@@ -1809,7 +1878,7 @@ export class Bot<
         if (!correctContent) {
             const msg = `${appType ? `Для платформы "${appType}"` : 'Пришел не корректный запрос в котором'} передано пустое содержимое, дальнейшая обработка невозможна.`;
             this.#appContext.logError(msg);
-            throw new Error(msg);
+            throw new BotBadRequestError(msg);
         }
         const botController: BotController<TUserData, TPlatformState> =
             this.#$botController || new this.#botControllerClass(this.#appContext);
@@ -1837,28 +1906,42 @@ export class Bot<
                 }
                 return this.#runApp(botController, platformClass, botController.appType as string);
             } else {
-                this.#appContext.logError(botController.platformOptions.error as string);
-                throw new Error(botController.platformOptions.error || '');
+                const msg =
+                    (botController.platformOptions.error as string) ||
+                    `Адаптер платформы "${botController.appType}" не смог разобрать запрос.`;
+                this.#appContext.logError(msg);
+                throw new BotBadRequestError(msg);
             }
         } else {
             const msg =
                 'Не удалось определить платформу, от которой пришел запрос. Дальнейшая обработка невозможна.';
             this.#appContext.logError(msg);
-            throw new Error(msg);
+            throw new BotBadRequestError(msg);
         }
     }
 
     #parseContent(content: TBotContent): TBotContent {
+        let parsed: TBotContent = content;
         if (content && typeof content === 'string') {
             try {
-                return JSON.parse(content);
+                parsed = JSON.parse(content);
             } catch {
                 const msg = 'Передана невалидная JSON-строка. Убедитесь, что данные корректны.';
                 this.#appContext.logError(msg);
-                throw new Error(msg);
+                throw new BotBadRequestError(msg);
             }
         }
-        return content;
+        // Платформы всегда присылают JSON-объект. Если в теле после разбора оказался
+        // скаляр или массив — запрос некорректен: раньше он падал с 500 внутри
+        // пайплайна, а на 5xx платформы включают ретраи и отключают вебхук.
+        // Пустое содержимое оставляем для проверки в run(): там сообщение
+        // дополняется именем платформы.
+        if (parsed && (typeof parsed !== 'object' || Array.isArray(parsed))) {
+            const msg = 'Тело запроса не является JSON-объектом. Убедитесь, что данные корректны.';
+            this.#appContext.logError(msg);
+            throw new BotBadRequestError(msg);
+        }
+        return parsed;
     }
 
     #isWebhookError(
@@ -1883,12 +1966,13 @@ export class Bot<
         res: ServerResponse,
         code: number,
         responseCb?: TBotResponseCb,
+        customBody?: string,
     ): void {
         let body = 'Bad Request';
         let statusCode = code;
         switch (code) {
             case 400:
-                body = 'Empty request';
+                body = customBody ?? 'Empty request';
                 break;
             case 422:
                 statusCode = 400;
@@ -2052,6 +2136,11 @@ export class Bot<
                 );
                 return this.#webhookHandleError(req, res, 422, responseCb);
             }
+            if (error instanceof BotBadRequestError) {
+                // Проблема в самом запросе, а не в сервере. На 5xx Telegram и VK
+                // включают ретраи и отключают вебхук, поэтому отвечаем 400.
+                return this.#webhookHandleError(req, res, 400, responseCb, 'Bad Request');
+            }
             this.#appContext.logError(
                 `Bot:webhookHandle(): Произошла ошибка при работе приложения для платформы "${appType}": ${error instanceof Error ? error.message : JSON.stringify(error)}`,
                 {
@@ -2063,7 +2152,102 @@ export class Bot<
     }
 
     /**
-     * Запускает встроенный HTTP-сервер на указанном хосте и порту для приёма webhook-запросов
+     * Обрабатывает входящее событие от серверлесс-платформы (например, Yandex Cloud Functions)
+     * с предварительной проверкой подлинности запроса через `isCorrectQuery` соответствующей платформы.
+     *
+     * **Зачем это нужно:**
+     * В отличие от {@link run}, метод принимает заголовки запроса и выполняет ту же проверку
+     * webhook-токена/подписи, что и {@link webhookHandle}. Это защищает cloud-функцию от
+     * поддельных запросов: если у платформы задан секрет вебхука, запрос без корректной
+     * подписи будет отклонён со статусом 401 до выполнения какой-либо логики.
+     *
+     * **Когда использовать:**
+     * - Приложение разворачивается как serverless-функция (Yandex Cloud Functions, AWS Lambda и т.п.),
+     *   где нет нативных `IncomingMessage`/`ServerResponse` для {@link webhookHandle}.
+     *
+     * @param {string | object | null} data - Тело запроса. Рекомендуется передавать сырую строку
+     *        (как она пришла от платформы), чтобы проверка подписи (HMAC) считалась от исходного тела.
+     * @param {Record<string, unknown>} [headers] - Заголовки запроса (для проверки подписи и авторизации).
+     * @param {string} [clientIp] - IP-адрес клиента (опционально, для middleware и логирования).
+     * @returns {Promise<IWebhookEventResult>} Объект с HTTP-статусом и телом ответа для возврата из cloud-функции.
+     *
+     * @example
+     * ```ts
+     * // Обработчик Yandex Cloud Function
+     * export const handler = async (event: Record<string, unknown>) => {
+     *     const result = await bot.webhookEvent(event.body, event.headers);
+     *     return {
+     *         statusCode: result.statusCode,
+     *         headers: { 'Content-Type': 'application/json' },
+     *         body: typeof result.body === 'string' ? result.body : JSON.stringify(result.body),
+     *     };
+     * };
+     * ```
+     */
+    public async webhookEvent(
+        data: string | object | null,
+        headers: Record<string, unknown> = {},
+        clientIp?: string,
+    ): Promise<IWebhookEventResult> {
+        let query: string | object | null;
+        if (typeof data === 'string') {
+            try {
+                query = JSON.parse(data) as object;
+            } catch (error) {
+                this.#appContext.logError(
+                    `Bot:webhookEvent(): Невозможно распарсить тело запроса как JSON: ${
+                        error instanceof Error ? error.message : String(error)
+                    }`,
+                    { file: 'Bot:webhookEvent()' },
+                );
+                // 400, как и webhookHandle: некорректный запрос — не ошибка сервера.
+                return { statusCode: 400, body: 'Invalid JSON' };
+            }
+        } else {
+            query = data;
+        }
+        if (!query) {
+            return { statusCode: 400, body: 'Empty request' };
+        }
+
+        let auth: TBotAuth = null;
+        const authHeader = headers.authorization ?? headers.Authorization;
+        if (authHeader) {
+            auth = String(authHeader).replace('Bearer ', '');
+        }
+
+        const appType = this.#getAppType(query, headers);
+        if (appType && this.#appContext.platforms[appType]) {
+            if (!this.#appContext.platforms[appType].isCorrectQuery(data, headers)) {
+                // Логируем только мета-информацию, не всё тело запроса.
+                this.#appContext.logError(
+                    `Bot:webhookEvent(): Для платформы "${appType}" пришёл запрос с неверным токеном. Дальнейшая обработка остановлена.`,
+                    { userAgent: headers['user-agent'] },
+                );
+                return { statusCode: 401, body: 'Unauthorized' };
+            }
+        }
+
+        try {
+            const result = await this.run(appType, query, auth, clientIp);
+            return { statusCode: result === 'notFound' ? 404 : 200, body: result };
+        } catch (error) {
+            if (error instanceof BotBadRequestError) {
+                // См. webhookHandle: некорректный запрос платформы — это 400, не 500.
+                return { statusCode: 400, body: 'Bad Request' };
+            }
+            this.#appContext.logError(
+                `Bot:webhookEvent(): Произошла ошибка при обработке запроса для платформы "${appType}": ${
+                    error instanceof Error ? error.message : String(error)
+                }`,
+                { error },
+            );
+            return { statusCode: 500, body: 'Internal Server Error' };
+        }
+    }
+
+    /**
+     * Запускает встроенный HTTP-сервер на указанном хосте и порте для приёма webhook-запросов
      * от поддерживаемых платформ. Сервер использует нативный `http.createServer`.
      *
      * Метод возвращает экземпляр `http.Server`, что позволяет, например, корректно
@@ -2269,8 +2453,13 @@ export class Bot<
      */
     public async close(): Promise<void> {
         if (this.#serverInst) {
-            this.#serverInst.close();
+            const server = this.#serverInst;
             this.#serverInst = undefined;
+            // Дожидаемся завершения активных запросов: без await процесс мог
+            // завершиться раньше, чем сервер отпустит сокеты, и клиент получал обрыв.
+            await new Promise<void>((resolve) => {
+                server.close(() => resolve());
+            });
         }
         // Удаляем обработчики сигналов
         if (this.#sigtermHandler) {

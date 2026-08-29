@@ -32,7 +32,7 @@ describe('Buttons test', () => {
         appContext.platformParams.utm_text = null;
         let button = getButton(appContext, 'btn', 'https://google.com');
         expect(button?.url).toEqual(
-            'https://google.com?utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
+            'https://google.com?utm_source=umbot&utm_medium=cpc&utm_campaign=phone',
         );
 
         button = getButton(appContext, 'btn', 'https://google.com?utm_source=test');
@@ -40,7 +40,7 @@ describe('Buttons test', () => {
 
         button = getButton(appContext, 'btn', 'https://google.com?data=test');
         expect(button?.url).toEqual(
-            'https://google.com?data=test&utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
+            'https://google.com?data=test&utm_source=umbot&utm_medium=cpc&utm_campaign=phone',
         );
 
         appContext.platformParams.utm_text = 'my_utm_text';
@@ -219,10 +219,7 @@ describe('Buttons test', () => {
         expect(defaultButtons.getButtons(VkButton.buttonProcessing)).toEqual(VkButtons);
 
         defaultButtons.clear();
-        expect(defaultButtons.getButtons(VkButton.buttonProcessing)).toEqual({
-            one_time: false,
-            buttons: [],
-        });
+        expect(defaultButtons.getButtons(VkButton.buttonProcessing)).toBeNull();
     });
     it('Get buttons Vk group', () => {
         const VkButtons = {
@@ -390,9 +387,7 @@ describe('Buttons test', () => {
 
         expect(defaultButtons.getButtons(TelegramButton.buttonProcessing)).toEqual(telegramButtons);
         defaultButtons.clear();
-        expect(defaultButtons.getButtons(TelegramButton.buttonProcessing)).toEqual({
-            remove_keyboard: true,
-        });
+        expect(defaultButtons.getButtons(TelegramButton.buttonProcessing)).toBeNull();
     });
 
     it('Get buttons Telegram with style (inline callback) — style игнорируется для inline', () => {
@@ -520,19 +515,34 @@ describe('Buttons test', () => {
         defaultButtons.addBtn('Кнопка', null, longPayload);
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
-        expect(result).toBeDefined();
-        expect(result).toEqual({ remove_keyboard: true });
+        expect(result).toBeNull();
     });
 
-    it('VK не отправляет обрезанный payload кнопки', () => {
+    it('VK принимает payload длиной 255 символов, включая кириллицу', () => {
         const logWarn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
         defaultButtons.clear();
-        defaultButtons.addBtn('Кнопка', null, { data: 'я'.repeat(255) });
+        defaultButtons.addBtn('Кнопка', null, 'я'.repeat(255));
 
-        expect(
-            defaultButtons.getButtons((buttons) => VkButton.buttonProcessing(buttons, appContext)),
-        ).toEqual({ one_time: false, buttons: [] });
-        expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('255 байт'));
+        const result = defaultButtons.getButtons((buttons) =>
+            VkButton.buttonProcessing(buttons, appContext),
+        );
+        expect(result?.buttons).toHaveLength(1);
+        expect(logWarn).not.toHaveBeenCalled();
+    });
+
+    it('VK обрезает label до 40 символов и предупреждает', () => {
+        const logWarn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+        defaultButtons.clear();
+        defaultButtons.addBtn('я'.repeat(41));
+
+        const result = defaultButtons.getButtons((buttons) =>
+            VkButton.buttonProcessing(buttons, appContext),
+        );
+        const row = result?.buttons[0];
+        const button = Array.isArray(row) ? row[0] : row;
+
+        expect(button?.action.label).toHaveLength(40);
+        expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('40'));
     });
 
     it('VK button protected keys are not overwritten by options', () => {
@@ -595,13 +605,8 @@ describe('Buttons test', () => {
         expect(() => AlisaButton.buttonProcessing([source], false, appContext)).not.toThrow();
         expect(AlisaButton.buttonProcessing([source], false, appContext)).toEqual([]);
         expect(MarusiaButton.buttonProcessing([source], false, appContext)).toEqual([]);
-        expect(TelegramButton.buttonProcessing([source], appContext)).toEqual({
-            remove_keyboard: true,
-        });
-        expect(VkButton.buttonProcessing([source], appContext)).toEqual({
-            one_time: false,
-            buttons: [],
-        });
+        expect(TelegramButton.buttonProcessing([source], appContext)).toBeNull();
+        expect(VkButton.buttonProcessing([source], appContext)).toBeNull();
         expect(MaxButton.buttonProcessing([source], appContext)).toEqual({ buttons: [] });
         expect(ViberButton.buttonProcessing([source], appContext)).toBeNull();
         expect(SmartAppButton.buttonProcessing([source], false, appContext)).toEqual([]);
@@ -613,17 +618,40 @@ describe('Buttons test', () => {
         // URL с фрагментом
         const button1 = getButton(appContext, 'btn', 'https://example.com#section');
         expect(button1?.url).toBe(
-            'https://example.com?utm_source=umBot&utm_medium=cpc&utm_campaign=phone#section',
+            'https://example.com?utm_source=umbot&utm_medium=cpc&utm_campaign=phone#section',
         );
 
         // URL с существующими параметрами и фрагментом
         const button2 = getButton(appContext, 'btn', 'https://example.com?foo=bar#section');
         expect(button2?.url).toBe(
-            'https://example.com?foo=bar&utm_source=umBot&utm_medium=cpc&utm_campaign=phone#section',
+            'https://example.com?foo=bar&utm_source=umbot&utm_medium=cpc&utm_campaign=phone#section',
         );
 
         // URL с utm_source (не должен дублировать)
         const button3 = getButton(appContext, 'btn', 'https://example.com?utm_source=custom');
         expect(button3?.url).toBe('https://example.com?utm_source=custom');
+    });
+
+    it('remove() отличается от clear(): помечает клавиатуру на удаление', () => {
+        const buttons = new Buttons(appContext);
+        expect(buttons.isRemove).toBe(false);
+
+        buttons.addBtn('Да');
+        buttons.clear();
+        // clear() — это «начать список заново», клавиатуру у пользователя он не снимает
+        expect(buttons.isRemove).toBe(false);
+        expect(buttons.buttons).toEqual([]);
+
+        buttons.remove();
+        expect(buttons.isRemove).toBe(true);
+        expect(buttons.buttons).toEqual([]);
+
+        // Добавили кнопку — значит клавиатуру показываем, а не убираем
+        buttons.addBtn('Снова да');
+        expect(buttons.isRemove).toBe(false);
+
+        buttons.remove();
+        buttons.clear();
+        expect(buttons.isRemove).toBe(false);
     });
 });

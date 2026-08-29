@@ -16,6 +16,35 @@ import {
     IAlisaWebhookResponse,
 } from './interfaces/IAlisaPlatform';
 import { T_ALISA, VERSION, ALISA_STATE_MAX_BYTES } from './constants';
+
+const ALISA_TTS_MAX_LENGTH = 1024;
+const ALISA_TTS_TAG_REGEXP = /<speaker\b[^>]*>|sil\s*<\[\d+\]>/gi;
+
+/** Обрезает произносимый текст Алисы, не считая служебные звуковые теги. */
+function resizeAlisaTts(tts: string | null): string {
+    if (!tts) {
+        return '';
+    }
+    let result = '';
+    let visibleLength = 0;
+    let cursor = 0;
+    ALISA_TTS_TAG_REGEXP.lastIndex = 0;
+    for (
+        let match = ALISA_TTS_TAG_REGEXP.exec(tts);
+        match;
+        match = ALISA_TTS_TAG_REGEXP.exec(tts)
+    ) {
+        const plain = tts.slice(cursor, match.index);
+        const remaining = ALISA_TTS_MAX_LENGTH - visibleLength;
+        if (plain.length > remaining) {
+            return result + plain.slice(0, remaining);
+        }
+        result += plain + match[0];
+        visibleLength += plain.length;
+        cursor = match.index + match[0].length;
+    }
+    return result + tts.slice(cursor, cursor + ALISA_TTS_MAX_LENGTH - visibleLength);
+}
 import { initUserCommand } from '../Base/utils';
 
 interface IState {
@@ -138,6 +167,12 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
      * @param state Объект состояния из запроса
      */
     #setState(controller: BotController, state: IAlisaRequestState): void {
+        const populatedStates = [state.user, state.application, state.session].filter(Boolean);
+        if (populatedStates.length > 1) {
+            this.appContext?.logWarn(
+                'AlisaAdapter.setQueryData(): запрос содержит несколько хранилищ state; выбран наиболее приоритетный доступный уровень user → application → session.',
+            );
+        }
         if (state.user) {
             controller.state = state.user;
             controller.platformOptions.stateName = 'user_state_update';
@@ -213,7 +248,9 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     protected async _getResponse(controller: BotController): Promise<IAlisaResponse> {
         const response: IAlisaResponse = {
             text: Text.resize(controller.text, 1024),
-            tts: Text.resize(controller.tts, 1024),
+            // `<speaker>` и `sil <[...]>` не входят в лимит 1024 у Алисы. Обычная
+            // Text.resize считала их и могла разрезать тег посередине.
+            tts: resizeAlisaTts(controller.tts),
             end_session: controller.isEnd,
         };
         if (controller.isScreen) {
@@ -257,7 +294,11 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         if (controller.isAuth && controller.userToken === null) {
             result.response.directives = { start_account_linking: {} };
         }
-        if (controller.platformOptions.stateName && stateData) {
+        if (stateData && !controller.platformOptions.stateName) {
+            this.appContext?.logWarn(
+                'AlisaAdapter.getContent(): stateData передан без выбранного state-хранилища и не будет отправлен.',
+            );
+        } else if (controller.platformOptions.stateName && stateData) {
             try {
                 const stateJson = JSON.stringify(stateData);
                 const stateBytes = Buffer.byteLength(stateJson, 'utf8');
@@ -333,6 +374,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 timezone: 'UTC',
                 client_id: 'yandex.searchplugin_local',
                 interfaces: {
+                    screen: {},
                     payments: null,
                     account_linking: null,
                 },

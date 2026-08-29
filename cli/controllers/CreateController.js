@@ -333,13 +333,36 @@ class CreateController {
     }
 
     /**
-     * Форматирует проект через prettier
+     * Ищет бинарный файл prettier среди установленных модулей.
+     * Prettier не входит в зависимости публикуемого пакета, поэтому у пользователей
+     * `npx umbot` его обычно нет. Доступен он в репозитории фреймворка и в проектах,
+     * где prettier установлен самостоятельно.
+     * @returns {string|null} Путь к CLI prettier или null, если он не установлен
+     * @private
+     */
+    _resolvePrettier() {
+        try {
+            return require.resolve('prettier/bin/prettier.cjs');
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Форматирует проект через prettier.
+     * Если prettier не установлен, форматирование молча пропускается:
+     * шаблоны уже отформатированы, а тянуть форматтер в зависимости CLI избыточно.
      */
     format() {
+        const prettierBin = this._resolvePrettier();
+        if (!prettierBin) {
+            return;
+        }
         try {
-            const prettier = process.platform === 'win32' ? 'prettier.cmd' : 'prettier';
+            // Запуск через process.execPath вместо имени команды, чтобы не зависеть
+            // от PATH и не упираться в запрет Node на запуск .cmd файлов без shell.
             // timeout защищает CLI от зависания, если prettier впадёт в deadlock/бесконечный цикл
-            execFileSync(prettier, ['--write', this.#path], {
+            execFileSync(process.execPath, [prettierBin, '--write', this.#path], {
                 stdio: 'ignore',
                 timeout: 30000,
             });

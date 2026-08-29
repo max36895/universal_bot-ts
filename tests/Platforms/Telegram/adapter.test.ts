@@ -64,6 +64,40 @@ function makeInlineQuery(overrides?: Partial<Record<string, unknown>>): Record<s
     };
 }
 
+function makeGroupMessage(overrides?: Partial<Record<string, unknown>>): Record<string, unknown> {
+    return {
+        update_id: 5,
+        message: {
+            message_id: 30,
+            from: { id: 12345, is_bot: false, first_name: 'Test', username: 'testuser' },
+            chat: { id: -100987654321, type: 'supergroup', username: 'publicgroup' },
+            date: 1_000_000,
+            text: 'Привет',
+            ...overrides,
+        },
+    };
+}
+
+function makeGroupCallbackQuery(
+    overrides?: Partial<Record<string, unknown>>,
+): Record<string, unknown> {
+    return {
+        update_id: 6,
+        callback_query: {
+            id: 'callback-group-1',
+            from: { id: 12345, is_bot: false, first_name: 'Test' },
+            message: {
+                message_id: 31,
+                chat: { id: -100987654321, type: 'supergroup' },
+                text: 'Выберите опцию',
+            },
+            data: 'button_clicked',
+            chat_instance: 'instance-group',
+            ...overrides,
+        },
+    };
+}
+
 function makeChannelPost(overrides?: Partial<Record<string, unknown>>): Record<string, unknown> {
     return {
         update_id: 4,
@@ -84,6 +118,14 @@ describe('TelegramAdapter', () => {
     beforeEach(() => {
         appContext = new AppContext();
         appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
+        // Без заглушки httpClient методы вроде answerCallbackQuery уходят в реальный
+        // api.telegram.org: тест становится сетевым и упирается в таймаут (AGENTS.md §5).
+        appContext.httpClient = jest.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ ok: true, result: {} }),
+            text: async () => 'ok',
+        }) as never;
         appContext.appConfig.tokens[T_TELEGRAM] = {
             token: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
         };
@@ -221,6 +263,90 @@ describe('TelegramAdapter', () => {
 
             expect(controller.userCommand).toBe('');
             expect(controller.originalUserCommand).toBe('');
+        });
+    });
+
+    describe('setQueryData — сообщения в групповых чатах', () => {
+        it('идентифицирует пользователя по from.id, а не по id группы', async () => {
+            const query = makeGroupMessage();
+            const result = await adapter.setQueryData(query as never, controller);
+
+            expect(result).toBe(true);
+            // userId — ключ данных пользователя в БД. В группе это должен быть
+            // человек (from.id), а не ID самой группы.
+            expect(controller.userId).toBe(12345);
+        });
+
+        it('даёт одинаковый userId для сообщения и callback_query одного человека в группе', async () => {
+            const messageController = new TestTelegramController(appContext);
+            await adapter.setQueryData(makeGroupMessage() as never, messageController);
+
+            const callbackController = new TestTelegramController(appContext);
+            await adapter.setQueryData(makeGroupCallbackQuery() as never, callbackController);
+
+            // Иначе данные одного человека разваливаются на две записи в БД:
+            // одна для сообщений (chat.id группы), другая для кнопок (from.id).
+            expect(messageController.userId).toBe(callbackController.userId);
+        });
+
+        it('даёт одинаковый userId для сообщения и его редактирования в группе', async () => {
+            const messageController = new TestTelegramController(appContext);
+            await adapter.setQueryData(makeGroupMessage() as never, messageController);
+
+            const editedController = new TestTelegramController(appContext);
+            await adapter.setQueryData(
+                {
+                    update_id: 7,
+                    edited_message: {
+                        message_id: 30,
+                        from: { id: 12345, is_bot: false, first_name: 'Test' },
+                        chat: { id: -100987654321, type: 'supergroup' },
+                        date: 1_000_000,
+                        edit_date: 1_000_100,
+                        text: 'Привет (исправлено)',
+                    },
+                } as never,
+                editedController,
+            );
+
+            expect(editedController.userId).toBe(messageController.userId);
+        });
+
+        it('отправляет ответ на сообщение группы в групповой чат, а не в личку', async () => {
+            const sendMessage = jest
+                .spyOn(TelegramRequest.prototype, 'sendMessage')
+                .mockResolvedValue({ ok: true, result: null });
+
+            await adapter.setQueryData(makeGroupMessage() as never, controller);
+            await adapter.getContent(controller);
+
+            expect(sendMessage).toHaveBeenCalledWith(
+                -100987654321,
+                controller.text,
+                expect.any(Object),
+            );
+        });
+
+        it('заполняет NLU данными отправителя, а не чата', async () => {
+            const query = makeGroupMessage();
+            const nluSetSpy = jest.spyOn(controller.nlu, 'setNlu');
+
+            await adapter.setQueryData(query as never, controller);
+
+            expect(nluSetSpy).toHaveBeenCalledWith({
+                thisUser: {
+                    username: 'testuser',
+                    first_name: 'Test',
+                    last_name: null,
+                },
+            });
+        });
+
+        it('использует id чата, если отправитель не указан', async () => {
+            const query = makeGroupMessage({ from: undefined });
+            await adapter.setQueryData(query as never, controller);
+
+            expect(controller.userId).toBe(-100987654321);
         });
     });
 
@@ -471,6 +597,28 @@ describe('TelegramAdapter', () => {
             await adapter.getContent(controller);
 
             expect(sendMessage).not.toHaveBeenCalled();
+        });
+
+        it('предупреждает, что remove() не сработал без текста', async () => {
+            // Telegram не принимает сообщение без текста, поэтому снять клавиатуру
+            // через buttons.remove() при пустом ответе нельзя — это должно быть
+            // явно залогировано, а не пройти молча.
+            const warn = jest.fn();
+            appContext.setLogger({ log: () => {}, error: () => {}, warn });
+            controller.text = '';
+            controller.tts = '';
+            controller.buttons.remove();
+            jest.spyOn(TelegramRequest.prototype, 'sendMessage').mockResolvedValue({
+                ok: true,
+                result: null,
+            });
+
+            await adapter.getContent(controller);
+
+            expect(warn).toHaveBeenCalledWith(
+                expect.stringContaining('buttons.remove()'),
+                undefined,
+            );
         });
 
         it('не отправляет ничего при skipAutoReply = true', async () => {

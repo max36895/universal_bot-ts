@@ -1,6 +1,7 @@
 import { Text, BotController, Request, IRequestSend } from '../../../index';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
+import { soundProcessing } from './Sound';
 import { cardProcessing } from './Card';
 import { T_SMART_APP, DEVICE, ANNOTATIONS, SMART_APP_STORAGE_URL } from './constants';
 import {
@@ -140,6 +141,14 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     setQueryData(query: ISberSmartAppWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
+                // Дальше поля payload/uuid читаются без проверок, поэтому обрываемся
+                // здесь: иначе на «кривом» запросе адаптер падал с TypeError,
+                // а не с понятным сообщением об ошибке.
+                if (!query.payload || !query.uuid) {
+                    controller.platformOptions.error =
+                        'SmartAppAdapter.setQueryData(): в запросе отсутствуют обязательные поля payload или uuid.';
+                    return false;
+                }
                 this.#initUserCommand(query, controller);
 
                 controller.platformOptions.session = {
@@ -179,17 +188,33 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     }
 
     /**
+     * Определяет, содержит ли текст SSML-разметку.
+     *
+     * @param text Текст для озвучивания
+     * @returns `true`, если в тексте есть SSML-теги (`<speak>`, `<speaker>`, `<break/>` и т.п.)
+     */
+    static #isSsml(text: string): boolean {
+        // Тег обязан начинаться с буквы сразу после «<» и иметь закрывающую «>»:
+        // иначе обычный текст вида «если x < y» помечался как SSML, и парсер Сбера
+        // ломался на незаэкранированных символах.
+        return /<\/?[a-z][^>]*>/i.test(text);
+    }
+
+    /**
      * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
      * @returns {ISberSmartAppResponsePayload} Объект ответа для SmartApp
      */
     #getPayload(controller: BotController): ISberSmartAppResponsePayload {
+        const session = controller.platformOptions.session as ISberSmartAppSession;
         const payload: ISberSmartAppResponsePayload = {
             pronounceText: controller.text,
             pronounceTextType: 'application/text',
-            device: (controller.platformOptions.session as ISberSmartAppSession).device,
-            intent: controller.thisIntentName as string,
-            projectName: (controller.platformOptions.session as ISberSmartAppSession).projectName,
+            device: session.device,
+            // Поле должно быть строкой. Когда команда не сопоставлена с интентом,
+            // thisIntentName === null, и в ответ уходил intent: null.
+            intent: controller.thisIntentName ?? '',
+            projectName: session.projectName,
             auto_listening: !controller.isEnd,
             finished: controller.isEnd,
         };
@@ -212,7 +237,13 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         }
         if (controller.tts) {
             payload.pronounceText = controller.tts;
-            payload.pronounceTextType = 'application/ssml';
+            // Ядро копирует text в tts для любой голосовой платформы, поэтому здесь
+            // обычно лежит просто текст ответа. Помечать его как SSML нельзя: парсер
+            // Сбера споткнётся на любом `&`, `<` или `>` в пользовательских данных.
+            // Разметкой считаем только текст, где действительно есть SSML-теги.
+            payload.pronounceTextType = SmartAppAdapter.#isSsml(controller.tts)
+                ? 'application/ssml'
+                : 'application/text';
         }
 
         if (controller.isScreen) {
@@ -252,7 +283,11 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         };
 
         if (controller.isSoundInit() && controller.sound.sounds.length) {
-            controller.tts ??= controller.text;
+            controller.tts = soundProcessing({
+                text: controller.tts ?? controller.text,
+                usedStandardSound: controller.sound.isUsedStandardSound,
+                sounds: controller.sound.sounds,
+            });
         }
         result.payload = this.#getPayload(controller);
         this._timeLimitLog(controller);
@@ -274,19 +309,40 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     }
 
     /**
+     * Собирает URL внешнего хранилища SmartApp для текущего пользователя.
+     *
+     * `userId` обязательно экранируется: у SmartApp нет проверки подписи вебхука,
+     * поэтому `uuid.userId` полностью подконтролен отправителю запроса. Без экранирования
+     * значение вида `../../admin?x=` выводило запрос за пределы пути хранилища
+     * и позволяло подменить query-параметры.
+     *
+     * @param controller Контроллер текущего запроса
+     * @returns Готовый URL хранилища
+     */
+    static #getStorageUrl(controller: BotController): string {
+        const storageUrl =
+            controller.appContext.appConfig.tokens[T_SMART_APP]?.storage_url ||
+            SMART_APP_STORAGE_URL;
+        return `${storageUrl}/${encodeURIComponent(String(controller.userId ?? ''))}`;
+    }
+
+    /**
      * Получает данные пользователя из хранилища
      * @returns {Promise<unknown | string>} Данные пользователя или строка с ошибкой
      * @protected
      */
     protected async _getUserData(controller: BotController): Promise<unknown> {
         const request = new Request(controller.appContext);
-        const storageUrl =
-            controller.appContext.appConfig.tokens[T_SMART_APP]?.storage_url ||
-            SMART_APP_STORAGE_URL;
-        request.url = `${storageUrl}/${controller.userId}`;
+        request.url = SmartAppAdapter.#getStorageUrl(controller);
         const result = await request.send();
         if (result.status && result.data) {
             return result.data;
+        }
+        if (!String(result.err ?? '').includes('Статус: 404')) {
+            controller.appContext.logError(
+                'SmartAppAdapter._getUserData(): не удалось получить данные пользователя из хранилища.',
+                { error: result.err },
+            );
         }
         return {};
     }
@@ -300,16 +356,19 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     ): Promise<IRequestSend<unknown>> {
         const request = new Request(controller.appContext);
         request.header = Request.HEADER_JSON;
-        const storageUrl =
-            controller.appContext.appConfig.tokens[T_SMART_APP]?.storage_url ||
-            SMART_APP_STORAGE_URL;
-        request.url = `${storageUrl}/${controller.userId}`;
+        request.url = SmartAppAdapter.#getStorageUrl(controller);
         request.post = data as Record<string, unknown>;
         return await request.send();
     }
 
     public async setLocalStorage(data: unknown, controller: BotController): Promise<void> {
-        await this._setUserData(data, controller);
+        const result = await this._setUserData(data, controller);
+        if (!result.status) {
+            controller.appContext.logError(
+                'SmartAppAdapter.setLocalStorage(): не удалось сохранить данные пользователя.',
+                { error: result.err },
+            );
+        }
     }
 
     /**

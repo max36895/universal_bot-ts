@@ -38,6 +38,24 @@ export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
 }
 
 /**
+ * Убирает флаги `g` и `y` из набора флагов регулярного выражения.
+ *
+ * Оба флага делают `RegExp` объектом с состоянием: `test`/`exec` двигают `lastIndex`,
+ * поэтому один и тот же скомпилированный объект на следующем вызове начинает поиск
+ * не с начала строки. Фреймворк кэширует регулярки между запросами, а искать нужно
+ * всегда по всей строке — состояние здесь только вредит.
+ *
+ * @param flags Исходные флаги
+ * @returns Флаги без `g` и `y`
+ */
+function getStatelessFlags(flags: string): string {
+    if (!flags.includes('g') && !flags.includes('y')) {
+        return flags;
+    }
+    return flags.replace(/[gy]/g, '');
+}
+
+/**
  * Возвращает скомпилированное регулярное выражение.
  * Если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp.
  * В случае, если передан customReg, регулярное выражение будет собранно через него
@@ -72,6 +90,7 @@ export function getRegExp(
         pattern = getPattern(reg);
         flag = isRegex(reg) ? reg.flags : flags;
     }
+    flag = getStatelessFlags(flag);
     if (customReg) {
         return new customReg(pattern, flag);
     }
@@ -87,7 +106,9 @@ export function getRegExpOrSelf(
     flags: string = 'ium',
     customReg?: RegExpConstructor,
 ): customRegExp {
-    if (!Array.isArray(reg) && isRegex(reg) && !customReg) {
+    // Regexp с g/y хранит позицию поиска в lastIndex, поэтому такой объект нельзя
+    // переиспользовать между запросами — пересобираем его без флагов состояния.
+    if (!Array.isArray(reg) && isRegex(reg) && !customReg && !reg.global && !reg.sticky) {
         return reg;
     }
     return getRegExp(reg, flags, customReg);

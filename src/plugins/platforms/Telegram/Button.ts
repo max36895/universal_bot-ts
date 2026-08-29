@@ -17,11 +17,15 @@ export function buttonProcessing(
     buttons: IButtonType[],
     appContext?: AppContext,
 ): ITelegramKeyboard | null {
-    let object: ITelegramKeyboard = {};
+    const object: ITelegramKeyboard = {};
     const inlines: ITelegramInlineKeyboard[] = [];
     const reply: ITelegramReplyButton[] = [];
 
     getCorrectButtons(buttons, 40).forEach((button) => {
+        if (!button.title?.trim()) {
+            appContext?.logWarn('[Telegram] Кнопка с пустым text пропущена.');
+            return;
+        }
         const callbackData = button.payload
             ? serializePlatformPayload(button.payload, 'Telegram', appContext)
             : undefined;
@@ -52,7 +56,7 @@ export function buttonProcessing(
             };
             inlines.push(inline);
         } else {
-            const replyBtn: ITelegramReplyButton = { text: button.title || '' };
+            const replyBtn: ITelegramReplyButton = { text: button.title };
             if (button.options?.request_contact) replyBtn.request_contact = true;
             if (button.options?.request_location) replyBtn.request_location = true;
             reply.push(replyBtn);
@@ -62,14 +66,24 @@ export function buttonProcessing(
     const rInline = inlines.length;
     if (rCount || rInline) {
         if (rInline) {
+            if (rCount) {
+                // Telegram не умеет совмещать inline_keyboard и обычную keyboard в одном
+                // сообщении: приходится выбирать одну. Раньше reply-кнопки просто исчезали,
+                // и разработчик видел на Telegram не тот набор кнопок, что на VK/MAX/Viber.
+                appContext?.logWarn(
+                    `[Telegram] В ответе одновременно заданы inline-кнопки (${rInline}) и обычные (${rCount}). ` +
+                        'Telegram принимает только один тип клавиатуры в сообщении — отправлены будут inline-кнопки, ' +
+                        'обычные будут пропущены. Задайте payload/url всем кнопкам либо ни одной.',
+                );
+            }
             object.inline_keyboard = inlines.map((btn) => [btn]);
         } else if (rCount) {
             object.keyboard = reply.map((btn) => [btn]);
             object.resize_keyboard = true;
         }
     } else {
-        // Удаляем клавиатуру из-за ненадобности
-        object = { remove_keyboard: true };
+        // Невалидные кнопки не должны снимать уже показанную пользователю клавиатуру.
+        return null;
     }
     return object;
 }

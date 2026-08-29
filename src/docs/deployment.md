@@ -120,8 +120,13 @@ bot.start('0.0.0.0', 3000);
 
 ```bash
 docker build -t my-bot .
-docker run -p 3000:3000 -e YANDEX_TOKEN=... my-bot
+docker run -p 3000:3000 -e ALISA_TOKEN=... -e TELEGRAM_TOKEN=... my-bot
 ```
+
+Если `env` в конфиге не настроен, фреймворк тихо подтянет известные переменные (`TELEGRAM_TOKEN`,
+`ALISA_TOKEN`, `VK_TOKEN`, ...) из окружения контейнера и дозаполнит ими токены — явно писать
+`env: 'local'` для этого не нужно. Если же `env: 'local'` указан, значения из окружения
+перезаписывают заданные токены.
 
 ## CI/CD
 
@@ -163,17 +168,20 @@ bot.setAppConfig({ isLocalStorage: true });
 
 // Экспорт функции для Яндекс Cloud Functions
 export const handler = async (event: Record<string, unknown>) => {
-    const result = await bot.run('alisa', event);
+    const content = typeof event.body === 'string' ? event.body : JSON.stringify(event.body ?? '');
+    const headers = (event.headers ?? {}) as Record<string, unknown>;
+    const result = await bot.webhookEvent(content, headers);
     return {
-        statusCode: 200,
-        body: JSON.stringify(result),
+        statusCode: result.statusCode,
+        headers: { 'Content-Type': 'application/json' },
+        body: typeof result.body === 'string' ? result.body : JSON.stringify(result.body ?? ''),
     };
 };
 ```
 
-> Альтернативный вариант — `await bot.run('alisa', JSON.stringify(event))` — тоже работает,
-> но явный `setContent` описан в GUIDE и используется в коде генератора `from-flow`,
-> поэтому для единообразия держим его в основном примере.
+`webhookEvent()` — специальный метод для serverless-окружений: в отличие от `run()`, он сам
+определяет платформу по содержимому, проверяет подпись webhook (`isCorrectQuery`) и возвращает
+готовый HTTP-ответ `{ statusCode, body }`. Именно этот код использует генератор `from-flow --usecloud`.
 
 Подробнее о serverless — в разделе [Рецепты: Serverless](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html#рецепты-cookbook).
 

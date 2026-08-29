@@ -3,7 +3,7 @@
  * Date: {{date}}
  * Time: {{time}}
  */
-import { BotController } from 'umbot';
+import { BotController, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';
 
 export class __className__Controller extends BotController {
     /**
@@ -13,11 +13,28 @@ export class __className__Controller extends BotController {
      * В таком случае стоит смотреть либо на предыдущую команду пользователя(которая сохранена в бд).
      * Либо вернуть текст помощи.
      *
-     * @param {string} intentName Название действия.
+     * @param {string | null} intentName Название действия.
      * @param {boolean} isCommand Флаг, указывающий на то, что обрабатывается зарегистрированная команда.
      * @param {boolean} isStep Флаг, указывающий на то, что обрабатывается зарегистрированный шаг.
      */
-    public action(_intentName: string, _isCommand?: boolean, _isStep?: boolean): void {
-        // TODO: Implement action() method.
+    public action(intentName: string | null, _isCommand?: boolean, _isStep?: boolean): void {
+        switch (intentName) {
+            case WELCOME_INTENT_NAME:
+                this.text = 'Привет! Я новый навык на umbot. Скажите что-нибудь — я повторю.';
+                this.buttons.addBtn('Помощь');
+                break;
+
+            case HELP_INTENT_NAME:
+                this.text = 'Я умею повторять ваши слова. Скажите что-нибудь!';
+                break;
+
+            default:
+                // Пока логика не написана, навык работает как эхо:
+                // повторяет текст пользователя или просит подсказку.
+                this.text = this.userCommand
+                    ? `Вы сказали: ${this.userCommand}`
+                    : 'Я вас не понял. Скажите что-нибудь или «помощь».';
+                break;
+        }
     }
 }

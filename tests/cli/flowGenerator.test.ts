@@ -86,6 +86,31 @@ describe('flowGenerator', () => {
             expect(code).toContain("bot.addCommand('greeting', ['привет']");
             expect(code).toContain("setText(ctrl, 'Привет!')");
         });
+
+        it('ставит isPattern четвёртым аргументом и генерирует типизируемый проект', () => {
+            const name = 'pattern-command';
+            writeJsonAndGenerate(name, {
+                name,
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'digits',
+                        slots: ['\\d+'],
+                        isPattern: true,
+                        response: { text: 'ok', buttons: [], sounds: [] },
+                    },
+                ],
+                edges: [],
+                database: { type: 'none', config: {} },
+            });
+
+            const projectPath = path.join(TEST_DIR, name);
+            const code = fs.readFileSync(path.join(projectPath, 'src', 'index.ts'), 'utf8');
+            expect(code).toContain("bot.addCommand('digits', ['\\\\d+'], (cmd:");
+            expect(code).toContain('}, true);');
+            expectProjectToTypeCheck(projectPath);
+        });
     });
 
     describe('Pattern 2: Command with buttons', () => {
@@ -601,6 +626,10 @@ describe('flowGenerator', () => {
             expect(code).toContain("import { MongoAdapter } from 'umbot/plugins'");
             expect(code).toContain('new MongoAdapter(');
             expect(code).toContain("'mydb'");
+            const packageJson = JSON.parse(
+                fs.readFileSync(path.join(TEST_DIR, 'dbmongo', 'package.json'), 'utf8'),
+            ) as { dependencies: Record<string, string> };
+            expect(packageJson.dependencies.mongodb).toBe('7.1.1');
         });
 
         it('no adapter import for none database', () => {
@@ -644,6 +673,41 @@ describe('flowGenerator', () => {
             });
             expect(code).toContain('ctrl.userData.a = 5;');
             expect(code).toContain('ctrl.userData.b = Number(ctrl.userData.a) + 3;');
+        });
+    });
+
+    describe('Pattern: HTTP saveResponseTo как переменная в выражении', () => {
+        it('считает saveResponseTo известной переменной в set_variable', () => {
+            const code = writeJsonAndGenerate('p_http_save_var', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'fetch',
+                        slots: ['fetch'],
+                        isPattern: false,
+                        actions: [
+                            {
+                                type: 'http_request',
+                                url: 'https://api.example.com/num',
+                                method: 'GET',
+                                saveResponseTo: 'result',
+                            },
+                            { type: 'set_variable', field: 'total', value: 'result + 1' },
+                        ],
+                        response: { text: 'ok', buttons: [], sounds: [] },
+                    },
+                ],
+                edges: [],
+                fallback: { text: 'Не понял' },
+                welcome: { text: 'Привет!' },
+                database: { type: 'file', config: {} },
+                isLocalStorage: true,
+            });
+            expect(code).toContain('ctrl.userData.result = data;');
+            expect(code).toContain('ctrl.userData.total = Number(ctrl.userData.result) + 1;');
+            expect(code).not.toContain("'result + 1'");
         });
     });
 
@@ -789,8 +853,9 @@ describe('flowGenerator', () => {
             expect(code).toContain('Number(ctrl.userData.score) < Number(100)');
 
             code = writeJsonAndGenerate('op_contains', makeDoc('contains'));
-            // includes() конвертирует число в строку автоматически
-            expect(code).toContain('String(ctrl.userData.score).includes(100)');
+            // includes() принимает только строки: числовой литерал обязан быть
+            // обёрнут в String(), иначе сгенерированный проект не компилируется.
+            expect(code).toContain('String(ctrl.userData.score).includes(String(100))');
 
             code = writeJsonAndGenerate('op_neq', makeDoc('neq'));
             expect(code).toContain('ctrl.userData.score !== 100');
@@ -1002,6 +1067,96 @@ describe('flowGenerator', () => {
             const serverlessYml = fs.readFileSync(path.join(outputPath, 'serverless.yml'), 'utf8');
             expect(serverlessYml).toContain('TELEGRAM_TOKEN: "${env:TELEGRAM_TOKEN}"');
             expect(serverlessYml).not.toContain(token);
+        });
+
+        it('санитизирует ключи и значения tokens из flow.json (инъекция в .env и YAML)', () => {
+            // flow.json приходит из внешнего редактора: ключ платформы с переводами
+            // строк ломал структуру serverless.yml (YAML-инъекция), а значение токена
+            // с переводами строк дописывало в .env произвольные переменные.
+            const jsonPath = path.join(JSON_DIR, 'tokens-inject.json');
+            const outputPath = path.join(TEST_DIR, 'tokens-inject');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'tokens-inject',
+                    nodes: [],
+                    edges: [],
+                    tokens: {
+                        ['x\n      INJECTED_VAR: "pwned"\n    zz']: 'evil-key-token',
+                        telegram: 'good-token\nINJECTED_LINE=pwned',
+                    },
+                }),
+            );
+
+            generateFromFlow(jsonPath, outputPath, { useCloud: true });
+
+            const envFile = fs.readFileSync(path.join(outputPath, '.env'), 'utf8');
+            // Переводы строк вычищены: новая переменная не создана, «хвост» стал
+            // частью значения токена на той же строке.
+            expect(envFile).not.toContain('\nINJECTED_LINE');
+            expect(envFile).toContain('TELEGRAM_TOKEN=good-tokenINJECTED_LINE=pwned');
+            const serverlessYml = fs.readFileSync(path.join(outputPath, 'serverless.yml'), 'utf8');
+            // YAML-инъекция не удалась: ключ из flow превратился в безвредное имя
+            // переменной без переводов строк; отдельного ключа INJECTED_VAR нет.
+            expect(serverlessYml).not.toMatch(/(^|\n)\s*INJECTED_VAR:/);
+            expect(serverlessYml).not.toContain('pwned');
+        });
+
+        it('предупреждает при перезаписи существующего .env токенами из flow.json', () => {
+            const jsonPath = path.join(JSON_DIR, 'env-overwrite.json');
+            const outputPath = path.join(TEST_DIR, 'env-overwrite');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'env-overwrite',
+                    nodes: [],
+                    edges: [],
+                    tokens: { telegram: 'flow-token' },
+                }),
+            );
+            fs.mkdirSync(outputPath, { recursive: true });
+            fs.writeFileSync(path.join(outputPath, '.env'), 'USER_EDITED_SECRET=1\n', 'utf8');
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+            const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+            try {
+                generateFromFlow(jsonPath, outputPath, { force: true });
+                expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('.env'));
+            } finally {
+                warnSpy.mockRestore();
+                logSpy.mockRestore();
+            }
+        });
+
+        it('исключает секреты и зависимости из cloud-архива и передаёт env-файл', () => {
+            const jsonPath = path.join(JSON_DIR, 'cloud-ignore.json');
+            const outputPath = path.join(TEST_DIR, 'cloud-ignore');
+            fs.writeFileSync(
+                jsonPath,
+                JSON.stringify({
+                    name: 'cloud-ignore',
+                    nodes: [],
+                    edges: [],
+                    tokens: { telegram: 'plain-token' },
+                }),
+            );
+
+            generateFromFlow(jsonPath, outputPath, { useCloud: true });
+
+            const ignore = fs.readFileSync(path.join(outputPath, '.ymlignore'), 'utf8');
+            const pkg = JSON.parse(
+                fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8'),
+            ) as { scripts: { deploy: string } };
+            expect(ignore).toContain('.env');
+            expect(ignore).toContain('node_modules');
+            expect(ignore).toContain('.git');
+            expect(pkg.scripts.deploy).toBe('npm run build && node ./scripts/deploy.js');
+            const deployScript = fs.readFileSync(
+                path.join(outputPath, 'scripts', 'deploy.js'),
+                'utf8',
+            );
+            expect(deployScript).toContain("args.push('--environment', environment)");
+            expect(deployScript).toContain("path.join(root, '.umbot-deploy')");
         });
     });
 
@@ -1530,6 +1685,43 @@ describe('flowGenerator', () => {
             expect(errors).toEqual([]);
         });
 
+        it('отклоняет цикл, состоящий только из исполняемых блоков (action/condition/response)', () => {
+            const jsonPath = writeFlowJson('exec_cycle', {
+                name: 'test',
+                nodes: [
+                    { type: 'command', id: 'c', name: 'c' },
+                    { type: 'action', id: 'a1', actions: [] },
+                    { type: 'action', id: 'a2', actions: [] },
+                ],
+                edges: [
+                    { from: 'c', to: 'a1', type: 'next' },
+                    { from: 'a1', to: 'a2', type: 'next' },
+                    { from: 'a2', to: 'a1', type: 'next' },
+                ],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors.length).toBe(1);
+            expect(errors[0]).toContain('цикл, состоящий только из блоков');
+        });
+
+        it('пропускает цикл из исполняемых блоков, если он проходит через step', () => {
+            const jsonPath = writeFlowJson('exec_cycle_via_step', {
+                name: 'test',
+                nodes: [
+                    { type: 'command', id: 'c', name: 'c' },
+                    { type: 'action', id: 'a1', actions: [] },
+                    { type: 'step', id: 's', name: 's' },
+                ],
+                edges: [
+                    { from: 'c', to: 'a1', type: 'next' },
+                    { from: 'a1', to: 's', type: 'next' },
+                    { from: 's', to: 'a1', type: 'next' },
+                ],
+            });
+            const errors = validateFlowSchema(jsonPath);
+            expect(errors).toEqual([]);
+        });
+
         it('возвращает ошибку для несуществующего файла', () => {
             const errors = validateFlowSchema('/definitely/not/existing/flow.json');
             expect(errors.length).toBeGreaterThan(0);
@@ -1550,6 +1742,34 @@ describe('flowGenerator', () => {
             });
             const errors = validateFlowSchema(jsonPath);
             expect(errors.some((e) => e.includes('saveTo'))).toBe(true);
+        });
+
+        it('отклоняет null-узлы и зарезервированные свойства прототипа', () => {
+            const nullNodePath = writeFlowJson('null_node', {
+                name: 'test',
+                nodes: [null],
+            });
+            const protoPath = writeFlowJson('proto_key', {
+                name: 'test',
+                nodes: [{ id: 'c', type: 'command', saveTo: '__proto__' }],
+            });
+
+            expect(validateFlowSchema(nullNodePath)).toEqual([
+                'nodes[0]: узел должен быть объектом',
+            ]);
+            expect(validateFlowSchema(protoPath).some((error) => error.includes('прототипа'))).toBe(
+                true,
+            );
+        });
+
+        it('проверяет schema перед генерацией', () => {
+            const jsonPath = writeFlowJson('invalid_before_generate', {
+                name: 'test',
+                nodes: [null],
+            });
+            expect(() => generateFromFlow(jsonPath, path.join(TEST_DIR, 'invalid'))).toThrow(
+                'узел должен быть объектом',
+            );
         });
     });
 
@@ -1653,10 +1873,18 @@ describe('flowGenerator', () => {
             const packageJson = fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8');
 
             expect(code).not.toContain("bot.start('localhost', 3000)");
+            // Cloud-handler должен идти через авторизованный webhook-путь, а не прямой run()
+            expect(code).toContain('bot.webhookEvent(content, headers)');
+            expect(code).toContain('event.headers');
+            expect(code).not.toContain('bot.setContent(');
+            expect(code).not.toContain('await bot.run()');
             expect(serverlessYml).toContain('name: cloud-bot');
             expect(serverlessYml).toContain('runtime: nodejs22');
             expect(serverlessYml).toContain('entrypoint: dist/index.handler');
-            expect(packageJson).toContain('--entrypoint dist/index.handler');
+            expect(packageJson).toContain('node ./scripts/deploy.js');
+            expect(
+                fs.readFileSync(path.join(outputPath, 'scripts', 'deploy.js'), 'utf8'),
+            ).toContain("'--entrypoint', 'dist/index.handler'");
             expectProjectToTypeCheck(outputPath);
         });
     });
@@ -1762,6 +1990,42 @@ describe('flowGenerator', () => {
             expect(packageJson.dependencies.umbot).toBe('3.1.0');
             expect(packageJson.devDependencies.typescript).toBe('5.9.3');
             expect(packageJson.devDependencies['@types/node']).toBe('20.19.43');
+        });
+
+        it('не даёт закрыть JSDoc-комментарий и внедрить код через flow.json', () => {
+            // flow.json приходит из визуального редактора и может быть получен извне.
+            // Последовательность */ в имени блока закрывала комментарий, и всё, что шло
+            // дальше, попадало в src/index.ts пользователя как исполняемый код.
+            const payload = '*/ ;globalThis.__pwned = true; /*';
+            const code = writeJsonAndGenerate('comment_injection', {
+                name: 'test',
+                nodes: [
+                    {
+                        id: 'c1',
+                        type: 'command',
+                        name: 'cmd',
+                        slots: [payload],
+                        response: { text: payload },
+                    },
+                    {
+                        id: 's1',
+                        type: 'step',
+                        name: payload,
+                        prompt: { text: payload },
+                    },
+                ],
+                edges: [],
+            });
+
+            // Ни один комментарий не должен закрываться раньше времени
+            code.split('\n')
+                .filter((line) => line.trimStart().startsWith('/**'))
+                .forEach((line) => {
+                    expect(line.trimEnd().endsWith('*/')).toBe(true);
+                    expect(line.slice(3, -2)).not.toContain('*/');
+                });
+            expect(code).not.toContain('globalThis.__pwned = true;\n');
+            expectProjectToTypeCheck(path.join(TEST_DIR, 'comment_injection'));
         });
     });
 });

@@ -148,6 +148,18 @@ export interface IEnvConfig {
     SMARTAPP_TOKEN?: string;
 
     /**
+     * Токен Yandex SpeechKit
+     * Используется для синтеза речи (TTS) в чат-ботах: Telegram, VK и Max.
+     * Значение автоматически записывается в `speech_kit_token` токенов этих платформ.
+     *
+     * @example
+     * ```ts
+     * SPEECH_KIT_TOKEN=t1.9eudPPnNzQzPycnMjMyLp8iYz8iZy8...
+     * ```
+     */
+    SPEECH_KIT_TOKEN?: string;
+
+    /**
      * Адрес сервера базы данных
      *
      * @remarks

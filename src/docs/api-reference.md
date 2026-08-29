@@ -41,13 +41,20 @@
 | appeal              | 'official' \| 'no_official' \| null                      | Стиль обращения (если платформа поддерживает)                                                                                         |
 | isSendRating        | boolean                                                  | Запросить у пользователя оценку (если платформа поддерживает)                                                                         |
 | appContext          | AppContext                                               | Контекст приложения (конфиг, реестры, логгер)                                                                                         |
+| appType             | TAppType \| null                                         | Платформа, от которой получен запрос (заполняется фреймворком при обработке)                                                          |
 
 #### Методы
 
-| Метод  | Параметры                                                         | Возвращаемое значение | Описание                                                                        |
-| ------ | ----------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
-| action | intentName: string \| null, isCommand?: boolean, isStep?: boolean | void                  | Ваш основной обработчик. Вызывается фреймворком (переопределяется в наследнике) |
-| run    | -                                                                 | void \| Promise<void> | Запуск обработки запроса (вызывается фреймворком; вручную обычно не вызывают)   |
+| Метод          | Параметры                                                         | Возвращаемое значение | Описание                                                                                           |
+| -------------- | ----------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
+| action         | intentName: string \| null, isCommand?: boolean, isStep?: boolean | void                  | Ваш основной обработчик. Вызывается фреймворком (переопределяется в наследнике)                    |
+| run            | -                                                                 | void \| Promise<void> | Запуск обработки запроса (вызывается фреймворком; вручную обычно не вызывают)                      |
+| setAppContext  | appContext: AppContext                                            | this                  | Установка контекста приложения (обновляет контекст в уже созданных компонентах `buttons` и `card`) |
+| clearStoreData | -                                                                 | void                  | Полный сброс состояния контроллера: текст, tts, пользовательские данные, флаги и кэш NLU           |
+| isButtonsInit  | -                                                                 | boolean               | `true`, если компонент кнопок был инициализирован (через getter `buttons`)                         |
+| isCardInit     | -                                                                 | boolean               | `true`, если компонент карточек был инициализирован (через getter `card`)                          |
+| isSoundInit    | -                                                                 | boolean               | `true`, если компонент звуков был инициализирован (через getter `sound`)                           |
+| isNluInit      | -                                                                 | boolean               | `true`, если компонент NLU был инициализирован (через getter `nlu`)                                |
 
 ### Bot
 
@@ -55,33 +62,34 @@
 
 #### Методы
 
-| Метод                    | Параметры                                                                                                                                            | Возвращаемое значение         | Описание                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------- |
-| setAppConfig             | config: Partial\<IAppConfig\>                                                                                                                        | Bot                           | Установка конфигурации приложения                           |
-| setAppMode               | mode: TAppMode (`'dev' \| 'prod' \| 'strict_prod'`)                                                                                                  | Bot                           | Установка режима работы                                     |
-| setPlatformParams        | params: IAppParam                                                                                                                                    | Bot                           | Установка параметров платформы                              |
-| initBotController        | controller: TBotControllerClass                                                                                                                      | Bot                           | Подключение класса контроллера                              |
-| addCommand               | commandName: string, slots: TSlots, cb: (userCommand: string, bc: BotController) => void \| string \| Promise\<void \| string\>, isPattern?: boolean | Bot                           | Регистрация команды                                         |
-| removeCommand            | commandName: string                                                                                                                                  | Bot                           | Удаление команды по имени                                   |
-| clearCommands            | -                                                                                                                                                    | Bot                           | Удаление всех команд                                        |
-| addStep                  | stepName: string, handler: IStepParam['cb']                                                                                                          | Bot                           | Регистрация шага (цепочки диалога)                          |
-| removeStep               | stepName: string                                                                                                                                     | Bot                           | Удаление шага по имени                                      |
-| clearSteps               | -                                                                                                                                                    | Bot                           | Удаление всех шагов                                         |
-| addForm                  | formName: string, options: IAddFormOptions                                                                                                           | Bot                           | Регистрация многошаговой формы с валидацией полей           |
-| removeForm               | formName: string                                                                                                                                     | Bot                           | Удаление формы и всех её шагов                              |
-| use                      | fn: MiddlewareFn \| platform: TAppType, fn: MiddlewareFn \| plugin: TPlugin                                                                          | Bot                           | Подключение middleware или плагина                          |
-| clearUse                 | -                                                                                                                                                    | Bot                           | Удаление всех плагинов и middleware                         |
-| setCustomCommandResolver | resolver: TCommandResolver                                                                                                                           | Bot                           | Установка кастомного резолвера команд                       |
-| setCommandGroupMode      | mode: TCommandGroupMode                                                                                                                              | Bot                           | Режим группировки RegExp                                    |
-| setPlatformResolver      | resolver: TPlatformResolver                                                                                                                          | Bot                           | Установка функции определения платформы                     |
-| setLogger                | logger: ILogger \| null                                                                                                                              | Bot                           | Установка кастомного логгера (null — отключить)             |
-| getAppContext            | -                                                                                                                                                    | AppContext                    | Получение контекста приложения                              |
-| setContent               | content: TBotContent (`object \| string \| null`)                                                                                                    | void                          | Установка содержимого запроса (для тестирования)            |
-| run                      | appType?: TAppType \| null, content?: string \| object \| null, auth?: TBotAuth                                                                      | Promise\<TRunResult\>         | Обработка входящего запроса                                 |
-| webhookHandle            | req: IncomingMessage, res: ServerResponse, responseCb?: TBotResponseCb                                                                               | Promise\<void\>               | Обработчик HTTP-запроса (для Express/Fastify интеграции)    |
-| start                    | hostname?: string, port?: number, responseCb?: TBotResponseCb                                                                                        | Server                        | Запуск HTTP-сервера (возвращает экземпляр Server)           |
-| close                    | -                                                                                                                                                    | Promise\<void\>               | Остановка HTTP-сервера и очистка ресурсов                   |
-| send                     | userId: string \| number, controllerOrText: BotController \| string, platform: TAppType                                                              | Promise\<unknown \| boolean\> | Отправка сообщения пользователю (для платформ с поддержкой) |
+| Метод                    | Параметры                                                                                                                                            | Возвращаемое значение          | Описание                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| setAppConfig             | config: Partial\<IAppConfig\>                                                                                                                        | Bot                            | Установка конфигурации приложения                                                                                                                                        |
+| setAppMode               | mode: TAppMode (`'dev' \| 'prod' \| 'strict_prod'`)                                                                                                  | Bot                            | Установка режима работы                                                                                                                                                  |
+| setPlatformParams        | params: IAppParam                                                                                                                                    | Bot                            | Установка параметров платформы                                                                                                                                           |
+| initBotController        | controller: TBotControllerClass                                                                                                                      | Bot                            | Подключение класса контроллера                                                                                                                                           |
+| addCommand               | commandName: string, slots: TSlots, cb: (userCommand: string, bc: BotController) => void \| string \| Promise\<void \| string\>, isPattern?: boolean | Bot                            | Регистрация команды                                                                                                                                                      |
+| removeCommand            | commandName: string                                                                                                                                  | Bot                            | Удаление команды по имени                                                                                                                                                |
+| clearCommands            | -                                                                                                                                                    | Bot                            | Удаление всех команд                                                                                                                                                     |
+| addStep                  | stepName: string, handler: IStepParam['cb']                                                                                                          | Bot                            | Регистрация шага (цепочки диалога)                                                                                                                                       |
+| removeStep               | stepName: string                                                                                                                                     | Bot                            | Удаление шага по имени                                                                                                                                                   |
+| clearSteps               | -                                                                                                                                                    | Bot                            | Удаление всех шагов                                                                                                                                                      |
+| addForm                  | formName: string, options: IAddFormOptions                                                                                                           | Bot                            | Регистрация многошаговой формы с валидацией полей                                                                                                                        |
+| removeForm               | formName: string                                                                                                                                     | Bot                            | Удаление формы и всех её шагов                                                                                                                                           |
+| use                      | fn: MiddlewareFn \| platform: TAppType, fn: MiddlewareFn \| plugin: TPlugin                                                                          | Bot                            | Подключение middleware или плагина                                                                                                                                       |
+| clearUse                 | -                                                                                                                                                    | Bot                            | Удаление всех плагинов и middleware                                                                                                                                      |
+| setCustomCommandResolver | resolver: TCommandResolver                                                                                                                           | Bot                            | Установка кастомного резолвера команд                                                                                                                                    |
+| setCommandGroupMode      | mode: TCommandGroupMode                                                                                                                              | Bot                            | Режим группировки RegExp                                                                                                                                                 |
+| setPlatformResolver      | resolver: TPlatformResolver                                                                                                                          | Bot                            | Установка функции определения платформы                                                                                                                                  |
+| setLogger                | logger: ILogger \| null                                                                                                                              | Bot                            | Установка кастомного логгера (null — отключить)                                                                                                                          |
+| getAppContext            | -                                                                                                                                                    | AppContext                     | Получение контекста приложения                                                                                                                                           |
+| setContent               | content: TBotContent (`object \| string \| null`)                                                                                                    | void                           | Установка содержимого запроса (для тестирования)                                                                                                                         |
+| run                      | appType?: TAppType \| null, content?: string \| object \| null, auth?: TBotAuth, clientIp?: string                                                   | Promise\<TRunResult\>          | Обработка входящего запроса. `clientIp` доступен middleware через `controller.platformOptions.clientIp` (например, `ipFilter`)                                           |
+| webhookHandle            | req: IncomingMessage, res: ServerResponse, responseCb?: TBotResponseCb                                                                               | Promise\<void\>                | Обработчик HTTP-запроса (для Express/Fastify интеграции)                                                                                                                 |
+| webhookEvent             | data: string \| object \| null, headers?: Record\<string, unknown\>, clientIp?: string                                                               | Promise\<IWebhookEventResult\> | Обработка события serverless-платформы (Yandex Cloud Functions, AWS Lambda) с проверкой подписи вебхука. Возвращает `{ statusCode, body }` для возврата из cloud-функции |
+| start                    | hostname?: string, port?: number, responseCb?: TBotResponseCb                                                                                        | Server                         | Запуск HTTP-сервера (возвращает экземпляр Server)                                                                                                                        |
+| close                    | -                                                                                                                                                    | Promise\<void\>                | Остановка HTTP-сервера и очистка ресурсов                                                                                                                                |
+| send                     | userId: string \| number, controllerOrText: BotController \| string, platform: TAppType                                                              | Promise\<unknown \| boolean\>  | Отправка сообщения пользователю (для платформ с поддержкой)                                                                                                              |
 
 ## Компоненты
 
@@ -91,13 +99,15 @@
 
 #### Методы
 
-| Метод         | Параметры                                                                                       | Возвращаемое значение | Описание                                                |
-| ------------- | ----------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------- |
-| addBtn        | title: string \| null, url?: string \| null, payload?: TButtonPayload, options?: IButtonOptions | this                  | Добавление кнопки                                       |
-| addLink       | title: string \| null, url?: string, payload?: TButtonPayload, options?: IButtonOptions         | this                  | Добавление кнопки-ссылки                                |
-| getButtons    | buttonProcessing: TButtonProcessing                                                             | T \| null             | Получение массива кнопок, адаптированного под платформу |
-| getButtonJson | buttonProcessing: TButtonProcessing                                                             | string \| null        | JSON-представление кнопок для платформы                 |
-| clear         | -                                                                                               | void                  | Очистка всех кнопок                                     |
+| Метод         | Параметры                                                                                       | Возвращаемое значение | Описание                                                                                                                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| addBtn        | title: string \| null, url?: string \| null, payload?: TButtonPayload, options?: IButtonOptions | this                  | Добавление кнопки                                                                                                                                                                                     |
+| addLink       | title: string \| null, url?: string, payload?: TButtonPayload, options?: IButtonOptions         | this                  | Добавление кнопки-ссылки                                                                                                                                                                              |
+| getButtons    | buttonProcessing: TButtonProcessing                                                             | T \| null             | Получение массива кнопок, адаптированного под платформу                                                                                                                                               |
+| getButtonJson | buttonProcessing: TButtonProcessing                                                             | string \| null        | JSON-представление кнопок для платформы                                                                                                                                                               |
+| clear         | -                                                                                               | void                  | Очистка всех кнопок (начать список заново; уже показанная клавиатура не снимается)                                                                                                                    |
+| remove        | -                                                                                               | this                  | Просит платформу убрать ранее показанную клавиатуру. Актуально для Telegram (reply-клавиатура) и VK, где клавиатура «прилипает» к диалогу; на остальных платформах вызов безопасен и ничего не меняет |
+| isRemove      | -                                                                                               | boolean               | (getter) `true`, если вызван `remove()` и клавиатуру нужно убрать                                                                                                                                     |
 
 ### Card
 
@@ -130,6 +140,76 @@
 | Метод     | Параметры                                                                                     | Возвращаемое значение | Описание                                              |
 | --------- | --------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------- |
 | getSounds | text: string \| null, soundProcessing: TSoundProcessing\<TResult\>, controller: BotController | Promise\<TResult\>    | Получение текста со встроенными звуками для платформы |
+
+### Nlu
+
+Компонент для работы с сущностями, которые платформа (или плагин) извлекла из текста пользователя.
+Доступен в контроллере через `this.nlu` (инициализируется лениво). Данные заполняются адаптером
+платформы из запроса (например, Алиса присылает их в `request.nlu`); если платформа NLU не
+предоставляет, данные можно заполнить вручную через `setNlu()`.
+
+Все методы извлечения сущностей возвращают объект единой формы:
+
+```ts
+interface INluResult<T = object> {
+    status: boolean; // найдено ли хотя бы одно значение
+    result: T | null; // найденные значения (null, если ничего не найдено)
+}
+```
+
+#### Константы типов сущностей
+
+| Константа              | Значение            | Описание        |
+| ---------------------- | ------------------- | --------------- |
+| `Nlu.T_FIO`            | `'YANDEX.FIO'`      | ФИО             |
+| `Nlu.T_GEO`            | `'YANDEX.GEO'`      | Геолокация      |
+| `Nlu.T_DATETIME`       | `'YANDEX.DATETIME'` | Дата и время    |
+| `Nlu.T_NUMBER`         | `'YANDEX.NUMBER'`   | Число           |
+| `Nlu.T_INTENT_CONFIRM` | `'YANDEX.CONFIRM'`  | Интент согласия |
+| `Nlu.T_INTENT_REJECT`  | `'YANDEX.REJECT'`   | Интент отказа   |
+| `Nlu.T_INTENT_HELP`    | `'YANDEX.HELP'`     | Интент помощи   |
+| `Nlu.T_INTENT_REPEAT`  | `'YANDEX.REPEAT'`   | Интент повтора  |
+
+#### Методы
+
+| Метод           | Параметры                         | Возвращаемое значение        | Описание                                                                                                                          |
+| --------------- | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| getFio          | -                                 | INluResult\<INluFIO[]\>      | ФИО из текста (`first_name`, `last_name`, `patronymic_name`)                                                                      |
+| getGeo          | -                                 | INluResult\<INluGeo[]\>      | Геолокация (`country`, `city`, `street`, `house_number`, `airport` и др.)                                                         |
+| getDateTime     | -                                 | INluResult\<INluDateTime[]\> | Дата и время (`year`, `month`, `day`, `hour`, `minute`, `relative`)                                                               |
+| getNumber       | -                                 | INluResult\<number[]\>       | Числа из текста                                                                                                                   |
+| getUserName     | -                                 | INluThisUser \| null         | Информация о текущем пользователе (`first_name`, `last_name`, `username`), если платформа её прислала                             |
+| isIntentConfirm | userCommand?: string              | boolean                      | Проверка интента согласия; если интента нет и передан текст — дополнительная проверка по словам согласия («да», «конечно» и т.п.) |
+| isIntentReject  | userCommand?: string              | boolean                      | Проверка интента отказа; аналогичная запасная проверка по словам отказа («нет», «не хочу» и т.п.)                                 |
+| isIntentHelp    | -                                 | boolean                      | Проверка интента помощи                                                                                                           |
+| isIntentRepeat  | -                                 | boolean                      | Проверка интента повтора                                                                                                          |
+| getIntents      | -                                 | INluIntents \| null          | Все интенты запроса                                                                                                               |
+| getIntent       | intentName: string                | INluIntent \| null           | Конкретный интент по имени (например, `'YANDEX.CONFIRM'`)                                                                         |
+| getNluValue     | -                                 | INlu                         | Сырой объект NLU                                                                                                                  |
+| setNlu          | nlu: INlu, isClearCache?: boolean | void                         | Установка данных NLU; `isClearCache: true` сбрасывает кэш извлечённых сущностей                                                   |
+
+#### Статические методы
+
+Работают с произвольным текстом и не требуют данных от платформы:
+
+| Метод        | Параметры     | Возвращаемое значение          | Описание                      |
+| ------------ | ------------- | ------------------------------ | ----------------------------- |
+| Nlu.getLink  | query: string | INluResult\<string[] \| null\> | Извлечение ссылок из текста   |
+| Nlu.getPhone | query: string | INluResult\<string[] \| null\> | Извлечение телефонных номеров |
+| Nlu.getEMail | query: string | INluResult\<string[] \| null\> | Извлечение email-адресов      |
+
+```ts
+const fio = this.nlu.getFio();
+if (fio.status) {
+    this.text = `Приятно познакомиться, ${fio.result[0].first_name}!`;
+}
+
+// Статические методы — для текста без данных платформы
+const phones = Nlu.getPhone(this.userCommand || '');
+if (phones.status) {
+    this.userData.phone = phones.result[0];
+}
+```
 
 ## Интерфейсы
 
@@ -372,12 +452,14 @@ interface GameData extends IUserData {
 
 class GameController extends BotController<GameData> {
     public action(intentName: string | null): void {
-        // Инициализация данных при первом запуске
+        // Инициализация данных при первом запуске.
+        // Данные нужно мержить, а не перезаписывать:
+        // переопределение `this.userData = {...}` ломает сохранение в базу.
         if (!this.userData.score) {
-            this.userData = {
+            Object.assign(this.userData, {
                 score: 0,
                 level: 1,
-            };
+            });
         }
 
         // Обработка команд
@@ -563,6 +645,8 @@ await Promise.all(preload.loadSounds(['./sound.mp3'], [T_ALISA]));
 await Promise.all(preload.loadImages(['./img.jpg'], [T_TELEGRAM], { telegramUseId: 123 }));
 ```
 
+> ⚠️ Загрузка выполняется только для платформ, у которых задан токен (`appConfig.tokens` или переменные окружения). Без настроенных токенов методы вернут пустой массив промисов и загрузка молча не выполнится.
+
 #### Методы Preload
 
 | Метод          | Параметры                                              | Возвращаемое значение       | Описание                                                                      |
@@ -582,7 +666,7 @@ interface ILogger {
     error?(message: string, meta?: Record<string, unknown>): void;
     warn?(message: string, meta?: Record<string, unknown>): void;
     metric?(name: string, value: unknown, labels?: Record<string, unknown>): void;
-    maskSecrets?: boolean; // По умолчанию true в strict_prod
+    maskSecrets?: boolean; // По умолчанию true: маскировка секретов включена всегда, отключается только явным maskSecrets: false
 }
 ```
 
@@ -748,7 +832,7 @@ export class ScoreModel extends Model<IScoreState> {
 | `meta`     | Record<string, unknown> | Метаданные: когда создан, последний запрос, платформа |
 | `platform` | string                  | Имя платформы ('telegram', 'alisa', ...)              |
 
-Индексы: по `userId + platform`.
+Индексы фреймворком не создаются: поиск идёт по первичному ключу `userId`. Если вашей нагрузке нужны индексы (например, уникальная пара `userId + platform`), создайте их в MongoDB самостоятельно.
 
 ### Таблица: `ImageTokens`
 

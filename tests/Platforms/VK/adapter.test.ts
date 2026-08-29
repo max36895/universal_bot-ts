@@ -1,5 +1,5 @@
 import { AppContext, BotController } from '../../../src';
-import { T_VK, VkAdapter, VkRequest } from '../../../src/plugins';
+import { clearVkUserCache, T_VK, VkAdapter, VkRequest } from '../../../src/plugins';
 
 class TestVkController extends BotController {
     action(): void {
@@ -12,6 +12,9 @@ describe('VkAdapter', () => {
     let controller: TestVkController;
 
     beforeEach(() => {
+        // Адаптер кэширует ответы users.get в памяти процесса, поэтому между
+        // тестами кэш нужно чистить, иначе один тест увидит данные другого.
+        clearVkUserCache();
         appContext = new AppContext();
         appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
         appContext.appConfig.tokens[T_VK] = { token: 'test-token' };
@@ -106,7 +109,7 @@ describe('VkAdapter', () => {
             expect(adapter.isCorrectQuery('{invalid-json')).toBe(false);
         });
 
-        it('returns true when query has no secret field but secret_key is configured (confirmation event)', () => {
+        it('отклоняет confirmation без secret, когда secret_key настроен', () => {
             appContext.appConfig.tokens[T_VK]!.secret_key = 'my-secret';
             const adapter = new VkAdapter();
             adapter.init(appContext);
@@ -116,7 +119,7 @@ describe('VkAdapter', () => {
                 group_id: '1',
             });
 
-            expect(result).toBe(true);
+            expect(result).toBe(false);
         });
 
         it('rejects a non-confirmation callback without configured secret in the body', () => {
@@ -188,6 +191,61 @@ describe('VkAdapter', () => {
     });
 
     describe('setQueryData', () => {
+        it('не считает произвольный x-vk-signature признаком VK Callback API', () => {
+            const adapter = new VkAdapter();
+            adapter.init(appContext);
+
+            expect(adapter.isPlatformOnQuery({} as never, { 'x-vk-signature': 'fake' })).toBe(
+                false,
+            );
+        });
+
+        it('безопасно пропускает malformed message_new без object.message', async () => {
+            const adapter = new VkAdapter();
+            adapter.init(appContext);
+
+            await expect(
+                adapter.setQueryData(
+                    { type: 'message_new', group_id: '1', object: {} as never },
+                    controller,
+                ),
+            ).resolves.toBe(true);
+            expect(controller.skipAutoReply).toBe(true);
+        });
+
+        it('отвечает токеном подтверждения из опций конструктора', async () => {
+            const adapter = new VkAdapter('test-token', { vk_confirmation_token: 'confirm-123' });
+            adapter.init(appContext);
+
+            await expect(
+                adapter.setQueryData({ type: 'confirmation', group_id: '1' }, controller),
+            ).resolves.toBe(true);
+            expect(controller.platformOptions.sendInInit).toBe('confirm-123');
+        });
+
+        it('отвечает токеном подтверждения из конфигурации (env VK_CONFIRMATION_TOKEN)', async () => {
+            // Имитация настройки через .env/process.env: значение попадает в
+            // tokens.vk.confirmation_token, опции конструктора не задаются
+            // (типичный сценарий для fullPlatforms).
+            appContext.appConfig.tokens[T_VK].confirmation_token = 'env-confirm-456';
+            const adapter = new VkAdapter();
+            adapter.init(appContext);
+
+            await expect(
+                adapter.setQueryData({ type: 'confirmation', group_id: '1' }, controller),
+            ).resolves.toBe(true);
+            expect(controller.platformOptions.sendInInit).toBe('env-confirm-456');
+        });
+
+        it('не падает при confirmation без настроенного токена', async () => {
+            const adapter = new VkAdapter();
+            adapter.init(appContext);
+
+            await expect(
+                adapter.setQueryData({ type: 'confirmation', group_id: '1' }, controller),
+            ).resolves.toBe(true);
+            expect(controller.platformOptions.sendInInit).toBeNull();
+        });
         it('заполняет имя пользователя из массива users.get', async () => {
             // users.get всегда возвращает массив — адаптер должен взять первый элемент
             const usersGet = jest.spyOn(VkRequest.prototype, 'usersGet').mockResolvedValue([
@@ -237,6 +295,79 @@ describe('VkAdapter', () => {
             expect(result).toBe(true);
             expect(controller.nlu.getUserName()).toBeNull();
         });
+
+        it('не кэширует сбой users.get как «пользователь не найден»', async () => {
+            // Регрессия: транзитивная ошибка VK API (usersGet -> null) кэшировалась
+            // на час вместе с успешными ответами, и имя пользователя всё это время
+            // оставалось null. Сбой кэшироваться не должен.
+            const usersGet = jest
+                .spyOn(VkRequest.prototype, 'usersGet')
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce([
+                    {
+                        id: 12345,
+                        first_name: 'Иван',
+                        last_name: 'Петров',
+                        is_closed: false,
+                        can_access_closed: true,
+                    },
+                ]);
+
+            const adapter = new VkAdapter();
+            adapter.init(appContext);
+            const query = {
+                type: 'message_new',
+                group_id: '1',
+                object: {
+                    message: { from_id: 12345, peer_id: 12345, id: 1, text: 'привет' },
+                },
+            };
+
+            await adapter.setQueryData(query, controller);
+            expect(controller.nlu.getUserName()).toBeNull();
+
+            // Второй запрос после восстановления API: имя обязано прийти из нового
+            // запроса к VK, а не из негативного кэша.
+            const secondController = new TestVkController(appContext);
+            const result = await adapter.setQueryData(query, secondController);
+            expect(result).toBe(true);
+            expect(usersGet).toHaveBeenCalledTimes(2);
+            expect(secondController.nlu.getUserName()?.first_name).toBe('Иван');
+        });
+
+        it('подтверждает message_event без payload статусом 200 вместо ошибки', async () => {
+            // Битый callback нельзя обработать, но возврат false давал 400,
+            // а VK Callback API повторяет событие при неудачном ответе.
+            const adapter = new VkAdapter();
+            adapter.init(appContext);
+
+            const result = await adapter.setQueryData(
+                { type: 'message_event', group_id: '1', object: { user_id: 12345 } },
+                controller,
+            );
+
+            expect(result).toBe(true);
+            expect(controller.skipAutoReply).toBe(true);
+        });
+    });
+
+    it('не отправляет пустые attachment и keyboard после фильтрации', async () => {
+        const sendMessage = jest
+            .spyOn(VkRequest.prototype, 'messagesSend')
+            .mockResolvedValue({ message_id: 1 });
+        controller.card.addImage('/missing.jpg');
+        jest.spyOn(controller.card, 'getCards').mockResolvedValue([]);
+        const cyclic: Record<string, unknown> = {};
+        cyclic.self = cyclic;
+        controller.buttons.addBtn('Невалидная', null, cyclic);
+        const adapter = new VkAdapter();
+        adapter.init(appContext);
+
+        await adapter.getContent(controller);
+
+        const params = sendMessage.mock.calls[0][2];
+        expect(params?.attachments).toBeUndefined();
+        expect(params?.keyboard).toBeUndefined();
     });
 
     describe('init', () => {

@@ -191,23 +191,19 @@ export class YandexImageRequest extends YandexRequest {
         if (this.skillId) {
             const images = await this.getLoadedImages();
             if (images) {
-                const results = await Promise.allSettled(
-                    images.map(async (image) => {
-                        try {
-                            await this.deleteImage(image.id);
-                            // Добавить задержку между запросами
-                            await new Promise((resolve) => setTimeout(resolve, 200).unref());
-                            return true;
-                        } catch (e) {
-                            this._log(
-                                `deleteImages() Ошибка при удалении изображения "${image.id}": ${e instanceof Error ? e.message : JSON.stringify(e)}`,
-                            );
-                            return false;
-                        }
-                    }),
-                );
-                // Если хотя бы одно изображение не удалено — вернуть false
-                return results.every((r) => r.status === 'fulfilled' && r.value);
+                let success = true;
+                for (const image of images) {
+                    try {
+                        success = (await this.deleteImage(image.id)) !== null && success;
+                    } catch (e) {
+                        this._log(
+                            `deleteImages() Ошибка при удалении изображения "${image.id}": ${e instanceof Error ? e.message : JSON.stringify(e)}`,
+                        );
+                        success = false;
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 200).unref());
+                }
+                return success;
             } else {
                 this._log('deleteImages() Error: Не удалось получить загруженные изображения.');
             }

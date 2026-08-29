@@ -237,6 +237,17 @@ describe('MarusiaAdapter', () => {
             expect(result.user_state_update).toEqual({ data: 'new-val' });
         });
 
+        it('предупреждает, если stateData передан без выбранного хранилища', async () => {
+            adapter.setQueryData(makeMarusiaRequest(), controller);
+            controller.text = 'Ответ';
+            const logWarn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+
+            const result = await adapter.getContent(controller, { data: 'value' });
+
+            expect(result.session_state).toBeUndefined();
+            expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('без выбранного'));
+        });
+
         it('не добавляет state при превышении лимита', async () => {
             const query = makeMarusiaRequest({
                 state: { user: { data: 'val' } },
@@ -272,6 +283,40 @@ describe('MarusiaAdapter', () => {
             await adapter.getContent(controller);
 
             expect(getSoundsSpy).toHaveBeenCalled();
+        });
+
+        it('не оставляет оборванный speaker-тег на границе TTS', async () => {
+            adapter.setQueryData(makeMarusiaRequest(), controller);
+            controller.text = 'Ответ';
+            controller.tts = `${'x'.repeat(1018)}<speaker audio="marusia-test">`;
+
+            const result = await adapter.getContent(controller);
+
+            expect(result.response?.tts).not.toMatch(/<speaker[^>]*$/);
+        });
+
+        it('не считает служебные теги в лимите TTS', async () => {
+            // Регрессия: лимит 1024 считался вместе с тегами, поэтому разметка
+            // «съедала» часть видимого текста. Как и у Алисы, теги в лимит не входят.
+            adapter.setQueryData(makeMarusiaRequest(), controller);
+            controller.text = 'Ответ';
+            const tag = '<speaker audio="marusia-test">';
+            controller.tts = `${'x'.repeat(1000)}${tag}${'y'.repeat(24)}`;
+
+            const result = await adapter.getContent(controller);
+
+            expect(result.response?.tts).toBe(`${'x'.repeat(1000)}${tag}${'y'.repeat(24)}`);
+        });
+
+        it('обрезает TTS по видимому тексту, сохраняя теги целиком', async () => {
+            adapter.setQueryData(makeMarusiaRequest(), controller);
+            controller.text = 'Ответ';
+            const tag = '<speaker audio="marusia-test">';
+            controller.tts = `${'x'.repeat(1020)}${tag}${'y'.repeat(50)}`;
+
+            const result = await adapter.getContent(controller);
+
+            expect(result.response?.tts).toBe(`${'x'.repeat(1020)}${tag}${'y'.repeat(4)}`);
         });
     });
 

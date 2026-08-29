@@ -61,7 +61,7 @@ export * as MaxSound from './platforms/Max/Sound';
 export * as MaxCard from './platforms/Max/Card';
 export { T_MAX_APP } from './platforms/Max/constants';
 
-export { VkAdapter } from './platforms/VK/Adapter';
+export { VkAdapter, clearVkUserCache } from './platforms/VK/Adapter';
 export * from './platforms/VK/interfaces/IVkPlatform';
 export * as VkButton from './platforms/VK/Button';
 export * as VkSound from './platforms/VK/Sound';

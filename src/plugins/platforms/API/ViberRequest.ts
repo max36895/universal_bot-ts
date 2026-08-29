@@ -130,7 +130,7 @@ export class ViberRequest {
                 post.min_api_version = normalizeApiVersion(
                     post.min_api_version ??
                         this.apiVersion ??
-                        this.#appContext.appConfig.tokens[T_VIBER].api_version,
+                        this.#appContext.appConfig.tokens[T_VIBER]?.api_version,
                 );
                 // Сериализуем тело один раз: строка используется и для проверки
                 // размера, и как тело запроса (postInString). Раньше JSON.stringify
@@ -277,6 +277,7 @@ export class ViberRequest {
                     'failed',
                     'subscribed',
                     'unsubscribed',
+                    'message',
                     'conversation_started',
                 ],
                 send_name: true,
@@ -316,6 +317,10 @@ export class ViberRequest {
         }
         this.#request.post = {
             ...(params ?? {}),
+            min_api_version: Math.max(
+                7,
+                normalizeApiVersion(params?.min_api_version ?? this.apiVersion),
+            ),
             receiver,
             sender: normalizedSender,
             type: 'rich_media',

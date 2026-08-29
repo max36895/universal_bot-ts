@@ -6,7 +6,7 @@ import { soundProcessing } from './Sound';
 import { T_TELEGRAM } from './constants';
 import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/ITelegramPlatform';
 import { TelegramRequest } from '../API';
-import { getPlatformRequestData, tryParse } from '../Base/utils';
+import { getChatText, getPlatformRequestData, tryParse } from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
 type ITelegramRequestData = Record<string, unknown> & {
@@ -75,16 +75,11 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             this.appContext?.logWarn(`TelegramAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
-        return !!(
-            query.update_id !== undefined &&
-            (query.message ||
-                query.callback_query ||
-                query.inline_query ||
-                query.chosen_inline_result ||
-                query.channel_post ||
-                query.edited_message ||
-                query.edited_channel_post)
-        );
+        // Telegram помечает update_id'ом любой апдейт. Раньше проверялся ещё и набор
+        // известных полей, поэтому my_chat_member, poll_answer, message_reaction и т.п.
+        // не опознавались как Telegram, запрос падал с 500, а Telegram бесконечно
+        // ретраил его и блокировал очередь обновлений.
+        return typeof query.update_id === 'number';
     }
 
     /**
@@ -187,23 +182,36 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         message: NonNullable<ITelegramContent['message']>,
         controller: BotController,
     ): boolean {
-        controller.userId = message.chat.id;
+        // В групповых чатах chat.id — это ID группы, а не человека. Раньше userId
+        // всегда ставился из chat.id, из-за чего один и тот же человек в группе
+        // получал две разные записи в БД: сообщения шли под ID группы, а нажатия
+        // inline-кнопок (callback_query, где userId = from.id) — под ID человека.
+        // Теперь идентифицируем человека по from.id; чат сохраняется отдельно
+        // в requestData.chatId, чтобы ответ ушёл именно в этот чат.
+        controller.userId = message.from?.id ?? message.chat.id;
+        getPlatformRequestData<ITelegramRequestData>(controller, this.platformName).chatId =
+            message.chat.id;
         controller.userCommand = message.text?.toLowerCase()?.trim() || '';
-        controller.originalUserCommand = message.text;
+        // Без `|| ''` в поле уходил undefined для сообщений без текста (стикер, фото),
+        // хотя во всех остальных ветках и адаптерах здесь строка.
+        controller.originalUserCommand = message.text || '';
         controller.messageId = message.message_id;
 
+        // Данные пользователя берём у отправителя (from), а не у чата: в группах
+        // chat.username — это публичный юзернейм группы, а не человека.
+        const sender = message.from ?? message.chat;
         const thisUser: INluThisUser = {
-            username: message.chat.username || null,
-            first_name: message.chat.first_name || null,
-            last_name: message.chat.last_name || null,
+            username: sender.username || null,
+            first_name: sender.first_name || null,
+            last_name: sender.last_name || null,
         };
         controller.nlu.setNlu({ thisUser });
         return true;
     }
 
     /**
-     * Заполняет контроллер данными из поста в канале (channel_post / edited_channel_post)
-     * или отредактированного сообщения (edited_message).
+     * Заполняет контроллер данными из поста в канале (channel_post / edited_channel_post).
+     * Для каналов «пользователь» — сам канал, поэтому userId = chat.id.
      */
     #setPost(
         post: NonNullable<ITelegramContent['channel_post']>,
@@ -239,9 +247,11 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             return this.#setPost(query.channel_post, controller);
         }
 
-        // Кейс 4: отредактированное сообщение
+        // Кейс 4: отредактированное сообщение. Идёт через #setMessage, а не #setPost:
+        // это действие того же человека в том же чате, и userId должен совпадать
+        // с исходным сообщением (иначе в группе редактирование уходило под ID группы).
         if (query.edited_message) {
-            return this.#setPost(query.edited_message, controller);
+            return this.#setMessage(query.edited_message, controller);
         }
 
         // Кейс 5: отредактированный пост в канале
@@ -256,7 +266,16 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         if (query.chosen_inline_result) {
             return this.#setChosenInlineResult(query, controller);
         }
-        return false;
+
+        // Кейс 7: остальные типы апдейтов (my_chat_member, chat_member, poll_answer,
+        // message_reaction, my_chat_join_request и др.). Отвечать на них нечем, но
+        // и ошибкой это не является: вернув false, мы отдавали Telegram 500, а он
+        // повторял тот же апдейт снова и снова.
+        controller.skipAutoReply = true;
+        this.appContext?.log(
+            `TelegramAdapter.setQueryData(): апдейт update_id=${query.update_id} не содержит поддерживаемого события. Ответ не отправляется.`,
+        );
+        return true;
     }
 
     /** Отвечает на inline-запрос одной безопасной текстовой статьёй. */
@@ -283,20 +302,25 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         ]);
     }
 
-    /** Отправляет обычный ответ Telegram с текстом, карточками, звуками и кнопками. */
-    async #sendChatContent(
-        controller: BotController,
-        telegramApi: TelegramRequest,
-        requestData: ITelegramRequestData,
-    ): Promise<void> {
+    /**
+     * Собирает `reply_markup` и режим разметки для исходящего сообщения.
+     *
+     * @param controller Контроллер текущего запроса
+     * @returns Параметры сообщения Telegram
+     */
+    #buildMessageParams(controller: BotController): ITelegramParams {
         const params: ITelegramParams = {};
-        const chatId = requestData.chatId ?? controller.userId;
         const hasButtons = controller.isButtonsInit() && controller.buttons.buttons.length > 0;
         const keyboard = hasButtons
             ? buttonProcessing(controller.buttons.buttons, this.appContext as AppContext)
             : null;
         if (keyboard) {
             params.reply_markup = JSON.stringify(keyboard);
+        } else if (controller.isButtonsInit() && controller.buttons.isRemove) {
+            // Reply-клавиатура Telegram «прилипает» к чату и живёт до явного снятия.
+            // Пустой список кнопок платформе не отправляется, поэтому без remove()
+            // убрать её было нечем — она висела у пользователя навсегда.
+            params.reply_markup = JSON.stringify({ remove_keyboard: true });
         }
         // Разметка выключена по умолчанию: пользовательский текст с символами
         // HTML иначе приводит к ошибке Telegram "can't parse entities".
@@ -304,6 +328,18 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         if (parseMode) {
             params.parse_mode = parseMode;
         }
+        return params;
+    }
+
+    /** Отправляет обычный ответ Telegram с текстом, карточками, звуками и кнопками. */
+    async #sendChatContent(
+        controller: BotController,
+        telegramApi: TelegramRequest,
+        requestData: ITelegramRequestData,
+    ): Promise<void> {
+        const params = this.#buildMessageParams(controller);
+        const chatId = requestData.chatId ?? controller.userId;
+        const hasButtons = controller.isButtonsInit() && controller.buttons.buttons.length > 0;
 
         const callbackQueryId =
             requestData.callbackQueryId ?? controller.platformOptions.callbackQueryId;
@@ -324,15 +360,19 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         // на каждый запрос, когда карточки не используются — как и в остальных адаптерах.
         const hasCards = controller.isCardInit() && controller.card.images.length > 0;
         const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
-        if (controller.text) {
-            await telegramApi.sendMessage(
-                chatId as string,
-                Text.resize(controller.text, 4096),
-                params,
-            );
-        } else if (hasButtons || (!hasCards && !hasSounds)) {
+        // Если заполнен только tts (общая логика писалась под голосовую платформу),
+        // используем его как текст: иначе Telegram не получал вообще ничего.
+        const text = getChatText(controller.text, controller.tts);
+        if (text) {
+            await telegramApi.sendMessage(chatId as string, text, params);
+        } else if (hasButtons || params.reply_markup || (!hasCards && !hasSounds)) {
+            const isRemove = controller.isButtonsInit() && controller.buttons.isRemove;
             this.appContext?.logWarn(
-                'TelegramAdapter.getContent(): ответ не содержит текста. Пустое сообщение и клавиатура не будут отправлены.',
+                'TelegramAdapter.getContent(): ответ не содержит ни текста, ни tts. ' +
+                    'Telegram не принимает пустое сообщение, поэтому ни текст, ни клавиатура отправлены не будут.' +
+                    (isRemove
+                        ? ' Для снятия клавиатуры через buttons.remove() ответ должен содержать текст.'
+                        : ''),
             );
         }
 

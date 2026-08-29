@@ -105,6 +105,7 @@ export class __className__Controller extends BotController<IMyUserData> {
     public action(intentName: string): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
+                this.text = 'Привет! Хочешь начать игру?';
                 this.thisIntentName = this.START_QUESTION;
                 this.buttons.addBtn('Да').addBtn('Нет');
                 break;

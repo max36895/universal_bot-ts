@@ -126,10 +126,16 @@ export class Request {
 
         this.#error = null;
         const data = (await this.#run()) as T;
+        // Сбрасываем всё, что относится к конкретному вызову: инстанс Request
+        // переиспользуется API-клиентами, и «залипшие» get/customRequest уходили
+        // бы в следующий запрос к другому методу платформы.
         this.attachName = 'file';
         this.attach = null;
+        this.isAttachContent = false;
         this.post = null;
         this.postInString = null;
+        this.get = null;
+        this.customRequest = null;
         if (this.#error) {
             return { status: false, data: null, err: this.#error };
         }
@@ -189,7 +195,10 @@ export class Request {
                     }
                     return await response.text();
                 }
-                this.#error = `Не удалось получить данные с "${this.url}". Статус: ${response.status}`;
+                // Платформы отдают причину отказа в теле ответа (Telegram — description,
+                // VK — error_msg). Без него в логах остаётся только код статуса,
+                // по которому невозможно понять, что именно не понравилось API.
+                this.#error = `Не удалось получить данные с "${this.url}". Статус: ${response.status}. Ответ: ${await this.#readErrorBody(response)}`;
             } catch (e) {
                 this.#error = e as Error;
             }
@@ -197,6 +206,83 @@ export class Request {
             this.#error = 'Не указан url!';
         }
         return null;
+    }
+
+    /**
+     * Безопасно читает тело ошибочного ответа для диагностики.
+     * Тело обрезается, чтобы большой HTML страницы ошибки не раздул лог.
+     *
+     * @param response Ответ сервера со статусом, отличным от 2xx
+     * @returns Текст ответа либо пояснение, почему прочитать не удалось
+     */
+    async #readErrorBody(response: Response): Promise<string> {
+        try {
+            const body = await response.text();
+            if (!body) {
+                return '<пустое тело>';
+            }
+            return body.length > 1000 ? `${body.substring(0, 1000)}…` : body;
+        } catch {
+            return '<тело ответа недоступно>';
+        }
+    }
+
+    /**
+     * Формирует итоговые заголовки запроса.
+     *
+     * Заголовки вызывающего кода имеют приоритет, но `Content-Type` подставляется
+     * автоматически, если его не задали: раньше любой кастомный заголовок
+     * (`Authorization` у MAX, `X-Viber-Auth-Token` у Viber) полностью затирал
+     * `application/json`, и JSON-тело уходило без Content-Type.
+     *
+     * @param post Тело запроса
+     * @returns Заголовки запроса или undefined, если тела и заголовков нет
+     */
+    #buildHeaders(post: BodyInit | null): HeadersInit | undefined {
+        if (!post && !this.header) {
+            return undefined;
+        }
+        // Собираем обычный объект, а не Headers: заголовки уходят в пользовательский
+        // httpClient как есть, и подмена типа сломала бы кастомные реализации.
+        const headers: Record<string, string> = {};
+        if (this.header) {
+            if (this.header instanceof Headers || Array.isArray(this.header)) {
+                new Headers(this.header).forEach((value, name) => {
+                    headers[name] = value;
+                });
+            } else {
+                Object.assign(headers, this.header);
+            }
+        }
+        const contentTypeKey = Object.keys(headers).find(
+            (name) => name.toLowerCase() === 'content-type',
+        );
+        if (post instanceof FormData) {
+            // Content-Type для multipart должен выставить сам fetch — вместе с boundary
+            if (contentTypeKey) {
+                delete headers[contentTypeKey];
+            }
+            return headers;
+        }
+        if (post && !contentTypeKey) {
+            Object.assign(headers, Request.HEADER_JSON);
+        }
+        return headers;
+    }
+
+    /** Собирает multipart-тело, когда `attach` содержит сами данные, а не путь к файлу. */
+    #buildAttachContentFormData(): FormData {
+        const formData = new FormData();
+        formData.append(this.attachName, new Blob([this.attach as string]));
+        if (this.post && typeof this.post === 'object') {
+            for (const [key, value] of Object.entries(this.post)) {
+                formData.append(
+                    key,
+                    typeof value === 'object' ? JSON.stringify(value) : String(value),
+                );
+            }
+        }
+        return formData;
     }
 
     /**
@@ -213,7 +299,9 @@ export class Request {
 
         let post: BodyInit | null = null;
         if (this.attach) {
-            if (await isFile(this.attach)) {
+            if (this.isAttachContent) {
+                post = this.#buildAttachContentFormData();
+            } else if (await isFile(this.attach)) {
                 const formData = await this.getAttachFile(this.attach, this.attachName);
                 if (!formData) {
                     this.#error = `Не удалось прочитать файл: ${this.attach}`;
@@ -246,15 +334,9 @@ export class Request {
         if (post) {
             options.body = post;
             options.method = this.customRequest || 'POST';
-            options.headers = this.header || Request.HEADER_JSON;
         }
-        if (this.header) {
-            options.headers = this.header;
-        }
-
-        if (post instanceof FormData && options.headers) {
-            const headers = new Headers(options.headers);
-            headers.delete('Content-Type');
+        const headers = this.#buildHeaders(post);
+        if (headers) {
             options.headers = headers;
         }
 

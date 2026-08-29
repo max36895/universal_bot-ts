@@ -18,9 +18,18 @@ export function buttonProcessing(
         );
     }
     getCorrectButtons(buttons, 30).forEach((button) => {
+        // text — обязательное поле кнопки MAX. Без проверки в запрос уходило
+        // {"type":"message","text":null}, и API отклонял всё сообщение целиком.
+        const title = button.title;
+        if (!title) {
+            appContext?.logWarn(
+                '[MAX] У кнопки не задан текст — она будет пропущена, т.к. MAX не принимает кнопку без text.',
+            );
+            return;
+        }
         const object: IMaxButton = {
             type: 'message',
-            text: button.title as string,
+            text: title,
         };
         if (button.url) {
             if (button.url.length > 2048) {

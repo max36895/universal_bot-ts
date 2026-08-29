@@ -50,7 +50,69 @@ describe('AppContext: маскирование секретов (logError / logW
         ctx.logError(`VK auth: ${vkToken}`);
         const [msg] = errorSpy.mock.calls[0];
         expect(msg).not.toContain(vkToken.slice(10));
-        expect(msg).toContain('vk1a***');
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует VK-токен реального формата vk1.a.<payload>', () => {
+        // Прежний шаблон /vk1a[a-z0-9]{79}/ не совпадал с настоящим форматом токена
+        // (он содержит точки), поэтому VK-токен маскировался только по счастливой случайности.
+        const vkToken = 'vk1.a.' + 'a1b2c3d4e5'.repeat(8);
+        ctx.logError(`VK auth: ${vkToken}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('a1b2c3d4e5');
+        expect(msg).toContain('vk1.a.***');
+    });
+
+    it('маскирует Telegram-токен без префикса bot (как он лежит в .env)', () => {
+        // regBot требует литерального "bot", поэтому ловил токен только внутри URL API.
+        // Голый токен из конфигурации уходил в лог в открытом виде.
+        const secret = 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawX'; // ровно 35 символов
+        ctx.logError(`TELEGRAM_TOKEN=7123456789:${secret}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain(secret);
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует JWT (Сбер SmartApp, OAuth)', () => {
+        const jwt =
+            'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV';
+        ctx.logError(`access: ${jwt}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV');
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует значение meta по имени ключа, даже если формат неизвестен', () => {
+        // Формат токена у платформы может измениться, имя поля — нет.
+        ctx.logError('ошибка', {
+            telegram_token: 'short-but-secret',
+            nested: { apiKey: 'zzz', password: 'p@ss' },
+            safeField: 'видно',
+        });
+        const [, meta] = errorSpy.mock.calls[0];
+        const serialised = JSON.stringify(meta);
+        expect(serialised).not.toContain('short-but-secret');
+        expect(serialised).not.toContain('zzz');
+        expect(serialised).not.toContain('p@ss');
+        expect(serialised).toContain('видно');
+    });
+
+    it('маскирует контейнер под секретным ключом целиком (объекты и массивы)', () => {
+        // Раньше маскировка по имени ключа срабатывала только для string/number,
+        // и { tokens: { telegram: '...' } } утекало в meta логгера как есть.
+        ctx.logError('ошибка', {
+            tokens: { telegram: 'plain-secret-value', jwt: 'another-secret-value' },
+            passwords: ['hunter2-secret'],
+            auth: { credential: { login: 'user', secret: 'deep-secret' } },
+            safeField: 'видно',
+        });
+        const [, meta] = errorSpy.mock.calls[0];
+        const serialised = JSON.stringify(meta);
+        expect(serialised).not.toContain('plain-secret-value');
+        expect(serialised).not.toContain('another-secret-value');
+        expect(serialised).not.toContain('hunter2-secret');
+        expect(serialised).not.toContain('deep-secret');
+        expect(serialised).toContain('видно');
     });
 
     it('маскирует значения полей api_key / vk_secret_key / oauth / private_key (без кавычек)', () => {
@@ -121,7 +183,8 @@ describe('AppContext: маскирование секретов (logError / logW
         // Проверяем, что токен не утечёт в сериализации
         const serialised = JSON.stringify(meta);
         expect(serialised).not.toContain('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-        expect(serialised).toContain('bot***');
+        // Поле Authorization маскируется целиком по имени ключа.
+        expect(serialised).toContain('***');
     });
 
     it('маскирует секреты в meta внутри массивов', () => {
@@ -132,7 +195,7 @@ describe('AppContext: маскирование секретов (logError / logW
         const [, meta] = errorSpy.mock.calls[0];
         const serialised = JSON.stringify(meta);
         expect(serialised).not.toContain(vkToken.slice(10));
-        expect(serialised).toContain('vk1a***');
+        expect(serialised).toContain('***');
         expect(serialised).toContain('failure 2: no secrets');
     });
 
@@ -236,7 +299,7 @@ describe('AppContext: маскирование секретов (logError / logW
         ctx.logError(`tg=${tgToken} vk=${vkToken} token="${opaque}"`);
         const [msg] = errorSpy.mock.calls[0];
         expect(msg).toContain('bot***');
-        expect(msg).toContain('vk1a***');
+        expect(msg).toContain('***');
         expect(msg).toContain('"***"');
         expect(msg).not.toContain(tgToken);
         expect(msg).not.toContain(vkToken);

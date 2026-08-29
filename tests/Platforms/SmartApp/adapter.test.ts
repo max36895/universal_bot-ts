@@ -242,6 +242,19 @@ describe('SmartAppAdapter', () => {
             expect(result.payload?.pronounceTextType).toBe('application/ssml');
         });
 
+        it('не помечает обычный текст со знаком «<» как SSML', () => {
+            // Регрессия: эвристика ловила «< буква» и помечала обычный текст как
+            // application/ssml — парсер Сбера ломался на незаэкранированных символах.
+            const query = makeSmartAppRequest();
+            adapter.setQueryData(query, controller);
+            controller.text = 'Текст';
+            controller.tts = 'Если x < y, то заплатите меньше';
+
+            const result = adapter.getContent(controller);
+
+            expect(result.payload?.pronounceTextType).toBe('application/text');
+        });
+
         it('добавляет команду close_app при isEnd', () => {
             const query = makeSmartAppRequest();
             adapter.setQueryData(query, controller);
@@ -268,6 +281,18 @@ describe('SmartAppAdapter', () => {
             const result = adapter.getContent(controller);
 
             expect(result.payload?.suggestions?.buttons).toBeDefined();
+        });
+
+        it('удаляет неподдерживаемые звуковые маркеры из TTS', () => {
+            adapter.setQueryData(makeSmartAppRequest(), controller);
+            controller.text = 'Начало #bell# конец';
+            controller.sound.sounds = [{ key: '#bell#', sounds: ['bell'] }];
+
+            const result = adapter.getContent(controller);
+
+            expect(result.payload?.pronounceText).not.toContain('#bell#');
+            expect(result.payload?.pronounceText).toContain('Начало');
+            expect(result.payload?.pronounceText).toContain('конец');
         });
     });
 

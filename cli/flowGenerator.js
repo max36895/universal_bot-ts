@@ -26,12 +26,41 @@ function escapeStr(s) {
 }
 
 /**
+ * Экранирует строку для безопасной вставки в JSDoc-комментарий сгенерированного кода.
+ *
+ * Без этого закрывающая последовательность комментария в имени блока или тексте ответа
+ * досрочно закрывала JSDoc,
+ * и всё, что шло следом, попадало в `src/index.ts` как исполняемый код. Поскольку flow.json
+ * приходит из визуального редактора и может быть получен извне, это давало выполнение
+ * произвольного кода в проекте пользователя.
+ *
+ * @param {unknown} text — исходный текст из flow.json
+ * @returns {string} текст, безопасный для вставки внутрь комментария
+ */
+function escapeComment(text) {
+    return String(text ?? '')
+        .replace(/\*\//g, '* /')
+        .replace(/\/\*/g, '/ *')
+        .replace(/[\r\n\u2028\u2029]+/g, ' ');
+}
+
+/**
  * Проверяет, является ли строка валидным JS-идентификатором.
  * @param {string} name — проверяемое имя
  * @returns {boolean} true если имя соответствует /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
  */
 function isValidJSIdentifier(name) {
-    return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
+    return (
+        /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name) &&
+        !['__proto__', 'prototype', 'constructor'].includes(name)
+    );
+}
+
+/** Проверяет, что имя не меняет прототип объекта userData. */
+function isSafeUserDataKey(name) {
+    return !String(name)
+        .split('.')
+        .some((part) => ['__proto__', 'prototype', 'constructor'].includes(part));
 }
 
 /**
@@ -188,6 +217,7 @@ function collectVarNames(doc) {
         if (n.actions)
             n.actions.forEach((a) => {
                 if (a.field && !isSystemVar(a.field)) vars.add(a.field);
+                if (a.saveResponseTo && !isSystemVar(a.saveResponseTo)) vars.add(a.saveResponseTo);
             });
     }
     return [...vars];
@@ -370,31 +400,16 @@ function generateActionFunc(block, varNames, indent) {
 
                 lines.push(`${indent}try {`);
                 if (method !== 'GET' && body) {
-                    const hasVars = /\{\{/.test(String(body));
-                    if (hasVars) {
-                        // Экранируем backticks и ${ перед заменой {{var}}
-                        const fetchOpts = [`method: '${method}'`];
-                        if (safeHeaders) {
-                            fetchOpts.push(`headers: ${safeHeaders}`);
-                        } else {
-                            fetchOpts.push(`headers: { 'Content-Type': 'application/json' }`);
-                        }
-                        fetchOpts.push(`body: ${httpBodyExpr(body)}`);
-                        lines.push(
-                            `${indent}    const response = await fetchWithTimeout('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
-                        );
+                    const fetchOpts = [`method: '${method}'`];
+                    if (safeHeaders) {
+                        fetchOpts.push(`headers: ${safeHeaders}`);
                     } else {
-                        const fetchOpts = [`method: '${method}'`];
-                        if (safeHeaders) {
-                            fetchOpts.push(`headers: ${safeHeaders}`);
-                        } else {
-                            fetchOpts.push(`headers: { 'Content-Type': 'application/json' }`);
-                        }
-                        fetchOpts.push(`body: ${httpBodyExpr(body)}`);
-                        lines.push(
-                            `${indent}    const response = await fetchWithTimeout('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
-                        );
+                        fetchOpts.push(`headers: { 'Content-Type': 'application/json' }`);
                     }
+                    fetchOpts.push(`body: ${httpBodyExpr(body)}`);
+                    lines.push(
+                        `${indent}    const response = await fetchWithTimeout('${escapeStr(block.url)}', { ${fetchOpts.join(', ')} });`,
+                    );
                 } else {
                     // Запрос без body: метод всё равно нужен для POST/PUT/PATCH/DELETE.
                     const fetchOpts = [];
@@ -520,11 +535,9 @@ function generateConditionFunc(
             ifExpr = `Number(${condVar}) <= Number(${condVal})`;
             break;
         case 'contains': {
-            // Если condVal число, не оборачиваем в String()
-            const isNumVal = !isNaN(Number(condVal)) && String(condVal).trim() !== '';
-            ifExpr = isNumVal
-                ? `String(${condVar}).includes(${condVal})`
-                : `String(${condVar}).includes(String(${condVal}))`;
+            // String() обязателен для любого значения: includes() принимает только
+            // строки, и числовой литерал без обёртки не компилируется TypeScript.
+            ifExpr = `String(${condVar}).includes(String(${condVal}))`;
             break;
         }
         case 'isEmpty':
@@ -637,7 +650,7 @@ function generateButtonCode(buttons, indent, shuffle = false) {
         );
         lines.push(`${indent}for (const __btn of __buttons) {`);
         lines.push(
-            `${indent}    if (__btn.type === 'link') ctrl.buttons.addLink(__btn.title, __btn.url);`,
+            `${indent}    if (__btn.type === 'link') ctrl.buttons.addLink(__btn.title, __btn.url ?? '');`,
         );
         lines.push(`${indent}    else ctrl.buttons.addBtn(__btn.title);`);
         lines.push(`${indent}}`);
@@ -766,7 +779,7 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
             })
             .join(', ');
         const hasHttp = blockNeedsAsync(block, doc, connectedBlocks);
-        lines.push(`/** Действие: ${actionTypes || 'выполнить действие'} */`);
+        lines.push(`/** Действие: ${escapeComment(actionTypes || 'выполнить действие')} */`);
         lines.push(
             `${hasHttp ? 'async ' : ''}function ${funcName}(ctrl: BotController): ${hasHttp ? 'Promise<void>' : 'void'} {`,
         );
@@ -813,7 +826,7 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
         };
         const opName = opNames[block.operator] || block.operator;
         lines.push(
-            `/** Условие: проверяем ${block.variable || 'ввод пользователя'} ${opName} ${block.value || ''} */`,
+            `/** Условие: проверяем ${escapeComment(block.variable || 'ввод пользователя')} ${escapeComment(opName)} ${escapeComment(block.value || '')} */`,
         );
         const condNeedsAsync = blockNeedsAsync(block, doc, connectedBlocks);
         lines.push(
@@ -880,7 +893,7 @@ function generateBlockFunc(block, varNames, indent, doc, connectedBlocks) {
             ? block.response.text.slice(0, 50)
             : 'пустой ответ';
         lines.push(
-            `/** Ответ: "${responsePreview}${block.response?.text?.length > 50 ? '...' : ''}" */`,
+            `/** Ответ: "${escapeComment(responsePreview)}${block.response?.text?.length > 50 ? '...' : ''}" */`,
         );
         const respNeedsAsync = blockNeedsAsync(block, doc, connectedBlocks);
         lines.push(
@@ -1152,10 +1165,10 @@ function generateIndexTs(doc, useCloud = false) {
                 ? 'fallback (Неизвестная команда)'
                 : cmd.name;
         lines.push(
-            `/** Команда "${commentName}": активируется на [${slotsPreview}${(cmd.slots || []).length > 3 ? '...' : ''}] */`,
+            `/** Команда "${escapeComment(commentName)}": активируется на [${escapeComment(slotsPreview)}${(cmd.slots || []).length > 3 ? '...' : ''}] */`,
         );
         lines.push(
-            `bot.addCommand(${cmdName}, [${slotsStr}]${isPattern}, ${isAsync ? 'async ' : ''}(cmd: string, ctrl: BotController): ${isAsync ? 'Promise<void>' : 'void'} => {`,
+            `bot.addCommand(${cmdName}, [${slotsStr}], ${isAsync ? 'async ' : ''}(cmd: string, ctrl: BotController): ${isAsync ? 'Promise<void>' : 'void'} => {`,
         );
 
         // Инлайн действия
@@ -1231,7 +1244,7 @@ function generateIndexTs(doc, useCloud = false) {
             }
         }
 
-        lines.push(`});`);
+        lines.push(`}${isPattern});`);
         lines.push(``);
     }
 
@@ -1248,7 +1261,7 @@ function generateIndexTs(doc, useCloud = false) {
         const promptPreview = step.prompt?.text ? step.prompt.text.slice(0, 40) : '';
         const saveInfo = step.saveTo ? `, сохраняет в ${step.saveTo}` : '';
         lines.push(
-            `/** Шаг "${step.name}": ${promptPreview ? `"${promptPreview}..."` : 'ожидание ввода'}${saveInfo} */`,
+            `/** Шаг "${escapeComment(step.name)}": ${promptPreview ? `"${escapeComment(promptPreview)}..."` : 'ожидание ввода'}${escapeComment(saveInfo)} */`,
         );
         lines.push(
             `bot.addStep('${escapeStr(step.name)}', ${isAsync ? 'async ' : ''}(ctrl: BotController): ${isAsync ? 'Promise<void>' : 'void'} => {`,
@@ -1362,14 +1375,16 @@ function generateIndexTs(doc, useCloud = false) {
         lines.push(`// --- Yandex Cloud Function handler ---`);
         lines.push(`export const handler = async (event: Record<string, unknown>) => {`);
         lines.push(
-            `    const content = typeof event.body === 'string' ? event.body : JSON.stringify(event.body);`,
+            `    const content = typeof event.body === 'string' ? event.body : JSON.stringify(event.body ?? '');`,
         );
-        lines.push(`    bot.setContent(content);`);
-        lines.push(`    const result = await bot.run();`);
+        lines.push(`    const headers = (event.headers ?? {}) as Record<string, unknown>;`);
+        lines.push(`    const result = await bot.webhookEvent(content, headers);`);
         lines.push(`    return {`);
-        lines.push(`        statusCode: 200,`);
+        lines.push(`        statusCode: result.statusCode,`);
         lines.push(`        headers: { 'Content-Type': 'application/json' },`);
-        lines.push(`        body: typeof result === 'string' ? result : JSON.stringify(result),`);
+        lines.push(
+            `        body: typeof result.body === 'string' ? result.body : JSON.stringify(result.body ?? ''),`,
+        );
         lines.push(`    };`);
         lines.push(`};`);
     }
@@ -1382,12 +1397,16 @@ function generateIndexTs(doc, useCloud = false) {
  * @returns {string} JSON-строка package.json
  */
 function generatePackageJson(doc) {
+    const dependencies = { umbot: '3.1.0' };
+    if (doc.database?.type === 'mongo') {
+        dependencies.mongodb = '7.1.1';
+    }
     const pkg = {
         name: (doc.name || 'my-bot').replace(/[^a-z0-9-]/gi, '-').toLowerCase(),
         version: doc.version || '1.0.0',
         main: './dist/index.js',
         scripts: { start: 'node ./dist/index.js', build: 'tsc' },
-        dependencies: { umbot: '3.1.0' },
+        dependencies,
         devDependencies: { typescript: '5.9.3', '@types/node': '20.19.43' },
     };
     return JSON.stringify(pkg, null, 2);
@@ -1416,7 +1435,7 @@ function generateTsConfig() {
 
 function generateGitIgnore() {
     const file = __dirname + '/template/.gitignore';
-    if (file && utils.isFile(file)) {
+    if (utils.isFile(file)) {
         return utils.fread(file);
     }
     return '';
@@ -1488,8 +1507,19 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
         throw new Error(`Ошибка парсинга JSON: ${message}`, { cause: e });
     }
 
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+        throw new Error('flow.json должен быть JSON-объектом');
+    }
     if (!doc.name) throw new Error('В JSON отсутствует поле "name"');
-    if (!doc.nodes || !Array.isArray(doc.nodes)) throw new Error('В JSON отсутствует поле "nodes"');
+    if (!doc.nodes || !Array.isArray(doc.nodes)) {
+        throw new Error('В JSON отсутствует поле "nodes"');
+    }
+
+    const schemaErrors = validateFlowSchema(flowJsonPath);
+    if (schemaErrors.length) {
+        throw new Error(`Некорректный flow.json: ${schemaErrors.join('; ')}`);
+    }
+
     if (!doc.edges || !Array.isArray(doc.edges)) doc.edges = [];
     if (!doc.welcome) doc.welcome = { text: 'Привет!', buttons: [] };
     if (!doc.fallback) doc.fallback = { text: 'Извините, я вас не понял.' };
@@ -1567,17 +1597,38 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
     //   - вложенный (как в README): { telegram: { token: "abc123" } }
     const getTokenValue = (v) => {
         if (!v) return '';
-        if (typeof v === 'string') return v.trim();
-        if (typeof v === 'object' && typeof v.token === 'string') return v.token.trim();
+        // Переводы строк в значении позволили бы дописать в .env произвольные
+        // переменные, поэтому они вычищаются из токена.
+        if (typeof v === 'string') return v.trim().replace(/[\r\n]+/g, '');
+        if (typeof v === 'object' && typeof v.token === 'string')
+            return v.token.trim().replace(/[\r\n]+/g, '');
         return '';
     };
-    const tokenEntries = Object.entries(tokens).filter(([, v]) => getTokenValue(v) !== '');
+    // Ключ платформы из flow.json попадает в имя переменной окружения. flow.json
+    // приходит из внешнего редактора, поэтому ключ санитизируется до allowlist
+    // [A-Z0-9_]: иначе ключ с переводами строк ломал структуру serverless.yml
+    // (YAML-инъекция) и .env.
+    const sanitizeEnvName = (platform) => {
+        if (TOKEN_ENV_NAMES[platform]) return TOKEN_ENV_NAMES[platform];
+        return String(platform)
+            .toUpperCase()
+            .replace(/[^A-Z0-9_]/g, '_');
+    };
+    const tokenEntries = Object.entries(tokens)
+        .map(([platform, tokenRaw]) => ({
+            envName: sanitizeEnvName(platform),
+            value: getTokenValue(tokenRaw),
+        }))
+        .filter((entry) => entry.envName !== '' && entry.value !== '');
     if (tokenEntries.length > 0) {
-        const envLines = tokenEntries.map(([platform, tokenRaw]) => {
-            const envName = TOKEN_ENV_NAMES[platform] || `${platform.toUpperCase()}_TOKEN`;
-            return `${envName}=${getTokenValue(tokenRaw)}`;
-        });
-        fs.writeFileSync(path.join(outputPath, '.env'), envLines.join('\n') + '\n', 'utf8');
+        const envPath = path.join(outputPath, '.env');
+        if (fs.existsSync(envPath)) {
+            console.warn(
+                '  Внимание: существующий файл .env будет перезаписан токенами из flow.json.',
+            );
+        }
+        const envLines = tokenEntries.map((entry) => `${entry.envName}=${entry.value}`);
+        fs.writeFileSync(envPath, envLines.join('\n') + '\n', 'utf8');
         console.log('  .env');
     }
 
@@ -1586,10 +1637,7 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
         const cloudFunctionName = getCloudFunctionName(doc.name);
         const pkg = JSON.parse(fs.readFileSync(path.join(outputPath, 'package.json'), 'utf8'));
         pkg.scripts = pkg.scripts || {};
-        pkg.scripts.deploy =
-            'npm run build && yc serverless function version create --function-name ' +
-            cloudFunctionName +
-            ' --runtime nodejs22 --entrypoint dist/index.handler --memory 128m --execution-timeout 10s --source-path .';
+        pkg.scripts.deploy = 'npm run build && node ./scripts/deploy.js';
         pkg.scripts.build = 'tsc';
         fs.writeFileSync(
             path.join(outputPath, 'package.json'),
@@ -1606,10 +1654,7 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
 ${
     tokenEntries.length > 0
         ? tokenEntries
-              .map(([platform]) => {
-                  const envName = TOKEN_ENV_NAMES[platform] || `${platform.toUpperCase()}_TOKEN`;
-                  return `      ${envName}: "\${env:${envName}}"`;
-              })
+              .map((entry) => `      ${entry.envName}: "\${env:${entry.envName}}"`)
               .join('\n')
         : '      # Добавьте переменные окружения здесь'
 }
@@ -1619,6 +1664,47 @@ ${
 `;
         fs.writeFileSync(path.join(outputPath, 'serverless.yml'), serverlessYml, 'utf8');
         console.log('  serverless.yml');
+
+        // Архив функции формируется из отдельной staging-папки, поэтому .env, исходники,
+        // node_modules и история Git физически не могут попасть в версию функции.
+        fs.writeFileSync(
+            path.join(outputPath, '.ymlignore'),
+            '.env\nnode_modules\n.git\n.github\ntests\nsrc\n*.log\n',
+            'utf8',
+        );
+        const scriptsDir = path.join(outputPath, 'scripts');
+        fs.mkdirSync(scriptsDir, { recursive: true });
+        const deployScript = `'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+
+const root = path.join(__dirname, '..');
+const stage = path.join(root, '.umbot-deploy');
+fs.rmSync(stage, { recursive: true, force: true });
+fs.mkdirSync(stage, { recursive: true });
+fs.cpSync(path.join(root, 'dist'), path.join(stage, 'dist'), { recursive: true });
+for (const file of ['package.json', 'package-lock.json']) {
+    const source = path.join(root, file);
+    if (fs.existsSync(source)) fs.copyFileSync(source, path.join(stage, file));
+}
+
+const envPath = path.join(root, '.env');
+const environment = fs.existsSync(envPath)
+    ? fs.readFileSync(envPath, 'utf8').split(/\\r?\\n/).map((line) => line.trim())
+          .filter((line) => line && !line.startsWith('#')).join(',')
+    : '';
+const args = ['serverless', 'function', 'version', 'create',
+    '--function-name', '${cloudFunctionName}', '--runtime', 'nodejs22',
+    '--entrypoint', 'dist/index.handler', '--memory', '128m',
+    '--execution-timeout', '10s', '--source-path', stage];
+if (environment) args.push('--environment', environment);
+const result = spawnSync('yc', args, { stdio: 'inherit', shell: process.platform === 'win32' });
+fs.rmSync(stage, { recursive: true, force: true });
+if (result.error) throw result.error;
+process.exitCode = result.status ?? 1;
+`;
+        fs.writeFileSync(path.join(scriptsDir, 'deploy.js'), deployScript, 'utf8');
     }
 
     console.log(`Проект успешно создан в: ${outputPath}`);
@@ -1666,6 +1752,10 @@ function validateFlowSchema(flowJsonPath) {
     if (Array.isArray(doc.nodes)) {
         const ids = new Set();
         doc.nodes.forEach((n, idx) => {
+            if (!n || typeof n !== 'object' || Array.isArray(n)) {
+                errors.push(`nodes[${idx}]: узел должен быть объектом`);
+                return;
+            }
             const hasId = n.id !== undefined && n.id !== null && n.id !== '';
             if (!hasId) {
                 errors.push(`nodes[${idx}]: отсутствует \`id\``);
@@ -1682,12 +1772,25 @@ function validateFlowSchema(flowJsonPath) {
                     `nodes[${idx}]: saveTo="${n.saveTo}" — некорректный идентификатор (используйте [a-zA-Z0-9_.]+)`,
                 );
             }
+            const variableNames = [
+                n.saveTo,
+                ...(Array.isArray(n.actions)
+                    ? n.actions.flatMap((action) => [action?.field, action?.saveResponseTo])
+                    : []),
+            ].filter(Boolean);
+            for (const variableName of variableNames) {
+                if (!isSafeUserDataKey(variableName)) {
+                    errors.push(
+                        `nodes[${idx}]: имя переменной "${variableName}" использует зарезервированное свойство прототипа`,
+                    );
+                }
+            }
         });
 
         // Навигация в flow.json осуществляется через edges, а не через поле next —
         // проверяем целостность именно рёбер (существование from/to, валидный type).
-        // Циклы в графе допустимы (например, генератор примеров в игре), поэтому
-        // проверка на зацикленность не выполняется.
+        // Циклы через command/step допустимы (например, генератор примеров в игре) —
+        // отдельная проверка циклов среди исполняемых блоков выполняется ниже.
         const EDGE_TYPES = new Set(['next', 'branch_true', 'branch_false', 'slot_match']);
         if (doc.edges !== undefined && !Array.isArray(doc.edges)) {
             errors.push('Поле `edges` должно быть массивом');
@@ -1709,6 +1812,57 @@ function validateFlowSchema(flowJsonPath) {
                     );
                 }
             });
+        }
+    }
+
+    // Циклы, проходящие через command/step, допустимы: навигация между ними идёт через
+    // ctrl.thisIntentName, а не через рекурсию. Однако цикл, состоящий ТОЛЬКО из исполняемых
+    // блоков (action/condition/response), генерируется как прямые вызовы функций и при
+    // выполнении переполнит стек (RangeError). Такие циклы отклоняем на этапе валидации.
+    if (Array.isArray(doc.nodes) && Array.isArray(doc.edges)) {
+        const EXECUTABLE_TYPES = new Set(['action', 'condition', 'response']);
+        const execIds = new Set(
+            doc.nodes.filter((n) => n && EXECUTABLE_TYPES.has(n.type)).map((n) => n.id),
+        );
+        const adjacency = new Map();
+        for (const id of execIds) {
+            adjacency.set(id, []);
+        }
+        for (const e of doc.edges) {
+            if (e && execIds.has(e.from) && execIds.has(e.to)) {
+                adjacency.get(e.from).push(e.to);
+            }
+        }
+        const visited = new Set();
+        const inStack = new Set();
+        let hasExecCycle = false;
+        const dfs = (nodeId) => {
+            visited.add(nodeId);
+            inStack.add(nodeId);
+            for (const nextId of adjacency.get(nodeId) || []) {
+                if (inStack.has(nextId)) {
+                    hasExecCycle = true;
+                    return;
+                }
+                if (!visited.has(nextId)) {
+                    dfs(nextId);
+                    if (hasExecCycle) return;
+                }
+            }
+            inStack.delete(nodeId);
+        };
+        for (const id of execIds) {
+            if (!visited.has(id)) {
+                dfs(id);
+                if (hasExecCycle) break;
+            }
+        }
+        if (hasExecCycle) {
+            errors.push(
+                'Обнаружен цикл, состоящий только из блоков action/condition/response. ' +
+                    'Такой цикл генерируется как рекурсивные вызовы и приведёт к переполнению стека. ' +
+                    'Зациклите сценарий через command или step (переход выполняется через thisIntentName).',
+            );
         }
     }
 

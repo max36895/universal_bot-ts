@@ -174,8 +174,12 @@ npm install umbot
 npx umbot create my-bot
 cd my-bot
 npm install
+npm run build
 npm run start
 ```
+
+> `npm run start` запускает собранный код из `dist/`, поэтому перед первым стартом
+> (и после изменений) нужен `npm run build`.
 
 ### Как добавить токены платформ?
 
@@ -185,7 +189,7 @@ npm run start
 TELEGRAM_TOKEN=your-token
 VK_TOKEN=your-token
 VK_CONFIRMATION_TOKEN=your-token
-YANDEX_TOKEN=your-token
+ALISA_TOKEN=your-token
 # ... и другие токены
 ```
 
@@ -334,14 +338,20 @@ bot.addCommand('test', ['сохранить'], (_, cBot) => {
     // ⚠️ Не делайте `cBot.userData = {}` — это перезаписывает ссылку и ломает отслеживание изменений.
     // Вместо этого мутируйте объект:
     Object.assign(cBot.userData, { key: 'value' }); // Данные в базу данных
-    Object.assign(cBot.state, { key: 'value' }); // Данные в локальное хранилище платформы
+    // ⚠️ Не делайте `Object.assign(cBot.state, ...)` — на чат-платформах
+    // (Telegram, VK, Viber, Max) state равен null, и вызов бросит TypeError.
+    // Безопасная форма: фреймворк читает state после выполнения команды,
+    // поэтому перезапись через spread допустима ({ ...null } даёт пустой объект).
+    cBot.state = { ...cBot.state, key: 'value' }; // Данные в локальное хранилище платформы
     // Ваша логика
 });
 ```
 
 Далее, при повторном запросе, данные из базы данных будут лежать в `userData`, а данные из платформы — в `state`.
 При этом, важно учитывать тот факт, что логика с локальным хранилищем будет работать только в том случае, если сама
-платформа поддерживает такое поведение.
+платформа поддерживает такое поведение. Локальное хранилище есть у голосовых платформ (Алиса, Маруся, SmartApp);
+у чат-платформ (Telegram, VK, Viber, Max) `state` платформой не заполняется и остаётся `null`, пока вы сами его не
+инициализируете — поэтому записывайте данные через безопасную форму `cBot.state = { ...cBot.state, ... }`.
 
 ### Как создать приложение без использования базы данных
 
@@ -467,7 +477,7 @@ import { fullPlatforms } from 'umbot/plugins';
 
 const bot = new BotTest();
 bot.use(fullPlatforms);
-await bot.test(); // Запускает интерактивный режим в консоли
+bot.test(); // Запускает интерактивный режим в консоли
 ```
 
 ### Где найти логи ошибок?

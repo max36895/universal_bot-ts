@@ -26,6 +26,19 @@ describe('YandexRequest', () => {
         expect(yandex.oauth).toBe('test-yandex-token');
     });
 
+    it('не отправляет Authorization со значением OAuth null', async () => {
+        yandex.setOAuth(null);
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ result: 'ok' }),
+        });
+
+        await yandex.call('https://api.yandex.ru/test');
+
+        const options = (global.fetch as jest.Mock).mock.calls[0][1] as RequestInit;
+        expect(new Headers(options.headers).has('Authorization')).toBe(false);
+    });
+
     it('should call API with OAuth header', async () => {
         (global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,

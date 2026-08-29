@@ -1,6 +1,6 @@
-import { BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';
+import { BotController, rand, HELP_INTENT_NAME, WELCOME_INTENT_NAME, IUserData } from 'umbot';
 
-interface IGameControllerExample {
+interface IGameControllerExample extends IUserData {
     example: string;
     result: number;
 }
@@ -36,13 +36,15 @@ export class GameController extends BotController<IGameControllerExample> {
         if (this.userData.example) {
             if (this.userData.result + '' === this.userCommand) {
                 this.text = 'Молодец! Это правильный ответ! Сколько будет: \n';
-                this.userData = this._getExample();
+                // Данные нужно мержить, а не перезаписывать:
+                // переопределение userData ломает сохранение в базу.
+                Object.assign(this.userData, this._getExample());
             } else {
                 this.text = 'Не совсем... Давай ещё раз!\n';
             }
         } else {
             this.text = 'Сколько будет: \n';
-            this.userData = this._getExample();
+            Object.assign(this.userData, this._getExample());
         }
         this.userData['isGame'] = true;
         this.text += this.userData['example'];

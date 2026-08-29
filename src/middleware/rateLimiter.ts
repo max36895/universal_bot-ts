@@ -2,10 +2,6 @@
 import { BotController } from '../controller';
 import { AppContext, MiddlewareNext } from '../core';
 
-/** Модульное состояние для очистки при destroy */
-let moduleCleanupInterval: ReturnType<typeof setInterval> | null = null;
-let moduleStateMap: Map<string, PlatformState> | null = null;
-
 interface QueueItem {
     resolve: () => void;
     reject: (err: Error) => void;
@@ -22,6 +18,17 @@ interface PlatformState {
 
 /** Максимальный размер stateMap. При превышении новые записи не добавляются. */
 const MAX_STATE_MAP_SIZE = 10000;
+
+/**
+ * Реестр всех созданных инстансов rateLimiter.
+ * Хранит карту состояний и интервал очистки каждого инстанса, чтобы
+ * destroyRateLimiter мог освободить ресурсы всех инстансов, а не только последнего.
+ */
+interface IRateLimiterInstance {
+    stateMap: Map<string, PlatformState>;
+    cleanupInterval: ReturnType<typeof setInterval> | null;
+}
+const limiterInstances = new Set<IRateLimiterInstance>();
 
 async function processQueue(
     st: PlatformState,
@@ -42,12 +49,9 @@ async function processQueue(
             // eslint-disable-next-line require-atomic-updates
             st.lastReset = Date.now();
 
-            // Определяем, сколько задач можно выполнить в этом цикле
-            const canRun = Math.max(0, limit - st.count);
-            if (canRun === 0) continue; // защита от лишних итераций
-
-            // Берём из очереди ровно столько, сколько можем выполнить
-            const batch = st.queue.splice(0, Math.min(canRun, st.queue.length));
+            // Счётчик только что обнулён, поэтому в этом окне доступен весь лимит.
+            // Берём из очереди ровно столько, сколько можем выполнить.
+            const batch = st.queue.splice(0, Math.min(limit, st.queue.length));
 
             for (const item of batch) {
                 st.count++;
@@ -117,7 +121,6 @@ function startCleanupFn(
             },
             Math.min(inactivityTimeout / 2, 30000),
         ).unref();
-        moduleCleanupInterval = cleanupInterval;
     }
     return cleanupInterval;
 }
@@ -225,6 +228,11 @@ function getOrCreateState(stateMap: Map<string, PlatformState>, key: string): Pl
  * **Важные особенности:**
  * - Middleware применяется **только к входящим запросам** (webhook). Для исходящих уведомлений
  *   ограничение нужно реализовывать непосредственно в адаптерах платформ.
+ * - Счётчик ведётся отдельно для каждой пары `{platform}:{userId}`, то есть ограничивается
+ *   частота запросов **одного пользователя**, а не суммарная нагрузка на бота.
+ * - ⚠️ Запрос, попавший в очередь, задерживается минимум на секунду. У платформ есть свой
+ *   таймаут на ответ вебхука (у Алисы — около 3 секунд), поэтому включайте middleware
+ *   осознанно: при срабатывании лимита платформа может не дождаться ответа.
  * - Функцию необходимо **вызвать** при подключении: `bot.use(rateLimiter())`.
  * - Все внутренние таймеры используют `unref()`, поэтому не блокируют завершение процесса.
  *
@@ -259,14 +267,16 @@ export function rateLimiter(
     inactivityTimeout = 60000,
 ): (ctx: BotController, next: MiddlewareNext) => Promise<void> {
     const stateMap = new Map<string, PlatformState>();
-    moduleStateMap = stateMap;
-    let cleanupInterval: ReturnType<typeof setInterval> | null = null;
-    moduleCleanupInterval = null;
-
-    const startCleanup = (): void => {
-        cleanupInterval = startCleanupFn(cleanupInterval, stateMap, inactivityTimeout);
+    const instance: IRateLimiterInstance = {
+        stateMap,
+        cleanupInterval: null,
     };
-    startCleanup();
+    limiterInstances.add(instance);
+    instance.cleanupInterval = startCleanupFn(
+        instance.cleanupInterval,
+        stateMap,
+        inactivityTimeout,
+    );
 
     return async (ctx: BotController, next: MiddlewareNext) => {
         const platform = ctx.appType;
@@ -331,7 +341,7 @@ export function rateLimiter(
 }
 
 /**
- * Очищает все ресурсы rateLimiter: интервал очистки и карту состояний.
+ * Очищает все ресурсы всех созданных инстансов rateLimiter: интервалы очистки и карты состояний.
  * Используйте при завершении приложения или hot-reload для предотвращения утечек памяти.
  *
  * @example
@@ -346,13 +356,13 @@ export function rateLimiter(
  * ```
  */
 export function destroyRateLimiter(): void {
-    if (moduleCleanupInterval) {
-        clearInterval(moduleCleanupInterval);
-        moduleCleanupInterval = null;
-    }
-    if (moduleStateMap) {
+    for (const instance of limiterInstances) {
+        if (instance.cleanupInterval) {
+            clearInterval(instance.cleanupInterval);
+            instance.cleanupInterval = null;
+        }
         // Очищаем все очереди, отклоняя ожидающие промисы
-        moduleStateMap.forEach((state) => {
+        instance.stateMap.forEach((state) => {
             while (state.queue.length > 0) {
                 const item = state.queue.shift();
                 if (item) {
@@ -360,7 +370,7 @@ export function destroyRateLimiter(): void {
                 }
             }
         });
-        moduleStateMap.clear();
-        moduleStateMap = null;
+        instance.stateMap.clear();
     }
+    limiterInstances.clear();
 }

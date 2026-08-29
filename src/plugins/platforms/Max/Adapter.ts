@@ -7,7 +7,7 @@ import { soundProcessing } from './Sound';
 import { T_MAX_APP } from './constants';
 import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform';
 import { timingSafeEqual } from 'crypto';
-import { getPlatformRequestData } from '../Base/utils';
+import { getChatText, getPlatformRequestData } from '../Base/utils';
 
 type IMaxRequestData = Record<string, unknown> & {
     callbackId?: string;
@@ -98,7 +98,18 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
             this.appContext?.logWarn(`MaxAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
-        return MAX_UPDATE_TYPES.has(query.update_type);
+        if (MAX_UPDATE_TYPES.has(query.update_type)) {
+            return true;
+        }
+        // Новые типы событий MAX тоже принимаем, но только если запрос однозначно
+        // от MAX: связка update_type + timestamp есть у каждого апдейта платформы
+        // и не встречается у других. Иначе новый тип события не определялся бы
+        // как MAX и запрос завершался ошибкой вместо тихого пропуска в setQueryData().
+        return (
+            typeof query.update_type === 'string' &&
+            query.update_type.length > 0 &&
+            typeof query.timestamp === 'number'
+        );
     }
 
     /**
@@ -169,7 +180,7 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
             (body?.attachments as unknown as Record<string, unknown> | undefined) ?? null;
         controller.nlu.setNlu({
             thisUser: {
-                username: object.sender?.username,
+                username: object.sender?.username || null,
                 first_name: object.sender?.first_name || null,
                 last_name: object.sender?.last_name || null,
             },
@@ -206,7 +217,10 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
               )
             : null;
         const params: IMaxParams = {};
-        if (keyboard) {
+        // Проверяем не только наличие объекта, но и непустой список кнопок: buttonProcessing
+        // всегда возвращает объект, поэтому при пустой клавиатуре в MAX уходило вложение
+        // inline_keyboard с buttons: [], которое API отклоняет.
+        if (keyboard?.buttons?.length) {
             params.keyboard = keyboard;
         }
         if (controller.isCardInit() && controller.card.images.length) {
@@ -228,18 +242,24 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         const chatId =
             requestData.chatId ?? (controller.platformOptions.chatId as number | undefined);
         const peerId: string | number = chatId ?? controller.userId ?? '';
+        if (peerId === '') {
+            controller.appContext.logWarn(
+                'MaxAdapter.getContent(): не указан user_id или chat_id; ответ не будет отправлен.',
+            );
+            return 'ok';
+        }
         const callbackId = requestData.callbackId;
         if (callbackId) {
             await maxApi.answerCallback(
                 callbackId,
-                Text.resize(controller.text, 4000),
+                Text.resize(getChatText(controller.text, controller.tts), 4000),
                 params,
                 peerId,
             );
         } else {
             await maxApi.messagesSend(
                 peerId,
-                Text.resize(controller.text, 4000),
+                Text.resize(getChatText(controller.text, controller.tts), 4000),
                 params,
                 chatId ? 'chat' : 'user',
             );

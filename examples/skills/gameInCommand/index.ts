@@ -42,13 +42,15 @@ function game(botController: BotController<IGameControllerExample>): void {
     if (botController.userData.example) {
         if (botController.userData.result + '' == botController.userCommand) {
             botController.text = 'Молодец! Это правильный ответ! Сколько будет: \n';
-            botController.userData = getExample();
+            // Данные нужно мержить, а не перезаписывать:
+            // переопределение userData ломает сохранение в базу.
+            Object.assign(botController.userData, getExample());
         } else {
             botController.text = 'Не совсем... Давай ещё раз!\n';
         }
     } else {
         botController.text = 'Сколько будет: \n';
-        botController.userData = getExample();
+        Object.assign(botController.userData, getExample());
     }
     botController.userData['isGame'] = true;
     botController.text += botController.userData['example'];

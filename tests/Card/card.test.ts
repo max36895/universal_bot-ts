@@ -521,24 +521,31 @@ describe('Card test', () => {
     });
 
     it('Get Viber card', async () => {
+        // Columns — это доля сетки ButtonsGroupColumns = 6, которую занимает карточка,
+        // а не количество карточек: три карточки встают по 2 колонки в один ряд,
+        // одиночная растягивается на все 6.
+        // Text заполняется даже без кнопки — иначе title/description молча теряются.
         const viberCard: IViberCard[] = [
             {
-                Columns: 3,
-                Rows: 2,
+                Columns: 2,
+                Rows: 3,
                 Image: '123456',
                 ActionType: 'none',
+                Text: '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>',
             },
             {
-                Columns: 3,
-                Rows: 2,
+                Columns: 2,
+                Rows: 3,
                 Image: '123456',
                 ActionType: 'none',
+                Text: '<font color=#000><b>2</b></font><font color=#000>запись: 2</font>',
             },
             {
-                Columns: 3,
-                Rows: 2,
+                Columns: 2,
+                Rows: 3,
                 Image: '123456',
                 ActionType: 'none',
+                Text: '<font color=#000><b>3</b></font><font color=#000>запись: 3</font>',
             },
         ];
         botController.appType = T_VIBER;
@@ -547,12 +554,11 @@ describe('Card test', () => {
         );
 
         defaultCard.isOne = true;
-        viberCard[0].Columns = 1;
+        viberCard[0].Columns = 6;
         expect(await defaultCard.getCards(ViberCard.cardProcessing, botController)).toEqual(
             viberCard[0],
         );
 
-        viberCard[0].Text = '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>';
         viberCard[0].ActionType = ViberButton.T_REPLY;
         viberCard[0].ActionBody = '1';
         const buttons = new Buttons(appContext);
@@ -563,7 +569,7 @@ describe('Card test', () => {
         );
 
         defaultCard.isOne = false;
-        viberCard[0].Columns = 3;
+        viberCard[0].Columns = 2;
         expect(await defaultCard.getCards(ViberCard.cardProcessing, botController)).toEqual(
             viberCard,
         );

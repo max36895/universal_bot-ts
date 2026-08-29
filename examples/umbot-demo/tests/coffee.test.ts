@@ -119,15 +119,23 @@ describe('Кофейня-бот (демо umbot)', () => {
     });
 
     describe('menu', () => {
-        it('показывает карточку-галерею напитков', async () => {
+        it('показывает карточку-галерею напитков с ценами', async () => {
             const res = await alisaTurn('меню');
             expect(res.response.text).toContain('Наше меню');
             expect(res.response.card).toBeTruthy();
         });
     });
 
+    describe('help', () => {
+        it('показывает справку и упоминает программу лояльности', async () => {
+            const res = await alisaTurn('помощь');
+            expect(res.response.text).toContain('Вот что я умею');
+            expect(res.response.text).toContain('каждый 5-й кофе');
+        });
+    });
+
     describe('форма заказа', () => {
-        it('проходит все шаги и сохраняет заказ в userData', async () => {
+        it('проходит все шаги и сохраняет заказ с итогом в userData', async () => {
             let res = await alisaTurn('заказать');
             expect(res.response.text).toContain('Что будете пить');
 
@@ -138,7 +146,9 @@ describe('Кофейня-бот (демо umbot)', () => {
             expect(res.response.text).toContain('На чьё имя');
 
             res = await alisaTurn('Иван', 3);
-            expect(res.response.text).toContain('Заказ принят: средний кофе для Иван');
+            // кофе (150) + средний (+30) = 180 ₽, первый заказ → №1.
+            expect(res.response.text).toContain('Заказ №1 принят: средний кофе для Иван');
+            expect(res.response.text).toContain('Итого: 180 ₽');
 
             const userData = getCtx()?.userData as ICoffeeUserData;
             expect(userData.favorite).toBe('кофе');
@@ -147,6 +157,7 @@ describe('Кофейня-бот (демо umbot)', () => {
                 drink: 'кофе',
                 size: 'средний',
                 name: 'Иван',
+                total: 180,
             });
         });
 
@@ -194,14 +205,37 @@ describe('Кофейня-бот (демо umbot)', () => {
         it('повторяет последний заказ по ответу «да»', async () => {
             await seedUserData('user_demo', 'alisa', {
                 favorite: 'кофе',
-                history: [{ drink: 'кофе', size: 'большой', name: 'Иван', ts: 1 }],
+                history: [{ drink: 'кофе', size: 'большой', name: 'Иван', total: 210, ts: 1 }],
             });
             let res = await alisaTurn('заказать');
             expect(res.response.text).toContain('как обычно');
 
             res = await alisaTurn('да', 1);
-            expect(res.response.text).toContain('Готовлю большой кофе для Иван');
+            // кофе (150) + большой (+60) = 210 ₽, второй заказ → №2.
+            expect(res.response.text).toContain('Заказ №2 принят: большой кофе для Иван');
+            expect(res.response.text).toContain('Итого: 210 ₽');
             expect((getCtx()?.userData as ICoffeeUserData).history).toHaveLength(2);
+        });
+
+        it('каждый 5-й заказ отдаёт в подарок (лояльность)', async () => {
+            const history = [1, 2, 3, 4].map((i) => ({
+                drink: 'кофе',
+                size: 'средний',
+                name: 'Иван',
+                total: 180,
+                ts: i,
+            }));
+            await seedUserData('user_demo', 'alisa', { favorite: 'кофе', history });
+            let res = await alisaTurn('заказать');
+            expect(res.response.text).toContain('как обычно');
+
+            res = await alisaTurn('да', 1);
+            // 5-й заказ → бесплатный: итог 0, в тексте — подарок.
+            expect(res.response.text).toContain('в подарок');
+            expect(res.response.text).toContain('каждый 5-й кофе');
+            const userData = getCtx()?.userData as ICoffeeUserData;
+            expect(userData.history).toHaveLength(5);
+            expect(userData.history?.[4]?.total).toBe(0);
         });
 
         it('по ответу «нет» запускает обычную форму', async () => {
@@ -243,11 +277,14 @@ describe('Кофейня-бот (демо umbot)', () => {
             expect(getCtx()?.text).toContain('На чьё имя');
 
             await telegramTurn('Мария', 3);
-            expect(getCtx()?.text).toContain('Заказ принят');
+            // какао (120) + большой (+60) = 180 ₽.
+            expect(getCtx()?.text).toContain('Заказ №1 принят');
+            expect(getCtx()?.text).toContain('Итого: 180 ₽');
 
             const userData = getCtx()?.userData as ICoffeeUserData;
             expect(userData.favorite).toBe('какао');
             expect(userData.history).toHaveLength(1);
+            expect(userData.history?.[0]?.total).toBe(180);
         });
     });
 });

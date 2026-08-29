@@ -236,6 +236,9 @@ export interface IViberWebhookParams {
  * ```
  */
 export interface IViberRichMediaParams {
+    /** Минимальная версия Viber API клиента; для Rich Media не ниже 7. */
+    min_api_version?: string | number;
+
     /**
      * Идентификатор получателя
      */

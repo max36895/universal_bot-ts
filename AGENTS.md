@@ -108,6 +108,31 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
 
     When changing limits or adding platforms, update this table.
 
+    Verified against official docs (2026-08):
+    - **Alisa cards** — the docs do NOT mark `image_id` as required in `ItemsList` or
+      `ImageGallery` items (there is no "Обязательный" column at all), and a text-only item
+      is a working, field-tested scenario. Do not silently drop items without an image.
+      `ItemsList` holds 1–5 items, `ImageGallery` 1–10. Limits: `header.text`/`footer.text` 64,
+      `items[].title` 128, `items[].description` 256, `BigImage.description` 1024,
+      `button.text` 64, `button.url` 1024 bytes, `button.payload` 4096 bytes.
+      `response.text` MAY be empty — but only when `tts` is filled.
+      ⚠️ When reading these docs through a summarising tool, verify field-by-field: the
+      summariser has reported "Required" for fields the page never marks as required.
+    - **Viber rich_media** — a button's `Columns`/`Rows` are its span inside the
+      `ButtonsGroupColumns` (1–6, default 6) × `ButtonsGroupRows` (1–7, default 7) grid,
+      NOT the number of cards. The `webhook` event sent during `set_webhook` must be
+      answered with HTTP 200 or the webhook cannot be registered. Text limit 7000.
+    - **MAX** — auth is `Authorization: <token>` (query-param tokens are no longer supported);
+      `Content-Type` is required for requests with a body. Up to 12 attachments per message,
+      keyboard up to 30 rows / 7 buttons per row (3 for link/open_app/geo/contact).
+
+10.1. Platform quirks that are NOT contract violations but bite in production - Any update type Telegram/VK/Viber/MAX sends that the adapter cannot answer must still
+return HTTP 200. On 5xx Telegram replays the update forever, VK Callback API disables
+the server, and Viber refuses to register the webhook. Unknown events belong in
+`skipAutoReply`, never in `setQueryData() === false`. - Alisa, Marusia and SmartApp provide NO webhook signature. Everything in the payload —
+including `user_id` — is attacker-controlled. Never interpolate it into a URL or a
+query without escaping, and never treat it as an authenticated identity.
+
 10. Anti-patterns — what NOT to do
     1. ❌ Do not reassign `ctx.userData = {...}` — merge keys instead (`Object.assign(ctx.userData, ...)` or direct assignments).
     2. ❌ Do not create `setTimeout`/`setInterval` without `.unref()` in library code — it blocks `process.exit()`.

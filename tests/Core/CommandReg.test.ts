@@ -32,4 +32,18 @@ describe('CommandReg', () => {
 
         expect(group.regExp.exec('command-300')?.groups?._0).toBe('command-300');
     });
+
+    it('закрывает открытую группу перед небезопасной отдельной regexp-командой', () => {
+        const commandReg = new CommandReg(logger, {} as TAppPlugin);
+        commandReg.setCommandGroupMode('group');
+        commandReg.addCommand('safe-1', [/^safe-1$/u], () => {}, true);
+        commandReg.addCommand('safe-2', [/^safe-2$/u], () => {}, true);
+        // eslint-disable-next-line security/detect-unsafe-regex -- небезопасный шаблон нужен как регресс-вход для non-strict режима
+        commandReg.addCommand('unsafe', [/(a+)+$/u], () => {}, true);
+        commandReg.addCommand('safe-3', [/^safe-3$/u], () => {}, true);
+
+        expect(commandReg.commands.get('unsafe')?.__$groupName).toBe('unsafe');
+        expect(commandReg.commands.get('safe-3')?.__$groupName).toBe('safe-3');
+        expect(commandReg.regexpGroup.get('safe-1')?.commands).toEqual(['safe-1', 'safe-2']);
+    });
 });

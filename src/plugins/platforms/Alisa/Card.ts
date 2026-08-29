@@ -89,6 +89,16 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
                 image.imageToken = await getImageInDB(controller, image.imageDir);
             }
         }
+        // Документация платформы не помечает image_id обязательным, и карточка
+        // с одним текстом — рабочий сценарий. Поэтому элемент без токена остаётся
+        // в ответе; предупреждаем только тогда, когда картинку явно просили, но
+        // получить её не удалось — иначе разработчик не поймёт, куда она делась.
+        if (!image.imageToken && image.imageDir) {
+            controller.appContext.logWarn(
+                `[Alisa] Не удалось получить image_id для "${image.imageDir}". ` +
+                    'Элемент карточки будет показан без изображения.',
+            );
+        }
         const item: IAlisaImage = {
             title,
         };

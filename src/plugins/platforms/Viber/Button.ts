@@ -143,6 +143,12 @@ export function buttonProcessing(
     let object: IViberButtonObject | null = null;
     const buttonsResult: IViberButton[] = [];
     getCorrectButtons(buttons, 6).forEach((button) => {
+        // Кнопка без подписи в Viber выглядит как пустой прямоугольник и ничего
+        // не сообщает пользователю — такие кнопки не отправляем.
+        if (!button.title?.trim()) {
+            appContext?.logWarn('[Viber] Кнопка с пустым Text пропущена.');
+            return;
+        }
         let btn: IViberButton = {
             Text: button.title,
         };

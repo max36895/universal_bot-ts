@@ -21,6 +21,40 @@ import { initUserCommand } from '../Base/utils';
 
 type TState = 'user_state_update' | 'session_state';
 
+const MARUSIA_TTS_MAX_LENGTH = 1024;
+const MARUSIA_TTS_TAG_REGEXP = /<speaker\b[^>]*>|sil\s*<\[\d+\]>/gi;
+
+/**
+ * Обрезает произносимый текст Маруси, не считая служебные звуковые теги.
+ * Формат разметки совпадает с Алисой (`<speaker .../>`, `sil <[мс]>`), поэтому
+ * лимит считается по видимому тексту, а теги сохраняются целиком и не рвутся
+ * на границе обрезки.
+ */
+function resizeMarusiaTts(tts: string | null): string {
+    if (!tts) {
+        return '';
+    }
+    let result = '';
+    let visibleLength = 0;
+    let cursor = 0;
+    MARUSIA_TTS_TAG_REGEXP.lastIndex = 0;
+    for (
+        let match = MARUSIA_TTS_TAG_REGEXP.exec(tts);
+        match;
+        match = MARUSIA_TTS_TAG_REGEXP.exec(tts)
+    ) {
+        const plain = tts.slice(cursor, match.index);
+        const remaining = MARUSIA_TTS_MAX_LENGTH - visibleLength;
+        if (plain.length > remaining) {
+            return result + plain.slice(0, remaining);
+        }
+        result += plain + match[0];
+        visibleLength += plain.length;
+        cursor = match.index + match[0].length;
+    }
+    return result + tts.slice(cursor, cursor + MARUSIA_TTS_MAX_LENGTH - visibleLength);
+}
+
 /**
  * Адаптер, обеспечивающий полную поддержку платформы Маруси от ВК. Позволяет разрабатывать навыки для Маруси на TypeScript с использованием всего функционала платформы: от обработки голосовых запросов до работы с карточками и кнопками.
  *
@@ -108,6 +142,11 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
      * @param state Объект состояния из запроса Маруси (`user` или `session`)
      */
     #setState(controller: BotController, state: IMarusiaRequestState): void {
+        if (state.user && state.session) {
+            this.appContext?.logWarn(
+                'MarusiaAdapter.setQueryData(): запрос содержит user и session state; выбран более приоритетный user state.',
+            );
+        }
         if (state.user) {
             controller.state = state.user;
             controller.platformOptions.stateName = 'user_state_update';
@@ -179,7 +218,7 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
     protected async _getResponse(controller: BotController): Promise<IMarusiaResponse> {
         const response: IMarusiaResponse = {
             text: Text.resize(controller.text, 1024),
-            tts: Text.resize(controller.tts, 1024),
+            tts: resizeMarusiaTts(controller.tts),
             end_session: controller.isEnd,
         };
         if (controller.isScreen) {
@@ -202,9 +241,11 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                   ) as IMarusiaButton[])
                 : [];
         }
-        if (!response.text) {
+        // Пустой text допустим, если заполнен tts (как и в Алисе) — предупреждаем
+        // только когда пусто и то, и другое, иначе warn сыпался на валидных ответах.
+        if (!response.text && !response.tts) {
             this.appContext?.logWarn(
-                'MarusiaAdapter._getResponse(): response.text пуст. Ответ сохранён без подстановки и исключения.',
+                'MarusiaAdapter._getResponse(): text и tts пусты. Ответ сохранён без подстановки; такой вариант находится вне документированного контракта Маруси.',
             );
         }
         return response;
@@ -224,9 +265,13 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
         result.session = {
             session_id: sessionObj?.session_id ?? '',
             message_id: sessionObj?.message_id ?? 0,
-            user_id: (sessionObj?.user_id ?? controller.userId) + '',
+            user_id: String(sessionObj?.user_id ?? controller.userId ?? ''),
         };
-        if (controller.platformOptions.stateName && stateData) {
+        if (stateData && !controller.platformOptions.stateName) {
+            this.appContext?.logWarn(
+                'MarusiaAdapter.getContent(): stateData передан без выбранного state-хранилища и не будет отправлен.',
+            );
+        } else if (controller.platformOptions.stateName && stateData) {
             try {
                 const stateJson = JSON.stringify(stateData);
                 const stateBytes = Buffer.byteLength(stateJson, 'utf8');

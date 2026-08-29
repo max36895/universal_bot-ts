@@ -111,6 +111,20 @@ describe('CreateController', () => {
             expect(quizFile).toBeTruthy();
         });
 
+        it('шаблон quizParams содержит интенты welcome и help', () => {
+            // Массив intents в setPlatformParams полностью заменяет встроенные
+            // welcome/help. Раньше в quizParams был только replay, из-за чего
+            // приветствие QuizController было недостижимо, а «помощь» уходила
+            // в fallback.
+            const quizParams = require('../../cli/template/config/quizParams.js').params as {
+                intents: Array<{ name: string; slots: string[] }>;
+            };
+            const names = quizParams.intents.map((intent) => intent.name);
+            expect(names).toEqual(expect.arrayContaining(['welcome', 'help', 'replay']));
+            const welcome = quizParams.intents.find((intent) => intent.name === 'welcome');
+            expect(welcome?.slots.length).toBeGreaterThan(0);
+        });
+
         it('с --minimal не создаёт controller папку для default типа', async () => {
             const ctrl = new CreateController();
             ctrl.params = { path: path.join(TEST_DIR, 'minimal') };
@@ -347,6 +361,68 @@ describe('CreateController', () => {
             const index = fs.readFileSync(path.join(projectDir, 'src', 'index.ts'), 'utf8');
             expect(index).toContain('bot.start("api\\".example.test", 3000);');
             expectProjectToTypeCheck(projectDir);
+        });
+
+        it('использует выбранный порт и Node.js 20 во всех production-артефактах', async () => {
+            const projectDir = path.join(TEST_DIR, 'production-port');
+            const ctrl = new CreateController();
+            ctrl.params = { path: projectDir, port: 8080 };
+            ctrl.flags = ['--prod'];
+
+            await ctrl.init('production-port', CreateController.T_DEFAULT);
+
+            const dockerFile = fs.readFileSync(path.join(projectDir, 'Dockerfile'), 'utf8');
+            const workflow = fs.readFileSync(
+                path.join(projectDir, '.github', 'workflows', 'deploy.yml'),
+                'utf8',
+            );
+            expect(dockerFile).toContain('FROM node:20-alpine');
+            expect(dockerFile).toContain('EXPOSE 8080');
+            expect(workflow).toContain("node-version: '20'");
+            expect(workflow).toContain('-p 8080:8080');
+            expect(workflow).toContain('npm install');
+        });
+    });
+
+    describe('format()', () => {
+        it('форматирует проект без предупреждений, когда prettier установлен', async () => {
+            const projectDir = path.join(TEST_DIR, 'formatted');
+            const ctrl = new CreateController();
+            ctrl.params = { path: projectDir };
+            await ctrl.init('format-test', CreateController.T_DEFAULT);
+
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+            ctrl.format();
+            expect(warnSpy).not.toHaveBeenCalled();
+            warnSpy.mockRestore();
+        });
+
+        it('молча пропускает форматирование, если prettier не установлен', async () => {
+            const projectDir = path.join(TEST_DIR, 'no-prettier');
+            const ctrl = new CreateController();
+            ctrl.params = { path: projectDir };
+            await ctrl.init('no-prettier', CreateController.T_DEFAULT);
+
+            ctrl._resolvePrettier = (): null => null;
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+            ctrl.format();
+            expect(warnSpy).not.toHaveBeenCalled();
+            warnSpy.mockRestore();
+        });
+
+        it('предупреждает, если prettier завершился с ошибкой', async () => {
+            const projectDir = path.join(TEST_DIR, 'bad-prettier');
+            const ctrl = new CreateController();
+            ctrl.params = { path: projectDir };
+            await ctrl.init('bad-prettier', CreateController.T_DEFAULT);
+
+            const fakeBin = path.join(TEST_DIR, 'fake-prettier.js');
+            fs.writeFileSync(fakeBin, "throw new Error('broken formatter');");
+            ctrl._resolvePrettier = (): string => fakeBin;
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+            ctrl.format();
+            expect(warnSpy).toHaveBeenCalledWith('Предупреждение: не удалось отформатировать код');
+            warnSpy.mockRestore();
         });
     });
 });

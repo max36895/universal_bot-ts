@@ -17,10 +17,10 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: '24'
+                  node-version: '20'
 
             - name: Install dependencies
-              run: npm ci
+              run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
             - name: Run tests
               run: npm test --if-present
@@ -57,6 +57,6 @@ jobs:
                       docker run -d \
                         --name {{imageName}} \
                         --restart unless-stopped \
-                        -p 3000:3000 \
+                        -p {{port}}:{{port}} \
                         --env-file /etc/umbot/{{imageName}}.env \
                         ${{ secrets.DOCKERHUB_USERNAME }}/{{imageName}}:latest

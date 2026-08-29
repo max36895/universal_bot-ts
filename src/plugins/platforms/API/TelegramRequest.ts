@@ -4,7 +4,7 @@ import {
     ITelegramResult,
     TTelegramChatId,
 } from '../Telegram/interfaces/ITelegramPlatform';
-import { AppContext, Request, Text } from '../../../index';
+import { AppContext, isFile, Request, Text } from '../../../index';
 import { T_TELEGRAM } from '../Telegram/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
@@ -18,6 +18,7 @@ const TELEGRAM_CALLBACK_TEXT_MAX_LENGTH = 200;
 const TELEGRAM_POLL_QUESTION_MAX_LENGTH = 300;
 const TELEGRAM_POLL_OPTION_MAX_LENGTH = 100;
 const TELEGRAM_POLL_OPTIONS_MAX_COUNT = 12;
+const TELEGRAM_UPLOAD_TIMEOUT = 30_000;
 
 /**
  * Экранирует спецсимволы MarkdownV2 для безопасной вставки пользовательского ввода.
@@ -162,7 +163,11 @@ export class TelegramRequest {
      *
      */
     protected _getUrl(): string {
-        return `${API_ENDPOINT}${this.#appContext.appConfig.tokens[T_TELEGRAM].token}/`;
+        // Приоритет у токена, заданного через initToken(): раньше URL всегда собирался
+        // из appConfig, поэтому initToken() влиял только на проверку `if (this.token)`,
+        // а запрос уходил под токеном из конфигурации. Это ломало мульти-ботовые сценарии.
+        const token = this.token ?? this.#appContext.appConfig.tokens[T_TELEGRAM]?.token;
+        return `${API_ENDPOINT}${token}/`;
     }
 
     /**
@@ -198,9 +203,14 @@ export class TelegramRequest {
             this.#request.post = formData;
         } else if (Text.isUrl(file as string)) {
             this.#request.post[type] = file;
-        } else {
+        } else if (await isFile(file as string)) {
             this.#request.attach = file as string;
             this.#request.attachName = type;
+        } else {
+            // Telegram принимает уже загруженный файл как строковый file_id. Раньше любая
+            // строка без URL считалась локальным путём, поэтому кэшированный file_id
+            // доходил до Request.isFile() и отклонялся как несуществующий файл.
+            this.#request.post[type] = file;
         }
     }
 
@@ -214,6 +224,10 @@ export class TelegramRequest {
         method: string,
         userId: TTelegramChatId | null = null,
     ): Promise<ITelegramResult | null> {
+        this.#request.maxTimeQuery =
+            /^(sendPhoto|sendDocument|sendAudio|sendVideo|sendMediaGroup)$/u.test(method)
+                ? TELEGRAM_UPLOAD_TIMEOUT
+                : 5500;
         if (userId) {
             if (this.#request.post instanceof FormData) {
                 this.#request.post.append('chat_id', userId.toString());
@@ -267,7 +281,10 @@ export class TelegramRequest {
      * @param text Текст сообщения
      * @param parseMode Режим разметки (HTML, MarkdownV2 или undefined)
      */
-    #sanitizeTelegramMessage(text: string, _parseMode?: string): string {
+    #sanitizeTelegramMessage(text: string, parseMode?: string): string {
+        if (parseMode?.toLowerCase() === 'html') {
+            return text.replace(/<[^>]*>/gu, '');
+        }
         return text;
     }
 
@@ -343,20 +360,28 @@ export class TelegramRequest {
                 `TelegramRequest.sendMessage(): текст превышает лимит ${TELEGRAM_MESSAGE_MAX_LENGTH} символов и будет сокращён.`,
             );
         }
-        const safeMessage = this.#sanitizeTelegramMessage(
-            Text.resize(message, TELEGRAM_MESSAGE_MAX_LENGTH),
-            params?.parse_mode,
-        );
+        const normalizedParams: ITelegramParams = { ...(params ?? {}) };
+        const isTruncated = message.length > TELEGRAM_MESSAGE_MAX_LENGTH;
+        const parseMode = normalizedParams.parse_mode;
+        if (isTruncated && parseMode) {
+            delete normalizedParams.parse_mode;
+            this.#appContext.logWarn(
+                'TelegramRequest.sendMessage(): parse_mode отключён для сокращённого текста, чтобы не отправлять оборванную сущность.',
+            );
+        }
+        const sourceMessage = isTruncated
+            ? this.#sanitizeTelegramMessage(message, parseMode)
+            : message;
+        const safeMessage = Text.resize(sourceMessage, TELEGRAM_MESSAGE_MAX_LENGTH);
         this.#request.post = {
             chat_id: chatId,
             text: safeMessage,
         };
         if (params) {
-            this.#request.post = { ...params, ...this.#request.post };
+            this.#request.post = { ...normalizedParams, ...this.#request.post };
         }
         return this.call('sendMessage');
     }
-
     /**
      * Отправляет опрос
      * @param chatId ID чата или пользователя
@@ -368,8 +393,8 @@ export class TelegramRequest {
      *   - 'regular': обычный опрос (по умолчанию)
      *   - 'quiz': викторина с одним правильным ответом
      * - allows_multiple_answers: разрешить несколько ответов (только для regular)
-     * - correct_option_ids: ID правильных ответов по возрастанию (только для quiz)
-     * - correct_option_id: устаревший алиас одного правильного ответа
+     * - correct_option_ids: индексы правильных ответов (0-based, только для quiz).
+     *   Устаревшее correct_option_id поддерживается и автоматически приводится к массиву.
      * - explanation: пояснение правильного ответа (только для quiz)
      * - explanation_parse_mode: формат пояснения (HTML/Markdown)
      * - open_period: время в секундах, когда опрос активен
@@ -378,20 +403,13 @@ export class TelegramRequest {
      *
      * @example
      * ```ts
-     * // Обычный опрос
-     * await telegram.sendPoll(12345,
-     *   'Любимый цвет?',
-     *   ['Красный', 'Синий', 'Зеленый'],
-     *   { allows_multiple_answers: true }
-     * );
-     *
      * // Викторина
      * await telegram.sendPoll(12345,
      *   'Столица России?',
      *   ['Санкт-Петербург', 'Москва', 'Новосибирск'],
      *   {
      *     type: 'quiz',
-     *     correct_option_ids: [1],
+     *     correct_option_ids: [1], // Москва
      *     explanation: 'Москва - столица России с 1918 года',
      *     explanation_parse_mode: 'HTML'
      *   }
@@ -400,12 +418,12 @@ export class TelegramRequest {
      *
      * @returns Информация об отправленном опросе или null при ошибке
      */
-    public sendPoll(
+    public async sendPoll(
         chatId: TTelegramChatId,
         question: string,
         options: string[],
         params: ITelegramParams | null = null,
-    ): Promise<ITelegramResult | null> | null {
+    ): Promise<ITelegramResult | null> {
         if (
             !question.trim() ||
             options.length < 1 ||
@@ -417,39 +435,50 @@ export class TelegramRequest {
             );
             return null;
         }
+
         const normalizedOptions = options.map((option) => ({
             text: Text.resize(option, TELEGRAM_POLL_OPTION_MAX_LENGTH),
         }));
+
         const normalizedParams: ITelegramParams = { ...(params ?? {}) };
-        if (
-            normalizedParams.correct_option_ids === undefined &&
-            normalizedParams.correct_option_id !== undefined
-        ) {
-            normalizedParams.correct_option_ids = [normalizedParams.correct_option_id];
+
+        // Актуальное поле Telegram Bot API — correct_option_ids (массив).
+        // Устаревшее singular-поле correct_option_id маппим на массивный формат,
+        // чтобы quiz-опрос не терял правильный ответ при отправке.
+        if (normalizedParams.correct_option_id !== undefined) {
+            normalizedParams.correct_option_ids = normalizedParams.correct_option_ids ?? [
+                normalizedParams.correct_option_id,
+            ];
+            delete normalizedParams.correct_option_id;
         }
-        delete normalizedParams.correct_option_id;
-        if (
-            normalizedParams.correct_option_ids !== undefined &&
-            (normalizedParams.correct_option_ids.length < 1 ||
-                normalizedParams.correct_option_ids.some(
-                    (optionId, index, ids) =>
+
+        // Валидируем correct_option_ids (обязателен для type: 'quiz')
+        if (normalizedParams.correct_option_ids !== undefined) {
+            const optionIds = normalizedParams.correct_option_ids;
+            if (
+                !Array.isArray(optionIds) ||
+                optionIds.length === 0 ||
+                optionIds.some(
+                    (optionId) =>
                         !Number.isInteger(optionId) ||
                         optionId < 0 ||
-                        optionId >= normalizedOptions.length ||
-                        (index > 0 && optionId <= ids[index - 1]),
-                ))
-        ) {
-            this.#log(
-                'sendPoll() correct_option_ids должен содержать уникальные ID вариантов по возрастанию.',
-            );
-            return null;
+                        optionId >= normalizedOptions.length,
+                )
+            ) {
+                this.#log(
+                    'sendPoll() correct_option_ids должен быть непустым массивом целых чисел, указывающих на существующие индексы вариантов ответа.',
+                );
+                return null;
+            }
         }
+
         this.#request.post = {
             ...normalizedParams,
             chat_id: chatId,
             question: Text.resize(question, TELEGRAM_POLL_QUESTION_MAX_LENGTH),
-            options: normalizedOptions,
+            options: JSON.stringify(normalizedOptions),
         };
+
         return this.call('sendPoll');
     }
 
@@ -512,6 +541,13 @@ export class TelegramRequest {
         }
         if (params) {
             this.#request.post = { ...params, ...this.#request.post };
+            const caption = (this.#request.post as ITelegramParams).caption;
+            if (typeof caption === 'string') {
+                (this.#request.post as ITelegramParams).caption = Text.resize(
+                    caption,
+                    TELEGRAM_CAPTION_MAX_LENGTH,
+                );
+            }
         }
         return this.call('sendPhoto', userId);
     }

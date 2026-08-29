@@ -48,6 +48,7 @@ describe('ViberRequest', () => {
             expect.objectContaining({
                 headers: {
                     'X-Viber-Auth-Token': 'test-viber-token',
+                    'Content-Type': 'application/json',
                 },
                 body: expect.stringContaining('"min_api_version":2'),
             }),
@@ -178,7 +179,7 @@ describe('ViberRequest', () => {
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"url":"https://mybot.com/webhook"');
         expect(body).toContain(
-            '"event_types":["delivered","seen","failed","subscribed","unsubscribed","conversation_started"]',
+            '"event_types":["delivered","seen","failed","subscribed","unsubscribed","message","conversation_started"]',
         );
     });
 
@@ -235,6 +236,7 @@ describe('ViberRequest', () => {
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"type":"rich_media"');
         expect(body).toContain('"ButtonsGroupRows":7');
+        expect(body).toContain('"min_api_version":7');
         expect(body).toContain('"Text":"Button 1"');
         expect(body).toContain('"sender":{"name":"Configured Bot"}');
     });
@@ -247,6 +249,7 @@ describe('ViberRequest', () => {
         });
 
         await viber.richMedia('user123', buttons, {
+            min_api_version: 2,
             receiver: 'other-user',
             type: 'text',
             rich_media: {
@@ -261,8 +264,10 @@ describe('ViberRequest', () => {
         const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
             receiver: string;
             type: string;
+            min_api_version: number;
             rich_media: { Buttons: Array<{ Text?: string }> };
         };
+        expect(body.min_api_version).toBe(7);
         expect(body.receiver).toBe('user123');
         expect(body.type).toBe('rich_media');
         expect(body.rich_media.Buttons).toEqual(buttons);
@@ -349,6 +354,9 @@ describe('ViberRequest', () => {
         await viber.call('test');
 
         const headers = (global.fetch as jest.Mock).mock.calls[0][1].headers;
-        expect(headers).toEqual({ 'X-Viber-Auth-Token': 'test-viber-token' });
+        expect(headers).toEqual({
+            'X-Viber-Auth-Token': 'test-viber-token',
+            'Content-Type': 'application/json',
+        });
     });
 });

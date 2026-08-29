@@ -1,4 +1,4 @@
-import { Buttons, IButtonType } from '../../../index';
+import { Buttons, IButtonType, Text } from '../../../index';
 import { IVkButton, IVkButtonObject } from './interfaces/IVkPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
@@ -55,16 +55,24 @@ function _validateVkPayload(payload: unknown, appContext?: TVkButtonLogger): str
     const str = serializePlatformPayload(payload, 'VK', appContext);
     if (str === null) return null;
 
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(str);
-    if (bytes.length > 255) {
+    const length = Array.from(str).length;
+    if (length > 255) {
         appContext?.logWarn(
-            `[VK] payload кнопки превышает лимит 255 байт (${bytes.length} байт). Кнопка будет пропущена без изменения данных.`,
+            `[VK] payload кнопки превышает лимит 255 символов (${length} символов). Кнопка будет пропущена без изменения данных.`,
         );
         return null;
     }
 
     return str;
+}
+
+/** Возвращает цвет кнопки: из options либо из payload для обратной совместимости. */
+function _getVkButtonColor<TPayload>(button: IButtonType<TPayload>): string | undefined {
+    const payloadColor =
+        typeof button.payload === 'object' && button.payload !== null
+            ? ((button.payload as Record<string, unknown>).color as string | undefined)
+            : undefined;
+    return (button.options?.color ?? payloadColor) as string | undefined;
 }
 
 /** Возвращает hash для кнопки VK Pay, если он явно задан в payload. */
@@ -89,10 +97,19 @@ function _getVkButton<TPayload>(
 ): IVkButton | null {
     const buttonType =
         button.type ?? (button.hide === Buttons.B_LINK ? VK_TYPE_LINK : VK_TYPE_TEXT);
+    // label — обязательное поле кнопки ВК. Без проверки в запрос уходила кнопка
+    // с пустой подписью, и API отклонял её вместе со всей клавиатурой.
+    if (!button.title?.trim()) {
+        appContext?.logWarn('[VK] Кнопка с пустым label пропущена.');
+        return null;
+    }
+    if ((button.title?.length ?? 0) > 40) {
+        appContext?.logWarn('[VK] label кнопки превышает 40 символов и будет сокращён.');
+    }
     const object: IVkButton = {
         action: {
             type: buttonType,
-            label: button.title,
+            label: Text.resize(button.title, 40),
         },
     };
     if (button.url) {
@@ -109,11 +126,7 @@ function _getVkButton<TPayload>(
         }
     }
 
-    const payloadColor =
-        typeof button.payload === 'object' && button.payload !== null
-            ? ((button.payload as Record<string, unknown>).color as string | undefined)
-            : undefined;
-    const buttonColor = (button.options?.color ?? payloadColor) as string | undefined;
+    const buttonColor = _getVkButtonColor(button);
     if (buttonColor !== undefined && !button.url) {
         object.color = buttonColor;
     }
@@ -157,8 +170,10 @@ export function buttonProcessing<TPayload>(
         }
     });
 
-    return {
-        one_time: !!finalButtons.length,
-        buttons: finalButtons,
-    };
+    return finalButtons.length
+        ? {
+              one_time: true,
+              buttons: finalButtons,
+          }
+        : null;
 }

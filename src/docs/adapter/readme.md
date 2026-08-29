@@ -77,7 +77,7 @@ bot.use(new MyI18nPlugin());
 
 ```ts
 const i18nPlugin = createPlugin((appContext) => {
-    const translations = {
+    const translations: Record<string, string> = {
         hello: 'Привет',
         bye: 'Пока',
     };
@@ -121,12 +121,21 @@ bot.use(nluPlugin);
 ```ts
 // 1. Создаем и регистрируем плагин
 const myCustomCachePlugin = createPlugin((appContext: AppContext) => {
-    const cache = new Map();
+    const cache = new Map<string, unknown>();
 
-    // Регистрируем под своим уникальным ключом
+    // Регистрируем под своим уникальным ключом.
+    // Значение должно быть либо функцией, либо объектом с методом getData.
     appContext.plugins['myCustomCache'] = {
-        set: (key: string, value: unknown) => cache.set(key, value),
-        get: (key: string) => cache.get(key),
+        getData(operation: unknown, key: unknown, value?: unknown): unknown {
+            if (operation === 'set') {
+                cache.set(String(key), value);
+                return true;
+            }
+            if (operation === 'get') {
+                return cache.get(String(key));
+            }
+            return undefined;
+        },
     };
 });
 
@@ -134,10 +143,12 @@ bot.use(myCustomCachePlugin);
 
 // 2. Обращаемся к нему из своего кода (например, в команде или контроллере)
 bot.addCommand('save_data', ['сохрани'], (text, controller) => {
-    // Получаем доступ к нашему плагину через appContext
-    const cache = controller.appContext.plugins['myCustomCache'];
+    // Получаем доступ к нашему плагину через appContext.
+    // Реестр типизирован общим AnyPluginData, поэтому сужаем тип до своей реализации.
+    const cache = controller.appContext.plugins['myCustomCache'] as
+        { getData: (...args: unknown[]) => unknown } | undefined;
     if (cache) {
-        cache.set('last_command', text);
+        cache.getData('set', 'last_command', text);
         controller.text = 'Данные сохранены в кастомный кэш!';
     }
 });

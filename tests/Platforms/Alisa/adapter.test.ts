@@ -329,6 +329,39 @@ describe('AlisaAdapter', () => {
             expect(getSoundsSpy).toHaveBeenCalled();
             expect(result.response?.text).toBe('Приветствие');
         });
+
+        it('не учитывает целые speaker-теги в лимите TTS и не разрезает их', async () => {
+            controller.text = 'Ответ';
+            controller.tts = 'x'.repeat(1018);
+            controller.sound.sounds = [
+                {
+                    key: '#sound#',
+                    path: '',
+                    sounds: [],
+                    isStandard: true,
+                },
+            ];
+            const speaker = '<speaker audio="alice-sounds-game-win-1.opus">';
+            jest.spyOn(controller.sound, 'getSounds').mockResolvedValue(
+                `${'x'.repeat(1018)}${speaker}ХВОСТ`,
+            );
+
+            const result = (await adapter.getContent(controller)) as IAlisaWebhookResponse;
+
+            expect(result.response?.tts).toContain(speaker);
+            expect(result.response?.tts?.endsWith('ХВОСТ')).toBe(true);
+            expect(result.response?.tts).not.toMatch(/<speaker[^>]*$/);
+        });
+
+        it('предупреждает, если stateData передан без выбранного хранилища', async () => {
+            controller.text = 'Ответ';
+            const logWarn = jest.spyOn(appContext, 'logWarn').mockImplementation(() => {});
+
+            const result = await adapter.getContent(controller, { value: 1 });
+
+            expect(result.session_state).toBeUndefined();
+            expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('без выбранного'));
+        });
     });
 
     describe('getLocalStorage / isLocalStorage', () => {

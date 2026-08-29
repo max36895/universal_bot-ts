@@ -1,4 +1,4 @@
-import { rateLimiter } from '../../src/middleware/rateLimiter';
+import { rateLimiter, destroyRateLimiter } from '../../src/middleware/rateLimiter';
 import { BaseBotController } from '../../src';
 import { T_TELEGRAM, TelegramAdapter } from '../../src/plugins';
 
@@ -19,6 +19,7 @@ describe('rateLimiter middleware', () => {
     });
 
     afterEach(() => {
+        destroyRateLimiter();
         jest.useRealTimers();
     });
 
@@ -85,5 +86,26 @@ describe('rateLimiter middleware', () => {
         jest.advanceTimersByTime(1000);
         await third;
         expect(next).toHaveBeenCalledTimes(5);
+    });
+
+    it('destroyRateLimiter очищает все инстансы, а не только последний', async () => {
+        ctx.appContext.platforms[T_TELEGRAM].limit = 1;
+        const limiter1 = rateLimiter(10);
+        const limiter2 = rateLimiter(10);
+
+        // Первый запрос каждого инстанса проходит, вторые встают в очередь
+        await limiter1(ctx, next);
+        const queued1 = limiter1(ctx, next);
+        await limiter2(ctx, next);
+        const queued2 = limiter2(ctx, next);
+
+        // Очереди не обработаны (таймеры не продвигали) — сработали только первые два
+        expect(next).toHaveBeenCalledTimes(2);
+
+        destroyRateLimiter();
+
+        // Оба ожидающих запроса из разных инстансов должны быть отклонены
+        await expect(queued1).rejects.toThrow('Rate limiter destroyed');
+        await expect(queued2).rejects.toThrow('Rate limiter destroyed');
     });
 });

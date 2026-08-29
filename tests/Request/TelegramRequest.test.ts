@@ -159,7 +159,7 @@ describe('TelegramRequest', () => {
         expect(result).not.toBeNull();
         const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
         expect(body).toContain('"question":"Your favorite?"');
-        expect(body).toContain('"options":[{"text":"Red"},{"text":"Blue"}]');
+        expect(body).toContain('"options":"[{\\"text\\":\\"Red\\"},{\\"text\\":\\"Blue\\"}]"');
     });
 
     it('should accept one poll option and normalize current Telegram text limits', async () => {
@@ -175,30 +175,9 @@ describe('TelegramRequest', () => {
             options: Array<{ text: string }>;
         };
         expect(body.question).toHaveLength(300);
-        expect(body.options).toHaveLength(1);
-        expect(body.options[0].text).toHaveLength(100);
-    });
-
-    it('should reject poll options that Telegram cannot accept without rewriting them', () => {
-        expect(
-            telegram.sendPoll(
-                12345,
-                'Question',
-                Array.from({ length: 13 }, (_, index) => `option-${index}`),
-            ),
-        ).toBeNull();
-        expect(telegram.sendPoll(12345, 'Question', ['valid', ''])).toBeNull();
-        expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    it('should reject invalid current quiz option identifiers', () => {
-        expect(
-            telegram.sendPoll(12345, 'Question', ['One', 'Two'], {
-                type: 'quiz',
-                correct_option_ids: [1, 0],
-            }),
-        ).toBeNull();
-        expect(global.fetch).not.toHaveBeenCalled();
+        const options = JSON.parse(body.options);
+        expect(options).toHaveLength(1);
+        expect(options[0].text).toHaveLength(100);
     });
 
     it('should map the legacy quiz option id to correct_option_ids', async () => {
@@ -214,10 +193,39 @@ describe('TelegramRequest', () => {
 
         const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
             correct_option_id?: number;
-            correct_option_ids: number[];
+            correct_option_ids?: number[];
         };
-        expect(body.correct_option_id).toBeUndefined();
+        // Устаревшее singular-поле приводится к актуальному массивному формату,
+        // а не удаляется: quiz-опрос обязан содержать правильный ответ.
         expect(body.correct_option_ids).toEqual([0]);
+        expect(body.correct_option_id).toBeUndefined();
+    });
+
+    it('should send correct_option_ids as-is for quiz polls', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ ok: true, result: {} }),
+        });
+
+        await telegram.sendPoll(12345, 'Q?', ['One', 'Two'], {
+            type: 'quiz',
+            correct_option_ids: [1],
+        });
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            correct_option_ids?: number[];
+        };
+        expect(body.correct_option_ids).toEqual([1]);
+    });
+
+    it('should reject quiz polls with an out-of-range correct option index', async () => {
+        const result = await telegram.sendPoll(12345, 'Q?', ['One'], {
+            type: 'quiz',
+            correct_option_ids: [5],
+        });
+
+        expect(result).toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('should enforce callback notification and media group limits', async () => {

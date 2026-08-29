@@ -5,7 +5,9 @@ import {
     MaxButton,
     MaxRequest,
     MarusiaAdapter,
+    SmartAppAdapter,
     TelegramAdapter,
+    TelegramButton,
     TelegramRequest,
     T_ALISA,
     T_MAX_APP,
@@ -14,8 +16,10 @@ import {
     T_VIBER,
     T_VK,
     ViberAdapter,
+    ViberButton,
     ViberRequest,
     VkAdapter,
+    VkButton,
     VkRequest,
 } from '../../src/plugins';
 
@@ -108,7 +112,7 @@ describe('Контракты платформ', () => {
                 response: expect.objectContaining({ text: '', tts: '' }),
             }),
         );
-        expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('response.text'));
+        expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('text и tts пусты'));
     });
 
     it('не путает явный client_id Маруси с Алисой', () => {
@@ -232,7 +236,7 @@ describe('Контракты платформ', () => {
             'https://platform-api2.max.ru/messages?user_id=42',
             expect.objectContaining({
                 body: JSON.stringify({ text: 'Привет' }),
-                headers: { Authorization: 'max-token' },
+                headers: { Authorization: 'max-token', 'Content-Type': 'application/json' },
             }),
         );
     });
@@ -413,5 +417,196 @@ describe('Контракты платформ', () => {
             expect.any(String),
             expect.any(Object),
         );
+    });
+
+    it('не отправляет в MAX пустую inline-клавиатуру', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_MAX_APP] = { token: 'max-token' };
+        const adapter = new MaxAdapter();
+        adapter.init(context);
+        const controller = new TestController(context);
+        controller.userId = 42;
+        controller.text = 'Привет';
+        // Достаточно обратиться к геттеру, чтобы isButtonsInit() стал true.
+        controller.buttons.clear();
+        const sendMessage = jest.spyOn(MaxRequest.prototype, 'messagesSend').mockResolvedValue({});
+
+        await adapter.getContent(controller);
+
+        // MAX отклоняет вложение inline_keyboard с пустым списком кнопок.
+        expect(sendMessage).toHaveBeenCalledWith(42, 'Привет', {}, 'user');
+    });
+
+    it('помечает ответ SmartApp как SSML только при наличии разметки', () => {
+        const context = createContext();
+        const adapter = new SmartAppAdapter();
+        adapter.init(context);
+        const controller = new TestController(context);
+        controller.platformOptions.session = {
+            device: {},
+            projectName: 'p',
+            sessionId: 's',
+            messageId: 1,
+            uuid: {},
+        };
+
+        controller.text = 'Привет & пока';
+        controller.tts = 'Привет & пока';
+        expect(adapter.getContent(controller).payload?.pronounceTextType).toBe('application/text');
+
+        controller.tts = 'Привет <speaker audio="sound.opus">';
+        expect(adapter.getContent(controller).payload?.pronounceTextType).toBe('application/ssml');
+    });
+
+    it('не отправляет в SmartApp intent: null', () => {
+        const context = createContext();
+        const adapter = new SmartAppAdapter();
+        adapter.init(context);
+        const controller = new TestController(context);
+        controller.platformOptions.session = {
+            device: {},
+            projectName: 'p',
+            sessionId: 's',
+            messageId: 1,
+            uuid: {},
+        };
+        controller.text = 'Привет';
+
+        expect(adapter.getContent(controller).payload?.intent).toBe('');
+    });
+
+    it('оставляет элементы карточки Алисы без image_id', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_ALISA] = {};
+        const adapter = new AlisaAdapter();
+        adapter.init(context);
+        const controller = new TestController(context);
+        controller.isScreen = true;
+        controller.text = 'Список';
+        // Карточка с одним текстом — рабочий сценарий: документация Алисы
+        // не помечает image_id обязательным полем элемента.
+        controller.card.addImage(null, 'Только текст', 'Описание');
+
+        const content = await adapter.getContent(controller);
+        const card = content.response?.card as { type: string; items: { title: string }[] };
+
+        expect(card.type).toBe('ItemsList');
+        expect(card.items).toEqual([{ title: 'Только текст', description: 'Описание' }]);
+    });
+
+    it('снимает клавиатуру Telegram и VK только по явному buttons.remove()', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_TELEGRAM] = { token: 'tg-token' };
+        context.appConfig.tokens[T_VK] = { token: 'vk-token' };
+        const telegram = new TelegramAdapter();
+        const vk = new VkAdapter();
+        telegram.init(context);
+        vk.init(context);
+        const sendMessage = jest
+            .spyOn(TelegramRequest.prototype, 'sendMessage')
+            .mockResolvedValue({ ok: true, result: null });
+        const vkSend = jest.spyOn(VkRequest.prototype, 'messagesSend').mockResolvedValue({});
+
+        // Пустой список кнопок клавиатуру не трогает — иначе любое обращение
+        // к ctx.buttons снимало бы уже показанную пользователю клавиатуру.
+        const untouched = new TestController(context);
+        untouched.userId = 1;
+        untouched.text = 'Привет';
+        untouched.buttons.clear();
+        await telegram.getContent(untouched);
+        expect(sendMessage.mock.calls[0][2]).not.toHaveProperty('reply_markup');
+
+        // Явный remove() снимает клавиатуру
+        const removed = new TestController(context);
+        removed.userId = 1;
+        removed.text = 'Готово';
+        removed.buttons.remove();
+        await telegram.getContent(removed);
+        expect(sendMessage.mock.calls[1][2]?.reply_markup).toBe('{"remove_keyboard":true}');
+
+        await vk.getContent(removed);
+        expect(vkSend.mock.calls[0][2]?.keyboard).toBe('{"one_time":false,"buttons":[]}');
+    });
+
+    it('отправляет tts как текст, если text пуст, на чат-платформах', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_TELEGRAM] = { token: 'tg-token' };
+        const adapter = new TelegramAdapter();
+        adapter.init(context);
+        const sendMessage = jest
+            .spyOn(TelegramRequest.prototype, 'sendMessage')
+            .mockResolvedValue({ ok: true, result: null });
+        const controller = new TestController(context);
+        controller.userId = 1;
+        controller.text = '';
+        controller.tts = 'Привет <speaker audio="a.opus"> мир';
+
+        await adapter.getContent(controller);
+
+        // Раньше в этом сценарии не отправлялось вообще ничего: общая с голосовой
+        // платформой логика оставляла чат-платформы без ответа.
+        expect(sendMessage).toHaveBeenCalledWith(1, 'Привет  мир', expect.any(Object));
+    });
+
+    it('не отправляет кнопки без подписи в VK и Viber', () => {
+        const context = createContext();
+        const empty = [{ title: '  ', type: null, payload: null, hide: false, options: {} }];
+
+        expect(VkButton.buttonProcessing(empty, context)).toBeNull();
+        expect(ViberButton.buttonProcessing(empty, context)).toBeNull();
+    });
+
+    it('предупреждает, что Telegram отбросит обычные кнопки рядом с inline', () => {
+        const context = createContext();
+        const logWarn = jest.spyOn(context, 'logWarn').mockImplementation(() => {});
+
+        const keyboard = TelegramButton.buttonProcessing(
+            [
+                { title: 'Обычная', type: null, payload: null, hide: false, options: {} },
+                { title: 'Инлайн', type: null, payload: { a: 1 }, hide: false, options: {} },
+            ],
+            context,
+        );
+
+        expect(keyboard).toEqual({
+            inline_keyboard: [[{ text: 'Инлайн', callback_data: '{"a":1}' }]],
+        });
+        expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('только один тип клавиатуры'));
+    });
+
+    it('использует токен, заданный через TelegramRequest.initToken', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_TELEGRAM] = { token: 'config-token' };
+        const fetchMock = jest
+            .fn()
+            .mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true }) });
+        context.httpClient = fetchMock as never;
+
+        const request = new TelegramRequest(context);
+        request.initToken('explicit-token');
+        await request.sendMessage(1, 'привет');
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            'https://api.telegram.org/botexplicit-token/sendMessage',
+            expect.any(Object),
+        );
+    });
+
+    it('удаляет template из тела запроса VK, а не подставляет строку undefined', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_VK] = { token: 'vk-token' };
+        const fetchMock = jest
+            .fn()
+            .mockResolvedValue({ ok: true, status: 200, json: async () => ({ response: 1 }) });
+        context.httpClient = fetchMock as never;
+
+        await new VkRequest(context).messagesSend(1, 'привет', {
+            template: { type: 'carousel', elements: [] },
+            keyboard: { buttons: [] },
+        } as never);
+
+        const body = fetchMock.mock.calls[0][1].body as string;
+        expect(body).not.toContain('template=undefined');
+        expect(body).not.toContain('template=');
     });
 });

@@ -84,10 +84,10 @@ describe('Telegram Button', () => {
             });
         });
 
-        it('возвращает remove_keyboard при отсутствии кнопок', () => {
+        it('возвращает null при отсутствии кнопок', () => {
             const result = TelegramButton.buttonProcessing([], appContext);
 
-            expect(result).toEqual({ remove_keyboard: true });
+            expect(result).toBeNull();
         });
 
         it('обрезает количество кнопок до 40', () => {
@@ -109,7 +109,7 @@ describe('Telegram Button', () => {
                 appContext,
             );
 
-            expect(result).toEqual({ remove_keyboard: true });
+            expect(result).toBeNull();
             expect(logWarn).toHaveBeenCalledWith(
                 expect.stringContaining('превышает лимит 64 байт'),
             );
@@ -120,13 +120,13 @@ describe('Telegram Button', () => {
                 [{ title: 'Действие', payload: `${'a'.repeat(63)}😀` }],
                 appContext,
             );
-            expect(result).toEqual({ remove_keyboard: true });
+            expect(result).toBeNull();
         });
 
         it('не создаёт клавиатуру при пустом массиве кнопок', () => {
             const result = TelegramButton.buttonProcessing([], appContext);
 
-            expect(result).toEqual({ remove_keyboard: true });
+            expect(result).toBeNull();
         });
     });
 });

@@ -7,6 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 # Используем npm ci, если есть lock-файл — он фиксирует проверенные версии.
 # Если lock-файла нет, npm ci упадёт, поэтому ставим зависимости через install.
+# Ставим ВСЕ зависимости (включая dev): для сборки нужен typescript,
+# а npm ci --only=production ничего бы не установил (runtime-зависимостей нет).
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 COPY . .
@@ -33,6 +35,6 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit
 
 USER umbot
 
-EXPOSE {{port}}
+EXPOSE 3000
 
 CMD ["node", "dist/index.js"]

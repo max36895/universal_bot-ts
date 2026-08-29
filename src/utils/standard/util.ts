@@ -96,6 +96,16 @@ export function keysCount(obj: object | Record<string, unknown>): number {
 const MAX_SIMILAR_TEXT_TOTAL_LENGTH = 2000;
 
 /**
+ * Размер окна сравнения для длинных строк (в символах).
+ */
+const SIMILAR_SAMPLE_WINDOW = 32;
+
+/**
+ * Количество окон, равномерно распределённых по длине строки при сравнении длинных текстов.
+ */
+const SIMILAR_SAMPLE_COUNT = 8;
+
+/**
  * Вычисляет процент схожести двух текстов
  * Использует алгоритм LCS (Longest Common Subsequence)
  *
@@ -121,22 +131,32 @@ export function similarText(first: string, second: string): number {
     // Защита от O(n·m) DoS при очень длинных строках.
     // Для типичных сценариев (максимум 30-50 символов в команде) лимит не достигается.
     if (first.length + second.length > MAX_SIMILAR_TEXT_TOTAL_LENGTH) {
-        // Для длинных строк используем дешёвую эвристику по длине и префиксу,
-        // чтобы не грузить event loop на квадратичном DP.
+        // Для длинных строк используем дешёвую эвристику, чтобы не грузить
+        // event loop на квадратичном DP.
         const lengthDiff = Math.abs(first.length - second.length);
         const maxLen = Math.max(first.length, second.length);
         if (lengthDiff / maxLen > 0.5) {
             return 0;
         }
-        // Проверяем только начало и конец
-        const prefixLen = Math.min(50, Math.min(first.length, second.length));
-        const firstPrefix = first.slice(0, prefixLen);
-        const secondPrefix = second.slice(0, prefixLen);
-        if (firstPrefix !== secondPrefix) {
+        // Сравниваем несколько окон, равномерно распределённых по всей длине
+        // (начало, середину и конец), а не только префикс. Иначе полностью
+        // несовпадающие хвосты давали бы 100% схожесть при равных длинах.
+        const minLen = Math.min(first.length, second.length);
+        const window = Math.min(SIMILAR_SAMPLE_WINDOW, minLen);
+        const lastPos = Math.max(0, minLen - window);
+        let matched = 0;
+        for (let i = 0; i < SIMILAR_SAMPLE_COUNT; i++) {
+            const start = Math.round((lastPos * i) / (SIMILAR_SAMPLE_COUNT - 1));
+            if (first.slice(start, start + window) === second.slice(start, start + window)) {
+                matched++;
+            }
+        }
+        if (matched === 0) {
             return 0;
         }
-        // Если префиксы совпали — возвращаем примерную оценку по длине
-        return Math.round(((maxLen - lengthDiff) / maxLen) * 100);
+        const sampleRatio = matched / SIMILAR_SAMPLE_COUNT;
+        const lengthRatio = (maxLen - lengthDiff) / maxLen;
+        return Math.round(sampleRatio * lengthRatio * 100);
     }
 
     // Вычисление длины LCS (Longest Common Subsequence) методом динамического программирования
@@ -697,6 +717,11 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
     let isFirst = true;
     for (const key in formData) {
         if (!Object.prototype.hasOwnProperty.call(formData, key)) {
+            continue;
+        }
+        // Пропускаем пустые значения: String(undefined) даёт строку "undefined",
+        // и такое поле уходило в тело запроса, ломая ответ API платформы.
+        if (formData[key] === undefined || formData[key] === null) {
             continue;
         }
         const encodedKey = encodeURIComponent(key);

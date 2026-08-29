@@ -138,7 +138,6 @@ export class BotTest extends Bot {
         let count: number = 0;
         let state: string | IUserData = {};
         let isEnd = false;
-        this._botController.skipAutoReply = true;
         if (this.getAppContext().appMode !== 'strict_prod') {
             this.setAppMode('dev');
         }
@@ -161,6 +160,10 @@ export class BotTest extends Bot {
                 this.setContent(JSON.parse(this._content));
             }
             this._setBotController(this._botController);
+            // Флаг выставляем на каждой итерации: clearStoreData() в конце цикла
+            // сбрасывает его в false, и со второго хода адаптеры уходили бы
+            // в реальные API платформ прямо из консольного теста.
+            this._botController.skipAutoReply = true;
 
             const result: IResponse = (await this.run(this.appType)) as IResponse;
             const platformAdapter = this.getAppContext().platforms;
@@ -249,15 +252,29 @@ export class BotTest extends Bot {
      * Если запрашиваемая платформа зарегистрирована в `platforms` — используется её
      * `getQueryExample` для генерации валидного payload. Иначе возвращается ошибка.
      *
+     * @remarks
+     * На время симуляции включается `skipAutoReply`, поэтому чат-платформы
+     * (Telegram, VK, Viber, Max) НЕ отправляют сообщение в реальное API —
+     * их `getContent()` возвращает `'ok'`. Текст ответа в этом случае остаётся
+     * в `text` контроллера. Для голосовых платформ результатом будет готовый
+     * JSON-ответ платформы (например, `res.response.text`).
+     *
      * @example
      * ```ts
      * const tester = new BotTest();
-     * tester.use(new TelegramAdapter());
+     * tester.use(new AlisaAdapter());
      * tester.addCommand('start', ['привет'], (_, ctx) => { ctx.text = 'Привет!'; });
      *
-     * // Автоматически сгенерирует Telegram-update и вызовет run()
-     * const res = await tester.simulate('привет', { platform: 'telegram' });
+     * // Голосовая платформа: ответ приходит в формате платформы
+     * const res = await tester.simulate('привет', { platform: 'alisa' }) as {
+     *   response: { text: string };
+     * };
      * console.log(res.response.text); // 'Привет!'
+     *
+     * // Чат-платформа: отправка в API пропускается, результат — 'ok',
+     * // а текст ответа доступен через контроллер
+     * tester.use(new TelegramAdapter('token'));
+     * await tester.simulate('привет', { platform: 'telegram' }); // 'ok'
      * ```
      *
      * @param query Текст пользователя (например, "привет")
@@ -295,9 +312,18 @@ export class BotTest extends Bot {
             count,
             state,
         );
-        return this.run(
-            targetPlatform,
-            typeof content === 'string' ? content : JSON.stringify(content),
-        );
+        // Без этого флага адаптеры чат-платформ внутри getContent() реально
+        // отправляли бы сообщение в API платформы прямо из локального теста
+        // (по аналогии с флагом в test(), который выставляется на каждом ходе).
+        const oldSkipAutoReply = this._botController.skipAutoReply;
+        this._botController.skipAutoReply = true;
+        try {
+            return await this.run(
+                targetPlatform,
+                typeof content === 'string' ? content : JSON.stringify(content),
+            );
+        } finally {
+            this._botController.skipAutoReply = oldSkipAutoReply;
+        }
     }
 }

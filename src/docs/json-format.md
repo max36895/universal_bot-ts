@@ -261,7 +261,10 @@ npm start
 
 ### End Node
 
-Завершает диалог.
+> ⚠️ **Не поддерживается генератором.** Узел `end` может встречаться в экспорте редактора,
+> но `create from-flow` его игнорирует — код для завершения диалога (`isEnd = true`)
+> не генерируется. Если нужно завершать диалог, добавьте действие/ответ, выставляющий
+> `isEnd` вручную в сгенерированном коде.
 
 ```json
 { "type": "end", "id": "node_303" }
@@ -393,12 +396,12 @@ npm start
 }
 ```
 
-| Тип            | Описание                 |
-| -------------- | ------------------------ |
-| `next`         | Последовательный переход |
-| `branch_true`  | Ветка «да» от условия    |
-| `branch_false` | Ветка «нет» от условия   |
-| `slot_match`   | Совпадение слота         |
+| Тип            | Описание                                                                           |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `next`         | Последовательный переход                                                           |
+| `branch_true`  | Ветка «да» от условия                                                              |
+| `branch_false` | Ветка «нет» от условия                                                             |
+| `slot_match`   | Совпадение слота (зарезервировано: генератор сейчас не использует этот тип связей) |
 
 ### Паттерны связей
 
@@ -522,20 +525,10 @@ bot.addStep('enterName', (ctrl) => {
 bot.addStep('check', (ctrl) => {
     const condVar = ctrl.userData.score;
     const condVal = 100;
-    const numA = Number(condVar);
-    const numB = Number(condVal);
-    const useNum = !isNaN(numA) && !isNaN(numB);
-    let result = false;
-    switch ('gte') {
-        case 'gte':
-            result = useNum ? numA >= numB : false;
-            break;
-        // ... другие операторы
-    }
-    if (result) {
+    // Оператор превращается в выражение внутри if (для gte — числовое сравнение)
+    if (Number(condVar) >= Number(condVal)) {
         setText(ctrl, 'Вы победили!');
-    }
-    if (!result) {
+    } else {
         setText(ctrl, `Счёт: ${ctrl.userData.score}`);
     }
 });
@@ -665,7 +658,7 @@ bot.addCommand('tts_demo', ['озвучь'], (cmd, ctrl) => {
 
 ```typescript
 bot.addStep('fetch_data', async (ctrl) => {
-    // fetchWithTimeout — обёртка с таймаутом ~8 сек, генерируется автоматически в ./utils
+    // fetchWithTimeout — обёртка с таймаутом 2000 мс, генерируется автоматически в ./utils
     const response = await fetchWithTimeout('https://api.example.com/data');
     ctrl.userData.apiResult = await response.json();
     setText(ctrl, `Получено: ${ctrl.userData.apiResult}`);
@@ -767,16 +760,19 @@ import { setText, setTTS, fetchWithTimeout } from './utils'; // условно
 import { FileAdapter, MongoAdapter } from 'umbot/plugins'; // по database.type
 ```
 
-| Условие                         | Импорт                                                            |
-| ------------------------------- | ----------------------------------------------------------------- |
-| Есть TTS у любого узла          | `import { setText, setTTS } from './utils'`                       |
-| Нет TTS                         | `import { setText } from './utils'`                               |
-| Есть http_request действия      | `import { fetchWithTimeout } from './utils'` (генерируется cli)   |
-| Есть isSayTrue/isSayFalse/isUrl | `import { Text } from 'umbot'`                                    |
-| database.type === 'file'        | `import { FileAdapter } from 'umbot/plugins'`                     |
-| database.type === 'mongo'       | `import { MongoAdapter } from 'umbot/plugins'`                    |
-| 7 платформ                      | `import { fullPlatforms } from 'umbot/plugins'`                   |
-| Менее 7 платформ                | `import { TelegramAdapter, VkAdapter, ... } from 'umbot/plugins'` |
+| Условие                          | Импорт                                                            |
+| -------------------------------- | ----------------------------------------------------------------- |
+| Есть TTS у любого узла           | `import { setText, setTTS } from './utils'`                       |
+| Нет TTS                          | `import { setText } from './utils'`                               |
+| Есть http_request действия       | `import { fetchWithTimeout } from './utils'` (генерируется cli)   |
+| Есть isSayTrue/isSayFalse/isUrl  | `import { Text } from 'umbot'`                                    |
+| Есть random_number действия      | `import { rand } from 'umbot/utils'`                              |
+| database.type === 'file'         | `import { FileAdapter } from 'umbot/plugins'`                     |
+| database.type === 'mongo'        | `import { MongoAdapter } from 'umbot/plugins'`                    |
+| Все 7 платформ (или список пуст) | `import { fullPlatforms } from 'umbot/plugins'`                   |
+| Только голосовые платформы       | `import { voicePlatforms } from 'umbot/plugins'`                  |
+| Только чат-платформы             | `import { botPlatforms } from 'umbot/plugins'`                    |
+| Смешанный набор платформ         | `import { TelegramAdapter, VkAdapter, ... } from 'umbot/plugins'` |
 
 ---
 

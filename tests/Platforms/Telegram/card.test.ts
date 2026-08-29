@@ -189,6 +189,28 @@ describe('Telegram Card', () => {
             expect(result![2].media).toBe('file_id_3');
         });
 
+        it('использует URL из imageDir напрямую в media group', async () => {
+            const result = await TelegramCard.cardProcessing(
+                {
+                    usedGallery: true,
+                    images: [
+                        { imageDir: 'https://example.com/one.jpg', desc: 'One' },
+                        { imageDir: 'https://example.com/two.jpg', desc: 'Two' },
+                    ],
+                    buttons: controller.buttons,
+                    title: null,
+                    description: null,
+                    showOne: false,
+                },
+                controller,
+            );
+
+            expect(result?.map((item) => item.media)).toEqual([
+                'https://example.com/one.jpg',
+                'https://example.com/two.jpg',
+            ]);
+        });
+
         it('пропускает изображения без imageDir и imageToken (если осталось >= 2)', async () => {
             const cardInfo: ICardInfo = {
                 usedGallery: true,
@@ -208,6 +230,31 @@ describe('Telegram Card', () => {
             expect(result).toHaveLength(2);
             expect(result![0].media).toBe('valid_id_1');
             expect(result![1].media).toBe('valid_id_2');
+        });
+
+        it('снимает префикс attach:// при отправке единственного локального файла через sendPhoto', async () => {
+            // Регрессия: если из галереи после фильтрации оставался один локальный
+            // файл, в sendPhoto уходила строка attach://path — Telegram трактовал её
+            // как file_id и отбивал запрос, картинка терялась.
+            const sendPhotoSpy = jest
+                .spyOn(TelegramRequest.prototype, 'sendPhoto')
+                .mockResolvedValue({ ok: true, result: {} });
+            const cardInfo: ICardInfo = {
+                usedGallery: true,
+                images: [{} as never, { imageDir: '/local/path/img.jpg', desc: 'Локальное фото' }],
+                buttons: controller.buttons,
+                title: null,
+                description: null,
+            };
+
+            const result = await TelegramCard.cardProcessing(cardInfo, controller);
+
+            expect(result).toBeNull();
+            expect(sendPhotoSpy).toHaveBeenCalledWith(
+                12345,
+                '/local/path/img.jpg',
+                'Локальное фото',
+            );
         });
 
         it('возвращает null при showOne=true с одним изображением', async () => {

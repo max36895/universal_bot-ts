@@ -162,23 +162,17 @@ export class YandexSoundRequest extends YandexRequest {
         if (this.skillId) {
             const sounds = await this.getLoadedSounds();
             if (sounds) {
-                const results = await Promise.allSettled(
-                    sounds.map(async (image) => {
-                        try {
-                            await this.deleteSound(image.id);
-                            // Добавить задержку между запросами
-                            await new Promise((resolve) => setTimeout(resolve, 200).unref());
-                            return true;
-                        } catch (e) {
-                            this._log(
-                                `deleteSounds() Ошибка при удалении аудио "${image.id}": ${e}`,
-                            );
-                            return false;
-                        }
-                    }),
-                );
-                // Если хотя бы один аудиофайл не удалено — вернуть false
-                return results.every((r) => r.status === 'fulfilled' && r.value);
+                let success = true;
+                for (const sound of sounds) {
+                    try {
+                        success = (await this.deleteSound(sound.id)) !== null && success;
+                    } catch (e) {
+                        this._log(`deleteSounds() Ошибка при удалении аудио "${sound.id}": ${e}`);
+                        success = false;
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 200).unref());
+                }
+                return success;
             } else {
                 this._log('deleteSounds() Не удалось получить загруженные аудиофайлы!');
             }

@@ -42,7 +42,12 @@ describe('MaxRequest', () => {
         expect(global.fetch).toHaveBeenCalledWith(
             'https://platform-api2.max.ru/test_method',
             expect.objectContaining({
-                headers: { Authorization: 'test-max-token' },
+                // JSON-тело обязано уходить с Content-Type: раньше кастомный заголовок
+                // Authorization полностью затирал его в Request._getOptions().
+                headers: {
+                    Authorization: 'test-max-token',
+                    'Content-Type': 'application/json',
+                },
                 body: '{}',
             }),
         );

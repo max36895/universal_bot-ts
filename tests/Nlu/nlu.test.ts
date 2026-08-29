@@ -99,6 +99,31 @@ describe('Nlu test', () => {
         expect(Nlu.getLink('http://test.test').status).toBe(true);
     });
 
+    it('Find link: полное значение не обрезается на точках', () => {
+        // Регрессия: регулярка исключала точку из совпадения и резала любую ссылку
+        // на первой же точке (https://example.com/path.html -> https://example).
+        expect(Nlu.getLink('https://example.com/path/page.html').result).toEqual([
+            'https://example.com/path/page.html',
+        ]);
+        expect(Nlu.getLink('http://site.ru:3000/app').result).toEqual(['http://site.ru:3000/app']);
+        expect(Nlu.getLink('Зайди на https://ya.ru сегодня').result).toEqual(['https://ya.ru']);
+        expect(Nlu.getLink('Две: https://a.ru и http://b.com/x?y=1').result).toEqual([
+            'https://a.ru',
+            'http://b.com/x?y=1',
+        ]);
+    });
+
+    it('Find link: концевая пунктуация не попадает в ссылку', () => {
+        expect(Nlu.getLink('Ссылка: https://ya.ru.').result).toEqual(['https://ya.ru']);
+        expect(Nlu.getLink('Смотрите (https://example.com/page).').result).toEqual([
+            'https://example.com/page',
+        ]);
+        expect(Nlu.getLink('Перечень: https://a.ru, https://b.ru!').result).toEqual([
+            'https://a.ru',
+            'https://b.ru',
+        ]);
+    });
+
     it('find user name', () => {
         expect(nlu.getUserName()).toEqual({
             username: 'name',

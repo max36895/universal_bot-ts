@@ -14,8 +14,10 @@
 
 ```ts
 import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 
 const bot = new BotTest();
+bot.use(fullPlatforms); // регистрируем платформы — без этого test() не знает, какой формат использовать
 await bot.test(); // запускает интерактивную консоль
 ```
 
@@ -37,21 +39,27 @@ node index.js
 
 ```ts
 import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 
 // Тестирование Telegram
 const bot = new BotTest('telegram');
+bot.use(fullPlatforms);
 ```
 
 ```ts
 import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 
 // Тестирование Алисы
 const bot = new BotTest('alisa');
+bot.use(fullPlatforms);
 ```
+
+> Платформу для тестирования нужно зарегистрировать через `bot.use(...)` — иначе `BotTest` не найдёт её адаптер.
 
 ### Параметры тестирования
 
-Класс `BotTest` принимает объект `IBotTestParams` с настройками отображения результатов:
+Объект `IBotTestParams` с настройками отображения результатов передаётся в метод `test()`:
 
 | Параметр      | Тип     | По умолчанию | Описание                                          |
 | ------------- | ------- | ------------ | ------------------------------------------------- |
@@ -102,11 +110,13 @@ await bot.test({
 
 ```ts
 import { BotTest } from 'umbot/test';
+import { fullPlatforms } from 'umbot/plugins';
 import { MyController } from './MyController';
 
 describe('MyController', () => {
     it('should greet user', async () => {
         const bot = new BotTest();
+        bot.use(fullPlatforms); // без зарегистрированной платформы run() бросит ошибку
         bot.initBotController(MyController);
 
         // Запуск обработки запроса
@@ -129,17 +139,38 @@ describe('MyController', () => {
 
 ```ts
 import { BotTest } from 'umbot/test';
-import { TelegramAdapter } from 'umbot/plugins';
+import { AlisaAdapter, T_ALISA } from 'umbot/plugins';
 
 const bot = new BotTest();
-bot.use(new TelegramAdapter());
+bot.use(new AlisaAdapter());
 bot.addCommand('start', ['привет'], (_, ctx) => {
     ctx.text = 'Привет!';
 });
 
-// Автоматически сгенерирует Telegram-update и вызовет run()
-const res = await bot.simulate('привет', { platform: 'telegram' });
+// Голосовая платформа: результатом будет готовый JSON-ответ платформы
+const res = (await bot.simulate('привет', { platform: T_ALISA })) as {
+    response: { text: string };
+};
 console.log(res.response.text); // 'Привет!'
+```
+
+Для чат-платформ (Telegram, VK, Viber, Max) `simulate()` включает `skipAutoReply`, поэтому
+реальной отправки сообщения в API платформы не происходит — даже если токен не задан:
+
+```ts
+import { BotTest } from 'umbot/test';
+import { TelegramAdapter, T_TELEGRAM } from 'umbot/plugins';
+
+const bot = new BotTest();
+bot.use(new TelegramAdapter('your-token'));
+bot.addCommand('start', ['привет'], (_, ctx) => {
+    ctx.text = 'Привет!';
+});
+
+// Для чат-платформ результат — 'ok' (отправка пропущена),
+// а текст ответа остаётся в контроллере
+await bot.simulate('привет', { platform: T_TELEGRAM });
+console.log(bot.getBotController()?.text); // 'Привет!'
 ```
 
 Параметры `simulate(query, options)`:
@@ -152,7 +183,8 @@ console.log(res.response.text); // 'Привет!'
 | `options.count`    | `number`           | `0`                                                  | Номер сообщения (`0` — новый пользователь/сессия) |
 | `options.state`    | `object \| string` | `{}`                                                 | Предзаполненное состояние сессии                  |
 
-Метод возвращает ответ платформы — тот же результат, что и `run()`.
+Метод возвращает тот же результат, что и `run()`: для голосовых платформ — JSON-ответ,
+для чат-платформ — строку `'ok'`, так как отправка в API в режиме симуляции пропускается.
 
 ### Jest-тесты с полной настройкой
 

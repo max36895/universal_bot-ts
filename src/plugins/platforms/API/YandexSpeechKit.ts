@@ -217,7 +217,7 @@ export class YandexSpeechKit extends YandexRequest {
      * Требуется только для пользовательского аккаунта
      * Максимум 50 символов
      */
-    public folderId: number | null;
+    public folderId: string | number | null;
 
     /**
      * Создает экземпляр YandexSpeechKit

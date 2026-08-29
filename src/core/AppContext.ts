@@ -80,15 +80,32 @@ import { join } from 'node:path';
 export const T_AUTO = 'auto';
 
 const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
-const regVk = /vk1a[a-z0-9]{79}/g;
+// Токен Telegram в «голом» виде: <bot_id>:<35 символов>. Отдельный шаблон нужен потому,
+// что regBot требует литерального префикса "bot" и ловит токен только внутри URL API.
+const regTelegramBare = /\b\d{6,12}:[A-Za-z0-9_-]{35}\b/g;
+// Реальный формат сервисного токена VK — vk1.a.<payload>, с точками.
+// Прежний шаблон /vk1a[a-z0-9]{79}/ не совпадал ни с одним настоящим токеном.
+const regVk = /\bvk1\.a\.[A-Za-z0-9_-]{20,}/g;
+// JWT (Сбер SmartApp, OAuth-провайдеры): три base64url-сегмента через точку.
+const regJwt = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
 const regVk2 =
     /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g;
 const regToken = /"[A-Za-z0-9+/=]{30,256}"/g;
 const regToken2 = /\b[A-Za-z0-9]{64,256}\b/g;
 
+/**
+ * Ключи метаданных, значение которых маскируется целиком независимо от формата.
+ * Формат токенов у платформ меняется, а имя поля — нет, поэтому проверка по ключу
+ * закрывает случаи, которые не ловит ни один шаблон.
+ */
+const SECRET_KEY_PATTERN =
+    /token|secret|password|passwd|api[_-]?key|private[_-]?key|authorization|credential|access[_-]?key|client[_-]?secret/i;
+
 const PATTERNS = [
     { regex: regBot, replacement: 'bot***' },
-    { regex: regVk, replacement: 'vk1a***' },
+    { regex: regTelegramBare, replacement: '***' },
+    { regex: regVk, replacement: 'vk1.a.***' },
+    { regex: regJwt, replacement: '***' },
     {
         regex: regVk2,
         replacement: '$1:"***"',
@@ -96,6 +113,19 @@ const PATTERNS = [
     { regex: regToken, replacement: '"***"' },
     { regex: regToken2, replacement: '***' },
 ];
+
+/**
+ * Сколько подряд неудачных попыток записи файловых логов допускается
+ * до срабатывания защиты и паузы.
+ */
+const LOG_STORAGE_MAX_FAILURES = 3;
+
+/**
+ * Длительность паузы записи файловых логов после срабатывания защиты, мс.
+ * В течение паузы накопленные записи отбрасываются: недоступный диск
+ * (read-only ФС в serverless, отсутствие прав) за это время доступнее не станет.
+ */
+const LOG_STORAGE_PAUSE_MS = 60_000;
 
 interface IErrWarnData {
     errors: string[];
@@ -165,6 +195,18 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         timeout: null,
     };
 
+    /**
+     * Счётчик подряд идущих неудачных попыток записи файловых логов.
+     * Часть защиты от недоступного хранилища (см. #saveErrorData).
+     */
+    #logStorageFailCount = 0;
+
+    /**
+     * Момент времени (мс), до которого запись файловых логов приостановлена
+     * после серии сбоев. 0 — пауза не активна.
+     */
+    #logStoragePausedUntil = 0;
+
     #logErrorBind = this.logError.bind(this);
 
     /**
@@ -205,6 +247,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Переменные окружения
      */
     #envVars: IEnvConfig | undefined;
+
+    /**
+     * Флаг: кэш `#envVars` заполнен тихим чтением process.env без настроенного env.
+     * Такой кэш не должен прятать явно указанный env-файл при повторном вызове.
+     */
+    #envVarsFromSilentEnv = false;
 
     /**
      * Кастомный logger приложения
@@ -281,64 +329,58 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Закрывает все подключения, для корректного завершения работы приложения
      */
     public async close(): Promise<void> {
-        this.#saveErrorData();
+        await this.#saveErrorData();
         if (this.database.adapter && this.database.isSendConnect) {
-            return this.database.adapter.destroy();
+            await this.database.adapter.destroy();
         }
     }
 
     /**
      * Установка всех токенов из переменных окружения или параметров
+     * @param {boolean} [overwrite=true] - Перезаписывать ли уже заданные токены.
+     * `false` используется для фонового чтения process.env, чтобы не затереть
+     * токены, которые пользователь явно задал через конструктор адаптера или `setAppConfig`.
      */
-    #setTokens(): void {
+    #setTokens(overwrite: boolean = true): void {
         const envVars = this.#getEnvVars();
         if (envVars) {
             // Не самое хорошее решение, но возможно этот вариант кому-то удобен
-            if (envVars.VIBER_TOKEN) {
-                this.appConfig.tokens.viber ??= {};
-                this.appConfig.tokens.viber.token = envVars.VIBER_TOKEN;
-            }
+            const applyEnvValue = (platformName: string, field: string, value?: string): void => {
+                if (!value) {
+                    return;
+                }
+                this.appConfig.tokens[platformName] ??= {};
+                if (overwrite || this.appConfig.tokens[platformName][field] === undefined) {
+                    this.appConfig.tokens[platformName][field] = value;
+                }
+            };
 
-            if (envVars.TELEGRAM_TOKEN) {
-                this.appConfig.tokens.telegram ??= {};
-                this.appConfig.tokens.telegram.token = envVars.TELEGRAM_TOKEN;
-            }
+            applyEnvValue('viber', 'token', envVars.VIBER_TOKEN);
+            applyEnvValue('telegram', 'token', envVars.TELEGRAM_TOKEN);
+            applyEnvValue('vk', 'token', envVars.VK_TOKEN);
+            applyEnvValue('vk', 'confirmation_token', envVars.VK_CONFIRMATION_TOKEN);
+            applyEnvValue('vk', 'secret_key', envVars.VK_SECRET_KEY);
+            applyEnvValue('max_app', 'token', envVars.MAX_TOKEN);
+            applyEnvValue('marusia', 'token', envVars.MARUSIA_TOKEN);
+            applyEnvValue('alisa', 'token', envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN);
 
-            if (envVars.VK_TOKEN) {
-                this.appConfig.tokens.vk ??= {};
-                this.appConfig.tokens.vk.token = envVars.VK_TOKEN;
-                this.appConfig.tokens.vk.confirmation_token =
-                    envVars.VK_CONFIRMATION_TOKEN || this.appConfig.tokens.vk.confirmation_token;
-            }
-
-            if (envVars.VK_SECRET_KEY) {
-                this.appConfig.tokens.vk ??= {};
-                this.appConfig.tokens.vk.secret_key = envVars.VK_SECRET_KEY;
-            }
-
-            if (envVars.MAX_TOKEN) {
-                this.appConfig.tokens.max_app ??= {};
-                this.appConfig.tokens.max_app.token = envVars.MAX_TOKEN;
-            }
-
-            if (envVars.MARUSIA_TOKEN) {
-                this.appConfig.tokens.marusia ??= {};
-                this.appConfig.tokens.marusia.token = envVars.MARUSIA_TOKEN;
-            }
-
-            if (envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN) {
-                this.appConfig.tokens.alisa ??= {};
-                this.appConfig.tokens.alisa.token = envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN;
-            }
+            // SpeechKit отвечает за TTS в чат-платформах Telegram, VK и Max,
+            // поэтому один токен раскладывается сразу по трём платформам.
+            applyEnvValue('telegram', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
+            applyEnvValue('vk', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
+            applyEnvValue('max_app', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
         }
     }
 
     /**
      * Возвращает объект с настройками окружения
-     * @param {string|undefined} envPath - Путь к файлу окружения
+     * @param {string|null|undefined} envPath - Путь к файлу окружения, `'local'` для чтения
+     * из process.env или `null`, чтобы принудительно прочитать process.env без настроенного env.
+     * Если параметр не передан, используется `appConfig.env`.
      */
-    #getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
-        const setEnvFn = (errorMsg: string): void => {
+    #getEnvVars(envPath: string | null | undefined = undefined): IEnvConfig | undefined {
+        const resolvedPath = envPath === undefined ? this.appConfig?.env : envPath;
+        const setEnvFn = (errorMsg: string, silent: boolean = false): void => {
             let correctEnvValue = {};
             // Используем доступ к env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая для работы с api и базой данных.
             // Используется только в случае если явно хотят работать с env файлами.
@@ -362,6 +404,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     ALISA_TOKEN,
                     // Устаревшее имя токена Алисы — сохранено для обратной совместимости
                     YANDEX_TOKEN,
+                    // Получаем токен Yandex SpeechKit для TTS в чат-платформах
+                    SPEECH_KIT_TOKEN,
                     // Получаем хост для подключения к базе
                     DB_HOST,
                     // Получаем имя пользователя для подключения к базе
@@ -381,6 +425,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                     MARUSIA_TOKEN,
                     ALISA_TOKEN,
                     YANDEX_TOKEN,
+                    SPEECH_KIT_TOKEN,
                     DB_HOST,
                     DB_USER,
                     DB_PASSWORD,
@@ -394,28 +439,41 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 }
             });
             if (isError) {
-                this.logError('AppContext: ' + errorMsg);
+                // В тихом режиме не ругаемся: переменные просто не заданы,
+                // и это нормальная ситуация (например, токены переданы через конструктор адаптера).
+                if (!silent) {
+                    this.logError('AppContext: ' + errorMsg);
+                }
             } else {
                 this.#envVars = correctEnvValue;
+                this.#envVarsFromSilentEnv = silent;
             }
         };
-        if (envPath === 'local') {
+        if (resolvedPath === 'local') {
             setEnvFn('Не удалось получить данные из process.env');
             // Возвращаем результаты сразу, чтобы не возникло ситуации, когда пытается прочитать файл local
             return this.#envVars;
         }
-        if (this.#envVars) {
+        // Кэш от тихого чтения process.env не должен прятать явно указанный env-файл:
+        // если пользователь настроил env после тихого подхвата, читаем файл.
+        if (this.#envVars && !(this.#envVarsFromSilentEnv && resolvedPath)) {
             return this.#envVars;
         }
-        if (envPath) {
-            const res = loadEnvFile(envPath);
+        if (resolvedPath) {
+            const res = loadEnvFile(resolvedPath);
             if (res.status) {
                 this.#envVars = res.data;
+                this.#envVarsFromSilentEnv = false;
             } else {
                 setEnvFn(
                     (res.error as string) + '. Также не удалось получить данные из process.env',
                 );
             }
+        } else {
+            // Env-файл не настроен — пробуем подтянуть токены прямо из process.env.
+            // Благодаря этому токены, переданные через `docker run -e` или переменные
+            // окружения в serverless-окружении, работают без явного `env: 'local'`.
+            setEnvFn('', true);
         }
         return this.#envVars;
     }
@@ -425,21 +483,22 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param {Partial<IAppConfig>} config - Пользовательская конфигурация
      */
     public setAppConfig(config: Partial<IAppConfig>): void {
-        if (config.tokens) {
-            for (const platform of Object.keys(config.tokens)) {
+        const correctConfig: Partial<IAppConfig> = { ...config };
+        if (correctConfig.tokens) {
+            for (const platform of Object.keys(correctConfig.tokens)) {
                 this.appConfig.tokens[platform] = {
                     ...this.appConfig.tokens[platform],
-                    ...config.tokens[platform],
+                    ...correctConfig.tokens[platform],
                 };
             }
-            delete config.tokens;
+            delete correctConfig.tokens;
         }
         this.appConfig = {
             ...this.appConfig,
-            ...config,
+            ...correctConfig,
         };
-        if (config.env) {
-            const envVars = this.#getEnvVars(config.env);
+        if (correctConfig.env) {
+            const envVars = this.#getEnvVars(correctConfig.env);
             if (envVars) {
                 // Пишем в конфиг для подключения к БД, только если есть настройки для подключения
                 if (this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME) {
@@ -453,6 +512,14 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 }
 
                 this.#setTokens();
+            }
+        } else if (!this.appConfig.env) {
+            // Env не настроен (нет ни файла, ни 'local') — тихо пробуем дозаполнить токены
+            // из process.env, чтобы работал сценарий `docker run -e TELEGRAM_TOKEN=...`.
+            // Уже заданные токены при этом не перезаписываются.
+            const envVars = this.#getEnvVars(null);
+            if (envVars) {
+                this.#setTokens(false);
             }
         }
     }
@@ -483,7 +550,10 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 }
                 return true;
             }) || [];
-        this.#setTokens();
+        // Перезапись токенов значениями из окружения допустима только при явно
+        // настроенном env ('local' или файл). При тихом подхвате process.env
+        // токены, заданные разработчиком, не затираются.
+        this.#setTokens(!!this.appConfig.env);
     }
 
     /**
@@ -560,23 +630,64 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         }
     }
 
-    #saveErrorData(): void {
+    async #saveErrorData(): Promise<void> {
         if (this.#errWarnData.timeout) {
             clearTimeout(this.#errWarnData.timeout);
         }
-        if (this.#errWarnData.warnings.length) {
-            this.#saveLog('warn.log', this.#errWarnData.warnings.join('\n'), false).catch(() => {
-                // ignore error
-            });
-        }
-        if (this.#errWarnData.errors.length) {
-            this.#saveLog('error.log', this.#errWarnData.errors.join('\n'), false).catch(() => {
-                // ignore error
-            });
-        }
+        const warnings = this.#errWarnData.warnings.splice(0);
+        const errors = this.#errWarnData.errors.splice(0);
         this.#errWarnData.errors = [];
         this.#errWarnData.warnings = [];
         this.#errWarnData.timeout = null;
+        if (!warnings.length && !errors.length) {
+            return;
+        }
+
+        // Защита от недоступного хранилища (read-only ФС в serverless, нет прав,
+        // путь занят файлом). Пока пауза активна, накопленные записи отбрасываются
+        // без попыток записи: о проблеме уже сообщено в stderr, а повторные попытки
+        // ничего не дадут, только раздуют память.
+        if (Date.now() < this.#logStoragePausedUntil) {
+            return;
+        }
+
+        const results = await Promise.all([
+            warnings.length
+                ? this.#saveLog('warn.log', warnings.join('\n'), false).catch(() => false)
+                : Promise.resolve(true),
+            errors.length
+                ? this.#saveLog('error.log', errors.join('\n'), false).catch(() => false)
+                : Promise.resolve(true),
+        ]);
+        if (results.every(Boolean)) {
+            // Хранилище доступно (в том числе снова доступно после паузы) —
+            // снимаем счётчик сбоев.
+            this.#logStorageFailCount = 0;
+            return;
+        }
+        this.#logStorageFailCount++;
+        if (this.#logStorageFailCount >= LOG_STORAGE_MAX_FAILURES) {
+            this.#logStorageFailCount = 0;
+            this.#logStoragePausedUntil = Date.now() + LOG_STORAGE_PAUSE_MS;
+            this.#reportLogStorageFailure();
+        }
+    }
+
+    /**
+     * Сообщает о недоступности хранилища логов в обход самого конвейера логирования.
+     *
+     * Писать об этом через logError нельзя: конвейер неисправен, и раньше попытка
+     * записать «ошибку записи ошибки» через тот же конвейер зацикливалась навсегда.
+     * Поэтому сообщение уходит напрямую в stderr — так же поступают pino, winston
+     * и bunyan: путь обработки сбоя логгера обязан заканчиваться вне логгера.
+     * Это осознанное исключение из правила «не писать в console из src/».
+     */
+    #reportLogStorageFailure(): void {
+        process.stderr.write(
+            `[umbot] Не удалось записать логи в "${this.appConfig.error_log}". ` +
+                `Запись приостановлена на ${Math.round(LOG_STORAGE_PAUSE_MS / 1000)} с, ` +
+                `новые записи за это время будут отброшены.\n`,
+        );
     }
 
     #errWarnLog(msg: string, isError: boolean): void {
@@ -588,7 +699,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (!this.#errWarnData.timeout) {
             this.#errWarnData.timeout = setTimeout(() => {
                 this.#errWarnData.timeout = null;
-                this.#saveErrorData();
+                this.#saveErrorData().catch(() => {
+                    // Страховка: все сбои записи уже обрабатываются внутри
+                    // #saveErrorData (пауза + сообщение в stderr). Логировать
+                    // здесь нельзя — это вернуло бы цикл самовоспроизводящихся
+                    // ошибок, от которого защищает этот конвейер.
+                });
             }, 200).unref();
         }
     }
@@ -628,7 +744,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * if (saved) console.log('Данные сохранены');
      * ```
      */
-    public saveFileData(fileName: string, data: unknown): Promise<boolean> {
+    public async saveFileData(fileName: string, data: unknown): Promise<boolean> {
         const dir: IDir = {
             path: this.appConfig.json || join(__dirname, '..', '..', 'json'),
             fileName: fileName,
@@ -713,6 +829,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
             const result: Record<string, unknown> = {};
             for (const [key, item] of Object.entries(value)) {
+                // Поле с «говорящим» именем маскируем целиком вместе с вложенными
+                // объектами и массивами: формат токена у платформы может измениться,
+                // а имя поля в метаданных останется тем же.
+                if (SECRET_KEY_PATTERN.test(key)) {
+                    result[key] = '***';
+                    continue;
+                }
                 result[key] = this.#maskUnknown(item, parents);
             }
             return result;
@@ -741,6 +864,10 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (this.appMode === 'dev') {
             console.error(msg);
         }
-        return saveData(dir, this.#maskSecrets(msg), 'a', this.#logErrorBind);
+        // errorLogger сюда намеренно не передаётся: сбой записи лога через logError
+        // порождал новую запись, которая снова шла на запись, — бесконечный цикл
+        // самовоспроизводящихся ошибок. Обработкой сбоя занимается #saveErrorData
+        // (счётчик сбоев и пауза), а не сам конвейер логирования.
+        return saveData(dir, this.#maskSecrets(msg), 'a');
     }
 }

@@ -176,17 +176,17 @@ export class Nlu {
 
     /**
      * Регулярное выражение для поиска URL-ссылок.
-     * Поддерживает HTTP и HTTPS протоколы.
+     * Поддерживает HTTP и HTTPS протоколы. Точки внутри ссылки сохраняются,
+     * а концевая пунктуация (точка, запятая, скобка и т.п.) в совпадение не попадает.
      *
      * @example
      * ```ts
      * // Находит ссылки вида:
      * // http://localhost
-     * // http://localhost/path
+     * // https://example.com/path/page.html
      * ```
      */
-    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/gimu;
-
+    private static readonly LINK_REGEX = /(https?:\/\/[^\s]*[^\s.,;:!?)\]])/giu;
     /**
      * Тип сущности: ФИО.
      * Используется для извлечения имен, фамилий и отчеств.

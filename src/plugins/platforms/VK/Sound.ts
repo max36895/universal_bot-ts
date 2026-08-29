@@ -71,7 +71,8 @@ export async function soundProcessing(
         const content = await speechKit.getTts(text);
         let sText = null;
         if (content) {
-            sText = await getSoundInDB(controller, content.fileName, true);
+            // SpeechKit возвращает путь к временному файлу, а не его содержимое.
+            sText = await getSoundInDB(controller, content.fileName);
             try {
                 await unlink(content.fileName);
             } catch {

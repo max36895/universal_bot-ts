@@ -141,4 +141,47 @@ describe('CLI stats (computeLogStats)', () => {
         process.exitCode = originalExitCode;
         errorSpy.mockRestore();
     });
+
+    it('принимает flow.json после флагов в create from-flow', async () => {
+        const flowPath = path.join(tmpDir, 'flow.json');
+        fs.writeFileSync(
+            flowPath,
+            JSON.stringify({
+                name: 'flag-order',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'greeting',
+                        slots: ['привет'],
+                        isPattern: false,
+                        response: { text: 'Привет!', buttons: [], sounds: [] },
+                    },
+                ],
+                edges: [],
+                fallback: { text: 'Не понял' },
+                welcome: { text: 'Привет!' },
+                database: { type: 'file', config: {} },
+                isLocalStorage: true,
+            }),
+        );
+        const outputDir = path.join(tmpDir, 'flag-order-bot');
+        const logSpy = jest.spyOn(console, 'log').mockImplementation();
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+        const originalExitCode = process.exitCode;
+        process.exitCode = undefined;
+
+        await main(
+            { command: 'create', appName: null, mode: 'prod', hostname: '0.0.0.0', port: 3000 },
+            ['node', 'umbot', 'create', 'from-flow', '--output', outputDir, flowPath],
+        );
+
+        expect(fs.existsSync(path.join(outputDir, 'src', 'index.ts'))).toBe(true);
+        expect(process.exitCode).not.toBe(1);
+        process.exitCode = originalExitCode;
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
 });

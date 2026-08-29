@@ -119,6 +119,27 @@ describe('similarText', () => {
         const result = similarText(long1, long2);
         expect(result).toBeGreaterThan(0);
     });
+
+    it('не даёт 100% для длинных строк с общим префиксом и разными хвостами', () => {
+        const prefix = 'x'.repeat(50);
+        const long1 = prefix + 'a'.repeat(1000);
+        const long2 = prefix + 'b'.repeat(1000);
+        const result = similarText(long1, long2);
+        expect(result).toBeLessThan(80);
+    });
+
+    it('возвращает 100 для одинаковых длинных строк', () => {
+        const long = 'z'.repeat(1500);
+        expect(similarText(long, long)).toBe(100);
+    });
+
+    it('даёт высокую схожесть длинным строкам, отличающимся только в конце', () => {
+        const base = 'q'.repeat(1200);
+        const long1 = base + 'aaaa';
+        const long2 = base + 'bbbb';
+        const result = similarText(long1, long2);
+        expect(result).toBeGreaterThan(50);
+    });
 });
 
 describe('httpBuildQuery', () => {
@@ -127,6 +148,18 @@ describe('httpBuildQuery', () => {
         expect(result).toContain('John+Doe');
         expect(result).toContain('name=');
         expect(result).toContain('age=25');
+    });
+
+    it('пропускает undefined и null вместо строки "undefined"', () => {
+        // String(undefined) даёт "undefined", и такое поле уходило в тело запроса,
+        // из-за чего API платформы отвечал ошибкой невалидного параметра.
+        const result = httpBuildQuery({
+            a: undefined,
+            b: '2',
+            c: null,
+            d: '4',
+        } as never);
+        expect(result).toBe('b=2&d=4');
     });
 
     it('использует кастомный разделитель', () => {

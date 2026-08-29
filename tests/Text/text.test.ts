@@ -17,6 +17,29 @@ describe('Text', () => {
         expect('testing te').toEqual(Text.resize('testing te', 20, true));
     });
 
+    it('Resize не разрывает суррогатную пару', () => {
+        // 😀 занимает два code unit'а UTF-16. Обрезка ровно между ними оставляла
+        // одинокий суррогат — невалидную для UTF-8 строку, которую платформы отбивают.
+        const text = 'aaa😀bbb';
+        expect(Text.resize(text, 4, false)).toEqual('aaa');
+        expect(Text.resize(text, 5, false)).toEqual('aaa😀');
+        expect(Text.resize(text, 7, true)).toEqual('aaa...');
+        [...Array(text.length + 2).keys()].forEach((size) => {
+            expect(Text.resize(text, size, false)).not.toMatch(/[\uD800-\uDBFF]$/);
+            expect(Text.resize(text, size, true)).not.toMatch(/[\uD800-\uDBFF]\.{3}$/);
+        });
+    });
+
+    it('isSayText с глобальным regexp находит совпадение на каждом вызове', () => {
+        // RegExp с флагом g хранит позицию поиска в lastIndex. Фреймворк кэширует
+        // объект между запросами, поэтому без сброса совпадение находилось через раз.
+        const pattern = /привет/g;
+        for (let i = 0; i < 4; i++) {
+            expect(Text.isSayText(pattern, 'привет', true)).toBe(true);
+            expect(Text.isSayText([pattern], 'привет', true)).toBe(true);
+        }
+    });
+
     it('isUrl', () => {
         const url = [
             'https://google.com',

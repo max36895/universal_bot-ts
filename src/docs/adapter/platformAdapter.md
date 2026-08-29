@@ -73,14 +73,16 @@ setQueryData(query: unknown, controller: BotController): boolean {
     }
 
     controller.requestObject = query; // Сохраняем оригинал
-    controller.userId = q.user_id;
+    controller.userId = q.user_id as string | number;
     controller.userCommand = ((q.text as string) || '').toLowerCase().trim();
     controller.originalUserCommand = (q.text as string) || '';
-    controller.messageId = q.message_id;
+    controller.messageId = q.message_id as string | number;
 
     // Если платформа присылает данные о юзере
     if (q.user) {
-        controller.nlu.setNlu({ thisUser: { username: (q.user as Record<string, unknown>).name } });
+        controller.nlu.setNlu({
+            thisUser: { username: (q.user as Record<string, unknown>).name as string },
+        });
     }
 
     return true;
@@ -349,7 +351,7 @@ setQueryData(query, controller) {
 ### Лимиты платформы (Rate Limit)
 
 Если у платформы есть жесткий лимит запросов в секунду (например, 30 req/sec у Telegram/Max), укажите это в классе
-адаптера. Фреймворк автоматически подключит встроенный `rateLimiter`.
+адаптера. Значение `limit` читает встроенный middleware `rateLimiter`.
 
 ```ts
 export class MyPlatformAdapter extends BasePlatformAdapter {
@@ -357,7 +359,7 @@ export class MyPlatformAdapter extends BasePlatformAdapter {
 }
 ```
 
-Для того чтобы лимит начал работать, **необходимо явно подключить middleware rateLimiter**:
+Само по себе поле `limit` ничего не ограничивает — **необходимо явно подключить middleware rateLimiter**:
 
 ```ts
 import { Bot } from 'umbot';
@@ -373,6 +375,8 @@ bot.use(rateLimiter());
 
 ### Соблюдение таймаутов
 
-У Алисы документированный лимит ответа — 4,5 секунды; у других платформ он отличается. В BasePlatformAdapter уже вшита проверка времени: если ваш
-getContent выполняется слишком долго, фреймворк сам запишет ошибку/предупреждение в логи. Просто не делайте тяжелых
-синхронных операций внутри getContent.
+Голосовые платформы жестко ограничивают время ответа: фреймворк ориентируется на пороги `WARNING_TIME_REQUEST = 2000 мс`
+(предупреждение) и `MAX_TIME_REQUEST = 2900 мс` (ошибка) — у Алисы лимит около 3 секунд, у других платформ он отличается.
+Проверка не выполняется автоматически: в своём `getContent` вызовите `this._timeLimitLog(controller)` после формирования
+ответа, как это делают встроенные адаптеры, — иначе медленные ответы не попадут в логи. Пороги можно переопределить
+в наследнике. И главное — не делайте тяжелых синхронных операций внутри getContent.

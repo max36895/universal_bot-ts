@@ -162,7 +162,34 @@ export class Text {
     static #minCacheUsage = 0;
 
     /**
+     * Обрезает строку по границе символа, не разрывая суррогатную пару.
+     *
+     * `String.substring` режет по code unit'ам UTF-16, поэтому обрыв ровно между
+     * старшим и младшим суррогатом эмодзи оставляет «половину символа». Такая строка
+     * невалидна в UTF-8: платформы либо показывают U+FFFD, либо отклоняют сообщение.
+     * Поэтому при попадании на старший суррогат отступаем на один code unit назад.
+     *
+     * @param text Исходный текст
+     * @param size Максимальная длина в code unit'ах UTF-16
+     */
+    static #safeCut(text: string, size: number): string {
+        if (size <= 0) {
+            return '';
+        }
+        let end = size;
+        const code = text.charCodeAt(end - 1);
+        // 0xD800..0xDBFF — старший суррогат, значит младший остался за границей обрезки
+        if (code >= 0xd800 && code <= 0xdbff) {
+            end--;
+        }
+        return text.substring(0, end);
+    }
+
+    /**
      * Обрезает текст до указанной длины
+     *
+     * Обрезка выполняется по границе символа: суррогатные пары (эмодзи) не разрываются,
+     * поэтому результат остаётся валидной строкой для отправки платформе.
      *
      * @param {string | null} text - Исходный текст
      * @param {number} [size=950] - Максимальная длина результата
@@ -173,6 +200,7 @@ export class Text {
      * ```ts
      * Text.resize('Длинный текст', 6); // -> 'Дли...'
      * Text.resize('Длинный текст', 6, false); // -> 'Длинны'
+     * Text.resize('aaa😀bbb', 4, false); // -> 'aaa' (эмодзи не разрезано пополам)
      * ```
      */
     public static resize(
@@ -189,11 +217,11 @@ export class Text {
         }
 
         if (!isEllipsis) {
-            return text.substring(0, size);
+            return Text.#safeCut(text, size);
         }
 
         const ellipsisSize = Math.max(0, size - 3);
-        return text.substring(0, ellipsisSize) + '...';
+        return Text.#safeCut(text, ellipsisSize) + '...';
     }
 
     /**
@@ -328,6 +356,12 @@ export class Text {
             useDirectRegExp && isRegex(pattern)
                 ? pattern
                 : Text.#getCachedRegex(pattern, customReg);
+        // У regexp с флагом g/y `test` продвигает lastIndex, поэтому на следующем запросе
+        // тот же объект начнёт поиск с середины строки и вернёт false. Кэш переиспользует
+        // объект между запросами — обязательно сбрасываем позицию перед проверкой.
+        if (cachedRegex.lastIndex !== 0) {
+            cachedRegex.lastIndex = 0;
+        }
         return cachedRegex.test(text);
     }
 

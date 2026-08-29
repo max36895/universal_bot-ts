@@ -15,7 +15,10 @@ bot.use(async (ctx, next) => {
 
 // middleware для конкретной платформы
 bot.use(T_ALISA, async (ctx, next) => {
-    if (!ctx.requestObject?.session?.user_id) {
+    // requestObject — сырой payload платформы (unknown), нужен каст
+    const request = ctx.requestObject as Record<string, unknown> | null;
+    const session = request?.session as Record<string, unknown> | undefined;
+    if (!session?.user_id) {
         ctx.text = 'Некорректный запрос';
         ctx.isEnd = true;
         // next() не вызывается → action() не запустится
@@ -88,7 +91,7 @@ bot.use(T_TELEGRAM, async (ctx, next) => {
 
 ## Встроенная middleware: rateLimiter
 
-Фреймворк поставляется с встроенной middleware для ограничения частоты запросов (`rateLimiter`). Лимит берётся из свойства `limit` адаптера платформы: у Telegram, VK и Viber он равен 30 req/sec, у MAX — 2 req/sec. Если у адаптера нет свойства `limit`, rateLimiter пропускает запросы без ограничений.
+Фреймворк поставляется с встроенной middleware для ограничения частоты входящих запросов (`rateLimiter`). Лимит берётся из свойства `limit` адаптера платформы: у Telegram, VK, Viber и MAX он равен 30 req/sec. Исходящие сообщения MAX отдельно ограничиваются очередью API-клиента до 2 сообщений в секунду на диалог. Если у адаптера нет свойства `limit`, rateLimiter пропускает запросы без ограничений.
 
 ```ts
 import { rateLimiter } from 'umbot/middleware';
@@ -100,8 +103,8 @@ bot.use(rateLimiter(200, 120_000)); // queue=200, idle 2 мин
 
 **Что делает:**
 
-- Читает `appContext.platforms[platform].limit` (TG/VK/Viber = 30, MAX = 2 по умолчанию).
-- Поддерживает sliding-1s-window per `{platform, userId}`.
+- Читает `appContext.platforms[platform].limit` (TG/VK/Viber/MAX = 30 по умолчанию).
+- Поддерживает фиксированное 1-секундное окно per `{platform, userId}`: счётчик запросов сбрасывается каждую секунду.
 - При превышении — ставит в очередь (до `maxQueueSize`).
 - Переполнение очереди → бросает исключение.
 - Все таймеры `.unref()` — не блокируют выход процесса.
@@ -225,7 +228,9 @@ bot.use(
 
 - Поддерживает как прямые IP (`'192.168.1.10'`), так и CIDR (`'10.0.0.0/8'`).
 - IPv6-mapped адреса автоматически нормализуются в IPv4 (`::ffff:127.0.0.1` → `127.0.0.1`).
-- **Fail-open**: если `requestObject` не содержит socket (например, тест `bot.run()`) — запрос пропускается. Это сделано, чтобы ваш бот не ломался в dev/test окружении.
+- **Fail-open**: если IP клиента неизвестен (например, запрос пришёл через `bot.run()`/`BotTest`,
+  а не через `webhookHandle`) — запрос пропускается. IP берётся из `ctx.platformOptions.clientIp` —
+  его заполняет фреймворк из `req.socket.remoteAddress` при обработке webhook. Это сделано, чтобы ваш бот не ломался в dev/test окружении.
 
 ⚠️ **Важно**: ipFilter НЕ заменяет реальную защиту через reverse proxy / фаервол. Это дополнительный уровень.
 

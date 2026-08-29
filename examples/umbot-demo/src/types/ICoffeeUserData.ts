@@ -10,6 +10,8 @@ export interface ICoffeeOrder {
     size: string;
     /** Имя, на которое готовим заказ. */
     name: string;
+    /** Итоговая сумма заказа в рублях (0, если сработала лояльность). */
+    total: number;
     /** Время создания заказа (unix-миллисекунды). */
     ts: number;
 }

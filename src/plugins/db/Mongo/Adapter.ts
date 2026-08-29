@@ -400,6 +400,9 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
                         break;
                 }
                 rule.name.forEach((data) => {
+                    if (element[data] === undefined || element[data] === null) {
+                        return;
+                    }
                     if (type === 'string') {
                         if (rule.max !== undefined) {
                             element[data] = Text.resize(element[data] as string, rule.max);

@@ -254,10 +254,32 @@ const bot = new BotTest();
 bot.use(fullPlatforms);
 
 // Запускает интерактивный режим в консоли: вы вводите фразы, приложение отвечает
-await bot.test();
+bot.test();
 ```
 
-### 2. Логирование
+### 2. Локальная отладка с реальными платформами (туннель)
+
+Консольный режим `BotTest` не требует сети, но для проверки с реальной платформой нужен вебхук.
+Платформы не умеют отправлять запросы на `localhost` — им нужен публичный HTTPS-адрес.
+На время разработки поднимите туннель, который пробросит ваш локальный порт в интернет:
+
+```bash
+# ngrok
+ngrok http 3000
+
+# или cloudflared (Cloudflare Tunnel)
+cloudflared tunnel --url http://localhost:3000
+```
+
+Инструмент выдаст публичный URL вида `https://xxxx.ngrok-free.app`. Запустите приложение
+(`bot.start('localhost', 3000)`) и укажите этот URL в качестве вебхука в консоли разработчика
+платформы. После отладки удалите URL и разверните приложение на сервере с HTTPS
+(см. «Запуск в production»).
+
+> ⚠️ URL туннеля временный и подходит только для разработки. Не оставляйте продакшн-вебхук
+> указывать на туннель.
+
+### 3. Логирование
 
 ```ts
 // В контроллере
@@ -285,9 +307,9 @@ bot.start('0.0.0.0', 8080); // запуск HTTP-сервера
 Убедитесь, что всё выполнено:
 
 - [ ] **Режим `strict_prod`** — включен через `bot.setAppMode('strict_prod')`
-- [ ] **intents передан** — `bot.setPlatformParams({ intents: [...] })` (даже если пустой массив)
+- [ ] **intents настроены** — при необходимости `bot.setPlatformParams({ intents: [...] })`. Учтите: переданный массив **заменяет** встроенные интенты `welcome`/`help`, поэтому либо добавьте их в свой список, либо задайте собственные слоты для приветствия и помощи
 - [ ] **Токены в .env** — не в коде, не в git. Проверьте `.gitignore`
-- [ ] **MongoAdapter вместо FileAdapter** — FileAdapter хранит данные в памяти, не подходит для production
+- [ ] **MongoAdapter вместо FileAdapter** — FileAdapter держит всю таблицу в памяти (риск OOM на больших данных) и рассчитан на один процесс, поэтому не подходит для production
 - [ ] **Preload для медиа** — все изображения и звуки предзагружены (иначе первый ответ может превысить 3 сек)
 - [ ] **rateLimiter подключен** — `bot.use(rateLimiter())` для защиты от превышения лимитов платформ
 - [ ] **error_log настроен** — `bot.setAppConfig({ error_log: './logs' })`
@@ -312,15 +334,15 @@ bot.addCommand('greet', ['привет'], (_, bc) => {
 });
 ```
 
-### Бот не отвечает на приветствие
+### Бот отвечает стандартным текстом на приветствие
 
-**Причина:** Не передан `welcome_text` в `setPlatformParams`.
+**Причина:** Не задан свой `welcome_text` в `setPlatformParams` — фреймворк отвечает placeholder-текстом по умолчанию.
 
 ```ts
-// ❌ Неправильно — нет welcome_text
+// ❌ Не настроено — ответит стандартным текстом приветствия
 bot.setPlatformParams({ intents: [] });
 
-// ✅ Правильно
+// ✅ Правильно — свой текст приветствия
 bot.setPlatformParams({
     welcome_text: 'Привет! Я могу помочь.',
     intents: [],
@@ -427,14 +449,17 @@ TELEGRAM_TOKEN=your-telegram-token
 VK_TOKEN=your-vk-token
 VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
 VIBER_TOKEN=your-viber-token
-YANDEX_TOKEN=your-alisa-token
+ALISA_TOKEN=your-alisa-token
 MARUSIA_TOKEN=your-marusia-token
+MAX_TOKEN=your-max-token
 
 DB_HOST=localhost
 DB_USER=user
 DB_PASSWORD=password
 DB_NAME=bot_db
 ```
+
+> `YANDEX_TOKEN` для Алисы устарел и сохранён только для обратной совместимости — используйте `ALISA_TOKEN` (при обоих заданных приоритет у него).
 
 > ⚠️ **Не коммитьте `.env` в git!** Он уже добавлен в шаблонный `.gitignore` при генерации через CLI,
 > но если создаёте файл вручную — проверьте, что он в исключениях.

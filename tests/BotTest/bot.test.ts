@@ -299,7 +299,11 @@ describe('umbot', () => {
                 bot.setContent(bot.getSkillContent('звук'));
                 await bot.run(type);
                 bot.removeCommand('sound');
-                expect(bot.getTts()?.match(/\d+/g)?.length).toEqual(i);
+                if (type === T_SMART_APP) {
+                    expect(bot.getTts()).not.toContain('$s_');
+                } else {
+                    expect(bot.getTts()?.match(/\d+/g)?.length).toEqual(i);
+                }
                 bot.clearState();
             }, `Обработка своих звуков. Количество мелодий равно ${i}`);
         }

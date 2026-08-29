@@ -277,13 +277,39 @@ export class CommandReg {
      * @param slots Слот(ы) или регулярное выражение для проверки.
      * @returns Исходные слоты или пустой массив с флагом ошибки.
      */
+    /**
+     * Сообщает о найденном небезопасном регулярном выражении.
+     *
+     * Уровень намеренно зависит от окружения. Без `re2` движок регулярных выражений
+     * Node подвержен катастрофическому бэктрекингу: одно сообщение пользователя
+     * может занять поток на минуты, и бот перестанет отвечать вообще всем.
+     * Поэтому такая связка — это ошибка, а не предупреждение.
+     *
+     * @param patterns Небезопасные шаблоны
+     */
+    #logDangerRegex(patterns: string): void {
+        const base = `Найдено небезопасное регулярное выражение (ReDoS), проверьте его корректность: ${patterns}`;
+        if (this.strictMode) {
+            this.logError(`${base}. Выражение отключено (strictMode).`, {});
+            return;
+        }
+        if (!__$usedRe2) {
+            this.logError(
+                `${base}. Пакет re2 не установлен, поэтому выражение выполняется штатным движком Node ` +
+                    'с экспоненциальным бэктрекингом: специально подобранное сообщение пользователя ' +
+                    'заблокирует поток и бот перестанет отвечать всем. Установите re2 (npm i re2) ' +
+                    'либо включите strictMode, либо перепишите выражение.',
+                {},
+            );
+            return;
+        }
+        this.logWarn(`${base}. Выражение выполняется через re2 без бэктрекинга.`, {});
+    }
+
     isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
         if (isRegex(slots)) {
             if (!isRegexLikelySafe(slots.source, true)) {
-                this[this.strictMode ? 'logError' : 'logWarn'](
-                    `Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: ${slots.source}`,
-                    {},
-                );
+                this.#logDangerRegex(slots.source);
                 if (this.strictMode) {
                     return {
                         status: false,
@@ -311,10 +337,7 @@ export class CommandReg {
             }
             const status = errors.length === 0;
             if (!status) {
-                this[this.strictMode ? 'logError' : 'logWarn']?.(
-                    `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: ${errors.join(', ')}`,
-                    {},
-                );
+                this.#logDangerRegex(errors.join(', '));
                 errors.length = 0;
             }
             return { status, slots: this.strictMode ? correctSlots : slots };
@@ -379,6 +402,20 @@ export class CommandReg {
         groupData.regExp = pattern;
     }
 
+    /** Закрывает текущую группу, чтобы следующая отдельная команда не попала внутрь её диапазона. */
+    #closeRegexpGroup(): void {
+        if (!this.#noFullGroups) {
+            return;
+        }
+        if (
+            this.regexpGroup.has(this.#noFullGroups.name) &&
+            ((this.regexpGroup.get(this.#noFullGroups.name) as IGroupData).commands.length || 0) < 2
+        ) {
+            this.regexpGroup.delete(this.#noFullGroups.name);
+        }
+        this.#noFullGroups = null;
+    }
+
     #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
         if (
@@ -389,6 +426,7 @@ export class CommandReg {
         }
         if (isRegexp) {
             if (!isRegexLikelySafe(slots.join('|'), false)) {
+                this.#closeRegexpGroup();
                 return commandName;
             }
             if (this.#noFullGroups) {
@@ -453,16 +491,7 @@ export class CommandReg {
                 return commandName;
             }
         } else {
-            if (this.#noFullGroups) {
-                if (
-                    this.regexpGroup.has(this.#noFullGroups.name) &&
-                    ((this.regexpGroup.get(this.#noFullGroups.name) as IGroupData).commands
-                        .length || 0) < 2
-                ) {
-                    this.regexpGroup.delete(this.#noFullGroups.name);
-                }
-                this.#noFullGroups = null;
-            }
+            this.#closeRegexpGroup();
             return null;
         }
     }

@@ -16,15 +16,20 @@
 
 ## Обязательный контракт (что нужно реализовать)
 
-Наследуемся от `BaseDbAdapter` и реализуем:
+Наследуемся от `BaseDbAdapter` и реализуем абстрактные методы:
 
-1. connect(): Promise<boolean> — Устанавливаете соединение с БД.
-2. isConnected(): Promise<boolean> — Проверяете, живо ли соединение (например, делаете ping БД).
-3. \_select(selectData: IQuery, where: IQueryData | null, isOne: boolean): Promise<IModelRes> — Поиск.
-4. \_insert(insertData: IQuery): Promise<boolean> — Добавление.
-5. \_update(updateData: IQuery): Promise<boolean> — Обновление.
-6. \_remove(removeData: IQuery): Promise<boolean> — Удаление.
-7. destroy(): Promise<void> — Закрываете пул соединений при остановке приложения.
+1. isConnected(): Promise<boolean> | boolean — Проверяете, живо ли соединение (например, делаете ping БД).
+2. \_select(selectData: IQuery, where: IQueryData | null, isOne: boolean): IModelRes | Promise<IModelRes> — Поиск.
+3. \_insert(insertData: IQuery): boolean | Promise<boolean> — Добавление.
+4. \_update(updateData: IQuery): boolean | Promise<boolean> — Обновление.
+5. \_remove(removeData: IQuery): boolean | Promise<boolean> — Удаление.
+
+Опционально (в базовом классе есть реализации по умолчанию):
+
+- connect(): Promise<boolean> | boolean — по умолчанию возвращает `true`. Переопределите, чтобы устанавливать реальное соединение с БД.
+- destroy(): void | Promise<void> — по умолчанию пустой метод. Переопределите, чтобы закрывать пул соединений при остановке приложения.
+- close(tableName: string): void | Promise<void> — закрытие подключения к конкретной таблице.
+- \_query(callback: TQueryCb) — по умолчанию возвращает `null`. Переопределите, если хотите поддержать произвольные запросы через `model.query()`.
 
 ## Форматы данных (Шпаргалка):
 
@@ -207,6 +212,37 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
         }
     }
 
+    async _update(updateData: IQuery): Promise<boolean> {
+        const pool = this._appContext.database.databaseInfo?.pool;
+        if (!pool) return false;
+
+        try {
+            const validData = this.validate(updateData, updateData.data);
+            const sqlQuery = this.buildUpdateQuery(
+                updateData.tableName,
+                validData,
+                updateData.query,
+            );
+            await pool.execute(sqlQuery);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    async _remove(removeData: IQuery): Promise<boolean> {
+        const pool = this._appContext.database.databaseInfo?.pool;
+        if (!pool) return false;
+
+        try {
+            const sqlQuery = this.buildDeleteQuery(removeData.tableName, removeData.query);
+            await pool.execute(sqlQuery);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
     // Переопределяем _query, чтобы поддержать сырые запросы от разработчика
     public async _query(callback: TQueryCb): Promise<unknown> {
         const pool = this._appContext.database.databaseInfo?.pool;
@@ -253,6 +289,16 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
 
     private buildInsertQuery(table: string, data: IQueryData): string {
         // ... логика формирования INSERT
+        return '';
+    }
+
+    private buildUpdateQuery(table: string, data: IQueryData, where: IQueryData | null): string {
+        // ... логика формирования UPDATE
+        return '';
+    }
+
+    private buildDeleteQuery(table: string, where: IQueryData | null): string {
+        // ... логика формирования DELETE
         return '';
     }
 }

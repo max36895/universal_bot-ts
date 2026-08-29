@@ -58,15 +58,15 @@ async function main(
     const infoText =
         'Доступные параметры:\n' +
         '\n - create <project-name> [--minimal] [--prod] - Создать новый голосовой навык/чат-бот. В качестве параметра передается название проекта(На Английском языке) или json файл с параметрами.' +
-        '\n\t --minimal   Создать минимальную рабочую версию (1 файл). Работает только для стандартного шаблона.' +
+        '\n\t --minimal   Создать минимальную рабочую версию без класса-контроллера (логика в index.ts). Работает только для стандартного шаблона.' +
         '\n\t --prod      Создать production-готовый проект (Docker, CI/CD)' +
         '\n - create from-flow <flow.json> [--output ./path] [--usecloud] - Создать проект из flow.json (визуальный редактор)' +
         '\n\t --usecloud  Сгенерировать конфигурацию для Yandex Cloud Functions' +
         '\n - validate <flow.json> - Проверить корректность flow.json перед генерацией' +
-        '\n - stats --log <path> - Агрегировать метрики из лога (RPS, топ команд, p50/p95/p99)' +
+        '\n - stats --log <path> - Агрегировать метрики из лога (число строк/ошибок/предупреждений, топ команд, p50/p95/p99 latency)' +
         '\n - generateEnv - Сгенерировать файл .env' +
         '\n - add <feature> - Добавляет данные в проект. Доступные типы: ' +
-        '\n\t docker  Добавляет docker-compose.yml' +
+        '\n\t docker  Добавляет Dockerfile и .dockerignore' +
         '\n\t deploy  Добавляет файл для деплоя на сервер' +
         '\n\t env     Добавляет файл .env';
     if (param && param.command) {
@@ -76,7 +76,22 @@ async function main(
             case 'create': {
                 // Проверяем, не является ли второй аргумент "from-flow"
                 if (argv[3] === 'from-flow') {
-                    const flowJsonPath = argv[4];
+                    // Путь к flow.json — первый позиционный аргумент после from-flow.
+                    // Флаги можно ставить как до, так и после пути:
+                    // работают и `create from-flow flow.json --output ./x`,
+                    // и `create from-flow --output ./x flow.json`.
+                    let flowJsonPath = null;
+                    for (let i = 4; i < argv.length; i++) {
+                        if (argv[i] === '--output') {
+                            i++; // пропускаем значение флага
+                            continue;
+                        }
+                        if (argv[i].startsWith('--')) {
+                            continue;
+                        }
+                        flowJsonPath = argv[i];
+                        break;
+                    }
                     if (!flowJsonPath) {
                         console.log('Укажите путь к flow.json файлу.');
                         console.log(

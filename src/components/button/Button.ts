@@ -75,7 +75,7 @@ function init<TButtonPayload = TBtnPayload>(
             if (appContext?.platformParams.utm_text === null) {
                 if (!baseUrl.includes('utm_source')) {
                     const separator = baseUrl.includes('?') ? '&' : '?';
-                    correctUrl = `${baseUrl}${separator}utm_source=${encodeURIComponent(options.utmSource || 'umBot')}&utm_medium=${encodeURIComponent(options.utmMedium || 'cpc')}&utm_campaign=${encodeURIComponent(options.utmCampaign || 'phone')}${fragment}`;
+                    correctUrl = `${baseUrl}${separator}utm_source=${encodeURIComponent(options.utmSource || 'umbot')}&utm_medium=${encodeURIComponent(options.utmMedium || 'cpc')}&utm_campaign=${encodeURIComponent(options.utmCampaign || 'phone')}${fragment}`;
                 }
             } else if (appContext?.platformParams.utm_text) {
                 if (!baseUrl.includes('utm_source')) {

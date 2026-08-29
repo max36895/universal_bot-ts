@@ -86,7 +86,9 @@ export class YandexRequest {
         this._request = new Request(appContext);
         this._appContext = appContext;
         this.setOAuth(oauth || appContext.appConfig.tokens[T_ALISA]?.token || null);
-        this._request.maxTimeQuery = 1500;
+        // Загрузка ресурсов и синтез речи не укладываются в прежние 1,5 секунды
+        // на медленном соединении, поэтому оставляем ограниченный, но реалистичный таймаут.
+        this._request.maxTimeQuery = 15_000;
         this.#error = null;
     }
 
@@ -124,14 +126,12 @@ export class YandexRequest {
      */
     public setOAuth(oauth: string | null): void {
         this.#oauth = oauth;
-        if (this._request.header) {
-            this._request.header = {
-                ...this._request.header,
-                Authorization: `OAuth ${this.#oauth}`,
-            };
-        } else {
-            this._request.header = { Authorization: `OAuth ${this.#oauth}` };
+        const headers = { ...(this._request.header as Record<string, string> | null) };
+        delete headers.Authorization;
+        if (oauth) {
+            headers.Authorization = `OAuth ${oauth}`;
         }
+        this._request.header = Object.keys(headers).length ? headers : null;
     }
 
     /**
