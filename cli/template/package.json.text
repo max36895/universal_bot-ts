@@ -3,7 +3,8 @@
     "version": "1.0.0",
     "description": "{{name}} application",
     "keywords": [
-        "umbot"
+        "umbot",
+        "{{name}} project"
     ],
     "main": "./dist/index.js",
     "type": "commonjs",
