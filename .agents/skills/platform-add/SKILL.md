@@ -75,6 +75,15 @@ src/plugins/platforms/API/<Name>Request.ts  # HTTP клиент к API
 - `getContent(controller)` — формирование ответа в формате платформы
 - `isCorrectQuery(query, headers)` — проверка подписи (может переопределять Base)
 
+⚠️ Нюанс `Card.getCards(cardProcessing, controller)`: метод возвращает результат
+`cardProcessing` как есть. Если твой `cardProcessing` асинхронный (Telegram, VK,
+Alisa, Marusia, Max) — вызов обязан быть с `await`. Если синхронный (Viber,
+SmartApp) — `await` не нужен. Определи это до написания `getContent` и не копируй
+вызов из чужого адаптера вслепую.
+
+⚠️ Лимиты и форматы проверяй по официальной документации платформы и заноси
+подтверждённые факты в таблицу/раздел «Verified» в `AGENTS.md` (см. раздел 9).
+
 ### Шаг 4: Пиши unit-тестЫ
 
 В `tests/Platforms/<Name>/adapter.test.ts` необходимы:
@@ -88,9 +97,8 @@ src/plugins/platforms/API/<Name>Request.ts  # HTTP клиент к API
 
 ### Шаг 5: Добавь регистрацию
 
-- `src/plugins/platforms/index.ts` — `export { <Name>Adapter, T_<NAME> } from './<Name>/Adapter'`
-- `src/plugins/platforms/index.ts` — добавь `<Name>Adapter` в `fullPlatforms/botPlatforms/chatPlatforms` если применимо
-- `src/plugins/platforms/Base/<Name>Request.ts` — публичный API-класс
+- `src/plugins/index.ts` — экспорт `<Name>Adapter`, `T_<NAME>` и API-класса (`export * as <Name>Button from './platforms/<Name>/Button'` и т.п.)
+- `src/plugins/platforms/adapters.ts` — добавь адаптер в список `adapters` (его используют `fullPlatforms`/`botPlatforms`/`voicePlatforms`)
 - Проверь, что нет конфликтов имен (T_X, T_Y) и дублирования констант
 
 ### Шаг 6: Обнови документацию
@@ -115,8 +123,12 @@ npm run lint
 1. ❌ **Не импортируй из plugins/ в core/.** Платформа не должна менять ядро.
 2. ❌ **Не пиши `any`**. Используй строгие интерфейсы. Если API возвращает unknown - narrow.
 3. ❌ **Не добавляй в публичный API необоснованных параметров**. Если параметр нужен только тебе - это protected.
-4. ❌ **Не делай async без ожидания**. Все `Promise` должны быть обработаны.
+4. ❌ **Не делай async без ожидания**. Все `Promise` должны быть обработаны (и см. нюанс `getCards` выше).
 5. ❌ **Не пиши тесты, зависящие от реальной сети.** Все fetch должны быть замоканы.
+6. ❌ **Не обращайся к `button.options` без `?.`** (или `?? {}`). Компонент `Buttons` всегда его задаёт, но кнопка может прийти объектом, собранным вручную — TypeError в `getContent` даёт 500 платформе. Образцы: Telegram/VK/Max/Viber.
+7. ❌ **Не вставляй payload в JSON платформы напрямую.** Используй `serializePlatformPayload` (сериализация с логированием несериализуемых значений) и `tryParse` из `src/plugins/platforms/Base/utils.ts`.
+8. ❌ **Не отправляй запрос без проверки `_getOptions()`/attach.** `Request._getOptions()` возвращает `undefined` при ошибке attach — проверяй перед `fetch` (см. `Request.ts`).
+9. ❌ **Не возвращай `false` из `setQueryData` для служебных событий.** На `4xx/5xx` платформы включают ретраи и отключают вебхук — такие события помечаются `skipAutoReply` (см. раздел 10.1 AGENTS.md).
 
 ## Ссылки
 
@@ -130,7 +142,7 @@ npm run lint
 Ты закончил, когда:
 
 1. ✅ Новый адаптер интегрируется через `bot.use(new <Name>Adapter(token))`
-2. ✅ Все 700+ существующих тестов проходят
+2. ✅ Все существующие тесты проходят (~1300 на 3.1.0)
 3. ✅ Есть минимум 5 новых тестов на adapter
-4. ✅ CHANGELOG обновлён
+4. ✅ CHANGELOG обновлён, AGENTS.md матрица платформ дополнена
 5. ✅ Линтер чистый (0 errors)

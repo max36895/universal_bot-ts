@@ -56,6 +56,7 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
    Analysis: Identify the affected files using the structure map from Section 1.
    Plan: Formulate a brief plan of changes (which files, what logic).
    Modification: Make the changes to the code.
+   Persistence check: если с репозиторием могут работать параллельно (IDE, другой агент, аудит-скрипт), после правок проверь, что они физически сохранились (grep по ключевым маркерам правок), и коммить/фиксируй промежуточное состояние до того, как другой процесс сделает checkout/stash. Инструмент правок может отчитаться об успехе, а файл — быть откачен параллельным процессом.
    Verification (STRICT ORDER):
    Step 4.1: npm run build — Compile TypeScript. Tests cannot be run if the build fails. Fix type errors.
    Step 4.2: npm run test — Run Jest. Ensure that all tests pass, including new ones.
@@ -96,15 +97,15 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
     - **`umbot-write-tests`** — how to write unit tests and integration tests with `BotTest`, how to stub logger, mock fetch, isolate DB.
 9. Platform compatibility matrix (reference for contributors)
 
-    | Platform | Text limit   | Buttons/row | Card types                                | Webhook signature                 |
-    | -------- | ------------ | ----------- | ----------------------------------------- | --------------------------------- |
-    | Alisa    | 1024         | unlimited   | BigImage, ItemsList, ImageGallery (до 10) | (none)                            |
-    | Marusia  | 1024         | unlimited   | BigImage                                  | (none)                            |
-    | Telegram | 4096         | unlimited   | Photo, MediaGroup                         | `x-telegram-bot-api-secret-token` |
-    | VK       | 4096         | unlimited   | Carousel                                  | `secret_key` in body              |
-    | Max      | 4000         | 7x30        | Inline keyboard                           | `Authorization: token`            |
-    | Viber    | 7000         | 6x7         | RichMedia                                 | `x-viber-content-signature`       |
-    | SmartApp | 250 (bubble) | -           | ListCard                                  | (none)                            |
+    | Platform | Text limit   | Buttons/row | Card types                                      | Webhook signature                 |
+    | -------- | ------------ | ----------- | ----------------------------------------------- | --------------------------------- |
+    | Alisa    | 1024         | unlimited   | BigImage, ItemsList, ImageGallery (до 10)       | (none)                            |
+    | Marusia  | 1024         | unlimited   | BigImage, ItemsList (до 5), ImageGallery (до 7) | (none)                            |
+    | Telegram | 4096         | unlimited   | Photo, MediaGroup                               | `x-telegram-bot-api-secret-token` |
+    | VK       | 4096         | unlimited   | Carousel                                        | `secret_key` in body              |
+    | Max      | 4000         | 7x30        | Inline keyboard                                 | `Authorization: token`            |
+    | Viber    | 7000         | 6x7         | RichMedia                                       | `x-viber-content-signature`       |
+    | SmartApp | 250 (bubble) | -           | ListCard                                        | (none)                            |
 
     When changing limits or adding platforms, update this table.
 
@@ -125,13 +126,36 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
     - **MAX** — auth is `Authorization: <token>` (query-param tokens are no longer supported);
       `Content-Type` is required for requests with a body. Up to 12 attachments per message,
       keyboard up to 30 rows / 7 buttons per row (3 for link/open_app/geo/contact).
+      Max 2 callback-ответа в секунду на диалог; отправка в один диалог — не чаще 1 сообщения
+      в 500 мс (реализовано очередью в `MaxRequest` с таймерами `.unref()`).
+    - **VK** — `users.get` документирует только `user_ids` (список через запятую);
+      legacy-алиас `user_id` не использовать. У vkpay-кнопки `hash` находится внутри
+      `action`, а не на верхнем уровне объекта кнопки; `hash: null` отклоняет всю
+      клавиатуру (ошибка 100). `keyboard` и `template` взаимоисключающи;
+      `random_id` — int32. Тело запроса к API — `x-www-form-urlencoded`.
+    - **Telegram** — `inline_keyboard` — массив массивов; `callback_data` 1–64 байта;
+      `url` и `callback_data` взаимоисключающи в одной кнопке. `sendMediaGroup` принимает
+      2–10 элементов (одиночное фото — через `sendPhoto`). Upload-операции
+      (sendPhoto/sendAudio/sendMediaGroup) требуют таймаут ~30 с, обычные методы — ~5 с.
+    - **Viber** — тело исходящего запроса к API ограничено 30 КБ (проверяется в
+      `ViberRequest.call()`); `rich_media` требует `min_api_version >= 7`.
+    - **Request (общее)** — `_getOptions()` возвращает `undefined` при ошибке attach-файла:
+      перед `fetch` обязательно проверять результат, иначе уходит паразитный GET-запрос.
+      `Request.send()` сбрасывает `attach/post/get/customRequest` после каждого вызова —
+      инстанс переиспользуется.
 
 10.1. Platform quirks that are NOT contract violations but bite in production - Any update type Telegram/VK/Viber/MAX sends that the adapter cannot answer must still
 return HTTP 200. On 5xx Telegram replays the update forever, VK Callback API disables
 the server, and Viber refuses to register the webhook. Unknown events belong in
 `skipAutoReply`, never in `setQueryData() === false`. - Alisa, Marusia and SmartApp provide NO webhook signature. Everything in the payload —
 including `user_id` — is attacker-controlled. Never interpolate it into a URL or a
-query without escaping, and never treat it as an authenticated identity.
+query without escaping, and never treat it as an authenticated identity. - `Card.getCards(cardProcessing, controller)` возвращает результат `cardProcessing`
+как есть. У Telegram, VK, Алисы, Маруси и MAX процессоры асинхронные — их вызов
+обязан быть с `await`; у Viber и SmartApp — синхронные, и лишний `await` там не
+нужен. При добавлении платформы сначала определи, async ли твой `cardProcessing`,
+и не копируй вызов из чужого адаптера. - Доступ к `button.options` в адаптерах — только через `?.` (или `?? {}`):
+компонент `Buttons` всегда задаёт `options`, но кнопка может прийти объектом,
+собранным вручную вне компонента (JS-потребители, тесты). Образец — Telegram/VK/Max/Viber.
 
 10. Anti-patterns — what NOT to do
     1. ❌ Do not reassign `ctx.userData = {...}` — merge keys instead (`Object.assign(ctx.userData, ...)` or direct assignments).

@@ -90,6 +90,41 @@ For each step, verify:
 - Navigation component
 - Text utilities (regex cache, similarity)
 
+### Проверенные точки (аудит 3.1.0 — закрывай их в первую очередь, они уже ловили баги)
+
+- **Request.ts**: `_getOptions()` возвращает `undefined` при ошибке attach — без
+  проверки перед `fetch` уходил паразитный GET к API платформы (фикс в `#run`).
+  `send()` сбрасывает `attach/post/get/customRequest` после вызова; `#error` —
+  `Error | string`, лог-хелперы API-клиентов обязаны принимать оба типа.
+- **Метрики**: `logMetric` обязан прогонять имя и label через маскирование
+  (`#maskLogData`) — `Request` кладёт в label URL с токеном Telegram.
+- **rateLimiter**: (1) батч из очереди должен проверять `st.count >= limit` перед
+  каждым элементом — иначе окно исполняет до 2×limit; (2) вытесненные записи
+  (`evictEntry`/`destroyRateLimiter`) помечаются `dead`, а `processQueue` в `finally`
+  обязан проверять `!st.dead` — иначе бесконечный перезапуск; (3) переполнение
+  очереди — экспортируемый `RateLimitQueueOverflowError` + флаг
+  `platformOptions.rateLimitOverflow` (ядро перехватывает исключение middleware).
+- **ipFilter**: поддержка IPv6 (BigInt, `::`-сжатие, hex-mapped `::ffff:102:304`);
+  строковый срез `::ffff:` — только когда хвост dotted-quad, иначе hex-форма
+  портится; правила сравниваются по версии адреса (v4-правило не матчит v6-клиента).
+- **EnvConfig**: `#` без пробела перед ним — часть значения (`pass#word`), инлайн-
+  комментарий — только ` #` (конвенция dotenv, quote-aware).
+- **isRegexLikelySafe**: опасны квантифицированные группы с квантификатором,
+  альтернативой или `.` внутри (`(a+)+`, `(a|aa)+`, `(?:\w+\.)+`); `.*`, `.*.*`,
+  `(abc)+`, `(?:a{2,3})` — безопасны. При анализе тела группы пропускай префикс
+  `(?:`/`(?=`/`(?<name>` — иначе `?` из префикса лож срабатывает как квантификатор.
+- **FileAdapter**: `#isForbiddenKey` (`__proto__`/`constructor`/`prototype`) обязателен
+  и на чтение (`_select`/`#selectInPrimaryKey`), не только на запись/удаление —
+  иначе `content['__proto__']` возвращает `Object.prototype` как «найденную запись».
+- **Text.isSayTrue/isSayFalse**: границы слова через lookaround `(?<![a-zа-яё0-9_])`,
+  чтобы распознавать «Да!»/«Нет, спасибо» и не матчить «даже»/«небоскреб».
+- **CommandReg/группы**: строковый паттерн группы (fallback при превышении
+  MAX_COUNT_FOR_GROUP) обязан компилироваться через кэш `getGroupRegExpCompiled`,
+  не через `getRegExp` на каждом запросе.
+- **CLI**: `spawnSync` с `shell: true` (Windows) склеивает аргументы без экранирования —
+  значения из `.env`/flow.json обязаны квотироваться и санитизироваться; при записи
+  `.env` вырезай `\r\n` из значений; имя проекта, начинающееся с цифры, — префикс `_`.
+
 ## Audit Dimensions (10 Categories)
 
 Find specific problems, not general discussions:
