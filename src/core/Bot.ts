@@ -2493,6 +2493,14 @@ export class Bot<
      * @param platform Платформа, на которую необходимо отправить запрос
      * @returns {Promise<TContent | boolean>} Результат отправки (формат зависит от адаптера платформы)
      * или false, если платформа не зарегистрирована/не поддерживает проактивную отправку
+     *
+     * @example
+     * ```ts
+     * import { T_TELEGRAM } from 'umbot/plugins';
+     *
+     * // Проактивное сообщение в Telegram (без входящего запроса)
+     * const result = await bot.send('123456789', 'Привет! Это рассылка.', T_TELEGRAM);
+     * ```
      */
     public async send(
         userId: string | number,

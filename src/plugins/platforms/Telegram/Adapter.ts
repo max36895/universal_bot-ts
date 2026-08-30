@@ -55,8 +55,11 @@ type ITelegramRequestData = Record<string, unknown> & {
  * @see BasePlatform
  */
 export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
+    /** Идентификатор платформы Telegram. */
     platformName = T_TELEGRAM;
+    /** Telegram — чат-платформа (не голосовая). */
     isVoice = false;
+    /** Лимит запросов/сек для входящего rateLimiter (лимит Telegram Bot API). */
     limit = 30;
     signatureName = 'x-telegram-bot-api-secret-token';
 

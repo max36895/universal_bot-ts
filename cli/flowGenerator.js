@@ -47,7 +47,8 @@ function escapeComment(text) {
 /**
  * Проверяет, является ли строка валидным JS-идентификатором.
  * @param {string} name — проверяемое имя
- * @returns {boolean} true если имя соответствует /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
+ * @returns {string|undefined} JS-выражение системной переменной или falsy, если имя не системное true если имя соответствует /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
+ * и не является __proto__/prototype/constructor
  */
 function isValidJSIdentifier(name) {
     return (
@@ -154,7 +155,7 @@ function getSystemVarExpr(name) {
 
 /**
  * Конвертирует текст с {{variable}} в JS template literal.
- * Порядок экранирования: \ → \\, ` → \`, ${ → \${{.
+ * Порядок экранирования: \ → \\, ` → \`, ${ → \${.
  * Затем заменяет {{var}} → ${ctrl.userData.var} или системное выражение.
  * @param {string} text — текст с возможными {{variable}}
  * @returns {string} JS-выражение (одинарные кавычки или template literal)
@@ -359,7 +360,7 @@ function getHttpMethod(value) {
  * Генерирует код для блока действия (random_number, set_variable, http_request).
  * @param {Object} block — блок действия из FlowDocument
  * @param {string[]} varNames — имена переменных для ограниченных выражений
- * @param {string} indent — отступ (по умолчанию 4 пробела)
+ * @param {string} indent — отступ (обязателен; вызовы используют 4 пробела)
  * @returns {string[]} массив строк кода
  */
 function generateActionFunc(block, varNames, indent) {
@@ -460,6 +461,8 @@ function generateActionFunc(block, varNames, indent) {
  * @param {string|null} falseFuncName — имя функции для ветки false (или null)
  * @param {string|null} trueNavigation — thisIntentName для ветки true (step/command)
  * @param {string|null} falseNavigation — thisIntentName для ветки false (step/command)
+ * @param {Object} doc — полный FlowDocument
+ * @param {Array} connectedBlocks — связанные блоки (для проверки async)
  * @returns {string[]} массив строк if/else кода
  */
 function generateConditionFunc(
@@ -708,6 +711,8 @@ function findOutgoingBlocks(doc, nodeId, connectedBlocks) {
  * Генерирует вызовы outgoing блоков с учётом async (для HTTP-действий).
  * @param {Array} blocks — массив outgoing блоков
  * @param {string} indent — отступ
+ * @param {Object} doc — полный FlowDocument
+ * @param {Array} connectedBlocks — связанные блоки (для проверки async)
  * @returns {string[]} массив строк вызовов __name(ctrl)
  */
 function generateOutgoingBlockCalls(blocks, indent, doc, connectedBlocks) {
@@ -956,6 +961,7 @@ function findNextNonBlockNode(doc, fromId) {
 /**
  * Главная функция генерации. Создаёт полный src/index.ts из FlowDocument.
  * @param {Object} doc — FlowDocument с узлами, рёбрами и настройками
+ * @param {boolean} [useCloud=false] — генерировать Yandex Cloud Function handler вместо bot.start()
  * @returns {string} содержимое src/index.ts
  */
 function generateIndexTs(doc, useCloud = false) {
@@ -1444,7 +1450,7 @@ function generateGitIgnore() {
     return '';
 }
 
-/** Генерирует src/utils.ts с вспомогательными функциями setText и setTTS. @returns {string} содержимое файла */
+/** Генерирует src/utils.ts с setText, setTTS и fetchWithTimeout (для http_request-блоков). @returns {string} содержимое файла */
 function generateUtils() {
     return `import { BotController } from 'umbot';
 
@@ -1496,7 +1502,9 @@ export async function fetchWithTimeout(
  * Точка входа генератора. Читает JSON, валидирует, генерирует все файлы и записывает на диск.
  * @param {string} flowJsonPath — путь к flow.json
  * @param {string} outputPath — путь к выходной директории проекта
- * @throws {Error} при невалидном JSON или отсутствии обязательных полей
+ * @param {{useCloud?: boolean, force?: boolean}} [options] — флаги генерации
+ * @throws {Error} при невалидном JSON, отсутствии обязательных полей, пути-не-папке
+ * или непустой выходной папке без --force
  */
 function generateFromFlow(flowJsonPath, outputPath, options = {}) {
     if (!fs.existsSync(flowJsonPath)) {
@@ -1749,9 +1757,10 @@ process.exitCode = result.status ?? 1;
  * Проверяет:
  * - Наличие обязательных полей (name, nodes)
  * - Что каждый node имеет id, type
- * - Что указанные nextId ссылаются на существующие узлы
- * - Что stepResolver saveTo — валидный JS-идентификатор или dotted path
- * - Что нет циклических ссылок, которые приведут к бесконечному циклу
+ * - Что рёбра edges ссылаются на существующие узлы (from/to) и имеют допустимый type
+ * - Что saveTo узлов — валидный идентификатор или dotted path ([a-zA-Z0-9_.]+)
+ * - Что нет циклов только из блоков action/condition/response (генерируются как
+ *   рекурсивные вызовы и переполнили бы стек); циклы через command/step допустимы
  *
  * @param {string} flowJsonPath — Путь к flow.json
  * @returns {string[]} Массив ошибок (пустой = OK)

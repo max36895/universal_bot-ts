@@ -1,3 +1,6 @@
+/**
+ * Идентификатор платформы VK (ключ в appConfig.tokens).
+ */
 export const T_VK = 'vk';
 
 /**

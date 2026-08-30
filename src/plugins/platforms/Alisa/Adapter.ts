@@ -94,6 +94,7 @@ interface IState {
  * @see BasePlatform
  */
 export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
+    /** Идентификатор платформы Яндекс.Алиса. */
     platformName = T_ALISA;
 
     init(appContext: AppContext): void {

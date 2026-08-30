@@ -101,6 +101,7 @@ export abstract class BasePlatform<TQuery = unknown>
      * В случае если у платформы нет ограничений, можно указать 0 или null.
      * По умолчанию null
      */
+    /** Лимит запросов/сек для входящего rateLimiter; null — не ограничивать. Переопределяется адаптером платформы. */
     limit: number | null = null;
 
     /**
@@ -114,6 +115,7 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Определяет тип платформы(голосовая или чат-бот)
      */
+    /** Голосовая ли платформа (TTS-ответ в теле HTTP). Чат-платформы переопределяют на false. */
     isVoice = true;
 
     constructor(platformToken?: string, additionalPlatformOptions?: IOptions) {

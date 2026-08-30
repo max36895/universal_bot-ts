@@ -491,6 +491,7 @@ export class TelegramRequest {
      * @param showAlert - Показывать как alert (true) или всплывающее уведомление (false)
      * @param url - URL для открытия после нажатия
      * @param cacheTime - Время кэширования ответа (сек)
+     * @returns Информация об отправленном сообщении или null при ошибке
      */
     public async answerCallbackQuery(
         callbackQueryId: string,

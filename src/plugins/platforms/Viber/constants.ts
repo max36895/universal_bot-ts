@@ -1,3 +1,6 @@
+/**
+ * Идентификатор платформы Viber (ключ в appConfig.tokens).
+ */
 export const T_VIBER = 'viber';
 
 /**

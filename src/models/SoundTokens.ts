@@ -95,6 +95,7 @@ export class SoundTokens extends Model<ISoundModelState> {
         this.isAttachContent = false;
     }
 
+    /** Первичный ключ таблицы — soundToken. */
     protected getId(): TKey {
         return 'soundToken';
     }

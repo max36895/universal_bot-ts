@@ -48,8 +48,11 @@ import { getChatText } from '../Base/utils';
  * @see BasePlatform
  */
 export class ViberAdapter extends BasePlatform<IViberContent | string> {
+    /** Идентификатор платформы Viber. */
     platformName = T_VIBER;
+    /** Viber — чат-платформа (не голосовая). */
     isVoice = false;
+    /** Лимит запросов/сек для входящего rateLimiter (лимит Viber API). */
     limit = 30;
     signatureName = 'x-viber-content-signature';
 

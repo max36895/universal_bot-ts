@@ -92,6 +92,7 @@ function resizeMarusiaTts(tts: string | null): string {
  * @see BasePlatform
  */
 export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest> {
+    /** Идентификатор платформы Маруся. */
     platformName = T_MARUSIA;
 
     init(appContext: AppContext): void {

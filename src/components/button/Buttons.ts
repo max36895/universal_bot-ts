@@ -153,6 +153,7 @@ export class Buttons {
      * @param {TButtonPayload} [payload=''] - Дополнительные данные
      * @param {IButtonOptions} [options={}] - Дополнительные параметры
      * @returns {Buttons}
+     * @remarks Кнопка с пустым `title` молча игнорируется (не добавляется в коллекцию).
      *
      * @example
      * ```ts

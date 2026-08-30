@@ -9,11 +9,11 @@ const utils = require(path.join(__dirname, '..', 'utils.js')).utils;
  */
 class CreateController {
     /**
-     * Создает пустой проект
+     * Значение типа приложения «Default» (пустой проект)
      */
     static T_DEFAULT = 'Default';
     /**
-     * Создает викторину
+     * Значение типа приложения «Quiz» (викторина)
      */
     static T_QUIZ = 'Quiz';
 
@@ -174,7 +174,7 @@ class CreateController {
 
     /**
      * Создает файл конфигурации проекта
-     * @param {string} path Путь к шаблонам
+     * @param {string} dirPath Путь к шаблонам
      * @private
      */
     _getConfigFile(dirPath) {
@@ -323,13 +323,13 @@ class CreateController {
     }
 
     /**
-     * Генерирует файл
+     * Генерирует .env файл в корне проекта (с единственным фактическим вызовом — .env)
      * @param fileName
      * @param content
      */
     generateFile(fileName, content) {
         utils.fwrite(`${this.#path}/${fileName}`, content);
-        console.log('.env файл успешно создан');
+        console.log(`Файл ${fileName} успешно создан`);
     }
 
     /**
@@ -375,7 +375,7 @@ class CreateController {
      * Проверяет, можно ли создавать проект в указанной директории.
      * Если директория существует и не пуста, генерация требует явный флаг --force.
      * @param {string} dirPath — путь к целевой директории
-     * @returns {Promise<void>}
+     * @returns {void}
      * @private
      */
     _checkOutputDir(dirPath) {

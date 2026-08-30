@@ -125,8 +125,11 @@ export function clearVkUserCache(): void {
  * @see BasePlatform
  */
 export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
+    /** Идентификатор платформы VK. */
     platformName = T_VK;
+    /** VK — чат-платформа (не голосовая). */
     isVoice = false;
+    /** Лимит запросов/сек для входящего rateLimiter (лимит VK Callback API). */
     limit = 30;
 
     init(appContext: AppContext): void {

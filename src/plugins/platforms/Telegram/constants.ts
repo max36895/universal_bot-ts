@@ -1,3 +1,6 @@
+/**
+ * Идентификатор платформы Telegram (ключ в appConfig.tokens).
+ */
 export const T_TELEGRAM = 'telegram';
 
 /**

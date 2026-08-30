@@ -231,6 +231,14 @@ export class Preload {
      * @returns {Promise<boolean>[]} Массив промисов. Промис разрешается `true`, если процедура завершилась
      *                              без исключения (включая случай, когда записи нет или платформа не поддерживает
      *                              удаление — удаление реализовано только для Алисы и Маруси), и `false` при ошибке.
+     *
+     * @example
+     * ```ts
+     * import { T_ALISA } from 'umbot/plugins';
+     *
+     * // Промисы нужно запустить самостоятельно через Promise.all
+     * await Promise.all(preload.removeImages(['./media/old.png'], [T_ALISA]));
+     * ```
      */
     public removeImages(images: string[], platforms?: TAppType[]): Promise<boolean>[] {
         const allowedPlatforms = this._getPlatforms(platforms);

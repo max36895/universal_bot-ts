@@ -12,6 +12,10 @@ import { IDataValue, IModelRes, IModelRules, TQueryCb } from '../interface';
 import { IQueryData, IQuery, getQueryData, TKey } from './QueryData';
 import { AppContext, IDbResult } from '../../core';
 
+/**
+ * Состояние модели: произвольный набор полей, восстанавливаемых из БД
+ * (generic-ограничение публичного `Model<TState>`).
+ */
 export interface IModelState {
     [key: string]: unknown;
 }
@@ -490,6 +494,7 @@ export abstract class Model<TState extends IModelState> {
      *
      * Типы client/db зависят от подключённого адаптера БД —
      * для MongoAdapter это MongoClient и Db из драйвера mongodb.
+     * Для FileAdapter `_query` не реализован — метод вернёт `null`.
      *
      * @example
      * ```ts

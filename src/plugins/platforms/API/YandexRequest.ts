@@ -90,6 +90,9 @@ export class YandexRequest {
         this.#error = null;
     }
 
+    /**
+     * Возвращает установленный OAuth-токен (или null, если авторизация отключена).
+     */
     public get oauth(): string | null | undefined {
         return this.#oauth;
     }

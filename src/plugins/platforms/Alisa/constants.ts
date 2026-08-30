@@ -3,6 +3,9 @@
  */
 export const VERSION: string = '1.0';
 
+/**
+ * Идентификатор платформы Яндекс.Алиса (ключ в appConfig.tokens).
+ */
 export const T_ALISA = 'alisa';
 
 /**

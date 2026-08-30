@@ -72,8 +72,11 @@ const MAX_UPDATE_TYPES = new Set<IMaxRequestContent['update_type']>([
  * @see BasePlatform
  */
 export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
+    /** Идентификатор платформы MAX. */
     platformName = T_MAX_APP;
+    /** MAX — чат-платформа (не голосовая). */
     isVoice = false;
+    /** Лимит запросов/сек для входящего rateLimiter (лимит MAX Bot API). */
     limit = 30;
 
     init(appContext: AppContext): void {

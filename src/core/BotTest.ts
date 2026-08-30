@@ -88,6 +88,10 @@ interface IResponse {
 export class BotTest extends Bot {
     protected _botController: BotController;
 
+    /**
+     * Создает тестовое приложение. Контроллер опционален — если не передан,
+     * используется BaseBotController.
+     */
     constructor(type?: TAppType, botController?: TBotControllerClass) {
         super(type, botController);
         if (botController) {
@@ -98,6 +102,9 @@ export class BotTest extends Bot {
         this._setBotController(this._botController);
     }
 
+    /**
+     * Переустанавливает класс контроллера и обновляет переиспользуемый тестовый экземпляр.
+     */
     initBotController(fn: TBotControllerClass): this {
         this._botController = new fn(this.getAppContext());
         this._setBotController(this._botController);

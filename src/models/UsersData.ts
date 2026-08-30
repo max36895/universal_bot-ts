@@ -146,6 +146,7 @@ export class UsersData extends Model<IUserDataModelState> {
         };
     }
 
+    /** Первичный ключ таблицы — userId. */
     protected getId(): TKey {
         return 'userId';
     }

@@ -61,6 +61,7 @@ import {
  * @see BasePlatform
  */
 export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookRequest> {
+    /** Идентификатор платформы Сбер SmartApp. */
     platformName = T_SMART_APP;
 
     isPlatformOnQuery(

@@ -1,9 +1,19 @@
 import { ISberSmartAppAnnotations } from './interfaces/ISmartAppPlatform';
 
+/**
+ * Идентификатор платформы Сбер SmartApp (ключ в appConfig.tokens).
+ */
 export const T_SMART_APP = 'smart_app';
 
+/**
+ * URL хранилища данных SmartApp Code API по умолчанию
+ * (переопределяется через appConfig.tokens.smart_app.storage_url).
+ */
 export const SMART_APP_STORAGE_URL = 'https://smartapp-code.sberdevices.ru/tools/api/data';
 
+/**
+ * Заготовка DEVICE-секции ответа SmartApp; заполняется адаптером под конкретный запрос.
+ */
 export const DEVICE = {
     platformType: '',
     platformVersion: '',
@@ -25,6 +35,9 @@ export const DEVICE = {
     },
     additionalInfo: {},
 };
+/**
+ * Заготовка ANNOTATIONS-секции (модерация ответов SmartApp); передаётся адаптером как есть.
+ */
 export const ANNOTATIONS: ISberSmartAppAnnotations = {
     censor_data: {
         classes: ['politicians', 'obscene', 'model_response'],

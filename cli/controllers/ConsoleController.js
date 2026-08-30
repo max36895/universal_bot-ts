@@ -47,7 +47,8 @@ DB_NAME=bot_db`,
 }
 
 /**
- * Консольный скрипт, позволяющий создать пустой проект.
+ * Консольный контроллер CLI: маршрутизирует команды create (в т.ч. from-flow), validate,
+ * stats, generateEnv, add и version.
  * @param param
  * @param argv
  */
@@ -68,7 +69,9 @@ async function main(
         '\n - add <feature> - Добавляет данные в проект. Доступные типы: ' +
         '\n\t docker  Добавляет Dockerfile и .dockerignore' +
         '\n\t deploy  Добавляет файл для деплоя на сервер' +
-        '\n\t env     Добавляет файл .env';
+        '\n\t env     Добавляет файл .env' +
+        '\n\t --force    Перезаписать существующие файлы/непустую директорию' +
+        '\n - version | -v - Вывести версию CLI';
     if (param && param.command) {
         const create = new CreateController();
         create.flags = getFlags(argv);
@@ -259,7 +262,8 @@ async function main(
 
 /**
  * Читает log-файл и считает базовые метрики.
- * Эвристика: error.log + warn.log + access.log унифицированы по паттернам
+ * Эвристика: рассчитана на логи umbot (error.log/warn.log формата `[ISO-дата]: сообщение`)
+ * и произвольные строки, содержащие error/warn, слово `command` или `N ms`.
  *
  * @param {string} logPath путь к файлу лога
  * @returns {{total: number, errors: number, warnings: number, topCommands: Array<[string, number]>, p50: number|null, p95: number|null, p99: number|null}}
@@ -288,9 +292,10 @@ function computeLogStats(logPath) {
     // Общие паттерны umbot: "[time]: message", платформа + команда
     const reError = /error|exception|traceback/i;
     const reWarn = /warn/i;
-    // Паттерн для вызова команды: "Command 'start' matched", "user: 'spawn' command", и т.п.
+    // Паттерн для упоминания команды в строке лога: "Command 'start' matched", "user: 'spawn' command", и т.п.
     const reCommand = /command\s+'?([a-zа-яё_][\w-]*)'?/gi;
-    // Паттерн для метрик времени выполнения: "Duration: 45ms", "took 12ms", "[Metric] REQUEST 45ms"
+    // Паттерн для метрик времени: "Duration: 45ms", "took 12ms", "[Metric] REQUEST 45ms"
+    // (у самого umbot время пишется только в метрики логгера — см. EMetric)
     // eslint-disable-next-line security/detect-unsafe-regex -- число разбирается без вложенных повторителей.
     const reDuration = /(\d+(?:\.\d+)?)\s*ms\b/i;
 

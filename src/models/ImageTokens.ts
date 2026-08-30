@@ -94,6 +94,7 @@ export class ImageTokens extends Model<IImageModelState> {
         this.caption = null;
     }
 
+    /** Первичный ключ таблицы — imageToken. */
     protected getId(): TKey {
         return 'imageToken';
     }

@@ -3,11 +3,18 @@
  */
 export const VERSION: string = '1.0';
 
+/**
+ * Идентификатор платформы Маруся (ключ в appConfig.tokens).
+ */
 export const T_MARUSIA = 'marusia';
+
+/** Тип карточки Маруси: BigImage (одно изображение). */
 export const MARUSIA_CARD_BIG_IMAGE = 'BigImage';
 
+/** Тип карточки Маруси: ItemsList (список до 5 элементов). */
 export const MARUSIA_CARD_ITEMS_LIST = 'ItemsList';
 
+/** Максимальное количество элементов в ItemsList. */
 export const MARUSIA_MAX_IMAGES = 5;
 
 /**
