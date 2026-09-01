@@ -298,6 +298,14 @@ export class Request {
     protected async _getOptions(): Promise<RequestInit | undefined> {
         const options: RequestInit = {};
 
+        // Клиенты фреймворка обращаются к фиксированным доверенным хостам API
+        // платформ, а секреты живут в заголовках (Authorization у MAX,
+        // X-Viber-Auth-Token, OAuth у Яндекса) и в URL (токен Telegram в path).
+        // Автоследование редиректу при компрометации DNS/CDN или редиректе со
+        // стороны API унесло бы секреты на сторонний хост — 3xx будет ошибкой
+        // запроса, что для фиксированных endpoint'ов корректно.
+        options.redirect = 'manual';
+
         if (this.maxTimeQuery) {
             options.signal = AbortSignal.timeout(this.maxTimeQuery);
         }

@@ -91,6 +91,23 @@ describe('Request: формирование параметров', () => {
         expect(options.method).toBe('POST');
     });
 
+    it('запрещает следование редиректу: секреты в заголовках и URL не покидают доверенный хост', async () => {
+        // Клиенты фреймворка ходят только на фиксированные endpoint'ы API платформ.
+        // redirect: 'manual' превращает 3xx в ошибку запроса вместо того, чтобы
+        // (при компрометации DNS/CDN или редиректе со стороны API) унести
+        // Authorization / X-Viber-Auth-Token / токен Telegram в URL на сторонний хост.
+        const httpClient = okClient();
+        const req = new Request(makeContext(httpClient));
+        req.url = 'https://api.example.com/method';
+        req.header = { Authorization: 'Bearer secret' };
+        req.post = { a: 1 };
+
+        await req.send();
+
+        const [, options] = httpClient.mock.calls[0] as [string, RequestInit];
+        expect(options.redirect).toBe('manual');
+    });
+
     it('кладёт тело ошибочного ответа в err', async () => {
         const httpClient = jest.fn().mockResolvedValue({
             ok: false,

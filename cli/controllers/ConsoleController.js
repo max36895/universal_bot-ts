@@ -137,27 +137,72 @@ async function main(
                     }
                 }
                 let envContent = '';
+                const TOKEN_ENV_NAMES = {
+                    telegram: 'TELEGRAM_TOKEN',
+                    vk: 'VK_TOKEN',
+                    alisa: 'ALISA_TOKEN',
+                    marusia: 'MARUSIA_TOKEN',
+                    smart_app: 'SMARTAPP_TOKEN',
+                    max_app: 'MAX_TOKEN',
+                    viber: 'VIBER_TOKEN',
+                };
+                // Ключ платформы из недоверенного JSON становится именем env-переменной:
+                // без allowlist-санитизации ключ с переводом строки дописал бы в .env
+                // произвольную переменную (инъекция "x\nFOO=1").
+                const sanitizeEnvName = (platform) =>
+                    String(platform)
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9_]/g, '_');
+                // Секреты НЕ попадают в коммит-файл Config.ts ни при каком раскладе:
+                // при isEnv — мигрируют в .env, без isEnv — вычищаются из сериализуемого
+                // конфига с предупреждением (раньше без isEnv токены из config.tokens
+                // литералом оставались в src/config/*Config.ts).
+                const envPairList = [
+                    ['TELEGRAM_TOKEN', create.params?.params?.telegram_token],
+                    ['VK_TOKEN', create.params?.params?.vk_token],
+                    ['VK_CONFIRMATION_TOKEN', create.params?.params?.vk_confirmation_token],
+                    ['VIBER_TOKEN', create.params?.params?.viber_token],
+                    [
+                        'ALISA_TOKEN',
+                        create.params?.params?.alisa_token || create.params?.params?.yandex_token,
+                    ],
+                    ['MARUSIA_TOKEN', create.params?.params?.marusia_token],
+                    ['MAX_TOKEN', create.params?.params?.max_token],
+                    ['DB_HOST', create.params?.config?.db?.host],
+                    ['DB_USER', create.params?.config?.db?.user],
+                    ['DB_PASSWORD', create.params?.config?.db?.pass],
+                    ['DB_NAME', create.params?.config?.db?.database],
+                ];
+                const configTokens = create.params?.config?.tokens;
+                if (configTokens && typeof configTokens === 'object') {
+                    for (const [platform, raw] of Object.entries(configTokens)) {
+                        const value =
+                            typeof raw === 'object' && raw !== null
+                                ? (raw.token ?? raw.webhookSecret ?? raw.secret_key)
+                                : raw;
+                        if (value === undefined || value === null || value === '') {
+                            continue;
+                        }
+                        const envName = TOKEN_ENV_NAMES[platform] ?? sanitizeEnvName(platform);
+                        if (param.params?.isEnv) {
+                            // Переносим в .env: не затираем значение, уже переданное
+                            // плоским полем params.telegram_token (приоритет — у явного).
+                            if (!envPairList.some((p) => p[0] === envName && p[1])) {
+                                envPairList.push([envName, String(value)]);
+                            }
+                        }
+                    }
+                    delete create.params?.config?.tokens;
+                    if (!param.params?.isEnv) {
+                        console.warn(
+                            'ВНИМАНИЕ: токены из config.tokens удалены из генерируемой конфигурации, ' +
+                                'чтобы не попасть в коммит. Передайте isEnv=true, чтобы записать их ' +
+                                'в .env, либо задайте через переменные окружения при деплое.',
+                        );
+                    }
+                }
                 if (param.params?.isEnv) {
-                    // Собираем только те переменные, для которых реально передано значение.
-                    // Иначе в .env попадали бы строки вида TELEGRAM_TOKEN=undefined.
-                    const envPairs = [
-                        ['TELEGRAM_TOKEN', create.params?.params?.telegram_token],
-                        ['VK_TOKEN', create.params?.params?.vk_token],
-                        ['VK_CONFIRMATION_TOKEN', create.params?.params?.vk_confirmation_token],
-                        ['VIBER_TOKEN', create.params?.params?.viber_token],
-                        [
-                            'ALISA_TOKEN',
-                            create.params?.params?.alisa_token ||
-                                create.params?.params?.yandex_token,
-                        ],
-                        ['MARUSIA_TOKEN', create.params?.params?.marusia_token],
-                        ['MAX_TOKEN', create.params?.params?.max_token],
-                        ['DB_HOST', create.params?.config?.db?.host],
-                        ['DB_USER', create.params?.config?.db?.user],
-                        ['DB_PASSWORD', create.params?.config?.db?.pass],
-                        ['DB_NAME', create.params?.config?.db?.database],
-                    ];
-                    envContent = envPairs
+                    envContent = envPairList
                         .filter(
                             ([, value]) => value !== undefined && value !== null && value !== '',
                         )

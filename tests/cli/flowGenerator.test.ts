@@ -1133,7 +1133,7 @@ describe('flowGenerator', () => {
             expect(serverlessYml).not.toContain('pwned');
         });
 
-        it('предупреждает при перезаписи существующего .env токенами из flow.json', () => {
+        it('не перезаписывает существующий .env: сохраняет пользовательские значения, дописывает недостающие', () => {
             const jsonPath = path.join(JSON_DIR, 'env-overwrite.json');
             const outputPath = path.join(TEST_DIR, 'env-overwrite');
             fs.writeFileSync(
@@ -1142,17 +1142,28 @@ describe('flowGenerator', () => {
                     name: 'env-overwrite',
                     nodes: [],
                     edges: [],
-                    tokens: { telegram: 'flow-token' },
+                    tokens: { telegram: 'flow-token', vk: 'vk-flow-token' },
                 }),
             );
             fs.mkdirSync(outputPath, { recursive: true });
-            fs.writeFileSync(path.join(outputPath, '.env'), 'USER_EDITED_SECRET=1\n', 'utf8');
+            // Пользователь уже вписал реальный токен Telegram вручную
+            fs.writeFileSync(
+                path.join(outputPath, '.env'),
+                'USER_EDITED_SECRET=1\nTELEGRAM_TOKEN=real-user-token\n',
+                'utf8',
+            );
             const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
             const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
             try {
                 generateFromFlow(jsonPath, outputPath, { force: true });
-                expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('.env'));
+                const envContent = fs.readFileSync(path.join(outputPath, '.env'), 'utf8');
+                // Пользовательские значения не затёрты токенами из flow.json
+                expect(envContent).toContain('USER_EDITED_SECRET=1');
+                expect(envContent).toContain('TELEGRAM_TOKEN=real-user-token');
+                expect(envContent).not.toContain('TELEGRAM_TOKEN=flow-token');
+                // Недостающие переменные дописаны
+                expect(envContent).toContain('VK_TOKEN=vk-flow-token');
             } finally {
                 warnSpy.mockRestore();
                 logSpy.mockRestore();

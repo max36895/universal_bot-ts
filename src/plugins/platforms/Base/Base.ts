@@ -228,6 +228,20 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
+     * Проверка подписи включена, когда выполнены оба условия базовой HMAC-схемы:
+     * задан секрет платформы и имя заголовка подписи. Платформы, переопределившие
+     * `isCorrectQuery` (Telegram, VK, MAX), переопределяют и этот метод —
+     * источник секрета у них другой (webhookSecret / secret_key).
+     *
+     * Используется ядром при старте для предупреждения о вебхуке без защиты.
+     */
+    isSignatureCheckEnabled(): boolean {
+        return Boolean(
+            this.appContext?.appConfig.tokens[this.platformName]?.token && this.signatureName,
+        );
+    }
+
+    /**
      * Обрабатывает входящий запрос и заполняет контроллер данными.
      *
      * Обязательно установите:
@@ -358,8 +372,12 @@ export abstract class BasePlatform<TQuery = unknown>
      */
     protected _initTTS(controller: BotController): void | Promise<void> {
         const tts = controller.tts ?? controller.text;
+        // Два includes не делаем для пустого/1-символьного текста: маркер звука
+        // (#key#, <speaker) не короче 2 символов — проверка бессмысленна, а это
+        // горячий путь на каждый запрос. Пустой tts останавливает и присвоение:
+        // soundProcessing всё равно получил бы пустую строку.
         const sound =
-            controller.isSoundInit() || tts.includes('#') || tts.includes('<')
+            controller.isSoundInit() || (tts.length > 1 && (tts.includes('#') || tts.includes('<')))
                 ? controller.sound
                 : null;
         if (sound && (sound.sounds.length || sound.isUsedStandardSound)) {

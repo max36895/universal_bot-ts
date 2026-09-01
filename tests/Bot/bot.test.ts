@@ -18,6 +18,7 @@ import {
     TelegramRequest,
     SmartAppAdapter,
     T_SMART_APP,
+    VkAdapter,
 } from '../../src/plugins';
 import { Server } from 'http';
 import { join } from 'node:path';
@@ -245,6 +246,31 @@ describe('Bot', () => {
             });
             bot.use(new AlisaAdapter());
             await expect(bot.run(T_ALISA, '')).rejects.toThrow(error);
+        });
+
+        it('обрезает userCommand до 7000 символов, но сохраняет originalUserCommand', async () => {
+            bot.initBotController(TestBotController);
+            bot.setLogger({
+                error: () => {},
+                warn: () => {},
+            });
+            bot.use(new AlisaAdapter());
+
+            const longText = 'а'.repeat(20000);
+            // Снимаем контроллер через middleware: в него ядро кладёт уже
+            // обрезанный userCommand.
+            let seenUserCommand = '';
+            let seenOriginal = '';
+            bot.use((controller: TestBotController, next) => {
+                seenUserCommand = controller.userCommand ?? '';
+                seenOriginal = controller.originalUserCommand ?? '';
+                return next();
+            });
+
+            await bot.run(T_ALISA, getContent(longText));
+            expect(seenUserCommand.length).toBe(7000);
+            expect(seenOriginal.length).toBe(20000);
+            jest.resetAllMocks();
         });
 
         it('added user command', async () => {
@@ -1017,6 +1043,83 @@ describe('Bot', () => {
             expect(server).toBeInstanceOf(Server);
             bot.close();
             expect(server.listening).toBe(false);
+        });
+
+        it('предупреждает о dev-режиме, вебхуке без подписи и 0.0.0.0 при старте', async () => {
+            const warnings: string[] = [];
+            bot.setLogger({
+                error: () => {},
+                warn: (msg: string) => warnings.push(msg),
+            });
+            // Telegram без webhookSecret — подпись не проверяется
+            bot.use(new TelegramAdapter('test-token'));
+            // Алиса — signatureName не задан, предупреждения о подписи быть не должно
+            bot.use(new AlisaAdapter());
+
+            const server = bot.start('0.0.0.0', 3100);
+            await new Promise<void>((resolve) => {
+                server!.on('listening', resolve);
+                server!.on('error', resolve);
+            });
+            bot.close();
+
+            const devWarn = warnings.find((w) => w.includes('режиме dev'));
+            expect(devWarn).toBeDefined();
+
+            const noSignWarn = warnings.find((w) => w.includes('БЕЗ проверки подписи'));
+            expect(noSignWarn).toBeDefined();
+            expect(noSignWarn).toContain('telegram');
+
+            const ifaceWarn = warnings.find((w) => w.includes('0.0.0.0'));
+            expect(ifaceWarn).toBeDefined();
+        });
+
+        it('не предупреждает о подписи, когда секреты вебхуков заданы', async () => {
+            const warnings: string[] = [];
+            bot.setLogger({
+                error: () => {},
+                warn: (msg: string) => warnings.push(msg),
+            });
+            bot.getAppContext().setAppConfig({
+                tokens: {
+                    telegram: { webhookSecret: 'secret' },
+                },
+            });
+            bot.use(new TelegramAdapter('test-token'));
+            bot.setAppMode('strict_prod');
+
+            const server = bot.start('localhost', 3101);
+            await new Promise<void>((resolve) => {
+                server!.on('listening', resolve);
+                server!.on('error', resolve);
+            });
+            bot.close();
+
+            expect(warnings.find((w) => w.includes('БЕЗ проверки подписи'))).toBeUndefined();
+            expect(warnings.find((w) => w.includes('режиме dev'))).toBeUndefined();
+        });
+
+        it('предупреждает о VK без secret_key: подпись VK приходит в теле, signatureName не нужен', async () => {
+            const warnings: string[] = [];
+            bot.setLogger({
+                error: () => {},
+                warn: (msg: string) => warnings.push(msg),
+            });
+            // VK-адаптер с токеном доступа, но без vk_secret_key: signatureName
+            // у VK не задаётся (подпись — поле secret в теле), раньше это
+            // исключало VK из предупреждения целиком.
+            bot.use(new VkAdapter('vk-access-token'));
+
+            const server = bot.start('localhost', 3102);
+            await new Promise<void>((resolve) => {
+                server!.on('listening', resolve);
+                server!.on('error', resolve);
+            });
+            bot.close();
+
+            const noSignWarn = warnings.find((w) => w.includes('БЕЗ проверки подписи'));
+            expect(noSignWarn).toBeDefined();
+            expect(noSignWarn).toContain('vk');
         });
     });
     describe('custom resolver', () => {

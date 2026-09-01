@@ -220,6 +220,24 @@ describe('middleware', () => {
             expect(next.called).toBe(true);
         });
 
+        it('без clientIp предупреждает о пропуске без фильтрации (и только один раз)', async () => {
+            const appContext = new AppContext();
+            const warnSpy = jest.fn();
+            appContext.setLogger({ log: () => {}, error: () => {}, warn: warnSpy });
+            const ctx = new BotController(appContext);
+            const middleware = ipFilter({ whitelist: ['10.0.0.1'] });
+            const next = makeNext();
+
+            await middleware(ctx as never, next.fn);
+            await middleware(ctx as never, next.fn);
+
+            expect(next.called).toBe(true);
+            // Fail-open по построению (тесты/консоль), но он не должен быть тихим:
+            // предупреждение выводится, причём один раз на инстанс middleware.
+            expect(warnSpy).toHaveBeenCalledTimes(1);
+            expect(String(warnSpy.mock.calls[0][0])).toContain('без IP клиента');
+        });
+
         it('IPv6: whitelist с точным адресом ::1 пропускает ::1', async () => {
             const ctx = makeCtxWithIp('::1');
             const next = makeNext();

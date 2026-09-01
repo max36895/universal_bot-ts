@@ -82,30 +82,57 @@ export const T_AUTO = 'auto';
 const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
 // Токен Telegram в «голом» виде: <bot_id>:<35 символов>. Отдельный шаблон нужен потому,
 // что regBot требует литерального префикса "bot" и ловит токен только внутри URL API.
-const regTelegramBare = /\b\d{6,12}:[A-Za-z0-9_-]{35}\b/g;
+// {34} в хвосте — исторические токены короче 35 символов тоже не должны утекать.
+const regTelegramBare = /\b\d{6,12}:[A-Za-z0-9_-]{34,}\b/g;
 // Реальный формат сервисного токена VK — vk1.a.<payload>, с точками.
 // Прежний шаблон /vk1a[a-z0-9]{79}/ не совпадал ни с одним настоящим токеном.
 const regVk = /\bvk1\.a\.[A-Za-z0-9_-]{20,}/g;
 // JWT (Сбер SmartApp, OAuth-провайдеры): три base64url-сегмента через точку.
 const regJwt = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
+// Значения под «говорящими» ключами в JSON-подобных строках. Двоеточие —
+// вне захватываемой группы: прежний вариант ("access_token"\s*:) поглощал
+// его в группу и требовал второе двоеточие, из-за чего на нормальном JSON
+// вида {"access_token": "vk1.a..."} паттерн не срабатывал вообще.
+// password/pass — отдельные строки конфигурации БД попадают в логи именно
+// в текстовой форме ("pass":"hunter2"), а не только как metadata-ключи.
 const regVk2 =
-    /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g;
+    /("(?:access_token|client_secret|vk_confirmation_token|sber_token|oauth|api_key|api-key|private_key|password|pass)"|client_secret|vk_confirmation_token|sber_token|oauth|api_key|api-key|private_key|password|pass)\s*:\s*"([^"]{8,})"/g;
 const regToken = /"[A-Za-z0-9+/=]{30,256}"/g;
-const regToken2 = /\b[A-Za-z0-9]{64,256}\b/g;
+// Произвольные «токеноподобные» строки. Порог 40 (а не 64): реальный токен
+// Viber — ~46 hex-символов. Дефис/underscore разрешены внутри, но не по
+// краям, иначе регулярка съедала куски соседних слов.
+const regToken2 = /\b[A-Za-z0-9](?:[A-Za-z0-9_-]{38,254})[A-Za-z0-9]\b/g;
+// Токен Яндекс OAuth (Алиса): y0_A... / y1_A... с underscore, которые
+// не покрывал regToken2 в пороге до 40 из-за короткой длины у некоторых форм.
+const regYandexOAuth = /\by[01]_[A-Za-z0-9_-]{20,}\b/g;
+// UUID (MAX и другие платформы): сегменты 8-4-4-4-12 hex с дефисами.
+// regToken2 их не берёт: каждый сегмент короче порога, а дефисы по краям
+// в его класс символов не входят.
+const regUuid = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
+// Api-Key Yandex SpeechKit — ровно 32 hex-символа: короче порога regToken2 (40),
+// отдельный формат — отдельный шаблон.
+const regApiKey = /\b[A-Fa-f0-9]{32}\b/g;
 
 /**
  * Ключи метаданных, значение которых маскируется целиком независимо от формата.
  * Формат токенов у платформ меняется, а имя поля — нет, поэтому проверка по ключу
  * закрывает случаи, которые не ловит ни один шаблон.
+ *
+ * `pass` с границей слова: без неё не покрывался ключ `pass` из конфигурации БД
+ * (`db: {host, user, pass}`) — структура прямо из JSDoc-примера AppContext —
+ * и пароль уходил в логи целиком.
  */
 const SECRET_KEY_PATTERN =
-    /token|secret|password|passwd|api[_-]?key|private[_-]?key|authorization|credential|access[_-]?key|client[_-]?secret/i;
+    /token|secret|password|passwd|pass\b|api[_-]?key|private[_-]?key|authorization|credential|access[_-]?key|client[_-]?secret/i;
 
 const PATTERNS = [
     { regex: regBot, replacement: 'bot***' },
     { regex: regTelegramBare, replacement: '***' },
     { regex: regVk, replacement: 'vk1.a.***' },
     { regex: regJwt, replacement: '***' },
+    { regex: regYandexOAuth, replacement: '***' },
+    { regex: regUuid, replacement: '***' },
+    { regex: regApiKey, replacement: '***' },
     {
         regex: regVk2,
         replacement: '$1:"***"',
@@ -258,6 +285,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Кастомный logger приложения
      */
     #logger: ILogger | null = null;
+
+    /**
+     * Кэш значения usedMetric: геттер считается при смене логгера, а не на каждом
+     * запросе (используется в горячем пути несколько раз за запрос).
+     */
+    #usedMetricCache: boolean = false;
 
     /**
      * Конфигурация приложения
@@ -562,10 +595,22 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      */
     public setLogger(logger: ILogger | null): void {
         this.#logger = logger;
+        // Кэш для горячего пути: usedMetric вызывается несколько раз на каждый
+        // запрос, а геттер делает optional-chain проверку логгера. Пересчитываем
+        // только при смене логгера.
+        this.#usedMetricCache = !!logger?.metric;
     }
 
     /**
      * Логирование информации
+     *
+     * ⚠️ **Секреты не маскируются.** В отличие от {@link logError} / {@link logWarn} /
+     * {@link logMetric}, этот метод НЕ прогоняет аргументы через конвейер
+     * маскирования — они уходят в логгер как есть. Предназначен для
+     * операционных сообщений (статус сервера, метрики старта). Никогда не
+     * передавайте сюда токены, пароли и другие секреты; для диагностики
+     * с метаданными используйте `logWarn`/`logError`.
+     *
      * @param {...unknown[]} args - Аргументы для логирования
      *
      * @example
@@ -609,7 +654,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Возвращает флаг, который говорит о том, нужно ли собирать метрики
      */
     public get usedMetric(): boolean {
-        return !!this.#logger?.metric;
+        return this.#usedMetricCache;
     }
 
     /**

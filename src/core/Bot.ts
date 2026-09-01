@@ -90,6 +90,19 @@ export * from './interfaces/IBot';
 const MAX_REQUEST_SIZE = 1024 * 1024 * 2;
 
 /**
+ * Максимальная длина пользовательской команды, которая уходит в матчинг
+ * команд и регулярные выражения.
+ *
+ * 7000 — максимум легитимного сообщения среди поддерживаемых платформ
+ * (лимит Viber). Платформенные лимиты Алисы (1024) и Telegram (4096)
+ * фреймворком не проверяются: напрямую сконфигурированный вебхук без подписи
+ * может получить тело до MAX_REQUEST_SIZE, и без обрезки текст любой длины
+ * попадал в `.test()` регулярных выражений — множитель для ReDoS.
+ * Бизнес-логика по-прежнему видит полный текст в `originalUserCommand`.
+ */
+const MAX_USER_COMMAND_LENGTH = 7000;
+
+/**
  * Функция для обработки следующего шага в цепочке промежуточных функций
  */
 export type MiddlewareNext = () => Promise<void>;
@@ -1453,6 +1466,18 @@ export class Bot<
         } else {
             isNewUser = await this.#initUserData(botController, userData, localStateData);
         }
+        // Обрезаем текст команды до потолка легитимных сообщений до NLU и
+        // матчинга команд: без этого напрямую сконфигурированный вебхук без
+        // подписи проталкивал бы в регулярки строки до 2 МБ, где даже
+        // «безобидная» квадратичная регулярка блокирует event loop на минуты.
+        // originalUserCommand не трогаем: бизнес-логика сохраняет доступ
+        // к полному тексту.
+        if (
+            botController.userCommand &&
+            botController.userCommand.length > MAX_USER_COMMAND_LENGTH
+        ) {
+            botController.userCommand = botController.userCommand.slice(0, MAX_USER_COMMAND_LENGTH);
+        }
         this.#initNLU(botController);
         const shouldProceed =
             this.#globalMiddlewares.length || this.#platformMiddlewares[appType]?.length
@@ -1662,7 +1687,10 @@ export class Bot<
     async #getAppContent(
         botController: BotController<TUserData, TPlatformState>,
         platformClass: IPlatformAdapter,
-        appType: TAppType,
+        // Параметр оставлен для симметрии вызова: isVoice читается с самого
+        // адаптера, но сигнатура сохраняет слот под будущие сценарии,
+        // зависящие от типа платформы.
+        _appType?: TAppType,
     ): Promise<string | object> {
         this.#setOldIntentName(botController);
 
@@ -1671,7 +1699,9 @@ export class Bot<
             await res;
         }
 
-        if (botController.tts === null && this.#appContext.platforms[appType]?.isVoice) {
+        // isVoice читаем с уже полученного адаптера: platforms[appType] — лишний
+        // lookup по ключу в горячем пути (platformClass передан параметром).
+        if (botController.tts === null && platformClass.isVoice) {
             botController.tts = botController.text;
         }
 
@@ -2312,6 +2342,8 @@ export class Bot<
             this.#serverInst = undefined;
         }
 
+        this.#warnOnInsecureStart(hostname);
+
         this.#serverInst = createServer(
             async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
                 if (req.method === 'GET' && req.url === '/health') {
@@ -2357,6 +2389,70 @@ export class Bot<
      * Вызывается при завершении приложения через комбинацию клавиш
      * @private
      */
+    /**
+     * Предупреждает о небезопасных настройках вебхука при старте сервера.
+     *
+     * Проверяет и сообщает (logWarn, не блокируя запуск):
+     * 1. Режим `dev` — проверка ReDoS у команд отключена: небезопасная
+     *    регулярка регистрируется и работает, а входной текст контролирует
+     *    пользователь бота. В продакшене используйте `setAppMode('strict_prod')`.
+     * 2. Платформы с возможностью подписи, у которых секрет вебхука не задан
+     *    (Telegram/VK/MAX): любой, кто знает URL вебхука, может слать
+     *    произвольные запросы от имени платформы.
+     * 3. Прослушивание всех интерфейсов (`0.0.0.0`) — вебхук доступен из
+     *    всей сети; убедитесь, что перед ним стоит reverse proxy.
+     *
+     * Вызывается один раз из {@link start} до `listen` — предупреждения видны
+     * в логе до приёма первого запроса.
+     * @param hostname Хост, на котором слушает сервер
+     */
+    #warnOnInsecureStart(hostname: string): void {
+        if (this.#appContext.appMode === 'dev') {
+            this.#appContext.logWarn(
+                'Bot:start(): Приложение запущено в режиме dev — проверка регулярных ' +
+                    'выражений на ReDoS отключена. Для продакшена вызовите setAppMode("strict_prod").',
+            );
+        }
+        const insecurePlatforms: string[] = [];
+        for (const platformName in this.#appContext.platforms) {
+            const adapter = this.#appContext.platforms[platformName];
+            // Адаптер сам знает, включает ли его конфигурация проверку подписи:
+            // Telegram/MAX — webhookSecret, VK — secret_key (VK шлёт подпись в теле,
+            // signatureName у него нет — ориентируемся только на метод), Viber — token.
+            // Платформы без метода и без signatureName (Alisa, Marusia, SmartApp)
+            // проверять бессмысленно: подписи не существует по построению платформы,
+            // там нужна защита на уровне логики.
+            const hasAnySignatureSupport =
+                Boolean(adapter.signatureName) ||
+                typeof adapter.isSignatureCheckEnabled === 'function';
+            if (!hasAnySignatureSupport) {
+                continue;
+            }
+            const enabled = adapter.isSignatureCheckEnabled
+                ? adapter.isSignatureCheckEnabled()
+                : Boolean(this.#appContext.appConfig.tokens[platformName]?.token);
+            if (!enabled) {
+                insecurePlatforms.push(platformName);
+            }
+        }
+        if (insecurePlatforms.length) {
+            this.#appContext.logWarn(
+                `Bot:start(): Вебхук принимает запросы платформ [${insecurePlatforms.join(
+                    ', ',
+                )}] БЕЗ проверки подписи: секрет вебхука не задан в конфигурации. ` +
+                    'Любой, кто знает URL вебхука, может отправлять поддельные запросы. ' +
+                    'Задайте tokens.<platform>.webhookSecret (Telegram/MAX), vk_secret_key (VK) ' +
+                    'или используйте ViberAdapter(token).',
+            );
+        }
+        if (hostname === '0.0.0.0' || hostname === '::') {
+            this.#appContext.logWarn(
+                'Bot:start(): Сервер слушает все сетевые интерфейсы (0.0.0.0). ' +
+                    'Убедитесь, что вебхук закрыт reverse proxy с ограничением доступа.',
+            );
+        }
+    }
+
     async #gracefulShutdown(): Promise<void> {
         this.#appContext.log('Получен сигнал завершения. Выполняется graceful shutdown...');
 

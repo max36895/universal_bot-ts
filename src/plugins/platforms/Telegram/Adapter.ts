@@ -123,6 +123,17 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         return true;
     }
 
+    /**
+     * Telegram проверяет именно `webhookSecret`, а не токен бота:
+     * токен в конструкторе не включает проверку подписи.
+     */
+    isSignatureCheckEnabled(): boolean {
+        return Boolean(
+            this.appContext?.appConfig.tokens[this.platformName]?.webhookSecret &&
+            this.signatureName,
+        );
+    }
+
     #setCallbackQuery(query: ITelegramContent, controller: BotController): boolean {
         const cb = query.callback_query;
         if (cb) {

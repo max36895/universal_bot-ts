@@ -136,6 +136,17 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         return expected.length === received.length && timingSafeEqual(expected, received);
     }
 
+    /**
+     * MAX проверяет именно `webhookSecret` (options.secret / tokens.max_app.webhookSecret),
+     * а не токен API из конструктора.
+     */
+    isSignatureCheckEnabled(): boolean {
+        return Boolean(
+            this.appContext?.appConfig.tokens[this.platformName]?.webhookSecret &&
+            this.signatureName,
+        );
+    }
+
     /** Заполняет контроллер данными callback-кнопки MAX. */
     #setCallbackData(query: IMaxRequestContent, controller: BotController): boolean {
         if (query.update_type !== 'message_callback' || !query.callback) {

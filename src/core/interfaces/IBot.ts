@@ -154,6 +154,26 @@ export type TPlugin = IPlugin | IPluginFn;
  */
 export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     /**
+     * Имя http-заголовка, в котором платформа передаёт подпись/секрет вебхука.
+     *
+     * Заполняется адаптером для платформ с поддержкой подписи
+     * (Telegram, VK, Viber, MAX). Отсутствие поля означает, что проверка
+     * подписи для платформы недоступна по построению (Alisa, Marusia, SmartApp).
+     * Используется ядром для предупреждения при старте о вебхуке без защиты.
+     */
+    signatureName?: string;
+    /**
+     * Возвращает, включена ли проверка подписи вебхука для этой платформы
+     * с текущей конфигурацией (секрет задан).
+     *
+     * Используется ядром в `bot.start()` для предупреждения о вебхуке, который
+     * принимает запросы платформы без проверки подлинности. Адаптеры платформ
+     * с подписью переопределяют метод: базовая реализация считает проверку
+     * включённой при заданных `tokens[platform].token` и `signatureName`
+     * (схема HMAC, например Viber).
+     */
+    isSignatureCheckEnabled?: () => boolean;
+    /**
      * Определяет, принадлежит ли входящий запрос данной платформе.
      *
      * Метод проверяет заголовки или структуру тела запроса.
@@ -165,7 +185,7 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      *
      * @example
      * ```ts
-     * // Telegram проверяет наличие заголовка 'X-Telegram-Bot-Api-Secret-Token'
+     * // Telegram проверяет наличие заголовка 'X-Telegram-Bot-API-Secret-Token'
      * isPlatformOnQuery(query, headers) {
      *   return headers?.['x-telegram-bot-api-secret-token'] === this.secret;
      * }

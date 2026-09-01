@@ -73,6 +73,66 @@ describe('AppContext: маскирование секретов (logError / logW
         expect(msg).toContain('***');
     });
 
+    it('маскирует Viber-токен (~46 hex, короче прежнего порога 64)', () => {
+        const viberToken = '45b3f26e91c046a8b2b3a1d0f5e6c7d8a9b0c1d2e3f4a5b';
+        ctx.logError(`Viber auth: ${viberToken}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain(viberToken.slice(5));
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует MAX-токен (UUID с дефисами)', () => {
+        const maxToken = '550e8400-e29b-41d4-a716-446655440000';
+        ctx.logError(`MAX auth: ${maxToken}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('446655440000');
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует Яндекс OAuth-токен (y0_A...)', () => {
+        const oauth = 'y0_AgAAAAAB6f3fTCDhb5p8iYz8iZy8AAAAAAAAAA';
+        ctx.logError(`Alisa OAuth: ${oauth}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('TCDhb5p8');
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует access_token в нормальном JSON (прежде regVk2 требовал второе двоеточие и не срабатывал)', () => {
+        const json = '{"access_token": "vk1.a.abcdefgh12345678", "v": "5.199"}';
+        ctx.logError(`Ответ API: ${json}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('abcdefgh12345678');
+        // Ключ остался, значение замаскировано (пробел после двоеточия не сохраняется)
+        expect(msg).toMatch(/"access_token":?\s*"?\*\*\*"?/);
+    });
+
+    it('маскирует Api-Key Яндекс SpeechKit (32 hex — ниже порога regToken2)', () => {
+        const apiKey = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6'; // ровно 32 hex
+        ctx.logError(`SpeechKit: ${apiKey}`);
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('a1b2c3d4');
+        expect(msg).toContain('***');
+    });
+
+    it('маскирует password/pass в тексте лога (JSON-строка), не только в meta', () => {
+        // Конфигурация БД печатается в лог именно текстом — "pass":"..." в строке,
+        // а не как объект meta. Раньше SECRET_KEY_PATTERN работал только в #maskUnknown.
+        ctx.logError('cfg: {"password":"hunter2secret","pass":"qwerty123"}');
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('hunter2secret');
+        expect(msg).not.toContain('qwerty123');
+        expect(msg).toMatch(/"?(password|pass)"?:?"?\*\*\*"?/);
+    });
+
+    it('маскирует пароль БД по ключу pass в meta (структура из JSDoc AppContext)', () => {
+        ctx.logError('Не удалось подключиться к БД', {
+            db: { host: 'localhost', user: 'admin', pass: 'S3cr3t-P4ssw0rd!' },
+        });
+        const [, meta] = errorSpy.mock.calls[0];
+        expect(JSON.stringify(meta)).not.toContain('S3cr3t-P4ssw0rd');
+        expect(meta.db.pass).toBe('***');
+    });
+
     it('маскирует JWT (Сбер SmartApp, OAuth)', () => {
         const jwt =
             'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV';

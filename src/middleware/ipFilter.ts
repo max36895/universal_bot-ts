@@ -203,15 +203,28 @@ export function ipFilter(
     const whitelist = options.whitelist ?? null;
     const blacklist = options.blacklist ?? null;
     const deniedText = options.deniedText ?? '';
+    // Предупреждение о пропуске запросов без IP достаточно вывести один раз
+    // на инстанс middleware — иначе консольные приложения замусорят лог.
+    let warnedNoIp = false;
 
     return async (ctx: BotController, next: MiddlewareNext): Promise<void> => {
         // IP клиента заполняется фреймворком в webhookHandle из сокета HTTP-запроса.
         // requestObject здесь не подходит — это распарсенное JSON-тело платформы.
         const remoteIp = ctx.platformOptions.clientIp;
 
-        // Если нет IP (например, bot.run() в тесте или console) — не блокируем.
-        // Это нужно для того, чтобы middleware не ломал локальную разработку и долгоживущие сценарии.
+        // Если нет IP (например, bot.run() в тесте или console) — не блокируем:
+        // это нужно, чтобы middleware не ломал локальную разработку и сценарии без
+        // HTTP-контекста. Но молчаливый fail-open опасен: warn'им один раз на инстанс,
+        // чтобы неблокируемые запросы не остались незамеченными.
         if (!remoteIp) {
+            if (!warnedNoIp) {
+                warnedNoIp = true;
+                ctx.appContext.logWarn(
+                    'ipFilter: запрос без IP клиента пропущен без фильтрации ' +
+                        '(bot.run() без HTTP-контекста). Через webhook (webhookHandle) ' +
+                        'фильтрация работает штатно.',
+                );
+            }
             await next();
             return;
         }

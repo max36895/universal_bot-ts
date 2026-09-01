@@ -242,6 +242,113 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     }
 
     /**
+     * Операторы MongoDB, разрешённые в условиях выборки (`where`).
+     *
+     * Это документированный API фреймворка (JSDoc `IQueryData`, dbAdapter.md,
+     * external-db-adapter-spec.md: «Рекомендуемый минимум операторов: $gt,
+     * $gte, $lt, $lte, $ne, $in»). Разрешаем только операторы сравнения и
+     * логики — все они не выполняют код на сервере БД.
+     */
+    static readonly #SAFE_QUERY_OPERATORS = new Set([
+        '$eq',
+        '$ne',
+        '$gt',
+        '$gte',
+        '$lt',
+        '$lte',
+        '$in',
+        '$nin',
+        '$exists',
+        '$type',
+        '$all',
+        '$size',
+        '$not',
+        '$or',
+        '$and',
+        '$nor',
+        '$elemMatch',
+        '$regex',
+        '$options',
+        '$mod',
+        '$comment',
+    ]);
+
+    /**
+     * Проверяет объект запроса на опасные для MongoDB конструкции.
+     *
+     * Опасно для `where`:
+     * - операторы, исполняющие JavaScript на сервере БД: `$where`, `$function`,
+     *   `$accumulator`, `$expr` (с `$function` внутри), — вычисление выполняется
+     *   на сервере, и даже «безобидный» `$where: 'this.a === this.b'` открывает
+     *   DoS-поверхность и при определённых настройках — больше;
+     * - незнакомые `$`-операторы: список разрешённых конечен, всё остальное
+     *   (включая будущие серверные операторы) — reject по умолчанию;
+     * - ключи прототипа (`__proto__`, `constructor`, `prototype`) — и в ключах,
+     *   и внутри dotted-путей (`'a.__proto__.x'`, `'user.$ne'`);
+     * - вложенность глубже 10 уровней — не рискнём считать её безопасной.
+     *
+     * Для `data` (update/insert) `$`-ключи запрещены полностью: фреймворк сам
+     * оборачивает данные в `{$set: ...}`, а Mongo не хранит `$`-поля.
+     *
+     * Стандартный поток фреймворка передаёт в where скалярный `userId`
+     * (объекты размываются `escapeString`), но кастомные модели и
+     * пользовательские `where` могут пронести объект-оператор в драйвер.
+     *
+     * @param obj Проверяемый объект (where/select/update-данные)
+     * @param mode `where` — разрешить операторы сравнения; `data` — запретить все `$`
+     * @param depth Ограничение глубины рекурсии
+     * @returns true, если объект безопасен
+     */
+    #isSafeMongoQuery(obj: unknown, mode: 'where' | 'data', depth = 0): boolean {
+        if (obj === null || typeof obj !== 'object') {
+            return true;
+        }
+        if (depth > 10) {
+            this.#logRejectedQuery('слишком глубокая вложенность (>10)');
+            return false;
+        }
+        if (Array.isArray(obj)) {
+            return obj.every((item) => this.#isSafeMongoQuery(item, mode, depth + 1));
+        }
+        for (const key of Object.keys(obj)) {
+            const isPrototypeKey =
+                key === '__proto__' ||
+                key === 'constructor' ||
+                key === 'prototype' ||
+                /(?:^|\.)(?:__proto__|constructor|prototype)(?:\.|$)/.test(key);
+            if (isPrototypeKey) {
+                this.#logRejectedQuery(`ключ "${key}" (прототип)`);
+                return false;
+            }
+            if (key.startsWith('$')) {
+                if (mode === 'data') {
+                    this.#logRejectedQuery(`ключ "${key}" в данных записи`);
+                    return false;
+                }
+                if (!MongoAdapter.#SAFE_QUERY_OPERATORS.has(key)) {
+                    // $where/$function/$accumulator/$expr и всё незнакомое:
+                    // либо исполнение кода на сервере, либо неизвестный оператор
+                    this.#logRejectedQuery(`оператор "${key}" вне разрешённого списка`);
+                    return false;
+                }
+            }
+            if (!this.#isSafeMongoQuery((obj as Record<string, unknown>)[key], mode, depth + 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Логирует отклонённый запрос без раскрытия самих данных запроса. */
+    #logRejectedQuery(reason: string): void {
+        this._appContext?.logError(
+            `MongoAdapter: запрос отклонён — ${reason}. ` +
+                'Документированные операторы сравнения ($gt, $in, $ne и др.) разрешены; ' +
+                'исполняемые на сервере ($where, $function) и ключи прототипа — нет.',
+        );
+    }
+
+    /**
      * Выполняет UPDATE-запрос.
      * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
@@ -251,6 +358,14 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         if (this._appContext.database.databaseInfo) {
             update = this.validate(updateData, update);
             select = this.validate(updateData, select);
+            // Драйвер не отклоняет $-операторы сам: $set с инъекцией 'a.b' расползается
+            // по вложенным путям, а $ne в where разворачивает фильтр. Отказ до запроса.
+            if (
+                !this.#isSafeMongoQuery(select, 'where') ||
+                !this.#isSafeMongoQuery(update, 'data')
+            ) {
+                return false;
+            }
             // Удаляем ключи со значением undefined — иначе Mongo запишет BSON-undefined и затирает поле.
             if (update && typeof update === 'object') {
                 update = Object.fromEntries(
@@ -290,6 +405,10 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         let insert = insertData.data;
         if (this._appContext.database.databaseInfo) {
             insert = this.validate(insertData, insert);
+            // $-ключи и ключи прототипа в данных записи — инъекция в драйвер
+            if (!this.#isSafeMongoQuery(insert, 'data')) {
+                return false;
+            }
             if (insertData.primaryKeyName) {
                 return !!(await this.query(async (_client, db: Db) => {
                     try {
@@ -319,6 +438,10 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         let remove = removeData.query;
         if (this._appContext.database.databaseInfo) {
             remove = this.validate(removeData, remove);
+            // $ne/$where в условии удаления — инъекция фильтра: отвергаем до драйвера
+            if (!this.#isSafeMongoQuery(remove, 'where')) {
+                return false;
+            }
             return !!(await this.query(async (_client: MongoClient, db: Db) => {
                 try {
                     const collection = db.collection(removeData.tableName);
@@ -430,6 +553,15 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         isOne: boolean = false,
     ): Promise<IModelRes> {
         if (this._appContext.database.databaseInfo) {
+            // В _select validate() не применяется вовсе — where идёт в драйвер
+            // как есть. Объект-оператор ($ne) или ключ прототипа в условии
+            // выборки разворачивал фильтр: защита до обращения к коллекции.
+            if (where && !this.#isSafeMongoQuery(where, 'where')) {
+                return {
+                    status: false,
+                    error: 'Запрос содержит запрещённые ключи (NoSQL-инъекция)',
+                };
+            }
             return (await this.query(async (_client, db: Db) => {
                 try {
                     const collection = db.collection(selectData.tableName);

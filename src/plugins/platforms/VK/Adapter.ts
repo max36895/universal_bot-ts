@@ -213,6 +213,15 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         return true;
     }
 
+    /**
+     * VK проверяет поле `secret` в теле запроса против `tokens.vk.secret_key`
+     * (задаётся через опцию `vk_secret_key`). Токен доступа из конструктора
+     * проверку подписи не включает.
+     */
+    isSignatureCheckEnabled(): boolean {
+        return Boolean(this.appContext?.appConfig.tokens[this.platformName]?.secret_key);
+    }
+
     /** Заполняет контроллер данными нового сообщения VK. */
     async #setMessageNew(query: IVkRequestContent, controller: BotController): Promise<boolean> {
         if (!query.object?.message) {

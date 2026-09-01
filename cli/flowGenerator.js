@@ -1636,13 +1636,37 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
     if (tokenEntries.length > 0) {
         const envPath = path.join(outputPath, '.env');
         if (fs.existsSync(envPath)) {
-            console.warn(
-                '  Внимание: существующий файл .env будет перезаписан токенами из flow.json.',
+            // Существующий .env НЕ перезаписываем: в нём пользователь уже мог
+            // вписать реальные токены, а повторная генерация с --force затирала
+            // бы их значениями из flow.json. Вместо этого дописываем только те
+            // переменные, которых в файле ещё нет.
+            const existing = fs.readFileSync(envPath, 'utf8');
+            const existingNames = new Set(
+                existing
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter(Boolean)
+                    .map((l) => l.split('=')[0]),
             );
+            const missing = tokenEntries.filter((e) => !existingNames.has(e.envName));
+            if (missing.length > 0) {
+                const addition =
+                    (existing.endsWith('\n') ? '' : '\n') +
+                    missing.map((entry) => `${entry.envName}=${entry.value}`).join('\n') +
+                    '\n';
+                fs.appendFileSync(envPath, addition, 'utf8');
+                console.warn(
+                    `  .env: дописаны переменные (${missing.map((e) => e.envName).join(', ')}), ` +
+                        'существующие значения не изменены.',
+                );
+            } else {
+                console.log('  .env уже существует — токены из flow.json не перезаписаны.');
+            }
+        } else {
+            const envLines = tokenEntries.map((entry) => `${entry.envName}=${entry.value}`);
+            fs.writeFileSync(envPath, envLines.join('\n') + '\n', 'utf8');
+            console.log('  .env');
         }
-        const envLines = tokenEntries.map((entry) => `${entry.envName}=${entry.value}`);
-        fs.writeFileSync(envPath, envLines.join('\n') + '\n', 'utf8');
-        console.log('  .env');
     }
 
     // Генерация для Yandex Cloud Functions
@@ -1712,10 +1736,15 @@ const envPath = path.join(root, '.env');
 // спецсимволы (&, |, ^) из значения токена исполнялись бы командной оболочкой.
 // Вырезаем переводы строк, управляющие символы и кавычки (кавычка переключает
 // режим парсинга cmd и позволила бы вырваться из квотинга аргумента).
+// '%' экранируем удвоением, а не вырезанием: cmd раскрывает %VAR% даже внутри
+// двойных кавычек (значение из недоверенного flow.json могло подставить
+// содержимое переменных окружения машины пользователя), но %% раскрывается
+// в литеральный % — легитимные секреты с процентом не искажаются.
 const sanitizeEnvValue = (value) => String(value)
-    .replace(/[\\r\\n\\0]/g, '')
-    .replace(/[\\u0000-\\u001f\\u007f]/g, '')
-    .replace(/"/g, '');
+    .replace(/[\r\n\0]/g, '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/"/g, '')
+    .replace(/%/g, '%%');
 const environment = fs.existsSync(envPath)
     ? fs.readFileSync(envPath, 'utf8').split(/\\r?\\n/).map((line) => line.trim())
           .filter((line) => line && !line.startsWith('#')).map((line) => {
