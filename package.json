@@ -129,7 +129,8 @@
         "stress:prof": "node --prof --expose-gc ./benchmark/stress-test.js",
         "comparison": "node --expose-gc ./benchmark/um.js",
         "comparison:logic": "node --expose-gc ./benchmark/um.js logic",
-        "audit:load": "node --expose-gc ./scripts/audit-load.js"
+        "audit:load": "node --expose-gc ./scripts/audit-load.js",
+        "compare": "node --expose-gc ./benchmark/comparison/competitors.js"
     },
     "engines": {
         "node": ">=20.19.0"

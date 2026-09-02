@@ -423,3 +423,49 @@ export function tryParse<TResult = Record<string, unknown>>(
     }
     return rawPayload as TResult;
 }
+
+/**
+ * Проверяет, есть ли в NLU-объекте платформы хоть какие-то данные.
+ *
+ * Голосовые платформы (Алиса, Маруся) присылают поле nlu всегда — оно есть в
+ * протоколе, но в большинстве запросов оказывается пустым (`{}` либо с ключами
+ * без значений). Записывать пустой nlu нет смысла: `setNlu({})` семантически
+ * идентичен отсутствию вызова (Nlu-компонент создаётся лениво с тем же
+ * состоянием), а геттер `controller.nlu` иначе аллоцировал бы объект Nlu
+ * (плюс внутренний Map кэша) на каждый запрос.
+ *
+ * Тип параметра — `object`: интерфейсы платформенных nlu (IAlisaNlu,
+ * IMarusiaNlu) расширяют INlu без индекс-сигнатуры, поэтому `Record<string, unknown>`
+ * их не принимает.
+ *
+ * @param nlu Поле request.nlu из запроса платформы
+ * @returns true, если в nlu есть хотя бы один ключ с данными
+ *
+ * @example
+ * ```ts
+ * hasAnyNluKey({}); // -> false — записывать нечего
+ * hasAnyNluKey({ tokens: [], entities: [] }); // -> false — только пустые массивы
+ * hasAnyNluKey({ entities: [{ type: 'YANDEX.FIO' }] }); // -> true
+ * hasAnyNluKey(null); // -> false
+ * ```
+ */
+export function hasAnyNluKey(nlu: object | null | undefined): boolean {
+    if (!nlu) {
+        return false;
+    }
+    const source = nlu as Record<string, unknown>;
+    for (const key in source) {
+        const value = source[key];
+        if (value === null || value === undefined) {
+            continue;
+        }
+        if (Array.isArray(value) && value.length === 0) {
+            continue;
+        }
+        if (typeof value === 'object' && Object.keys(value).length === 0) {
+            continue;
+        }
+        return true;
+    }
+    return false;
+}

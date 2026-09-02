@@ -1,4 +1,5 @@
 import { Text, BotController, AppContext, IButtonType } from '../../../index';
+import { keysCount } from '../../../utils';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
@@ -45,7 +46,7 @@ function resizeAlisaTts(tts: string | null): string {
     }
     return result + tts.slice(cursor, cursor + ALISA_TTS_MAX_LENGTH - visibleLength);
 }
-import { initUserCommand } from '../Base/utils';
+import { initUserCommand, hasAnyNluKey } from '../Base/utils';
 
 interface IState {
     user_state_update: object;
@@ -206,8 +207,13 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 controller.requestObject = query;
                 this.#initUserCommand(query.request, controller);
                 this.#setUserId(controller, query.session);
-                if (query.request.nlu) {
-                    controller.nlu.setNlu(query.request.nlu);
+                // Пустой nlu не записываем: setNlu({}) семантически идентичен отсутствию
+                // вызова (проверено тестами: getNluValue/getIntents/getFio/getDateTime
+                // возвращают то же), но геттер controller.nlu создал бы объект Nlu
+                // на каждый запрос Алисы — включая ответы без NLU-данных.
+                const nlu = query.request.nlu;
+                if (nlu && hasAnyNluKey(nlu)) {
+                    controller.nlu.setNlu(nlu);
                 }
 
                 controller.userMeta = query.meta || {};
@@ -247,11 +253,21 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
      * @returns {Promise<IAlisaResponse>} Объект ответа для Алисы
      */
     protected async _getResponse(controller: BotController): Promise<IAlisaResponse> {
+        const resizedText = Text.resize(controller.text, 1024);
+        // Голосовой кейс: tts ссылочно равен text (Bot подставляет controller.tts = controller.text
+        // для голосовых платформ). Теги <speaker> отсутствуют по определению — это тот же
+        // обработанный text без разметки, поэтому regex-скан resizeAlisaTts даст ту же строку.
+        // Строгие === и длина-чек безопасны: строка-ссылка одна, а короткий text
+        // никогда не мог содержать невлезающий тег.
+        const tts =
+            controller.tts === controller.text && controller.text.length <= ALISA_TTS_MAX_LENGTH
+                ? resizedText
+                : resizeAlisaTts(controller.tts);
         const response: IAlisaResponse = {
-            text: Text.resize(controller.text, 1024),
+            text: resizedText,
             // `<speaker>` и `sil <[...]>` не входят в лимит 1024 у Алисы. Обычная
             // Text.resize считала их и могла разрезать тег посередине.
-            tts: resizeAlisaTts(controller.tts),
+            tts: tts,
             end_session: controller.isEnd,
         };
         if (controller.isScreen) {
@@ -300,23 +316,33 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 'AlisaAdapter.getContent(): stateData передан без выбранного state-хранилища и не будет отправлен.',
             );
         } else if (controller.platformOptions.stateName && stateData) {
-            try {
-                const stateJson = JSON.stringify(stateData);
-                const stateBytes = Buffer.byteLength(stateJson, 'utf8');
-                if (stateBytes <= ALISA_STATE_MAX_BYTES) {
-                    result[controller.platformOptions.stateName as keyof IState] = stateData;
-                } else {
+            // Для session_state отсутствие поля = сброс стейта (документация Яндекса:
+            // «Стейт сессии перестанет храниться, если в ответе навыка не вернуть
+            // свойство session_state»). Поэтому пустой объект ВСЕГДА отправляем как {}:
+            // форма ответа не меняется. Но лимит для него не проверяем — {} весит
+            // 2 байта, а JSON.stringify + Buffer.byteLength на каждый ответ
+            // заметны в горячем пути.
+            if (keysCount(stateData) === 0) {
+                result[controller.platformOptions.stateName as keyof IState] = {};
+            } else {
+                try {
+                    const stateJson = JSON.stringify(stateData);
+                    const stateBytes = Buffer.byteLength(stateJson, 'utf8');
+                    if (stateBytes <= ALISA_STATE_MAX_BYTES) {
+                        result[controller.platformOptions.stateName as keyof IState] = stateData;
+                    } else {
+                        this.appContext?.logError(
+                            `AlisaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
+                                `(${stateBytes} байт) превышает лимит API ` +
+                                `(${ALISA_STATE_MAX_BYTES} байт). Поле не будет отправлено.`,
+                        );
+                    }
+                } catch (error) {
                     this.appContext?.logError(
-                        `AlisaAdapter.getContent(): Размер state "${controller.platformOptions.stateName}" ` +
-                            `(${stateBytes} байт) превышает лимит API ` +
-                            `(${ALISA_STATE_MAX_BYTES} байт). Поле не будет отправлено.`,
+                        `AlisaAdapter.getContent(): state "${controller.platformOptions.stateName}" не сериализуется и не будет отправлен.`,
+                        { error },
                     );
                 }
-            } catch (error) {
-                this.appContext?.logError(
-                    `AlisaAdapter.getContent(): state "${controller.platformOptions.stateName}" не сериализуется и не будет отправлен.`,
-                    { error },
-                );
             }
         }
         this._timeLimitLog(controller);
@@ -390,7 +416,6 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
             request: {
                 command: query.toLowerCase(),
                 original_utterance: query,
-                nlu: {},
                 type: 'SimpleUtterance',
             },
             state: {

@@ -11,10 +11,4 @@
 /repos/*
 /coverage/*
 /package-lock.json
-
-# Локальные scratch-файлы (дампы, черновики PR, утилиты), не должны попадать в коммит
-/pr.md
-/pr2.md
-/project-all-in-one.txt
-/scr.js
-/pulldoc.sh
+benchmark/comparison/node_modules/*

@@ -1125,15 +1125,20 @@ export abstract class BotController<
             return exactCommand;
         }
 
-        let contCount = 0;
-        // Используем локальные переменные чтобы избежать повторных getter-вызовов
-        // в hot path, которые приводят к деоптимизации через "generic named access".
-        const commands = commandReg.commands as Map<string, ICommandParam>;
         const regexpGroups = commandReg.regexpGroup as Map<string, IGroupData>;
-        const useDirectRegExp = commands.size < 500;
+        // Снимок команд: индексированный обход не аллоцирует пары [k, v] на каждой
+        // итерации (в отличие от for...of по Map), что убирает транзиентный мусор
+        // скана и часть CPU. Снимок актуален: пересобирается в CommandReg на
+        // addCommand/removeCommand/clearCommands.
+        const commandList = commandReg.getActualCommandsList();
+        const useDirectRegExp = (commandReg.commands as Map<string, ICommandParam>).size < 500;
         const getCustomRegExp = this.#getCustomRegExp;
+        const userCommand = this.userCommand;
+        let contCount = 0;
 
-        for (const [commandName, command] of commands) {
+        for (let i = 0; i < commandList.length; i++) {
+            const commandName = commandList[i][0];
+            const command = commandList[i][1];
             if (commandName === DEFAULT_FALLBACK_COMMAND || !command || contCount !== 0) {
                 if (contCount) {
                     contCount--;
@@ -1148,17 +1153,14 @@ export abstract class BotController<
 
                 if (groups) {
                     contCount = groups.commands.length - 1;
-                    const groupRes = this.#searchCommandsInGroup(groups, this.userCommand, start);
+                    const groupRes = this.#searchCommandsInGroup(groups, userCommand, start);
                     if (groupRes !== null) {
                         return groupRes;
                     }
                     continue;
                 }
             }
-            const slots = command.regExp || command.slots;
-            const isPattern = command.isPattern;
-            const directRegExp = command.isRegExpString || useDirectRegExp;
-            if (Text.isSayText(slots, this.userCommand, isPattern, directRegExp, getCustomRegExp)) {
+            if (this.#isCommandMatch(command, userCommand, useDirectRegExp, getCustomRegExp)) {
                 return this.#commandCb(commandName, command, start);
             }
         }
@@ -1168,6 +1170,43 @@ export abstract class BotController<
             });
         }
         return null;
+    }
+
+    /**
+     * Проверяет совпадение одной команды с текстом пользователя.
+     * Вынесено из цикла {@link _getCommand} для читаемости: hot-путь —
+     * прямой `.test` для одиночного stateless-RegExp (без обёртки isSayText),
+     * остальные типы слотов идут через Text.isSayText как раньше.
+     *
+     * @param command Параметры проверяемой команды
+     * @param userCommand Текст пользователя (нижний регистр)
+     * @param useDirectRegExp Разрешить ли прямое использование RegExp без кэша
+     * @param getCustomRegExp Кастомный движок RegExp (если подключён)
+     * @returns true, если команда сработала
+     */
+    #isCommandMatch(
+        command: ICommandParam,
+        userCommand: string,
+        useDirectRegExp: boolean,
+        getCustomRegExp: RegExpConstructor | undefined,
+    ): boolean {
+        // Быстрый путь: один stateless-RegExp — .test напрямую, без обёртки
+        // isSayText (сброс lastIndex сохранён для побитовой совместимости).
+        const fastReg = command.__$singleStatelessRegExp;
+        if (fastReg) {
+            if (fastReg.lastIndex !== 0) {
+                fastReg.lastIndex = 0;
+            }
+            return fastReg.test(userCommand);
+        }
+        // Слот-массив не пуст: проверено выше по command.slots.length в цикле,
+        // но тип допускает undefined — сужаем с явным fallback.
+        const slots = command.regExp || command.slots;
+        if (!slots) {
+            return false;
+        }
+        const directRegExp = command.isRegExpString || useDirectRegExp;
+        return Text.isSayText(slots, userCommand, command.isPattern, directRegExp, getCustomRegExp);
     }
 
     #searchCommandsInGroup(

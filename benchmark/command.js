@@ -16,14 +16,21 @@ function gc() {
 // --------------------------------------------------
 // Вывод результатов
 
-function memResult(value) {
-    const absValue = Math.abs(value);
-    if (absValue < 1024) {
-        return `${value}KB`;
-    } else if ((absValue < 1024) ^ 2) {
-        return `${(value / 1024).toFixed(2)}MB`;
+function memResult(valueKB) {
+    // Значения приходят в КИЛОБАЙТАХ и могут быть уже отформатированы строкой
+    // (startMemory/afterRunMemory записываются как (heapUsed / 1024).toFixed(2)).
+    // Форматируем человекочитаемо: КБ -> МБ -> ГБ.
+    // Раньше здесь был XOR-баг: (abs < 1024) ^ 2 всегда truthy, из-за чего ветка ГБ
+    // была недостижима, а 2 ГБ печатались как «2048.00MB»; единицы KB/MB/GB
+    // подписаны без перевода и не соответствовали переданным КБ.
+    const num = typeof valueKB === 'string' ? parseFloat(valueKB) : valueKB;
+    const abs = Math.abs(num);
+    if (abs < 1024) {
+        return `${num.toFixed(2)} КБ`;
+    } else if (abs < 1024 * 1024) {
+        return `${(num / 1024).toFixed(2)} МБ`;
     } else {
-        return `${(value / (1024 * 2)).toFixed(2)}GB`;
+        return `${(num / (1024 * 1024)).toFixed(2)} ГБ`;
     }
 }
 
@@ -31,16 +38,31 @@ function printScenarioBlock(items) {
     const byState = {};
     for (const item of items) byState[item.state] = item;
 
+    // Формат времени: секунды-миллисекунды в мс, доли — в мкс. Печать наносекунд
+    // как «0.0002800 мс» непрофессиональна и плохо читается.
+    const fmtTime = (msStr) => {
+        const ms = parseFloat(msStr);
+        if (Math.abs(ms) >= 1) {
+            return `${ms.toFixed(2)} мс`;
+        }
+        return `${(ms * 1000).toFixed(2)} мкс`;
+    };
+    // Знак прироста: '+12.3 КБ' / '−4.6 КБ' (минус уже в числе — не дублируем '+').
+    const fmtDelta = (memKB) => {
+        const num = typeof memKB === 'string' ? parseFloat(memKB) : memKB;
+        return `${num >= 0 ? '+' : ''}${memResult(num)}`;
+    };
+
     const rep = byState.middle || byState.low || byState.high;
     if (rep) {
         console.log(`  ├─ Память до запуска: ${memResult(rep.startMemory)}`);
         console.log(`  ├─ Память после первого запуска: ${memResult(rep.afterRunMemory)}`);
-        console.log(`  ├─ Прирост памяти (первый запуск): +${memResult(rep.memoryIncrease)}`);
+        console.log(`  ├─ Прирост памяти (первый запуск): ${fmtDelta(rep.memoryIncrease)}`);
         const memPerCmd =
             (parseFloat(rep.afterRunMemory) - parseFloat(rep.startMemory)) / rep.count;
         console.log(`  ├─ Потребление памяти на одну команду: ${memPerCmd.toFixed(4)} КБ`);
         const timePerCmd = rep.duration / rep.count;
-        console.log(`  ├─ Среднее время на обработку одной команды: ${timePerCmd.toFixed(7)} мс`);
+        console.log(`  ├─ Среднее время на обработку одной команды: ${fmtTime(timePerCmd)}`);
     }
 
     const low = byState.low;
@@ -466,15 +488,24 @@ async function runTest(count = 1000, useReg = false, state = 'middle', regState 
     status.push(res);
 }
 
-function getAvailableMemoryMB() {
-    const free = os.freemem();
-    // Оставляем 50 МБ на систему и Node.js рантайм
-    return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
-}
+// Общая корректная проверка памяти: min(V8 heap-лимит, cgroup, RAM с учётом page cache).
+// Старая версия на os.freemem() ложно отказывала в запуске на unix,
+// где память занята page cache (ядро сбросит её при нехватке).
+// Подробности — benchmark/availableMemory.js.
+const { getAvailableMemoryMB } = require('./availableMemory');
 
 function predictMemoryUsage(commandCount) {
-    // Максимальное потребление примерно 1.3 КБ на команду(округляем до 2) + запас под nodejs и логику
-    return 15 + (commandCount * 2) / 1024 + 50; // в МБ
+    // Фактические замеры (2026-08): ~466 Б на строковую команду,
+    // ~1.9 КБ на isPattern-команду (RegExp-компиляция). Берём худший случай
+    // isPattern с запасом x1.5: predict = 3 КБ/команду. Плюс базовый оверхед
+    // фреймворка ~15 МБ и 50 МБ запаса на рантайм. Старая формула (2 Б/команду)
+    // была занижена в ~200-1000 раз — тест падал по heap OOM на 200 000+ команд
+    // вместо честного отказа с сообщением.
+    // Для каждого count тест выполняет 12 прогонов (3 состояния x (1 без regex + 3 сложности regex)),
+    // удерживая пик живых команд между прогонами. Худший случай isPattern ~0.8 КБ/команду, с V8-фрагментацией кучи ~1.6 КБ
+    // (12 прогонов x count x фактический пик). Старая формула занижала
+    // в сотни раз — на 200 000 команд тест падал по heap OOM вместо честного отказа.
+    return 15 + (commandCount * 12 * 1.6) / 1024 + 50;
 }
 
 // --- Запуск ---

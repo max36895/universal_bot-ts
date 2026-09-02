@@ -22,8 +22,11 @@ function createAliceReq(utterance) {
 }
 
 const SCENARIOS_RUNS = 15;
-const REQUEST_COUNT = 150;
+const REQUEST_COUNT = 400;
 const COMMAND_COUNT = 1500;
+// Сколько полных проходов по запросам выполняется на одном инстансе до замера
+// steady-state: 2 прохода прогревают JIT/inline-кэши V8, третий меряется.
+const WARMUP_PASSES = 2;
 
 const forceGC = () => {
     if (global.gc) {
@@ -289,7 +292,7 @@ const SCENARIOS = [
             Array.from({ length: REQUEST_COUNT }, (_, i) => createAliceReq(`привет`)),
     },
     {
-        name: 'ассихронный handler',
+        name: 'асинхронный handler',
         setup: (router) => {
             const cmds = [
                 { t: 'стоп', r: 'stop' },
@@ -336,6 +339,69 @@ const SCENARIOS = [
     },
 ];
 
+// 🔌 Подключи СВОЙ роутер и сравись с umbot лично:
+//   UM_COMPARISON_ROUTER=./my-router.js node --expose-gc ./benchmark/um.js
+// Модуль должен экспортировать класс (module.exports = class MyRouter {...})
+// с тем же контрактом, что CleanRouter ниже:
+//   addCommand(name, slots, handler) — slots: массив строк | RegExp
+//   async run(appType, req) — вернуть объект-ответ Алисы {response: {text}}
+// Пример my-router.js:
+//   module.exports = class MyRouter {
+//     constructor() { this.commands = []; }
+//     addCommand(name, slots, handler) { this.commands.push({name, slots, handler}); }
+//     async run(_, req) {
+//       const text = req.request.original_utterance || '';
+//       for (const c of this.commands)
+//         for (const s of c.slots)
+//           if (s instanceof RegExp ? s.test(text) : text.includes(s)) {
+//             const ctrl = { text: '' };
+//             await c.handler(text, ctrl);
+//             return { version: req.version, response: { text: ctrl.text } };
+//           }
+//       return { version: req.version, response: { text: 'не найдено' } };
+//     }
+//   };
+// Тогда в таблицах появится третья колонка «yours» — сравнение честное:
+// те же сценарии, тот же lockstep-порядок, те же метрики.
+let CustomRouter = null;
+if (process.env.UM_COMPARISON_ROUTER) {
+    // Резолвим от CWD (как в примере запуска UM_COMPARISON_ROUTER=./my.js),
+    // при неудаче — пробуем относительно benchmark/ (запуск из другой папки).
+    const path = require('node:path');
+    const userPath = process.env.UM_COMPARISON_ROUTER;
+    const candidates = [
+        userPath,
+        path.resolve(__dirname, userPath),
+        path.resolve(process.cwd(), userPath),
+    ].filter(Boolean);
+    let loaded = null;
+    let lastErr = null;
+    for (const candidate of candidates) {
+        try {
+            loaded = require(candidate);
+            break;
+        } catch (e) {
+            lastErr = e;
+        }
+    }
+    if (!loaded) {
+        console.error(
+            'UM_COMPARISON_ROUTER: не удалось загрузить ' +
+                userPath +
+                '. ' +
+                (lastErr && lastErr.message),
+        );
+        process.exit(1);
+    }
+    CustomRouter = loaded;
+    if (typeof CustomRouter !== 'function') {
+        console.error(
+            'UM_COMPARISON_ROUTER: модуль должен экспортировать класс (module.exports = class ...)',
+        );
+        process.exit(1);
+    }
+}
+
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -357,103 +423,11 @@ function formatDelta(val, unit = '') {
     return `${sign}${val.toFixed(2)}${unit}`;
 }
 
-function getVerdict(timeDelta, memDelta) {
-    // Пороги
-    const TIME_THRESHOLD = 10;
-    const MEM_THRESHOLD = 30;
-
-    // Если лучше по обоим —++
-    if (timeDelta < 0 && memDelta < 0) {
-        return '++ лучше';
-    }
-
-    // Если один лучше, другой хуже —+- допустимо* (компромисс)
-    const timeBetterMemWorse = timeDelta < 0 && memDelta > 0;
-    const timeWorseMemBetter = timeDelta > 0 && memDelta < 0;
-
-    if (timeBetterMemWorse || timeWorseMemBetter) {
-        return '+- допустимо*';
-    }
-
-    // Если оба хуже, но оба в пределах нормы —+- допустимо**
-    const timeOk = timeDelta > 0 && timeDelta <= TIME_THRESHOLD;
-    const memOk = memDelta > 0 && memDelta <= MEM_THRESHOLD;
-
-    if (timeOk && memOk) {
-        return '+- допустимо**';
-    }
-
-    // Если хотя бы один за пределами нормы —--
-    return '-- уступаем';
-}
-
-async function runScenario(initCb, scenario) {
-    forceGC();
-    await sleep(10);
-    const coldTimes = [],
-        coldRps = [],
-        coldMemPerReq = [];
-    const warmTimes = [],
-        warmRps = [],
-        warmMemPerReq = [];
-
-    let router;
-    const requests = scenario.getRequests();
-    for (let i = 0; i < SCENARIOS_RUNS; i++) {
-        router = initCb();
-        scenario.setup(router);
-        if (router instanceof Bot) {
-            // umbot асинхронно добавляет команды.
-            await sleep(150);
-        }
-        forceGC();
-        await sleep(10);
-        const memBeforeCold = process.memoryUsage().heapUsed;
-        const startCold = performance.now();
-        for (const reg of requests) {
-            await router.run('alisa', reg);
-        }
-        const endCold = performance.now();
-        const memAfterCold = process.memoryUsage().heapUsed;
-
-        const totalMsCold = endCold - startCold;
-        const avgTimeCold = totalMsCold / requests.length;
-        const safeAvgCold = avgTimeCold <= 0 ? 0.001 : avgTimeCold;
-        coldTimes.push(avgTimeCold);
-        coldRps.push(Math.round(1000 / safeAvgCold));
-        coldMemPerReq.push((memAfterCold - memBeforeCold) / requests.length / 1024);
-
-        forceGC();
-        await sleep(10);
-        const memBeforeWarm = process.memoryUsage().heapUsed;
-        const startWarm = performance.now();
-        for (const reg of requests) {
-            await router.run('alisa', reg);
-        }
-        const endWarm = performance.now();
-        const memAfterWarm = process.memoryUsage().heapUsed;
-
-        const totalMsWarm = endWarm - startWarm;
-        const avgTimeWarm = totalMsWarm / requests.length;
-        const safeAvgWarm = avgTimeWarm <= 0 ? 0.001 : avgTimeWarm;
-        warmTimes.push(avgTimeWarm);
-        warmRps.push(Math.round(1000 / safeAvgWarm));
-        warmMemPerReq.push((memAfterWarm - memBeforeWarm) / requests.length / 1024);
-    }
-
-    return {
-        cold: {
-            time: getMedian(coldTimes),
-            rps: getMedian(coldRps),
-            memKB: getMedian(coldMemPerReq),
-        },
-        warm: {
-            time: getMedian(warmTimes),
-            rps: getMedian(warmRps),
-            memKB: getMedian(warmMemPerReq),
-        },
-    };
-}
+// Порог шума для памяти: |retain| меньше этой величины считаем «на равных».
+// Retain-метрика после gc() содержит GC-шум ±1-2 КБ на проход; без этого порога
+// ноль или −0.002 КБ формально попадал в ветку «хуже»/«лучше» и ломал вердикт.
+// Логика вердикта вынесена в benchmark/umVerdict.js — тестируется юнит-тестами.
+const { getVerdict } = require('./umVerdict');
 function pad(s, len) {
     const str = String(s);
     return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
@@ -461,11 +435,11 @@ function pad(s, len) {
 
 function printFirstTable(results) {
     console.log('\n========== ТАБЛИЦА 1: АБСОЛЮТНЫЕ МЕТРИКИ (МЕДИАНА) ==========');
-    const header = `${pad('Сценарий', 30)} | ${pad('Тип', 5)} | ${pad('C Время(ms)', 8)} | ${pad('C RPS', 6)} | ${pad('C Память(KB/запр)', 10)} | ${pad('W Время(ms)', 8)} | ${pad('W RPS', 6)} | ${pad('W Память(KB/запр)', 10)}`;
+    const header = `${pad('Сценарий', 30)} | ${pad('Тип', 5)} | ${pad('C Время(ms)', 8)} | ${pad('C RPS', 6)} | ${pad('C Retain(KB/з)', 10)} | ${pad('W Время(ms)', 8)} | ${pad('W RPS', 6)} | ${pad('W Retain(KB/з)', 10)} | ${pad('W Мусор(KB/з)', 8)}`;
     console.log(header);
     console.log('─'.repeat(header.length));
 
-    for (const [scenarioName, cleanRes, umbotRes] of results) {
+    for (const [scenarioName, cleanRes, umbotRes, yoursRes] of results) {
         const clean = cleanRes;
         const umbot = umbotRes;
         const printLine = (type, metrics) => {
@@ -485,11 +459,16 @@ function printFirstTable(results) {
                     ' | ' +
                     pad(warm.rps.toString(), 6) +
                     ' | ' +
-                    pad(warm.memKB.toFixed(3), 10),
+                    pad(warm.memKB.toFixed(3), 10) +
+                    ' | ' +
+                    pad((warm.transientKB ?? 0).toFixed(3), 8),
             );
         };
         printLine('clean', clean);
         printLine('umbot', umbot);
+        if (yoursRes) {
+            printLine('yours', yoursRes);
+        }
         console.log('─'.repeat(header.length)); // разделитель между сценариями
     }
 }
@@ -515,7 +494,7 @@ function printDeltaTable(results) {
         sumUmbotWarmMem = 0;
     const N = results.length;
 
-    for (const [scenarioName, cleanRes, umbotRes] of results) {
+    for (const [scenarioName, cleanRes, umbotRes, yoursRes] of results) {
         // Cold
         const coldTimeDelta = safePercent(umbotRes.cold.time, cleanRes.cold.time);
         const coldRpsDelta = safePercent(umbotRes.cold.rps, cleanRes.cold.rps);
@@ -627,29 +606,55 @@ function printDeltaTable(results) {
 async function main() {
     const tableData = [];
 
-    for (const scenario of SCENARIOS) {
-        const cleanResult = await runScenario(() => new CleanRouter(), scenario);
-        forceGC();
-        await sleep(50);
-        const umbotResult = await runScenario(initUmbot, scenario);
+    // Свой роутер (UM_COMPARISON_ROUTER=...) участвует в тех же lockstep-прогонах:
+    // три реализации в одном цикле => одинаковые тепловой режим CPU и порядок.
+    const impls = [
+        ['clean', () => new CleanRouter()],
+        ['umbot', initUmbot],
+    ];
+    if (CustomRouter) {
+        impls.push(['yours', () => new CustomRouter()]);
+        console.log(
+            '🔌 Подключен внешний роутер: ' +
+                process.env.UM_COMPARISON_ROUTER +
+                ' — колонка «yours».',
+        );
+    }
 
-        tableData.push([scenario.name, cleanResult, umbotResult]);
+    for (const scenario of SCENARIOS) {
+        // Lockstep: прогоны всех реализаций чередуются внутри одного цикла —
+        // все измеряются в одинаковом тепловом/частотном режиме CPU.
+        const [cleanResult, umbotResult, yoursResult] = await runScenarioMulti(impls, scenario);
+        tableData.push([scenario.name, cleanResult, umbotResult, yoursResult]);
         forceGC();
         await sleep(50);
     }
 
     printFirstTable(tableData);
     printDeltaTable(tableData);
+    if (CustomRouter) {
+        console.log(
+            '\n🔌 Колонка «yours» — ваш роутер (' +
+                process.env.UM_COMPARISON_ROUTER +
+                '). Это те же сценарии, тот же lockstep-порядок и те же метрики, ' +
+                'что у clean и umbot: сравнивайте строки честно. Хотите лучше — ' +
+                'оптимизируйте свой роутер и перезапустите.',
+        );
+    }
 
     // Методология для CI
     console.log('\n📌 Методология замера:');
     console.log(`• Каждый сценарий выполняется ${SCENARIOS_RUNS} раз, берётся медиана метрик.`);
+    console.log('• Cold — первый проход на свежем инстансе (влияние JIT-компиляции).');
     console.log(
-        '• Cold — первый проход на свежем инстансе (влияние JIT-компиляции), Warm — второй проход на том же инстансе (стабильное состояние).',
+        `• Warm/steady — проход №${WARMUP_PASSES + 1} на том же инстансе, БЕЗ forceGC между проходами ` +
+            '(замер сразу после полного GC полухолодный: GC переносит объекты и сбивает inline-кэши V8).',
     );
     console.log(
-        `• Память: (heapUsed после - heapUsed до) / ${REQUEST_COUNT} запросов → КБ на запрос. Отрицательные значения — сработал GC.`,
+        `• Память: retain = рост heapUsed с gc() до прохода и gc() после (утечки); ` +
+            `транзиентный мусор замеряется отдельно и в вердикте не участвует.`,
     );
+    console.log(`• Lockstep: прогоны clean и umbot чередуются — одинаковое состояние CPU.`);
     console.log('• RPS: 1000 / среднее время запроса. Если время <= 0, используется 0.001 мс.');
     console.log(
         '• Порог регрессии в CI: > +20% по времени выполнения (Warm) считается деградацией.',
@@ -659,6 +664,114 @@ async function main() {
     console.log(
         '** По всем показателям уступаем, но в пределах порогов (10% по скорости, 30 KB по памяти)',
     );
+
+    // Легенда вердиктов: раньше формулировки «допустимо*/допустимо**» приходилось
+    // расшифровывать по звёздочкам внизу; теперь каждая строка таблицы читаема сама.
+    console.log('\nЛегенда вердиктов:');
+    console.log('  ++ лучше     — umbot быстрее и экономичнее по памяти');
+    console.log('  == паритет   — разница в пределах шума (время ±10%)');
+    console.log('  +- допустимо — приемлемый компромисс (в порогах: 10% скорости / 30 КБ памяти)');
+    console.log('  -- уступаем  — значимая просадка, не оправданная экономией памяти');
+}
+
+/**
+ * Lockstep-прогон сценария: чередует прогоны всех реализаций (2 или 3).
+ * Каждая итерация внешнего цикла создаёт СВЕЖИЙ инстанс очередной реализации
+ * (round-robin), что даёт всем одинаковое тепловое/частотное состояние CPU
+ * и одинаковое число «холодных» стартов.
+ * Возвращает массив результатов в порядке impls.
+ *
+ * @param impls Массив пар [label, initFn]
+ * @param scenario Сценарий {setup, getRequests}
+ */
+async function runScenarioMulti(impls, scenario) {
+    const results = impls.map(() => []);
+    const requests = scenario.getRequests();
+    const forceGC2 = forceGC;
+
+    for (let i = 0; i < SCENARIOS_RUNS; i++) {
+        // Round-robin: прогон i достаётся реализации (i % impls.length).
+        const implIndex = i % impls.length;
+        const router = impls[implIndex][1]();
+        scenario.setup(router);
+        if (router instanceof Bot) {
+            await sleep(150);
+        }
+        forceGC2();
+        await sleep(10);
+
+        const memBeforeCold = process.memoryUsage().heapUsed;
+        const startCold = performance.now();
+        for (const reg of requests) {
+            await router.run('alisa', reg);
+        }
+        const endCold = performance.now();
+        const memAfterCold = process.memoryUsage().heapUsed;
+
+        const avgCold = (endCold - startCold) / requests.length;
+        const safeAvgCold = avgCold <= 0 ? 0.001 : avgCold;
+        const coldRec = {
+            time: avgCold,
+            rps: Math.round(1000 / safeAvgCold),
+            memKB: (memAfterCold - memBeforeCold) / requests.length / 1024,
+        };
+
+        for (let p = 0; p < WARMUP_PASSES; p++) {
+            for (const reg of requests) {
+                await router.run('alisa', reg);
+            }
+        }
+
+        const memBeforeWarm = process.memoryUsage().heapUsed;
+        const startWarm = performance.now();
+        for (const reg of requests) {
+            await router.run('alisa', reg);
+        }
+        const endWarm = performance.now();
+        const memAfterWarm = process.memoryUsage().heapUsed;
+
+        const avgWarm = (endWarm - startWarm) / requests.length;
+        const safeAvgWarm = avgWarm <= 0 ? 0.001 : avgWarm;
+        const transientKB = (memAfterWarm - memBeforeWarm) / requests.length / 1024;
+
+        // Retain: gc до и gc после прохода.
+        forceGC2();
+        const memBeforeRetain = process.memoryUsage().heapUsed;
+        for (const reg of requests) {
+            await router.run('alisa', reg);
+        }
+        forceGC2();
+        const memAfterRetain = process.memoryUsage().heapUsed;
+
+        results[implIndex].push({
+            cold: coldRec,
+            warm: {
+                time: avgWarm,
+                rps: Math.round(1000 / safeAvgWarm),
+                memKB: (memAfterRetain - memBeforeRetain) / requests.length / 1024,
+                transientKB: transientKB,
+            },
+        });
+    }
+
+    const medianOf = (arr, fn) => {
+        const vals = arr.map(fn).sort((a, b) => a - b);
+        return vals[Math.floor(vals.length / 2)];
+    };
+    const buildResult = (list) => ({
+        cold: {
+            time: medianOf(list, (r) => r.cold.time),
+            rps: medianOf(list, (r) => r.cold.rps),
+            memKB: medianOf(list, (r) => r.cold.memKB),
+        },
+        warm: {
+            time: medianOf(list, (r) => r.warm.time),
+            rps: medianOf(list, (r) => r.warm.rps),
+            memKB: medianOf(list, (r) => r.warm.memKB),
+            transientKB: medianOf(list, (r) => r.warm.transientKB),
+        },
+    });
+    return results.map((list) => buildResult(list));
 }
 
 main().catch(console.error);

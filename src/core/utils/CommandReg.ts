@@ -163,6 +163,14 @@ export interface ICommandParam<TBotController extends BotController = BotControl
     regExp?: RegExp;
     /** true, если слот-строка скомпилирована как регулярное выражение (isPattern). */
     isRegExpString: boolean;
+    /**
+     * Предвычисленный быстрый путь: у команды ровно один слот, он RegExp без
+     * stateful-флагов `g`/`y`, и кастомный движок regexp не подключён.
+     * Горячий цикл поиска вызывает `test` напрямую, минуя обёртку Text.isSayText
+     * (экономит ~15 нс и ~40 байт транзиентного мусора на каждый вызов).
+     * @private
+     */
+    __$singleStatelessRegExp?: RegExp;
 }
 
 /**
@@ -242,9 +250,44 @@ export class CommandReg {
 
     readonly #exactMatchMap = new Map<string, string>();
     /**
+     * Снимок команд для горячего цикла поиска.
+     *
+     * `for...of` по Map на каждой итерации аллоцирует пару-массив `[ключ, значение]`
+     * (спецификация итератора), что при скане 1500 команд даёт десятки КБ
+     * транзиентного мусора на каждый запрос. Снимок живёт как обычный массив пар
+     * (ключ — строка уже существующая в Map, значение — ссылка на объект команды,
+     * копий данных не создаётся) и пересобирается лениво: мутации только
+     * инвалидируют его флагом, а пересборка происходит один раз при первом
+     * поиске после изменения набора команд. Так регистрация 20 000 команд
+     * остаётся O(n), а не O(n²).
+     * Источником правды остаётся {@link commands} (Map): он нужен для O(1)-get
+     * по имени команды.
+     */
+    public commandsList: [string, ICommandParam][] = [];
+
+    #commandsListDirty = true;
+
+    /**
+     * Возвращает актуальный снимок команд, пересобирая его при необходимости.
+     * Выывается из горячего цикла поиска команд: при неизменном наборе команд
+     * (обычный прод-режим) стоимость — одна проверка булевого флага.
+     */
+    public getActualCommandsList(): [string, ICommandParam][] {
+        if (this.#commandsListDirty) {
+            this.commandsList = [];
+            for (const entry of this.commands) {
+                this.commandsList.push(entry);
+            }
+            this.#commandsListDirty = false;
+        }
+        return this.commandsList;
+    }
+
+    /**
      * Добавленные шаги для обработки
      */
     public steps: Map<string, IStepParam> = new Map();
+
     /**
      * Флаг строгого режима работы приложения.
      * В строгом режиме работы, все ReDOS регулярные выражения не будут добавляться.
@@ -712,6 +755,7 @@ export class CommandReg {
                 isRegExpString: false,
                 __$groupName: commandName,
             });
+            this.#commandsListDirty = true;
             return;
         }
 
@@ -765,8 +809,35 @@ export class CommandReg {
                 regExp,
                 isRegExpString: typeof regExp !== 'string',
                 __$groupName: groupName,
+                __$singleStatelessRegExp: this.#getSingleStatelessRegExp(correctSlots),
             });
+            this.#commandsListDirty = true;
         }
+    }
+
+    /**
+     * Вычисляет RegExp для быстрого пути поиска: команда с ровно одним слотом-RegExp
+     * без stateful-флагов `g`/`y` и без кастомного движка может проверяться
+     * прямым `.test` в горячем цикле, минуя обёртку Text.isSayText.
+     *
+     * Наличие движка проверяем по plugins.regExp напрямую, БЕЗ вызова
+     * getCustomRegExp(): у плагина-функции могут быть сайд-эффекты
+     * (например, подсчёт вызовов в тестах), лишний вызов ломал контракт.
+     *
+     * @param slots Слоты команды после валидации ReDoS
+     * @returns Готовый к прямому тесту RegExp или undefined, если условия не выполнены
+     */
+    #getSingleStatelessRegExp(slots: TSlots): RegExp | undefined {
+        if (
+            !this.plugins.regExp &&
+            slots.length === 1 &&
+            isRegex(slots[0]) &&
+            !slots[0].global &&
+            !slots[0].sticky
+        ) {
+            return slots[0];
+        }
+        return undefined;
     }
 
     /**
@@ -800,6 +871,7 @@ export class CommandReg {
             // Команды нет в this.commands, но она могла остаться хостом группы
             this.#removeRegexpInGroup(commandName);
         }
+        this.#commandsListDirty = true;
     }
 
     /**
@@ -815,6 +887,7 @@ export class CommandReg {
         this.#oldFnGroup = undefined;
         clearTimeout(this.#timeOutReg);
         this.#timeOutReg = undefined;
+        this.#commandsListDirty = true;
         Text.clearCache();
     }
 

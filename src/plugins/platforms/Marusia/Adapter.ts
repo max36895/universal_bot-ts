@@ -17,7 +17,7 @@ import {
     IMarusiaWebhookResponse,
     IMarusiaRequestMeta,
 } from './interfaces/IMarusiaPlatform';
-import { initUserCommand } from '../Base/utils';
+import { initUserCommand, hasAnyNluKey } from '../Base/utils';
 
 type TState = 'user_state_update' | 'session_state';
 
@@ -195,7 +195,13 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
 
                 controller.platformOptions.session = query.session;
                 controller.userId = query.session.user_id + '';
-                controller.nlu.setNlu(query.request.nlu || {});
+                // Пустой nlu не записываем (setNlu({}) семантически идентичен отсутствию
+                // вызова, а геттер controller.nlu иначе аллоцировал бы объект Nlu на
+                // каждый запрос Маруси). Подробности — hasAnyNluKey в Base/utils.
+                const nlu = query.request.nlu;
+                if (nlu && hasAnyNluKey(nlu)) {
+                    controller.nlu.setNlu(nlu);
+                }
 
                 controller.userMeta = query.meta || {};
                 controller.messageId = query.session.message_id;

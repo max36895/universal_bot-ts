@@ -1,5 +1,8 @@
 // stress-test-fixed.js
-const { Bot, BotController, fullPlatforms, Adapter } = require('./../dist/index');
+// ⚠️ Раньше импортировал fullPlatforms и Adapter из dist/index — их там нет
+// (это экспорты dist/plugins), из-за чего бот оставался без адаптеров.
+const { Bot, BotController } = require('./../dist/index');
+const { fullPlatforms, AlisaAdapter } = require('./../dist/plugins');
 const crypto = require('node:crypto');
 const os = require('node:os');
 
@@ -22,7 +25,7 @@ async function createCleanBot() {
     bot.setAppConfig({ isLocalStorage: true });
     bot.initBotController(StressController);
     bot.use(fullPlatforms);
-    bot.use(new Adapter());
+    bot.use(new AlisaAdapter());
 
     // Добавляем фиксированное количество команд
     const COMMAND_COUNT = 500; // Фиксируем!
@@ -135,7 +138,7 @@ async function stableRpsTest(options = {}) {
                 metrics.requestsCompleted++;
             } catch (error) {
                 metrics.errors++;
-                console.log('fuck', error);
+                console.log('Ошибка запроса:', error);
             }
         }
     };
