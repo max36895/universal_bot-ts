@@ -98,7 +98,10 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
     init(appContext: AppContext): void {
         super.init(appContext);
         if (this._token) {
-            appContext.appConfig.tokens[this.platformName].token = this._token;
+            const platformToken = appContext.appConfig.tokens[this.platformName];
+            if (platformToken) {
+                platformToken.token = this._token;
+            }
         }
     }
 
@@ -234,7 +237,9 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                     await controller.card.getCards(cardProcessing, controller)
                 );
                 if (!response.card) {
-                    response.card = undefined;
+                    // exactOptionalPropertyTypes: отсутствие карточки в ответе —
+                    // это отсутствие поля, а не undefined-значение.
+                    delete response.card;
                 }
             }
             response.buttons = controller.isButtonsInit()

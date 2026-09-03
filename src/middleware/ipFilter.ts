@@ -76,6 +76,9 @@ function parseIpv6(ip: string): bigint | null {
         const values: bigint[] = [];
         for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
+            if (!group) {
+                return null;
+            }
             // IPv4-хвост допустим только в конце (::ffff:192.168.0.1)
             if (group.includes('.')) {
                 if (i !== groups.length - 1) {
@@ -95,7 +98,9 @@ function parseIpv6(ip: string): bigint | null {
         }
         return values;
     };
-    const head = parseGroups(halves[0]);
+    // split всегда возвращает минимум один элемент; пустая строка в parseGroups
+    // корректно даст [] (guard на undefined нужен только для type narrowing).
+    const head = parseGroups(halves[0] ?? '');
     const tail = parseGroups(halves[1] ?? '');
     if (!head || !tail) {
         return null;
@@ -139,6 +144,7 @@ function parseIp(ip: string): IParsedIp | null {
  */
 function parseCidr(cidr: string): { version: 4 | 6; value: bigint; prefix: number } | null {
     const [ipStr, prefixStr] = cidr.split('/');
+    if (!ipStr) return null;
     const parsed = parseIp(ipStr.trim());
     if (!parsed) return null;
     const maxPrefix = parsed.version === 4 ? 32 : 128;

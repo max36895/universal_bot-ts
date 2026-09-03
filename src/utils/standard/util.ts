@@ -167,13 +167,16 @@ export function similarText(first: string, second: string): number {
         for (let i = 0; i < shorter.length; i++) {
             let prevDiag = 0;
             for (let j = 0; j < longer.length; j++) {
-                const current = dp[j + 1];
-                dp[j + 1] = shorter[i] === longer[j] ? prevDiag + 1 : Math.max(dp[j + 1], dp[j]);
+                const current = dp[j + 1] ?? 0;
+                dp[j + 1] =
+                    shorter.charAt(i) === longer.charAt(j)
+                        ? prevDiag + 1
+                        : Math.max(dp[j + 1] ?? 0, dp[j] ?? 0);
                 prevDiag = current;
             }
         }
 
-        return dp[longer.length];
+        return dp[longer.length] ?? 0;
     };
 
     // Гарантируем, что короткая строка идёт первой для оптимизации

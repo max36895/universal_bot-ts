@@ -34,10 +34,12 @@ export async function getImageInDB(
         isCbCalled = true;
 
         if (photo?.ok && photo.result?.photo?.length) {
-            const lastPhoto = photo.result.photo[photo.result.photo.length - 1];
-            model.imageToken = lastPhoto.file_id;
-            if (await model.save(true)) {
-                return model.imageToken;
+            const lastPhoto = photo.result.photo.at(-1);
+            if (lastPhoto) {
+                model.imageToken = lastPhoto.file_id;
+                if (await model.save(true)) {
+                    return model.imageToken;
+                }
             }
         }
         return null;
@@ -52,6 +54,73 @@ export async function getImageInDB(
     }
 
     return result;
+}
+
+/**
+ * Собирает медиа-группу (sendMediaGroup) из нескольких изображений карточки.
+ *
+ * Telegram API требует 2–10 элементов: если после фильтрации остался один,
+ * он уходит одиночной sendPhoto, и функция возвращает null (в ответе карточки нет).
+ */
+async function getMediaGroup(
+    cardInfo: ICardInfo,
+    controller: BotController,
+): Promise<ITelegramMedia[] | null> {
+    const object: ITelegramMedia[] = [];
+    if (cardInfo.images.length > MAX_TELEGRAM_MEDIA_GROUP_ITEMS) {
+        controller.appContext.logWarn(
+            `[Telegram] Медиа-группа ограничена ${MAX_TELEGRAM_MEDIA_GROUP_ITEMS} изображениями; ` +
+                `лишние изображения (${cardInfo.images.length - MAX_TELEGRAM_MEDIA_GROUP_ITEMS}) пропущены.`,
+        );
+    }
+    for (
+        let i = 0;
+        i < cardInfo.images.length && object.length < MAX_TELEGRAM_MEDIA_GROUP_ITEMS;
+        i++
+    ) {
+        const image = cardInfo.images[i];
+        if (!image) {
+            break;
+        }
+        let field: string | null;
+        if (!image.imageToken) {
+            if (image.imageDir) {
+                field = Text.isUrl(image.imageDir) ? image.imageDir : `attach://${image.imageDir}`;
+            } else {
+                controller.appContext.logWarn(
+                    '[Telegram] У изображения не заданы ни imageToken, ни imageDir — элемент пропущен.',
+                );
+                continue;
+            }
+        } else {
+            field = image.imageToken;
+        }
+        object.push({
+            type: 'photo',
+            media: field,
+            caption: Text.resize(image.desc, 1024),
+        });
+    }
+    // Telegram API требует 2-10 элементов для sendMediaGroup.
+    // Если после фильтрации осталось < 2 элементов — отправляем через sendPhoto.
+    if (object.length === 1) {
+        const media = object[0];
+        if (!media) {
+            return null;
+        }
+        // Префикс attach:// нужен только для FormData в sendMediaGroup:
+        // sendPhoto ожидает локальный путь, URL или file_id.
+        const photo = media.media.startsWith('attach://')
+            ? media.media.replace('attach://', '')
+            : media.media;
+        await new TelegramRequest(controller.appContext).sendPhoto(
+            getChatId(controller),
+            photo,
+            media.caption || undefined,
+        );
+        return null;
+    }
+    return object;
 }
 
 /**
@@ -71,6 +140,9 @@ export async function cardProcessing(
     }
     if (cardInfo.showOne || cardInfo.images.length === 1) {
         const image = cardInfo.images[0];
+        if (!image) {
+            return null;
+        }
         try {
             if (!image.imageToken) {
                 if (image.imageDir) {
@@ -97,58 +169,8 @@ export async function cardProcessing(
             );
         }
         return object;
-    } else {
-        object = [];
-        if (cardInfo.images.length > MAX_TELEGRAM_MEDIA_GROUP_ITEMS) {
-            controller.appContext.logWarn(
-                `[Telegram] Медиа-группа ограничена ${MAX_TELEGRAM_MEDIA_GROUP_ITEMS} изображениями; ` +
-                    `лишние изображения (${cardInfo.images.length - MAX_TELEGRAM_MEDIA_GROUP_ITEMS}) пропущены.`,
-            );
-        }
-        for (
-            let i = 0;
-            i < cardInfo.images.length && object.length < MAX_TELEGRAM_MEDIA_GROUP_ITEMS;
-            i++
-        ) {
-            const image = cardInfo.images[i];
-            let field: string | null;
-            if (!image.imageToken) {
-                if (image.imageDir) {
-                    field = Text.isUrl(image.imageDir)
-                        ? image.imageDir
-                        : `attach://${image.imageDir}`;
-                } else {
-                    controller.appContext.logWarn(
-                        '[Telegram] У изображения не заданы ни imageToken, ни imageDir — элемент пропущен.',
-                    );
-                    continue;
-                }
-            } else {
-                field = image.imageToken;
-            }
-            object.push({
-                type: 'photo',
-                media: field,
-                caption: Text.resize(image.desc, 1024),
-            });
-        }
-        // Telegram API требует 2-10 элементов для sendMediaGroup.
-        // Если после фильтрации осталось < 2 элементов — отправляем через sendPhoto.
-        if (object.length === 1) {
-            const media = object[0];
-            // Префикс attach:// нужен только для FormData в sendMediaGroup:
-            // sendPhoto ожидает локальный путь, URL или file_id.
-            const photo = media.media.startsWith('attach://')
-                ? media.media.replace('attach://', '')
-                : media.media;
-            await new TelegramRequest(controller.appContext).sendPhoto(
-                getChatId(controller),
-                photo,
-                media.caption || undefined,
-            );
-            return null;
-        }
     }
 
+    object = await getMediaGroup(cardInfo, controller);
     return object;
 }

@@ -6,7 +6,7 @@ import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VK } from './constants';
 import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPlatform';
-import { getChatText, getPlatformRequestData, tryParse } from '../Base/utils';
+import { getChatText, getPlatformRequestData, setThisUserToNlu, tryParse } from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
 type IVkRequestData = Record<string, unknown> & {
@@ -134,20 +134,22 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
 
     init(appContext: AppContext): void {
         super.init(appContext);
+        const platformToken = appContext.appConfig.tokens[this.platformName];
+        if (!platformToken) {
+            return;
+        }
         if (this._token) {
-            appContext.appConfig.tokens[this.platformName].token = this._token;
+            platformToken.token = this._token;
         }
         if (this._platformOptions?.vk_confirmation_token) {
-            appContext.appConfig.tokens[this.platformName].confirmation_token = this
-                ._platformOptions.vk_confirmation_token as string;
+            platformToken.confirmation_token = this._platformOptions
+                .vk_confirmation_token as string;
         }
         if (this._platformOptions?.vk_secret_key) {
-            appContext.appConfig.tokens[this.platformName].secret_key = this._platformOptions
-                .vk_secret_key as string;
+            platformToken.secret_key = this._platformOptions.vk_secret_key as string;
         }
         if (this._platformOptions?.vk_api_version) {
-            appContext.appConfig.tokens[this.platformName].api_version = this._platformOptions
-                .vk_api_version as string;
+            platformToken.api_version = this._platformOptions.vk_api_version as string;
         }
     }
 
@@ -247,12 +249,8 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         }
         const user = await getVkUserInfo(this.appContext as AppContext, controller.userId);
         if (user) {
-            controller.nlu.setNlu({
-                thisUser: {
-                    username: null,
-                    ...user,
-                },
-            });
+            // setThisUserToNlu сам пропустит запись, если VK не вернул полей.
+            setThisUserToNlu(controller, { username: null, ...user });
         }
         return true;
     }
@@ -286,7 +284,10 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         requestData.peerId = query.object.peer_id ?? query.object.user_id ?? 0;
         controller.payload = tryParse(query.object.payload);
         controller.messageId = query.object.conversation_message_id || 0;
-        requestData.eventId = query.object.event_id;
+        // exactOptionalPropertyTypes: eventId заполняем только фактическим значением.
+        if (query.object.event_id !== undefined) {
+            requestData.eventId = query.object.event_id;
+        }
         return true;
     }
 

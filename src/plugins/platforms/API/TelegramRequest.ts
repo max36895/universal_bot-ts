@@ -185,6 +185,9 @@ export class TelegramRequest {
             const media: ITelegramMedia[] = [];
             for (let index = 0; index < file.length; index++) {
                 const item = file[index];
+                if (!item) {
+                    continue;
+                }
                 const key = `photo${index}`;
                 let mediaItem = item.media;
                 if (item.media.includes('attach://')) {

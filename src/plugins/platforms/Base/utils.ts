@@ -286,7 +286,7 @@ export async function getBaseDataSoundProcessing(
     if (sounds) {
         for (let i = 0; i < sounds.length; i++) {
             const sound = sounds[i];
-            if (sound.sounds !== undefined && sound.key !== undefined) {
+            if (sound?.sounds !== undefined && sound?.key !== undefined) {
                 let sText: string | null = Text.getText(sound.sounds);
                 if (Text.isUrl(sText) || (await isFile(sText))) {
                     sText = await getSoundInDB(controller, sText);
@@ -468,4 +468,35 @@ export function hasAnyNluKey(nlu: object | null | undefined): boolean {
         return true;
     }
     return false;
+}
+
+/**
+ * Записывает данные отправителя сообщения в NLU контроллера, если они есть.
+ *
+ * Чат-платформы (Telegram/VK/MAX/Viber) кладут в NLU только `thisUser`
+ * (username/first_name/last_name). Значение идёт в приватный буфер контроллера
+ * ({@link BotController.setThisUser}): объект Nlu создаётся лениво при первом
+ * обращении бизнес-логики к `controller.nlu`, а если логика NLU не читает —
+ * не создаётся вовсе (раньше аллоцировался на каждый запрос). Когда все поля
+ * пусты (анонимный канал, битый апдейт), запись пропускается — как и в
+ * случае с пустым nlu голосовых платформ (см. {@link hasAnyNluKey}).
+ *
+ * @param controller Контроллер текущего запроса
+ * @param thisUser Данные отправителя (поля могут отсутствовать)
+ *
+ * @example
+ * ```ts
+ * // вместо controller.nlu.setNlu({ thisUser }):
+ * setThisUserToNlu(controller, thisUser);
+ * ```
+ */
+export function setThisUserToNlu(
+    controller: BotController,
+    thisUser: { username?: string | null; first_name?: string | null; last_name?: string | null },
+): void {
+    // Пустая строка — то же отсутствие данных, что null: адаптеры приводят
+    // falsy к null, но хелпер устойчив и к неприведённым значениям.
+    if (thisUser.username || thisUser.first_name || thisUser.last_name) {
+        controller.setThisUser(thisUser);
+    }
 }

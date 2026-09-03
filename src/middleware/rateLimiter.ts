@@ -92,7 +92,7 @@ async function processQueue(
 
             for (let i = 0; i < batch.length; i++) {
                 const item = batch[i];
-                if (st.dead) {
+                if (!item || st.dead) {
                     break;
                 }
                 // Свежие запросы, приходящие параллельно с пачкой, занимают тот же

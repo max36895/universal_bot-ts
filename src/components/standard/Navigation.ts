@@ -220,7 +220,7 @@ export class Navigation<ElementType = TElementType> {
      */
     public numberPage(text: string): boolean {
         const data = /((-|)\d+) страни/imu.exec(text);
-        if (data) {
+        if (data && data[1] !== undefined) {
             this.thisPage = +data[1] - 1;
             this._validatePage();
             return true;
@@ -304,8 +304,9 @@ export class Navigation<ElementType = TElementType> {
         const end: number = start + this.maxVisibleElements;
         if (this.elements.length >= start) {
             for (let i = start; i < end; i++) {
-                if (this.elements[i] !== undefined) {
-                    showElements.push(this.elements[i]);
+                const element = this.elements[i];
+                if (element !== undefined) {
+                    showElements.push(element);
                 }
             }
         }
@@ -363,36 +364,38 @@ export class Navigation<ElementType = TElementType> {
         const end: number = start + this.maxVisibleElements;
 
         const setMaxElement = (index: number, res: ITextSimilarity): void => {
-            if (res.status && res.percent > maxPercent) {
-                selectElement = this.elements[index];
+            const element = this.elements[index];
+            if (res.status && res.percent > maxPercent && element !== undefined) {
+                selectElement = element;
                 maxPercent = res.percent;
             }
         };
 
         for (let i = start; i < end; i++) {
-            if (this.elements[i] === undefined) {
+            const element = this.elements[i];
+            if (element === undefined) {
                 continue;
             }
             if (index === number) {
-                return this.elements[i];
+                return element;
             }
 
-            const elementsTypeof = typeof this.elements[i];
+            const elementsTypeof = typeof element;
 
             if (keys === null || elementsTypeof === 'string') {
-                const elemText = this.elements[i] + '';
+                const elemText = element + '';
                 if (elemText === text) {
-                    return this.elements[i];
+                    return element;
                 }
                 const r = Text.textSimilarity(elemText, text, 75);
                 setMaxElement(i, r);
             } else if (elementsTypeof === 'object') {
-                const elemObj = this.elements[i] as Record<string, string>;
+                const elemObj = element as Record<string, string>;
                 const keysToSearch = typeof keys === 'object' ? keys : [keys];
                 for (const key of keysToSearch) {
                     const value = elemObj[key];
                     if (value === text) {
-                        return this.elements[i];
+                        return element;
                     }
                     if (value) {
                         const r = Text.textSimilarity(value, text, 75);

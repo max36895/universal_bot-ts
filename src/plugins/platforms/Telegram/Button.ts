@@ -53,7 +53,7 @@ export function buttonProcessing(
                 return;
             }
         }
-        if (button.payload) {
+        if (button.payload && typeof callbackData === 'string') {
             const inline: ITelegramInlineKeyboard = {
                 text: button.title,
                 callback_data: callbackData,

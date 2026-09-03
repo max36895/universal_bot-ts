@@ -57,6 +57,9 @@ async function getElements(
     const elements = [];
     for (let i = 0; i < maxImages; i++) {
         const image = cardInfo.images[i];
+        if (!image) {
+            break;
+        }
         if (!image.imageToken && image.imageDir) {
             image.imageToken = await getImageInDB(controller, image.imageDir);
         }
@@ -119,19 +122,16 @@ export async function cardProcessing(
     const object: IVkCard | string[] = [];
     const countImage = cardInfo.images.length;
     if (countImage) {
-        if (countImage === 1 || cardInfo.showOne) {
-            if (!cardInfo.images[0].imageToken && cardInfo.images[0].imageDir) {
-                // eslint-disable-next-line require-atomic-updates
-                cardInfo.images[0].imageToken = await getImageInDB(
-                    controller,
-                    cardInfo.images[0].imageDir,
-                );
+        const firstImage = cardInfo.images[0];
+        if ((countImage === 1 || cardInfo.showOne) && firstImage) {
+            if (!firstImage.imageToken && firstImage.imageDir) {
+                firstImage.imageToken = await getImageInDB(controller, firstImage.imageDir);
             }
-            if (cardInfo.images[0].imageToken) {
-                object.push(cardInfo.images[0].imageToken);
+            if (firstImage.imageToken) {
+                object.push(firstImage.imageToken);
                 return object;
             }
-        } else {
+        } else if (countImage > 1) {
             const elements = await getElements(cardInfo, controller);
             if (elements.length) {
                 return {

@@ -60,7 +60,7 @@ export interface IUserDataModelState extends IModelState {
      * сохраненные настройки, историю действий и т.д.
      * @example { "progress": 75, "settings": { "notifications": true } }
      */
-    data: string | Record<string, unknown> | null;
+    data: TDataType;
     /**
      * Тип платформы.
      * Определяет, на какой платформе зарегистрирован пользователь.

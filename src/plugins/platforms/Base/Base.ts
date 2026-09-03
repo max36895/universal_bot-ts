@@ -120,8 +120,13 @@ export abstract class BasePlatform<TQuery = unknown>
 
     constructor(platformToken?: string, additionalPlatformOptions?: IOptions) {
         super();
-        this._token = platformToken;
-        this._platformOptions = additionalPlatformOptions;
+        // exactOptionalPropertyTypes: поля не заполняем, если значения не переданы.
+        if (platformToken !== undefined) {
+            this._token = platformToken;
+        }
+        if (additionalPlatformOptions !== undefined) {
+            this._platformOptions = additionalPlatformOptions;
+        }
     }
 
     /**
@@ -206,12 +211,13 @@ export abstract class BasePlatform<TQuery = unknown>
      * @returns `true` — запрос валиден / проверка не включена, `false` — подпись не сошлась или отсутствует.
      */
     isCorrectQuery(query: TQuery, headers?: Record<string, unknown>): boolean {
-        if (this.appContext?.appConfig.tokens[this.platformName]?.token && this.signatureName) {
+        const platformToken = this.appContext?.appConfig.tokens[this.platformName];
+        if (platformToken?.token && this.signatureName) {
             if (!headers?.[this.signatureName]) {
                 return false;
             }
 
-            const token = this.appContext?.appConfig.tokens[this.platformName].token as string;
+            const token = platformToken.token as string;
             const payload = typeof query === 'string' ? query : JSON.stringify(query);
             const expected = createHmac('sha256', token).update(payload).digest('hex');
 

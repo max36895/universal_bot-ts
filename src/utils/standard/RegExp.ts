@@ -77,8 +77,15 @@ export function getRegExp(
 
     if (Array.isArray(reg)) {
         if (reg.length === 1) {
-            pattern = getPattern(reg[0]);
-            flag = isRegex(reg[0]) ? reg[0].flags : flags;
+            const single = reg[0];
+            if (single !== undefined) {
+                pattern = getPattern(single);
+                flag = isRegex(single) ? single.flags : flags;
+            } else {
+                // Дырявый массив с единственным элементом — компилируем пустой
+                // шаблон: new RegExp('') валиден и матчит пустую строку.
+                pattern = '';
+            }
         } else {
             const aPattern: string[] = [];
             reg.forEach((r) => {

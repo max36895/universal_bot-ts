@@ -170,14 +170,18 @@ export function buttonProcessing<TPayload>(
             index++;
         } else {
             if (object[GROUP_NAME] !== undefined) {
-                object[GROUP_NAME] = undefined;
+                // exactOptionalPropertyTypes: поле группы убираем целиком,
+                // а не присваиваем undefined.
+                delete object[GROUP_NAME];
             }
-            if (groups[+groupOptions] === undefined) {
+            const groupIndex = groups[+groupOptions];
+            if (groupIndex === undefined) {
                 groups[+groupOptions] = index;
                 finalButtons[index] = [object];
                 index++;
             } else {
-                (<IVkButton[]>finalButtons[groups[+groupOptions]]).push(object);
+                const groupButtons = finalButtons[groupIndex] as IVkButton[];
+                groupButtons.push(object);
             }
         }
     });

@@ -107,11 +107,19 @@ export function getQueryData(str: string): IQueryData | null {
         const regData: IQueryData = {};
         let data = matchAll.next();
         while (!data.done) {
-            let val: string | number = data.value[2] ?? data.value[3];
+            const key = data.value[1];
+            const rawVal = data.value[2] ?? data.value[3];
+            // Пропуск match без ключа: запись по undefined-ключу создала бы
+            // поле "undefined" в запросе к БД.
+            if (key === undefined) {
+                data = matchAll.next();
+                continue;
+            }
+            let val: string | number = rawVal ?? '';
             if (val !== '' && !isNaN(+val)) {
                 val = +val;
             }
-            regData[data.value[1]] = val;
+            regData[key] = val;
             data = matchAll.next();
         }
         return regData;

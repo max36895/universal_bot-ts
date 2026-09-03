@@ -36,7 +36,7 @@ export async function soundProcessing(
     if (sounds) {
         for (let i = 0; i < sounds.length; i++) {
             const sound = sounds[i];
-            if (sound.sounds !== undefined && sound.key !== undefined) {
+            if (sound?.sounds !== undefined && sound?.key !== undefined) {
                 let sText: string | null = Text.getText(sound.sounds);
                 if (Text.isUrl(sText)) {
                     controller.appContext.logWarn(

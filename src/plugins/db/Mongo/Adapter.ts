@@ -87,14 +87,28 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
      */
     init(appContext: AppContext): void {
         if (this._dbOptions) {
-            appContext.appConfig.db ??= { host: '', user: '', pass: '', database: '' };
-            appContext.appConfig.db.options =
-                this._dbOptions.options || appContext.appConfig.db?.options;
-            appContext.appConfig.db.host = this._dbOptions.host || appContext.appConfig.db?.host;
-            appContext.appConfig.db.user = this._dbOptions.user || appContext.appConfig.db?.user;
-            appContext.appConfig.db.pass = this._dbOptions.pass || appContext.appConfig.db?.pass;
-            appContext.appConfig.db.database =
-                this._dbOptions.database || appContext.appConfig.db?.database;
+            const dbConfig = (appContext.appConfig.db ??= {
+                host: '',
+                user: '',
+                pass: '',
+                database: '',
+            });
+            dbConfig.host = this._dbOptions.host || dbConfig.host;
+            dbConfig.database = this._dbOptions.database || dbConfig.database;
+            // exactOptionalPropertyTypes: опциональные поля заполняем только
+            // реальными значениями, не протаскивая undefined в конфиг.
+            const dbUser = this._dbOptions.user || dbConfig.user;
+            if (dbUser !== undefined) {
+                dbConfig.user = dbUser;
+            }
+            const dbPass = this._dbOptions.pass || dbConfig.pass;
+            if (dbPass !== undefined) {
+                dbConfig.pass = dbPass;
+            }
+            const dbOptions = this._dbOptions.options || dbConfig.options;
+            if (dbOptions !== undefined) {
+                dbConfig.options = dbOptions;
+            }
         }
         super.init(appContext);
     }
@@ -123,10 +137,14 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         };
 
         if (dbConfig.user) {
-            options.auth = {
+            const auth: { username: string; password?: string } = {
                 username: dbConfig.user,
-                password: dbConfig.pass,
             };
+            // exactOptionalPropertyTypes: без пароля поле не заполняем вовсе.
+            if (dbConfig.pass !== undefined) {
+                auth.password = dbConfig.pass;
+            }
+            options.auth = auth;
         }
         return options;
     }
@@ -573,9 +591,14 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
                             .find((where as Filter<Document>) || {})
                             .toArray();
                     }
+                    // exactOptionalPropertyTypes: data заполняем только реальным
+                    // результатом; findOne при отсутствии записи вернёт null.
+                    if (results === null) {
+                        return { status: false };
+                    }
                     return {
-                        status: !!results,
-                        data: results as IModelRes['data'],
+                        status: true,
+                        data: results as NonNullable<IModelRes['data']>,
                     };
                 } catch (err) {
                     return {

@@ -426,6 +426,9 @@ export class Text {
         // Оптимизированный вариант для массива: early return + includes
         for (let i = 0; i < (find as TPatternReg[]).length; i++) {
             const value = (find as TPatternReg[])[i];
+            if (value === undefined) {
+                continue;
+            }
             if (isRegex(value)) {
                 if (this.#isSayPattern(value, text, useDirectRegExp, customReg)) {
                     return true;
@@ -584,8 +587,8 @@ export class Text {
 
         const absNum = Math.abs(num);
         const cases = [2, 0, 1, 1, 1, 2];
-        const titleIndex =
-            absNum % 100 > 4 && absNum % 100 < 20 ? 2 : cases[Math.min(absNum % 10, 5)];
+        const digitCase = cases[Math.min(absNum % 10, 5)] ?? 2;
+        const titleIndex = absNum % 100 > 4 && absNum % 100 < 20 ? 2 : digitCase;
 
         return titles[titleIndex] || null;
     }
@@ -638,12 +641,17 @@ export class Text {
         const exactMatch = texts.findIndex((t) => t.toLowerCase() === normalizedOrigText);
 
         if (exactMatch !== -1) {
-            return {
-                index: exactMatch,
-                status: true,
-                percent: 100,
-                text: texts[exactMatch],
-            };
+            // exactOptionalPropertyTypes: текст гарантированно найден findIndex,
+            // но поле заполняем только реальным значением.
+            const exactText = texts[exactMatch];
+            if (exactText !== undefined) {
+                return {
+                    index: exactMatch,
+                    status: true,
+                    percent: 100,
+                    text: exactText,
+                };
+            }
         }
 
         // Если точного совпадения нет — ищем наиболее похожий текст

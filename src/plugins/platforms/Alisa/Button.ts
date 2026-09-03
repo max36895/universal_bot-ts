@@ -66,7 +66,10 @@ export function buttonProcessing(
     const objects: IAlisaButton[] = [];
     if (isCard) {
         if (buttons.length) {
-            return _getButton(buttons[0], isCard, appContext);
+            const firstButton = buttons[0];
+            if (firstButton) {
+                return _getButton(firstButton, isCard, appContext);
+            }
         }
     } else {
         getCorrectButtons(buttons).forEach((button) => {

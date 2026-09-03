@@ -103,18 +103,23 @@ export function cardProcessing(
     }
     const countImage = Math.min(validImages.length, VIBER_MAX_CARDS);
     if (countImage) {
-        if (countImage === 1 || cardInfo.showOne) {
-            if (!validImages[0].imageToken && validImages[0].imageDir) {
-                validImages[0].imageToken = validImages[0].imageDir;
+        const firstImage = validImages[0];
+        if ((countImage === 1 || cardInfo.showOne) && firstImage) {
+            if (!firstImage.imageToken && firstImage.imageDir) {
+                firstImage.imageToken = firstImage.imageDir;
             }
-            if (validImages[0].imageToken) {
+            if (firstImage.imageToken) {
                 const size = getCardSize(1);
-                return getElement(validImages[0], size.columns, size.rows);
+                return getElement(firstImage, size.columns, size.rows);
             }
         } else {
             const size = getCardSize(countImage);
             for (let i = 0; i < countImage; i++) {
-                objects.push(getElement(validImages[i], size.columns, size.rows));
+                const image = validImages[i];
+                if (!image) {
+                    break;
+                }
+                objects.push(getElement(image, size.columns, size.rows));
             }
         }
     }

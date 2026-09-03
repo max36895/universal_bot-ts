@@ -129,12 +129,18 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
             case 'RATING_RESULT':
                 controller.payload = content.payload as unknown as Record<string, unknown>;
                 controller.messageId = 0;
-                controller.userEvents = {
-                    rating: {
+                {
+                    // exactOptionalPropertyTypes: value заполняем только
+                    // фактической оценкой пользователя.
+                    const userEventsRating: { status: boolean; value?: number } = {
                         status: content.payload.status_code?.code === 1,
-                        value: content.payload.rating?.estimation,
-                    },
-                };
+                    };
+                    const estimation = content.payload.rating?.estimation;
+                    if (estimation !== undefined) {
+                        userEventsRating.value = estimation;
+                    }
+                    controller.userEvents = { rating: userEventsRating };
+                }
                 break;
         }
 

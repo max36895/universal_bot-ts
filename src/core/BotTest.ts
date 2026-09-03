@@ -240,13 +240,19 @@ export class BotTest extends Bot {
         const userId: string = 'user_local_test';
         let appType = this.appType;
         if (appType === 'auto') {
-            appType = Object.keys(this.getAppContext().platforms)[0];
+            // Если платформы не зарегистрированы, откатываемся на документированный
+            // дефолт 'alisa' (как в run()) вместо падения на undefined.
+            appType = Object.keys(this.getAppContext().platforms)[0] || 'alisa';
             this.appType = appType;
         }
-        if (!this.getAppContext().platforms[appType].isVoice) {
+        const platformAdapter = appType ? this.getAppContext().platforms[appType] : undefined;
+        if (platformAdapter && !platformAdapter.isVoice) {
             this._botController.skipAutoReply = false;
         }
-        return this.getAppContext().platforms[appType].getQueryExample(query, userId, count, state);
+        if (platformAdapter) {
+            return platformAdapter.getQueryExample(query, userId, count, state);
+        }
+        return null;
     }
 
     /**
@@ -316,18 +322,16 @@ export class BotTest extends Bot {
         // берём первую зарегистрированную (как в getSkillContent).
         const targetPlatform =
             platform ?? (Object.keys(this.getAppContext().platforms)[0] as TAppType | undefined);
-        if (!targetPlatform || !this.getAppContext().platforms[targetPlatform]) {
+        const targetAdapter = targetPlatform
+            ? this.getAppContext().platforms[targetPlatform]
+            : undefined;
+        if (!targetPlatform || !targetAdapter) {
             throw new Error(
                 `BotTest.simulate: платформа "${platform ?? 'auto'}" не зарегистрирована. ` +
                     `Сначала вызовите bot.use(new <Platform>Adapter()).`,
             );
         }
-        const content = this.getAppContext().platforms[targetPlatform].getQueryExample(
-            query,
-            userId,
-            count,
-            state,
-        );
+        const content = targetAdapter.getQueryExample(query, userId, count, state);
         // Без этого флага адаптеры чат-платформ внутри getContent() реально
         // отправляли бы сообщение в API платформы прямо из локального теста
         // (по аналогии с флагом в test(), который выставляется на каждом ходе).

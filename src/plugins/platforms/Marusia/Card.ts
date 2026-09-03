@@ -78,8 +78,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     const items: IMarusiaImage[] = [];
     const maxCount = cardInfo.usedGallery ? MARUSIA_MAX_GALLERY_IMAGES : MARUSIA_MAX_IMAGES;
     const images = cardInfo.images.slice(0, maxCount);
-    for (let i = 0; i < images.length; i++) {
-        const image = images[i];
+    for (const image of images) {
         const title = Text.resize(image.title || cardInfo.title || '', 128);
         let button: IMarusiaButtonCard | null = null;
         if (!cardInfo.usedGallery) {
@@ -127,6 +126,9 @@ async function getBigImage(
     controller: BotController,
 ): Promise<IMarusiaBigImage | null> {
     const image = cardInfo.images[0];
+    if (!image) {
+        return null;
+    }
     if (!image.imageToken && image.imageDir) {
         image.imageToken = await getImageInDB(controller, image.imageDir);
     }

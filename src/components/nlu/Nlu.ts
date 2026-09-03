@@ -145,7 +145,21 @@ export class Nlu {
      * }
      * ```
      */
-    readonly #cachedData: Map<string, unknown[] | null> = new Map();
+    #cachedData: Map<string, unknown[] | null> | null = null;
+
+    /**
+     * Возвращает кэш сущностей, создавая его при первом обращении.
+     *
+     * Пустой Map аллоцировался в конструкторе на каждый запрос, хотя кэш
+     * нужен только после первого вызова #getData (у чат-платформ обращений
+     * к сущностям обычно нет вовсе — адаптеры пишут только thisUser).
+     */
+    #getCache(): Map<string, unknown[] | null> {
+        if (!this.#cachedData) {
+            this.#cachedData = new Map();
+        }
+        return this.#cachedData;
+    }
 
     /**
      * Регулярное выражение для поиска email адресов.
@@ -430,7 +444,7 @@ export class Nlu {
     public setNlu(nlu: INlu, isClearCache: boolean = false): void {
         this.#nlu = nlu;
         if (isClearCache) {
-            this.#cachedData.clear();
+            this.#getCache().clear();
         }
     }
 
@@ -442,8 +456,9 @@ export class Nlu {
      * @returns Массив найденных сущностей или null
      */
     #getData<T = object>(type: string): T[] | null {
-        if (this.#cachedData.has(type)) {
-            return (this.#cachedData.get(type) as T[]) || null;
+        const cache = this.#getCache();
+        if (cache.has(type)) {
+            return (cache.get(type) as T[]) || null;
         }
         let data: (object | number)[] | null = null;
         if (Array.isArray(this.#nlu.entities)) {
@@ -454,7 +469,7 @@ export class Nlu {
                 }
             });
         }
-        this.#cachedData.set(type, data);
+        cache.set(type, data);
         return data;
     }
 

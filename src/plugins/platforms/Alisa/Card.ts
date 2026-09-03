@@ -74,8 +74,7 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     const items: IAlisaImage[] = [];
     const maxCount = cardInfo.usedGallery ? ALISA_MAX_GALLERY_IMAGES : ALISA_MAX_IMAGES;
     const images = cardInfo.images.slice(0, maxCount);
-    for (let i = 0; i < images.length; i++) {
-        const image = images[i];
+    for (const image of images) {
         const title = Text.resize(image.title || cardInfo.title || '', 128);
         let button: IAlisaButtonCard | null = null;
         if (!cardInfo.usedGallery && image.button) {
@@ -122,6 +121,9 @@ async function getBigImage(
     controller: BotController,
 ): Promise<IAlisaBigImage | null> {
     const image = cardInfo.images[0];
+    if (!image) {
+        return null;
+    }
     if (!image.imageToken && image.imageDir) {
         image.imageToken = await getImageInDB(controller, image.imageDir);
     }

@@ -110,7 +110,9 @@ function parseEscapeAtom(pattern: string, i: number): TParsedAtom | null {
  * для рекурсивного анализа лестниц квантификаторов внутри.
  */
 function parseAtom(pattern: string, i: number): TParsedAtom | null {
-    const ch = pattern[i];
+    // charAt за пределами строки даёт '', все проверки ниже устойчивы к этому
+    // (noUncheckedIndexedAccess: индексный доступ к строке даёт undefined).
+    const ch = pattern.charAt(i);
     if (ch === '\\') {
         return parseEscapeAtom(pattern, i);
     }
@@ -142,7 +144,7 @@ function parseAtom(pattern: string, i: number): TParsedAtom | null {
     ) {
         return null;
     }
-    const code = ch.codePointAt(0) as number;
+    const code = ch.codePointAt(0) ?? 0;
     return { atom: { t: 'class', ranges: [[code, code]] }, next: i + 1 };
 }
 
@@ -172,6 +174,16 @@ function skipGroup(pattern: string, start: number): number {
     return pattern.length;
 }
 
+/** Кодпоинт символа; '' (за пределами строки) сворачивается к 0. */
+function charCode(ch: string): number {
+    return ch.codePointAt(0) ?? 0;
+}
+
+/** Добавляет в ranges атом-диапазон для экранированного символа класса (`\n`, `\.` и т.п.). */
+function pushEscapeRange(ranges: [number, number][], esc: string): void {
+    ranges.push([charCode(esc), charCode(esc)]);
+}
+
 /** Разбирает символьный класс `[a-z\d]` (включая `[^...]`) в набор диапазонов. */
 function parseCharClass(
     pattern: string,
@@ -185,11 +197,11 @@ function parseCharClass(
     }
     const ranges: [number, number][] = [];
     let first = true;
-    while (i < pattern.length && (pattern[i] !== ']' || first)) {
+    while (i < pattern.length && (pattern.charAt(i) !== ']' || first)) {
         first = false;
-        const ch = pattern[i];
+        const ch = pattern.charAt(i);
         if (ch === '\\') {
-            const esc = pattern[i + 1];
+            const esc = pattern.charAt(i + 1);
             if (esc === 'w') {
                 ranges.push(...ATOM_WORD);
             } else if (esc === 'd') {
@@ -198,24 +210,24 @@ function parseCharClass(
                 ranges.push(...ATOM_SPACE);
             } else if (esc === 'W' || esc === 'D' || esc === 'S') {
                 return { atom: { t: 'neg' }, next: endOfClass(pattern, i) };
-            } else if (esc !== undefined) {
-                ranges.push([esc.codePointAt(0) as number, esc.codePointAt(0) as number]);
+            } else if (esc !== '') {
+                pushEscapeRange(ranges, esc);
             }
             i += 2;
             continue;
         }
         // Диапазон a-z (кодпоинты соседних символов)
         if (
-            pattern[i + 1] === '-' &&
-            pattern[i + 2] !== ']' &&
-            pattern[i + 2] !== undefined &&
-            pattern[i + 2] !== '\\'
+            pattern.charAt(i + 1) === '-' &&
+            pattern.charAt(i + 2) !== ']' &&
+            pattern.charAt(i + 2) !== '' &&
+            pattern.charAt(i + 2) !== '\\'
         ) {
-            ranges.push([ch.codePointAt(0) as number, pattern[i + 2].codePointAt(0) as number]);
+            ranges.push([charCode(ch), charCode(pattern.charAt(i + 2))]);
             i += 3;
             continue;
         }
-        ranges.push([ch.codePointAt(0) as number, ch.codePointAt(0) as number]);
+        ranges.push([charCode(ch), charCode(ch)]);
         i++;
     }
     if (pattern[i] !== ']') {
@@ -432,13 +444,13 @@ function hasSequentialQuantifierChain(pattern: string): boolean {
 /** Пропускает интервальный квантификатор `{n}`/`{n,}`/`{n,m}`. Возвращает i, если это не интервал. */
 function skipInterval(pattern: string, i: number): number {
     let k = i + 1;
-    while (k < pattern.length && /\d/.test(pattern[k])) k++;
+    while (k < pattern.length && /\d/.test(pattern.charAt(k))) k++;
     if (k === i + 1) return i;
-    if (pattern[k] === ',') {
+    if (pattern.charAt(k) === ',') {
         k++;
-        while (k < pattern.length && /\d/.test(pattern[k])) k++;
+        while (k < pattern.length && /\d/.test(pattern.charAt(k))) k++;
     }
-    return pattern[k] === '}' ? k + 1 : i;
+    return pattern.charAt(k) === '}' ? k + 1 : i;
 }
 
 /**
@@ -448,20 +460,20 @@ function skipInterval(pattern: string, i: number): number {
  */
 function isQuantifierAfterGroup(pattern: string, from: number): boolean {
     let j = from;
-    while (j < pattern.length && /\s/.test(pattern[j])) j++;
+    while (j < pattern.length && /\s/.test(pattern.charAt(j))) j++;
     if (j >= pattern.length) return false;
-    const next = pattern[j];
+    const next = pattern.charAt(j);
     if (next === '+' || next === '*' || next === '?') return true;
     if (next !== '{') return false;
     // Разбираем {n} или {n,} или {n,m}
     let k = j + 1;
-    while (k < pattern.length && pattern[k] >= '0' && pattern[k] <= '9') k++;
+    while (k < pattern.length && pattern.charAt(k) >= '0' && pattern.charAt(k) <= '9') k++;
     if (k === j + 1) return false;
-    if (pattern[k] === ',') {
+    if (pattern.charAt(k) === ',') {
         k++;
-        while (k < pattern.length && pattern[k] >= '0' && pattern[k] <= '9') k++;
+        while (k < pattern.length && pattern.charAt(k) >= '0' && pattern.charAt(k) <= '9') k++;
     }
-    return pattern[k] === '}';
+    return pattern.charAt(k) === '}';
 }
 
 /**
@@ -512,12 +524,12 @@ function isExplosiveGroupBody(body: string): boolean {
     }
     let inClass = false;
     for (let k = start; k < body.length; k++) {
-        const ch = body[k];
+        const ch = body.charAt(k);
         if (ch === '\\') {
             // Backreference/escape после бэкслеша: \1, \k<name> — повтор группы
             // с амбивалентной длиной. Квантифицированный backreference — источник
             // катастрофического бэктрекинга: (a+)(?:\1)+x на 7000 — минуты.
-            if (k + 1 < body.length && /[1-9]/.test(body[k + 1])) {
+            if (k + 1 < body.length && /[1-9]/.test(body.charAt(k + 1))) {
                 return true;
             }
             k++;

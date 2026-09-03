@@ -60,6 +60,7 @@ import {
     THttpClient,
     IDir,
     TAppPlugin,
+    IAppDB,
 } from './interfaces/IAppContext';
 
 import { CommandReg, ICommandParam, IGroupData, IStepParam } from './utils/CommandReg';
@@ -512,6 +513,38 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     }
 
     /**
+     * Дописывает настройки БД из переменных окружения в конфиг приложения.
+     *
+     * Пишем в конфиг, только если есть настройки для подключения: существующий
+     * `appConfig.db` либо переменные DB_HOST/DB_NAME.
+     *
+     * @param {IEnvConfig} envVars Загруженные переменные окружения
+     */
+    #applyEnvDbConfig(envVars: IEnvConfig): void {
+        if (!(this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME)) {
+            return;
+        }
+        const dbConfig: IAppDB = {
+            host: envVars.DB_HOST || this.appConfig.db?.host || '',
+            database: envVars.DB_NAME || this.appConfig.db?.database || '',
+        };
+        // exactOptionalPropertyTypes: опциональные поля заполняем только
+        // реальными значениями, чтобы не протаскивать undefined в конфиг.
+        const dbUser = envVars.DB_USER || this.appConfig.db?.user;
+        if (dbUser) {
+            dbConfig.user = dbUser;
+        }
+        const dbPass = envVars.DB_PASSWORD || this.appConfig.db?.pass;
+        if (dbPass) {
+            dbConfig.pass = dbPass;
+        }
+        if (this.appConfig.db?.options) {
+            dbConfig.options = this.appConfig.db.options;
+        }
+        this.appConfig.db = dbConfig;
+    }
+
+    /**
      * Устанавливает конфигурацию приложения
      * @param {Partial<IAppConfig>} config - Пользовательская конфигурация
      */
@@ -533,17 +566,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (correctConfig.env) {
             const envVars = this.#getEnvVars(correctConfig.env);
             if (envVars) {
-                // Пишем в конфиг для подключения к БД, только если есть настройки для подключения
-                if (this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME) {
-                    this.appConfig.db = {
-                        ...this.appConfig.db,
-                        host: envVars.DB_HOST || this.appConfig.db?.host,
-                        user: envVars.DB_USER || this.appConfig.db?.user,
-                        pass: envVars.DB_PASSWORD || this.appConfig.db?.pass,
-                        database: envVars.DB_NAME || this.appConfig.db?.database,
-                    };
-                }
-
+                this.#applyEnvDbConfig(envVars);
                 this.#setTokens();
             }
         } else if (!this.appConfig.env) {

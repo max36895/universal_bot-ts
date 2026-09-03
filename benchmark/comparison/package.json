@@ -2,12 +2,21 @@
     "name": "umbot-comparison-bench",
     "version": "1.0.0",
     "private": true,
-    "description": "Стенд честного сравнения umbot с реальными фреймворками (grammy, telegraf). Зависимости ставятся здесь же: npm i --prefix benchmark/comparison",
+    "description": "Стенд честного сравнения umbot с реальными фреймворками (Telegram: grammy, telegraf; Alisa: yandex-dialogs-sdk; VK: vk-io; Viber: viber-bot; MAX: @maxhub/max-bot-api). Зависимости ставятся здесь же: npm i --prefix benchmark/comparison",
     "scripts": {
-        "compare": "node --expose-gc competitors.js"
+        "compare": "node --expose-gc telegram.js",
+        "compare:alisa": "node --expose-gc alisa.js",
+        "compare:vk": "node --expose-gc vk.js",
+        "compare:viber": "node --expose-gc viber.js",
+        "compare:max": "node --expose-gc max.js"
     },
     "dependencies": {
+        "@maxhub/max-bot-api": "^0.3.0",
+        "@vk-io/hear": "^1.1.1",
         "grammy": "^1.46.0",
-        "telegraf": "^4.16.3"
+        "telegraf": "^4.16.3",
+        "viber-bot": "^1.0.18",
+        "vk-io": "^4.10.1",
+        "yandex-dialogs-sdk": "^2.3.0"
     }
 }

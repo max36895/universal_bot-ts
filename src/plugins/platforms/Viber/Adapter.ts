@@ -6,7 +6,7 @@ import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VIBER, VIBER_DEFAULT_API_VERSION } from './constants';
 import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
-import { getChatText } from '../Base/utils';
+import { getChatText, setThisUserToNlu } from '../Base/utils';
 
 /**
  * Адаптер, обеспечивающий поддержку платформы Viber. Позволяет разрабатывать чат-ботов для Viber на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
@@ -58,16 +58,18 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
 
     init(appContext: AppContext): void {
         super.init(appContext);
+        const platformToken = appContext.appConfig.tokens[this.platformName];
+        if (!platformToken) {
+            return;
+        }
         if (this._token) {
-            appContext.appConfig.tokens[this.platformName].token = this._token;
+            platformToken.token = this._token;
         }
         if (this._platformOptions?.viber_api_version) {
-            appContext.appConfig.tokens[this.platformName].api_version = this._platformOptions
-                .viber_api_version as string;
+            platformToken.api_version = this._platformOptions.viber_api_version as string;
         }
         if (this._platformOptions?.viber_sender) {
-            appContext.appConfig.tokens[this.platformName].sender = this._platformOptions
-                .viber_sender as string;
+            platformToken.sender = this._platformOptions.viber_sender as string;
         }
     }
 
@@ -248,7 +250,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
             if (text) {
                 await viberApi.sendMessage(
                     <string>controller.userId,
-                    controller.appContext.appConfig.tokens[this.platformName].sender as
+                    controller.appContext.appConfig.tokens[this.platformName]?.sender as
                         string | IViberSender,
                     text,
                     params,
@@ -284,12 +286,15 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
      */
     protected setNlu(controller: BotController, userName: string = ''): void {
         const name = userName.split(' ');
-        const thisUser = {
+        // Пустое имя не записываем: без полей thisUser бесполезен, а запись
+        // аллоцировала бы объект Nlu на каждый запрос (setThisUserToNlu).
+        setThisUserToNlu(controller, {
             username: name[0] || null,
             first_name: name.length > 1 ? name.slice(0, -1).join(' ') : null,
-            last_name: name.length > 1 ? name[name.length - 1] : null,
-        };
-        controller.nlu.setNlu({ thisUser });
+            // При length > 1 последний элемент существует; ?? null закрывает
+            // noUncheckedIndexedAccess без изменения поведения.
+            last_name: (name.length > 1 ? name[name.length - 1] : null) ?? null,
+        });
     }
 
     static isVoice(): boolean {

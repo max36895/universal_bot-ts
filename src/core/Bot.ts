@@ -432,6 +432,16 @@ export class Bot<
     #globalMiddlewares: MiddlewareFn[] = [];
     #platformMiddlewares: Partial<Record<TAppType, MiddlewareFn[]>> = {};
 
+    /**
+     * Платформы, для которых уже выведено предупреждение о неподдерживаемом
+     * локальном хранилище. Проверка конфигурации (isLocalStorage включён, а
+     * платформа его не поддерживает и DB-адаптер не подключён) — диагностическая:
+     * она выполняется в горячем пути каждого запроса, поэтому предупреждение
+     * депонируется — один раз на платформу за жизнь процесса, а не на каждый
+     * запрос (сборка строки и маскирование секретов стоили ~4 мкс/запрос).
+     */
+    readonly #warnedNoLocalStoragePlatforms = new Set<TAppType>();
+
     #plugins: (IPlugin | ((bot: Bot) => void))[] = [];
 
     /**
@@ -905,10 +915,12 @@ export class Bot<
 
                 // Переходим к следующему полю
                 userCtx.thisIntentName = nextStep as string;
-                userCtx.text =
-                    typeof nextField.prompt === 'function'
-                        ? nextField.prompt(userCtx)
-                        : nextField.prompt;
+                if (nextField) {
+                    userCtx.text =
+                        typeof nextField.prompt === 'function'
+                            ? nextField.prompt(userCtx)
+                            : nextField.prompt;
+                }
             });
         });
 
@@ -1306,8 +1318,9 @@ export class Bot<
 
         if (this.#appContext.platforms) {
             for (const platformName in this.#appContext.platforms) {
-                if (this.#appContext.platforms[platformName].isPlatformOnQuery(uBody, headers)) {
-                    return this.#appContext.platforms[platformName].platformName;
+                const platform = this.#appContext.platforms[platformName];
+                if (platform?.isPlatformOnQuery(uBody, headers)) {
+                    return platform.platformName;
                 }
             }
         }
@@ -1415,6 +1428,65 @@ export class Bot<
     }
 
     /**
+     * Подготовка storage-состояния запроса: localStorage платформы или БД.
+     *
+     * Включает диагностику конфигурации (isLocalStorage без поддержки
+     * платформы) с депонированным предупреждением и начальную загрузку
+     * userData. Вынесено из {@link #runApp} для читаемости горячего метода.
+     *
+     * @param botController Контроллер запроса
+     * @param platformClass Адаптер платформы
+     * @param userData Модель пользователя (если подключён DB-адаптер)
+     * @param appType Тип платформы (для депозита предупреждений)
+     * @returns Флаг локального хранилища и признак нового пользователя
+     */
+    async #initRequestState(
+        botController: BotController<TUserData, TPlatformState>,
+        platformClass: IPlatformAdapter,
+        userData: UsersData | undefined,
+        appType: TAppType,
+    ): Promise<{ isLocalStorage: boolean; isNewUser: boolean }> {
+        botController.platformOptions.usedLocalStorage =
+            platformClass.isLocalStorage(botController);
+        const isLocalStorage: boolean =
+            this.#appContext.appConfig.isLocalStorage &&
+            botController.platformOptions.usedLocalStorage;
+
+        if (
+            this.#appContext.appConfig.isLocalStorage &&
+            !botController.platformOptions.usedLocalStorage &&
+            !this.#appContext.database.adapter
+        ) {
+            // Предупреждение о неверной конфигурации достаточно вывести один раз
+            // на платформу: условие зависит только от конфигурации, а не от запроса.
+            // Раньше warn уходил с каждым запросом и тащил за собой конвейер
+            // маскирования секретов (~4 мкс на запрос на чат-платформах).
+            if (!this.#warnedNoLocalStoragePlatforms.has(appType)) {
+                this.#warnedNoLocalStoragePlatforms.add(appType);
+                this.#appContext.logWarn(
+                    `Bot:run(): Платформа "${appType}" не поддерживает локальное хранилище, ` +
+                        `а DB-адаптер не подключён. userData не будет сохраняться между запросами. ` +
+                        `Подключите DB-адаптер (FileAdapter/MongoAdapter) или отключите isLocalStorage.`,
+                    { platform: appType, userId: botController.userId },
+                );
+            }
+        }
+
+        let isNewUser = true;
+        let localStateData: unknown = botController.state;
+        if (isLocalStorage) {
+            localStateData = platformClass.getLocalStorage(botController);
+            if (isPromise(localStateData)) {
+                localStateData = await localStateData;
+            }
+            botController.userData = localStateData as TUserData;
+        } else {
+            isNewUser = await this.#initUserData(botController, userData, localStateData);
+        }
+        return { isLocalStorage, isNewUser };
+    }
+
+    /**
      * Запуск логики приложения
      * @param botController - Контроллер с бизнес-логикой приложения
      * @param platformClass - Класс платформенного адаптера, который будет подготавливать корректный ответ в зависимости от платформы
@@ -1434,38 +1506,13 @@ export class Bot<
             botController.userId = userData.escapeString(botController.userId as string | number);
             userData.platform = platformClass.platformName;
         }
-        botController.platformOptions.usedLocalStorage =
-            platformClass.isLocalStorage(botController);
-        const isLocalStorage: boolean =
-            this.#appContext.appConfig.isLocalStorage &&
-            botController.platformOptions.usedLocalStorage;
+        const { isLocalStorage, isNewUser } = await this.#initRequestState(
+            botController,
+            platformClass,
+            userData,
+            appType,
+        );
 
-        if (
-            this.#appContext.appConfig.isLocalStorage &&
-            !botController.platformOptions.usedLocalStorage &&
-            !this.#appContext.database.adapter
-        ) {
-            this.#appContext.logWarn(
-                `Bot:run(): Платформа "${appType}" не поддерживает локальное хранилище, ` +
-                    `а DB-адаптер не подключён. userData не будет сохраняться между запросами. ` +
-                    `Подключите DB-адаптер (FileAdapter/MongoAdapter) или отключите isLocalStorage.`,
-                { platform: appType, userId: botController.userId },
-            );
-        }
-
-        let isNewUser = true;
-        let localStateData: unknown = botController.state;
-        if (isLocalStorage) {
-            localStateData = platformClass.getLocalStorage(botController);
-            if (isPromise(localStateData)) {
-                localStateData = await localStateData;
-            }
-        }
-        if (isLocalStorage) {
-            botController.userData = localStateData as TUserData;
-        } else {
-            isNewUser = await this.#initUserData(botController, userData, localStateData);
-        }
         // Обрезаем текст команды до потолка легитимных сообщений до NLU и
         // матчинга команд: без этого напрямую сконфигурированный вебхук без
         // подписи проталкивал бы в регулярки строки до 2 МБ, где даже
@@ -1486,14 +1533,26 @@ export class Bot<
         let content: string | object | null;
         try {
             if (shouldProceed) {
-                content = await this.#getAppContent(botController, platformClass, appType);
-            } else {
-                // Middleware прервал обработку (next() не вызван). Возвращаем не сырую
-                // строку, а полноценный ответ платформы: getContent() адаптера отправит
-                // выставленный middleware текст (например, deniedText) и сформирует
-                // валидный для платформы ответ.
-                content = await this.#getPlatformContent(botController, platformClass);
+                // Инлайн бывшего #getAppContent: отдельный async-метод создавал
+                // лишний промис-хоп на каждом запросе, а его тело — три шага.
+                this.#setOldIntentName(botController);
+
+                const res = botController.run();
+                if (res) {
+                    await res;
+                }
+
+                // isVoice читаем с уже полученного адаптера: platforms[appType] —
+                // лишний lookup по ключу в горячем пути.
+                if (botController.tts === null && platformClass.isVoice) {
+                    botController.tts = botController.text;
+                }
             }
+            // Ответ собирается всегда: и после бизнес-логики, и когда middleware
+            // прервал обработку (next() не вызван) — getContent() адаптера отправит
+            // выставленный middleware текст (например, deniedText) и вернёт
+            // валидный для платформы ответ, а не сырую строку.
+            content = await this.#getPlatformContent(botController, platformClass);
         } finally {
             await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
         }
@@ -1684,30 +1743,6 @@ export class Bot<
 
     /* eslint-enable require-atomic-updates*/
 
-    async #getAppContent(
-        botController: BotController<TUserData, TPlatformState>,
-        platformClass: IPlatformAdapter,
-        // Параметр оставлен для симметрии вызова: isVoice читается с самого
-        // адаптера, но сигнатура сохраняет слот под будущие сценарии,
-        // зависящие от типа платформы.
-        _appType?: TAppType,
-    ): Promise<string | object> {
-        this.#setOldIntentName(botController);
-
-        const res = botController.run();
-        if (res) {
-            await res;
-        }
-
-        // isVoice читаем с уже полученного адаптера: platforms[appType] — лишний
-        // lookup по ключу в горячем пути (platformClass передан параметром).
-        if (botController.tts === null && platformClass.isVoice) {
-            botController.tts = botController.text;
-        }
-
-        return this.#getPlatformContent(botController, platformClass);
-    }
-
     /**
      * Регистрирует middleware, вызываемый **до** выполнения `BotController.action()`.
      *
@@ -1821,8 +1856,9 @@ export class Bot<
             try {
                 let middlewares = this.#globalMiddlewares;
                 const next = async (): Promise<void> => {
-                    if (index < middlewares.length) {
-                        const mw = middlewares[index++];
+                    const mw = middlewares[index];
+                    if (mw) {
+                        index++;
                         await mw(controller, next);
                     } else {
                         isEnd = true;
@@ -2126,8 +2162,9 @@ export class Bot<
             }
 
             appType = this.#getAppType(query, req.headers);
-            if (appType && this.#appContext.platforms[appType]) {
-                if (!this.#appContext.platforms[appType].isCorrectQuery(data, req.headers)) {
+            const platformAdapter = appType ? this.#appContext.platforms[appType] : undefined;
+            if (appType && platformAdapter) {
+                if (!platformAdapter.isCorrectQuery(data, req.headers)) {
                     // Логируем ТОЛЬКО мета-информацию, не весь req/res.
                     // IncomingMessage содержит сырые sockets, headers с cookies/etc —
                     // сериализация создаёт огромные логи и теневую утечку данных.
@@ -2416,6 +2453,9 @@ export class Bot<
         const insecurePlatforms: string[] = [];
         for (const platformName in this.#appContext.platforms) {
             const adapter = this.#appContext.platforms[platformName];
+            if (!adapter) {
+                continue;
+            }
             // Адаптер сам знает, включает ли его конфигурация проверку подписи:
             // Telegram/MAX — webhookSecret, VK — secret_key (VK шлёт подпись в теле,
             // signatureName у него нет — ориентируемся только на метод), Viber — token.

@@ -44,22 +44,22 @@ export async function cardProcessing(
         return null;
     }
     if (cardInfo.images.length === 1 || cardInfo.showOne) {
-        if (!cardInfo.images[0].imageToken) {
-            if (cardInfo.images[0].imageDir) {
-                // eslint-disable-next-line require-atomic-updates
-                cardInfo.images[0].imageToken = await getImageInDB(
-                    controller,
-                    cardInfo.images[0].imageDir,
-                );
+        const firstImage = cardInfo.images[0];
+        if (!firstImage) {
+            return null;
+        }
+        if (!firstImage.imageToken) {
+            if (firstImage.imageDir) {
+                firstImage.imageToken = await getImageInDB(controller, firstImage.imageDir);
             }
         }
-        if (cardInfo.images[0].imageToken) {
+        if (firstImage.imageToken) {
             return [
                 {
                     type: 'image',
                     payload: {
-                        [Text.isUrl(cardInfo.images[0].imageToken) ? 'url' : 'token']:
-                            cardInfo.images[0].imageToken,
+                        [Text.isUrl(firstImage.imageToken) ? 'url' : 'token']:
+                            firstImage.imageToken,
                     },
                 },
             ];
@@ -68,6 +68,9 @@ export async function cardProcessing(
         const elements: IMaxCard[] = [];
         for (let i = 0; i < cardInfo.images.length && elements.length < 12; i++) {
             const image = cardInfo.images[i];
+            if (!image) {
+                break;
+            }
             if (!image.imageToken && image.imageDir) {
                 image.imageToken = await getImageInDB(controller, image.imageDir);
             }

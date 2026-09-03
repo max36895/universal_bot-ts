@@ -1,4 +1,4 @@
-import { Text, BotController, AppContext, IButtonType } from '../../../index';
+import { Text, BotController, AppContext, IButtonType, INlu } from '../../../index';
 import { keysCount } from '../../../utils';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
@@ -101,7 +101,10 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     init(appContext: AppContext): void {
         super.init(appContext);
         if (this._token) {
-            appContext.appConfig.tokens[this.platformName].token = this._token;
+            const platformToken = appContext.appConfig.tokens[this.platformName];
+            if (platformToken) {
+                platformToken.token = this._token;
+            }
         }
     }
 
@@ -213,7 +216,9 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 // на каждый запрос Алисы — включая ответы без NLU-данных.
                 const nlu = query.request.nlu;
                 if (nlu && hasAnyNluKey(nlu)) {
-                    controller.nlu.setNlu(nlu);
+                    // IAlisaNlu структурно уже INlu (поля tokens/entities/intents
+                    // совместимы), расхождение — только в strict-типизации опций.
+                    controller.nlu.setNlu(nlu as INlu);
                 }
 
                 controller.userMeta = query.meta || {};
@@ -276,7 +281,9 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                     await controller.card.getCards(cardProcessing, controller)
                 );
                 if (!response.card) {
-                    response.card = undefined;
+                    // exactOptionalPropertyTypes: отсутствие карточки в ответе —
+                    // это отсутствие поля, а не undefined-значение.
+                    delete response.card;
                 }
             }
             if (controller.isButtonsInit()) {

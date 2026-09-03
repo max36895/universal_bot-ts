@@ -56,7 +56,10 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     constructor(options?: IAppDB) {
         super();
         this.dbFormat = 'unknown';
-        this._dbOptions = options;
+        // exactOptionalPropertyTypes: поле не заполняем, если опций нет.
+        if (options !== undefined) {
+            this._dbOptions = options;
+        }
     }
 
     /**

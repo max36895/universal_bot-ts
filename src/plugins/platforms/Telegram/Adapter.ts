@@ -1,4 +1,4 @@
-import { AppContext, BotController, INluThisUser, Text } from '../../../index';
+import { AppContext, BotController, Text } from '../../../index';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
@@ -6,7 +6,7 @@ import { soundProcessing } from './Sound';
 import { T_TELEGRAM } from './constants';
 import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/ITelegramPlatform';
 import { TelegramRequest } from '../API';
-import { getChatText, getPlatformRequestData, tryParse } from '../Base/utils';
+import { getChatText, getPlatformRequestData, setThisUserToNlu, tryParse } from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
 type ITelegramRequestData = Record<string, unknown> & {
@@ -66,7 +66,10 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
     init(appContext: AppContext): void {
         super.init(appContext);
         if (this._token) {
-            appContext.appConfig.tokens[this.platformName].token = this._token;
+            const platformToken = appContext.appConfig.tokens[this.platformName];
+            if (platformToken) {
+                platformToken.token = this._token;
+            }
         }
     }
 
@@ -224,12 +227,13 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         // Данные пользователя берём у отправителя (from), а не у чата: в группах
         // chat.username — это публичный юзернейм группы, а не человека.
         const sender = message.from ?? message.chat;
-        const thisUser: INluThisUser = {
+        // Пустого thisUser не записываем: геттер controller.nlu аллоцировал бы
+        // объект Nlu на каждый запрос без пользы (подробности — setThisUserToNlu).
+        setThisUserToNlu(controller, {
             username: sender.username || null,
             first_name: sender.first_name || null,
             last_name: sender.last_name || null,
-        };
-        controller.nlu.setNlu({ thisUser });
+        });
         return true;
     }
 

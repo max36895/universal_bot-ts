@@ -218,7 +218,19 @@ export class FileAdapter extends Base<IFileDbInfo> {
             clearTimeout(forceTimeOutId);
             this.#setCachedFileData(tableName, 'forceTimeOutId', null);
         }
-        return { timeOutId, forceTimeOutId };
+        // exactOptionalPropertyTypes: поля возвращаемого объекта заполняем только
+        // теми таймерами, которые реально были установлены.
+        const result: {
+            timeOutId?: ReturnType<typeof setTimeout> | null;
+            forceTimeOutId?: ReturnType<typeof setTimeout> | null;
+        } = {};
+        if (timeOutId !== undefined) {
+            result.timeOutId = timeOutId;
+        }
+        if (forceTimeOutId !== undefined) {
+            result.forceTimeOutId = forceTimeOutId;
+        }
+        return result;
     }
 
     /**
@@ -395,27 +407,34 @@ export class FileAdapter extends Base<IFileDbInfo> {
                 return this.#selectInPrimaryKey(selectData, where, isOne, content);
             }
             for (const key in content) {
+                const row = content[key];
+                if (!row) {
+                    continue;
+                }
                 let allMatch = true;
                 for (const data in where) {
-                    if (!Object.hasOwn(content[key], data) || content[key][data] !== where[data]) {
+                    if (!Object.hasOwn(row, data) || row[data] !== where[data]) {
                         allMatch = false;
                         break;
                     }
                 }
                 if (allMatch) {
                     if (isOne) {
-                        result = content[key];
+                        result = row;
                         return {
                             status: true,
                             data: result,
                         };
                     }
                     result ??= [];
-                    result.push(content[key]);
+                    result.push(row);
                 }
             }
+        } else if (isOne) {
+            const firstKey = Object.keys(content)[0];
+            result = firstKey !== undefined ? (content[firstKey] ?? null) : null;
         } else {
-            result = isOne ? content[Object.keys(content)[0]] : content;
+            result = content;
         }
         if (result) {
             return {

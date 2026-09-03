@@ -7,7 +7,7 @@ import { soundProcessing } from './Sound';
 import { T_MAX_APP } from './constants';
 import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform';
 import { timingSafeEqual } from 'crypto';
-import { getChatText, getPlatformRequestData } from '../Base/utils';
+import { getChatText, getPlatformRequestData, setThisUserToNlu } from '../Base/utils';
 
 type IMaxRequestData = Record<string, unknown> & {
     callbackId?: string;
@@ -81,17 +81,16 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
 
     init(appContext: AppContext): void {
         super.init(appContext);
-        if (this._token) {
-            appContext.appConfig.tokens[this.platformName].token = this._token;
+        const platformToken = appContext.appConfig.tokens[this.platformName];
+        if (this._token && platformToken) {
+            platformToken.token = this._token;
         }
         // MAX передаёт webhook-secret обычным заголовком. Разрешаем передать его
         // как через настройки адаптера, так и через конфигурацию приложения.
-        const webhookSecret =
-            this._platformOptions?.secret ??
-            appContext.appConfig.tokens[this.platformName].webhookSecret;
-        if (webhookSecret) {
+        const webhookSecret = this._platformOptions?.secret ?? platformToken?.webhookSecret;
+        if (webhookSecret && platformToken) {
             this.signatureName = 'x-max-bot-api-secret';
-            appContext.appConfig.tokens[this.platformName].webhookSecret = String(webhookSecret);
+            platformToken.webhookSecret = String(webhookSecret);
         }
     }
 
@@ -181,9 +180,9 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
             return false;
         }
         controller.userId = object.sender?.user_id ?? query.user?.user_id ?? 0;
-        if (object.recipient?.chat_id) {
-            getPlatformRequestData<IMaxRequestData>(controller, this.platformName).chatId =
-                object.recipient.chat_id;
+        const chatId = object.recipient?.chat_id;
+        if (chatId) {
+            getPlatformRequestData<IMaxRequestData>(controller, this.platformName).chatId = chatId;
         }
         const body = object.body;
         const raw = body?.text ?? '';
@@ -192,12 +191,12 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         controller.messageId = body?.seq ?? 0;
         controller.payload =
             (body?.attachments as unknown as Record<string, unknown> | undefined) ?? null;
-        controller.nlu.setNlu({
-            thisUser: {
-                username: object.sender?.username || null,
-                first_name: object.sender?.first_name || null,
-                last_name: object.sender?.last_name || null,
-            },
+        // Пустого thisUser не записываем: без полей он не несёт данных, а запись
+        // аллоцировала бы объект Nlu на каждый запрос (setThisUserToNlu).
+        setThisUserToNlu(controller, {
+            username: object.sender?.username || null,
+            first_name: object.sender?.first_name || null,
+            last_name: object.sender?.last_name || null,
         });
         return true;
     }

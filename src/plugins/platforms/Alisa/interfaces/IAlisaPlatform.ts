@@ -72,29 +72,6 @@ export interface IAlisaNlu extends INlu {
     tokens?: string[];
     /** Массив найденных именованных сущностей */
     entities?: IAlisaEntities[];
-    /**
-     * Распознанные намерения пользователя.
-     * Каждый интент содержит слоты с параметрами
-     *
-     * @example
-     * ```ts
-     * intents: {
-     *     "YANDEX.CONFIRM": {
-     *         slots: []
-     *     },
-     *     "YANDEX.REJECT": {
-     *         slots: []
-     *     },
-     *     "YANDEX.DATETIME": {
-     *         slots: [{
-     *             type: "YANDEX.DATETIME",
-     *             value: { year: 2024 }
-     *         }]
-     *     }
-     * }
-     * ```
-     */
-    intents?: INlu['intents'];
 }
 
 /**

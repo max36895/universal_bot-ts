@@ -130,7 +130,11 @@
         "comparison": "node --expose-gc ./benchmark/um.js",
         "comparison:logic": "node --expose-gc ./benchmark/um.js logic",
         "audit:load": "node --expose-gc ./scripts/audit-load.js",
-        "compare": "node --expose-gc ./benchmark/comparison/competitors.js"
+        "compare": "node --expose-gc ./benchmark/comparison/telegram.js",
+        "compare:alisa": "node --expose-gc ./benchmark/comparison/alisa.js",
+        "compare:vk": "node --expose-gc ./benchmark/comparison/vk.js",
+        "compare:viber": "node --expose-gc ./benchmark/comparison/viber.js",
+        "compare:max": "node --expose-gc ./benchmark/comparison/max.js"
     },
     "engines": {
         "node": ">=20.19.0"

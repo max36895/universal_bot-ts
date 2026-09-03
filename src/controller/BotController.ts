@@ -1,7 +1,7 @@
 /**
  * Модуль контроллера - основной компонент для обработки бизнес-логики вашего приложения
  */
-import { Buttons, Card, Sound, Nlu } from '../components';
+import { Buttons, Card, Sound, Nlu, INluThisUser } from '../components';
 import { Text } from '../utils';
 import { AppContext, IAppIntent, ICommandParam, TAppType, EMetric } from '../core';
 import { FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from '../core/constants';
@@ -861,9 +861,27 @@ export abstract class BotController<
     get nlu(): Nlu {
         if (!this.#nlu) {
             this.#nlu = new Nlu();
+            // Чат-платформы записывают данные отправителя через setThisUser()
+            // ещё до обращения бизнес-логики к NLU. Буфер держится отдельно от
+            // объекта Nlu: если логика ни разу не прочитает thisUser/getFio/etc,
+            // сам объект Nlu (+кэш) не аллоцируется вовсе.
+            if (this.#thisUserBuffer) {
+                this.#nlu.setNlu({ thisUser: this.#thisUserBuffer });
+                this.#thisUserBuffer = undefined;
+            }
         }
         return this.#nlu;
     }
+
+    /**
+     * Буфер данных отправителя для чат-платформ.
+     *
+     * Заполняется адаптерами (через {@link setThisUserToNlu} из pUtils) в
+     * `setQueryData` и «досыпается» в Nlu при первом обращении к геттеру
+     * {@link nlu}. Пока логика приложения NLU не читает, объект Nlu не
+     * создаётся — это экономит аллокацию на каждом запросе чат-платформ.
+     */
+    #thisUserBuffer: INluThisUser | undefined;
 
     /**
      * Флаг, возвращающий информацию о том, был ли инициализирован NLU или нет
@@ -871,6 +889,38 @@ export abstract class BotController<
      */
     isNluInit(): boolean {
         return !!this.#nlu;
+    }
+
+    /**
+     * Записывает данные отправителя сообщения (username/имя/фамилия) в NLU.
+     *
+     * Используется адаптерами чат-платформ (через хелпер `setThisUserToNlu`
+     * из pUtils). Значение сначала держится в приватном буфере: если логика
+     * приложения ни разу не обратится к {@link nlu}, объект Nlu и его кэш
+     * не создаются вовсе. При первом обращении буфер переносится в Nlu
+     * (`nlu.getUserName()` возвращает те же данные, что и раньше).
+     *
+     * @param {INluThisUser} thisUser Данные отправителя; пустые поля
+     * интерпретируются как отсутствие данных
+     * @returns {this} Текущий экземпляр для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * // Внутри адаптера платформы:
+     * controller.setThisUser({ username: 'ivan', first_name: 'Иван', last_name: null });
+     * // ...позже в бизнес-логике:
+     * const name = this.nlu.getUserName()?.first_name;
+     * ```
+     */
+    public setThisUser(thisUser: INluThisUser): this {
+        if (thisUser.username || thisUser.first_name || thisUser.last_name) {
+            if (this.#nlu) {
+                this.#nlu.setNlu({ thisUser });
+            } else {
+                this.#thisUserBuffer = thisUser;
+            }
+        }
+        return this;
     }
 
     /**
@@ -907,6 +957,10 @@ export abstract class BotController<
             // Второй аргумент обязателен: без него в Nlu остаётся кэш разобранных
             // сущностей предыдущего запроса и getFio()/getGeo() вернут чужие данные.
             this.nlu.setNlu({}, true);
+        } else {
+            // Nlu не создавался, но буфер thisUser от адаптера обязан умереть
+            // вместе с запросом.
+            this.#thisUserBuffer = undefined;
         }
         this.text = '';
         this.tts = null;
@@ -937,12 +991,20 @@ export abstract class BotController<
     }
 
     /**
+     * Замороженный пустой список интентов.
+     *
+     * Литерал `[]` в `_intents()` аллоцировался на каждый запрос без
+     * зарегистрированных интентов — константа отдаётся по ссылке.
+     */
+    static readonly #EMPTY_INTENTS: IAppIntent[] = [];
+
+    /**
      * Возвращает список всех зарегистрированных интентов.
      *
      * @returns {IAppIntent[]} Массив интентов
      */
     protected _intents(): IAppIntent[] {
-        return this.appContext?.platformParams.intents || [];
+        return this.appContext?.platformParams.intents || BotController.#EMPTY_INTENTS;
     }
 
     /**
@@ -960,6 +1022,7 @@ export abstract class BotController<
         for (let i = 0; i < intents.length; i++) {
             const intent = intents[i];
             if (
+                intent &&
                 Text.isSayText(
                     intent.slots || [],
                     text,
@@ -1137,9 +1200,20 @@ export abstract class BotController<
         let contCount = 0;
 
         for (let i = 0; i < commandList.length; i++) {
-            const commandName = commandList[i][0];
-            const command = commandList[i][1];
-            if (commandName === DEFAULT_FALLBACK_COMMAND || !command || contCount !== 0) {
+            const commandTuple = commandList[i];
+            if (commandTuple === undefined) {
+                continue;
+            }
+            const commandName = commandTuple[0];
+            const command = commandTuple[1];
+            // commandName === undefined закрывает дырявый элемент снимка
+            // (кортеж есть, а ключа в нём нет).
+            if (
+                commandName === undefined ||
+                commandName === DEFAULT_FALLBACK_COMMAND ||
+                !command ||
+                contCount !== 0
+            ) {
                 if (contCount) {
                     contCount--;
                 }
@@ -1292,14 +1366,22 @@ export abstract class BotController<
      * @param command — Параметры зарегистрированной команды
      */
     #commandExecute(commandName: string, command?: ICommandParam): void | Promise<void> {
-        const errorCb = (e: Error | Record<string, unknown>): void => {
-            this.appContext.logError(
-                `BotController: Произошла ошибка во время обработки команды "${commandName}". Текст ошибки: "${e}"`,
-                {
-                    e,
-                },
-            );
-            this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
+        // Замыкание обработчика ошибок создаётся лениво — только когда ошибка
+        // действительно произошла: в счастливом пути оно не аллоцируется вовсе.
+        let errorCb: ((e: Error | Record<string, unknown>) => void) | undefined;
+        const getErrorCb = (): ((e: Error | Record<string, unknown>) => void) => {
+            if (!errorCb) {
+                errorCb = (e: Error | Record<string, unknown>): void => {
+                    this.appContext.logError(
+                        `BotController: Произошла ошибка во время обработки команды "${commandName}". Текст ошибки: "${e}"`,
+                        {
+                            e,
+                        },
+                    );
+                    this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
+                };
+            }
+            return errorCb;
         };
         try {
             if (command) {
@@ -1311,14 +1393,14 @@ export abstract class BotController<
                                 this.text = result;
                             }
                         })
-                        .catch(errorCb);
+                        .catch((e) => getErrorCb()(e as Error | Record<string, unknown>));
                 }
                 if (res) {
                     this.text = res;
                 }
             }
         } catch (e) {
-            errorCb(e as Record<string, unknown>);
+            getErrorCb()(e as Error | Record<string, unknown>);
         }
     }
 
