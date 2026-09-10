@@ -390,19 +390,38 @@ describe('Buttons test', () => {
         expect(defaultButtons.getButtons(TelegramButton.buttonProcessing)).toBeNull();
     });
 
-    it('Get buttons Telegram with style (inline callback) — style игнорируется для inline', () => {
+    it('Get buttons Telegram with style (inline callback)', () => {
         defaultButtons.clear();
         defaultButtons.addBtn('Подтвердить', null, { action: 'confirm' }, { style: 'primary' });
         defaultButtons.addBtn('Удалить', null, { action: 'delete' }, { style: 'destructive' });
         defaultButtons.addBtn('Отмена', null, { action: 'cancel' }, { style: 'secondary' });
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
-        // style не поддерживается для InlineKeyboardButton, только для ReplyKeyboardButton
+        // С 3.1.0 style проставляется и в inline-кнопки (Bot API 9.4+):
+        // раньше константы TG_STYLE_* существовали, но поле не проставлялось.
         expect(result).toEqual({
             inline_keyboard: [
-                [{ text: 'Подтвердить', callback_data: '{"action":"confirm"}' }],
-                [{ text: 'Удалить', callback_data: '{"action":"delete"}' }],
-                [{ text: 'Отмена', callback_data: '{"action":"cancel"}' }],
+                [
+                    {
+                        text: 'Подтвердить',
+                        callback_data: '{"action":"confirm"}',
+                        style: 'primary',
+                    },
+                ],
+                [
+                    {
+                        text: 'Удалить',
+                        callback_data: '{"action":"delete"}',
+                        style: 'destructive',
+                    },
+                ],
+                [
+                    {
+                        text: 'Отмена',
+                        callback_data: '{"action":"cancel"}',
+                        style: 'secondary',
+                    },
+                ],
             ],
         });
     });
@@ -414,7 +433,7 @@ describe('Buttons test', () => {
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
         expect(result).toEqual({
-            keyboard: [[{ text: 'ОК' }], [{ text: 'Удалить' }]],
+            keyboard: [[{ text: 'ОК' }], [{ text: 'Удалить', style: 'destructive' }]],
             resize_keyboard: true,
         });
     });
@@ -424,21 +443,27 @@ describe('Buttons test', () => {
         defaultButtons.addBtn('Кнопка', null, { action: 'test' }, { style: 'invalid_value' });
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
+        // style передаётся как есть (passthrough): адаптер не валидирует перечень
+        // значений — некорректный стиль Telegram отклонит сам с понятной ошибкой
+        // валидации API, молчаливое игнорирование маскировало бы опечатку.
         expect(result).toEqual({
-            inline_keyboard: [[{ text: 'Кнопка', callback_data: '{"action":"test"}' }]],
+            inline_keyboard: [
+                [{ text: 'Кнопка', callback_data: '{"action":"test"}', style: 'invalid_value' }],
+            ],
         });
     });
 
-    it('Get buttons Telegram style not applied to url buttons', () => {
+    it('Get buttons Telegram style applied to url buttons', () => {
         defaultButtons.clear();
         defaultButtons.addLink('Ссылка', 'https://example.com', undefined, { style: 'primary' });
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
+        // С 3.1.0 style применяется и к url-кнопкам (Bot API 9.4+):
+        // InlineKeyboardButton.style доступен для всех типов inline-кнопок.
         expect(result).toEqual({
-            inline_keyboard: [[{ text: 'Ссылка', url: 'https://example.com' }]],
+            inline_keyboard: [[{ text: 'Ссылка', url: 'https://example.com', style: 'primary' }]],
         });
-        // style не должен применяться к кнопкам-ссылкам
-        expect(result!.inline_keyboard![0][0].style).toBeUndefined();
+        expect(result!.inline_keyboard![0][0].style).toBe('primary');
     });
 
     it('Get buttons Max', () => {

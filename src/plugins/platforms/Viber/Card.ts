@@ -1,4 +1,4 @@
-import { BotController, ICardInfo, Text, IImageType } from '../../../index';
+import { BotController, ICardInfo, Text, IImageType, IButtonType } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { IViberCard, IViberButtonObject } from './interfaces/IViberPlatform';
@@ -7,6 +7,7 @@ import { IViberCard, IViberButtonObject } from './interfaces/IViberPlatform';
  * Экранирует HTML-сущности для безопасной вставки в Viber Rich Media.
  * Предотвращает разрыв HTML-структуры при наличии <, >, &, ", ' в пользовательском контенте.
  * @param text Текст для экранирования
+ * @returns Строка с заменёнными HTML-сущностями (&amp;, &lt;, &gt;, &quot;, &#39;)
  */
 function escapeHtml(text: string): string {
     return text
@@ -17,9 +18,13 @@ function escapeHtml(text: string): string {
         .replace(/'/g, '&#39;');
 }
 
-/** Ширина сетки rich_media в Viber (`ButtonsGroupColumns`). */
+/**
+ * Ширина сетки rich_media в Viber (`ButtonsGroupColumns`).
+ */
 const VIBER_GRID_COLUMNS = 6;
-/** Максимум карточек, которые помещаются в сетку rich_media. */
+/**
+ * Максимум карточек, которые помещаются в сетку rich_media.
+ */
 const VIBER_MAX_CARDS = 6;
 
 /**
@@ -43,7 +48,23 @@ function getCardSize(countImage: number): { columns: number; rows: number } {
     };
 }
 
-function getElement(image: IImageType, columns: number, rows: number): IViberCard {
+/**
+ * Собирает один элемент (ячейку) rich_media Viber из изображения.
+ * Кнопка (если есть) мерджится прямо в объект элемента — вложенного поля
+ * Buttons у элемента rich_media не существует.
+ *
+ * @param image Изображение карточки
+ * @param columns Ширина карточки в колонках сетки (ButtonsGroupColumns)
+ * @param rows Высота карточки в строках сетки (ButtonsGroupRows)
+ * @param controller Контроллер приложения (для логирования предупреждений)
+ * @returns Элемент rich_media в формате IViberCard
+ */
+function getElement(
+    image: IImageType,
+    columns: number,
+    rows: number,
+    controller?: BotController,
+): IViberCard {
     if (!image.imageToken) {
         if (Text.isUrl(image.imageDir || '')) {
             image.imageToken = image.imageDir;
@@ -54,13 +75,27 @@ function getElement(image: IImageType, columns: number, rows: number): IViberCar
     if (image.imageToken) {
         element.Image = image.imageToken;
     }
+    // Замыкание передаёт appContext в обработку кнопок: иначе warn о пустой
+    // подписи и молчаливый пропуск несериализуемого payload терялись —
+    // в rich_media кнопка просто исчезала без объяснения.
     const btn: IViberButtonObject | null =
-        image.button?.getButtons<IViberButtonObject>(buttonProcessing) || null;
+        image.button?.getButtons<IViberButtonObject>((buttons: IButtonType[]) =>
+            buttonProcessing(buttons, controller?.appContext),
+        ) || null;
     const title = Text.resize(image.title, 256);
     const description = Text.resize(image.desc, 512);
     if (btn?.Buttons !== undefined) {
+        // Ячейка rich_media вмещает одну кнопку: молчаливый отбор первой
+        // оставлял разработчика в неведении, почему «половина кнопок пропала».
+        if (btn.Buttons.length > 1) {
+            controller?.appContext.logWarn(
+                `[Viber] У карточки в rich_media может быть только одна кнопка: из ${btn.Buttons.length} использована первая, остальные пропущены.`,
+            );
+        }
         element = { ...element, ...btn.Buttons[0] };
-        element.Text = `<font color=#000><b>${escapeHtml(title)}</b></font><font color=#000>${escapeHtml(description)}</font>`;
+        // <br> разделяет заголовок и описание — без него тексты склеиваются
+        // в одну строку (пример IViberCard это демонстрирует).
+        element.Text = `<font color=#000><b>${escapeHtml(title)}</b></font><br><font color=#000>${escapeHtml(description)}</font>`;
     } else {
         element.ActionType = 'none';
         // Без кнопки заголовок и описание всё равно должны отображаться: в rich_media
@@ -68,7 +103,7 @@ function getElement(image: IImageType, columns: number, rows: number): IViberCar
         // Раньше текст заполнялся только в ветке с кнопкой, и карточка без кнопки
         // молча теряла title/description.
         if (title || description) {
-            element.Text = `<font color=#000><b>${escapeHtml(title)}</b></font><font color=#000>${escapeHtml(description)}</font>`;
+            element.Text = `<font color=#000><b>${escapeHtml(title)}</b></font><br><font color=#000>${escapeHtml(description)}</font>`;
         }
     }
     // Размер выставляем после слияния с кнопкой: раскладку сетки определяет карточка,
@@ -80,8 +115,19 @@ function getElement(image: IImageType, columns: number, rows: number): IViberCar
 
 /**
  * Получает карточку для отображения в Viber.
+ * Синхронный процессор — `await` не требуется (см. Card.getCards).
  * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения (для логирования предупреждений)
  * @returns {IViberCard[] | IViberCard} Массив элементов RichMedia (для галереи) либо один объект карточки; пустой массив, если валидных изображений нет
+ * @example
+ * ```ts
+ * // Синхронный процессор — await не нужен:
+ * const res = cardProcessing(cardInfo, controller);
+ * const list = Array.isArray(res) ? res : res ? [res] : [];
+ * if (list.length) {
+ *     await viberApi.richMedia(userId, list);
+ * }
+ * ```
  */
 export function cardProcessing(
     cardInfo: ICardInfo,
@@ -110,7 +156,7 @@ export function cardProcessing(
             }
             if (firstImage.imageToken) {
                 const size = getCardSize(1);
-                return getElement(firstImage, size.columns, size.rows);
+                return getElement(firstImage, size.columns, size.rows, controller);
             }
         } else {
             const size = getCardSize(countImage);
@@ -119,7 +165,7 @@ export function cardProcessing(
                 if (!image) {
                     break;
                 }
-                objects.push(getElement(image, size.columns, size.rows));
+                objects.push(getElement(image, size.columns, size.rows, controller));
             }
         }
     }

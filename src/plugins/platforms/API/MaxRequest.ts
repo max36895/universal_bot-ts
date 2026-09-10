@@ -20,7 +20,9 @@ const MAX_UPLOAD_TIMEOUT = 30_000;
 const maxMessageQueues = new Map<string, Promise<void>>();
 const maxLastMessageAt = new Map<string, number>();
 
-/** Создаёт неблокирующую процесс задержку для соблюдения лимита MAX. */
+/**
+ * Создаёт неблокирующую процесс задержку для соблюдения лимита MAX.
+ */
 function waitForMaxInterval(timeout: number): Promise<void> {
     return new Promise((resolve) => {
         const timer = setTimeout(resolve, timeout);
@@ -28,7 +30,9 @@ function waitForMaxInterval(timeout: number): Promise<void> {
     });
 }
 
-/** Ставит отправки в один диалог в очередь с интервалом не менее 500 мс. */
+/**
+ * Ставит отправки в один диалог в очередь с интервалом не менее 500 мс.
+ */
 async function waitForMaxMessageTurn(key: string): Promise<void> {
     const previous = maxMessageQueues.get(key) ?? Promise.resolve();
     const current = previous
@@ -58,7 +62,7 @@ async function waitForMaxMessageTurn(key: string): Promise<void> {
 /**
  * Класс для взаимодействия с API Max
  * Предоставляет методы для отправки сообщений, загрузки файлов
- * @see (https://dev.max.ru/docs-api) Смотри тут
+ * @see https://dev.max.ru/docs-api
  */
 export class MaxRequest {
     /**
@@ -128,7 +132,9 @@ export class MaxRequest {
         (this.#request.header as Record<string, string>).Authorization = accessToken;
     }
 
-    /** Собирает тело сообщения MAX, сохраняя совместимость со старым плоским массивом кнопок. */
+    /**
+     * Собирает тело сообщения MAX, сохраняя совместимость со старым плоским массивом кнопок.
+     */
     #buildMessage(text: string, params: IMaxParams | null): Record<string, unknown> | null {
         const message: Record<string, unknown> = {};
         if (text) {
@@ -236,9 +242,14 @@ export class MaxRequest {
 
     /**
      * Отправляет сообщение пользователю или в чат
+     *
+     * Отправка идёт через очередь (waitForMaxMessageTurn): не чаще
+     * 1 сообщения в 500 мс на диалог.
+     *
      * @param peerId Идентификатор получателя (user_id или chat_id)
      * @param message Текст сообщения
      * @param params Дополнительные параметры (клавиатура, вложения и т.д.)
+     * @param recipientType 'user' | 'chat' = 'user' — адресат: user_id или chat_id в query
      * @returns Информация об отправленном сообщении или null при ошибке
      */
     public async messagesSend(
@@ -299,6 +310,11 @@ export class MaxRequest {
 
     /**
      * Регистрирует событие для получения уведомлений о новых сообщениях в MAX
+     *
+     * При невалидных аргументах (не-HTTPS URL, явный порт,
+     * secret вне [A-Za-z0-9_-]{5,256}) — warn и Promise.resolve(null)
+     * без вызова API.
+     *
      * @param url URL для получения уведомлений
      * @param params Секрет webhook и список получаемых типов обновлений
      * @returns Ответ MAX API или null при ошибке
@@ -340,7 +356,7 @@ export class MaxRequest {
     }
 
     /**
-     * Записывает информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      * @param error Текст ошибки для логирования
      */
     #log(error: Error | string = ''): void {

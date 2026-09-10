@@ -269,8 +269,8 @@ export function loadEnvFile(envPath: string): IEnvConfigStatus {
                 const [key, ...valueParts] = trimmedLine.split('=');
                 let value = valueParts.join('=').trim();
                 // Убираем inline comments, но только если `#` начинается с пробела
-                // (конвенция dotenv). `DB_PASSWORD=pass#word` — это значение с
-                // решёткой, а не комментарий: раньше оно молча обрезалось до `pass`.
+                // (конвенция dotenv): в `DB_PASSWORD=pass#word` решётка — часть
+                // значения, а не комментарий.
                 const commentMatch = value.match(/(?:^|\s)#/);
                 if (commentMatch && commentMatch.index !== undefined) {
                     // Проверяем, что # не внутри кавычек

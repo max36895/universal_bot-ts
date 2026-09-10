@@ -12,7 +12,8 @@ export const T_SMART_APP = 'smart_app';
 export const SMART_APP_STORAGE_URL = 'https://smartapp-code.sberdevices.ru/tools/api/data';
 
 /**
- * Заготовка DEVICE-секции ответа SmartApp; заполняется адаптером под конкретный запрос.
+ * Заготовка DEVICE-секции запроса SmartApp (используется в getQueryExample);
+ * заполняется адаптером под конкретный запрос.
  */
 export const DEVICE = {
     platformType: '',
@@ -36,7 +37,9 @@ export const DEVICE = {
     additionalInfo: {},
 };
 /**
- * Заготовка ANNOTATIONS-секции (модерация ответов SmartApp); передаётся адаптером как есть.
+ * Заготовка ANNOTATIONS-секции: аннотации реплики пользователя
+ * из входящего запроса SmartApp (используется в getQueryExample,
+ * передаётся адаптером как есть).
  */
 export const ANNOTATIONS: ISberSmartAppAnnotations = {
     censor_data: {

@@ -7,15 +7,22 @@ import { TAppPlugin } from '../interfaces/IAppContext';
 import { TCommandGroupMode } from '../interfaces/IBot';
 import { Text } from '../../utils';
 import { FALLBACK_COMMAND } from '../constants';
+import type { TEventType } from '../events';
 
 /**
  * Данные группы команд для оптимизации поиска.
  * Используется внутренне фреймворком для группировки команд с RegExp.
  */
 export interface IGroupData {
-    /** Имена команд в этой группе */
+    /**
+     * Имена команд в этой группе
+     */
     commands: string[];
-    /** Объединённое регулярное выражение для группы (или null) */
+    /**
+     * Объединённое регулярное выражение для группы. Строка — временная стадия
+     * до debounce-пересборки (компилируется через getGroupRegExpCompiled),
+     * `null` — группа ещё не собрана.
+     */
     regExp: RegExp | null | string;
 }
 
@@ -50,8 +57,8 @@ export function getGroupRegExpCompiled(
         return cached.regExp;
     }
     const regExp = getRegExp(groupData.regExp, 'ium', customReg);
-    // Прогрев JIT регулярки вне цикла регистрации: первые вызовы .test/.exec
-    // у нового объекта медленнее, замер это показал.
+    // Прогреваем регулярку сразу после компиляции — первые вызовы .test/.exec
+    // у нового объекта заметно медленнее.
     regExp.test('__umbot_testing');
     regExp.test('');
     groupCompiledRegExp.set(groupData, { pattern: groupData.regExp, regExp });
@@ -95,7 +102,11 @@ function setMemoryLimit(): void {
 
 setMemoryLimit();
 
-interface IDangerRegex {
+/**
+ * Результат проверки слотов на опасные регулярные выражения (ReDoS):
+ * статус и, в зависимости от режима strictMode, безопасные либо исходные слоты.
+ */
+export interface IDangerRegex {
     status: boolean;
     slots: TSlots;
 }
@@ -123,6 +134,7 @@ export type TSlots = TPatternRegExp[];
  * const command: ICommandParam = {
  *   slots: ['привет', 'здравствуй'],
  *   isPattern: false,
+ *   isRegExpString: false,
  *   cb: (text, controller) => {
  *     controller.text = 'Привет! Рад вас видеть!';
  *   }
@@ -146,8 +158,8 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * Функция-обработчик команды
      *
      * @param {string} userCommand - Текст команды пользователя
-     * @param {BotController} [botController] - Контроллер с бизнес-логикой приложения для управления ответом
-     * @returns {void | string} - Строка ответа или void
+     * @param {BotController} botController - Контроллер с бизнес-логикой приложения для управления ответом
+     * @returns {void | string | Promise<void | string>} - Строка ответа или void
      *
      * Если функция возвращает строку, она автоматически устанавливается как ответ для платформы.
      */
@@ -165,13 +177,14 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * Скомпилированное регулярное выражение
      */
     regExp?: RegExp;
-    /** true, если слот-строка скомпилирована как регулярное выражение (isPattern). */
+    /**
+     * true, если слот-строка скомпилирована как регулярное выражение (isPattern).
+     */
     isRegExpString: boolean;
     /**
      * Предвычисленный быстрый путь: у команды ровно один слот, он RegExp без
      * stateful-флагов `g`/`y`, и кастомный движок regexp не подключён.
-     * Горячий цикл поиска вызывает `test` напрямую, минуя обёртку Text.isSayText
-     * (экономит ~15 нс и ~40 байт транзиентного мусора на каждый вызов).
+     * Поиск вызывает `test` напрямую, минуя обёртку Text.isSayText.
      * @private
      */
     __$singleStatelessRegExp?: RegExp;
@@ -180,8 +193,10 @@ export interface ICommandParam<TBotController extends BotController = BotControl
 /**
  * Параметры конфигурации шага диалога.
  *
- * Используется для регистрации шагов в системе. Шаги сохраняются между сессиями
- * и автоматически восстанавливаются при повторном входе пользователя в навык.
+ * Используется для регистрации шагов в системе. Между сессиями персистится
+ * только указатель активного шага (oldIntentName в state/userData); сами
+ * определения шагов живут в памяти приложения. Активный шаг автоматически
+ * восстанавливается при повторном входе пользователя в навык.
  *
  * @example
  * ```ts
@@ -216,10 +231,29 @@ export interface IStepParam<TBotController extends BotController = BotController
      *
      * @param {BotController} botController - Контроллер с бизнес-логикой приложения для управления ответом
      * @returns
-     * - `void` или `undefined` — шаг активен. Обработка останавливается на этом шаге, ожидается ввод пользователя.
+     * - `void` или `Promise<void>` — шаг активен. Обработка останавливается на этом шаге, ожидается ввод пользователя.
      * - `false` — шаг **игнорируется**. Фреймворк считает, что шаг не применим, и передаёт управление дальше.
      */
     cb: (botController: TBotController) => void | Promise<void> | false;
+}
+
+/**
+ * Параметры событийного обработчика (`bot.addEvent`).
+ *
+ * Хендлер получает контроллер, у которого адаптер уже заполнил `eventType`
+ * и поля события (`userCommand`, `payload`, `requestObject`).
+ */
+export interface IEventParam<TBotController extends BotController = BotController> {
+    /**
+     * Универсальный тип события, на который подписан хендлер.
+     */
+    eventType: TEventType;
+    /**
+     * Функция-обработчик события. Вызывается до поиска шагов и команд.
+     *
+     * Как и обработчик команды, может вернуть строку — она станет текстом ответа.
+     */
+    cb: (botController: TBotController) => void | string | Promise<void | string> | false;
 }
 
 /**
@@ -227,7 +261,7 @@ export interface IStepParam<TBotController extends BotController = BotController
  * Кастомный обработчик может быть как синхронным, так и асинхронным. В случае успешного нахождения команды, возвращается название этой команды. В противном случае возвращается null
  * @param userCommand - Команда пользователя
  * @param commands - Список всех зарегистрированных команд
- * @returns {string} - Имя команды
+ * @returns {string | null | Promise<string | null>} - Имя найденной команды или null, если совпадений нет
  */
 export type TCommandResolver = (
     userCommand: string,
@@ -235,8 +269,17 @@ export type TCommandResolver = (
 ) => string | null | Promise<string | null>;
 
 /**
- * Класс, который берет на себя всю обязанность за регистрацию команд и шагов
- * @internal Используется только внутри фреймворка
+ * Класс, который берет на себя всю обязанность за регистрацию команд и шагов.
+ * Экземпляр не создаётся напрямую — он доступен как `ctx.appContext.command`
+ * в обработчиках и middleware.
+ *
+ * @example
+ * ```ts
+ * // Динамическая регистрация команды из middleware или обработчика
+ * ctx.appContext.command.addCommand('dyn', ['динамика'], (cmd, ctrl) => {
+ *     ctrl.text = 'Команда добавлена в рантайме';
+ * });
+ * ```
  */
 export class CommandReg {
     #regExpCommandCount = 0;
@@ -256,16 +299,11 @@ export class CommandReg {
     /**
      * Снимок команд для горячего цикла поиска.
      *
-     * `for...of` по Map на каждой итерации аллоцирует пару-массив `[ключ, значение]`
-     * (спецификация итератора), что при скане 1500 команд даёт десятки КБ
-     * транзиентного мусора на каждый запрос. Снимок живёт как обычный массив пар
-     * (ключ — строка уже существующая в Map, значение — ссылка на объект команды,
-     * копий данных не создаётся) и пересобирается лениво: мутации только
-     * инвалидируют его флагом, а пересборка происходит один раз при первом
-     * поиске после изменения набора команд. Так регистрация 20 000 команд
-     * остаётся O(n), а не O(n²).
-     * Источником правды остаётся {@link commands} (Map): он нужен для O(1)-get
-     * по имени команды.
+     * Перебор Map через `for...of` аллоцирует пару-массив на каждой итерации —
+     * при скане тысяч команд это лишний мусор на каждый запрос. Снимок хранится
+     * обычным массивом пар и пересобирается лениво: мутации только помечают
+     * его флагом, пересборка происходит при первом поиске. Источник правды —
+     * {@link commands} (Map).
      */
     public commandsList: [string, ICommandParam][] = [];
 
@@ -273,7 +311,7 @@ export class CommandReg {
 
     /**
      * Возвращает актуальный снимок команд, пересобирая его при необходимости.
-     * Выывается из горячего цикла поиска команд: при неизменном наборе команд
+     * Вызывается из горячего цикла поиска команд: при неизменном наборе команд
      * (обычный прод-режим) стоимость — одна проверка булевого флага.
      */
     public getActualCommandsList(): [string, ICommandParam][] {
@@ -294,7 +332,7 @@ export class CommandReg {
 
     /**
      * Флаг строгого режима работы приложения.
-     * В строгом режиме работы, все ReDOS регулярные выражения не будут добавляться.
+     * В строгом режиме работы, все ReDoS регулярные выражения не будут добавляться.
      */
     public strictMode: boolean = false;
 
@@ -328,9 +366,7 @@ export class CommandReg {
      * @returns {string | undefined} Имя найденной команды или undefined
      */
     getExactMatchCommand(userCommand: string): string | undefined {
-        // Реестр без единой строковой команды (только RegExp-слоты) не может
-        // дать точного совпадения: пустая карта проверяется через size
-        // (O(1)-поле Map), дешевле хэш-lookup'а по длинной строке запроса.
+        // Пустая карта — точного совпадения быть не может.
         if (this.#exactMatchMap.size === 0) {
             return undefined;
         }
@@ -338,7 +374,8 @@ export class CommandReg {
     }
 
     /**
-     * Возвращает кастомный обработчик для обработки регулярных выражений
+     * Возвращает конструктор RegExp (например, re2), заданный плагином regExp,
+     * для компиляции регулярных выражений. Если плагин не подключён — undefined.
      */
     getCustomRegExp(): RegExpConstructor | undefined {
         const reg = this.plugins.regExp;
@@ -390,11 +427,14 @@ export class CommandReg {
      * Проверяет, что переданное регулярное выражение не содержит уязвимых к ReDoS конструкций.
      *
      * Если выражение признано небезопасным:
-     * - В обычном режиме — пишется предупреждение, и выражение используется как есть.
-     * - В `strictMode` — пишется ошибка, и слоты возвращаются пустыми (`status: false`).
+     * - В обычном режиме пишется сообщение (ошибка без `re2`, предупреждение с ним),
+     *   и выражение используется как есть.
+     * - В `strictMode` — пишется ошибка, и небезопасные слоты отбрасываются
+     *   (`status: false`; для одиночного RegExp возвращаются пустые слоты,
+     *   для массива — только безопасные слоты).
      *
      * @param slots Слот(ы) или регулярное выражение для проверки.
-     * @returns Исходные слоты или пустой массив с флагом ошибки.
+     * @returns Исходные слоты (в обычном режиме) или безопасные слоты с флагом ошибки.
      */
     isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
         if (isRegex(slots)) {
@@ -493,7 +533,9 @@ export class CommandReg {
         groupData.regExp = pattern;
     }
 
-    /** Закрывает текущую группу, чтобы следующая отдельная команда не попала внутрь её диапазона. */
+    /**
+     * Закрывает текущую группу, чтобы следующая отдельная команда не попала внутрь её диапазона.
+     */
     #closeRegexpGroup(): void {
         if (!this.#noFullGroups) {
             return;
@@ -685,10 +727,11 @@ export class CommandReg {
      *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
      *   - При `isPattern = true` строковые слоты компилируются в одно объединённое
      *     регулярное выражение с флагом `ium`.
-     *   - Если в slots присутствует хотя бы один RegExp, параметр isPattern для строк
-     *     игнорируется. Каждый элемент обрабатывается по своему типу:
+     *   - При `isPattern = false` каждый элемент обрабатывается по своему типу:
      *        - string → как литерал (поиск подстроки),
      *        - RegExp → как регулярное выражение
+     *   - Если ВСЕ слоты — готовые RegExp, isPattern для строк не применяется
+     *     (строк нет) и команда трактуется как pattern.
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -897,9 +940,8 @@ export class CommandReg {
      * без stateful-флагов `g`/`y` и без кастомного движка может проверяться
      * прямым `.test` в горячем цикле, минуя обёртку Text.isSayText.
      *
-     * Наличие движка проверяем по plugins.regExp напрямую, БЕЗ вызова
-     * getCustomRegExp(): у плагина-функции могут быть сайд-эффекты
-     * (например, подсчёт вызовов в тестах), лишний вызов ломал контракт.
+     * Наличие движка проверяем по plugins.regExp напрямую, без вызова
+     * getCustomRegExp(): у плагина-функции могут быть сайд-эффекты.
      *
      * @param slots Слоты команды после валидации ReDoS
      * @returns Готовый к прямому тесту RegExp или undefined, если условия не выполнены
@@ -1030,6 +1072,94 @@ export class CommandReg {
      */
     public clearSteps(): this {
         this.steps.clear();
+        return this;
+    }
+
+    /**
+     * Добавленные событийные обработчики (`bot.addEvent`). Ключ — тип события.
+     *
+     * @internal Реестр принадлежит только {@link addEvent}/{@link removeEvent}/
+     * {@link clearEvents}: внешние мутации рассинхронизируют `#hasEvents`, и
+     * хендлеры молча перестанут вызываться. Для чтения используйте
+     * {@link events} и {@link hasEvents}.
+     */
+    #events: Map<TEventType, IEventParam['cb'][]> = new Map();
+
+    /**
+     * Быстрый флаг «есть хоть один событийный хендлер» для горячего пути run().
+     * Поддерживается методами addEvent/removeEvent/clearEvents.
+     */
+    #hasEvents: boolean = false;
+
+    /**
+     * Зарегистрированные событийные обработчики (только чтение).
+     *
+     * Readonly-аксессор над внутренним реестром: Map не пересоздаётся, чтение
+     * в горячем пути `BotController.#eventResolver` остаётся дешёвым. Мутации
+     * извне запрещены — только через {@link addEvent}/{@link removeEvent}/{@link clearEvents}.
+     */
+    public get events(): ReadonlyMap<TEventType, IEventParam['cb'][]> {
+        return this.#events;
+    }
+
+    /**
+     * Флаг «есть хоть один событийный хендлер» (только чтение).
+     *
+     * Обновляется методами регистрации/очистки; прямое присваивание извне
+     * невозможно, поэтому флаг не разъедется с реестром.
+     */
+    public get hasEvents(): boolean {
+        return this.#hasEvents;
+    }
+
+    /**
+     * Регистрирует обработчик универсального события платформы.
+     *
+     * Хендлеры событий вызываются до поиска шагов и команд. На одно событие
+     * можно зарегистрировать несколько хендлеров: они опрашиваются в порядке
+     * регистрации, пока один не вернёт строку-ответ (цепочка останавливается).
+     * Хендлер с `false` передаёт событие следующему хендлеру; когда все
+     * отказались — запрос уходит в обычный конвейер (шаг → команда → интент →
+     * fallback).
+     *
+     * @param eventType Универсальный тип события (`'photo'`, `'callback'`, …)
+     * @param cb Функция-обработчик; может вернуть строку (текст ответа) или
+     *   `false` (событие «не мой» — обработка продолжится по обычному конвейеру)
+     */
+    public addEvent<TBotController extends BotController = BotController>(
+        eventType: TEventType,
+        cb: IEventParam<TBotController>['cb'],
+    ): this {
+        const handlers = this.#events.get(eventType);
+        if (handlers) {
+            handlers.push(cb as IEventParam['cb']);
+        } else {
+            this.#events.set(eventType, [cb as IEventParam['cb']]);
+        }
+        this.#hasEvents = true;
+        return this;
+    }
+
+    /**
+     * Удаляет все обработчики указанного события.
+     *
+     * @param eventType Тип события
+     * @returns Текущий экземпляр `CommandReg`
+     */
+    public removeEvent(eventType: TEventType): this {
+        this.#events.delete(eventType);
+        this.#hasEvents = this.#events.size > 0;
+        return this;
+    }
+
+    /**
+     * Удаляет **все** зарегистрированные событийные обработчики.
+     *
+     * @returns Текущий экземпляр `CommandReg`
+     */
+    public clearEvents(): this {
+        this.#events.clear();
+        this.#hasEvents = false;
         return this;
     }
 }

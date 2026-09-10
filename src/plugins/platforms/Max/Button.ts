@@ -6,6 +6,8 @@ import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 /**
  * Получение кнопок в формате Max
  * @param buttons Кнопки, которые необходимо отобразить
+ * @param appContext Контекст приложения (для логирования ошибок валидации)
+ * @returns Объект inline-клавиатуры MAX (всегда непустая структура; невалидные кнопки пропускаются)
  */
 export function buttonProcessing(
     buttons: IButtonType[],
@@ -17,7 +19,7 @@ export function buttonProcessing(
             '[MAX] клавиатура превышает лимит 30 рядов. Лишние кнопки не будут отправлены.',
         );
     }
-    getCorrectButtons(buttons, 30).forEach((button) => {
+    getCorrectButtons(buttons, 30, appContext).forEach((button) => {
         // text — обязательное поле кнопки MAX. Без проверки в запрос уходило
         // {"type":"message","text":null}, и API отклонял всё сообщение целиком.
         const title = button.title;

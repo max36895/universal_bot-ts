@@ -74,8 +74,7 @@ sudo systemctl reload nginx
 npm run build
 ```
 
-Запустите с помощью pm2 (рекомендуется для продакшена):
-Если pm2 не установлен, то установите его:
+Запустите с помощью pm2 (рекомендуется для продакшена). Если pm2 не установлен, установите его:
 
 ```bash
 npm install -g pm2
@@ -153,7 +152,8 @@ npx umbot create from-flow flow.json --usecloud
 Это добавит в проект:
 
 - Экспорт `handler` в `src/index.ts` для обработки запросов Cloud Functions
-- `serverless.yml` с конфигурацией функции
+- `scripts/deploy.js` — деплой через yc CLI (запускается `npm run deploy`)
+- Справочный `serverless.yml` с конфигурацией функции (деплой его не читает — аргументы для yc собирает `scripts/deploy.js`)
 - Скрипты `deploy` и `build` в `package.json`
 
 Ручная настройка Cloud Function:

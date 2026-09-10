@@ -167,11 +167,13 @@ export abstract class Model<TState extends IModelState> {
 
     /**
      * Создает новый экземпляр модели.
-     * Инициализирует контроллер базы данных и состояние модели
+     * Инициализирует контекст приложения и параметры запроса (queryData)
+     *
+     * @param {AppContext} appContext - Контекст приложения (адаптер БД, логгер, метрики)
      *
      * @example
      * ```ts
-     * const user = new UserModel();
+     * const user = new UserModel(appContext);
      * ```
      */
     protected constructor(appContext: AppContext) {
@@ -196,7 +198,8 @@ export abstract class Model<TState extends IModelState> {
      * }
      * ```
      *
-     * @returns Promise<boolean> - true если подключение активно
+     * @returns {Promise<boolean> | boolean} true если подключение активно
+     *   (синхронно false без адаптера БД, иначе Promise от адаптера)
      */
     public isConnected(): Promise<boolean> | boolean {
         if (this._appContext.database.adapter) {
@@ -213,7 +216,7 @@ export abstract class Model<TState extends IModelState> {
      * const safe = model.escapeString("O'Connor");
      * ```
      *
-     * @param text - Текст для экранирования
+     * @param text - Строка или число для экранирования
      * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
@@ -264,6 +267,7 @@ export abstract class Model<TState extends IModelState> {
      *
      * @example
      * ```ts
+     * // Объект: значения сопоставляются по именам полей (меткам attributeLabels)
      * model.init({
      *   id: 1,
      *   username: 'John',
@@ -305,7 +309,7 @@ export abstract class Model<TState extends IModelState> {
      * ```ts
      * const result = await model.selectOne();
      * if (result.status) {
-     *   model.init(result.data);
+     *   model.init(result.data ?? null); // data опционален, init() допускает null
      * }
      * ```
      *
@@ -447,6 +451,15 @@ export abstract class Model<TState extends IModelState> {
 
     /**
      * Выполняет произвольный запрос к базе данных
+     *
+     * @example
+     * ```ts
+     * // Объект условий — точные значения полей
+     * const res = await model.where({ age: 25 });
+     *
+     * // Строка условий формата getQueryData
+     * const res2 = await model.where('`age`=25 `status`="active"');
+     * ```
      *
      * @param where - Условия запроса
      * @param isOne - Флаг выборки одной записи

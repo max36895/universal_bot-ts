@@ -4,7 +4,14 @@
 `BotController`. Ваша задача: распарсить входящие данные, наполнить контроллер, обработать UI-компоненты (кнопки,
 картинки, звуки) и сформировать ответ строго по контракту конкретной платформы.
 
-Адаптер наследуется от базового класса BasePlatformAdapter<TQuery> (из `umbot/plugins`).
+Адаптер наследуется от базового класса `BasePlatformAdapter<TQuery>` из `umbot/plugins` (в исходниках фреймворка
+класс называется `BasePlatform` — `BasePlatformAdapter` это его публичный алиас при реэкспорте). Для примеров ниже
+подключите всё необходимое одним блоком:
+
+```ts
+import { BasePlatformAdapter, TContent } from 'umbot/plugins';
+import { BotController, Text } from 'umbot'; // BotController и Text экспортируются из корня 'umbot'
+```
 
 ## Инициализация и идентификация платформы
 
@@ -12,7 +19,7 @@
 
 ### Определение платформы (isPlatformOnQuery)
 
-Вы должны реализовать метод, который по заголовкам или телу запроса понимает, относится ли он к вашей платформе.
+Вы должны реализовать метод, который по заголовкам или по телу запроса понимает, относится ли он к вашей платформе.
 
 **Пример**: Платформа WeChat отправляет специфичный заголовок x-wechat-signature и XML в теле. Telegram отправляет
 заголовок x-telegram-bot-api-secret-token.
@@ -23,7 +30,7 @@ isPlatformOnQuery(query: unknown, headers?: Record<string, unknown>): boolean {
     // 1. Проверяем заголовки (самый надежный способ)
     if (headers?.['x-wechat-signature']) return true;
 
-    // 2. Фоллбэк: проверяем уникальные поля в теле запроса
+    // 2. Фолбэк: проверяем уникальные поля в теле запроса
     return !!(q.xml_msg || q.specific_wechat_field);
 }
 ```
@@ -56,13 +63,16 @@ isPlatformOnQuery(query: unknown, headers?: Record<string, unknown>): boolean {
 - `controller.userId` (string | number) — уникальный ID пользователя.
 - `controller.userCommand` (string) — текст команды в нижнем регистре (нужно для поиска команд).
 - `controller.originalUserCommand` (string) — оригинальный текст как есть.
-- `controller.messageId` (number | string) — ID сообщения (нужно для определения начала диалога).
+- `controller.messageId` (number | string | null) — ID сообщения (нужно для определения начала диалога).
+- `controller.appType` = `this.platformName` — тип платформы: по нему ядро находит адаптер в реестре.
 
 **Опциональные, но важные поля:**
 
 - `controller.nlu.setNlu(...)` — если платформа присылает NLU/интенты.
 - `controller.userMeta` — метаданные (например, есть ли у юзера экран).
 - `controller.payload` — дополнительные данные (например, нажатая кнопка).
+
+Нюанс `messageId`: начало диалога определяется строго по `messageId === 0` — адаптер обязан выставлять `0` для первого сообщения диалога (иначе welcome-интент не сработает).
 
 ```ts
 setQueryData(query: unknown, controller: BotController): boolean {
@@ -73,6 +83,7 @@ setQueryData(query: unknown, controller: BotController): boolean {
     }
 
     controller.requestObject = query; // Сохраняем оригинал
+    controller.appType = this.platformName; // Обязательно: ядро ищет адаптер по этому полю
     controller.userId = q.user_id as string | number;
     controller.userCommand = ((q.text as string) || '').toLowerCase().trim();
     controller.originalUserCommand = (q.text as string) || '';
@@ -98,8 +109,10 @@ setQueryData(query: unknown, controller: BotController): boolean {
 
 Вам нужно написать функцию, которая принимает массив абстрактных кнопок и возвращает объект, понятный платформе.
 Метод `controller.buttons.getButtons(ваш_процессор)` сам вызовет вашу функцию и отдаст результат.
+Результат может быть `null` (пустой список кнопок) — учитывайте это при формировании ответа.
 
 ```ts
+// IButtonType экспортируется из корня 'umbot'
 // 1. Пишем процессор
 function myPlatformButtonProcessing(buttons: IButtonType[]): MyPlatformKeyboard {
     return {
@@ -110,7 +123,7 @@ function myPlatformButtonProcessing(buttons: IButtonType[]): MyPlatformKeyboard 
     };
 }
 
-// 2. Вызываем внутри getContent
+// 2. Вызываем внутри getContent (результат может быть null, если кнопок нет)
 const keyboard = controller.buttons.getButtons(myPlatformButtonProcessing);
 ```
 
@@ -120,7 +133,7 @@ const keyboard = controller.buttons.getButtons(myPlatformButtonProcessing);
 
 ```ts
 import { pUtils } from 'umbot/plugins';
-import { ImageTokens } from 'umbot';
+import { ImageTokens, BotController } from 'umbot';
 import { MyPlatformApi } from './MyPlatformApi';
 
 async function myPlatformCardProcessing(cardInfo: ICardInfo, controller: BotController) {
@@ -179,7 +192,6 @@ async function myPlatformCardProcessing(cardInfo: ICardInfo, controller: BotCont
 ```ts
 import { pUtils } from 'umbot/plugins';
 import { SoundTokens } from 'umbot';
-
 // Внутри процессора звуков:
 const audioToken = await pUtils.getSoundToken(
     path,
@@ -195,6 +207,28 @@ const audioToken = await pUtils.getSoundToken(
         return null;
     },
 );
+```
+
+### Вспомогательные хелперы адаптера (`pUtils`)
+
+Помимо `getImageToken`/`getSoundToken`, в `pUtils` (экспорт из `umbot/plugins`) есть хелперы, которые
+используют встроенные адаптеры — их стоит переиспользовать и в кастомных:
+
+- `getChatText(text, tts)` — текст ответа для чат-платформ: при пустом `text` возвращает `tts` без разметки звуков;
+- `tryParse<T>(raw)` — безопасный разбор JSON-строки payload (null при невалидном);
+- `normalizeActionPayload(payload)` — приводит payload кнопки (`'buy'` или `{"command":"buy"}`) к строке `buy` для `userCommand`;
+- `hasAnyNluKey(nlu)` — проверяет, есть ли в объекте NLU хоть какие-то данные (медиа/сущности/интенты);
+- `setThisUserToNlu(controller, thisUser)` — заполняет сущность `thisUser` (данные об отправителе) в NLU контроллера;
+- `telegramMessageEvent(message)` / `viberMessageEvent(type)` — сопоставляют тип входящего апдейта с универсальным `TEventType`;
+- `getCorrectButtons(buttons, limit)` — обрезает массив кнопок до лимита платформы (дефолт 10).
+
+Полный список с сигнатурами — в типах `src/plugins/platforms/Base/utils.ts` (JSDoc каждого хелпера).
+
+```ts
+import { pUtils } from 'umbot/plugins';
+
+// Внутри setQueryData при разборе апдейта:
+controller.userCommand = pUtils.normalizeActionPayload(payload).toLowerCase();
 ```
 
 ## Управление состояниями (State / Local Storage)
@@ -250,26 +284,38 @@ async getContent(controller: BotController, stateData?: Record<string, unknown>)
 **Парадигма Б:** API-Call (Telegram, VK, Max)
 Платформа ждет, что вы сами отправите ответ через её API, а вебхуку нужно просто вернуть 200 OK.
 
+Флаг `controller.skipAutoReply` — это сигнал **для ядра**: «запрос уже отвечен или не требует ответа».
+Его выставляет адаптер (обычно в `setQueryData`) или middleware, когда запрос обработан без бизнес-логики —
+например, неизвестное событие платформы, на которое нельзя ответить. `getContent` лишь **учитывает** флаг:
+видит его и не отправляет сообщение через API, а возвращает ядру нейтральное тело для вебхука.
+Ядро в любом случае отвечает на вебхук HTTP 200 — это важно: на 5xx Telegram реплеит апдейт бесконечно,
+а VK отключает сервер.
+
+Неожиданные события платформы, которые ваш адаптер не может обработать, помечайте именно `skipAutoReply = true`
+в `setQueryData` (с `return true`), а не `return false` — второй вариант приведет к HTTP 400.
+
 ```ts
 async getContent(controller: BotController): Promise<string> {
-    // 1. Если ответ еще не отправлен (флаг skipAutoReply)
-    if (!controller.skipAutoReply) {
-        const api = new MyPlatformApi(controller.appContext);
-
-        // Собираем все UI-компоненты
-        const keyboard = controller.buttons.getButtons(myPlatformButtonProcessing);
-        const attachments = await controller.card.getCards(myPlatformCardProcessing, controller);
-        const sounds = await controller.sound.getSounds(controller.tts, mySoundProcessing, controller);
-
-        // Передаем их в API платформы (формат зависит от самой платформы)
-        await api.sendMessage(controller.userId, Text.resize(controller.text, 4096), {
-            keyboard,
-            attachments, // Пример для Discord/VK
-            audio: sounds // Пример
-        });
+    // 1. Запрос не требует автоответа? Просто возвращаем заглушку для вебхука.
+    if (controller.skipAutoReply) {
+        return 'ok';
     }
 
-    // 3. Возвращаем заглушку для вебхука
+    const api = new MyPlatformApi(controller.appContext);
+
+    // Собираем все UI-компоненты
+    const keyboard = controller.buttons.getButtons(myPlatformButtonProcessing);
+    const attachments = await controller.card.getCards(myPlatformCardProcessing, controller);
+    const sounds = await controller.sound.getSounds(controller.tts, mySoundProcessing, controller);
+
+    // Передаем их в API платформы (формат зависит от самой платформы)
+    await api.sendMessage(controller.userId, Text.resize(controller.text, 4096), {
+        keyboard,
+        attachments, // Пример для Discord/VK
+        audio: sounds // Пример
+    });
+
+    // 2. Возвращаем заглушку для вебхука
     return 'ok';
 }
 ```
@@ -282,6 +328,8 @@ async getContent(controller: BotController): Promise<string> {
 
 Для локального тестирования через `BotTest` определите метод `getQueryExample`.
 Этот метод эмулирует запрос от платформы, позволяя проверить работу приложения до деплоя.
+В базовом классе есть generic-заглушка, но для **тестируемого** адаптера метод обязателен:
+без переопределения `BotTest.simulate()` не сможет сгенерировать валидный payload вашей платформы.
 
 **Важно:** Формат возвращаемого объекта должен точно соответствовать структуре запроса,
 которую вы парсите в `setQueryData`.
@@ -336,7 +384,9 @@ setQueryData(query, controller) {
             version: '1.0',
             response: { text: 'pong' },
         };
-        return true; // важно вернуть true — иначе запрос будет отклонён
+        // Важно вернуть true: при false ядро ответит на вебхук HTTP 400,
+        // а Telegram по 4xx/5xx бесконечно реплеит апдейт, VK — отключает сервер.
+        return true;
     }
     return true;
 }
@@ -378,5 +428,6 @@ bot.use(rateLimiter());
 Голосовые платформы жестко ограничивают время ответа: фреймворк ориентируется на пороги `WARNING_TIME_REQUEST = 2000 мс`
 (предупреждение) и `MAX_TIME_REQUEST = 2900 мс` (ошибка) — у Алисы лимит около 3 секунд, у других платформ он отличается.
 Проверка не выполняется автоматически: в своём `getContent` вызовите `this._timeLimitLog(controller)` после формирования
-ответа, как это делают встроенные адаптеры, — иначе медленные ответы не попадут в логи. Пороги можно переопределить
+ответа. Так поступают встроенные **голосовые** адаптеры (Alisa, Marusia, SmartApp); адаптеры чат-платформ его не вызывают.
+Без вызова медленные ответы не попадут в логи. Пороги можно переопределить
 в наследнике. И главное — не делайте тяжелых синхронных операций внутри getContent.

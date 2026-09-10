@@ -7,7 +7,8 @@ import { T_MAX_APP } from './constants';
 /**
  * Получение токена, необходимого для отображения картинок в карточке Max
  * @param controller Контроллер приложения
- * @param path Путь до картинки
+ * @param path Путь до картинки (URL возвращается как есть)
+ * @returns Токен/URL изображения либо `null` при ошибке загрузки/сохранения
  */
 export async function getImageInDB(
     controller: BotController,
@@ -31,9 +32,18 @@ export async function getImageInDB(
 
 /**
  * Получает карточку для отображения в Max.
+ * Асинхронный процессор — вызывать с `await` (см. Card.getCards).
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
  * @returns {Promise<IMaxCard[] | null>} Массив вложений-изображений (в т.ч. из одного элемента) либо `null`, если нечего отобразить
+ * @example
+ * ```ts
+ * // Вложения-изображения для params.attachments. Обязательно await:
+ * const attachments = await cardProcessing(cardInfo, controller);
+ * if (attachments) {
+ *     params.attachments = attachments;
+ * }
+ * ```
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

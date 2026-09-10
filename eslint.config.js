@@ -73,6 +73,9 @@ module.exports = [
             '@typescript-eslint/await-thenable': 'error',
 
             'require-atomic-updates': 'error',
+            // Фигурные скобки обязательны у всех if/else/for/while — однострочные
+            // ветки (if (x) return;) запрещены: единый стиль по всему проекту.
+            curly: ['error', 'all'],
             'max-lines-per-function': ['warn', { max: 100 }], // Меньшее значение мешает, из-за чего приходиться дробить метод, либо убирать логические разделения, благодаря которым удобнее читать код
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',

@@ -1,12 +1,16 @@
 import { AppContext, BotController } from '../../../index';
+import type { IControllerApi } from '../../../controller';
+import type { TEventType } from '../../../core/events';
 import { ViberRequest, IViberParams, IViberSender } from '../API';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
+import { normalizeActionPayload } from '../Base/utils';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VIBER, VIBER_DEFAULT_API_VERSION } from './constants';
 import { IViberButtonObject, IViberContent } from './interfaces/IViberPlatform';
-import { getChatText, setThisUserToNlu } from '../Base/utils';
+import { makeViberApi } from './apiFacade';
+import { getChatText, setThisUserToNlu, viberMessageEvent } from '../Base/utils';
 
 /**
  * Адаптер, обеспечивающий поддержку платформы Viber. Позволяет разрабатывать чат-ботов для Viber на TypeScript с использованием кросс-платформенного функционала: обработка текстовых запросов, работа с карточками и кнопками.
@@ -16,13 +20,13 @@ import { getChatText, setThisUserToNlu } from '../Base/utils';
  * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
  * платформ (Viber, VK, Алиса и др.) без дублирования кода.
  *
- * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера Viber,
+ * Этот адаптер автоматически обрабатывает входящие вебхуки от мессенджера Viber,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
  * совместимый с требованиями платформы. Подключается одной строкой и
  * не мешает работе других адаптеров (например, для Алисы или Маруси).
  *
  * Поддерживает:
- * - текстовые запросы, кнопки;
+ * - текстовые запросы;
  * - карточки, кнопки;
  *
  * Подключается как любой другой адаптер: `bot.use(new ViberAdapter(token))`.
@@ -48,14 +52,51 @@ import { getChatText, setThisUserToNlu } from '../Base/utils';
  * @see BasePlatform
  */
 export class ViberAdapter extends BasePlatform<IViberContent | string> {
-    /** Идентификатор платформы Viber. */
+    /**
+     * Идентификатор платформы Viber.
+     */
     platformName = T_VIBER;
-    /** Viber — чат-платформа (не голосовая). */
+    /**
+     * Универсальные события Viber (для валидации addEvent).
+     */
+    supportedEvents: readonly TEventType[] = [
+        'message',
+        'photo',
+        'video',
+        'document',
+        'contact',
+        'location',
+        'sticker',
+        'start',
+        'subscribed',
+        'unsubscribed',
+    ];
+    /**
+     * Viber — чат-платформа (не голосовая).
+     */
     isVoice = false;
-    /** Лимит запросов/сек для входящего rateLimiter (лимит Viber API). */
+    /**
+     * Лимит запросов/сек для входящего rateLimiter (лимит Viber API).
+     */
     limit = 30;
     signatureName = 'x-viber-content-signature';
 
+    /**
+     * API-фасад Viber для `controller.api`. Методы медиа возвращают warn/null
+     * (Bot API Viber принимает медиа только по URL с обязательным size — для
+     * медиа используйте `controller.card`), `can()` честно возвращает `false`.
+     * Подключается ядром через контракт `IPlatformAdapter`.
+     * @param controller - Контроллер текущего запроса
+     */
+    createApi(controller: BotController): IControllerApi | null {
+        return makeViberApi(controller);
+    }
+
+    /**
+     * Инициализирует адаптер: вызывает базовую инициализацию и переносит
+     * опции конструктора (токен, api_version, sender) в конфигурацию платформы.
+     * @param appContext Контекст приложения (конфиги, токены, логгер)
+     */
     init(appContext: AppContext): void {
         super.init(appContext);
         const platformToken = appContext.appConfig.tokens[this.platformName];
@@ -100,6 +141,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
      * Обрабатывает событие conversation_started: запоминает пользователя и версию API.
      */
     #onConversationStarted(query: IViberContent, controller: BotController): boolean {
+        controller.eventType = 'start';
         if (query.user) {
             controller.userId = query.user.id;
 
@@ -117,6 +159,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
      * Обрабатывает события subscribed/unsubscribed: логирует изменение подписки.
      */
     #onSubscriptionChanged(query: IViberContent, controller: BotController): boolean {
+        controller.eventType = query.event === 'subscribed' ? 'subscribed' : 'unsubscribed';
         if (query.user) {
             controller.userId = query.user.id;
             controller.userCommand = '';
@@ -150,9 +193,17 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         }
         controller.userId = query.sender.id;
         const raw = query.message?.text ?? '';
-        controller.userCommand = raw.toLowerCase().trim();
+        // Viber-кнопка с payload шлёт ActionBody текстом (кнопка с payload
+        // {"command":"buy"} приходит как текстовое сообщение '{"command":"buy"}').
+        // Нормализуем «именную» кнопку в userCommand, чтобы срабатывал
+        // addAction/addCommand — как в Telegram/VK/MAX. Обычный текст
+        // нормализация не меняет (lower + trim — идентично прежнему поведению).
+        controller.userCommand = normalizeActionPayload(raw);
         controller.originalUserCommand = raw;
         controller.messageId = query.message_token ?? 0;
+        // Универсальный тип события по типу сообщения Viber (text/picture/video/file/
+        // contact/location/sticker) — для декларативного роутинга bot.addEvent.
+        controller.eventType = viberMessageEvent(query.message.type);
 
         controller.platformOptions.apiVersion =
             query.sender.api_version || VIBER_DEFAULT_API_VERSION;
@@ -164,10 +215,18 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
             (controller.platformOptions as Record<string, unknown>).viberMessageType =
                 query.message.type;
             const extra: Record<string, unknown> = {};
-            if (query.message.media) extra.media = query.message.media;
-            if (query.message.location) extra.location = query.message.location;
-            if (query.message.contact) extra.contact = query.message.contact;
-            if (query.message.sticker_id !== undefined) extra.sticker_id = query.message.sticker_id;
+            if (query.message.media) {
+                extra.media = query.message.media;
+            }
+            if (query.message.location) {
+                extra.location = query.message.location;
+            }
+            if (query.message.contact) {
+                extra.contact = query.message.contact;
+            }
+            if (query.message.sticker_id !== undefined) {
+                extra.sticker_id = query.message.sticker_id;
+            }
             if (Object.keys(extra).length) {
                 controller.payload = extra;
             }
@@ -206,11 +265,9 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
             case 'seen':
             case 'failed':
             case 'webhook':
-                // Служебные события не являются сообщениями пользователя. Ответ на них
-                // создавал запрос send_message без receiver и отклонялся Viber API.
-                // Событие 'webhook' Viber присылает при вызове set_webhook и ждёт 200:
-                // раньше здесь возвращался false, запрос падал с 500, и вебхук
-                // вообще не удавалось зарегистрировать.
+                // Служебные события — не сообщения пользователя, автоответ на них
+                // не нужен. Событие 'webhook' Viber присылает при вызове set_webhook
+                // и ждёт HTTP 200, без него вебхук не регистрируется.
                 controller.skipAutoReply = true;
                 return true;
 
@@ -227,6 +284,12 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         return true;
     }
 
+    /**
+     * Формирует и отправляет ответ Viber: текст, клавиатуру, карточки
+     * (rich media) и звуки; звуки и карточки уходят отдельными вызовами API.
+     * @param controller Контроллер приложения
+     * @returns Тело ответа для webhook ('ok')
+     */
     async getContent(controller: BotController): Promise<string> {
         if (!controller.skipAutoReply) {
             const viberApi = new ViberRequest(controller.appContext);
@@ -286,8 +349,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
      */
     protected setNlu(controller: BotController, userName: string = ''): void {
         const name = userName.split(' ');
-        // Пустое имя не записываем: без полей thisUser бесполезен, а запись
-        // аллоцировала бы объект Nlu на каждый запрос (setThisUserToNlu).
+        // Пустое имя не записываем — thisUser без полей бесполезен (setThisUserToNlu).
         setThisUserToNlu(controller, {
             username: name[0] || null,
             first_name: name.length > 1 ? name.slice(0, -1).join(' ') : null,
@@ -301,6 +363,13 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         return false;
     }
 
+    /**
+     * Формирует пример webhook-запроса Viber (событие message)
+     * для локального тестирования (BotTest).
+     * @param query Текст команды пользователя
+     * @param userId Идентификатор пользователя (sender.id)
+     * @returns Заготовка запроса в формате webhook Viber
+     */
     getQueryExample(query: string, userId: string): Record<string, unknown> {
         return {
             event: 'message',

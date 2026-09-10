@@ -1,4 +1,4 @@
-import { IButtonType, ICardInfo, Text, BotController } from '../../../index';
+import { IButtonType, ICardInfo, Text, BotController, AppContext } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { YandexImageRequest } from '../API';
@@ -21,15 +21,23 @@ import {
 /**
  * Возвращает кнопки в формате Алисы
  * @param buttons Кнопки для отображения
+ * @param appContext Контекст приложения — передаётся дальше в buttonProcessing,
+ * чтобы предупреждения о невалидной кнопке не терялись (без него кнопка
+ * отбрасывалась молча)
+ * @returns Первая кнопка в карточечном формате IAlisaButtonCard
  */
-export function alisaCardButton(buttons: IButtonType[]): IAlisaButtonCard {
-    return buttonProcessing(buttons, true) as IAlisaButtonCard;
+export function alisaCardButton(
+    buttons: IButtonType[],
+    appContext?: AppContext<unknown, string>,
+): IAlisaButtonCard {
+    return buttonProcessing(buttons, true, appContext) as IAlisaButtonCard;
 }
 
 /**
  * Получение токена, необходимого для отображения картинок в карточке Алисы
  * @param controller Контроллер приложения
  * @param path Путь до картинки
+ * @returns Токен загруженного изображения либо `null` при ошибке загрузки/сохранения
  */
 export async function getImageInDB(
     controller: BotController,
@@ -68,17 +76,23 @@ export async function getImageInDB(
  *      * Заголовок: 128 символов
  *      * Описание: 256 символов
  *
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения
  * @returns {Promise<IAlisaImage[]>} Массив элементов карточки
  */
 async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise<IAlisaImage[]> {
     const items: IAlisaImage[] = [];
     const maxCount = cardInfo.usedGallery ? ALISA_MAX_GALLERY_IMAGES : ALISA_MAX_IMAGES;
     const images = cardInfo.images.slice(0, maxCount);
+    // Замыкание передаёт appContext в обработку кнопок: иначе warn о невалидной
+    // кнопке (payload/URL сверх лимита) терялся, и кнопка исчезала молча.
+    const cardButton = (buttons: IButtonType[]): IAlisaButtonCard =>
+        alisaCardButton(buttons, controller.appContext);
     for (const image of images) {
         const title = Text.resize(image.title || cardInfo.title || '', 128);
         let button: IAlisaButtonCard | null = null;
         if (!cardInfo.usedGallery && image.button) {
-            button = image.button.getButtons<IAlisaButtonCard>(alisaCardButton);
+            button = image.button.getButtons<IAlisaButtonCard>(cardButton);
             if (!button?.text) {
                 button = null;
             }
@@ -115,7 +129,12 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     return items;
 }
 
-/** Собирает одиночную карточку Алисы и загружает изображение при необходимости. */
+/**
+ * Собирает одиночную карточку Алисы и загружает изображение при необходимости.
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения
+ * @returns Карточка BigImage либо `null`, если нет изображения или токен не получен
+ */
 async function getBigImage(
     cardInfo: ICardInfo,
     controller: BotController,
@@ -130,9 +149,13 @@ async function getBigImage(
     if (!image.imageToken) {
         return null;
     }
-    let button: IAlisaButtonCard | null = image.button?.getButtons(alisaCardButton) || null;
+    // Замыкание передаёт appContext в обработку кнопок — warn о невалидной
+    // кнопке не должен теряться (см. _getItem).
+    const cardButton = (buttons: IButtonType[]): IAlisaButtonCard =>
+        alisaCardButton(buttons, controller.appContext);
+    let button: IAlisaButtonCard | null = image.button?.getButtons(cardButton) || null;
     if (!button?.text) {
-        button = cardInfo.buttons.getButtons(alisaCardButton);
+        button = cardInfo.buttons.getButtons(cardButton);
     }
     const object: IAlisaBigImage = {
         type: ALISA_CARD_BIG_IMAGE,
@@ -148,6 +171,7 @@ async function getBigImage(
 
 /**
  * Получает карточку для отображения в Алисе.
+ * Асинхронный процессор — вызывать с `await` (см. Card.getCards).
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
  * @returns {Promise<IAlisaBigImage | IAlisaItemsList | IAlisaImageGallery | null>} Объект карточки (BigImage, ItemsList или ImageGallery) либо `null`, если нечего отобразить
@@ -181,7 +205,9 @@ export async function cardProcessing(
     if (!object.items.length) {
         return null;
     }
-    const btn: IAlisaButtonCard | null = cardInfo.buttons.getButtons(alisaCardButton);
+    const btn: IAlisaButtonCard | null = cardInfo.buttons.getButtons((buttons: IButtonType[]) =>
+        alisaCardButton(buttons, controller.appContext),
+    );
     if (btn?.text) {
         object.footer = {
             text: btn.text,

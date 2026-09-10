@@ -10,7 +10,7 @@
  *
  * @example
  * ```ts
- * import { Navigation } from './components/standard';
+ * import { Navigation } from 'umbot';
  *
  * // Создание экземпляра Navigation
  * const navigation = new Navigation<{id: number, name: string}>(3);

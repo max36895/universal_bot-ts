@@ -233,6 +233,7 @@ const STANDARD_SOUNDS: ISound[] = [
  * Получение токена, необходимого для воспроизведения звуков в Марусе
  * @param controller Контроллер приложения
  * @param path Путь до аудиофайла
+ * @returns Токен загруженного звука либо `null` при ошибке загрузки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
@@ -263,7 +264,9 @@ export async function getSoundInDB(
 
 /**
  * Получение корректного ответа для озвучивания запроса пользователю Маруси
+ * (только стандартные звуки — эффекты не передаются в defaultSoundProcessing)
  * @param soundInfo Информация необходимая для обработки аудио
+ * @returns Строка TTS с подставленными тегами стандартных звуков Маруси
  */
 export function soundProcessing(soundInfo: ISoundInfo): string {
     return defaultSoundProcessing(soundInfo, STANDARD_SOUNDS);

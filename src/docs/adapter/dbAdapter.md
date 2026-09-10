@@ -12,7 +12,7 @@
 
 ### Почему мы переопределяем \_select, а не select?
 
-Публичные методы (`select`, `insert`, `update`, `remove`) в `BaseDbAdapter` уже написаны. Они оборачивают ваши внутренние методы (`_select`, `_insert`), чтобы замерять время выполнения и логировать метрики. Если вы переопределите select(), вы сломаете сбор метрик и логику повторных подключений. Вы всегда реализуете только методы с подчеркиванием.
+Публичные методы (`select`, `insert`, `update`, `remove`) в `BaseDbAdapter` уже написаны. Они оборачивают ваши внутренние методы (`_select`, `_insert`), чтобы замерять время выполнения и логировать метрики (управление жизненным циклом и переподключениями живёт в `connect()`/`init()` — публичные обёртки к нему отношения не имеют). Если вы переопределите select(), вы сломаете сбор метрик. Вы всегда реализуете только методы с подчеркиванием.
 
 ## Обязательный контракт (что нужно реализовать)
 
@@ -65,13 +65,21 @@
 То, что вы обязаны вернуть из метода `_select`.
 
 ```ts
-// Успех (даже если ничего не найдено, status должен быть true, а data - пустым массивом или null)
+// Успех: записи нашлись
 { status: true, data: { userId: '123', name: 'John' } }
 { status: true, data: [] }
+
+// Запись не найдена (пустая выборка) — тоже status: false
+{ status: false }
 
 // Ошибка (сбой подключения, синтаксическая ошибка и т.д.)
 { status: false, error: 'Connection timeout' }
 ```
+
+**Критично:** `status: true` возвращайте только когда данные реально есть. Если запись не найдена —
+возвращайте `{ status: false }`. Оба встроенных адаптера (FileAdapter, MongoAdapter) работают именно так,
+а `Model.save()` решает insert-vs-update по `selectOne().status`: ложный `status: true` на пустой выборке
+сломает сохранение (update вместо insert).
 
 Для методов `_insert`, `_update`, `_remove` вы возвращаете просто boolean (true при успехе, false при ошибке).
 
@@ -121,15 +129,25 @@ public async _insert(insertData: IQuery): Promise<boolean> {
 Модель валидирует свои данные перед сохранением, а адаптер валидирует данные по правилам `IModelRules`
 перед выполнением запроса к БД.
 
+**Безопасность:** перед передачей `query` (where) и `data` в драйвер проверяйте их на опасные ключи —
+`__proto__`, `constructor`, `prototype` (включая вложенные объекты и составные пути вида `a.__proto__.b`)
+и объекты-операторы в данных записи. Без этой проверки возможны prototype pollution и инъекции в драйвер.
+Образец реализации — приватный метод `#isSafeMongoQuery` в `MongoAdapter` (src/plugins/db/Mongo/Adapter.ts).
+
 _Зачем тогда в `IQuery` передаются `rules`?_
 Они нужны вам для **маппинга типов** специфичных для вашей СУБД. Например, если вы пишете SQL-адаптер, вы можете использовать `rules`, чтобы понять, что поле с `type: 'object'` нужно сериализовать в JSON-строку перед вставкой, а `max: 150` использовать для динамического создания `VARCHAR(150)`.
 
-**Примечание для FileAdapter:** FileAdapter не реализует валидацию, так как работает только с точным совпадением значений и не поддерживает операторы. Для FileAdapter валидация не требуется.
+**Примечание для FileAdapter:** FileAdapter не реализует `validate()` по правилам `IModelRules`, так как
+работает только с точным совпадением значений и не поддерживает операторы. При этом его операции защищены
+от зарезервированных ключей (`__proto__`, `constructor`, `prototype`) приватным методом `#isForbiddenKey`
+проверки в select/insert/update/remove.
 
 ### 2. Хранение подключения (Connection Pool)
 
 Чтобы не создавать новое подключение к БД на каждый запрос, фреймворк предоставляет синглтон-хранилище.
-При успешном `connect()` вы должны сохранить пул соединений в `this._appContext.database.databaseInfo`.
+К моменту вызова `connect()` базовый класс уже привязал `appContext` и создал пустой `databaseInfo`
+(это делает `init()` в `Base/Base.ts`), поэтому конвенция проста: сохраняйте ваш пул/клиент в
+`this._appContext.database.databaseInfo` — оттуда его читают `_select/_insert` и внешние `model.query(callback)`.
 
 ```ts
 async connect(): Promise<boolean> {
@@ -143,7 +161,12 @@ async connect(): Promise<boolean> {
 ### 3. Произвольные запросы (\_query)
 
 Если разработчику приложения нужно выполнить "сырой" SQL-запрос или агрегацию, он использует метод `model.query(callback)`.
-В `BaseDbAdapter` публичный `query` просто вызывает `_query`. По умолчанию `_query` возвращает `null`. Если вы хотите поддержать кастомные запросы, переопределите `_query`, передав в callback ваше подключение.
+В `BaseDbAdapter` публичный `query` просто вызывает `_query`. По умолчанию `_query` возвращает `null`. Если вы хотите поддержать кастомные запросы, переопределите `_query`.
+
+Контракт callback (`TQueryCb`): `(client, db) => Promise<IModelRes>`. Первый параметр — клиент подключения,
+второй — объект базы данных (`db` у Mongo — это `client.db(...)`, у SQL-баз можно передать тот же пул).
+Callback возвращает `IModelRes`; адаптер отдаёт пользователю `data.data` при `status: true` и `null` — при ошибке
+(образец — `MongoAdapter._query`).
 
 ### 4. Обработка ошибок
 
@@ -247,8 +270,13 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
     public async _query(callback: TQueryCb): Promise<unknown> {
         const pool = this._appContext.database.databaseInfo?.pool;
         if (pool) {
-            // Передаем пул в callback разработчика
-            return await callback(pool, pool);
+            // Передаем клиент и базу в callback разработчика.
+            // Callback возвращает IModelRes; при status: true отдаем data.data
+            const data = await callback(pool, pool);
+            if (data && data.status) {
+                return data.data;
+            }
+            return null;
         }
         return null;
     }

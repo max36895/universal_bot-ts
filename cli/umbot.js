@@ -24,6 +24,13 @@ if (argv[2]) {
             if (utils.isFile(argv[3])) {
                 try {
                     const jsonParam = JSON.parse(utils.fread(argv[3]));
+                    // Проверяем name сразу при парсинге — с понятным сообщением.
+                    if (!jsonParam.name) {
+                        console.error(
+                            `В JSON файле "${argv[3]}" отсутствует поле "name" (имя проекта).`,
+                        );
+                        process.exit(1);
+                    }
                     param.appName = jsonParam.name;
                     param.params = jsonParam;
                     if (jsonParam.hostname) {

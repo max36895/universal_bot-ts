@@ -22,7 +22,7 @@
  * @example
  * ```ts
  * // Минимальный пример работы
- * import { Bot, FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';
+ * import { Bot, BotController, FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from 'umbot';
  * import { fullPlatforms } from 'umbot/plugins';
  *
  * const bot = new Bot()
@@ -62,10 +62,8 @@ export * from './core';
  * Модули для работы с внешними API
  *
  * Предоставляет:
+ * - Базовый HTTP-клиент Request
  * - Интерфейсы для API
- * - Классы для HTTP-запросов
- * - Интеграции с сервисами
- * - Обработку ответов
  */
 export * from './api';
 
@@ -77,11 +75,11 @@ export * from './api';
  * - Кнопки и клавиатуры
  * - Карточки и изображения
  * - Звуки и аудио
+ * - NLU (разбор и извлечение сущностей)
+ * - Стандартные хелперы (Navigation и др.)
  * - UI элементы
  */
 export * from './components';
-
-// ===== Поддерживаемые платформы =====
 
 // ===== Базовый контроллер для написания логики приложения =====
 /**

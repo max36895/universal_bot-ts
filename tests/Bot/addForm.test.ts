@@ -61,7 +61,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'Иван';
         const step0 = steps.get('__form_signup_0')!;
         let result = step0.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         expect(ctrl.text).toBe('Email?');
         expect(ctrl.thisIntentName).toBe('__form_signup_1');
@@ -74,7 +76,9 @@ describe('Bot.addForm', () => {
         ctrl.text = '';
         const step1 = steps.get('__form_signup_1')!;
         result = step1.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         expect(ctrl.text).toBe('Некорректный email\nEmail?');
         expect(ctrl.thisIntentName).toBe('__form_signup_1');
@@ -84,7 +88,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'ivan@test.ru';
         ctrl.text = '';
         result = step1.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         expect(ctrl.text).toBe('Готово, Иван!');
         expect(ctrl.thisIntentName).toBeNull();
@@ -112,7 +118,9 @@ describe('Bot.addForm', () => {
         (ctrl.userData as Record<string, unknown>).__formdata_feedback = { text: 'partial' };
 
         const result = steps.get('__form_feedback_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         expect(ctrl.text).toBe('Прерываю форму.');
         expect(ctrl.thisIntentName).toBeNull();
@@ -144,7 +152,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'синий';
 
         const result = steps.get('__form_dyn_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         // Промт-функция не вызывается в шаге — результат идёт в onComplete
         expect(ctrl.text).toBe('Готово');
@@ -173,7 +183,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'нет';
 
         const result = steps.get('__form_simple_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         expect(ctrl.text).toBe('Введите "да"');
         expect(ctrl.thisIntentName).toBe('__form_simple_0');
@@ -194,7 +206,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'STOP'; // верхний регистр
 
         const result = steps.get('__form_reg_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         expect(ctrl.text).toBe('Canceled');
         expect(ctrl.thisIntentName).toBeNull();
@@ -228,7 +242,9 @@ describe('Bot.addForm', () => {
 
         // Invalid (асинхронный валидатор вернёт строку с ошибкой)
         let result = steps.get('__form_asyncform_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
         expect(ctrl.text).toBe('Нужен @\nEmail?');
         expect(ctrl.thisIntentName).toBe('__form_asyncform_0');
         expect(completed).toBeNull();
@@ -237,7 +253,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'user@test.ru';
         ctrl.text = '';
         result = steps.get('__form_asyncform_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
         expect(ctrl.text).toBe('AsyncDone');
         expect(ctrl.thisIntentName).toBeNull();
         expect(completed).toEqual({ email: 'user@test.ru' });
@@ -262,7 +280,9 @@ describe('Bot.addForm', () => {
         ctrl.userCommand = 'user@test.ru';
 
         const result = steps.get('__form_asyncdone_0')!.cb(ctrl);
-        if (result instanceof Promise) await result;
+        if (result instanceof Promise) {
+            await result;
+        }
 
         // onComplete завершился до возврата из шага — текст выставлен
         expect(completed).toBe(true);

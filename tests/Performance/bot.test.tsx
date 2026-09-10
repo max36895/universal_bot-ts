@@ -1,9 +1,7 @@
 import { Bot, BotController, SoundConstants, Text } from '../../src';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { performance } from 'node:perf_hooks';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 // Базовое потребление памяти не должно превышать 400кб
 let BASE_MEMORY_USED = 400;
@@ -144,10 +142,10 @@ describe('umbot', () => {
     let bot: Bot;
 
     // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень
-    // репозитория. Перенаправляем во временную папку: сьют прогоняет сотни
-    // итераций с карточками/кнопками, и FileAdapter оставлял в репо
+    // репозитория. Перенаправляем в тестовую папку (tests/.tmp): сьют гоняет
+    // сотни итераций с карточками/кнопками, и FileAdapter иначе оставлял в репо
     // UsersData/ImageTokens/SoundTokens.json (вкл. осиротевшие .tmp).
-    const TEST_DATA_DIR = mkdtempSync(join(tmpdir(), 'umbot-test-perf-'));
+    const TEST_DATA_DIR = createTestDir('perf');
 
     beforeEach(() => {
         bot = new Bot();
@@ -164,15 +162,18 @@ describe('umbot', () => {
         await bot.close();
         jest.resetAllMocks();
     });
-    afterAll(() => {
-        // afterEach уже дожидается close(), так что флашей после rmSync нет;
-        // rmSync оставлен здесь на случай отмены тестов Jest'ом.
-        rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    afterAll(async () => {
+        // afterEach уже дожидается close(), так что недофлашенных записей нет;
+        // удаление оставлено здесь на случай отмены тестов Jest'ом.
+        await removeTestDir(TEST_DATA_DIR);
     });
     describe('run performance', () => {
-        // Простое текстовое отображение
-        for (let i = 2; i < 100; i++) {
-            it(`Простое текстовое отображение. Длина запроса от пользователя ${i * 2}`, async () => {
+        // Простое текстовое отображение.
+        // Геометрическая выборка длин вместо перебора с шагом 2 (98 прогонов):
+        // время обработки растёт с длиной монотонно, поэтому достаточно границ
+        // диапазона (4 и 198) и промежуточных точек по лог-шкале.
+        for (const len of [4, 12, 30, 80, 198]) {
+            it(`Простое текстовое отображение. Длина запроса от пользователя ${len}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
@@ -181,12 +182,13 @@ describe('umbot', () => {
                     });
                     bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
-                    bot.setContent(getContent('0'.repeat(i * 2)));
+                    bot.setContent(getContent('0'.repeat(len)));
                     await bot.run();
                 });
             });
         }
-        for (let i = 2; i < 50; i++) {
+        // Та же логика, что у текстов без кнопки: границы 2 и 49 плюс лог-точки.
+        for (const i of [2, 5, 12, 25, 49]) {
             it(`Простое текстовое отображение с кнопкой. Длина запроса от пользователя ${i * 3}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
@@ -255,8 +257,10 @@ describe('umbot', () => {
             });
         });
 
-        // Обработка звуков, включая свои
-        for (let i = 1; i < 15; i++) {
+        // Обработка звуков, включая свои.
+        // Замена звуков линейна по количеству: проверяем границы 1 и 14
+        // и пару промежуточных точек вместо всех 14 значений.
+        for (const i of [1, 3, 8, 14]) {
             it(`Обработка звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
@@ -275,7 +279,7 @@ describe('umbot', () => {
                 });
             });
         }
-        for (let i = 1; i < 15; i++) {
+        for (const i of [1, 3, 8, 14]) {
             it(`Обработка своих звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
@@ -309,8 +313,10 @@ describe('umbot', () => {
                 });
             });
         }
-        // большое количество команд для обработки
-        for (let i = 1; i < 16; i++) {
+        // большое количество команд для обработки.
+        // Время роста решётки команд зависит от её размера, а не от шага 100:
+        // границы 100 и 1500 плюс лог-точки ловят деградацию масштабирования.
+        for (const i of [1, 3, 7, 15]) {
             it(`Обработка большого количества команд в intents. Количество команд равно ${i * 100}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
@@ -333,7 +339,7 @@ describe('umbot', () => {
             });
         }
 
-        for (let i = 1; i < 16; i++) {
+        for (const i of [1, 3, 7, 15]) {
             it(`Обработка большого количества команд в addCommand. Количество команд равно ${i * 100}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);

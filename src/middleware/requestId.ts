@@ -38,7 +38,7 @@ export function requestId(): (ctx: BotController, next: MiddlewareNext) => Promi
         try {
             id = randomUUID();
         } catch {
-            // Запасной вариант на очень старые рантаймах — падаем на простой timestamp.
+            // На случай экзотических рантаймов без crypto.
             id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
         }
         ctx.platformOptions.requestId = id;
@@ -50,9 +50,8 @@ export function requestId(): (ctx: BotController, next: MiddlewareNext) => Promi
         } catch {
             // ignore — если контекст заморожен или readonly, просто пропускаем
         }
-        // Обязательно возвращаем промис next(): диспетчер Bot.#runMiddlewares делает
-        // `await mw(...)`. Если вернуть undefined, цепочка продолжится «в отрыве» и
-        // запрос будет помечен заблокированным до завершения реальных обработчиков.
+        // next() обязано дождаться выполнения цепочки — иначе middleware после
+        // этой не выполнятся.
         await next();
     };
 }

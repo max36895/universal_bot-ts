@@ -1,4 +1,6 @@
 import { AppContext, BotController, Text } from '../../../index';
+import type { IControllerApi } from '../../../controller';
+import type { TEventType } from '../../../core/events';
 import { IMaxParams, MaxRequest } from '../API';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
@@ -6,8 +8,14 @@ import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_MAX_APP } from './constants';
 import { IMaxButtonObject, IMaxRequestContent } from './interfaces/IMaxPlatform';
+import { makeMaxApi } from './apiFacade';
 import { timingSafeEqual } from 'crypto';
-import { getChatText, getPlatformRequestData, setThisUserToNlu } from '../Base/utils';
+import {
+    getChatText,
+    getPlatformRequestData,
+    normalizeActionPayload,
+    setThisUserToNlu,
+} from '../Base/utils';
 
 type IMaxRequestData = Record<string, unknown> & {
     callbackId?: string;
@@ -40,13 +48,13 @@ const MAX_UPDATE_TYPES = new Set<IMaxRequestContent['update_type']>([
  * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
  * платформ (MAX, VK, Алиса и др.) без дублирования кода.
  *
- * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера MAX,
+ * Этот адаптер автоматически обрабатывает входящие вебхуки от мессенджера MAX,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
  * совместимый с требованиями платформы. Подключается одной строкой и
  * не мешает работе других адаптеров (например, для Алисы или Маруси).
  *
  * Поддерживает:
- * - текстовые запросы, кнопки;
+ * - текстовые запросы;
  * - карточки, кнопки;
  *
  * Подключается как любой другой адаптер: `bot.use(new MaxAdapter(token))`.
@@ -72,13 +80,37 @@ const MAX_UPDATE_TYPES = new Set<IMaxRequestContent['update_type']>([
  * @see BasePlatform
  */
 export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
-    /** Идентификатор платформы MAX. */
+    /**
+     * Идентификатор платформы MAX.
+     */
     platformName = T_MAX_APP;
-    /** MAX — чат-платформа (не голосовая). */
+    /**
+     * Универсальные события MAX (для валидации addEvent).
+     */
+    supportedEvents: readonly TEventType[] = ['message', 'callback', 'start', 'message_edited'];
+    /**
+     * MAX — чат-платформа (не голосовая).
+     */
     isVoice = false;
-    /** Лимит запросов/сек для входящего rateLimiter (лимит MAX Bot API). */
+    /**
+     * Лимит запросов/сек для входящего rateLimiter (лимит MAX Bot API).
+     */
     limit = 30;
 
+    /**
+     * API-фасад MAX для `controller.api` (медиа через `POST /uploads`,
+     * ответ на callback). Подключается ядром через контракт `IPlatformAdapter`.
+     * @param controller - Контроллер текущего запроса
+     */
+    createApi(controller: BotController): IControllerApi | null {
+        return makeMaxApi(controller);
+    }
+
+    /**
+     * Инициализирует адаптер: вызывает базовую инициализацию, переносит токен
+     * и webhook-secret (опция `secret` либо конфигурация) в настройки платформы.
+     * @param appContext Контекст приложения (конфиги, токены, логгер)
+     */
     init(appContext: AppContext): void {
         super.init(appContext);
         const platformToken = appContext.appConfig.tokens[this.platformName];
@@ -94,6 +126,14 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         }
     }
 
+    /**
+     * Проверяет, что входящий webhook-запрос принадлежит MAX.
+     * Опознаёт запрос по известным значениям `update_type` либо по связке
+     * `update_type` + `timestamp`.
+     * @param query Входящий webhook-запрос
+     * @param headers Заголовки HTTP-запроса (не используются при опознании)
+     * @returns `true`, если запрос относится к платформе MAX
+     */
     isPlatformOnQuery(query: IMaxRequestContent, headers?: Record<string, unknown>): boolean {
         void headers;
         if (!query) {
@@ -117,6 +157,9 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
     /**
      * Проверяет webhook-secret MAX.
      * MAX передаёт исходное значение секрета в заголовке, а не HMAC от тела.
+     * @param _query Тело запроса (не используется: секрет приходит заголовком)
+     * @param headers HTTP-заголовки запроса
+     * @returns `true`, если секрет совпадает (или проверка не настроена), иначе `false`
      */
     isCorrectQuery(
         _query: string | IMaxRequestContent,
@@ -146,13 +189,18 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         );
     }
 
-    /** Заполняет контроллер данными callback-кнопки MAX. */
+    /**
+     * Заполняет контроллер данными callback-кнопки MAX.
+     */
     #setCallbackData(query: IMaxRequestContent, controller: BotController): boolean {
         if (query.update_type !== 'message_callback' || !query.callback) {
             return false;
         }
+        controller.eventType = 'callback';
         controller.userId = query.callback.user?.user_id ?? query.message?.sender?.user_id ?? 0;
-        controller.userCommand = query.callback.payload?.toLowerCase().trim() ?? '';
+        // Нормализуем payload кнопки в имя действия: 'buy' или {"command":"buy"}
+        // превращаются в userCommand='buy' и срабатывают через addAction/команду.
+        controller.userCommand = normalizeActionPayload(query.callback.payload);
         controller.originalUserCommand = query.callback.payload ?? '';
         controller.payload = query.callback.payload ?? null;
         const requestData = getPlatformRequestData<IMaxRequestData>(controller, this.platformName);
@@ -163,17 +211,38 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         return true;
     }
 
-    /** Заполняет контроллер данными служебного события MAX без автоматического ответа. */
+    /**
+     * Заполняет контроллер данными служебного события MAX без автоматического ответа.
+     */
     #setServiceData(query: IMaxRequestContent, controller: BotController): void {
         controller.userId = query.user?.user_id ?? 0;
         controller.skipAutoReply = true;
+        // Служебные события MAX не требуют ответа, но несут тип для addEvent:
+        // bot_started — начало диалога (deep-link payload в controller.payload
+        // НЕ заполняется — событие несёт только chat_id), message_edited —
+        // редактирование. Остальные (bot_added, dialog_*) пока не имеют
+        // универсального события и остаются без eventType ('message').
+        switch (query.update_type) {
+            case 'bot_started':
+                controller.eventType = 'start';
+                if (query.chat_id !== undefined) {
+                    getPlatformRequestData<IMaxRequestData>(controller, this.platformName).chatId =
+                        query.chat_id;
+                }
+                return;
+            case 'message_edited':
+                controller.eventType = 'message_edited';
+                break;
+        }
         if (query.chat_id !== undefined) {
             getPlatformRequestData<IMaxRequestData>(controller, this.platformName).chatId =
                 query.chat_id;
         }
     }
 
-    /** Заполняет контроллер данными входящего сообщения MAX. */
+    /**
+     * Заполняет контроллер данными входящего сообщения MAX.
+     */
     #setMessageData(query: IMaxRequestContent, controller: BotController): boolean {
         const object = query.message;
         if (!object) {
@@ -191,8 +260,7 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         controller.messageId = body?.seq ?? 0;
         controller.payload =
             (body?.attachments as unknown as Record<string, unknown> | undefined) ?? null;
-        // Пустого thisUser не записываем: без полей он не несёт данных, а запись
-        // аллоцировала бы объект Nlu на каждый запрос (setThisUserToNlu).
+        // Пустого thisUser не записываем — без полей он не несёт данных (setThisUserToNlu).
         setThisUserToNlu(controller, {
             username: object.sender?.username || null,
             first_name: object.sender?.first_name || null,
@@ -201,6 +269,13 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         return true;
     }
 
+    /**
+     * Разбирает update MAX (сообщение, callback-кнопка, служебное событие)
+     * и наполняет контроллер данными; служебные события помечаются skipAutoReply.
+     * @param query Входящий webhook-запрос (update)
+     * @param controller Контроллер приложения
+     * @returns `true`, если запрос успешно разобран
+     */
     async setQueryData(query: IMaxRequestContent, controller: BotController): Promise<boolean> {
         if (!this.appContext) {
             return false;
@@ -220,6 +295,13 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         return this.#setMessageData(query, controller);
     }
 
+    /**
+     * Формирует и отправляет ответ MAX: текст, клавиатуру, карточки и звуки;
+     * для callback-кнопок отвечает через answerCallback (с учётом лимитов MAX
+     * на частоту сообщений в диалоге).
+     * @param controller Контроллер приложения
+     * @returns Тело ответа для webhook ('ok')
+     */
     async getContent(controller: BotController): Promise<string> {
         if (controller.skipAutoReply) {
             return 'ok';
@@ -284,6 +366,14 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         return false;
     }
 
+    /**
+     * Формирует пример webhook-запроса MAX (update_type='message_created')
+     * для локального тестирования (BotTest).
+     * @param query Текст команды пользователя
+     * @param userId Идентификатор пользователя (sender.user_id)
+     * @param count Номер сообщения (seq)
+     * @returns Заготовка запроса в формате webhook MAX
+     */
     getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
         return {
             update_type: 'message_created',

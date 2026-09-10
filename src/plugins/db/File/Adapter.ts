@@ -1,5 +1,6 @@
 import { Base } from '../Base/Base';
 import {
+    AppContext,
     IQueryData,
     IQuery,
     IModelRes,
@@ -32,11 +33,12 @@ export interface IDBFileInfo {
      */
     version: number;
     /**
-     * Идентификатор тайм-аута для легкого сохранения
+     * Идентификатор тайм-аута для отложенного (lazy) сохранения (срабатывает не чаще 1 раза в 500 мс)
      */
     timeOutId?: ReturnType<typeof setTimeout> | null;
     /**
-     * Идентификатор тайм-аута для строгого сохранения. Необходим для случаев, когда идет постоянная нагрузка на сервер, и нет возможности сохранить информацию в файл.
+     * Идентификатор тайм-аута для принудительного (force) сохранения (не реже 1 раза в 3 минуты).
+     * Необходим для случаев, когда идет постоянная нагрузка на сервер, и нет возможности сохранить информацию в файл.
      */
     forceTimeOutId?: ReturnType<typeof setTimeout> | null;
     /**
@@ -62,6 +64,11 @@ export type IDBFileData = { [key: string]: IDBFileInfo | undefined };
 const LAZY_DELAY_SAVE_TIME = 500;
 // Принудительно сохраняем данные каждые 3 минуты. Актуально для случаев, когда идет постоянная нагрузка на сервер.
 const FORCE_DELAY_SAVE_TIME = 60 * 1000 * 3;
+// Порог детекции внешних изменений файла (multi-process доступ): перекрывает
+// гранулярность mtime файловой системы и запись «своих» таблиц в момент
+// инициализации приложения — без него warn ложно срабатывал на файлы,
+// созданные за секунды до запуска адаптера.
+const EXTERNAL_CHANGE_GRACE_MS = 5000;
 
 /**
  * Адаптер для файловой базы данных.
@@ -78,10 +85,45 @@ export class FileAdapter extends Base<IFileDbInfo> {
      */
     #cachedFileData: IDBFileData = {};
 
+    /**
+     * Незавершённые (in-flight) записи по таблицам.
+     *
+     * `#update()` пишет файл на диск асинхронно (fire-and-forget), и `close()`
+     * должен дождаться выполняемых записей — иначе graceful shutdown убьёт
+     * процесс раньше, и последние изменения потеряются.
+     * Ключ — имя таблицы, значение — промис выполняемой записи.
+     * @private
+     */
+    #inFlightSaves = new Map<string, Promise<boolean>>();
+
+    /**
+     * Время старта адаптера (init). Используется для детекции внешних изменений
+     * json-файлов: mtime новее этого значения при первом чтении таблицы означает,
+     * что файл пишет другой процесс (см. getFileData). 0 — init ещё не вызван.
+     * @private
+     */
+    #adapterStartedAtMs = 0;
+
     constructor() {
         super();
     }
 
+    /**
+     * Инициализация адаптера: запоминает время старта для детекции
+     * многопроцессного доступа к одним и тем же файлам БД.
+     * @param appContext Контекст приложения
+     */
+    init(appContext: AppContext): void {
+        this.#adapterStartedAtMs = Date.now();
+        super.init(appContext);
+    }
+
+    /**
+     * Подключение к файловой БД с side-effect: предзагрузка таблиц
+     * UsersData/SoundTokens/ImageTokens (override), чтобы избежать
+     * одновременного чтения одного файла под нагрузкой.
+     * @returns true — файловая БД всегда доступна
+     */
     connect(): Promise<boolean> | boolean {
         // Предварительная загрузка данных из файлов при подключении,
         // чтобы избежать одновременного чтения одного файла под нагрузкой
@@ -103,7 +145,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
             } else {
                 const timeOutId = this._appContext.database.databaseInfo[tableName]?.timeOutId;
                 this._appContext.database.databaseInfo[tableName] = data;
-                // из-за асинхронности может выйти так, что кто-то записывает новые данные, которые перетирают ранее установленный timeout
+                // Из-за асинхронности data может не содержать timeOutId, хотя он уже
+                // установлен предыдущим вызовом #update(): перезапись затерла бы
+                // идентификатор таймера, и lazy-сохранение перестало бы сбрасываться
+                // (утечка отложенных таймеров). Восстанавливаем его поверх новых данных.
                 if (data.timeOutId === undefined && timeOutId !== undefined) {
                     this._appContext.database.databaseInfo[tableName].timeOutId = timeOutId;
                 }
@@ -167,11 +212,25 @@ export class FileAdapter extends Base<IFileDbInfo> {
         const cb = (): void => {
             const data = this.getCachedFileData(tableName).data;
             if (data) {
-                this._appContext?.saveFileData(`${tableName}.json`, data)?.catch((e) => {
-                    this._appContext.logError(`Произошла ошибка при записи в файл: ${e.message}`, {
-                        error: e,
+                // close()/destroy() дожидаются этих промисов, чтобы процесс
+                // не завершился посреди записи.
+                const savePromise = this._appContext
+                    ?.saveFileData(`${tableName}.json`, data)
+                    .catch((e: Error) => {
+                        this._appContext?.logError(
+                            `Произошла ошибка при записи в файл: ${e.message}`,
+                            { error: e },
+                        );
+                        return false;
+                    })
+                    .finally(() => {
+                        // Убираем из реестра только если это всё ещё наша запись:
+                        // за время полёта могла начаться новая (Map-перезапись).
+                        if (this.#inFlightSaves.get(tableName) === savePromise) {
+                            this.#inFlightSaves.delete(tableName);
+                        }
                     });
-                });
+                this.#inFlightSaves.set(tableName, savePromise);
             }
             this.#setCachedFileData(tableName, 'timeOutId', null);
             const forceTimeOutId = this.getCachedFileData(tableName).forceTimeOutId;
@@ -235,7 +294,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
 
     /**
      * Принудительно сохраняет данные таблицы в файл и дожидается завершения записи.
-     * @param tableName Название таблицы
+     * @param tableName Имя таблицы
      * @private
      */
     async #forceSave(tableName: string): Promise<void> {
@@ -251,11 +310,19 @@ export class FileAdapter extends Base<IFileDbInfo> {
                 );
             }
         }
+        // Даже без изменений в кэше дожидаемся выполняемой записи: её сбой
+        // или обрыв по shutdown означал бы потерю последних изменений,
+        // которые cb() уже считал сохранёнными.
+        const inFlight = this.#inFlightSaves.get(tableName);
+        if (inFlight) {
+            await inFlight;
+        }
     }
 
     /**
      * Выполняет UPDATE-запрос.
      * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true, если запись найдена по первичному ключу и обновлена (или отсутствует — операция безошибочна), иначе false
      */
     public _update(updateData: IQuery): boolean {
         const update = updateData.data;
@@ -281,6 +348,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     /**
      * Выполняет INSERT-запрос.
      * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешной вставке записи, иначе false (нет первичного ключа или ключ запрещён)
      */
     public _insert(insertData: IQuery): boolean {
         const insert = insertData.data;
@@ -303,6 +371,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
     /**
      * Выполняет DELETE-запрос.
      * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true, если условие содержит первичный ключ (запись удалена или отсутствовала), иначе false
      */
     public _remove(removeData: IQuery): boolean {
         const remove = removeData.query;
@@ -326,10 +395,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
 
     /**
      * Получение данных по уникальному ключу
-     * @param selectData
-     * @param where
-     * @param isOne
-     * @param content
+     * @param selectData Информация о запросе: название таблицы и имя первичного ключа
+     * @param where Условие выборки — объект с полями, среди которых ищется первичный ключ
+     * @param isOne Определяет, нужно ли вернуть только 1 найденную запись (объект), либо массив с ней
+     * @param content Данные таблицы (ключ — первичный ключ записи), среди которых идёт поиск
      * @private
      */
     #selectInPrimaryKey(
@@ -383,6 +452,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * @param selectData Дополнительная информация для запроса. Содержит информацию о таблице и структуре.
      * @param where Сам запрос
      * @param isOne Определяет нужно ли вернуть только 1 найденную запись, либо отдать все доступные данные.
+     * @returns IModelRes — результат выборки: { status: true, data } при успехе, { status: false, error } — если ничего не найдено
      */
     public _select(
         selectData: IQuery,
@@ -452,8 +522,10 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * Загружает данные таблицы из JSON-файла и кэширует их в памяти.
      *
      * - При первом обращении читает файл `${tableName}.json` из директории `appConfig.json`.
-     * - Данные кэшируются с привязкой к времени последнего изменения файла (mtimeMs).
-     * - Если файл не изменился, возвращаются кэшированные данные.
+     * - После первого чтения данные берутся только из кэша: mtime проверяется лишь
+     *   при первом чтении, повторно файл не перечитывается (извне данные менять не должен никто).
+     * - Отсутствие файла тоже кэшируется: если файла не было при первом обращении,
+     *   повторно он искаться не будет.
      * - В случае ошибки парсинга делается повторная попытка (защита от гонок записи/чтения).
      *
      * Формат данных в файле:
@@ -466,6 +538,7 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * где ключ — значение первичного ключа.
      * В случае если файла нет, вернутся пустые данные
      * @param tableName Имя таблицы (используется как имя файла)
+     * @returns Данные таблицы из кэша либо прочитанные из JSON-файла (при повреждении файла — {})
      */
     public getFileData(tableName: string): TFileData {
         const path = this._appContext?.appConfig.json;
@@ -476,6 +549,25 @@ export class FileAdapter extends Base<IFileDbInfo> {
             ? null
             : getFileInfoSync(file).data;
         if (fileInfo?.isFile()) {
+            // Файл менялся уже после старта этого адаптера — его пишет кто-то ещё:
+            // второй воркер (PM2 cluster), другой процесс с той же директорией
+            // json/. Адаптер single-process по документации, mtime-кэш не увидит
+            // чужих изменений, а следующая полная перезапись сотрёт их молча.
+            // Порог EXTERNAL_CHANGE_GRACE_MS перекрывает гранулярность mtime ФС
+            // и запись собственных таблиц в момент инициализации (connect() читает
+            // их сразу после init) — иначе warn ложно срабатывал на файлы,
+            // созданные приложением за секунды до запуска.
+            if (
+                this.#adapterStartedAtMs > 0 &&
+                fileInfo.mtimeMs > this.#adapterStartedAtMs + EXTERNAL_CHANGE_GRACE_MS
+            ) {
+                this._appContext?.logWarn(
+                    `Файл "${file}" изменён после запуска FileAdapter (внешним процессом?). ` +
+                        'Адаптер рассчитан на один процесс: параллельный доступ к тем же json-файлам ' +
+                        'приводит к тихой потере записей. Если воркеров несколько — используйте MongoAdapter.',
+                    { file, mtimeMs: fileInfo.mtimeMs },
+                );
+            }
             // При размере базы более 360 МБ (3.6e8) высок риск падения приложения (критично ~400 МБ).
             if (fileInfo.size > 3.6e8) {
                 this._appContext.logError(
@@ -553,21 +645,40 @@ export class FileAdapter extends Base<IFileDbInfo> {
                 this._appContext?.logError(`FileAdapter:destroy(): ${e.message}`, { error: e });
             });
         }
-        if (this._appContext.database.databaseInfo) {
-            const tableNames = Object.keys(this._appContext.database.databaseInfo);
-            await Promise.all(tableNames.map((tableName) => this.close(tableName)));
-        }
+        // После super.destroy() databaseInfo адаптера уже не заполнен (сбрасывается
+        // в Base), поэтому таблицы собираем из обоих хранилищ кэша. Раньше close()
+        // форсил запись только при живых таймерах — in-flight запись могла быть
+        // убита shutdown'ом, а таблицы без таймеров (изменения между окнами
+        // дебаунса) вообще не сохранялись при близком завершении процесса.
+        const tableNames = new Set<string>([
+            ...Object.keys(this.#cachedFileData),
+            ...(this._appContext?.database.databaseInfo
+                ? Object.keys(this._appContext.database.databaseInfo)
+                : []),
+        ]);
+        await Promise.all([...tableNames].map((tableName) => this.close(tableName)));
     }
 
     /**
      * Закрывает подключение к определенной таблице.
      * При закрытии, все хранящиеся в памяти данные сохраняются в файл.
-     * @param {string} tableName - Имя таблицы
+     * При повторном close (или таблице без данных) запись не выполняется —
+     * только ожидание in-flight операций.
+     * @param tableName - Имя таблицы
      */
     public async close(tableName: string): Promise<void> {
-        const { timeOutId, forceTimeOutId } = this.#clearTimeOutFileData(tableName);
-        if (timeOutId || forceTimeOutId) {
+        // Повторный close (или close таблицы, никогда не читавшейся с диска):
+        // кэш уже сброшен и данные потеряны — форсить запись здесь означало бы
+        // перезапись файла пустым объектом. Просто дожидаемся in-flight записи.
+        const cached = this.getCachedFileData(tableName);
+        const hasData = Object.keys(cached.data ?? {}).length > 0;
+        if (cached.isFileRead || hasData) {
             await this.#forceSave(tableName);
+        } else {
+            const inFlight = this.#inFlightSaves.get(tableName);
+            if (inFlight) {
+                await inFlight;
+            }
         }
         this.setCachedFileData(tableName, undefined);
     }

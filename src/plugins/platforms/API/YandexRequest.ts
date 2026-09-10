@@ -113,7 +113,7 @@ export class YandexRequest {
      *
      * @example
      * ```ts
-     * const api = new YandexRequest();
+     * const api = new YandexRequest(null, appContext);
      *
      * // Установка нового токена
      * api.setOAuth('new-token');
@@ -143,7 +143,7 @@ export class YandexRequest {
      *
      * @template T - Тип ожидаемого ответа, наследующий интерфейс IYandexApi
      * @param {string | null} [url=null] - URL-адрес эндпоинта API
-     * @returns {Promise<T | null>} - Результат запроса или null в случае ошибки
+     * @returns {Promise<T | null>} - Результат запроса или null в случае ошибки сети/Request
      *
      * @example
      * ```ts
@@ -156,16 +156,22 @@ export class YandexRequest {
      *
      * const api = new YandexRequest('token', appContext);
      *
-     * // Выполнение запроса (метод не выбрасывает исключений —
-     * // ошибки сети/сервера логируются и возвращается null)
+     * // Выполнение запроса (метод не выбрасывает исключений).
+     * // При ошибке API ответ содержит поле error — проверяйте его явно;
+     * // null возвращается только при ошибке сети/Request.
      * const response = await api.call<MyApiResponse>('...');
      *
      * if (response) {
-     *   // Обработка успешного ответа
-     *   console.log('ID:', response.data.id);
-     *   console.log('Name:', response.data.name);
+     *   if ('error' in response) {
+     *     // Обработка ошибки API
+     *     console.error('Ошибка API:', response.error);
+     *   } else {
+     *     // Обработка успешного ответа
+     *     console.log('ID:', response.data.id);
+     *     console.log('Name:', response.data.name);
+     *   }
      * } else {
-     *   // Обработка ошибки API
+     *   // Обработка ошибки сети/Request
      *   console.error('Ошибка запроса к API Яндекса');
      * }
      * ```
@@ -185,10 +191,10 @@ export class YandexRequest {
     }
 
     /**
-     * Сохраняет информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      *
-     * Записывает детальную информацию об ошибке в файл логов,
-     * включая время возникновения, URL запроса и текст ошибки.
+     * Логирует детальную информацию об ошибке,
+     * включая URL запроса и текст ошибки.
      *
      * @param {Error | string} [error=''] - Текст ошибки или объект ошибки
      */

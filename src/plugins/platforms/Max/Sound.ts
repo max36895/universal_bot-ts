@@ -7,6 +7,7 @@ import { T_MAX_APP } from './constants';
  * Получение токена, необходимого для воспроизведения звуков в MAX
  * @param controller Контроллер приложения
  * @param path Путь до аудиофайла
+ * @returns Токен/URL загруженного аудио либо `null` при ошибке загрузки/сохранения
  */
 async function getSoundInDB(controller: BotController, path: string): Promise<string | null> {
     return getSoundToken(path, T_MAX_APP, controller, async (model) => {
@@ -23,9 +24,11 @@ async function getSoundInDB(controller: BotController, path: string): Promise<st
 }
 
 /**
- * Получение корректного ответа для озвучивания запроса пользователю MAX
+ * Получение корректного ответа для озвучивания запроса пользователю MAX:
+ * загружает аудио (в т.ч. TTS через SpeechKit) как upload-token вложения.
  * @param soundInfo Информация необходимая для обработки аудио
  * @param controller Контроллер приложения
+ * @returns Массив аудио-вложений IMaxAudio либо `null`, если не удалось получить ни одного звука (пустой результат)
  */
 export async function soundProcessing(
     soundInfo: ISoundInfo,

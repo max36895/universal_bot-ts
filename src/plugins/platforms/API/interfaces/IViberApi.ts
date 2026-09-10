@@ -101,9 +101,10 @@ export interface IViberUserInfo {
     viber_version: string;
 
     /**
-     * Мобильный код страны
+     * MCC (Mobile Country Code) — код страны мобильной сети пользователя.
+     * Отвечает паре с {@link IViberUserInfo.mnc} (код оператора).
      */
-    mss?: number;
+    mcc?: number;
 
     /**
      * Код мобильной сети
@@ -136,7 +137,7 @@ export interface IViberSender {
 
     /**
      * URL-адрес аватара отправителя
-     * Размер аватара должен быть не более 100 Кб. Рекомендуется 720x720
+     * Размер аватара должен быть не более 100 КБ. Рекомендуется 720x720
      */
     avatar: string;
 }
@@ -175,12 +176,12 @@ export interface IViberGetUserDetails extends IViberApi {
 }
 
 /**
- * Интерфейс с параметрами настройки webhook`а
+ * Интерфейс с параметрами настройки вебхука
  *
  * @example
  * ```ts
  * const webhookParams: IViberWebhookParams = {
- *   url: "http://localhost/webhook",
+ *   url: "https://example.com/webhook",
  *   event_types: ["message", "delivered", "seen"],
  *   send_name: true,
  *   send_photo: true
@@ -236,7 +237,9 @@ export interface IViberWebhookParams {
  * ```
  */
 export interface IViberRichMediaParams {
-    /** Минимальная версия Viber API клиента; для Rich Media не ниже 7. */
+    /**
+     * Минимальная версия Viber API клиента; для Rich Media не ниже 7.
+     */
     min_api_version?: string | number;
 
     /**
@@ -320,7 +323,7 @@ export interface IViberParams {
 
     /**
      * Тип сообщения
-     * Доступные типы: text, picture, video, file, location, contact, sticker, carousel content, url
+     * Доступные типы: text, picture, video, file, location, contact, sticker, url
      */
     type?: string;
 
@@ -337,7 +340,7 @@ export interface IViberParams {
 
     /**
      * Минимальная версия API
-     * @defaultValue "1"
+     * @defaultValue 7
      */
     min_api_version?: string | number;
 
@@ -394,18 +397,19 @@ export interface IViberParams {
 
     /**
      * Координаты местоположения
-     * Актуально для type = location
+     * Актуально для type = location.
+     * Передаются числами, как и в реальном API Viber
      */
     location?: {
         /**
          * Координата широты
          */
-        lat: string;
+        lat: number;
 
         /**
          * Координата долготы
          */
-        lon: string;
+        lon: number;
     };
 
     /**

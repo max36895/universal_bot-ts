@@ -21,9 +21,8 @@ import {
     VkAdapter,
 } from '../../src/plugins';
 import { Server } from 'http';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 class MyReg extends RegExp {
     constructor(parent: RegExp | string, flags: string) {
@@ -135,16 +134,16 @@ describe('Bot', () => {
     ];
     const savedEnv: Record<string, string | undefined> = {};
     // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень репозитория.
-    // Перенаправляем их во временную папку, чтобы прогон тестов не оставлял
-    // артефактов в репо (UsersData.json, warn.log и пр.).
-    const TEST_DATA_DIR = mkdtempSync(join(tmpdir(), 'umbot-test-bot-'));
+    // Перенаправляем их в тестовую папку (tests/.tmp), чтобы прогон не оставлял
+    // артефактов в репо; путь известен и не теряется, как в os.tmpdir().
+    const TEST_DATA_DIR = createTestDir('bot');
     beforeAll(() => {
         ENV_KEYS.forEach((key) => {
             savedEnv[key] = process.env[key];
             delete process.env[key];
         });
     });
-    afterAll(() => {
+    afterAll(async () => {
         ENV_KEYS.forEach((key) => {
             if (savedEnv[key] === undefined) {
                 delete process.env[key];
@@ -152,7 +151,7 @@ describe('Bot', () => {
                 process.env[key] = savedEnv[key];
             }
         });
-        rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+        await removeTestDir(TEST_DATA_DIR);
     });
 
     beforeEach(() => {

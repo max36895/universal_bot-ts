@@ -80,16 +80,17 @@ export const T_SHARE_PHONE = 'share-phone';
  * import { ViberButton } from 'umbot/plugins';
  *
  * controller.buttons.addBtn('Информация', '', '', {
- *         ActionType: ViberButton.T_NONE,
- *         TextSize: 'small',
- *         TextColor: '#cccccc',
- *     })
- * );
+ *     ActionType: ViberButton.T_NONE,
+ *     TextSize: 'small',
+ *     TextColor: '#cccccc'
+ * });
  * ```
  */
 export const T_NONE = 'none';
 
-/** Поля кнопки, которые Viber принимает в объекте `keyboard.Buttons`. */
+/**
+ * Поля кнопки, которые Viber принимает в объекте `keyboard.Buttons`.
+ */
 const VIBER_BUTTON_OPTION_FIELDS = new Set([
     'Columns',
     'Rows',
@@ -116,11 +117,18 @@ const VIBER_BUTTON_OPTION_FIELDS = new Set([
     'InternalBrowser',
 ]);
 
-/** Извлекает только документированные платформенные поля кнопки Viber. */
+/**
+ * Извлекает только документированные платформенные поля кнопки Viber.
+ */
 function getViberButtonOptions(options: IButtonType['options']): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     Object.entries(options).forEach(([name, value]) => {
         if (VIBER_BUTTON_OPTION_FIELDS.has(name) && value !== undefined) {
+            // Пустой Text из платформенных опций обходил бы фильтр пустой подписи
+            // выше: Viber отклоняет кнопку с пустым Text.
+            if (name === 'Text' && String(value).trim() === '') {
+                return;
+            }
             result[name] = value;
         }
     });
@@ -131,7 +139,8 @@ function getViberButtonOptions(options: IButtonType['options']): Record<string, 
  * Преобразует универсальные кнопки в формат Viber.
  *
  * @param buttons Кнопки, которые необходимо отобразить.
- * @returns Объект клавиатуры Viber или null, если передан пустой список.
+ * @param appContext Контекст приложения (для логирования ошибок валидации).
+ * @returns Объект клавиатуры Viber либо `null` при пустом списке или когда все кнопки отсеяны валидацией (пустой title, не-сериализуемый payload).
  */
 export function buttonProcessing(
     buttons: IButtonType[],
@@ -139,7 +148,7 @@ export function buttonProcessing(
 ): IViberButtonObject | null {
     let object: IViberButtonObject | null = null;
     const buttonsResult: IViberButton[] = [];
-    getCorrectButtons(buttons, 6).forEach((button) => {
+    getCorrectButtons(buttons, 6, appContext).forEach((button) => {
         // Кнопка без подписи в Viber выглядит как пустой прямоугольник и ничего
         // не сообщает пользователю — такие кнопки не отправляем.
         if (!button.title?.trim()) {
@@ -164,14 +173,16 @@ export function buttonProcessing(
                 btn.ActionBody = button.title;
             }
         }
-        if (button.options.request_contact === true) {
+        // Кнопка может быть собрана вручную вне компонента Buttons (JS-потребители,
+        // тесты): поле options у неё отсутствует, поэтому доступ только через ?.
+        if (button.options?.request_contact === true) {
             btn.ActionType = T_SHARE_PHONE;
             btn.ActionBody = button.title;
-        } else if (button.options.request_location === true) {
+        } else if (button.options?.request_location === true) {
             btn.ActionType = T_LOCATION_PICKER;
             btn.ActionBody = button.title;
         }
-        btn = <IViberButton>{ ...btn, ...getViberButtonOptions(button.options) };
+        btn = <IViberButton>{ ...btn, ...getViberButtonOptions(button.options ?? {}) };
 
         buttonsResult.push(btn);
     });

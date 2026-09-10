@@ -46,14 +46,14 @@ export interface IQueryData {
 const DATA_REG = /`([^`]+)`\s*=\s*(?:"([^"]*)"|(\S+))/gim;
 
 /**
- * Тип для ключа записи в базе данных.
- * Используется как значение primaryKeyName в IQuery.
+ * Тип для имени поля первичного ключа в базе данных.
+ * Используется как значение primaryKeyName в IQuery (например, 'userId'
+ * для UsersData, 'imageToken' для ImageTokens); null — ключ не задан.
  *
  * @example
  * ```ts
- * const key: TKey = 'user-123';  // строковый ключ
- * const key: TKey = 42;           // числовой ключ
- * const key: TKey = null;         // ключ не задан
+ * const key: TKey = 'userId';  // имя поля первичного ключа
+ * const key: TKey = null;     // первичный ключ не задан
  * ```
  */
 export type TKey = string | number | null;
@@ -73,7 +73,7 @@ export interface IQuery {
      */
     data: IQueryData | null;
     /**
-     * Название таблиц
+     * Название таблицы
      */
     tableName: string;
     /**
@@ -88,11 +88,13 @@ export interface IQuery {
 
 /**
  * Парсит строку запроса в объект IQueryData
- * Поддерживает формат `field=value` с возможностью экранирования
+ * Поддерживает формат `field=value` с возможностью экранирования.
+ * Имя поля должно быть в обратных кавычках (`id`=1) — без них парсер
+ * не найдёт пару «поле=значение».
  *
  * @example
  * ```ts
- * import { getQueryData } from './models/db';
+ * import { getQueryData } from 'umbot';
  *
  * const query = getQueryData('`id`=1 `name`="John Doe"');
  * // Результат: { id: 1, name: 'John Doe' }

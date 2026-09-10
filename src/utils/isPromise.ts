@@ -2,7 +2,7 @@
  * Проверяет, является ли переданное значение промисом.
  *
  * @param {unknown} value - Проверяемое значение
- * @returns {value is Promise<unknown>} true если значение является промисом
+ * @returns true, если значение — Promise (type guard)
  */
 export function isPromise(value: unknown): value is Promise<unknown> {
     return !!(

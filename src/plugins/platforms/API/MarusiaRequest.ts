@@ -13,7 +13,7 @@ import { getErrorMsg } from './constants';
 /**
  * Класс для взаимодействия с API голосового помощника Маруся
  * Расширяет функционал VkRequest для работы со специфичными методами Маруси
- * @see (https://dev.vk.ru/ru/marusia/api) Смотри тут
+ * @see https://dev.vk.ru/ru/marusia/api
  *
  * @example
  * ```ts
@@ -30,8 +30,9 @@ import { getErrorMsg } from './constants';
  *   if (uploadLink) {
  *     // Загружаем изображение
  *     const upload = await marusia.upload(uploadLink.picture_upload_link, imagePath);
- *     if (upload) {
- *       // Сохраняем изображение
+ *     if (upload && upload.photo && upload.server && upload.hash) {
+ *       // Сохраняем изображение (поля IVkUploadFile опциональны —
+ *       // перед вызовом проверяем их наличие)
  *       const picture = await marusia.marusiaSavePicture(
  *         upload.photo,
  *         upload.server,
@@ -115,16 +116,17 @@ export class MarusiaRequest extends VkRequest {
      *
      * @example
      * ```ts
-     * // Полный процесс загрузки и сохранения изображения
+     * // Полный процесс загрузки и сохранения изображения.
+     * // Поля photo/server/hash у IVkUploadFile опциональны —
+     * // после проверки upload сохраняем их в константы-строки
      * const uploadLink = await marusia.marusiaGetPictureUploadLink();
      * if (uploadLink) {
      *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg');
-     *   if (upload) {
-     *     const picture = await marusia.marusiaSavePicture(
-     *       upload.photo,
-     *       upload.server,
-     *       upload.hash
-     *     );
+     *   if (upload?.photo && upload?.server && upload?.hash) {
+     *     const photo: string = upload.photo;
+     *     const server: string = upload.server;
+     *     const hash: string = upload.hash;
+     *     const picture = await marusia.marusiaSavePicture(photo, server, hash);
      *     if (picture) {
      *       console.log('ID изображения:', picture.id);
      *     }
@@ -172,10 +174,12 @@ export class MarusiaRequest extends VkRequest {
      *
      * @example
      * ```ts
-     * // Получение списка изображений
+     * // Получение списка изображений. Метод возвращает Promise<unknown> —
+     * // структура items аналогична Алисе, поэтому приводим тип явно.
      * const pictures = await marusia.marusiaGetPictures();
      * if (pictures) {
-     *   pictures.items.forEach(picture => {
+     *   const pics = pictures as { items: IMarusiaImage[] };
+     *   pics.items.forEach(picture => {
      *     console.log('ID:', picture.id);
      *     console.log('URL:', picture.url);
      *     console.log('Превью:', picture.preview_url);
@@ -183,7 +187,7 @@ export class MarusiaRequest extends VkRequest {
      * }
      * ```
      *
-     * @returns Список изображений или null при ошибке
+     * @returns {Promise<unknown>} Ответ API Маруси (структура items аналогична Алисе) или null при ошибке
      */
     public async marusiaGetPictures(): Promise<unknown> {
         return await this.call('marusia.getPictures');
@@ -265,7 +269,7 @@ export class MarusiaRequest extends VkRequest {
     }
 
     /**
-     * Записывает информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      * @param error Текст ошибки для логирования
      */
     protected _log(error: Error | string = ''): void {

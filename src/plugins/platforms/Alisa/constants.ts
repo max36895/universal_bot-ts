@@ -52,12 +52,14 @@ export const ALISA_CARD_BIG_IMAGE = 'BigImage';
 export const ALISA_CARD_ITEMS_LIST = 'ItemsList';
 
 /**
- * Максимальное число элементов в `ItemsList`. Лишние элементы Алиса отбросит.
+ * Максимальное число элементов в `ItemsList`. Адаптер обрезает список
+ * до лимита (slice), поэтому платформа лишних элементов не видит.
  */
 export const ALISA_MAX_IMAGES = 5;
 
 /**
- * Максимальное число изображений в `ImageGallery`. Лишние изображения Алиса отбросит.
+ * Максимальное число изображений в `ImageGallery`. Адаптер обрезает галерею
+ * до лимита (slice), поэтому платформа лишних изображений не видит.
  */
 export const ALISA_MAX_GALLERY_IMAGES = 10;
 

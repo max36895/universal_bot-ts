@@ -1,4 +1,5 @@
 import { Text, BotController, AppContext, IButtonType, INlu } from '../../../index';
+import type { TEventType } from '../../../core/events';
 import { keysCount } from '../../../utils';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
@@ -21,7 +22,11 @@ import { T_ALISA, VERSION, ALISA_STATE_MAX_BYTES } from './constants';
 const ALISA_TTS_MAX_LENGTH = 1024;
 const ALISA_TTS_TAG_REGEXP = /<speaker\b[^>]*>|sil\s*<\[\d+\]>/gi;
 
-/** Обрезает произносимый текст Алисы, не считая служебные звуковые теги. */
+/**
+ * Обрезает произносимый текст Алисы, не считая служебные звуковые теги.
+ * @param tts Строка TTS (при null возвращается пустая строка)
+ * @returns Строка TTS не длиннее 1024 видимых символов; теги `<speaker>` и `sil <[...]>` не учитываются
+ */
 function resizeAlisaTts(tts: string | null): string {
     if (!tts) {
         return '';
@@ -60,7 +65,7 @@ interface IState {
  * Подключение адаптера не требует изменения существующей бизнес-логики: после интеграции все команды и обработчики, написанные для umbot, автоматически становятся доступны для Алисы.
  * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких платформ (Telegram, VK, Алиса и др.) без дублирования кода.
  *
- * Этот адаптер автоматически обрабатывает входящие webhook`и от Алисы,
+ * Этот адаптер автоматически обрабатывает входящие вебхуки от Алисы,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
  * совместимый с требованиями платформы. Подключается одной строкой и
  * не мешает работе других адаптеров (например, для Telegram или VK).
@@ -95,9 +100,20 @@ interface IState {
  * @see BasePlatform
  */
 export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
-    /** Идентификатор платформы Яндекс.Алиса. */
+    /**
+     * Идентификатор платформы Яндекс.Алиса.
+     */
     platformName = T_ALISA;
+    /**
+     * Универсальные события Алисы (для валидации addEvent): текст и account_linking.
+     */
+    supportedEvents: readonly TEventType[] = ['message', 'auth'];
 
+    /**
+     * Инициализирует адаптер: вызывает базовую инициализацию и пробрасывает
+     * переданный в конструкторе токен в конфигурацию платформы.
+     * @param appContext Контекст приложения (конфиги, токены, логгер)
+     */
     init(appContext: AppContext): void {
         super.init(appContext);
         if (this._token) {
@@ -108,6 +124,13 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         }
     }
 
+    /**
+     * Проверяет, что входящий webhook-запрос принадлежит Алисе.
+     * Отличает Алису от Маруси по `meta.client_id` и виду `session.application.application_id`.
+     * @param query Входящий webhook-запрос
+     * @param _headers Заголовки HTTP-запроса (не используются: у Алисы нет подписи webhook)
+     * @returns `true`, если запрос относится к платформе Алиса
+     */
     isPlatformOnQuery(query: IAlisaWebhookRequest, _headers?: Record<string, unknown>): boolean {
         if (!query) {
             this.appContext?.logWarn(`AlisaAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
@@ -147,6 +170,8 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     /**
      * Устанавливает идентификатор пользователя.
      * Определяет ID пользователя из сессии или приложения
+     * @param controller Контроллер приложения
+     * @param session Сессия запроса Алисы (если задана — ID берётся из неё)
      */
     #setUserId(controller: BotController, session?: IAlisaSession): void {
         if (this.appContext && session) {
@@ -190,10 +215,18 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         }
     }
 
+    /**
+     * Разбирает запрос Алисы и наполняет контроллер данными: команда, NLU,
+     * идентификатор пользователя, состояние, метаданные, health-check ping.
+     * @param query Входящий webhook-запрос Алисы
+     * @param controller Контроллер приложения
+     * @returns `true`, если запрос успешно разобран
+     */
     setQueryData(query: IAlisaWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
                 if (query.account_linking_complete_event && !query.session && !query.request) {
+                    controller.eventType = 'auth';
                     controller.userEvents = {
                         auth: {
                             status: true,
@@ -210,10 +243,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                 controller.requestObject = query;
                 this.#initUserCommand(query.request, controller);
                 this.#setUserId(controller, query.session);
-                // Пустой nlu не записываем: setNlu({}) семантически идентичен отсутствию
-                // вызова (проверено тестами: getNluValue/getIntents/getFio/getDateTime
-                // возвращают то же), но геттер controller.nlu создал бы объект Nlu
-                // на каждый запрос Алисы — включая ответы без NLU-данных.
+                // Пустой nlu не записываем (см. hasAnyNluKey в Base/utils).
                 const nlu = query.request.nlu;
                 if (nlu && hasAnyNluKey(nlu)) {
                     // IAlisaNlu структурно уже INlu (поля tokens/entities/intents
@@ -255,6 +285,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     /**
      * Формирует ответ для пользователя.
      * Собирает текст, TTS, карточки и кнопки в единый объект ответа
+     * @param controller Контроллер приложения
      * @returns {Promise<IAlisaResponse>} Объект ответа для Алисы
      */
     protected async _getResponse(controller: BotController): Promise<IAlisaResponse> {
@@ -277,9 +308,19 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         };
         if (controller.isScreen) {
             if (controller.isCardInit() && controller.card.images.length) {
-                response.card = <IAlisaItemsList | IAlisaBigImage>(
-                    await controller.card.getCards(cardProcessing, controller)
-                );
+                // cardProcessing асинхронный (загрузка image_id в Яндекс), и сбой
+                // слоя БД/API не должен ронять весь ответ в 500. Деградируем:
+                // ответ уходит без карточки, ошибка — в лог.
+                try {
+                    response.card = <IAlisaItemsList | IAlisaBigImage>(
+                        await controller.card.getCards(cardProcessing, controller)
+                    );
+                } catch (e) {
+                    this.appContext?.logError(
+                        `AlisaAdapter.getContent(): ошибка формирования карточки, ответ отправлен без неё. Текст ошибки: "${e instanceof Error ? e.message : String(e)}"`,
+                        { error: e },
+                    );
+                }
                 if (!response.card) {
                     // exactOptionalPropertyTypes: отсутствие карточки в ответе —
                     // это отсутствие поля, а не undefined-значение.
@@ -303,6 +344,13 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         return response;
     }
 
+    /**
+     * Формирует итоговый webhook-ответ Алисы: версию протокола, response,
+     * директивы авторизации и выбранное state-хранилище (с проверкой лимита байт).
+     * @param controller Контроллер приложения
+     * @param stateData Состояние для сохранения (user/application/session)
+     * @returns {Promise<IAlisaWebhookResponse>} Готовый ответ для webhook Алисы
+     */
     async getContent(
         controller: BotController,
         stateData?: Record<string, unknown> | null,
@@ -357,8 +405,10 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     }
 
     /**
-     * Использует кастомную обработку TTS через {@link soundProcessing} для вставки
-     * звуковых эффектов в соответствии с требованиями Алисы.
+     * Использует кастомную обработку TTS через импортируемую функцию
+     * {@link soundProcessing} из `./Sound` для вставки звуковых эффектов
+     * в соответствии с требованиями Алисы.
+     * @param controller Контроллер приложения
      */
     async soundProcessing(controller: BotController): Promise<void> {
         if (controller.isSoundInit()) {
@@ -374,6 +424,7 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     /**
      * Возвращает состояние из `request.state` (user/application/session).
      * Тип состояния определяется настройками навыка в Яндекс.Диалогах.
+     * @param controller Контроллер приложения
      */
     getLocalStorage<TStorageResult = unknown>(controller: BotController): TStorageResult {
         return controller.state as TStorageResult;
@@ -396,6 +447,14 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
         return false;
     }
 
+    /**
+     * Формирует пример webhook-запроса Алисы для локального тестирования (BotTest).
+     * @param query Текст команды пользователя
+     * @param userId Идентификатор пользователя
+     * @param count Номер сообщения в сессии (0 — новая сессия)
+     * @param state Состояние (session/user/application) для подстановки в запрос
+     * @returns Заготовка запроса в формате webhook Алисы
+     */
     getQueryExample(
         query: string,
         userId: string,

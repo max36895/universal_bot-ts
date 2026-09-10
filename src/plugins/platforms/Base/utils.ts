@@ -1,6 +1,7 @@
 import { ImageTokens, SoundTokens } from '../../../models';
 import { BotController } from '../../../controller';
 import { ISoundInfo } from '../../../core';
+import type { TEventType } from '../../../core/events';
 import { isFile, Text } from '../../../utils';
 import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
@@ -117,10 +118,10 @@ const PAUSE_REG = /#pause_<\[(\d+)]>#/g;
 
 /**
  * Ищет в тексте команды паузы вида `#pause_<[ms]>#` (например, `#pause_<[500]>#`)
- * и заменяет их на SSML-формат `sil <[ms]>`, поддерживаемый голосовыми платформами.
+ * и заменяет их на формат `sil <[ms]>`, поддерживаемый голосовыми платформами.
  *
- * @param {string} text - Текст, который будет озвучен пользователю
- * @returns {string} - Строка с паузой в формате sil <[ms]>
+ * @param text - Текст, который будет озвучен пользователю
+ * @returns Строка с паузой в формате sil <[ms]>
  */
 export function getPause(text: string): string {
     return text.replace(PAUSE_REG, (_, ms: string) => `sil <[${ms}]>`);
@@ -129,10 +130,10 @@ export function getPause(text: string): string {
 /**
  * Заменяет звуковой токен в тексте на соответствующий звук
  *
- * @param {string} key - Ключ звука для замены
- * @param {string | string[]} value - Значение или массив значений для замены
- * @param {string} text - Исходный текст
- * @returns {string} - Текст с замененными звуками
+ * @param key - Ключ звука для замены
+ * @param value - Значение или массив значений для замены
+ * @param text - Исходный текст
+ * @returns Текст с замененными звуками
  *
  * @example
  * ```ts
@@ -162,15 +163,15 @@ export function replaceSound(key: string, value: string | string[], text: string
 }
 
 /**
- * Удаляет SSML-разметку звуков из текста: теги `<speaker ...>` и паузы `sil <[N]>`.
+ * Удаляет разметку звуков из текста: теги `<speaker ...>` и паузы `sil <[N]>`.
  * Пользовательские ключи вида `#ключ#` не удаляются.
  *
- * @param {string} text - Исходный текст
- * @returns {string} - Текст без SSML-разметки звуков
+ * @param text - Исходный текст
+ * @returns Текст без SSML-разметки звуков
  *
  * @example
  * ```ts
- * // Удаление SSML-тегов звуков
+ * // Удаление тегов звуков
  * const text = removeSound('Текст <speaker audio="a.opus"> без звуков');
  * // Результат: 'Текст  без звуков'
  * ```
@@ -310,9 +311,7 @@ export async function getBaseDataSoundProcessing(
 export function initUserCommand(request: IAlisaRequest, controller: BotController): void {
     if (request.type === 'SimpleUtterance') {
         controller.userCommand = request.command?.trim() || '';
-        // `?.` обязателен: malformed-запрос без original_utterance проходит
-        // isPlatformOnQuery (проверяются только request/version/session),
-        // и раньше здесь падал TypeError, уходивший на платформу как 500.
+        // original_utterance может отсутствовать в malformed-запросе — `?.` обязателен.
         controller.originalUserCommand = request.original_utterance?.trim() || '';
     } else {
         if (typeof request.payload === 'string') {
@@ -331,14 +330,20 @@ export function initUserCommand(request: IAlisaRequest, controller: BotControlle
 
 /**
  * Возвращает корректный массив кнопок с учетом лимита
- * @param {TButton[]} buttons - Массив кнопок
- * @param {number} limit - Максимальное количество кнопок
+ * @param buttons - Массив кнопок
+ * @param limit - Максимальное количество кнопок
+ * @param appContext - Контекст приложения: без него усечение сверх лимита
+ * проходило молча — разработчик не понимал, почему «лишние» кнопки пропали
  */
 export function getCorrectButtons<TButton = IButtonType>(
     buttons: TButton[],
     limit: number = 10,
+    appContext?: { logWarn(message: string, meta?: Record<string, unknown>): void },
 ): TButton[] {
     if (buttons && buttons.length > limit) {
+        appContext?.logWarn(
+            `Кнопок больше лимита (${buttons.length} > ${limit}): показаны первые ${limit}, остальные пропущены.`,
+        );
         return buttons.slice(0, limit);
     }
     return buttons;
@@ -404,8 +409,8 @@ export function getPlatformRequestData<T extends Record<string, unknown>>(
 
 /**
  * Утилита для безопасного преобразования строки в объект
- * @param {Record<string, unknown> | object | string | null | undefined} data - Данные для преобразования
- * @returns Разобранный объект либо исходное значение (строку) при невозможности разбора; null не возвращается
+ * @param data - Данные для преобразования
+ * @returns Разобранный объект, исходное значение или null (если на входе null)
  */
 export function tryParse<TResult = Record<string, unknown>>(
     data: Record<string, unknown> | object | string | null | undefined,
@@ -430,9 +435,8 @@ export function tryParse<TResult = Record<string, unknown>>(
  * Голосовые платформы (Алиса, Маруся) присылают поле nlu всегда — оно есть в
  * протоколе, но в большинстве запросов оказывается пустым (`{}` либо с ключами
  * без значений). Записывать пустой nlu нет смысла: `setNlu({})` семантически
- * идентичен отсутствию вызова (Nlu-компонент создаётся лениво с тем же
- * состоянием), а геттер `controller.nlu` иначе аллоцировал бы объект Nlu
- * (плюс внутренний Map кэша) на каждый запрос.
+ * идентичен отсутствию вызова, а геттер `controller.nlu` аллоцирует объект Nlu
+ * при первом же обращении.
  *
  * Тип параметра — `object`: интерфейсы платформенных nlu (IAlisaNlu,
  * IMarusiaNlu) расширяют INlu без индекс-сигнатуры, поэтому `Record<string, unknown>`
@@ -476,10 +480,9 @@ export function hasAnyNluKey(nlu: object | null | undefined): boolean {
  * Чат-платформы (Telegram/VK/MAX/Viber) кладут в NLU только `thisUser`
  * (username/first_name/last_name). Значение идёт в приватный буфер контроллера
  * ({@link BotController.setThisUser}): объект Nlu создаётся лениво при первом
- * обращении бизнес-логики к `controller.nlu`, а если логика NLU не читает —
- * не создаётся вовсе (раньше аллоцировался на каждый запрос). Когда все поля
- * пусты (анонимный канал, битый апдейт), запись пропускается — как и в
- * случае с пустым nlu голосовых платформ (см. {@link hasAnyNluKey}).
+ * обращении бизнес-логики к `controller.nlu`. Когда все поля пусты (анонимный
+ * канал, битый апдейт), запись пропускается — как и в случае с пустым nlu
+ * голосовых платформ (см. {@link hasAnyNluKey}).
  *
  * @param controller Контроллер текущего запроса
  * @param thisUser Данные отправителя (поля могут отсутствовать)
@@ -498,5 +501,132 @@ export function setThisUserToNlu(
     // falsy к null, но хелпер устойчив и к неприведённым значениям.
     if (thisUser.username || thisUser.first_name || thisUser.last_name) {
         controller.setThisUser(thisUser);
+    }
+}
+
+/**
+ * Нормализует payload callback-кнопки в «имя действия» для матчинга команд.
+ *
+ * Кнопка, созданная через `buttons.addBtn('Купить', '', 'buy')` или с payload
+ * `{ command: 'buy' }`, на Telegram/VK/MAX приходит обратно как callback-апдейт
+ * с этим payload. Хелпер извлекает имя действия:
+ * - `'buy'` → `'buy'`;
+ * - `'{"command":"buy"}'` / `{ command: 'buy' }` → `'buy'`;
+ * - прочий JSON/текст — возвращается как есть (матчинг по слоту, как раньше).
+ *
+ * Так кнопка с payload вызывает `bot.addAction('buy', ...)` / команду `buy`
+ * без ручного разбора — как `bot.action()` в популярных фреймворках.
+ *
+ * @param payload Payload кнопки из апдейта платформы (строка или объект)
+ * @returns Нормализованное имя действия (нижний регистр) или `''`, если payload пуст
+ *
+ * @example
+ * ```ts
+ * normalizeActionPayload('buy'); // -> 'buy'
+ * normalizeActionPayload('{"command":"buy"}'); // -> 'buy'
+ * normalizeActionPayload('{"cmd":"x","y":1}'); // -> '{"cmd":"x","y":1}' — без command
+ * normalizeActionPayload(null); // -> ''
+ * ```
+ */
+export function normalizeActionPayload(payload: unknown): string {
+    if (payload == null) {
+        return '';
+    }
+    if (typeof payload === 'string') {
+        const trimmed = payload.trim().toLowerCase();
+        if (!trimmed) {
+            return '';
+        }
+        // JSON-строка с полем command: '{"command":"buy"}' -> 'buy'.
+        if (trimmed[0] === '{' && trimmed[trimmed.length - 1] === '}') {
+            try {
+                const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+                const command = parsed.command ?? parsed.action;
+                if (typeof command === 'string' && command.trim()) {
+                    return command.trim().toLowerCase();
+                }
+            } catch {
+                // Битый JSON — используем строку как есть.
+            }
+        }
+        return trimmed;
+    }
+    if (typeof payload === 'object') {
+        const source = payload as Record<string, unknown>;
+        const command = source.command ?? source.action;
+        if (typeof command === 'string' && command.trim()) {
+            return command.trim().toLowerCase();
+        }
+        try {
+            return JSON.stringify(payload).toLowerCase();
+        } catch {
+            return '';
+        }
+    }
+    return String(payload).toLowerCase();
+}
+
+/**
+ * Определяет универсальный тип события по вложениям сообщения Telegram.
+ *
+ * @param message Объект message из апдейта Telegram
+ * @returns TEventType (см. umbot / src/core/events.ts): 'photo', 'voice',
+ *   'video', 'document', 'location', 'contact', 'sticker' или 'message'
+ *   для обычного текста
+ */
+export function telegramMessageEvent(message: object): TEventType {
+    const source = message as Record<string, unknown>;
+    if (source.photo) {
+        return 'photo';
+    }
+    if (source.voice) {
+        return 'voice';
+    }
+    if (source.video_note) {
+        return 'video';
+    }
+    if (source.video) {
+        return 'video';
+    }
+    if (source.document) {
+        return 'document';
+    }
+    if (source.location) {
+        return 'location';
+    }
+    if (source.contact) {
+        return 'contact';
+    }
+    if (source.sticker) {
+        return 'sticker';
+    }
+    return 'message';
+}
+
+/**
+ * Определяет универсальный тип события по типу сообщения Viber.
+ *
+ * @param type Поле message.type из события Viber ('text', 'picture', 'video',
+ *   'file', 'contact', 'location', 'sticker', 'rich_media', …)
+ * @returns TEventType (см. umbot / src/core/events.ts): 'document' для file;
+ *   audio и остальные типы без отдельной ветки распознаются как 'message'
+ */
+export function viberMessageEvent(type: string | undefined): TEventType {
+    switch (type) {
+        case 'picture':
+            return 'photo';
+        case 'video':
+            return 'video';
+        case 'file':
+            return 'document';
+        case 'contact':
+            return 'contact';
+        case 'location':
+            return 'location';
+        case 'sticker':
+            return 'sticker';
+        default:
+            // 'text', 'rich_media', undefined и будущие типы — обычное сообщение.
+            return 'message';
     }
 }

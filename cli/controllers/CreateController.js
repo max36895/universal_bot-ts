@@ -410,9 +410,8 @@ class CreateController {
      */
     async init(name = null, type = CreateController.T_DEFAULT) {
         let correctName = name?.replace(/\W/g, '_');
-        // Идентификатор в TypeScript не может начинаться с цифры: '2025bot'
-        // давало import { 2025botController } и несобираемый проект.
-        // Префикс '_' делает имя валидным и для директории, и для кода.
+        // Идентификатор в TypeScript не может начинаться с цифры —
+        // префикс '_' делает имя валидным и для директории, и для кода.
         if (correctName && /^\d/.test(correctName)) {
             correctName = `_${correctName}`;
         }

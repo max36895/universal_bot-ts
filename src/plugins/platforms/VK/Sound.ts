@@ -3,7 +3,9 @@ import { YandexSpeechKit, VkRequest } from '../API';
 import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';
 import { T_VK } from './constants';
 
-/** Возвращает peer_id диалога, из которого пришёл запрос. */
+/**
+ * Возвращает peer_id диалога, из которого пришёл запрос.
+ */
 function getPeerId(controller: BotController): string | number {
     const requestData = getPlatformRequestData<{ peerId?: string | number }>(controller, T_VK);
     return requestData.peerId ?? (controller.userId as string | number);
@@ -12,8 +14,9 @@ function getPeerId(controller: BotController): string | number {
 /**
  * Получение токена, необходимого для воспроизведения звуков в Vk
  * @param controller Контроллер приложения
- * @param path Путь до аудиофайла
+ * @param path Путь до аудиофайла (URL не поддерживается — VK требует загрузку файла)
  * @param isAttachContent Определяет передано ли содержимое файла или сам файл
+ * @returns Строка-вложение (doc<owner_id>_<id>) либо `null` при ошибке загрузки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
@@ -50,9 +53,11 @@ export async function getSoundInDB(
 }
 
 /**
- * Получение корректного ответа для озвучивания запроса пользователю VK
+ * Получение корректного ответа для озвучивания запроса пользователю VK:
+ * загружает аудио (в т.ч. TTS через SpeechKit) как голосовое сообщение.
  * @param soundInfo Информация необходимая для обработки аудио
  * @param controller Контроллер приложения
+ * @returns Массив строк-вложений (doc<owner_id>_<id>) для отправки в attachments
  */
 export async function soundProcessing(
     soundInfo: ISoundInfo,

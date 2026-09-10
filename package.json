@@ -112,6 +112,7 @@
         "deploy": "npm run build && npm publish",
         "create": "umbot",
         "clean": "node scripts/clean.js",
+        "clean:tmp": "node scripts/clean-tmp.js",
         "test": "node --expose-gc ./node_modules/jest/bin/jest.js",
         "test:coverage": "jest --coverage",
         "doc": "typedoc --excludePrivate --excludeExternals",
@@ -134,7 +135,14 @@
         "compare:alisa": "node --expose-gc ./benchmark/comparison/alisa.js",
         "compare:vk": "node --expose-gc ./benchmark/comparison/vk.js",
         "compare:viber": "node --expose-gc ./benchmark/comparison/viber.js",
-        "compare:max": "node --expose-gc ./benchmark/comparison/max.js"
+        "compare:max": "node --expose-gc ./benchmark/comparison/max.js",
+        "stress:compare": "node ./benchmark/comparison/stress.js telegram.js",
+        "stress:compare:alisa": "node ./benchmark/comparison/stress.js alisa.js",
+        "stress:compare:vk": "node ./benchmark/comparison/stress.js vk.js",
+        "stress:compare:viber": "node ./benchmark/comparison/stress.js viber.js",
+        "stress:compare:max": "node ./benchmark/comparison/stress.js max.js",
+        "baseline:update": "node --expose-gc ./benchmark/comparison/baseline.js update",
+        "baseline:check": "node --expose-gc ./benchmark/comparison/baseline.js check"
     },
     "engines": {
         "node": ">=20.19.0"

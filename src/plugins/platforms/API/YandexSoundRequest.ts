@@ -50,10 +50,14 @@ export class YandexSoundRequest extends YandexRequest {
     /**
      * Получение адреса для загрузки аудиофайлов.
      *
+     * skill_id приходит из payload запроса Алисы, а вебхук Алисы не подписывается —
+     * значение полностью подконтрольно отправителю. Экранируем его в компонент URL,
+     * чтобы `../` или `?` не выводили запрос за пределы пути навыка.
+     *
      * @returns {string}
      */
     #getSoundsUrl(): string {
-        return `${STANDARD_URL}skills/${this.skillId}/sounds`;
+        return `${STANDARD_URL}skills/${encodeURIComponent(this.skillId ?? '')}/sounds`;
     }
 
     /**
@@ -84,7 +88,6 @@ export class YandexSoundRequest extends YandexRequest {
      * - originalName: оригинальное имя файла
      * - createdAt: дата и время загрузки
      * - isProcessed: статус обработки файла
-     * - error: сообщение об ошибке (если есть)
      */
     public async downloadSoundFile(soundDir: string): Promise<IYandexRequestDownloadSound | null> {
         if (this.skillId) {

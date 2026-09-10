@@ -60,7 +60,7 @@ export interface ISoundModelState extends IModelState {
  * sound.platform = T_TELEGRAM;
  * const found = await sound.selectOne();
  * if (found.status) {
- *     console.log('Токен для звукового файла успешно получен, токен:', found.data.soundToken);
+ *     console.log('Токен для звукового файла успешно получен, токен:', found.data?.soundToken);
  * } else {
  *     // Загрузка аудиофайла в платформу — токен выдаёт API платформы,
  *     // затем он присваивается модели и запись сохраняется в БД
@@ -79,6 +79,9 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Флаг, указывающий, что передается содержимое файла.
      * Если true, то path содержит содержимое файла, а не путь к нему.
+     * Поле предназначено для пользовательского кода (аналог флага TSoundCallback);
+     * сам фреймворк его не устанавливает и не читает (VK/Sound.ts задаёт одноимённый
+     * флаг на VkRequest, а не на модель).
      * @defaultValue false
      */
     public isAttachContent: boolean;
@@ -86,6 +89,8 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Конструктор класса SoundTokens.
      * Предоставляет унифицированный интерфейс для хранения данных о загруженных аудиофайлах.
+     *
+     * @param {AppContext} appContext - Контекст приложения
      */
     public constructor(appContext: AppContext) {
         super(appContext);
@@ -95,7 +100,9 @@ export class SoundTokens extends Model<ISoundModelState> {
         this.isAttachContent = false;
     }
 
-    /** Первичный ключ таблицы — soundToken. */
+    /**
+     * Первичный ключ таблицы — soundToken.
+     */
     protected getId(): TKey {
         return 'soundToken';
     }

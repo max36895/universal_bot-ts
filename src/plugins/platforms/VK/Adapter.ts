@@ -1,12 +1,21 @@
 import { BotController, AppContext, Text } from '../../../index';
+import type { IControllerApi } from '../../../controller';
+import type { TEventType } from '../../../core/events';
 import { VkRequest, IVkParams } from '../API';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_VK } from './constants';
-import { IVkRequestContent, IVkRequestObject, IVkCard } from './interfaces/IVkPlatform';
-import { getChatText, getPlatformRequestData, setThisUserToNlu, tryParse } from '../Base/utils';
+import { IVkRequestContent, IVkCard } from './interfaces/IVkPlatform';
+import { makeVkApi } from './apiFacade';
+import {
+    getChatText,
+    getPlatformRequestData,
+    normalizeActionPayload,
+    setThisUserToNlu,
+    tryParse,
+} from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
 type IVkRequestData = Record<string, unknown> & {
@@ -14,15 +23,21 @@ type IVkRequestData = Record<string, unknown> & {
     peerId?: number;
 };
 
-/** Данные пользователя VK, которые кладутся в NLU. */
+/**
+ * Данные пользователя VK, которые кладутся в NLU.
+ */
 interface IVkUserInfo {
     first_name: string | null;
     last_name: string | null;
 }
 
-/** Время жизни записи в кэше имён пользователей VK (1 час). */
+/**
+ * Время жизни записи в кэше имён пользователей VK (1 час).
+ */
 const VK_USER_CACHE_TTL = 3_600_000;
-/** Максимальное число записей в кэше имён, чтобы он не рос бесконечно. */
+/**
+ * Максимальное число записей в кэше имён, чтобы он не рос бесконечно.
+ */
 const VK_USER_CACHE_MAX_SIZE = 5000;
 
 /**
@@ -93,7 +108,7 @@ export function clearVkUserCache(): void {
  * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
  * платформ (Viber, VK, Алиса и др.) без дублирования кода.
  *
- * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера VK,
+ * Этот адаптер автоматически обрабатывает входящие вебхуки от мессенджера VK,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
  * совместимый с требованиями платформы. Подключается одной строкой и
  * не мешает работе других адаптеров (например, для Алисы или Маруси).
@@ -125,13 +140,39 @@ export function clearVkUserCache(): void {
  * @see BasePlatform
  */
 export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
-    /** Идентификатор платформы VK. */
+    /**
+     * Идентификатор платформы VK.
+     */
     platformName = T_VK;
-    /** VK — чат-платформа (не голосовая). */
+    /**
+     * Универсальные события VK (для валидации addEvent): текст и callback-кнопки.
+     */
+    supportedEvents: readonly TEventType[] = ['message', 'callback'];
+    /**
+     * VK — чат-платформа (не голосовая).
+     */
     isVoice = false;
-    /** Лимит запросов/сек для входящего rateLimiter (лимит VK Callback API). */
+    /**
+     * Лимит запросов/сек для входящего rateLimiter (лимит VK Callback API).
+     */
     limit = 30;
 
+    /**
+     * API-фасад VK для `controller.api` (sendPhoto/sendDocument через штатный
+     * upload-flow, answerCallback-snackbar). Подключается ядром через контракт
+     * `IPlatformAdapter`.
+     * @param controller - Контроллер текущего запроса
+     */
+    createApi(controller: BotController): IControllerApi | null {
+        return makeVkApi(controller);
+    }
+
+    /**
+     * Инициализирует адаптер: вызывает базовую инициализацию и переносит
+     * опции конструктора (токен, confirmation_token, secret_key, api_version)
+     * в конфигурацию платформы.
+     * @param appContext Контекст приложения (конфиги, токены, логгер)
+     */
     init(appContext: AppContext): void {
         super.init(appContext);
         const platformToken = appContext.appConfig.tokens[this.platformName];
@@ -153,6 +194,13 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         }
     }
 
+    /**
+     * Проверяет, что входящий запрос принадлежит VK Callback API.
+     * Опознаёт запрос по полям `type`, `group_id` и `object`/`secret`.
+     * @param query Входящий webhook-запрос
+     * @param _headers Заголовки HTTP-запроса (не используются: подпись VK приходит в теле)
+     * @returns `true`, если запрос относится к платформе VK
+     */
     isPlatformOnQuery(query: IVkRequestContent, _headers?: Record<string, unknown>): boolean {
         if (!query) {
             this.appContext?.logWarn(`VkAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
@@ -224,24 +272,27 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         return Boolean(this.appContext?.appConfig.tokens[this.platformName]?.secret_key);
     }
 
-    /** Заполняет контроллер данными нового сообщения VK. */
+    /**
+     * Заполняет контроллер данными нового сообщения VK.
+     */
     async #setMessageNew(query: IVkRequestContent, controller: BotController): Promise<boolean> {
-        if (!query.object?.message) {
+        const object = query.object;
+        const message = object?.message;
+        if (!object || !message) {
             controller.skipAutoReply = true;
             this.appContext?.logWarn(
                 'VkAdapter.setQueryData(): message_new без object.message пропущен как некорректное событие.',
             );
             return true;
         }
-        const object: IVkRequestObject = query.object;
-        controller.userId = object.message.from_id;
+        controller.userId = message.from_id;
         getPlatformRequestData<IVkRequestData>(controller, this.platformName).peerId =
-            object.message.peer_id ?? object.peer_id ?? object.message.from_id;
-        const rawText = object.message.text ?? '';
+            message.peer_id ?? object.peer_id ?? message.from_id;
+        const rawText = message.text ?? '';
         controller.userCommand = rawText.toLowerCase().trim();
         controller.originalUserCommand = rawText.trim();
-        controller.messageId = object.message.id;
-        controller.payload = tryParse(object.message.payload || null);
+        controller.messageId = message.id;
+        controller.payload = tryParse(message.payload || null);
         // Загрузку имени можно отключить: `new VkAdapter(token, { vk_load_user_info: false })`.
         // Тогда nlu.getUserName() вернёт null, зато на ответ уходит один запрос к VK вместо двух.
         if (this._platformOptions?.vk_load_user_info === false) {
@@ -255,7 +306,9 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         return true;
     }
 
-    /** Заполняет контроллер данными callback-кнопки VK. */
+    /**
+     * Заполняет контроллер данными callback-кнопки VK.
+     */
     #setMessageEvent(query: IVkRequestContent, controller: BotController): boolean {
         if (!query.object?.payload) {
             // Битый callback без payload обработать невозможно, но ответ обязан быть
@@ -268,11 +321,10 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
             );
             return true;
         }
-        controller.userCommand = (
-            typeof query.object.payload === 'string'
-                ? query.object.payload
-                : JSON.stringify(query.object.payload)
-        )?.toLowerCase();
+        controller.eventType = 'callback';
+        // Нормализуем payload кнопки в имя действия: 'buy' или {"command":"buy"}
+        // превращаются в userCommand='buy' и срабатывают через addAction/команду.
+        controller.userCommand = normalizeActionPayload(query.object.payload);
         // Оригинальную команду тоже заполняем: во всех остальных ветках она есть,
         // и бизнес-логика, читающая originalUserCommand, на callback-кнопках получала null.
         controller.originalUserCommand =
@@ -291,6 +343,13 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         return true;
     }
 
+    /**
+     * Разбирает событие VK Callback API (confirmation / message_new / message_event)
+     * и наполняет контроллер данными; прочие события помечаются skipAutoReply.
+     * @param query Входящий webhook-запрос VK Callback API
+     * @param controller Контроллер приложения
+     * @returns `true`, если запрос успешно разобран
+     */
     async setQueryData(query: IVkRequestContent, controller: BotController): Promise<boolean> {
         if (!this.appContext) {
             return false;
@@ -339,6 +398,45 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
     }
 
     /**
+     * Формирует вложение карточки с защитой от исключений слоя БД/API.
+     *
+     * cardProcessing асинхронный (upload картинок в VK): его сбой не должен
+     * ронять весь ответ в 500 — серия 5xx отключает вебхук VK Callback API.
+     *
+     * @param controller Контроллер текущего запроса
+     * @returns Карточка либо массив вложений, либо `null` при ошибке/пустой карточке
+     */
+    async #getCardAttachSafe(controller: BotController): Promise<IVkCard | string[] | null> {
+        try {
+            return await controller.card.getCards(cardProcessing, controller);
+        } catch (e) {
+            this.appContext?.logError(
+                `VkAdapter.getContent(): ошибка формирования карточки, сообщение отправлено без неё. Текст ошибки: "${e instanceof Error ? e.message : String(e)}"`,
+                { error: e },
+            );
+            return null;
+        }
+    }
+
+    /**
+     * Записывает карточку в параметры messagesSend: карусель — в `template`,
+     * одиночные вложения (string[]) — в `attachments`.
+     *
+     * @param attach Результат cardProcessing (IVkCard либо массив вложений)
+     * @param params Параметры исходящего сообщения (мутируется)
+     */
+    #applyCardToParams(attach: IVkCard | string[], params: IVkParams): void {
+        if ((attach as IVkCard).type !== undefined) {
+            params.template = attach;
+            return;
+        }
+        const attachments = attach as string[];
+        if (attachments.length) {
+            params.attachments = attachments;
+        }
+    }
+
+    /**
      * Возвращает JSON клавиатуры ВКонтакте для текущего ответа.
      *
      * @param controller Контроллер текущего запроса
@@ -361,6 +459,12 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
             : null;
     }
 
+    /**
+     * Формирует и отправляет ответ VK: сообщения, callback-события
+     * (sendMessageEvent/show_snackbar), карточки, клавиатуру и звуки.
+     * @param controller Контроллер приложения
+     * @returns Тело ответа для webhook ('ok')
+     */
     async getContent(controller: BotController): Promise<string> {
         if (!controller.skipAutoReply) {
             const vkApi = new VkRequest(this.appContext as AppContext);
@@ -397,14 +501,12 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
 
             const params: IVkParams = {};
             if (controller.isCardInit() && controller.card.images.length) {
-                const attach = await controller.card.getCards(cardProcessing, controller);
-                if ((attach as IVkCard).type === undefined) {
-                    const attachments = attach as string[];
-                    if (attachments.length) {
-                        params.attachments = attachments;
-                    }
-                } else {
-                    params.template = attach;
+                // cardProcessing асинхронный (upload картинок в VK), сбой слоя
+                // БД/API не должен ронять весь ответ в 500 — серия 5xx отключает
+                // вебхук VK Callback API. Деградируем: сообщение без карточки.
+                const attach = await this.#getCardAttachSafe(controller);
+                if (attach) {
+                    this.#applyCardToParams(attach, params);
                 }
             }
             const keyboard = this.#buildKeyboard(controller);
@@ -437,10 +539,19 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         return false;
     }
 
+    /**
+     * Формирует пример webhook-запроса VK (событие message_new)
+     * для локального тестирования (BotTest).
+     * @param query Текст команды пользователя
+     * @param userId Идентификатор пользователя (from_id)
+     * @param count Номер сообщения (id)
+     * @returns Заготовка запроса в формате VK Callback API
+     */
     getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
         return {
             type: 'message_new',
             // group_id обязателен: isPlatformOnQuery распознаёт VK по этому полю
+            // TODO: привести group_id в getQueryExample к string (тип IVkRequestContent)
             group_id: 1,
             object: {
                 message: {

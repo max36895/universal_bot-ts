@@ -120,7 +120,8 @@ export class Navigation<ElementType = TElementType> {
 
     /**
      * Текущая страница.
-     * Рекомендуется получать это значение после завершения всех операций
+     * Читайте значение после getPageElements/selectedElement — эти методы
+     * сами меняют thisPage (навигация по тексту и валидация диапазона).
      * @defaultValue 0
      */
     public thisPage: number;
@@ -264,9 +265,9 @@ export class Navigation<ElementType = TElementType> {
      * Возвращает массив элементов текущей страницы.
      * Обрабатывает команды навигации и возвращает элементы в пределах maxVisibleElements
      *
-     * ⚠️ Внимание: При передаче `text` с командой навигации ("дальше"/"назад" —
-     * сравнение чувствительно к регистру, передавайте текст в нижнем регистре,
-     * как `controller.userCommand`) автоматически изменяет `this.thisPage` (текущую страницу).
+     * При передаче `text` с командой навигации ("дальше"/"назад" — сравнение
+     * чувствительно к регистру, передавайте текст в нижнем регистре, как
+     * `controller.userCommand`) автоматически изменяет `this.thisPage` (текущую страницу).
      *
      *
      * @param {ElementType[] | null} elements Массив элементов для обработки
@@ -274,6 +275,8 @@ export class Navigation<ElementType = TElementType> {
      * @returns Массив элементов текущей страницы
      * @example
      * ```ts
+     * // Навигация с 3 элементами на странице:
+     * // const navigation = new Navigation(3);
      * const elements = [
      *   { id: 1, name: 'Элемент 1' },
      *   { id: 2, name: 'Элемент 2' },
@@ -281,13 +284,13 @@ export class Navigation<ElementType = TElementType> {
      *   { id: 4, name: 'Элемент 4' }
      * ];
      *
-     * // Получение элементов первой страницы
+     * // Получение элементов первой страницы (3 элемента при maxVisibleElements = 3)
      * const pageElements = navigation.getPageElements(elements);
-     * // [{ id: 1, name: 'Элемент 1' }, { id: 2, name: 'Элемент 2' }]
+     * // [{ id: 1, name: 'Элемент 1' }, { id: 2, name: 'Элемент 2' }, { id: 3, name: 'Элемент 3' }]
      *
      * // Переход на следующую страницу
      * const nextPageElements = navigation.getPageElements(null, 'вперед');
-     * // [{ id: 3, name: 'Элемент 3' }, { id: 4, name: 'Элемент 4' }]
+     * // [{ id: 4, name: 'Элемент 4' }]
      * ```
      */
     public getPageElements(
@@ -352,9 +355,14 @@ export class Navigation<ElementType = TElementType> {
         }
 
         let number: number | null = null;
-        const data = /(\d+)/imu.exec(text);
-        if (data) {
-            number = +data[0];
+        // Число трактуем как выбор элемента, только если это последнее слово
+        // текста («выбери 1», «2»). Раньше первая попавшаяся цифра перехватывала
+        // выбор: «закажи 2 литра» на странице выбора возвращало 2-й элемент
+        // вместо поиска по схожести.
+        const trimmed = text.trim();
+        const lastWord = /(\d+)(?=\s*$)/imu.exec(trimmed);
+        if (lastWord) {
+            number = +lastWord[0];
         }
 
         const start: number = this.thisPage * this.maxVisibleElements;
@@ -419,9 +427,10 @@ export class Navigation<ElementType = TElementType> {
      * @returns {string[]} Массив команд навигации
      * @example
      * ```ts
-     * // Получение базовых команд
+     * // Получение базовых команд: «Назад» не отдаётся на первой странице,
+     * // «Дальше» — на последней; при единственной странице вернётся ['[1]']
      * const commands = navigation.getPageNav();
-     * // ['👈 Назад', 'Дальше 👉']
+     * // ['👈 Назад', 'Дальше 👉'] (на средней странице)
      *
      * // Получение команд с номерами страниц (текущая выделяется скобками)
      * const numbered = navigation.getPageNav(true);
@@ -472,7 +481,8 @@ export class Navigation<ElementType = TElementType> {
 
     /**
      * Возвращает информацию о текущей странице.
-     * Формирует строку с информацией о текущей позиции
+     * Формирует строку с информацией о текущей позиции.
+     * При единственной странице возвращает пустую строку ''.
      *
      * @returns {string} Информация о текущей странице
      * @example

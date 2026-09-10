@@ -1,11 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { AppContext } from '../../src';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
-const LOG_DIR = path.join(__dirname, '__app_context_logs__');
+// Папка логов в tests/.tmp: фиксированный путь рядом со сьютом гонился при
+// параллельных прогонах Jest и оставлял мусор в репо при падении до afterEach.
+const LOG_DIR = createTestDir('appctx-logs');
 
-afterEach(() => {
-    fs.rmSync(LOG_DIR, { recursive: true, force: true });
+afterEach(async () => {
+    await removeTestDir(LOG_DIR);
 });
 
 describe('AppContext: надёжность сохранения', () => {

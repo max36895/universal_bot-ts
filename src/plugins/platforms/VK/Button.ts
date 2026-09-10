@@ -53,11 +53,21 @@ export type TVkButtonLogger = {
     logWarn(message: string, meta?: Record<string, unknown>): void;
 };
 
+/**
+ * Валидирует payload кнопки VK: сериализует его и проверяет лимит длины.
+ * @param payload Payload универсальной кнопки (объект или строка)
+ * @param appContext Контекст приложения для логирования ошибок валидации
+ * @returns Сериализованная строка payload (пустая строка для null/undefined) либо `null`, если payload не сериализуется или длиннее 255 символов
+ */
 function _validateVkPayload(payload: unknown, appContext?: TVkButtonLogger): string | null {
-    if (payload == null) return '';
+    if (payload == null) {
+        return '';
+    }
 
     const str = serializePlatformPayload(payload, 'VK', appContext);
-    if (str === null) return null;
+    if (str === null) {
+        return null;
+    }
 
     const length = Array.from(str).length;
     if (length > 255) {
@@ -70,7 +80,9 @@ function _validateVkPayload(payload: unknown, appContext?: TVkButtonLogger): str
     return str;
 }
 
-/** Возвращает цвет кнопки: из options либо из payload для обратной совместимости. */
+/**
+ * Возвращает цвет кнопки: из options либо из payload для обратной совместимости.
+ */
 function _getVkButtonColor<TPayload>(button: IButtonType<TPayload>): string | undefined {
     const payloadColor =
         typeof button.payload === 'object' && button.payload !== null
@@ -79,7 +91,9 @@ function _getVkButtonColor<TPayload>(button: IButtonType<TPayload>): string | un
     return (button.options?.color ?? payloadColor) as string | undefined;
 }
 
-/** Возвращает hash для кнопки VK Pay, если он явно задан в payload. */
+/**
+ * Возвращает hash для кнопки VK Pay, если он явно задан в payload.
+ */
 function _getVkPayHash(payload: unknown): string | null {
     let payloadObj: Record<string, unknown> | null = null;
     if (typeof payload === 'string') {
@@ -94,7 +108,12 @@ function _getVkPayHash(payload: unknown): string | null {
     return typeof payloadObj?.hash === 'string' ? payloadObj.hash : null;
 }
 
-/** Преобразует одну универсальную кнопку в документированный объект VK. */
+/**
+ * Преобразует одну универсальную кнопку в документированный объект VK.
+ * @param button Универсальная кнопка umbot
+ * @param appContext Контекст приложения для логирования ошибок валидации
+ * @returns Кнопка в формате VK либо `null`, если кнопка не прошла валидацию (пустой label, не-сериализуемый payload)
+ */
 function _getVkButton<TPayload>(
     button: IButtonType<TPayload>,
     appContext?: TVkButtonLogger,
@@ -149,6 +168,8 @@ function _getVkButton<TPayload>(
 /**
  * Получение кнопок в формате ВК
  * @param buttons Кнопки, которые необходимо отобразить
+ * @param appContext Контекст приложения (для логирования ошибок валидации)
+ * @returns Объект клавиатуры VK (one_time + buttons, с группировкой по `options._group`) либо `null`, если валидных кнопок нет
  */
 export function buttonProcessing<TPayload>(
     buttons: IButtonType<TPayload>[],
@@ -157,7 +178,7 @@ export function buttonProcessing<TPayload>(
     const groups: number[] = [];
     const finalButtons: IVkButton[] | IVkButton[][] = [];
     let index = 0;
-    getCorrectButtons(buttons).forEach((button) => {
+    getCorrectButtons(buttons, 10, appContext).forEach((button) => {
         const object = _getVkButton(button, appContext);
         if (!object) {
             return;

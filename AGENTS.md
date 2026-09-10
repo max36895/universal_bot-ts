@@ -90,8 +90,13 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
 8. Available Skills (for umbot contributors)
    The following skills are available via `.agents/skills/`. Use them when the task matches their scope:
     - **`umbot-platform-add`** — add a new platform adapter from scratch (skeleton in `src/plugins/platforms/<Name>/`, registration, tests).
+    - **`umbot-platform-code-update`** — verify adapters/API-classes against current official platform APIs, plan migration (version bump / new feature / rework).
+    - **`umbot-platform-code-audit`** — audit platform adapters for API contract violations (buttons, cards, signatures, limits) with mandatory verification discipline.
     - **`umbot-core-engineer`** — changes in `src/core/` (Bot.ts, AppContext, CommandReg) with backward compatibility checks.
     - **`umbot-add-middleware`** — add middleware in `src/middleware/` (production standards: factory pattern, types, tests, docs).
+    - **`umbot-code-audit`** — full code audit of `src/` + `cli/` (security, performance, concurrency) with Senior Review discipline.
+    - **`umbot-code-review`** — review of a proposed diff/PR (correctness, invariants, regressions, test quality) before merge.
+    - **`umbot-doc-audit`** — documentation audit and refactoring (Markdown + JSDoc), verified against real code.
     - **`umbot-release-prepare`** — run pre-release checklist: build/test/prettier/lint, version bump, CHANGELOG audit, `npm pack` verification.
     - **`umbot-fix-bug`** — workflow for fixing a bug: reproducer test → root cause → minimal fix → regression test.
     - **`umbot-write-tests`** — how to write unit tests and integration tests with `BotTest`, how to stub logger, mock fetch, isolate DB.
@@ -103,7 +108,7 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
     | Marusia  | 1024         | unlimited   | BigImage, ItemsList (до 5), ImageGallery (до 7) | (none)                            |
     | Telegram | 4096         | unlimited   | Photo, MediaGroup                               | `x-telegram-bot-api-secret-token` |
     | VK       | 4096         | unlimited   | Carousel                                        | `secret_key` in body              |
-    | Max      | 4000         | 7x30        | Inline keyboard                                 | `Authorization: token`            |
+    | Max      | 4000         | 7x30        | Inline keyboard                                 | `x-max-bot-api-secret`            |
     | Viber    | 7000         | 6x7         | RichMedia                                       | `x-viber-content-signature`       |
     | SmartApp | 250 (bubble) | -           | ListCard                                        | (none)                            |
 
@@ -123,7 +128,7 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
       `ButtonsGroupColumns` (1–6, default 6) × `ButtonsGroupRows` (1–7, default 7) grid,
       NOT the number of cards. The `webhook` event sent during `set_webhook` must be
       answered with HTTP 200 or the webhook cannot be registered. Text limit 7000.
-    - **MAX** — auth is `Authorization: <token>` (query-param tokens are no longer supported);
+    - **MAX** — auth is `Authorization: <token>` for outgoing API requests (query-param tokens are no longer supported); the incoming webhook is verified by the `x-max-bot-api-secret` header (`secret` adapter option, `signatureName` in `Max/Adapter.ts`). Do not confuse the two mechanisms.
       `Content-Type` is required for requests with a body. Up to 12 attachments per message,
       keyboard up to 30 rows / 7 buttons per row (3 for link/open_app/geo/contact).
       Max 2 callback-ответа в секунду на диалог; отправка в один диалог — не чаще 1 сообщения

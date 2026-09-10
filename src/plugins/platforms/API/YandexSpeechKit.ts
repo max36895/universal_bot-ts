@@ -19,7 +19,7 @@ export interface ITTSResult {
 /**
  * Класс отвечающий за преобразование текста в аудио файл.
  * Преобразование осуществляется через сервис Yandex SpeechKit.
- * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
+ * @see https://cloud.yandex.ru/docs/speechkit/tts/request
  *
  * @example
  * ```ts
@@ -150,7 +150,6 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Текст для озвучивания в кодировке UTF-8
-     * Можно использовать только одно из полей text и ssml
      * Для передачи слов-омографов используйте + перед ударной гласной
      * Например: гот+ов или def+ect
      * Для паузы между словами используйте -
@@ -189,6 +188,7 @@ export class YandexSpeechKit extends YandexRequest {
      * 3.0 - самый быстрый
      * 1.0 (по умолчанию) - средняя скорость
      * 0.1 - самый медленный
+     * При выходе за диапазон 0.1–3.0 значение молча сбрасывается к 1.0
      * Не поддерживается для премиум-голосов (alena, filipp, kirkorov, lera, madusa)
      */
     public speed: number;
@@ -203,7 +203,8 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Частота дискретизации для формата lpcm
      * Поддерживаемые значения:
-     * - 48000 (по умолчанию) - 48 кГц, высокое качество
+     * - 48000 - 48 кГц, высокое качество (значение по умолчанию на стороне API:
+     *   класс не инициализирует поле, 48000 применяет сам API)
      * - 16000 - 16 кГц, среднее качество
      * - 8000 - 8 кГц, низкое качество, подходит для телефонии
      *
@@ -296,6 +297,8 @@ export class YandexSpeechKit extends YandexRequest {
      * - Скорость (speed) не поддерживается для премиум-голосов (alena, filipp, kirkorov, lera, madusa)
      *
      * Важно! после выполнения запроса, не забудьте удалить файл с результатом.
+     * Файл всегда получает расширение .ogg, даже при format = F_LPCM
+     * (содержимое файла — raw PCM).
      *
      * @example
      * ```ts
@@ -309,7 +312,7 @@ export class YandexSpeechKit extends YandexRequest {
      * const oggAudio = await speechKit.getTts('Текст для синтеза');
      * ```
      *
-     * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
+     * @see https://cloud.yandex.ru/docs/speechkit/tts/request
      */
     public async getTts(text: string | null = null): Promise<ITTSResult | null> {
         if (text) {

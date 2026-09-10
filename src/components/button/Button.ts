@@ -3,7 +3,7 @@ import { Text } from '../../utils';
 import { AppContext } from '../../core';
 
 /**
- * Базовый тип для задания placeholder для кнопок
+ * Тип payload-данных кнопки (строка или объект)
  */
 export type TBtnPayload = Record<string, unknown> | string | null;
 
@@ -24,7 +24,7 @@ export interface IButtonType<TButtonPayload = TBtnPayload> {
 
     /**
      * URL для перехода при нажатии на кнопку.
-     * Для кнопок-ссылок обязательный параметр.
+     * Обязателен для кнопок-ссылок (B_LINK); для саджестов может быть null.
      */
     url?: string | null;
 
@@ -67,7 +67,6 @@ function init<TButtonPayload = TBtnPayload>(
         };
         let correctUrl = url;
         if (correctUrl && Text.isUrl(correctUrl)) {
-            // Извлекаем фрагмент, если он есть (RFC 3986: # должен быть в конце)
             const hashIndex = correctUrl.indexOf('#');
             const baseUrl = hashIndex !== -1 ? correctUrl.substring(0, hashIndex) : correctUrl;
             const fragment = hashIndex !== -1 ? correctUrl.substring(hashIndex) : '';
@@ -122,7 +121,7 @@ function init<TButtonPayload = TBtnPayload>(
  * });
  * ```
  *
- * @returns {IButtonType | null} Возвращается объект, если кнопка добавлена, и null в случае, если переданы некорректные настройки для кнопки
+ * @returns {IButtonType | null} Возвращается null, только если title === null (кнопка не создаётся); невалидный URL не отклоняет кнопку — он превращается в `url: null`
  */
 export function getLinkButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,
@@ -147,7 +146,19 @@ export function getLinkButton<TButtonPayload = TBtnPayload>(
  * - utmMedium: тип рекламного канала
  * - utmCampaign: название рекламной кампании
  *
- * @returns {IButtonType | null} Возвращается объект, если кнопка добавлена, и null в случае, если переданы некорректные настройки для кнопки.
+ * @returns {IButtonType | null} Возвращается null, только если title === null (кнопка не создаётся); невалидный URL не отклоняет кнопку — он превращается в `url: null`
+ *
+ * @example
+ * ```ts
+ * // Простая интерактивная кнопка
+ * const button1 = getButton(appContext, 'Выбрать');
+ *
+ * // Кнопка с payload для обработки нажатия
+ * const button2 = getButton(appContext, 'Купить', null, {
+ *   action: 'buy',
+ *   itemId: 123
+ * });
+ * ```
  */
 export function getButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,

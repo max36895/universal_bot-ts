@@ -4,7 +4,9 @@ import { TTelegramChatId } from './interfaces/ITelegramPlatform';
 import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';
 import { T_TELEGRAM } from './constants';
 
-/** Возвращает ID чата, в котором нужно отправить аудио. */
+/**
+ * Возвращает ID чата, в котором нужно отправить аудио.
+ */
 function getChatId(controller: BotController): TTelegramChatId {
     const requestData = getPlatformRequestData<{ chatId?: TTelegramChatId }>(
         controller,
@@ -17,6 +19,7 @@ function getChatId(controller: BotController): TTelegramChatId {
  * Получение токена, необходимого для воспроизведения звуков в Telegram
  * @param controller Контроллер приложения
  * @param path Путь до аудиофайла
+ * @returns file_id отправленного аудио либо `null` при ошибке отправки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
@@ -45,9 +48,11 @@ export async function getSoundInDB(
 }
 
 /**
- * Получение корректного ответа для озвучивания запроса пользователю Telegram
+ * Получение корректного ответа для озвучивания запроса пользователю Telegram:
+ * отправляет аудио (в т.ч. TTS через SpeechKit) в чат и возвращает список токенов.
  * @param soundInfo Информация необходимая для обработки аудио
  * @param controller Контроллер приложения
+ * @returns Массив звуковых токенов (file_id) для подстановки в TTS
  */
 export async function soundProcessing(
     soundInfo: ISoundInfo,

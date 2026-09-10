@@ -7,7 +7,9 @@ import { T_TELEGRAM } from './constants';
 
 const MAX_TELEGRAM_MEDIA_GROUP_ITEMS = 10;
 
-/** Возвращает ID чата, в котором нужно отправить медиа. */
+/**
+ * Возвращает ID чата, в котором нужно отправить медиа.
+ */
 function getChatId(controller: BotController): TTelegramChatId {
     const requestData = getPlatformRequestData<{ chatId?: TTelegramChatId }>(
         controller,
@@ -21,6 +23,7 @@ function getChatId(controller: BotController): TTelegramChatId {
  * @param controller Контроллер приложения
  * @param path Путь до картинки
  * @param caption Заголовок для картинки
+ * @returns file_id отправленного фото либо `null` при ошибке отправки/сохранения
  */
 export async function getImageInDB(
     controller: BotController,
@@ -61,6 +64,10 @@ export async function getImageInDB(
  *
  * Telegram API требует 2–10 элементов: если после фильтрации остался один,
  * он уходит одиночной sendPhoto, и функция возвращает null (в ответе карточки нет).
+ *
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения
+ * @returns Массив медиа-объектов (2–10) либо `null`, если элемент один (ушёл sendPhoto) или картинок нет
  */
 async function getMediaGroup(
     cardInfo: ICardInfo,
@@ -125,9 +132,19 @@ async function getMediaGroup(
 
 /**
  * Получает карточку для отображения в Telegram.
+ * Асинхронный процессор — вызывать с `await` (см. Card.getCards).
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<ITelegramMedia[] | null>} Массив медиа-объектов или null, если нечего отобразить
+ * @returns {Promise<ITelegramMedia[] | null>} Массив медиа-объектов (для sendMediaGroup) либо `null` — одиночное фото отправляется через sendPhoto
+ * @example
+ * ```ts
+ * // Одиночная картинка уходит sendPhoto и возвращает null;
+ * // 2+ картинок — массив для sendMediaGroup. Обязательно await:
+ * const media = await cardProcessing(cardInfo, controller);
+ * if (media) {
+ *     await telegramApi.sendMediaGroup(chatId, media);
+ * }
+ * ```
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,
@@ -160,7 +177,8 @@ export async function cardProcessing(
                 );
             }
         } catch (e) {
-            // Логируем ошибку, но не прерываем цикл
+            // Логируем ошибку загрузки и возвращаем карточку без фото:
+            // медиа-сбой не должен ломать текстовый ответ пользователю
             controller.appContext.logError(
                 `Telegram.cardProcessing(): Произошла ошибка при загрузке изображения для Telegram`,
                 {

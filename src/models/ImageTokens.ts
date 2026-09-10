@@ -59,7 +59,7 @@ export interface IImageModelState extends IModelState {
  * image.platform = T_TELEGRAM;
  * const found = await image.selectOne();
  * if (found.status) {
- *     console.log('Токен для изображения успешно получен, токен:', found.data.imageToken);
+ *     console.log('Токен для изображения успешно получен, токен:', found.data?.imageToken);
  * } else {
  *     // Загрузка изображения в платформу — токен выдаёт API платформы,
  *     // затем он присваивается модели и запись сохраняется в БД
@@ -84,7 +84,9 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Конструктор класса ImageTokens.
-     * Предоставляет унифицированный интерфейс для хранения данных о загруженных изображений.
+     * Предоставляет унифицированный интерфейс для хранения данных о загруженных изображениях.
+     *
+     * @param {AppContext} appContext - Контекст приложения
      */
     public constructor(appContext: AppContext) {
         super(appContext);
@@ -94,7 +96,9 @@ export class ImageTokens extends Model<IImageModelState> {
         this.caption = null;
     }
 
-    /** Первичный ключ таблицы — imageToken. */
+    /**
+     * Первичный ключ таблицы — imageToken.
+     */
     protected getId(): TKey {
         return 'imageToken';
     }

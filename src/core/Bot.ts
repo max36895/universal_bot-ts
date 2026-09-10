@@ -13,7 +13,14 @@ import {
     TPlugin,
 } from './interfaces/IBot';
 
-import { ICommandParam, TSlots, TCommandResolver, IStepParam } from './utils/CommandReg';
+import {
+    ICommandParam,
+    TSlots,
+    TCommandResolver,
+    IStepParam,
+    IEventParam,
+} from './utils/CommandReg';
+import { ALL_EVENT_TYPES, isEventType, type TEventType } from './events';
 import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
 import type { BotController, IPlatformData, IUserData } from '../controller';
 import { AppContext, T_AUTO } from './AppContext';
@@ -90,14 +97,9 @@ export * from './interfaces/IBot';
 const MAX_REQUEST_SIZE = 1024 * 1024 * 2;
 
 /**
- * Максимальная длина пользовательской команды, которая уходит в матчинг
- * команд и регулярные выражения.
- *
- * 7000 — максимум легитимного сообщения среди поддерживаемых платформ
- * (лимит Viber). Платформенные лимиты Алисы (1024) и Telegram (4096)
- * фреймворком не проверяются: напрямую сконфигурированный вебхук без подписи
- * может получить тело до MAX_REQUEST_SIZE, и без обрезки текст любой длины
- * попадал в `.test()` регулярных выражений — множитель для ReDoS.
+ * Максимальная длина пользовательской команды, урезанная до 7000 символов
+ * (лимит Viber — максимум среди поддерживаемых платформ). Защита от ReDoS:
+ * без обрезки текст любой длины попадает в `.test()` регулярных выражений.
  * Бизнес-логика по-прежнему видит полный текст в `originalUserCommand`.
  */
 const MAX_USER_COMMAND_LENGTH = 7000;
@@ -113,10 +115,8 @@ export type MiddlewareFn = (ctx: BotController, next: MiddlewareNext) => void | 
 
 /**
  * Ошибка «запрос платформы не может быть обработан».
- *
- * Отделена от прочих ошибок, чтобы webhook отдавал 400, а не 500: на 5xx
- * Telegram и VK включают повторную доставку и в итоге отключают вебхук,
- * хотя проблема не в сервере, а в самом запросе.
+ * Webhook отвечает на неё 400 вместо 500, чтобы Telegram и VK не крутили
+ * повторную доставку запроса, который в принципе не может быть обработан.
  */
 class BotBadRequestError extends Error {
     constructor(message: string) {
@@ -180,124 +180,6 @@ export type TPlatformResolver = (
     detect?: (uBody: unknown, headers?: Record<string, unknown>) => TAppType | null,
 ) => TAppType | null;
 
-/**
- * Мультиплатформенный фреймворк для разработки голосовых навыков и чат-ботов. Он даёт единую бизнес-логику для всех платформ — но одинаково эффективен, даже если вы работаете только с одной.
- *
- * **`Bot` — главный класс**, управляющий всем жизненным циклом приложения:
- *  - регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.);
- *  - обработкой входящих запросов;
- *  - маршрутизацией команд;
- *  - middleware;
- *  - работой с базой данных;
- *  - логированием
- *  - метриками.
- *
- * Фреймворк построен на **адаптерах** — каждый адаптер отвечает за преобразование
- * специфичного для платформы запроса в унифицированный `BotController`, который
- * содержит всю информацию о пользователе, текст команды, NLU, состояние и методы ответа
- * (кнопки, карточки, TTS). Вы пишете **один код**, а фреймворк доставляет его
- * на все поддерживаемые платформы.
- *
- * ## 📖 КРАТКОЕ РУКОВОДСТВО
- *
- * 1. **Создайте приложение:** `const bot = new Bot();`
- * 2. **Настройте токены:** `bot.setAppConfig({ tokens: { telegram: {token: '...'}} });`
- * 3. **Добавьте логику при необходимости:** `bot.initBotController(MyController);`
- * 4. **Добавьте команды:** `bot.addCommand('start', ['старт'], handler);`
- * 5. **Запустите:** `bot.start();`
- *
- * ## 🎯 Ключевые возможности
- * - ✅ **Поддержка множества платформ** через подключаемые адаптеры (Алиса, Telegram, VK, Маруся и др.)
- * - ✅ **Единая логика** для голосовых навыков и ботов
- * - ✅ **Мощная система команд и интентов** с поддержкой регулярных выражений
- * - ✅ **Управление состоянием диалога** (шаги) и пользовательскими данными
- * - ✅ **Встроенная работа с БД** (MongoDB через плагины)
- * - ✅ **Middleware и плагины** для расширения функциональности
- * - ✅ **Гибкая настройка** (режимы разработки/продакшена, защита от ReDoS, кастомные резолверы команд)
- * - ✅ **Логирование и метрики** для отладки и мониторинга
- *
- * ## 🚀 БЫСТРЫЙ СТАРТ
- * Создание простого Telegram бота
- * ```ts
- * import { Bot } from 'umbot';
- * import { botPlatforms } from 'umbot/plugins';
- *
- * // 1. Создаем бота для Telegram
- * const bot = new Bot();
- *
- * // 2. Настраиваем токен (рекомендуется через .env файл)
- * bot.setAppConfig({
- *   env: 'local'
- * });
- *
- * // 3. Говорим приложению, что нужно поддерживать только платформы для чат-ботов
- * bot.use(botPlatforms);
- *
- * // 4. Добавляем команды
- * bot.addCommand('help', ['помощь', 'справка'], (cmd, controller) => {
- *   controller.text = 'Я могу:\n• Приветствовать\n• Помогать\n• И многое другое!';
- * });
- *
- * // 5. Запускаем сервер
- * bot.start('localhost', 3000);
- *
- * // 6. Настройте webhook в Telegram: https://api.telegram.org/bot{YOUR_TOKEN}/setWebhook?url=https://ваш-домен/webhook
- * ```
- *
- * Создание простого приложения со своим контроллером:
- * ```ts
- * const bot = new Bot();
- * bot.setPlatformParams({
- *   intents: [{
- *     name: 'greeting',
- *     slots: ['привет', 'здравствуй']
- *   }]
- * });
- *
- * class MyController extends BotController {
- *   public action(intentName: string | null): void {
- *     if (intentName === 'greeting') {
- *       this.text = 'Привет! Я ваш помощник 🤖';
- *       this.buttons
- *         .addBtn('Помощь')
- *         .addBtn('Настройки');
- *     }
- *   }
- * }
- *
- * bot.initBotController(MyController);
- * ```
- * Использование с базой данных:
- * ```ts
- * import { Bot } from 'umbot'
- * import { MongoAdapter } from 'umbot/plugins'
- * const bot = new Bot();
- * bot.use(new MongoAdapter({
- *     host: 'localhost',
- *     database: 'bot_db',
- *     user: 'user',
- *     pass: 'password'
- *   }));
- * ```
- * Параметры типов позволяют написать типобезопасный бот без `as any`:
- * ```ts
- * import { Bot, IUserData, IPlatformData } from 'umbot';
- *
- * interface MyUserData extends IUserData { name?: string; age?: number }
- * interface MyPlatformState extends IPlatformData { cartCount?: number }
- *
- * const bot = new Bot<MyUserData, MyPlatformState>();
- * bot.addCommand('view', [], (_, ctx) => {
- *     ctx.userData.name = 'Bob';        // ✅ типизировано
- *     ctx.state!.cartCount = 5;          // ✅ типизировано
- *     ctx.userData.foo = 1;              // ❌ TS error
- * });
- * ```
- *
- * @template TUserData - Тип пользовательских данных, по умолчанию {@link IUserData}.
- * @template TPlatformState - Тип данных в локальном хранилище платформы, по умолчанию {@link IPlatformData}.
- * @see BotController
- */
 /**
  * Описание одного поля формы в {@link Bot.addForm}.
  *
@@ -386,14 +268,138 @@ export interface IAddFormOptions<TBotController extends BotController = BotContr
     cancelCommands?: string[];
 }
 
+/**
+ * Мультиплатформенный фреймворк для разработки голосовых навыков и чат-ботов. Он даёт единую бизнес-логику для всех платформ и одинаково эффективен, даже если вы работаете только с одной.
+ *
+ * **`Bot` — главный класс**, управляющий всем жизненным циклом приложения:
+ *  - регистрацией платформ (Алиса, Telegram, VK, Маруся, Max и др.);
+ *  - обработкой входящих запросов;
+ *  - маршрутизацией команд;
+ *  - middleware;
+ *  - работой с базой данных;
+ *  - логированием
+ *  - метриками.
+ *
+ * Фреймворк построен на **адаптерах** — каждый адаптер отвечает за преобразование
+ * специфичного для платформы запроса в унифицированный `BotController`, который
+ * содержит всю информацию о пользователе, текст команды, NLU, состояние и методы ответа
+ * (кнопки, карточки, TTS). Вы пишете **один код**, а фреймворк доставляет его
+ * на все поддерживаемые платформы.
+ *
+ * ## 📖 КРАТКОЕ РУКОВОДСТВО
+ *
+ * 1. **Создайте приложение:** `const bot = new Bot();`
+ * 2. **Настройте токены:** `bot.setAppConfig({ tokens: { telegram: {token: '...'}} });`
+ * 3. **Добавьте логику при необходимости:** `bot.initBotController(MyController);`
+ * 4. **Добавьте команды:** `bot.addCommand('start', ['старт'], handler);`
+ * 5. **Запустите:** `bot.start();`
+ *
+ * ## 🎯 Ключевые возможности
+ * - ✅ **Поддержка множества платформ** через подключаемые адаптеры (Алиса, Telegram, VK, Маруся и др.)
+ * - ✅ **Единая логика** для голосовых навыков и ботов
+ * - ✅ **Мощная система команд и интентов** с поддержкой регулярных выражений
+ * - ✅ **Управление состоянием диалога** (шаги) и пользовательскими данными
+ * - ✅ **Встроенная работа с БД** (MongoDB через плагины)
+ * - ✅ **Middleware и плагины** для расширения функциональности
+ * - ✅ **Гибкая настройка** (режимы разработки/продакшена, защита от ReDoS, кастомные резолверы команд)
+ * - ✅ **Логирование и метрики** для отладки и мониторинга
+ *
+ * ## 🚀 БЫСТРЫЙ СТАРТ
+ * Создание простого Telegram бота
+ * ```ts
+ * import { Bot } from 'umbot';
+ * import { botPlatforms } from 'umbot/plugins';
+ *
+ * // 1. Создаем бота для Telegram
+ * const bot = new Bot();
+ *
+ * // 2. Настраиваем токен (рекомендуется через .env файл)
+ * bot.setAppConfig({
+ *   env: './.env'
+ * });
+ *
+ * // 3. Говорим приложению, что нужно поддерживать только платформы для чат-ботов
+ * bot.use(botPlatforms);
+ *
+ * // 4. Добавляем команды
+ * bot.addCommand('help', ['помощь', 'справка'], (cmd, controller) => {
+ *   controller.text = 'Я могу:\n• Приветствовать\n• Помогать\n• И многое другое!';
+ * });
+ *
+ * // 5. Запускаем сервер
+ * bot.start('localhost', 3000);
+ *
+ * // 6. Настройте webhook в Telegram: https://api.telegram.org/bot{YOUR_TOKEN}/setWebhook?url=https://ваш-домен/webhook
+ * ```
+ *
+ * Создание простого приложения со своим контроллером:
+ * ```ts
+ * const bot = new Bot();
+ * bot.setPlatformParams({
+ *   intents: [{
+ *     name: 'greeting',
+ *     slots: ['привет', 'здравствуй']
+ *   }]
+ * });
+ *
+ * class MyController extends BotController {
+ *   public action(intentName: string | null): void {
+ *     if (intentName === 'greeting') {
+ *       this.text = 'Привет! Я ваш помощник 🤖';
+ *       this.buttons
+ *         .addBtn('Помощь')
+ *         .addBtn('Настройки');
+ *     }
+ *   }
+ * }
+ *
+ * bot.initBotController(MyController);
+ * ```
+ * Использование с базой данных:
+ * ```ts
+ * import { Bot } from 'umbot'
+ * import { MongoAdapter } from 'umbot/plugins'
+ * const bot = new Bot();
+ * bot.use(new MongoAdapter({
+ *     host: 'localhost',
+ *     database: 'bot_db',
+ *     user: 'user',
+ *     pass: 'password'
+ *   }));
+ * ```
+ * Параметры типов позволяют написать типобезопасный бот без `as any`:
+ * ```ts
+ * import { Bot, IUserData, IPlatformData } from 'umbot';
+ *
+ * interface MyUserData extends IUserData { name?: string; age?: number }
+ * interface MyPlatformState extends IPlatformData { cartCount?: number }
+ *
+ * const bot = new Bot<MyUserData, MyPlatformState>();
+ * bot.addCommand('view', [], (_, ctx) => {
+ *     ctx.userData.name = 'Bob';        // ✅ типизировано
+ *     ctx.state!.cartCount = 5;          // ✅ типизировано
+ *     ctx.userData.foo = 1;             // ✅ допустимо: у IUserData есть индексная сигнатура [key: string]: unknown
+ *     ctx.userData.count += 1;           // ❌ TS error: unknown нельзя использовать в арифметике без приведения типа
+ * });
+ * ```
+ *
+ * @template TUserData - Тип пользовательских данных, по умолчанию {@link IUserData}.
+ * @template TPlatformState - Тип данных в локальном хранилище платформы, по умолчанию {@link IPlatformData}.
+ * @see BotController
+ */
+
 export class Bot<
     TUserData extends IUserData = IUserData,
     TPlatformState extends IPlatformData = IPlatformData,
 > {
-    /** Экземпляр HTTP-сервера */
+    /**
+     * Экземпляр HTTP-сервера
+     */
     #serverInst: Server | undefined;
 
-    /** Обработчики сигналов для удаления при повторном start() */
+    /**
+     * Обработчики сигналов для удаления при повторном start()
+     */
     #sigtermHandler: (() => void) | null = null;
     #sigintHandler: (() => void) | null = null;
 
@@ -424,7 +430,7 @@ export class Bot<
      * Тип платформы по умолчанию
      */
     #defaultAppType: TAppType | 'auto' = 'auto';
-    // Чтобы не дублировать повторное подключение к базе.
+    // Чтобы не повторять подключение к базе.
     readonly #appConnectStatus: IAppConnectStatus = {
         isConnecting: false,
     };
@@ -434,11 +440,9 @@ export class Bot<
 
     /**
      * Платформы, для которых уже выведено предупреждение о неподдерживаемом
-     * локальном хранилище. Проверка конфигурации (isLocalStorage включён, а
-     * платформа его не поддерживает и DB-адаптер не подключён) — диагностическая:
-     * она выполняется в горячем пути каждого запроса, поэтому предупреждение
-     * депонируется — один раз на платформу за жизнь процесса, а не на каждый
-     * запрос (сборка строки и маскирование секретов стоили ~4 мкс/запрос).
+     * локальном хранилище. Проверка выполняется в горячем пути каждого
+     * запроса, поэтому предупреждение дедуплицируется — один раз на платформу
+     * за жизнь процесса.
      */
     readonly #warnedNoLocalStoragePlatforms = new Set<TAppType>();
 
@@ -454,14 +458,32 @@ export class Bot<
         if (botController) {
             return botController;
         }
-        // Ленивая загрузка дефолтного контроллера разрывает runtime-цикл
-        // core/Bot → controller → core: статический импорт BaseBotController
-        // заставил бы Bot.js требовать модуль controller в момент загрузки,
-        // когда баррель core ещё не доинициализирован. К моменту вызова
-        // конструктора все модули уже загружены, поэтому require безопасен
-        // (тот же приём, что и с опциональным re2 в utils/standard/RegExp.ts).
+        // require вместо статического импорта: BaseBotController живёт в
+        // controller, который импортирует core обратно — статический импорт
+        // дал бы цикл загрузки модулей.
         const { BaseBotController } = require('../controller') as typeof import('../controller');
         return BaseBotController<TUserData, TPlatformState>;
+    }
+
+    /**
+     * Подключает API-фасад платформы к контроллеру (`controller.api`).
+     *
+     * Фасад знает сам адаптер — метод `createApi(controller)` контракта
+     * `IPlatformAdapter`: ядро остаётся платформо-независимым и не резолвит
+     * модули плагинов. Голосовые платформы и адаптеры без переопределённого
+     * `createApi` оставляют `controller.api === null` (базовая реализация
+     * возвращает null). Сам фасад создаётся при первом обращении к `ctx.api` —
+     * на запросах без API-вызовов объект не аллоцируется.
+     */
+    #initApiFacade(
+        botController: BotController<TUserData, TPlatformState>,
+        platformClass: IPlatformAdapter,
+    ): void {
+        if (platformClass.createApi) {
+            // Обёртка нужна, чтобы не потерять this адаптера при передаче
+            // метода как фабрики в контроллер.
+            botController.setApiFactory((controller) => platformClass.createApi!(controller));
+        }
     }
 
     /**
@@ -469,8 +491,6 @@ export class Bot<
      *
      * @param {TAppType} [type] - Тип платформы (по умолчанию автоопределение)
      * @param {TBotControllerClass} [botController] - Контроллер с логикой
-     *
-     * @throws {Error} Если не удалось инициализировать тип платформы
      *
      * @example
      * ```ts
@@ -499,6 +519,12 @@ export class Bot<
     /**
      * Явно устанавливает тип платформы для всего приложения. Стоит использовать в крайнем случае
      * @param {TAppType | 'auto'} appType - Тип платформы или 'auto' для автоматического определения
+     *
+     * @example
+     * ```ts
+     * const bot = new Bot();
+     * bot.appType = 'alisa'; // все запросы обрабатываются адаптером Алисы
+     * ```
      */
     public set appType(appType: TAppType | 'auto') {
         this.#defaultAppType = appType;
@@ -507,6 +533,12 @@ export class Bot<
     /**
      * Возвращает установленный тип приложения.
      * @returns {string} Текущий тип платформы
+     *
+     * @example
+     * ```ts
+     * const bot = new Bot('alisa');
+     * bot.appType; // -> 'alisa'
+     * ```
      */
     public get appType(): string {
         return this.#defaultAppType;
@@ -519,6 +551,11 @@ export class Bot<
      * При значении group, все регулярные выражения будут добавляться в группу. Перед использованием данного значения, перепроверьте производительность, так как при группировке определенных регулярных выражений, производительность может быть ниже.
      * @param {TCommandGroupMode} mode - Определяет режим работы с регулярными выражениями.
      * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * bot.setCommandGroupMode('no-group'); // отключить группировку регулярных выражений
+     * ```
      */
     public setCommandGroupMode(mode: TCommandGroupMode): this {
         this.#appContext.command.setCommandGroupMode(mode);
@@ -589,6 +626,11 @@ export class Bot<
      * Позволяет установить свою реализацию для логирования
      * @param {ILogger | null} logger - Экземпляр логгера или null для отключения
      * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * bot.setLogger({ error: (msg, meta) => console.error(msg, meta) });
+     * ```
      */
     public setLogger(logger: ILogger | null): this {
         this.#appContext.setLogger(logger);
@@ -610,10 +652,11 @@ export class Bot<
      *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
      *   - При `isPattern = true` строковые слоты компилируются в одно объединённое
      *     регулярное выражение с флагом `ium`.
-     *   - При наличии хотя бы одного `RegExp` в `slots` каждый элемент
-     *     обрабатывается согласно своему типу, а `isPattern` для строк игнорируется.
+     *   - Если ВСЕ элементы `slots` — готовые `RegExp`, `isPattern` для строк
+     *     не применяется (строк нет): каждый элемент обрабатывается по своему типу.
      * @param {ICommandParam['cb']} cb - Обработчик команды. Принимает:
-     *   - `text` — исходный текст от пользователя;
+     *   - `text` — нормализованный текст пользователя (`userCommand`: нижний регистр, обрезка;
+     *     исходный текст доступен в `controller.originalUserCommand`);
      *   - `controller` — экземпляр `BotController` для формирования ответа (кнопки, текст, шаги, данные и т.д.);
      *
      *   Поддерживает `async`.
@@ -719,6 +762,11 @@ export class Bot<
      * Удаляет зарегистрированную команду по имени
      * @param commandName - Имя команды
      * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * bot.removeCommand('greeting'); // команда больше не срабатывает
+     * ```
      */
     public removeCommand(commandName: string): this {
         this.#appContext.command.removeCommand(commandName);
@@ -735,6 +783,181 @@ export class Bot<
      */
     public clearCommands(): this {
         this.#appContext.command.clearCommands();
+        return this;
+    }
+
+    /**
+     * Регистрирует обработчик события платформы (фото, голосовое, нажатие кнопки и др.).
+     *
+     * Это декларативный роутинг по типу апдейта — аналог `bot.on(':photo')` в
+     * Telegram-фреймворках, но для всех подключённых платформ сразу. Адаптер
+     * определяет тип события и записывает его в `controller.eventType`; хендлеры
+     * вызываются **до** поиска шагов и команд.
+     *
+     * @remarks
+     * **Какие события бывают** (см. `TEventType`): `'message'`, `'photo'`, `'voice'`,
+     * `'video'`, `'document'`, `'location'`, `'contact'`, `'sticker'`, `'callback'`,
+     * `'inline'`, `'message_edited'`, `'channel_post'`, `'start'`, `'subscribed'`,
+     * `'unsubscribed'`, `'auth'`, `'rating'`.
+     *
+     * **Платформа сама определяет, какие события возможны**: у Алисы нет фото,
+     * у VK нет inline-режима. Хендлер просто не вызовется там, где событие
+     * физически невозможно — это корректное поведение для мультиплатформенного бота.
+     *
+     * **Событие `'message'`** — обычный текстовый ввод. Хендлер на него перехватывает
+     * все текстовые запросы; возвращайте `false`, чтобы передать запрос обычному
+     * конвейеру (шаги → команды → интенты → fallback).
+     *
+     * @param eventType Универсальный тип события
+     * @param cb Обработчик. Получает `BotController`. Может:
+     *   - заполнить `ctx.text`/`ctx.buttons` — обработка завершится (событие перехвачено);
+     *   - вернуть строку — она станет текстом ответа;
+     *   - вернуть `false` — «событие не моё», конвейер продолжится штатно;
+     *   - быть `async` — фреймворк дожидается результата.
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * // Фото от пользователя — без ручного разбора requestObject
+     * bot.addEvent('photo', (ctx) => {
+     *     ctx.text = 'Отличное фото!';
+     * });
+     *
+     * // Нажатие inline-кнопки (payload в ctx.payload)
+     * bot.addEvent('callback', (ctx) => {
+     *     ctx.text = `Вы нажали: ${String(ctx.payload)}`;
+     * });
+     *
+     * // Групповой «фильтр»: перехватываем сообщение, но отдаём его командам
+     * bot.addEvent('message', (ctx) => {
+     *     if (ctx.userEvents?.auth?.status) return false; // идём в обычный конвейер
+     *     ctx.text = 'Перехвачено!';
+     * });
+     * ```
+     */
+    public addEvent<TBotController extends BotController = BotController>(
+        eventType: TEventType,
+        cb: IEventParam<TBotController>['cb'],
+    ): this {
+        // Валидация имени события и поддержки подключёнными адаптерами.
+        // Знание живёт у адаптеров (supportedEvents), а не в ядре: кастомная
+        // платформа, унаследованная от BasePlatform, участвует в проверке
+        // автоматически. Регистрация до подключения адаптеров валидна —
+        // предупреждение выводится только когда ни один адаптер не поддерживает
+        // событие; после подключения нужной платформы хендлер заработает.
+        if (!isEventType(eventType)) {
+            this.#appContext.logWarn(
+                `Bot:addEvent(): неизвестное событие "${eventType}". Хендлер зарегистрирован, ` +
+                    `но ни один адаптер его не выставит. Допустимые значения: ${ALL_EVENT_TYPES.join(', ')}.`,
+            );
+        } else if (!this.#isEventSupported(eventType)) {
+            this.#appContext.logWarn(
+                `Bot:addEvent(): ни один подключённый адаптер не выставляет событие "${eventType}". ` +
+                    `Хендлер зарегистрирован и сработает после подключения соответствующей платформы.`,
+            );
+        }
+        this.#appContext.command.addEvent(eventType, cb);
+        return this;
+    }
+
+    /**
+     * Проверяет, поддерживает ли событие хотя бы один подключённый адаптер.
+     *
+     * Отсутствие поля `supportedEvents` (прямая реализация `IPlatformAdapter`
+     * вместо наследования `BasePlatform`) приравнивается к `['message']` —
+     * как задокументировано в интерфейсе: текстовый ввод возможен на любой
+     * платформе.
+     *
+     * @param eventType Универсальный тип события
+     * @returns true, если какой-то подключённый адаптер объявил событие в supportedEvents
+     */
+    #isEventSupported(eventType: TEventType): boolean {
+        const platforms = this.#appContext.platforms;
+        for (const name in platforms) {
+            const platform = platforms[name];
+            const supported = platform?.supportedEvents ?? ['message'];
+            if (supported.includes(eventType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Удаляет все обработчики указанного события.
+     *
+     * @param eventType Тип события
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * bot.removeEvent('photo'); // хендлеры фото больше не вызываются
+     * ```
+     */
+    public removeEvent(eventType: TEventType): this {
+        this.#appContext.command.removeEvent(eventType);
+        return this;
+    }
+
+    /**
+     * Удаляет **все** зарегистрированные событийные обработчики.
+     *
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * bot.clearEvents(); // сбросить все событийные хендлеры
+     * ```
+     */
+    public clearEvents(): this {
+        this.#appContext.command.clearEvents();
+        return this;
+    }
+
+    /**
+     * Регистрирует обработчик нажатия кнопки по её payload — аналог `bot.action()`
+     * в популярных фреймворках.
+     *
+     * Работает поверх обычных команд: `addAction('buy', ...)` эквивалентен
+     * `addCommand('buy', ['buy'], ...)`, но сигналит читателю кода, что триггер —
+     * нажатие кнопки, а не текст. Payload кнопки задаётся третьим аргументом
+     * `buttons.addBtn('Купить', '', 'buy')` или объектом `{ command: 'buy' }`.
+     *
+     * @remarks
+     * Адаптеры Telegram, VK и MAX нормализуют payload callback-кнопок: если
+     * payload — строка `'buy'` или JSON `{"command":"buy"}`, в `userCommand`
+     * попадает `buy`, и команда срабатывает как обычная. Для платформ без
+     * callback-кнопок (Алиса, Маруся) хендлер не вызовется — кнопки там
+     * отправляют текст, который матчится штатным слотом.
+     *
+     * @param actionName Имя действия (должно совпадать с payload кнопки)
+     * @param cb Обработчик. Получает текст нажатой кнопки и `BotController`.
+     *   Поддерживает `async` и возврат строки-ответа, как `addCommand`.
+     * @returns {this} Текущий экземпляр Bot для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * bot.addCommand('catalog', ['каталог'], (_, ctx) => {
+     *     ctx.text = 'Выберите товар:';
+     *     ctx.buttons.addBtn('iPhone', '', 'buy').addBtn('MacBook', '', 'buy');
+     * });
+     *
+     * // Сработает при нажатии кнопки с payload 'buy' (Telegram/VK/MAX)
+     * bot.addAction('buy', (_, ctx) => {
+     *     ctx.text = 'Оформляем заказ...';
+     * });
+     * ```
+     */
+    public addAction<TBotController extends BotController = BotController>(
+        actionName: string,
+        cb: ICommandParam<TBotController>['cb'],
+    ): this {
+        this.#appContext.command.addCommand(
+            actionName,
+            [actionName],
+            cb as ICommandParam['cb'],
+            false,
+        );
         return this;
     }
 
@@ -802,7 +1025,7 @@ export class Bot<
      * Регистрирует многошаговую форму (опросник) с автоматической последовательностью шагов.
      *
      * Под капотом создаётся цепочка `addStep` — по одному на каждое поле. Состояние формы
-     * (частичные ответы) сохраняется в `ctx.userData[<formName>]`.
+     * (частичные ответы) сохраняется в `ctx.userData.__formdata_<formName>`.
      *
      * Чтобы запустить форму из команды, вызовите `ctx.thisIntentName = '__form_<formName>_0'` —
      * тогда следующий ответ пользователя пойдёт в обработчик первого поля.
@@ -816,8 +1039,9 @@ export class Bot<
      * они будут перезаписаны или удалены при `removeForm`.
      *
      * @param formName — Уникальное имя формы. Используется как префикс для шагов
-     *   и как ключ в `userData`. Должно совпадать с регуляркой `[a-zA-Z_$][\w$]*` или
-     *   содержать только `.` (для dotted-имён).
+     *   и для ключа `__formdata_<formName>` в `userData`. Рекомендуется формат
+     *   идентификатора `[a-zA-Z_$][\w$]*` (с точками для dotted-имён) — генератор
+     *   шагов использует это имя в названиях `__form_*` (валидации в коде нет).
      * @param options — Настройки формы: поля, `onComplete`, `cancelText` и т.п.
      * @returns Текущий экземпляр `Bot` (для цепочки).
      *
@@ -1036,7 +1260,9 @@ export class Bot<
      * Устанавливает режим работы приложения
      *
      * @param {'dev' | 'prod' | 'strict_prod'} appMode - Режим работы:
-     * - 'dev': подробные логи, отладочная информация, отключена проверка ReDoS
+     * - 'dev': подробные логи, отладочная информация; ReDoS-проверка выполняется
+     *   всегда — в dev/prod опасные выражения логируются (error без re2 / warn с re2),
+     *   но не отклоняются
      * - 'prod': минимальные логи, производительность, НО небезопасные RegExp всё равно регистрируются
      * - 'strict_prod': строгая проверка безопасности — любая RegExp с потенциальным ReDoS отклоняется с ошибкой
      *
@@ -1279,7 +1505,7 @@ export class Bot<
 
     /**
      * Устанавливает контент запроса.
-     * Используется для передачи данных от пользователя в платформу.
+     * Задаёт входящие данные запроса, которые обработает {@link run}.
      * Не рекомендуется использовать напрямую, использовать только в крайнем случае, либо для тестов
      *
      * @param {TBotContent} content - Контент запроса
@@ -1431,13 +1657,14 @@ export class Bot<
      * Подготовка storage-состояния запроса: localStorage платформы или БД.
      *
      * Включает диагностику конфигурации (isLocalStorage без поддержки
-     * платформы) с депонированным предупреждением и начальную загрузку
+     * платформы) с дедуплицированным предупреждением (выводится один раз
+     * на платформу) и начальную загрузку
      * userData. Вынесено из {@link #runApp} для читаемости горячего метода.
      *
      * @param botController Контроллер запроса
      * @param platformClass Адаптер платформы
      * @param userData Модель пользователя (если подключён DB-адаптер)
-     * @param appType Тип платформы (для депозита предупреждений)
+     * @param appType Тип платформы (для дедупликации предупреждений)
      * @returns Флаг локального хранилища и признак нового пользователя
      */
     async #initRequestState(
@@ -1457,10 +1684,8 @@ export class Bot<
             !botController.platformOptions.usedLocalStorage &&
             !this.#appContext.database.adapter
         ) {
-            // Предупреждение о неверной конфигурации достаточно вывести один раз
-            // на платформу: условие зависит только от конфигурации, а не от запроса.
-            // Раньше warn уходил с каждым запросом и тащил за собой конвейер
-            // маскирования секретов (~4 мкс на запрос на чат-платформах).
+            // Предупреждение зависит только от конфигурации, а не от запроса —
+            // достаточно вывести его один раз на платформу.
             if (!this.#warnedNoLocalStoragePlatforms.has(appType)) {
                 this.#warnedNoLocalStoragePlatforms.add(appType);
                 this.#appContext.logWarn(
@@ -1489,7 +1714,7 @@ export class Bot<
     /**
      * Запуск логики приложения
      * @param botController - Контроллер с бизнес-логикой приложения
-     * @param platformClass - Класс платформенного адаптера, который будет подготавливать корректный ответ в зависимости от платформы
+     * @param platformClass - Экземпляр адаптера платформы, который будет подготавливать корректный ответ в зависимости от платформы
      * @param appType - Тип приложения
      */
     async #runApp(
@@ -1533,8 +1758,6 @@ export class Bot<
         let content: string | object | null;
         try {
             if (shouldProceed) {
-                // Инлайн бывшего #getAppContent: отдельный async-метод создавал
-                // лишний промис-хоп на каждом запросе, а его тело — три шага.
                 this.#setOldIntentName(botController);
 
                 const res = botController.run();
@@ -1542,16 +1765,15 @@ export class Bot<
                     await res;
                 }
 
-                // isVoice читаем с уже полученного адаптера: platforms[appType] —
-                // лишний lookup по ключу в горячем пути.
+                // isVoice читаем с уже полученного адаптера, а не через
+                // platforms[appType] — так нет лишнего lookup'а.
                 if (botController.tts === null && platformClass.isVoice) {
                     botController.tts = botController.text;
                 }
             }
-            // Ответ собирается всегда: и после бизнес-логики, и когда middleware
-            // прервал обработку (next() не вызван) — getContent() адаптера отправит
-            // выставленный middleware текст (например, deniedText) и вернёт
-            // валидный для платформы ответ, а не сырую строку.
+            // Ответ собирается всегда, даже если middleware прервал обработку:
+            // getContent() адаптера оформит выставленный middleware текст
+            // в валидный для платформы ответ.
             content = await this.#getPlatformContent(botController, platformClass);
         } finally {
             await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
@@ -1923,7 +2145,7 @@ export class Bot<
      * @param {string | object | null} [content] - Входные данные для обработки (например, текст сообщения или объект запроса).
      * @param {TBotAuth} [auth] - Авторизационный токен
      * @param {string} [clientIp] - IP-адрес клиента. Заполняется автоматически при обработке
-     * запроса через {@link webhookHandle} или {@link webhookEvent} и доступен middleware
+     * запроса через {@link webhookHandle}; в {@link webhookEvent} передаётся явно параметром. Доступен middleware
      * (например, `ipFilter`) через `controller.platformOptions.clientIp`.
      * @returns {Promise<TRunResult>} Результат обработки запроса
      * @throws {Error} Если не удаётся определить платформу или отсутствуют данные для обработки.
@@ -1967,6 +2189,10 @@ export class Bot<
             if (clientIp) {
                 botController.platformOptions.clientIp = clientIp;
             }
+            // API-фасад платформы (controller.api): фабрику отдаёт сам адаптер
+            // через контракт createApi() — ядро не знает о модулях платформ.
+            // На голосовых платформах и адаптерах без createApi фасад — null.
+            this.#initApiFacade(botController, platformClass);
 
             platformClass.updateTimeStart(botController);
             let res = platformClass.setQueryData(correctContent, botController);
@@ -2004,11 +2230,8 @@ export class Bot<
                 throw new BotBadRequestError(msg);
             }
         }
-        // Платформы всегда присылают JSON-объект. Если в теле после разбора оказался
-        // скаляр или массив — запрос некорректен: раньше он падал с 500 внутри
-        // пайплайна, а на 5xx платформы включают ретраи и отключают вебхук.
-        // Пустое содержимое оставляем для проверки в run(): там сообщение
-        // дополняется именем платформы.
+        // Платформы присылают JSON-объект; скаляр или массив — некорректный
+        // запрос, ответ на него — 400. Пустое содержимое проверяется в run().
         if (parsed && (typeof parsed !== 'object' || Array.isArray(parsed))) {
             const msg = 'Тело запроса не является JSON-объектом. Убедитесь, что данные корректны.';
             this.#appContext.logError(msg);
@@ -2090,9 +2313,10 @@ export class Bot<
      * @example
      * ```ts
      * // Использование с Express
+     * // Важно: НЕ подключайте express.json() перед обработчиком —
+     * // webhookHandle сам читает тело запроса, а парсер съест стрим.
      * import express from 'express';
      * const app = express();
-     * app.use(express.json());
      *
      * const bot = new Bot();
      *
@@ -2165,9 +2389,8 @@ export class Bot<
             const platformAdapter = appType ? this.#appContext.platforms[appType] : undefined;
             if (appType && platformAdapter) {
                 if (!platformAdapter.isCorrectQuery(data, req.headers)) {
-                    // Логируем ТОЛЬКО мета-информацию, не весь req/res.
-                    // IncomingMessage содержит сырые sockets, headers с cookies/etc —
-                    // сериализация создаёт огромные логи и теневую утечку данных.
+                    // В лог уходит только мета-информация: сериализация всего
+                    // req/res тащила бы в логи сырые sockets и заголовки с cookies.
                     this.#appContext.logError(
                         `Bot:webhookHandle(): Для платформы "${appType}", пришел запрос с неверным токеном. Дальнейшая обработка запроса остановлена.`,
                         {
@@ -2344,12 +2567,12 @@ export class Bot<
      * bot.start('0.0.0.0', 8080);
      *
      * // Интеграция с Express (вместо встроенного сервера)
+     * // webhookHandle сам читает тело запроса — не подключайте express.json().
      * import express from 'express';
      * import { Bot } from 'umbot';
      *
      * const bot = new Bot();
      * const app = express();
-     * app.use(express.json());
      * app.post('/webhook', (req, res) => bot.webhookHandle(req, res));
      *
      * app.listen(3000, () => {
@@ -2423,16 +2646,14 @@ export class Bot<
     }
 
     /**
-     * Вызывается при завершении приложения через комбинацию клавиш
-     * @private
-     */
-    /**
      * Предупреждает о небезопасных настройках вебхука при старте сервера.
      *
      * Проверяет и сообщает (logWarn, не блокируя запуск):
-     * 1. Режим `dev` — проверка ReDoS у команд отключена: небезопасная
-     *    регулярка регистрируется и работает, а входной текст контролирует
-     *    пользователь бота. В продакшене используйте `setAppMode('strict_prod')`.
+     * 1. Режим `dev` — проверка регулярных выражений на ReDoS выполняется всегда;
+     *    в dev/prod опасные выражения только логируются (error без re2 / warn с re2),
+     *    но не отклоняются, а входной текст контролирует пользователь бота.
+     *    В продакшене используйте `setAppMode('strict_prod')`, где опасные
+     *    выражения отклоняются.
      * 2. Платформы с возможностью подписи, у которых секрет вебхука не задан
      *    (Telegram/VK/MAX): любой, кто знает URL вебхука, может слать
      *    произвольные запросы от имени платформы.
@@ -2446,8 +2667,10 @@ export class Bot<
     #warnOnInsecureStart(hostname: string): void {
         if (this.#appContext.appMode === 'dev') {
             this.#appContext.logWarn(
-                'Bot:start(): Приложение запущено в режиме dev — проверка регулярных ' +
-                    'выражений на ReDoS отключена. Для продакшена вызовите setAppMode("strict_prod").',
+                'Bot:start(): Приложение запущено в режиме dev. Проверка регулярных выражений ' +
+                    'на ReDoS выполняется, но опасные выражения только логируются (без отклонения), ' +
+                    'а подробные логи и отладочная информация доступны всем, кто знает URL вебхука. ' +
+                    'Для продакшена вызовите setAppMode("strict_prod") — там опасные выражения отклоняются.',
             );
         }
         const insecurePlatforms: string[] = [];
@@ -2598,8 +2821,8 @@ export class Bot<
         if (this.#serverInst) {
             const server = this.#serverInst;
             this.#serverInst = undefined;
-            // Дожидаемся завершения активных запросов: без await процесс мог
-            // завершиться раньше, чем сервер отпустит сокеты, и клиент получал обрыв.
+            // Дожидаемся завершения активных запросов — иначе процесс может
+            // завершиться до того, как сервер отпустит сокеты.
             await new Promise<void>((resolve) => {
                 server.close(() => resolve());
             });
@@ -2627,7 +2850,7 @@ export class Bot<
      * @param userId Ид пользователя, которому нужно отправить сообщение
      * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
      * @param platform Платформа, на которую необходимо отправить запрос
-     * @returns {Promise<TContent | boolean>} Результат отправки (формат зависит от адаптера платформы)
+     * @returns {Promise<unknown>} Результат отправки (формат зависит от адаптера платформы)
      * или false, если платформа не зарегистрирована/не поддерживает проактивную отправку
      *
      * @example

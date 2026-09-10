@@ -2,7 +2,12 @@ const REG_INTERVAL_QUANTIFIED = /}\s*[+*{?]/;
 const REG_PIPE = /\([^)]*\|[^)]*\)/;
 const REG_EV1 = /\([^)]*(\w)\1+[^)]*\|/;
 const REG_EV2 = /\([^)]*[+*{][^)]*\|/;
-const REG_REPEAT = /\([^)]*[+*{][^)]*\)\s*\{/;
+// Повтор квантифицированной группы интервалом: (a+){10,100}. Внутренний
+// квантификатор должен быть НЕОГРАНИЧЕННЫМ (+, *, {n,}): у ограниченных
+// интервалов (\d{1,3}\.){3} (IP-адрес) длина каждого повтора фиксирована
+// и перебора разбиений не возникает — их блокировать нельзя.
+// {n,} без верхней границы распознаём по «,}» перед закрывающей скобкой.
+const REG_REPEAT = /\([^)]*[+*][^)]*\)\s*\{|\([^)]*,\}[^)]*\)\s*\{/;
 
 /**
  * Атом регулярного выражения для анализа пересечений.
@@ -16,13 +21,19 @@ const REG_REPEAT = /\([^)]*[+*{][^)]*\)\s*\{/;
 type TPatternAtom =
     { t: 'neg' } | { t: 'class'; ranges: [number, number][] } | { t: 'group'; body: string };
 
-/** Результат разбора атома: сам атом, позиция следующего символа и признаки. */
+/**
+ * Результат разбора атома: сам атом, позиция следующего символа и признаки.
+ */
 type TParsedAtom = {
     atom: TPatternAtom;
     next: number;
-    /** Тело группы `(...)`: для рекурсивного анализа лестниц внутри. */
+    /**
+     * Тело группы `(...)`: для рекурсивного анализа лестниц внутри.
+     */
     innerBody?: string;
-    /** Backreference `\1`–`\9`: повтор группы амбивалентной длины. */
+    /**
+     * Backreference `\1`–`\9`: повтор группы амбивалентной длины.
+     */
     isBackreference?: boolean;
 };
 
@@ -38,7 +49,9 @@ const ATOM_SPACE: [number, number][] = [
     [32, 32],
 ];
 
-/** Проверяет пересечение двух наборов диапазонов кодпоинтов (группы — «пересекаются со всем»). */
+/**
+ * Проверяет пересечение двух наборов диапазонов кодпоинтов (группы — «пересекаются со всем»).
+ */
 function atomsOverlap(a: TPatternAtom, b: TPatternAtom): boolean {
     const ra = a.t === 'group' ? null : a;
     const rb = b.t === 'group' ? null : b;
@@ -55,12 +68,16 @@ function atomsOverlap(a: TPatternAtom, b: TPatternAtom): boolean {
     return false;
 }
 
-/** Якорные escape-последовательности: совпадают с пустой строкой, не потребляют символы. */
+/**
+ * Якорные escape-последовательности: совпадают с пустой строкой, не потребляют символы.
+ */
 const ZERO_WIDTH_ESCAPES = new Set(['b', 'B', 'A', 'Z', 'z', 'G', 'k']);
 
 /**
  * Разбирает escape-последовательность в позиции i (`\` — pattern[i]).
- * Возвращает атом и индекс следующего символа, либо null для якорей/backreferences.
+ * Возвращает атом и индекс следующего символа; null — только для zero-width
+ * якорей (`\b`, `\A`, `\Z` и т.п.). Backreference `\1`–`\9` возвращает
+ * как атом с признаком isBackreference.
  */
 function parseEscapeAtom(pattern: string, i: number): TParsedAtom | null {
     const esc = pattern[i + 1];
@@ -148,7 +165,9 @@ function parseAtom(pattern: string, i: number): TParsedAtom | null {
     return { atom: { t: 'class', ranges: [[code, code]] }, next: i + 1 };
 }
 
-/** Пропускает `\p{...}` / `\P{...}` от позиции i (сразу после буквы p/P). */
+/**
+ * Пропускает `\p{...}` / `\P{...}` от позиции i (сразу после буквы p/P).
+ */
 function skipUnicodeProperty(pattern: string, i: number): number {
     if (pattern[i] !== '{') {
         return i;
@@ -157,7 +176,9 @@ function skipUnicodeProperty(pattern: string, i: number): number {
     return close === -1 ? pattern.length : close + 1;
 }
 
-/** Пропускает группу от `(` до парной `)` с учётом вложенности и экранирования. */
+/**
+ * Пропускает группу от `(` до парной `)` с учётом вложенности и экранирования.
+ */
 function skipGroup(pattern: string, start: number): number {
     let depth = 0;
     for (let k = start; k < pattern.length; k++) {
@@ -165,26 +186,35 @@ function skipGroup(pattern: string, start: number): number {
             k++;
             continue;
         }
-        if (pattern[k] === '(') depth++;
-        else if (pattern[k] === ')') {
+        if (pattern[k] === '(') {
+            depth++;
+        } else if (pattern[k] === ')') {
             depth--;
-            if (depth === 0) return k + 1;
+            if (depth === 0) {
+                return k + 1;
+            }
         }
     }
     return pattern.length;
 }
 
-/** Кодпоинт символа; '' (за пределами строки) сворачивается к 0. */
+/**
+ * Кодпоинт символа; '' (за пределами строки) сворачивается к 0.
+ */
 function charCode(ch: string): number {
     return ch.codePointAt(0) ?? 0;
 }
 
-/** Добавляет в ranges атом-диапазон для экранированного символа класса (`\n`, `\.` и т.п.). */
+/**
+ * Добавляет в ranges атом-диапазон для экранированного символа класса (`\n`, `\.` и т.п.).
+ */
 function pushEscapeRange(ranges: [number, number][], esc: string): void {
     ranges.push([charCode(esc), charCode(esc)]);
 }
 
-/** Разбирает символьный класс `[a-z\d]` (включая `[^...]`) в набор диапазонов. */
+/**
+ * Разбирает символьный класс `[a-z\d]` (включая `[^...]`) в набор диапазонов.
+ */
 function parseCharClass(
     pattern: string,
     start: number,
@@ -239,7 +269,9 @@ function parseCharClass(
     return { atom: { t: 'class', ranges }, next: i + 1 };
 }
 
-/** Находит закрывающую `]` класса (для negated-эскейпов внутри). */
+/**
+ * Находит закрывающую `]` класса (для negated-эскейпов внутри).
+ */
 function endOfClass(pattern: string, from: number): number {
     let i = from;
     while (i < pattern.length) {
@@ -247,16 +279,14 @@ function endOfClass(pattern: string, from: number): number {
             i += 2;
             continue;
         }
-        if (pattern[i] === ']') return i + 1;
+        if (pattern[i] === ']') {
+            return i + 1;
+        }
         i++;
     }
     return pattern.length;
 }
 
-/**
- * Детектит «лестницу» из квантифицированных атомов с пересекающимися классами:
- * `.*.*.*!`, `x+x+y`, `\w*\w*\w*!`, `[a-z]*[a-z]*[a-z]*!`.
- *
 /**
  * Результат анализа фрагмента паттерна на квантификаторные лестницы.
  *
@@ -273,32 +303,20 @@ interface IChainScan {
 }
 
 /**
- * Детектит «лестницу» из квантифицированных атомов с пересекающимися классами:
- * `.*.*.*!`, `x+x+y`, `\w*\w*\w*!`, в том числе замаскированную обёрткой в
- * группу: `(?:a*a*)c`, `.*(?:.*.*)!`, `(?:.*)(?:.*)(?:.*)x`, и backref-хвосты
- * `([a-z]+)[^]*\1z` (backreference повторяет группу с амбивалентной длиной
- * и после неограниченного квантификатора принуждает перебор разбиений).
- *
- * Соседние квантификаторы по пересекающимся классам без разделителя между ними
- * дают перебор всех разбиений строки: на неудачном входе это n²–n³ шагов.
- * Замеры на Node 24: `.*.*.*!` на 1024 символах — ~75 секунд блокировки event loop,
- * `(?:a*a*)c` на 7000 — ~2.7 минуты. При этом:
- * - цепочка из 2 + потребляющий хвост опасна всегда (`.*.*!`, `x+x+y`);
- * - цепочка из 3+ БЕЗ хвоста опасна только с последующим якорем `$`/`\Z`/`\z`
- *   (`\w+\w+\w+$` — таймаут на 7000), а без якоря V8 завершает early-exit
- *   (`.*.*.*` — 0 мс) и блокировать её незачем: цепочка «запоминается»
- *   (chain3) и детонирует только встретив конец-строчный якорь;
- * - цепочка с непересекающимися классами (`[a-z]+[0-9]+x`) безопасна — точки
- *   разбиения принуждены литералами;
- * - ограниченные интервалы (`{n}`, `{n,m}`, `?`) не порождают перебора и цепочку рвут.
+ * Признак прочитанного после атома квантификатора.
  */
-/** Признак прочитанного после атома квантификатора. */
 interface IQuantifierInfo {
-    /** Квантификатор присутствует (включая `?` и `{n,m}`). */
+    /**
+     * Квантификатор присутствует (включая `?` и `{n,m}`).
+     */
     isQuantified: boolean;
-    /** Квантификатор без верхней границы: `+`, `*`, `{n,}`. */
+    /**
+     * Квантификатор без верхней границы: `+`, `*`, `{n,}`.
+     */
     isUnbounded: boolean;
-    /** Индекс первого символа ПОСЛЕ квантификатора. */
+    /**
+     * Индекс первого символа ПОСЛЕ квантификатора.
+     */
     next: number;
 }
 
@@ -333,7 +351,9 @@ function readQuantifier(pattern: string, i: number): IQuantifierInfo {
     return { isQuantified: false, isUnbounded: false, next: i };
 }
 
-/** Проверяет, что позиция i — якорь конца строки `$` или `\Z`/`\z`. */
+/**
+ * Проверяет, что позиция i — якорь конца строки `$` или `\Z`/`\z`.
+ */
 function isEndTextAnchor(pattern: string, i: number): boolean {
     if (pattern[i] === '$') {
         return true;
@@ -341,11 +361,42 @@ function isEndTextAnchor(pattern: string, i: number): boolean {
     return pattern[i] === '\\' && (pattern[i + 1] === 'Z' || pattern[i + 1] === 'z');
 }
 
+/**
+ * Квантифицированный ли backreference в позиции i.
+ *
+ * Квантифицированный backreference (`\1+`, `\1{2,}`) опасен и сам по себе,
+ * без соседних неограниченных квантификаторов: он перебирает разбиения
+ * текста между «сытым» повтором и последующим несовпадением — паттерн
+ * `(\w+)z\1{2,}` даёт квадратичный бэктрекинг на длинных входах.
+ */
+function isQuantifiedBackreference(pattern: string, i: number): boolean {
+    const backrefQuant = readQuantifier(pattern, i);
+    return backrefQuant.isQuantified && backrefQuant.isUnbounded;
+}
+
+/**
+ * Детектит «лестницу» из квантифицированных атомов с пересекающимися классами:
+ * `.*.*.*!`, `x+x+y`, `\w*\w*\w*!`, в том числе замаскированную обёрткой в
+ * группу: `(?:a*a*)c`, `.*(?:.*.*)!`, `(?:.*)(?:.*)(?:.*)x`, и backref-хвосты
+ * `([a-z]+)[^]*\1z` (backreference повторяет группу с амбивалентной длиной
+ * и после неограниченного квантификатора принуждает перебор разбиений).
+ *
+ * Соседние квантификаторы по пересекающимся классам без разделителя между ними
+ * дают перебор всех разбиений строки: на неудачном входе это блокировка
+ * event loop на минуты. При этом:
+ * - цепочка из 2 + потребляющий хвост опасна всегда (`.*.*!`, `x+x+y`);
+ * - цепочка из 3+ БЕЗ хвоста опасна только с последующим якорем `$`/`\Z`/`\z`
+ *   (`\w+\w+\w+$`), а без якоря V8 завершает early-exit (`.*.*.*` — 0 мс)
+ *   и блокировать её незачем: цепочка «запоминается» (chain3) и детонирует
+ *   только встретив конец-строчный якорь;
+ * - цепочка с непересекающимися классами (`[a-z]+[0-9]+x`) безопасна — точки
+ *   разбиения принуждены литералами;
+ * - ограниченные интервалы (`{n}`, `{n,m}`, `?`) не порождают перебора и цепочку рвут.
+ */
 function scanQuantifierChain(pattern: string, depth: number): IChainScan {
     if (depth > 5) {
-        // Защита от паранойи на вложенных группах: глубже 5 уровней вложенности
-        // паттерны реальных команд не заходят (отдельный лимит вложенности
-        // есть в isRegexLikelySafe).
+        // Реальные команды глубже 5 уровней вложенности не заходят;
+        // отдельный лимит вложенности есть в isRegexLikelySafe.
         return { dangerous: false, tailRun: 0, tailAtom: null };
     }
     let run = 0;
@@ -369,10 +420,11 @@ function scanQuantifierChain(pattern: string, depth: number): IChainScan {
             continue;
         }
         i = parsed.next;
-        // Backreference после неограниченного квантификатора: \1 повторяет
-        // группу амбивалентной длины и завершает перебор разбиений —
-        // классика `([a-z]+)[^]*\1z` (минуты на 7000).
-        if (parsed.isBackreference && run >= 1) {
+        // Backreference — два вектора: после неограниченного квантификатора
+        // (`([a-z]+)[^]*\1z` — \1 повторяет группу амбивалентной длины и
+        // завершает перебор разбиений) и квантифицированный сам по себе
+        // (`(\w+)z\1{2,}` — квадратичный бэктрекинг, см. isQuantifiedBackreference).
+        if (parsed.isBackreference && (run >= 1 || isQuantifiedBackreference(pattern, i))) {
             return { dangerous: true, tailRun: 0, tailAtom: null };
         }
         // Тело группы анализируем рекурсивно: лестница внутри `(?:a*a*)`
@@ -436,44 +488,31 @@ function scanQuantifierChain(pattern: string, depth: number): IChainScan {
     return { dangerous: false, tailRun: run, tailAtom: prevAtom };
 }
 
-/** Публичная обёртка: опасен ли паттерн по правилам квантификаторных лестниц. */
+/**
+ * Публичная обёртка: опасен ли паттерн по правилам квантификаторных лестниц.
+ */
 function hasSequentialQuantifierChain(pattern: string): boolean {
     return scanQuantifierChain(pattern, 0).dangerous;
 }
 
-/** Пропускает интервальный квантификатор `{n}`/`{n,}`/`{n,m}`. Возвращает i, если это не интервал. */
+/**
+ * Пропускает интервальный квантификатор `{n}`/`{n,}`/`{n,m}`. Возвращает i, если это не интервал.
+ */
 function skipInterval(pattern: string, i: number): number {
     let k = i + 1;
-    while (k < pattern.length && /\d/.test(pattern.charAt(k))) k++;
-    if (k === i + 1) return i;
+    while (k < pattern.length && /\d/.test(pattern.charAt(k))) {
+        k++;
+    }
+    if (k === i + 1) {
+        return i;
+    }
     if (pattern.charAt(k) === ',') {
         k++;
-        while (k < pattern.length && /\d/.test(pattern.charAt(k))) k++;
+        while (k < pattern.length && /\d/.test(pattern.charAt(k))) {
+            k++;
+        }
     }
     return pattern.charAt(k) === '}' ? k + 1 : i;
-}
-
-/**
- * Проверяет, является ли символ после `)` началом квантификатора,
- * включая интервальную форму `{n,m}` (разбирается посимвольно,
- * чтобы не усложнять эвристику вложенными квантификаторами в самом шаблоне).
- */
-function isQuantifierAfterGroup(pattern: string, from: number): boolean {
-    let j = from;
-    while (j < pattern.length && /\s/.test(pattern.charAt(j))) j++;
-    if (j >= pattern.length) return false;
-    const next = pattern.charAt(j);
-    if (next === '+' || next === '*' || next === '?') return true;
-    if (next !== '{') return false;
-    // Разбираем {n} или {n,} или {n,m}
-    let k = j + 1;
-    while (k < pattern.length && pattern.charAt(k) >= '0' && pattern.charAt(k) <= '9') k++;
-    if (k === j + 1) return false;
-    if (pattern.charAt(k) === ',') {
-        k++;
-        while (k < pattern.length && pattern.charAt(k) >= '0' && pattern.charAt(k) <= '9') k++;
-    }
-    return pattern.charAt(k) === '}';
 }
 
 /**
@@ -495,8 +534,9 @@ function findGroupStart(pattern: string, closeIndex: number): number {
             continue;
         }
         const ch = pattern[k];
-        if (ch === ')' && k !== closeIndex) depth++;
-        else if (ch === '(') {
+        if (ch === ')' && k !== closeIndex) {
+            depth++;
+        } else if (ch === '(') {
             if (depth === 0) {
                 return k;
             }
@@ -508,27 +548,39 @@ function findGroupStart(pattern: string, closeIndex: number): number {
 
 /**
  * Проверяет тело группы на источники катастрофического бэктрекинга:
- * квантификатор, альтернативу `|` или «любой символ» `.` вне символьных классов.
+ * НЕОГРАНИЧЕННЫЙ квантификатор (`+`, `*`, `{n,}`), альтернативу `|` или
+ * «любой символ» `.` вне символьных классов.
+ *
+ * Ограниченные интервалы (`{n}`, `{n,m}`) перебора разбиений не порождают:
+ * `(\d{1,3}\.){3}\d{1,3}` (IP-адрес) и `(a{1,3}){3}` — легитимные паттерны,
+ * каждый повтор группы имеет фиксированную длину. Разделение проведено по
+ * той же границе, что и в readQuantifier: `{n,}` без верхней границы —
+ * неограниченный, `{n}`/`{n,m}` — ограниченные.
  */
-function isExplosiveGroupBody(body: string): boolean {
-    // Пропускаем префикс конструкции группы: (?:, (?=, (?!, (?<=, (?<!, (?<name>.
-    // Иначе '?' из '(?:' ложно принимался за квантификатор внутри группы.
-    let start = 0;
-    if (body[0] === '?') {
-        if (body[1] === '<') {
-            const close = body.indexOf('>', 2);
-            start = close === -1 ? body.length : close + 1;
-        } else {
-            start = 2;
-        }
+/**
+ * Пропускает префикс конструкции группы: (?:, (?=, (?!, (?<=, (?<!, (?<name>.
+ * Иначе '?' из '(?:' ложно принимался за квантификатор внутри группы.
+ */
+function skipGroupPrefix(body: string): number {
+    if (body[0] !== '?') {
+        return 0;
     }
+    if (body[1] === '<') {
+        const close = body.indexOf('>', 2);
+        return close === -1 ? body.length : close + 1;
+    }
+    return 2;
+}
+
+function isExplosiveGroupBody(body: string): boolean {
+    const start = skipGroupPrefix(body);
     let inClass = false;
     for (let k = start; k < body.length; k++) {
         const ch = body.charAt(k);
         if (ch === '\\') {
             // Backreference/escape после бэкслеша: \1, \k<name> — повтор группы
             // с амбивалентной длиной. Квантифицированный backreference — источник
-            // катастрофического бэктрекинга: (a+)(?:\1)+x на 7000 — минуты.
+            // катастрофического бэктрекинга.
             if (k + 1 < body.length && /[1-9]/.test(body.charAt(k + 1))) {
                 return true;
             }
@@ -548,10 +600,17 @@ function isExplosiveGroupBody(body: string): boolean {
             inClass = false;
             continue;
         }
-        if (
-            !inClass &&
-            (ch === '+' || ch === '*' || ch === '?' || ch === '{' || ch === '|' || ch === '.')
-        ) {
+        if (ch === '{' && !inClass) {
+            // Ограниченный интервал {n}/{n,m} безопасен; {n,} — неограниченный.
+            const quant = readQuantifier(body, k);
+            if (quant.isQuantified && quant.isUnbounded) {
+                return true;
+            }
+            // Не-интервальная фигурная скобка (литерал `{`) — пропускаем
+            k = quant.isQuantified ? quant.next - 1 : k;
+            continue;
+        }
+        if (!inClass && (ch === '+' || ch === '*' || ch === '|' || ch === '.')) {
             return true;
         }
     }
@@ -560,9 +619,17 @@ function isExplosiveGroupBody(body: string): boolean {
 
 /**
  * Ищет квантифицированные группы с внутренними источниками катастрофического
- * бэктрекинга: квантификатор, альтернативу `|` или «любой символ» `.` внутри
- * группы, которая сама квантифицирована — классика вида `(a+)+`, `(a|aa)+`,
- * `(\w+\.)+`. Простые `(abc)+` и `(.{2})` с фиксированным интервалом безопасны.
+ * бэктрекинга: НЕОГРАНИЧЕННЫЙ квантификатор (`+`, `*`, `{n,}`), альтернативу `|`
+ * или «любой символ» `.` внутри группы, которая сама квантифицирована —
+ * классика вида `(a+)+`, `(a|aa)+`, `(\w+\.)+`.
+ *
+ * Отдельный случай: ЛЮБОЙ интервальный квантификатор внутри группы,
+ * повторённой неограниченным квантификатором (`(?:a{2,3})+`): интервал даёт
+ * повторы переменной длины, а внешний `+` перебирает все разбиения.
+ * IP-паттерн `(\d{1,3}\.){3}` сюда не попадает — его внешний квантификатор
+ * ограничен (`{3}`), перебора разбиений он не порождает.
+ *
+ * Простые `(abc)+` и `(.{2})` с фиксированным интервалом безопасны.
  */
 function hasDangerousQuantifiedGroup(pattern: string): boolean {
     for (let i = 0; i < pattern.length; i++) {
@@ -573,13 +640,55 @@ function hasDangerousQuantifiedGroup(pattern: string): boolean {
         if (pattern[i] !== ')') {
             continue;
         }
-        if (!isQuantifierAfterGroup(pattern, i + 1)) {
+        const quant = readQuantifier(pattern, i + 1);
+        if (!quant.isQuantified) {
             continue;
         }
         const start = findGroupStart(pattern, i);
-        if (start === -1) continue;
-        if (isExplosiveGroupBody(pattern.slice(start + 1, i))) {
+        if (start === -1) {
+            continue;
+        }
+        const body = pattern.slice(start + 1, i);
+        if (isExplosiveGroupBody(body)) {
             return true;
+        }
+        // Интервал под неограниченным внешним квантификатором: (?:a{2,3})+.
+        // Ограниченный внешний интервал ((a{2,3}){3}) безопасен — это
+        // то же фиксированное число повторов, что и развёртка.
+        if (quant.isUnbounded && hasIntervalQuantifier(body)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Есть ли в теле группы интервальный квантификатор `{n}`/`{n,m}`/`{n,}`.
+ * Используется для детекта `(?:a{2,3})+`: интервал переменной длины внутри
+ * группы с неограниченным внешним квантификатором порождает перебор разбиений.
+ */
+function hasIntervalQuantifier(body: string): boolean {
+    for (let k = 0; k < body.length; k++) {
+        if (body.charAt(k) === '\\') {
+            k++;
+            continue;
+        }
+        if (body.charAt(k) === '[') {
+            // Класс символов: до закрывающей `]` (с учётом экранирования)
+            k++;
+            while (k < body.length && body.charAt(k) !== ']') {
+                if (body.charAt(k) === '\\') {
+                    k++;
+                }
+                k++;
+            }
+            continue;
+        }
+        if (body.charAt(k) === '{') {
+            const quant = readQuantifier(body, k);
+            if (quant.isQuantified) {
+                return true;
+            }
         }
     }
     return false;
@@ -597,8 +706,8 @@ function hasDangerousQuantifiedGroup(pattern: string): boolean {
  * - Слишком глубокая вложенность скобок (>5 уровней)
  * - Слишком длинные шаблоны (>1000 символов)
  *
- * @param {string} pattern - Регулярное выражение для проверки
- * @param {boolean} isRegex - Если true, pattern уже является скомпилированным RegExp (пропуск проверки компиляции)
+ * @param {string} pattern - Регулярное выражение для проверки (при isRegex=true — source уже скомпилированного RegExp)
+ * @param {boolean} isRegex - Если true, pattern — source уже скомпилированного RegExp (пропуск проверки компиляции)
  * @returns {boolean} true если выражение вероятно безопасно, false если обнаружена потенциальная уязвимость
  */
 export function isRegexLikelySafe(pattern: string, isRegex: boolean): boolean {
@@ -657,8 +766,11 @@ export function isRegexLikelySafe(pattern: string, isRegex: boolean): boolean {
                 i++; // пропускаем экранированный символ
                 continue;
             }
-            if (pattern[i] === '(') depth++;
-            else if (pattern[i] === ')') depth--;
+            if (pattern[i] === '(') {
+                depth++;
+            } else if (pattern[i] === ')') {
+                depth--;
+            }
             if (depth < 0) {
                 return false; // некорректная скобочная структура
             }

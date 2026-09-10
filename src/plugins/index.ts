@@ -5,6 +5,13 @@ export {
     EMPTY_CONTEXT_ERROR,
     EMPTY_QUERY_ERROR,
 } from './platforms/Base/Base';
+export { type TApiMethod, type TApiFacade, makePlatformApi } from './platforms/Base/apiFacade';
+// Фабрики фасадов живут в папках своих платформ; диспетчер makePlatformApi
+// (Base/apiFacade) реэкспортирует их для ручного использования.
+export { makeTelegramApi } from './platforms/Telegram/apiFacade';
+export { makeVkApi } from './platforms/VK/apiFacade';
+export { makeMaxApi } from './platforms/Max/apiFacade';
+export { makeViberApi } from './platforms/Viber/apiFacade';
 
 export * as pUtils from './platforms/Base/utils';
 

@@ -153,10 +153,9 @@ async function main(
                     String(platform)
                         .toUpperCase()
                         .replace(/[^A-Z0-9_]/g, '_');
-                // Секреты НЕ попадают в коммит-файл Config.ts ни при каком раскладе:
-                // при isEnv — мигрируют в .env, без isEnv — вычищаются из сериализуемого
-                // конфига с предупреждением (раньше без isEnv токены из config.tokens
-                // литералом оставались в src/config/*Config.ts).
+                // Секреты не попадают в коммит-файл Config.ts: при isEnv они
+                // мигрируют в .env, без isEnv — вычищаются из сериализуемого
+                // конфига с предупреждением.
                 const envPairList = [
                     ['TELEGRAM_TOKEN', create.params?.params?.telegram_token],
                     ['VK_TOKEN', create.params?.params?.vk_token],
@@ -180,6 +179,18 @@ async function main(
                             typeof raw === 'object' && raw !== null
                                 ? (raw.token ?? raw.webhookSecret ?? raw.secret_key)
                                 : raw;
+                        // Объект вместо строки (например, token: {a: 1}) дал бы
+                        // '[object Object]' в .env — пропускаем с предупреждением.
+                        if (value !== undefined && value !== null && typeof value === 'object') {
+                            console.warn(
+                                'ВНИМАНИЕ: токен для «' +
+                                    platform +
+                                    '» — объект, а не строка; переменная ' +
+                                    (TOKEN_ENV_NAMES[platform] ?? sanitizeEnvName(platform)) +
+                                    ' не записана.',
+                            );
+                            continue;
+                        }
                         if (value === undefined || value === null || value === '') {
                             continue;
                         }
@@ -224,7 +235,47 @@ async function main(
                 }
                 await create.init(param.appName, type);
                 if (envContent) {
-                    create.generateFile('.env', envContent);
+                    // Существующий .env НЕ перезаписываем: при повторной генерации
+                    // с --force в него уже могли быть вписаны реальные токены, и
+                    // затирание значениями-черновиками из JSON теряло бы их.
+                    // Дописываем только переменные, которых в файле нет (как в
+                    // from-flow — см. flowGenerator).
+                    // Путь повторяет логику CreateController.init(): params.path
+                    // или имя проекта (приватное #path снаружи недоступно).
+                    const projectDir = path.resolve(
+                        create.params?.path ?? String(param.appName).replace(/\W/g, '_'),
+                    );
+                    const envPath = path.join(projectDir, '.env');
+                    if (fs.existsSync(envPath)) {
+                        const existing = fs.readFileSync(envPath, 'utf8');
+                        const existingNames = new Set(
+                            existing
+                                .split(/\r?\n/)
+                                .map((l) => l.trim())
+                                .filter(Boolean)
+                                .map((l) => l.split('=')[0]),
+                        );
+                        const missing = envContent.split(/\r?\n/).filter((line) => {
+                            const name = line.split('=')[0];
+                            return line.trim() && !existingNames.has(name);
+                        });
+                        if (missing.length > 0) {
+                            const addition =
+                                (existing.endsWith('\n') ? '' : '\n') + missing.join('\n') + '\n';
+                            fs.appendFileSync(envPath, addition, 'utf8');
+                            console.warn(
+                                `  .env: дописаны переменные (${missing
+                                    .map((l) => l.split('=')[0])
+                                    .join(', ')}), существующие значения не изменены.`,
+                            );
+                        } else {
+                            console.log(
+                                '  .env уже существует — значения из конфига не перезаписаны.',
+                            );
+                        }
+                    } else {
+                        create.generateFile('.env', envContent);
+                    }
                 }
                 create.format();
 

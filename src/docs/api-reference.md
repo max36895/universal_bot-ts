@@ -1,7 +1,7 @@
 # API Reference
 
-Данный справочник содержит описание всех публичных классов, методов и интерфейсов фреймворка umbot. Для начала работы
-смотрите раздел 'Быстрый старт'.
+Данный справочник содержит описание основных публичных классов, методов и интерфейсов фреймворка umbot. Для начала
+работы смотрите раздел [«Быстрый старт»](getting-started.md).
 
 ## Основные классы
 
@@ -12,36 +12,39 @@
 
 #### Свойства
 
-| Свойство            | Тип                                                      | Описание                                                                                                                              |
-| ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| text                | string                                                   | Текст ответа пользователю                                                                                                             |
-| tts                 | string \| null                                           | Текст для озвучки (на голосовых платформах, если `null` — может быть автоматически подставлен из `text`)                              |
-| buttons             | Buttons                                                  | Компонент кнопок (инициализируется лениво через getter)                                                                               |
-| card                | Card                                                     | Компонент карточек/галерей (инициализируется лениво через getter)                                                                     |
-| nlu                 | Nlu                                                      | Данные NLU (инициализируется лениво через getter)                                                                                     |
-| sound               | Sound                                                    | Звуковые эффекты (инициализируется лениво через getter)                                                                               |
-| userId              | string \| number \| null                                 | Идентификатор пользователя                                                                                                            |
-| userToken           | string \| null                                           | Токен авторизации пользователя (если платформа его предоставляет)                                                                     |
-| userMeta            | unknown \| null                                          | Доп. информация о пользователе (зависит от платформы)                                                                                 |
-| messageId           | number \| string \| null                                 | ID сообщения (часто используется для определения “первого” сообщения)                                                                 |
-| userCommand         | string \| null                                           | Команда пользователя в нижнем регистре                                                                                                |
-| originalUserCommand | string \| null                                           | Оригинальная команда пользователя                                                                                                     |
-| payload             | Record\<string, unknown\> \| string \| null \| undefined | Дополнительные параметры запроса (payload)                                                                                            |
-| userData            | TUserData                                                | Данные пользователя (БД или локальное хранилище, в зависимости от `setAppConfig`)                                                     |
-| state               | TPlatformState \| null                                   | Локальное хранилище платформы (если платформа поддерживает и включено `isLocalStorage`)                                               |
-| isAuth              | boolean                                                  | Флаг “нужно запросить авторизацию” (поддержка зависит от платформы)                                                                   |
-| userEvents          | IUserEvent \| null                                       | События пользователя (авторизация/оценка), если платформа присылает                                                                   |
-| isScreen            | boolean                                                  | Есть ли экран у пользователя (если платформа сообщает)                                                                                |
-| isEnd               | boolean                                                  | Завершить диалог/сессию (поддержка зависит от платформы)                                                                              |
-| skipAutoReply       | boolean                                                  | Если `true`, фреймворк не будет пытаться “авто-отправить” ответ (актуально для платформ, где вы сами отправляете сообщения через API) |
-| requestObject       | Record<string, unknown> \| string \| unknown \| null     | Оригинальный объект запроса от платформы                                                                                              |
-| thisIntentName      | string \| null                                           | Имя шага/интента, которое нужно сохранить как “следующий шаг”                                                                         |
-| oldIntentName       | string \| null                                           | Имя предыдущего шага/интента (из `userData.oldIntentName` или из `state.oldIntentName`)                                               |
-| emotion             | string \| null                                           | Эмоция ответа (если платформа поддерживает)                                                                                           |
-| appeal              | 'official' \| 'no_official' \| null                      | Стиль обращения (если платформа поддерживает)                                                                                         |
-| isSendRating        | boolean                                                  | Запросить у пользователя оценку (если платформа поддерживает)                                                                         |
-| appContext          | AppContext                                               | Контекст приложения (конфиг, реестры, логгер)                                                                                         |
-| appType             | TAppType \| null                                         | Платформа, от которой получен запрос (заполняется фреймворком при обработке)                                                          |
+| Свойство            | Тип                                                      | Описание                                                                                                                                        |
+| ------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| text                | string                                                   | Текст ответа пользователю                                                                                                                       |
+| tts                 | string \| null                                           | Текст для озвучки (на голосовых платформах, если `null` — может быть автоматически подставлен из `text`)                                        |
+| buttons             | Buttons                                                  | Компонент кнопок (инициализируется лениво через getter)                                                                                         |
+| card                | Card                                                     | Компонент карточек/галерей (инициализируется лениво через getter)                                                                               |
+| nlu                 | Nlu                                                      | Данные NLU (инициализируется лениво через getter)                                                                                               |
+| sound               | Sound                                                    | Звуковые эффекты (инициализируется лениво через getter)                                                                                         |
+| userId              | string \| number \| null                                 | Идентификатор пользователя                                                                                                                      |
+| userToken           | string \| null                                           | Токен авторизации пользователя (если платформа его предоставляет)                                                                               |
+| userMeta            | unknown \| null                                          | Доп. информация о пользователе (зависит от платформы)                                                                                           |
+| messageId           | number \| string \| null                                 | ID сообщения (часто используется для определения “первого” сообщения)                                                                           |
+| userCommand         | string \| null                                           | Команда пользователя в нижнем регистре                                                                                                          |
+| originalUserCommand | string \| null                                           | Оригинальная команда пользователя                                                                                                               |
+| payload             | Record\<string, unknown\> \| string \| null \| undefined | Дополнительные параметры запроса (payload)                                                                                                      |
+| eventType           | TEventType                                               | Универсальный тип события (`'message'`, `'photo'`, `'callback'`, `'start'`, …). Заполняется адаптером платформы; основа роутинга `bot.addEvent` |
+| match               | RegExpExecArray \| null                                  | Совпадение команды с регуляркой (лениво): группы в `match[1]`, `match.groups`. `null` для строковых команд                                      |
+| api                 | IControllerApi \| null                                   | API-фасад активной платформы: `sendPhoto/sendDocument/sendAudio/sendVideo/answerCallback/can`. Ленивый объект; `null` на голосовых платформах   |
+| userData            | TUserData                                                | Данные пользователя (БД или локальное хранилище, в зависимости от `setAppConfig`)                                                               |
+| state               | TPlatformState \| null                                   | Локальное хранилище платформы (если платформа поддерживает и включено `isLocalStorage`)                                                         |
+| isAuth              | boolean                                                  | Флаг “нужно запросить авторизацию” (поддержка зависит от платформы)                                                                             |
+| userEvents          | IUserEvent \| null                                       | События пользователя (авторизация/оценка), если платформа присылает                                                                             |
+| isScreen            | boolean                                                  | Есть ли экран у пользователя (если платформа сообщает)                                                                                          |
+| isEnd               | boolean                                                  | Завершить диалог/сессию (поддержка зависит от платформы)                                                                                        |
+| skipAutoReply       | boolean                                                  | Если `true`, фреймворк не будет пытаться “авто-отправить” ответ (актуально для платформ, где вы сами отправляете сообщения через API)           |
+| requestObject       | Record<string, unknown> \| string \| unknown \| null     | Оригинальный объект запроса от платформы                                                                                                        |
+| thisIntentName      | string \| null                                           | Имя шага/интента, которое нужно сохранить как “следующий шаг”                                                                                   |
+| oldIntentName       | string \| null                                           | Имя предыдущего шага/интента (из `userData.oldIntentName` или из `state.oldIntentName`)                                                         |
+| emotion             | string \| null                                           | Эмоция ответа (если платформа поддерживает)                                                                                                     |
+| appeal              | 'official' \| 'no_official' \| null                      | Стиль обращения (если платформа поддерживает)                                                                                                   |
+| isSendRating        | boolean                                                  | Запросить у пользователя оценку (если платформа поддерживает)                                                                                   |
+| appContext          | AppContext                                               | Контекст приложения (конфиг, реестры, логгер)                                                                                                   |
+| appType             | TAppType \| null                                         | Платформа, от которой получен запрос (заполняется фреймворком при обработке)                                                                    |
 
 #### Методы
 
@@ -62,34 +65,38 @@
 
 #### Методы
 
-| Метод                    | Параметры                                                                                                                                            | Возвращаемое значение          | Описание                                                                                                                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| setAppConfig             | config: Partial\<IAppConfig\>                                                                                                                        | Bot                            | Установка конфигурации приложения                                                                                                                                        |
-| setAppMode               | mode: TAppMode (`'dev' \| 'prod' \| 'strict_prod'`)                                                                                                  | Bot                            | Установка режима работы                                                                                                                                                  |
-| setPlatformParams        | params: IAppParam                                                                                                                                    | Bot                            | Установка параметров платформы                                                                                                                                           |
-| initBotController        | controller: TBotControllerClass                                                                                                                      | Bot                            | Подключение класса контроллера                                                                                                                                           |
-| addCommand               | commandName: string, slots: TSlots, cb: (userCommand: string, bc: BotController) => void \| string \| Promise\<void \| string\>, isPattern?: boolean | Bot                            | Регистрация команды                                                                                                                                                      |
-| removeCommand            | commandName: string                                                                                                                                  | Bot                            | Удаление команды по имени                                                                                                                                                |
-| clearCommands            | -                                                                                                                                                    | Bot                            | Удаление всех команд                                                                                                                                                     |
-| addStep                  | stepName: string, handler: IStepParam['cb']                                                                                                          | Bot                            | Регистрация шага (цепочки диалога)                                                                                                                                       |
-| removeStep               | stepName: string                                                                                                                                     | Bot                            | Удаление шага по имени                                                                                                                                                   |
-| clearSteps               | -                                                                                                                                                    | Bot                            | Удаление всех шагов                                                                                                                                                      |
-| addForm                  | formName: string, options: IAddFormOptions                                                                                                           | Bot                            | Регистрация многошаговой формы с валидацией полей                                                                                                                        |
-| removeForm               | formName: string                                                                                                                                     | Bot                            | Удаление формы и всех её шагов                                                                                                                                           |
-| use                      | fn: MiddlewareFn \| platform: TAppType, fn: MiddlewareFn \| plugin: TPlugin                                                                          | Bot                            | Подключение middleware или плагина                                                                                                                                       |
-| clearUse                 | -                                                                                                                                                    | Bot                            | Удаление всех плагинов и middleware                                                                                                                                      |
-| setCustomCommandResolver | resolver: TCommandResolver                                                                                                                           | Bot                            | Установка кастомного резолвера команд                                                                                                                                    |
-| setCommandGroupMode      | mode: TCommandGroupMode                                                                                                                              | Bot                            | Режим группировки RegExp                                                                                                                                                 |
-| setPlatformResolver      | resolver: TPlatformResolver                                                                                                                          | Bot                            | Установка функции определения платформы                                                                                                                                  |
-| setLogger                | logger: ILogger \| null                                                                                                                              | Bot                            | Установка кастомного логгера (null — отключить)                                                                                                                          |
-| getAppContext            | -                                                                                                                                                    | AppContext                     | Получение контекста приложения                                                                                                                                           |
-| setContent               | content: TBotContent (`object \| string \| null`)                                                                                                    | void                           | Установка содержимого запроса (для тестирования)                                                                                                                         |
-| run                      | appType?: TAppType \| null, content?: string \| object \| null, auth?: TBotAuth, clientIp?: string                                                   | Promise\<TRunResult\>          | Обработка входящего запроса. `clientIp` доступен middleware через `controller.platformOptions.clientIp` (например, `ipFilter`)                                           |
-| webhookHandle            | req: IncomingMessage, res: ServerResponse, responseCb?: TBotResponseCb                                                                               | Promise\<void\>                | Обработчик HTTP-запроса (для Express/Fastify интеграции)                                                                                                                 |
-| webhookEvent             | data: string \| object \| null, headers?: Record\<string, unknown\>, clientIp?: string                                                               | Promise\<IWebhookEventResult\> | Обработка события serverless-платформы (Yandex Cloud Functions, AWS Lambda) с проверкой подписи вебхука. Возвращает `{ statusCode, body }` для возврата из cloud-функции |
-| start                    | hostname?: string, port?: number, responseCb?: TBotResponseCb                                                                                        | Server                         | Запуск HTTP-сервера (возвращает экземпляр Server)                                                                                                                        |
-| close                    | -                                                                                                                                                    | Promise\<void\>                | Остановка HTTP-сервера и очистка ресурсов                                                                                                                                |
-| send                     | userId: string \| number, controllerOrText: BotController \| string, platform: TAppType                                                              | Promise\<unknown \| boolean\>  | Отправка сообщения пользователю (для платформ с поддержкой)                                                                                                              |
+| Метод                    | Параметры                                                                                                                                            | Возвращаемое значение          | Описание                                                                                                                                                                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| setAppConfig             | config: Partial\<IAppConfig\>                                                                                                                        | Bot                            | Установка конфигурации приложения                                                                                                                                                                       |
+| setAppMode               | mode: TAppMode (`'dev' \| 'prod' \| 'strict_prod'`)                                                                                                  | Bot                            | Установка режима работы                                                                                                                                                                                 |
+| setPlatformParams        | params: IAppParam                                                                                                                                    | Bot                            | Установка параметров платформы                                                                                                                                                                          |
+| initBotController        | controller: TBotControllerClass                                                                                                                      | Bot                            | Подключение класса контроллера                                                                                                                                                                          |
+| addCommand               | commandName: string, slots: TSlots, cb: (userCommand: string, bc: BotController) => void \| string \| Promise\<void \| string\>, isPattern?: boolean | Bot                            | Регистрация команды                                                                                                                                                                                     |
+| addAction                | actionName: string, cb: (userCommand: string, bc: BotController) => void \| string \| Promise\<void \| string\>                                      | Bot                            | Обработчик нажатия callback-кнопки по payload (аналог `bot.action()` у Telegram-фреймворков). Payload `'buy'` / `{"command":"buy"}` вызывает команду `buy` (Telegram, VK, MAX)                          |
+| addEvent                 | eventType: TEventType, cb: (bc: BotController) => void \| string \| Promise\<void \| string\> \| false                                               | Bot                            | Обработчик события платформы (фото, голосовое, callback, start и др.). Вызывается до шагов и команд; `false` — передать запрос обычному конвейеру                                                       |
+| removeEvent              | eventType: TEventType                                                                                                                                | Bot                            | Удаление всех обработчиков события                                                                                                                                                                      |
+| clearEvents              | -                                                                                                                                                    | Bot                            | Удаление всех событийных обработчиков                                                                                                                                                                   |
+| removeCommand            | commandName: string                                                                                                                                  | Bot                            | Удаление команды по имени                                                                                                                                                                               |
+| clearCommands            | -                                                                                                                                                    | Bot                            | Удаление всех команд                                                                                                                                                                                    |
+| addStep                  | stepName: string, handler: IStepParam['cb']                                                                                                          | Bot                            | Регистрация шага (цепочки диалога)                                                                                                                                                                      |
+| removeStep               | stepName: string                                                                                                                                     | Bot                            | Удаление шага по имени                                                                                                                                                                                  |
+| clearSteps               | -                                                                                                                                                    | Bot                            | Удаление всех шагов                                                                                                                                                                                     |
+| addForm                  | formName: string, options: IAddFormOptions                                                                                                           | Bot                            | Регистрация многошаговой формы с валидацией полей                                                                                                                                                       |
+| removeForm               | formName: string                                                                                                                                     | Bot                            | Удаление формы и всех её шагов                                                                                                                                                                          |
+| use                      | fn: MiddlewareFn \| platform: TAppType, fn: MiddlewareFn \| plugin: TPlugin                                                                          | Bot                            | Подключение middleware или плагина                                                                                                                                                                      |
+| clearUse                 | -                                                                                                                                                    | Bot                            | Удаление всех платформ, плагинов и middleware                                                                                                                                                           |
+| setCustomCommandResolver | resolver: TCommandResolver                                                                                                                           | Bot                            | Установка кастомного резолвера команд                                                                                                                                                                   |
+| setCommandGroupMode      | mode: TCommandGroupMode                                                                                                                              | Bot                            | Режим группировки RegExp                                                                                                                                                                                |
+| setPlatformResolver      | resolver: TPlatformResolver                                                                                                                          | Bot                            | Установка функции определения платформы                                                                                                                                                                 |
+| setLogger                | logger: ILogger \| null                                                                                                                              | Bot                            | Установка кастомного логгера (null — отключить)                                                                                                                                                         |
+| getAppContext            | -                                                                                                                                                    | AppContext                     | Получение контекста приложения                                                                                                                                                                          |
+| setContent               | content: TBotContent (`object \| string \| null`)                                                                                                    | void                           | Установка содержимого запроса (для тестирования)                                                                                                                                                        |
+| run                      | appType?: TAppType \| null, content?: string \| object \| null, auth?: TBotAuth, clientIp?: string                                                   | Promise\<TRunResult\>          | Обработка входящего запроса. Все параметры имеют дефолты (`null`), т.е. вызов без аргументов валиден. `clientIp` доступен middleware через `controller.platformOptions.clientIp` (например, `ipFilter`) |
+| webhookHandle            | req: IncomingMessage, res: ServerResponse, responseCb?: TBotResponseCb                                                                               | Promise\<void\>                | Обработчик HTTP-запроса (для Express/Fastify интеграции)                                                                                                                                                |
+| webhookEvent             | data: string \| object \| null, headers?: Record\<string, unknown\>, clientIp?: string                                                               | Promise\<IWebhookEventResult\> | Обработка события serverless-платформы (Yandex Cloud Functions, AWS Lambda) с проверкой подписи вебхука. Возвращает `{ statusCode, body }` для возврата из cloud-функции                                |
+| start                    | hostname?: string, port?: number, responseCb?: TBotResponseCb                                                                                        | Server                         | Запуск HTTP-сервера (возвращает экземпляр Server)                                                                                                                                                       |
+| close                    | -                                                                                                                                                    | Promise\<void\>                | Остановка HTTP-сервера и очистка ресурсов                                                                                                                                                               |
+| send                     | userId: string \| number, controllerOrText: BotController \| string, platform: TAppType                                                              | Promise\<unknown \| boolean\>  | Отправка сообщения пользователю (для платформ с поддержкой)                                                                                                                                             |
 
 ## Компоненты
 
@@ -119,10 +126,10 @@
 | -------------- | ------------------------------------------------------------------------------ | --------------------- | ---------------------------------------------------------------- |
 | addImage       | image: string \| null, title?: string, desc?: string, button?: TButton \| null | this                  | Добавление изображения/элемента (4-й параметр — кнопка элемента) |
 | addOneImage    | image: string \| null, title?: string, desc?: string, button?: TButton \| null | this                  | Заменяет текущую карточку одним изображением                     |
-| setTitle       | text: string                                                                   | this                  | Добавление заголовка                                             |
-| setDescription | text: string                                                                   | this                  | Добавление описания                                              |
+| setTitle       | text: string                                                                   | this                  | Установка заголовка (перезаписывает предыдущий)                  |
+| setDescription | text: string                                                                   | this                  | Установка описания (перезаписывает предыдущее)                   |
 | addButton      | button: TButton                                                                | this                  | Добавление кнопки к элементу карточки                            |
-| clear          | -                                                                              | void                  | Очистка карточки                                                 |
+| clear          | -                                                                              | void                  | Очистка карточки: изображения, заголовок, описание и template    |
 
 ### Sound
 
@@ -176,7 +183,7 @@ interface INluResult<T = object> {
 | --------------- | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | getFio          | -                                 | INluResult\<INluFIO[]\>      | ФИО из текста (`first_name`, `last_name`, `patronymic_name`)                                                                      |
 | getGeo          | -                                 | INluResult\<INluGeo[]\>      | Геолокация (`country`, `city`, `street`, `house_number`, `airport` и др.)                                                         |
-| getDateTime     | -                                 | INluResult\<INluDateTime[]\> | Дата и время (`year`, `month`, `day`, `hour`, `minute`, `relative`)                                                               |
+| getDateTime     | -                                 | INluResult\<INluDateTime[]\> | Дата и время (`year`, `month`, `day`, `hour`, `minute` + флаги `*_is_relative`)                                                   |
 | getNumber       | -                                 | INluResult\<number[]\>       | Числа из текста                                                                                                                   |
 | getUserName     | -                                 | INluThisUser \| null         | Информация о текущем пользователе (`first_name`, `last_name`, `username`), если платформа её прислала                             |
 | isIntentConfirm | userCommand?: string              | boolean                      | Проверка интента согласия; если интента нет и передан текст — дополнительная проверка по словам согласия («да», «конечно» и т.п.) |
@@ -201,13 +208,13 @@ interface INluResult<T = object> {
 ```ts
 const fio = this.nlu.getFio();
 if (fio.status) {
-    this.text = `Приятно познакомиться, ${fio.result[0].first_name}!`;
+    this.text = `Приятно познакомиться, ${fio.result?.[0]?.first_name}!`;
 }
 
 // Статические методы — для текста без данных платформы
 const phones = Nlu.getPhone(this.userCommand || '');
 if (phones.status) {
-    this.userData.phone = phones.result[0];
+    this.userData.phone = phones.result?.[0];
 }
 ```
 
@@ -264,6 +271,10 @@ const HELP_INTENT_NAME = 'help'; // Интент помощи
 const FALLBACK_COMMAND = '*'; // Команда-заглушка (вызывается при отсутствии совпадений)
 ```
 
+> ⚠️ `bot.addCommand(FALLBACK_COMMAND, [], cb)` работает, потому что fallback ищется конвейером отдельно (до интентов).
+> Обычная команда с пустым массивом слотов **молча не зарегистрируется** — `addCommand('myCmd', [], cb)` не создаст
+> триггеров. Исключение — `welcome`/`help`, для которых фреймворк подставляет дефолтные слоты при пустом списке.
+
 ## Типы и утилиты
 
 ### Middleware
@@ -306,6 +317,145 @@ type TCommandResolver = (
     commands: Map<string, ICommandParam>,
 ) => string | null | Promise<string | null>;
 ```
+
+### Событийный роутинг (`addEvent`)
+
+Декларативная обработка не-текстовых апдейтов — аналог `bot.on(':photo')` в Telegram-фреймворках, но для всех подключённых платформ сразу. Адаптер определяет тип события и записывает его в `controller.eventType`; хендлеры `addEvent` вызываются **до** шагов и команд.
+
+```ts
+// Универсальные события (TEventType):
+type TEventType =
+    | 'message' // текстовое сообщение (значение по умолчанию)
+    | 'photo'
+    | 'voice'
+    | 'video'
+    | 'document'
+    | 'location'
+    | 'contact'
+    | 'sticker'
+    | 'callback' // нажатие inline/callback-кнопки
+    | 'inline' // inline-запрос (пока только Telegram)
+    | 'message_edited'
+    | 'channel_post'
+    | 'start' // начало диалога (deep-link payload в controller.payload)
+    | 'subscribed'
+    | 'unsubscribed'
+    | 'auth' // завершение привязки аккаунта (Алиса account_linking)
+    | 'rating'; // результат оценки (SmartApp)
+
+// Валидаторы событийного слоя (экспорт из 'umbot'):
+const ALL_EVENT_TYPES: readonly TEventType[]; // перечень всех 17 универсальных событий
+function isEventType(event: string): event is TEventType; // true, если имя события известно фреймворку
+```
+
+Поддержка объявляется самим адаптером (поле `supportedEvents`): Telegram — медиа/callback/inline/edited/каналы; VK — message/callback; MAX — message/callback/start/edited; Viber — медиа-типы/start/subscribed/unsubscribed; Алиса — message/auth; SmartApp — message/start/rating; Маруся — message. Хендлер просто не вызывается там, где событие физически невозможно — мультиплатформенный бот не ломается. Кастомная платформа (`BasePlatform`) объявляет собственный `supportedEvents` и автоматически участвует в валидации: `bot.addEvent` предупреждает, если событие не поддерживает ни один подключённый адаптер (хендлер при этом регистрируется и заработает после подключения нужной платформы).
+
+Сводная таблица `supportedEvents` по адаптерам (значения — из `supportedEvents` в коде адаптеров):
+
+| Платформа | `supportedEvents`                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Telegram  | `message`, `photo`, `voice`, `video`, `document`, `location`, `contact`, `sticker`, `callback`, `inline`, `message_edited`, `channel_post` |
+| VK        | `message`, `callback`                                                                                                                      |
+| MAX       | `message`, `callback`, `start`, `message_edited`                                                                                           |
+| Viber     | `message`, `photo`, `video`, `document`, `contact`, `location`, `sticker`, `start`, `subscribed`, `unsubscribed`                           |
+| Алиса     | `message`, `auth`                                                                                                                          |
+| Маруся    | `message`                                                                                                                                  |
+| SmartApp  | `message`, `start`, `rating`                                                                                                               |
+
+```ts
+// Фото от пользователя — без ручного разбора requestObject
+bot.addEvent('photo', (ctx) => {
+    ctx.text = 'Отличное фото!';
+});
+
+// Нажатие кнопки (payload в ctx.payload)
+bot.addEvent('callback', (ctx) => {
+    ctx.text = `Вы нажали: ${String(ctx.payload)}`;
+});
+
+// «Фильтр»: перехватываем сообщение, но отдаём его обычному конвейеру
+bot.addEvent('message', (ctx) => {
+    if (ctx.userEvents?.auth?.status) return false;
+    ctx.text = 'Перехвачено!';
+});
+
+// События можно обрабатывать и в action() по controller.eventType
+class MyController extends BotController {
+    action(intentName: string | null): void {
+        if (this.eventType === 'photo') this.text = 'Фото!';
+    }
+}
+```
+
+Семантика хендлера:
+
+- вернул что угодно, кроме `false` (включая `void`) — событие перехвачено: строка, если возвращена, станет текстом ответа; обработка завершена, команды не ищутся;
+- вернул `false` — «событие не моё», конвейер продолжится (шаги → команды → интенты → fallback); только так можно передать запрос обычному конвейеру;
+- `async`-хендлеры поддерживаются, фреймворк дожидается результата;
+- несколько хендлеров одного события идут по порядку регистрации до первого не-`false`.
+
+### Действия кнопок (`addAction`)
+
+Обработчик нажатия callback-кнопки по её payload — как `bot.action()` у конкурентов. Кнопка создаётся с payload (`buttons.addBtn('Купить', '', 'buy')`), адаптеры Telegram/VK/MAX нормализуют payload в имя команды:
+
+```ts
+bot.addCommand('catalog', ['каталог'], (_, ctx) => {
+    ctx.text = 'Выберите товар:';
+    ctx.buttons.addBtn('iPhone', '', 'buy').addBtn('MacBook', '', 'buy');
+});
+
+// Сработает при нажатии кнопки с payload 'buy'
+// (или payload {"command":"buy"}): сообщение-кнопка идёт как команда 'buy'
+bot.addAction('buy', (_, ctx) => {
+    ctx.text = 'Оформляем заказ...';
+});
+```
+
+На платформах без callback-кнопок (Алиса, Маруся) кнопки отправляют текст, который матчится штатным слотом — хендлер не требуется.
+
+### Группы регулярных выражений (`match`)
+
+Для команд с RegExp-слотами, `isPattern`-паттернами и сработавшей группой регулярных выражений обработчик получает готовое совпадение в `controller.match` — без повторного прогона регулярки:
+
+```ts
+bot.addCommand('order', [/(?:заказ|купить)\s+(\d+)/], (_, ctx) => {
+    ctx.text = `Оформляю заказ №${ctx.match?.[1]}`;
+});
+```
+
+`match` вычисляется лениво: фреймворк запоминает регулярку сработавшей команды, а сам прогон делает только при первом чтении — запросы, не использующие группы, не тратят время. Для строковых команд `match === null`.
+
+### API платформы (`controller.api`)
+
+Унифицированный доступ к возможностям активной платформы из обработчика — без ручного конструирования Request-классов:
+
+```ts
+// photo-хендлер: отправляем фото в ответ
+bot.addEvent('photo', async (ctx) => {
+    await ctx.api?.sendPhoto('answer.jpg', { caption: 'Вот ваш отчёт' });
+    ctx.skipAutoReply = true; // ответ уже отправлен вручную
+});
+
+// Подтверждение нажатия кнопки на любой callback-платформе
+bot.addAction('buy', async (_, ctx) => {
+    await ctx.api?.answerCallback('Заказ оформлен!');
+});
+```
+
+Методы фасада:
+
+| Метод          | Описание                                                   | Telegram | VK         | MAX | Viber |
+| -------------- | ---------------------------------------------------------- | -------- | ---------- | --- | ----- |
+| sendPhoto      | Отправка фото (локальный путь, URL или file_id/attachment) | ✓        | ✓ (upload) | ✓   | —     |
+| sendDocument   | Отправка файла/документа                                   | ✓        | ✓ (upload) | ✓   | —     |
+| sendAudio      | Отправка аудио                                             | ✓        | —          | ✓   | —     |
+| sendVideo      | Отправка видео                                             | ✓        | —          | ✓   | —     |
+| answerCallback | Уведомление/snackbar в ответ на нажатие callback-кнопки    | ✓        | ✓          | ✓   | —     |
+| can(method)    | Проверка поддержки метода текущей платформой               | ✓        | ✓          | ✓   | —     |
+
+Фасад — ленивый объект: создаётся при первом обращении к `ctx.api`, на голосовых платформах (Алиса, Маруся, SmartApp) равен `null` (их ответ формируется телом webhook — используйте `card`/`sound`). Неподдерживаемые методы логируют предупреждение и возвращают `null`; поддержка проверяется заранее через `can()`. У Viber `can()` возвращает `false` для всех методов — Bot API Viber требует URL и размер файла, поэтому фасад там недоступен.
+
+Фасад выбирается адаптером: метод `createApi(controller)` контракта `IPlatformAdapter` (базовая реализация `BasePlatform` возвращает `null`). Кастомная платформа подключает свой фасад переопределением этого метода — возвращает объект, реализующий `IControllerApi`; пример — в [platform-integration.md](platform-integration.md), раздел «API платформы».
 
 ### Формы (`addForm`)
 
@@ -605,20 +755,21 @@ const page = nav.getPageElements(elements);
 nav.getPageElements(elements, 'дальше'); // следующая страница
 nav.getPageElements(elements, 'назад'); // предыдущая страница
 
-// Поиск элемента
+// Поиск элемента: 'iPhone' должен быть на ТЕКУЩЕЙ странице (окно первых
+// maxVisibleElements элементов) — поиск по схожести идёт только внутри неё
 const item = nav.selectedElement(elements, 'iPhone', ['title']);
 ```
 
 #### Методы Navigation
 
-| Метод             | Параметры                                                                         | Возвращаемое значение | Описание                                                                      |
-| ----------------- | --------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------- |
-| `getPageElements` | `elements: T[]`, `text?: string`                                                  | `T[]`                 | Элементы текущей страницы (мутирует `thisPage` при "дальше"/"назад")          |
-| `selectedElement` | `elements: T[]`, `text: string`, `keys?: string \| string[]`, `thisPage?: number` | `T \| null`           | Поиск элемента по значению (по номеру или по похожести текста)                |
-| `getPageNav`      | `isNumber?: boolean`                                                              | `string[]`            | Подписи кнопок пагинации: `['👈 Назад', 'Дальше 👉']` или `['1', '[2]', '3']` |
-| `getPageInfo`     | -                                                                                 | `string`              | Информация о текущей странице: `"N страница из M"` (или пустая строка)        |
-| `getMaxPage`      | `elements?: T[] \| null`                                                          | `number`              | Количество страниц                                                            |
-| `numberPage`      | `text: string`                                                                    | `boolean`             | Распознать команду вида `"2 страница"` и перейти                              |
+| Метод             | Параметры                                                                                    | Возвращаемое значение | Описание                                                                                                                                                                                               |
+| ----------------- | -------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getPageElements` | `elements?: T[] \| null`, `text?: string`                                                    | `T[]`                 | Элементы текущей страницы; без `elements` — последний переданный список (мутирует `thisPage` при "дальше"/"назад")                                                                                     |
+| `selectedElement` | `elements: T[] \| null`, `text: string`, `keys?: TKeys \| null`, `thisPage?: number \| null` | `T \| null`           | Поиск элемента по значению (по номеру или по похожести текста) — только среди элементов текущей страницы. Поздние параметры при пропуске передавайте явно как `null`                                   |
+| `getPageNav`      | `isNumber?: boolean`                                                                         | `string[]`            | Подписи кнопок пагинации: `['Дальше 👉']`/`['👈 Назад', 'Дальше 👉']` или `['[1]', '2', '3']` — «Назад» не отдаётся на первой странице, «Дальше» — на последней; при единственной странице — `['[1]']` |
+| `getPageInfo`     | -                                                                                            | `string`              | Информация о текущей странице: `"N страница из M"` (при единственной странице — пустая строка)                                                                                                         |
+| `getMaxPage`      | `elements?: T[] \| null`                                                                     | `number`              | Количество страниц                                                                                                                                                                                     |
+| `numberPage`      | `text: string`                                                                               | `boolean`             | Распознать команду вида `"2 страница"` и перейти                                                                                                                                                       |
 
 #### Свойства
 
@@ -647,16 +798,16 @@ await Promise.all(preload.loadSounds(['./sound.mp3'], [T_ALISA]));
 await Promise.all(preload.loadImages(['./img.jpg'], [T_TELEGRAM], { telegramUseId: 123 }));
 ```
 
-> ⚠️ Загрузка выполняется только для платформ, у которых задан токен (`appConfig.tokens` или переменные окружения). Без настроенных токенов методы вернут пустой массив промисов и загрузка молча не выполнится.
+> ⚠️ Загрузка выполняется только для платформ, у которых задан токен (`appConfig.tokens` или переменные окружения). Без настроенных токенов методы вернут пустой массив (без промисов) и загрузка молча не выполнится. Для неподдерживаемых платформ (Viber, SmartApp) промисы в массив не попадают вовсе.
 
 #### Методы Preload
 
-| Метод          | Параметры                                              | Возвращаемое значение       | Описание                                                                      |
-| -------------- | ------------------------------------------------------ | --------------------------- | ----------------------------------------------------------------------------- |
-| `loadImages`   | `paths: string[]`, `platforms: TAppType[]`, `options?` | `Promise<string \| null>[]` | Загрузить изображения (разрешается токеном изображения или `null` при ошибке) |
-| `loadSounds`   | `paths: string[]`, `platforms: TAppType[]`, `options?` | `Promise<string \| null>[]` | Загрузить звуки (разрешается токеном звука или `null` при ошибке)             |
-| `removeImages` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`        | Удалить изображения                                                           |
-| `removeSounds` | `paths: string[]`, `platforms: TAppType[]`             | `Promise<boolean>[]`        | Удалить звуки                                                                 |
+| Метод          | Параметры                                               | Возвращаемое значение       | Описание                                                                                                                     |
+| -------------- | ------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `loadImages`   | `paths: string[]`, `platforms?: TAppType[]`, `options?` | `Promise<string \| null>[]` | Загрузить изображения (разрешается токеном изображения или `null` при ошибке)                                                |
+| `loadSounds`   | `paths: string[]`, `platforms?: TAppType[]`, `options?` | `Promise<string \| null>[]` | Загрузить звуки (разрешается токеном звука или `null` при ошибке)                                                            |
+| `removeImages` | `paths: string[]`, `platforms?: TAppType[]`             | `Promise<boolean>[]`        | Удалить изображения (реализация — только Алиса и Маруся; для остальных платформ промис завершается `true`, ничего не удаляя) |
+| `removeSounds` | `paths: string[]`, `platforms?: TAppType[]`             | `Promise<boolean>[]`        | Удалить звуки (реализация — только Алиса и Маруся; для остальных платформ промис завершается `true`, ничего не удаляя)       |
 
 ### ILogger
 
@@ -734,19 +885,19 @@ interface IPluginFn {
 
 Фреймворк собирает метрики времени выполнения ключевых операций. Для включения реализуйте метод `metric()` в логгере.
 
-| Метрика              | Константа               | Что измеряет                        |
-| -------------------- | ----------------------- | ----------------------------------- |
-| Время запроса        | `EMetric.REQUEST`       | Общее время обработки HTTP-запроса  |
-| Начало webhook       | `EMetric.START_WEBHOOK` | Момент начала обработки запроса     |
-| Время webhook        | `EMetric.END_WEBHOOK`   | Общее время обработки webhook       |
-| Поиск интента        | `EMetric.GET_INTENT`    | Время поиска подходящего интента    |
-| Поиск команды        | `EMetric.GET_COMMAND`   | Время поиска подходящей команды     |
-| Выполнение action    | `EMetric.ACTION`        | Время выполнения вашего `action()`  |
-| Middleware           | `EMetric.MIDDLEWARE`    | Время выполнения middleware-цепочки |
-| Запрос к БД (SELECT) | `EMetric.DB_SELECT`     | Время выполнения SELECT             |
-| Запрос к БД (INSERT) | `EMetric.DB_INSERT`     | Время выполнения INSERT             |
-| Запрос к БД (UPDATE) | `EMetric.DB_UPDATE`     | Время выполнения UPDATE             |
-| Запрос к БД (REMOVE) | `EMetric.DB_REMOVE`     | Время выполнения DELETE             |
+| Метрика              | Константа               | Что измеряет                                                   |
+| -------------------- | ----------------------- | -------------------------------------------------------------- |
+| Время запроса        | `EMetric.REQUEST`       | Время исходящего HTTP-запроса к API платформы (внутри Request) |
+| Начало webhook       | `EMetric.START_WEBHOOK` | Момент начала обработки запроса                                |
+| Время webhook        | `EMetric.END_WEBHOOK`   | Общее время обработки webhook (входящий запрос)                |
+| Поиск интента        | `EMetric.GET_INTENT`    | Время поиска подходящего интента                               |
+| Поиск команды        | `EMetric.GET_COMMAND`   | Время поиска подходящей команды                                |
+| Выполнение action    | `EMetric.ACTION`        | Время выполнения вашего `action()`                             |
+| Middleware           | `EMetric.MIDDLEWARE`    | Время выполнения middleware-цепочки                            |
+| Запрос к БД (SELECT) | `EMetric.DB_SELECT`     | Время выполнения SELECT                                        |
+| Запрос к БД (INSERT) | `EMetric.DB_INSERT`     | Время выполнения INSERT                                        |
+| Запрос к БД (UPDATE) | `EMetric.DB_UPDATE`     | Время выполнения UPDATE                                        |
+| Запрос к БД (REMOVE) | `EMetric.DB_REMOVE`     | Время выполнения DELETE                                        |
 
 Пример подключения:
 
@@ -769,7 +920,7 @@ import { Model, IModelState, IModelRules, AppContext } from 'umbot';
 
 interface IScoreState extends IModelState {
     userId: string | null;
-    score: number | null;
+    score: number | string | null; // string допускает текстовую метку поля (attributeLabels)
 }
 
 const RULES: IModelRules[] = [
@@ -838,7 +989,7 @@ export class ScoreModel extends Model<IScoreState> {
 
 ### Таблица: `ImageTokens`
 
-Кэш для изображений, которые нужно загрузить в платформу про их отправке.
+Кэш для изображений, которые нужно загрузить в платформу при их отправке.
 
 | Поле         | Тип    | Описание                                             |
 | ------------ | ------ | ---------------------------------------------------- |
@@ -868,7 +1019,7 @@ import { Model, IModelState, IModelRules, AppContext } from 'umbot';
 interface IMyState extends IModelState {
     id: string | null;
     name: string | null;
-    age: number | null;
+    age: number | string | null; // string допускает текстовую метку поля (attributeLabels)
 }
 
 const RULES: IModelRules[] = [

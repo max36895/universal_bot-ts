@@ -21,7 +21,9 @@ const VIBER_MAX_FILE_SIZE = 50 * 1024 * 1024;
 const VIBER_MAX_TEXT_LENGTH = 7000;
 const VIBER_MAX_REQUEST_BYTES = 30 * 1024;
 
-/** Приводит версию Viber API к документированному целому числу. */
+/**
+ * Приводит версию Viber API к документированному целому числу.
+ */
 function normalizeApiVersion(value: unknown): number {
     const version = Number(value);
     return Number.isInteger(version) && version >= 1 ? version : VIBER_DEFAULT_API_VERSION;
@@ -30,7 +32,7 @@ function normalizeApiVersion(value: unknown): number {
 /**
  * Класс для взаимодействия с API Viber
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
- * @see (https://developers.viber.com/docs/api/rest-bot-api/) Смотри тут
+ * @see https://developers.viber.com/docs/api/rest-bot-api/
  */
 export class ViberRequest {
     /**
@@ -71,6 +73,11 @@ export class ViberRequest {
      */
     public constructor(appContext: AppContext) {
         this.#request = new Request(appContext);
+        // Viber — единственный клиент без явного таймаута: дефолт Request (2000 мс)
+        // обрывал send_message/rich_media при латентности chatapi.viber.com выше 2 с,
+        // тогда как соседние адаптеры (VK/Telegram/MAX — 5500, их upload'ы — 30000)
+        // на том же хостинге продолжали работать.
+        this.#request.maxTimeQuery = 5500;
         this.token = null;
         this.#error = null;
         this.#appContext = appContext;
@@ -88,7 +95,9 @@ export class ViberRequest {
         this.token = token;
     }
 
-    /** Возвращает валидный объект отправителя для обязательного поля Viber API. */
+    /**
+     * Возвращает валидный объект отправителя для обязательного поля Viber API.
+     */
     #getSender(sender?: IViberSender | string): { name: string; avatar?: string } | null {
         const configuredSender = this.#appContext.appConfig.tokens[T_VIBER]?.sender;
         const source = sender ?? configuredSender;
@@ -117,6 +126,10 @@ export class ViberRequest {
 
     /**
      * Отправляет запрос к Viber API
+     *
+     * Исходящее тело больше 30 КБ — warn, запрос не отправляется,
+     * возвращает null.
+     *
      * @param method Название метода API
      * @returns Результат выполнения метода или null при ошибке
      */
@@ -211,13 +224,16 @@ export class ViberRequest {
     /**
      * Отправляет сообщение пользователю
      * Сообщение можно отправить только после того, как пользователь подпишется на бота
+     *
+     * text обрезается до 7000 символов (Text.resize с warn).
+     *
      * @param receiver ID пользователя Viber
      * @param sender Информация об отправителе:
      * - name: имя (до 28 символов)
      * - avatar: URL аватара (до 100 Кб, 720x720)
      * @param text Текст сообщения
      * @param params Дополнительные параметры:
-     * - type: тип сообщения (text, picture, video, file, location, contact, sticker, carousel, url)
+     * - type: тип сообщения (text, picture, video, file, location, contact, sticker, url)
      * - tracking_data: данные для отслеживания
      * - min_api_version: минимальная версия API
      * - media: URL контента
@@ -260,6 +276,9 @@ export class ViberRequest {
 
     /**
      * Устанавливает webhook для получения событий
+     *
+     * При пустом url отправляется url: '' — снятие вебхука.
+     *
      * @param url URL для получения событий
      * @param params Дополнительные параметры:
      * - event_types: типы событий
@@ -339,6 +358,10 @@ export class ViberRequest {
 
     /**
      * Отправляет файл
+     *
+     * Валидации: size 1 байт–50 МБ, file_name ≤256, обязательное
+     * расширение в имени URL.
+     *
      * @param receiver ID пользователя Viber
      * @param file URL файла (поддерживаются только http/https-ссылки; локальные пути и содержимое не принимаются)
      * @param params Дополнительные параметры:
@@ -401,7 +424,7 @@ export class ViberRequest {
     }
 
     /**
-     * Записывает информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      * @param error Текст ошибки для логирования
      */
     #log(error: Error | string = ''): void {

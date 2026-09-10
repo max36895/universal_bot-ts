@@ -1,0 +1,433 @@
+/**
+ * Тесты выставления controller.eventType адаптерами платформ.
+ *
+ * Каждая платформа приводит свой тип апдейта к универсальному перечню
+ * TEventType (см. src/core/events.ts) — это основа декларативного роутинга
+ * bot.addEvent('photo', ...) без разбора requestObject вручную.
+ */
+import { AppContext, BotController } from '../../src';
+import {
+    AlisaAdapter,
+    MarusiaAdapter,
+    MaxAdapter,
+    SmartAppAdapter,
+    T_ALISA,
+    T_MARUSIA,
+    T_MAX_APP,
+    T_SMART_APP,
+    T_TELEGRAM,
+    T_VIBER,
+    T_VK,
+    TelegramAdapter,
+    ViberAdapter,
+    VkAdapter,
+} from '../../src/plugins';
+
+class TestController extends BotController {
+    action(): void {
+        return;
+    }
+}
+
+function createContext(): AppContext {
+    const context = new AppContext();
+    context.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
+    return context;
+}
+
+describe('TelegramAdapter: eventType', () => {
+    function setup(): { adapter: TelegramAdapter } {
+        const context = createContext();
+        context.appConfig.tokens[T_TELEGRAM] = { token: 'tg-token' };
+        const adapter = new TelegramAdapter('tg-token');
+        adapter.init(context);
+        return { context, adapter };
+    }
+
+    it('текстовое сообщение → message', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_id: 1,
+                message: {
+                    message_id: 1,
+                    from: { id: 42, is_bot: false, first_name: 'U' },
+                    chat: { id: 42, type: 'private' },
+                    text: 'привет',
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('message');
+    });
+
+    it('фото → photo', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_id: 2,
+                message: {
+                    message_id: 2,
+                    from: { id: 42, is_bot: false, first_name: 'U' },
+                    chat: { id: 42, type: 'private' },
+                    photo: [{ file_id: 'f', width: 1, height: 1 }],
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('photo');
+    });
+
+    it('голосовое → voice, стикер → sticker, гео → location', async () => {
+        const { adapter } = setup();
+        const base = (extra: Record<string, unknown>): Record<string, unknown> => ({
+            update_id: 3,
+            message: {
+                message_id: 3,
+                from: { id: 42, is_bot: false, first_name: 'U' },
+                chat: { id: 42, type: 'private' },
+                ...extra,
+            },
+        });
+        const voice = new TestController(createContext());
+        await adapter.setQueryData(base({ voice: { file_id: 'v' } }) as never, voice);
+        expect(voice.eventType).toBe('voice');
+
+        const sticker = new TestController(createContext());
+        await adapter.setQueryData(base({ sticker: { file_id: 's' } }) as never, sticker);
+        expect(sticker.eventType).toBe('sticker');
+
+        const location = new TestController(createContext());
+        await adapter.setQueryData(
+            base({ location: { latitude: 1, longitude: 2 } }) as never,
+            location,
+        );
+        expect(location.eventType).toBe('location');
+    });
+
+    it('callback_query → callback, payload {"command":"buy"} → userCommand "buy"', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_id: 4,
+                callback_query: {
+                    id: 'cb-1',
+                    from: { id: 42, is_bot: false, first_name: 'U' },
+                    message: { message_id: 9, chat: { id: 42, type: 'private' } },
+                    data: '{"command":"buy"}',
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('callback');
+        expect(controller.userCommand).toBe('buy');
+        expect(controller.payload).toEqual({ command: 'buy' });
+    });
+
+    it('inline_query → inline', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_id: 5,
+                inline_query: { id: 'iq-1', from: { id: 42, is_bot: false }, query: 'поиск' },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('inline');
+    });
+
+    it('edited_message → message_edited', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_id: 6,
+                edited_message: {
+                    message_id: 6,
+                    from: { id: 42, is_bot: false, first_name: 'U' },
+                    chat: { id: 42, type: 'private' },
+                    text: 'исправлено',
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('message_edited');
+    });
+
+    it('channel_post → channel_post', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_id: 7,
+                channel_post: { message_id: 7, chat: { id: -100 }, text: 'пост' },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('channel_post');
+    });
+});
+
+describe('VkAdapter: eventType и нормализация payload', () => {
+    function setup(): { adapter: VkAdapter } {
+        const context = createContext();
+        context.appConfig.tokens[T_VK] = { token: 'vk-token' };
+        const adapter = new VkAdapter('vk-token', { vk_load_user_info: false });
+        adapter.init(context);
+        return { adapter };
+    }
+
+    it('message_new → message', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                type: 'message_new',
+                object: {
+                    message: {
+                        id: 1,
+                        peer_id: 42,
+                        from_id: 42,
+                        text: 'привет',
+                        random_id: 0,
+                    },
+                    client_info: {},
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('message');
+    });
+
+    it('message_event → callback, payload-строка нормализуется в имя действия', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                type: 'message_event',
+                object: {
+                    user_id: 42,
+                    peer_id: 42,
+                    event_id: 'ev-1',
+                    payload: { command: 'buy' },
+                    conversation_message_id: 3,
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('callback');
+        expect(controller.userCommand).toBe('buy');
+    });
+});
+
+describe('MaxAdapter: eventType', () => {
+    function setup(): { adapter: MaxAdapter } {
+        const context = createContext();
+        context.appConfig.tokens[T_MAX_APP] = { token: 'max-token' };
+        const adapter = new MaxAdapter('max-token');
+        adapter.init(context);
+        return { adapter };
+    }
+
+    it('message_created → message', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_type: 'message_created',
+                timestamp: 1,
+                message: {
+                    body: { text: 'привет' },
+                    sender: { user_id: 42 },
+                    recipient: { chat_id: 1, chat_type: 'private' },
+                    message_id: 1,
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('message');
+    });
+
+    it('message_callback → callback, payload нормализуется', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_type: 'message_callback',
+                timestamp: 1,
+                callback: {
+                    callback_id: 'cb-1',
+                    payload: '{"command":"buy"}',
+                    user: { user_id: 42 },
+                },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('callback');
+        expect(controller.userCommand).toBe('buy');
+    });
+
+    it('bot_started → start', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                update_type: 'bot_started',
+                timestamp: 1,
+                user: { user_id: 42 },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('start');
+        expect(controller.skipAutoReply).toBe(true);
+    });
+});
+
+describe('ViberAdapter: eventType', () => {
+    function setup(): { adapter: ViberAdapter } {
+        const context = createContext();
+        context.appConfig.tokens[T_VIBER] = { token: 'viber-token' };
+        const adapter = new ViberAdapter('viber-token');
+        adapter.init(context);
+        return { adapter };
+    }
+
+    it('текстовое сообщение → message', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                event: 'message',
+                timestamp: 1,
+                message_token: 1,
+                sender: { id: 'u1', name: 'U', api_version: 8 },
+                message: { type: 'text', text: 'привет' },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('message');
+    });
+
+    it('picture → photo', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                event: 'message',
+                timestamp: 1,
+                message_token: 2,
+                sender: { id: 'u1', name: 'U', api_version: 8 },
+                message: { type: 'picture', media: 'http://localhost/p.jpg' },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('photo');
+    });
+
+    it('conversation_started → start', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                event: 'conversation_started',
+                timestamp: 1,
+                user: { id: 'u1', name: 'U', api_version: 8 },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('start');
+    });
+
+    it('subscribed → subscribed', async () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        await adapter.setQueryData(
+            {
+                event: 'subscribed',
+                timestamp: 1,
+                user: { id: 'u1', name: 'U' },
+            } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('subscribed');
+    });
+});
+
+describe('AlisaAdapter: eventType (account_linking)', () => {
+    it('account_linking_complete_event → auth', (): void => {
+        const context = createContext();
+        context.appConfig.tokens[T_ALISA] = { token: 'alisa-token' };
+        const adapter = new AlisaAdapter('alisa-token');
+        adapter.init(context);
+        const controller = new TestController(createContext());
+        adapter.setQueryData(
+            { account_linking_complete_event: { status: 'success' } } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('auth');
+        expect(controller.userEvents?.auth?.status).toBe(true);
+    });
+});
+
+describe('MarusiaAdapter: eventType (account_linking)', () => {
+    it('account_linking_complete_event → auth (симметрично Алисе)', (): void => {
+        const context = createContext();
+        context.appConfig.tokens[T_MARUSIA] = { token: 'marusia-token' };
+        const adapter = new MarusiaAdapter('marusia-token');
+        adapter.init(context);
+        const controller = new TestController(createContext());
+        adapter.setQueryData(
+            { account_linking_complete_event: { status: 'success' } } as never,
+            controller,
+        );
+        expect(controller.eventType).toBe('auth');
+        expect(controller.userEvents?.auth?.status).toBe(true);
+        // supportedEvents включает auth — addEvent('auth') не даёт ложного warn
+        expect(adapter.supportedEvents).toContain('auth');
+    });
+});
+
+describe('SmartAppAdapter: eventType (start / rating)', () => {
+    function setup(): { adapter: SmartAppAdapter } {
+        const context = createContext();
+        context.appConfig.tokens[T_SMART_APP] = { token: 'smart-token' };
+        const adapter = new SmartAppAdapter();
+        adapter.init(context);
+        return { adapter };
+    }
+
+    function makeQuery(messageName: string): Record<string, unknown> {
+        return {
+            messageId: 0,
+            uuid: { userId: 'u1', channelId: 'c1' },
+            sessionId: 's1',
+            messageName,
+            payload: {
+                device: {},
+                meta: {},
+                projectName: 'p',
+                app_info: { applicationId: 'app-1' },
+                server_action: { action_id: 'run', parameters: { deep: 'link' } },
+                ...(messageName === 'RATING_RESULT' ? { status_code: { code: 1 } } : {}),
+            },
+        };
+    }
+
+    it('RUN_APP → start', () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        adapter.setQueryData(makeQuery('RUN_APP') as never, controller);
+        expect(controller.eventType).toBe('start');
+    });
+
+    it('RATING_RESULT → rating', () => {
+        const { adapter } = setup();
+        const controller = new TestController(createContext());
+        adapter.setQueryData(makeQuery('RATING_RESULT') as never, controller);
+        expect(controller.eventType).toBe('rating');
+    });
+});

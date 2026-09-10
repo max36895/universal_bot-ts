@@ -7,11 +7,15 @@ describe('CLI stats (computeLogStats)', () => {
     const logFile = path.join(tmpDir, 'app.log');
 
     beforeEach(() => {
-        if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+        if (fs.existsSync(tmpDir)) {
+            fs.rmSync(tmpDir, { recursive: true });
+        }
         fs.mkdirSync(tmpDir, { recursive: true });
     });
     afterEach(() => {
-        if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+        if (fs.existsSync(tmpDir)) {
+            fs.rmSync(tmpDir, { recursive: true });
+        }
     });
 
     it('возвращает базовые счётчики', () => {

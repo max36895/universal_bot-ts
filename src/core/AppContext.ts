@@ -1,5 +1,7 @@
 /**
- * Основной класс приложения для создания мультиплатформенного приложения, которое будет работать с голосовыми навыками и чат-ботами одновременно.
+ * Контекст приложения: конфигурация, токены, реестры, логгер и метрики.
+ * Создаётся фреймворком внутри Bot; напрямую не инстанцируется — доступ
+ * через `bot.getAppContext()`.
  *
  * Предоставляет функциональность для:
  * - Управления конфигурацией приложения
@@ -16,8 +18,10 @@
  *
  * @example
  * ```ts
- * import { AppContext } from 'umbot';
- * const appContext = new AppContext();
+ * import { Bot } from 'umbot';
+ * const bot = new Bot();
+ * // Доступ к контексту — через getAppContext()
+ * const appContext = bot.getAppContext();
  * // Настройка конфигурации
  * appContext.setAppConfig({
  *   error_log: './logs',
@@ -81,47 +85,41 @@ import { join } from 'node:path';
 export const T_AUTO = 'auto';
 
 const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
-// Токен Telegram в «голом» виде: <bot_id>:<35 символов>. Отдельный шаблон нужен потому,
-// что regBot требует литерального префикса "bot" и ловит токен только внутри URL API.
-// {34} в хвосте — исторические токены короче 35 символов тоже не должны утекать.
+// «Голый» токен Telegram <bot_id>:<хвост> — regBot требует префикс "bot"
+// и ловит его только внутри URL API.
 const regTelegramBare = /\b\d{6,12}:[A-Za-z0-9_-]{34,}\b/g;
-// Реальный формат сервисного токена VK — vk1.a.<payload>, с точками.
-// Прежний шаблон /vk1a[a-z0-9]{79}/ не совпадал ни с одним настоящим токеном.
+// Сервисный токен VK — vk1.a.<payload>, с точками.
 const regVk = /\bvk1\.a\.[A-Za-z0-9_-]{20,}/g;
 // JWT (Сбер SmartApp, OAuth-провайдеры): три base64url-сегмента через точку.
 const regJwt = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
-// Значения под «говорящими» ключами в JSON-подобных строках. Двоеточие —
-// вне захватываемой группы: прежний вариант ("access_token"\s*:) поглощал
-// его в группу и требовал второе двоеточие, из-за чего на нормальном JSON
-// вида {"access_token": "vk1.a..."} паттерн не срабатывал вообще.
-// password/pass — отдельные строки конфигурации БД попадают в логи именно
-// в текстовой форме ("pass":"hunter2"), а не только как metadata-ключи.
+// Значения под «говорящими» ключами в JSON-подобных строках. Двоеточие — вне
+// захватываемой группы, чтобы паттерн срабатывал на обычном JSON.
+// password/pass — конфигурация БД попадает в логи в текстовой форме
+// ("pass":"hunter2"), а не только как metadata-ключи.
 const regVk2 =
     /("(?:access_token|client_secret|vk_confirmation_token|sber_token|oauth|api_key|api-key|private_key|password|pass)"|client_secret|vk_confirmation_token|sber_token|oauth|api_key|api-key|private_key|password|pass)\s*:\s*"([^"]{8,})"/g;
 const regToken = /"[A-Za-z0-9+/=]{30,256}"/g;
-// Произвольные «токеноподобные» строки. Порог 40 (а не 64): реальный токен
-// Viber — ~46 hex-символов. Дефис/underscore разрешены внутри, но не по
-// краям, иначе регулярка съедала куски соседних слов.
+// Произвольные «токеноподобные» строки. Порог 40: реальный токен Viber —
+// ~46 hex-символов. Дефис/underscore разрешены внутри, но не по краям.
 const regToken2 = /\b[A-Za-z0-9](?:[A-Za-z0-9_-]{38,254})[A-Za-z0-9]\b/g;
-// Токен Яндекс OAuth (Алиса): y0_A... / y1_A... с underscore, которые
-// не покрывал regToken2 в пороге до 40 из-за короткой длины у некоторых форм.
+// Токен Яндекс OAuth (Алиса): y0_A... / y1_A... — короче, чем берёт regToken2.
 const regYandexOAuth = /\by[01]_[A-Za-z0-9_-]{20,}\b/g;
-// UUID (MAX и другие платформы): сегменты 8-4-4-4-12 hex с дефисами.
-// regToken2 их не берёт: каждый сегмент короче порога, а дефисы по краям
-// в его класс символов не входят.
+// UUID (MAX и другие платформы): 8-4-4-4-12 hex с дефисами; каждый сегмент
+// короче порога regToken2.
 const regUuid = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
-// Api-Key Yandex SpeechKit — ровно 32 hex-символа: короче порога regToken2 (40),
-// отдельный формат — отдельный шаблон.
+// Api-Key Yandex SpeechKit — ровно 32 hex-символа, короче порога regToken2.
 const regApiKey = /\b[A-Fa-f0-9]{32}\b/g;
+// IAM-токен Яндекса (yc CLI, Cloud Functions, serverless-деплой из CLI):
+// сегментный формат t1.<base64url>.<base64url> — точки не дают regToken2
+// (он требует непрерывную строку 38+ символов) захватить токен целиком.
+const regYandexIam = /\bt1\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g;
 
 /**
  * Ключи метаданных, значение которых маскируется целиком независимо от формата.
- * Формат токенов у платформ меняется, а имя поля — нет, поэтому проверка по ключу
- * закрывает случаи, которые не ловит ни один шаблон.
+ * Формат токенов у платформ меняется, а имя поля — нет.
  *
- * `pass` с границей слова: без неё не покрывался ключ `pass` из конфигурации БД
- * (`db: {host, user, pass}`) — структура прямо из JSDoc-примера AppContext —
- * и пароль уходил в логи целиком.
+ * `pass` с границей слова — иначе ключ `pass` из конфигурации БД
+ * (`db: {host, user, pass}`) не покрывался.
  */
 const SECRET_KEY_PATTERN =
     /token|secret|password|passwd|pass\b|api[_-]?key|private[_-]?key|authorization|credential|access[_-]?key|client[_-]?secret/i;
@@ -132,6 +130,7 @@ const PATTERNS = [
     { regex: regVk, replacement: 'vk1.a.***' },
     { regex: regJwt, replacement: '***' },
     { regex: regYandexOAuth, replacement: '***' },
+    { regex: regYandexIam, replacement: 't1.***' },
     { regex: regUuid, replacement: '***' },
     { regex: regApiKey, replacement: '***' },
     {
@@ -181,10 +180,7 @@ interface IErrWarnData {
  *
  * @example
  * ```ts
- * // НЕ ТАК:
- * const appContext = new AppContext();
- *
- * // ТАК (правильно):
+ * // AppContext создаётся самим Bot:
  * const bot = new Bot();
  * const appContext = bot.getAppContext(); // если нужен прямой доступ
  * ```
@@ -212,7 +208,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
          */
         databaseInfo?: TDbInfo;
         /**
-         * Флаг, определяющий вызывался метод для подключения к базе данных или нет
+         * Флаг, определяющий, успешно ли подключился метод connect адаптера базы данных
          */
         isSendConnect?: boolean;
     } = {};
@@ -238,7 +234,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     #logErrorBind = this.logError.bind(this);
 
     /**
-     * Все зарегистрированные команды и шаги
+     * Менеджер регистрации команд, шагов и событий (CommandReg).
+     * Сами команды — через геттер `command.commands`, шаги — `command.steps`.
      */
     public command: CommandReg = new CommandReg(
         {
@@ -281,6 +278,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Такой кэш не должен прятать явно указанный env-файл при повторном вызове.
      */
     #envVarsFromSilentEnv = false;
+
+    /**
+     * Путь env-файла, из которого заполнен текущий кэш `#envVars`.
+     * Смена `appConfig.env` с одного файла на другой перечитывает файл,
+     * а не удерживает кэш первого пути.
+     */
+    #envVarsPath: string | null = null;
 
     /**
      * Кастомный logger приложения
@@ -361,6 +365,13 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Закрывает все подключения, для корректного завершения работы приложения
+     *
+     * @returns {Promise<void>} Завершается, когда все подключения закрыты и логи сохранены
+     *
+     * @example
+     * ```ts
+     * await bot.getAppContext().close(); // при завершении работы приложения
+     * ```
      */
     public async close(): Promise<void> {
         await this.#saveErrorData();
@@ -397,6 +408,9 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             applyEnvValue('max_app', 'token', envVars.MAX_TOKEN);
             applyEnvValue('marusia', 'token', envVars.MARUSIA_TOKEN);
             applyEnvValue('alisa', 'token', envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN);
+            // Токен SmartApp адаптеру не нужен (подписи у Сбера нет), но CLI
+            // генерирует SMARTAPP_TOKEN — он должен попадать в конфиг, а не отбрасываться.
+            applyEnvValue('smart_app', 'token', envVars.SMARTAPP_TOKEN);
 
             // SpeechKit отвечает за TTS в чат-платформах Telegram, VK и Max,
             // поэтому один токен раскладывается сразу по трём платформам.
@@ -404,6 +418,75 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             applyEnvValue('vk', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
             applyEnvValue('max_app', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
         }
+    }
+
+    /**
+     * Собирает конфигурацию окружения из process.env: токены платформ и настройки БД.
+     * Вынесено из {@link #getEnvVars}, чтобы деструктуризация не раздувала метод.
+     * @returns Объект с переменными окружения (пустой, если process.env недоступен)
+     */
+    #readEnvFromProcess(): IEnvConfig {
+        if (!process.env) {
+            return {};
+        }
+        const {
+            // Получаем токен для viber
+            VIBER_TOKEN,
+            // Получаем токен для telegram
+            TELEGRAM_TOKEN,
+            // Получаем токен для vk
+            VK_TOKEN,
+            // Получаем токен для max
+            MAX_TOKEN,
+            // Получаем токен для подтверждения vk
+            VK_CONFIRMATION_TOKEN,
+            // Получаем секретный ключ VK Callback API
+            VK_SECRET_KEY,
+            // Получаем токен для маруси
+            MARUSIA_TOKEN,
+            // Получаем токен для Сбер SmartApp (генерируется CLI в .env)
+            SMARTAPP_TOKEN,
+            // Получаем токен для работы с api яндекса (каноническое имя)
+            ALISA_TOKEN,
+            // Устаревшее имя токена Алисы — сохранено для обратной совместимости
+            YANDEX_TOKEN,
+            // Получаем токен Yandex SpeechKit для TTS в чат-платформах
+            SPEECH_KIT_TOKEN,
+            // Получаем хост для подключения к базе
+            DB_HOST,
+            // Получаем имя пользователя для подключения к базе
+            DB_USER,
+            // Получаем пароль пользователя для подключения к базе
+            DB_PASSWORD,
+            // Получаем имя базы данных
+            DB_NAME,
+        } = process.env;
+        // exactOptionalPropertyTypes: поля заполняем только реально существующими
+        // значениями — undefined-поля удаляем, как это делала деструктуризация
+        // в объект внутри прежней реализации.
+        const env: Record<string, string> = {};
+        for (const [key, value] of Object.entries({
+            VIBER_TOKEN,
+            TELEGRAM_TOKEN,
+            VK_TOKEN,
+            MAX_TOKEN,
+            VK_CONFIRMATION_TOKEN,
+            VK_SECRET_KEY,
+            MARUSIA_TOKEN,
+            SMARTAPP_TOKEN,
+            ALISA_TOKEN,
+            YANDEX_TOKEN,
+            SPEECH_KIT_TOKEN,
+            DB_HOST,
+            DB_USER,
+            DB_PASSWORD,
+            DB_NAME,
+        })) {
+            if (value !== undefined) {
+                env[key] = value;
+            }
+        }
+        return env as IEnvConfig;
     }
 
     /**
@@ -415,57 +498,10 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     #getEnvVars(envPath: string | null | undefined = undefined): IEnvConfig | undefined {
         const resolvedPath = envPath === undefined ? this.appConfig?.env : envPath;
         const setEnvFn = (errorMsg: string, silent: boolean = false): void => {
-            let correctEnvValue = {};
-            // Используем доступ к env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая для работы с api и базой данных.
-            // Используется только в случае если явно хотят работать с env файлами.
-            if (process.env) {
-                const {
-                    // Получаем токен для viber
-                    VIBER_TOKEN,
-                    // Получаем токен для telegram
-                    TELEGRAM_TOKEN,
-                    // Получаем токен для vk
-                    VK_TOKEN,
-                    // Получаем токен для max
-                    MAX_TOKEN,
-                    // Получаем токен для подтверждения vk
-                    VK_CONFIRMATION_TOKEN,
-                    // Получаем секретный ключ VK Callback API
-                    VK_SECRET_KEY,
-                    // Получаем токен для маруси
-                    MARUSIA_TOKEN,
-                    // Получаем токен для работы с api яндекса (каноническое имя)
-                    ALISA_TOKEN,
-                    // Устаревшее имя токена Алисы — сохранено для обратной совместимости
-                    YANDEX_TOKEN,
-                    // Получаем токен Yandex SpeechKit для TTS в чат-платформах
-                    SPEECH_KIT_TOKEN,
-                    // Получаем хост для подключения к базе
-                    DB_HOST,
-                    // Получаем имя пользователя для подключения к базе
-                    DB_USER,
-                    // Получаем пароль пользователя для подключения к базе
-                    DB_PASSWORD,
-                    // Получаем имя базы данных
-                    DB_NAME,
-                } = process.env;
-                correctEnvValue = {
-                    VIBER_TOKEN,
-                    TELEGRAM_TOKEN,
-                    VK_TOKEN,
-                    MAX_TOKEN,
-                    VK_CONFIRMATION_TOKEN,
-                    VK_SECRET_KEY,
-                    MARUSIA_TOKEN,
-                    ALISA_TOKEN,
-                    YANDEX_TOKEN,
-                    SPEECH_KIT_TOKEN,
-                    DB_HOST,
-                    DB_USER,
-                    DB_PASSWORD,
-                    DB_NAME,
-                };
-            }
+            // Используем доступ к env, чтобы получить токены для Viber, Telegram и других сервисов.
+            // Это необходимо для работы с api и базой данных. Используется только в случае,
+            // если явно хотят работать с env-файлами.
+            const correctEnvValue = this.#readEnvFromProcess();
             let isError = true;
             Object.values(correctEnvValue).forEach((correctEnvValue) => {
                 if (correctEnvValue) {
@@ -481,6 +517,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             } else {
                 this.#envVars = correctEnvValue;
                 this.#envVarsFromSilentEnv = silent;
+                this.#envVarsPath = null;
             }
         };
         if (resolvedPath === 'local') {
@@ -488,9 +525,14 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             // Возвращаем результаты сразу, чтобы не возникло ситуации, когда пытается прочитать файл local
             return this.#envVars;
         }
-        // Кэш от тихого чтения process.env не должен прятать явно указанный env-файл:
-        // если пользователь настроил env после тихого подхвата, читаем файл.
-        if (this.#envVars && !(this.#envVarsFromSilentEnv && resolvedPath)) {
+        // Кэш от тихого чтения process.env не должен прятать явно указанный
+        // env-файл: если env настроен после тихого подхвата или путь сменился
+        // на другой файл — читаем файл заново.
+        if (
+            this.#envVars &&
+            this.#envVarsPath === resolvedPath &&
+            !(this.#envVarsFromSilentEnv && resolvedPath)
+        ) {
             return this.#envVars;
         }
         if (resolvedPath) {
@@ -498,6 +540,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             if (res.status) {
                 this.#envVars = res.data;
                 this.#envVarsFromSilentEnv = false;
+                this.#envVarsPath = resolvedPath;
             } else {
                 setEnvFn(
                     (res.error as string) + '. Также не удалось получить данные из process.env',
@@ -547,6 +590,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     /**
      * Устанавливает конфигурацию приложения
      * @param {Partial<IAppConfig>} config - Пользовательская конфигурация
+     * @returns {void}
+     *
+     * @example
+     * ```ts
+     * ctx.setAppConfig({ error_log: './logs', json: './data' });
+     * ```
      */
     public setAppConfig(config: Partial<IAppConfig>): void {
         const correctConfig: Partial<IAppConfig> = { ...config };
@@ -583,6 +632,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     /**
      * Устанавливает параметры приложения
      * @param {IAppParam} params - Пользовательские параметры
+     * @returns {void}
+     *
+     * @example
+     * ```ts
+     * ctx.setPlatformParams({ welcome_text: 'Привет!', help_text: 'Список команд…' });
+     * ```
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
@@ -615,6 +670,12 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     /**
      * Позволяет установить свою реализацию для логирования
      * @param {ILogger | null} logger - Экземпляр логгера или null для отключения
+     * @returns {void}
+     *
+     * @example
+     * ```ts
+     * ctx.setLogger({ error: (msg, meta) => console.error(msg, meta) });
+     * ```
      */
     public setLogger(logger: ILogger | null): void {
         this.#logger = logger;
@@ -675,6 +736,15 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Возвращает флаг, который говорит о том, нужно ли собирать метрики
+     *
+     * @returns {boolean} true, если заданный логгер реализует метод metric
+     *
+     * @example
+     * ```ts
+     * if (ctx.usedMetric) {
+     *   ctx.logMetric('GET_COMMAND', 0.42, { platform: 'alisa' });
+     * }
+     * ```
      */
     public get usedMetric(): boolean {
         return this.#usedMetricCache;
@@ -751,12 +821,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Сообщает о недоступности хранилища логов в обход самого конвейера логирования.
-     *
-     * Писать об этом через logError нельзя: конвейер неисправен, и раньше попытка
-     * записать «ошибку записи ошибки» через тот же конвейер зацикливалась навсегда.
-     * Поэтому сообщение уходит напрямую в stderr — так же поступают pino, winston
-     * и bunyan: путь обработки сбоя логгера обязан заканчиваться вне логгера.
-     * Это осознанное исключение из правила «не писать в console из src/».
+     * Писать об этом через logError нельзя — конвейер неисправен, получим
+     * зацикливание «ошибки записи ошибки». Поэтому напрямую в stderr.
      */
     #reportLogStorageFailure(): void {
         process.stderr.write(
@@ -776,10 +842,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             this.#errWarnData.timeout = setTimeout(() => {
                 this.#errWarnData.timeout = null;
                 this.#saveErrorData().catch(() => {
-                    // Страховка: все сбои записи уже обрабатываются внутри
-                    // #saveErrorData (пауза + сообщение в stderr). Логировать
-                    // здесь нельзя — это вернуло бы цикл самовоспроизводящихся
-                    // ошибок, от которого защищает этот конвейер.
+                    // Сбои записи обрабатываются внутри #saveErrorData;
+                    // логировать их здесь нельзя — новый цикл ошибок.
                 });
             }, 200).unref();
         }
@@ -925,7 +989,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * @param {string} fileName - Имя файла лога
      * @param {string} errorText - Текст ошибки
      * @param {boolean} usedDate - Флаг, говорящий о том, нужно ли добавлять время или нет.
-     * @returns {boolean} true в случае успешного сохранения
+     * @returns {Promise<boolean>} true в случае успешного сохранения
      */
     #saveLog(
         fileName: string,
@@ -940,10 +1004,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (this.appMode === 'dev') {
             console.error(msg);
         }
-        // errorLogger сюда намеренно не передаётся: сбой записи лога через logError
-        // порождал новую запись, которая снова шла на запись, — бесконечный цикл
-        // самовоспроизводящихся ошибок. Обработкой сбоя занимается #saveErrorData
-        // (счётчик сбоев и пауза), а не сам конвейер логирования.
+        // errorLogger не передаётся: сбой записи лога через logError породил бы
+        // новую запись — цикл ошибок. Обработкой сбоев занимается #saveErrorData.
         return saveData(dir, this.#maskSecrets(msg), 'a');
     }
 }

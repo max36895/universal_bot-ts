@@ -22,8 +22,13 @@ import {
     saveData,
     httpBuildQuery,
 } from '../../src/utils/standard/util';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
-const TMP_DIR = path.join(__dirname, '__util_tmp__');
+// Уникальная папка на процесс (tests/.tmp/util-*): фиксированный путь
+// (__util_tmp__ рядом с сьютом) создавал гонку при параллельных прогонах Jest
+// (два процесса роняли друг другу папку через rmSync в beforeEach/afterEach —
+// тест isDirSync падал случайным образом).
+const TMP_DIR = createTestDir('util');
 
 beforeEach(() => {
     if (fs.existsSync(TMP_DIR)) {
@@ -32,10 +37,8 @@ beforeEach(() => {
     fs.mkdirSync(TMP_DIR, { recursive: true });
 });
 
-afterEach(() => {
-    if (fs.existsSync(TMP_DIR)) {
-        fs.rmSync(TMP_DIR, { recursive: true });
-    }
+afterEach(async () => {
+    await removeTestDir(TMP_DIR);
 });
 
 describe('safeStringify', () => {

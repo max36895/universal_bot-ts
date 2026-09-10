@@ -22,8 +22,10 @@
  *     .addButton({ title: 'Купить' });
  *
  * // Получение данных карточки для текущей платформы:
- * // передаётся процессор адаптера платформы и контроллер (синхронный метод)
- * const cardData = card.getCards(myCardProcessing, controller);
+ * // передаётся процессор адаптера платформы и контроллер.
+ * // У Telegram, VK, Алисы, Маруси и MAX процессор асинхронный — getCards
+ * // вернёт Promise, нужен await. Синхронные процессоры только у Viber и SmartApp.
+ * const cardData = await card.getCards(myCardProcessing, controller);
  * ```
  */
 

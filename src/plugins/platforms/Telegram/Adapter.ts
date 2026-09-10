@@ -1,12 +1,27 @@
 import { AppContext, BotController, Text } from '../../../index';
+import type { IControllerApi } from '../../../controller';
+import type { TEventType } from '../../../core/events';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { cardProcessing } from './Card';
 import { soundProcessing } from './Sound';
 import { T_TELEGRAM } from './constants';
-import { ITelegramContent, ITelegramParams, ITelegramMedia } from './interfaces/ITelegramPlatform';
-import { TelegramRequest } from '../API';
-import { getChatText, getPlatformRequestData, setThisUserToNlu, tryParse } from '../Base/utils';
+import {
+    ITelegramContent,
+    ITelegramParams,
+    ITelegramMedia,
+    TTelegramChatId,
+} from './interfaces/ITelegramPlatform';
+import { TelegramRequest, prepareTelegramMessageText } from '../API';
+import { makeTelegramApi } from './apiFacade';
+import {
+    getChatText,
+    getPlatformRequestData,
+    normalizeActionPayload,
+    setThisUserToNlu,
+    telegramMessageEvent,
+    tryParse,
+} from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
 type ITelegramRequestData = Record<string, unknown> & {
@@ -23,7 +38,7 @@ type ITelegramRequestData = Record<string, unknown> & {
  * Единый интерфейс позволяет одновременно использовать одну бизнес-логику для нескольких
  * платформ (Telegram, VK, Алиса и др.) без дублирования кода.
  *
- * Этот адаптер автоматически обрабатывает входящие webhook`и от мессенджера Telegram,
+ * Этот адаптер автоматически обрабатывает входящие вебхуки от мессенджера Telegram,
  * преобразует их в унифицированный формат фреймворка и формирует ответ,
  * совместимый с требованиями платформы. Подключается одной строкой и
  * не мешает работе других адаптеров (например, для Алисы или Маруси).
@@ -55,14 +70,51 @@ type ITelegramRequestData = Record<string, unknown> & {
  * @see BasePlatform
  */
 export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
-    /** Идентификатор платформы Telegram. */
+    /**
+     * Идентификатор платформы Telegram.
+     */
     platformName = T_TELEGRAM;
-    /** Telegram — чат-платформа (не голосовая). */
+    /**
+     * Универсальные события, выставляемые адаптером Telegram (для валидации addEvent).
+     */
+    supportedEvents: readonly TEventType[] = [
+        'message',
+        'photo',
+        'voice',
+        'video',
+        'document',
+        'location',
+        'contact',
+        'sticker',
+        'callback',
+        'inline',
+        'message_edited',
+        'channel_post',
+    ];
+    /**
+     * Telegram — чат-платформа (не голосовая).
+     */
     isVoice = false;
-    /** Лимит запросов/сек для входящего rateLimiter (лимит Telegram Bot API). */
+    /**
+     * Лимит запросов/сек для входящего rateLimiter (лимит Telegram Bot API).
+     */
     limit = 30;
     signatureName = 'x-telegram-bot-api-secret-token';
 
+    /**
+     * API-фасад Telegram для `controller.api` (отправка медиа, ответ на
+     * callback-кнопку). Подключается ядром через контракт `IPlatformAdapter`.
+     * @param controller - Контроллер текущего запроса
+     */
+    createApi(controller: BotController): IControllerApi | null {
+        return makeTelegramApi(controller);
+    }
+
+    /**
+     * Инициализирует адаптер: вызывает базовую инициализацию и пробрасывает
+     * переданный в конструкторе токен в конфигурацию платформы.
+     * @param appContext Контекст приложения (конфиги, токены, логгер)
+     */
     init(appContext: AppContext): void {
         super.init(appContext);
         if (this._token) {
@@ -73,6 +125,14 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         }
     }
 
+    /**
+     * Проверяет, что входящий webhook-запрос принадлежит Telegram.
+     * Опознаёт запрос по подписи `x-telegram-bot-api-secret-token` или по
+     * наличию числового `update_id`.
+     * @param query Входящий webhook-запрос (update)
+     * @param headers Заголовки HTTP-запроса (проверяется подпись webhook)
+     * @returns `true`, если запрос относится к платформе Telegram
+     */
     isPlatformOnQuery(query: ITelegramContent, headers?: Record<string, unknown>): boolean {
         if (headers?.['x-telegram-bot-api-secret-token']) {
             return true;
@@ -101,6 +161,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
      *
      * @param query Тело запроса
      * @param headers HTTP-заголовки запроса
+     * @returns `true`, если подпись совпадает (или проверка не настроена), иначе `false`
      */
     isCorrectQuery(query: string | ITelegramContent, headers?: Record<string, unknown>): boolean {
         const webhookSecret = this.appContext?.appConfig.tokens[this.platformName]?.webhookSecret;
@@ -140,11 +201,16 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
     #setCallbackQuery(query: ITelegramContent, controller: BotController): boolean {
         const cb = query.callback_query;
         if (cb) {
-            controller.userId = cb.from?.id as number;
-            // callback_data может быть строкой или JSON-строкой
-            controller.userCommand = (cb.data || '').toLowerCase().trim();
+            // `from` обязателен по протоколу Telegram, но в интерфейсе опционален:
+            // без него пользователь анонимен — честный null вместо ложного undefined.
+            controller.userId = cb.from?.id ?? null;
+            controller.eventType = 'callback';
+            // callback_data может быть строкой или JSON-строкой. Нормализуем
+            // «именную» кнопку: payload 'buy' или {"command":"buy"} превращается
+            // в userCommand='buy', чтобы сработал addAction/addCommand (см. Base/utils).
+            controller.userCommand = normalizeActionPayload(cb.data) || '';
             controller.originalUserCommand = cb.data || '';
-            controller.messageId = cb.message?.message_id as number;
+            controller.messageId = cb.message?.message_id ?? null;
             controller.payload = tryParse(cb.data);
             // Сохраняем ID callback-запроса, чтобы потом ответить.
             getPlatformRequestData<ITelegramRequestData>(
@@ -166,7 +232,8 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
     #setInlineQuery(query: ITelegramContent, controller: BotController): boolean {
         const iq = query.inline_query;
         if (iq) {
-            controller.userId = iq.from?.id as number;
+            controller.userId = iq.from?.id ?? null;
+            controller.eventType = 'inline';
             controller.userCommand = iq.query?.toLowerCase().trim() || '';
             controller.originalUserCommand = iq.query || '';
             getPlatformRequestData<ITelegramRequestData>(
@@ -178,7 +245,9 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         return false;
     }
 
-    /** Сохраняет выбранный inline-результат как служебное событие без автоответа. */
+    /**
+     * Сохраняет выбранный inline-результат как служебное событие без автоответа.
+     */
     #setChosenInlineResult(query: ITelegramContent, controller: BotController): boolean {
         const result = query.chosen_inline_result;
         if (!result) {
@@ -199,9 +268,8 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         message: NonNullable<ITelegramContent['message']>,
         controller: BotController,
     ): boolean {
-        // Битый апдейт без chat обработать невозможно: раньше здесь падал
-        // TypeError на message.chat.id и запрос уходил на платформу как 500,
-        // а Telegram бесконечно повторял такой апдейт.
+        // Апдейт без chat — некорректный, отвечаем 200, чтобы Telegram
+        // не крутил его повторной доставкой.
         if (!message.chat) {
             this.appContext?.logWarn(
                 'TelegramAdapter.setQueryData(): апдейт message без объекта chat пропущен как некорректный.',
@@ -209,26 +277,20 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             controller.skipAutoReply = true;
             return true;
         }
-        // В групповых чатах chat.id — это ID группы, а не человека. Раньше userId
-        // всегда ставился из chat.id, из-за чего один и тот же человек в группе
-        // получал две разные записи в БД: сообщения шли под ID группы, а нажатия
-        // inline-кнопок (callback_query, где userId = from.id) — под ID человека.
-        // Теперь идентифицируем человека по from.id; чат сохраняется отдельно
-        // в requestData.chatId, чтобы ответ ушёл именно в этот чат.
         controller.userId = message.from?.id ?? message.chat.id;
         getPlatformRequestData<ITelegramRequestData>(controller, this.platformName).chatId =
             message.chat.id;
         controller.userCommand = message.text?.toLowerCase()?.trim() || '';
-        // Без `|| ''` в поле уходил undefined для сообщений без текста (стикер, фото),
-        // хотя во всех остальных ветках и адаптерах здесь строка.
+        // || '' — для сообщений без текста (стикер, фото), чтобы поле всегда было строкой.
         controller.originalUserCommand = message.text || '';
         controller.messageId = message.message_id;
+        controller.eventType = telegramMessageEvent(message);
 
         // Данные пользователя берём у отправителя (from), а не у чата: в группах
         // chat.username — это публичный юзернейм группы, а не человека.
         const sender = message.from ?? message.chat;
-        // Пустого thisUser не записываем: геттер controller.nlu аллоцировал бы
-        // объект Nlu на каждый запрос без пользы (подробности — setThisUserToNlu).
+        // Пустого thisUser не записываем — иначе каждый запрос аллоцировал бы
+        // объект Nlu без пользы (см. setThisUserToNlu).
         setThisUserToNlu(controller, {
             username: sender.username || null,
             first_name: sender.first_name || null,
@@ -249,9 +311,17 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         controller.userCommand = post.text?.toLowerCase().trim() || '';
         controller.originalUserCommand = post.text || '';
         controller.messageId = post.message_id;
+        controller.eventType = 'channel_post';
         return true;
     }
 
+    /**
+     * Разбирает update Telegram и наполняет контроллер данными: сообщение,
+     * callback-запрос, пост канала, редактирование, inline-запрос и т.д.
+     * @param query Входящий webhook-запрос (update)
+     * @param controller Контроллер приложения
+     * @returns `true`, если запрос успешно разобран
+     */
     async setQueryData(query: ITelegramContent, controller: BotController): Promise<boolean> {
         if (!this.appContext) {
             return false;
@@ -279,12 +349,18 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         // это действие того же человека в том же чате, и userId должен совпадать
         // с исходным сообщением (иначе в группе редактирование уходило под ID группы).
         if (query.edited_message) {
-            return this.#setMessage(query.edited_message, controller);
+            const res = this.#setMessage(query.edited_message, controller);
+            // Редактирование — отдельное событие поверх содержимого сообщения:
+            // 'message_edited' важнее 'photo'/'voice'/... для обработчиков addEvent.
+            controller.eventType = 'message_edited';
+            return res;
         }
 
         // Кейс 5: отредактированный пост в канале
         if (query.edited_channel_post) {
-            return this.#setPost(query.edited_channel_post, controller);
+            const res = this.#setPost(query.edited_channel_post, controller);
+            controller.eventType = 'message_edited';
+            return res;
         }
 
         // Кейс 6: inline query
@@ -306,7 +382,9 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         return true;
     }
 
-    /** Отвечает на inline-запрос одной безопасной текстовой статьёй. */
+    /**
+     * Отвечает на inline-запрос одной безопасной текстовой статьёй.
+     */
     async #answerInlineQuery(
         telegramApi: TelegramRequest,
         inlineQueryId: string,
@@ -359,41 +437,57 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         return params;
     }
 
-    /** Отправляет обычный ответ Telegram с текстом, карточками, звуками и кнопками. */
-    async #sendChatContent(
+    /**
+     * Отвечает на callback-кнопку (снимает «часики» в клиенте Telegram).
+     */
+    async #answerCallback(
         controller: BotController,
         telegramApi: TelegramRequest,
         requestData: ITelegramRequestData,
     ): Promise<void> {
-        const params = this.#buildMessageParams(controller);
-        const chatId = requestData.chatId ?? controller.userId;
-        const hasButtons = controller.isButtonsInit() && controller.buttons.buttons.length > 0;
-
         const callbackQueryId =
             requestData.callbackQueryId ?? controller.platformOptions.callbackQueryId;
-        if (callbackQueryId) {
-            const notificationText = controller.platformOptions.callbackNotificationText
-                ? Text.resize(controller.platformOptions.callbackNotificationText, 200)
-                : undefined;
-            await telegramApi.answerCallbackQuery(
-                callbackQueryId,
-                notificationText,
-                false,
-                undefined,
-                0,
-            );
+        if (!callbackQueryId) {
+            return;
         }
+        const notificationText = controller.platformOptions.callbackNotificationText
+            ? Text.resize(controller.platformOptions.callbackNotificationText, 200)
+            : undefined;
+        await telegramApi.answerCallbackQuery(
+            callbackQueryId,
+            notificationText,
+            false,
+            undefined,
+            0,
+        );
+    }
 
-        // Проверяем isCardInit(), чтобы не инстанцировать Card (и вложенный Buttons)
-        // на каждый запрос, когда карточки не используются — как и в остальных адаптерах.
-        const hasCards = controller.isCardInit() && controller.card.images.length > 0;
-        const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
-        // Если заполнен только tts (общая логика писалась под голосовую платформу),
+    /**
+     * Отправляет текст сообщения, если он есть; в противном случае предупреждает,
+     * что Telegram не принимает пустое сообщение — и текст, и клавиатура не уйдут.
+     *
+     * @param controller Контроллер приложения
+     * @param telegramApi Клиент Telegram API
+     * @param chatId Идентификатор чата
+     * @param params Параметры сообщения (reply_markup, parse_mode)
+     * @param hasOtherContent Что ещё задано в ответе: кнопки, карточки, звуки
+     */
+    async #sendText(
+        controller: BotController,
+        telegramApi: TelegramRequest,
+        chatId: TTelegramChatId,
+        params: ITelegramParams,
+        hasOtherContent: { buttons: boolean; cards: boolean; sounds: boolean },
+    ): Promise<void> {
+        // Если заполнен только tts (общая логика писалась под голосовую платформой),
         // используем его как текст: иначе Telegram не получал вообще ничего.
         const text = getChatText(controller.text, controller.tts);
         if (text) {
-            await telegramApi.sendMessage(chatId as string, text, params);
-        } else if (hasButtons || params.reply_markup || (!hasCards && !hasSounds)) {
+            await telegramApi.sendMessage(chatId, text, params);
+            return;
+        }
+        const hasKeyboard = hasOtherContent.buttons || params.reply_markup;
+        if (hasKeyboard || (!hasOtherContent.cards && !hasOtherContent.sounds)) {
             const isRemove = controller.isButtonsInit() && controller.buttons.isRemove;
             this.appContext?.logWarn(
                 'TelegramAdapter.getContent(): ответ не содержит ни текста, ни tts. ' +
@@ -403,24 +497,87 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
                         : ''),
             );
         }
+    }
 
-        if (hasCards) {
-            const media: ITelegramMedia[] | null = await controller.card.getCards(
-                cardProcessing,
-                controller,
-            );
-            if (media) {
-                await telegramApi.sendMediaGroup(chatId as string, media);
-            }
+    /**
+     * Отправляет карточки media group'ой, если они заданы.
+     */
+    async #sendCards(
+        controller: BotController,
+        telegramApi: TelegramRequest,
+        chatId: TTelegramChatId,
+        hasCards: boolean,
+    ): Promise<void> {
+        // Проверяем isCardInit(), чтобы не инстанцировать Card (и вложенный Buttons)
+        // на каждый запрос, когда карточки не используются — как и в остальных адаптерах.
+        if (!hasCards) {
+            return;
         }
-
-        // Не создаём экземпляр Sound через геттер, если звуки не использовались.
-        if (hasSounds) {
-            await controller.sound.getSounds(controller.tts, soundProcessing, controller);
+        const media: ITelegramMedia[] | null = await controller.card.getCards(
+            cardProcessing,
+            controller,
+        );
+        if (media) {
+            await telegramApi.sendMediaGroup(chatId, media);
         }
     }
 
-    async getContent(controller: BotController): Promise<string> {
+    /**
+     * Отправляет звуки. Не создаём экземпляр Sound через геттер, если звуки не
+     * использовались. Сбой слоя звука (исключение БД при getSoundInDB, API
+     * SpeechKit) не должен ронять весь ответ — текст и карточки уже отправлены;
+     * деградируем с warn.
+     */
+    async #sendSounds(controller: BotController, hasSounds: boolean): Promise<void> {
+        if (!hasSounds) {
+            return;
+        }
+        try {
+            await controller.sound.getSounds(controller.tts, soundProcessing, controller);
+        } catch (e) {
+            this.appContext?.logError(
+                `TelegramAdapter.getContent(): ошибка обработки звука, звук не отправлен. Текст ошибки: "${e instanceof Error ? e.message : String(e)}"`,
+                { error: e },
+            );
+        }
+    }
+
+    /**
+     * Отправляет обычный ответ Telegram с текстом, карточками, звуками и кнопками.
+     */
+    async #sendChatContent(
+        controller: BotController,
+        telegramApi: TelegramRequest,
+        requestData: ITelegramRequestData,
+    ): Promise<void> {
+        const params = this.#buildMessageParams(controller);
+        const chatId = (requestData.chatId ?? controller.userId) as TTelegramChatId;
+
+        await this.#answerCallback(controller, telegramApi, requestData);
+
+        // Проверяем isCardInit()/isSoundInit(), чтобы не инстанцировать Card и Sound
+        // (и вложенный Buttons) на каждый запрос, когда они не используются —
+        // как и в остальных адаптерах.
+        const hasCards = controller.isCardInit() && controller.card.images.length > 0;
+        const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
+        const hasButtons = controller.isButtonsInit() && controller.buttons.buttons.length > 0;
+
+        await this.#sendText(controller, telegramApi, chatId, params, {
+            buttons: hasButtons,
+            cards: hasCards,
+            sounds: hasSounds,
+        });
+        await this.#sendCards(controller, telegramApi, chatId, hasCards);
+        await this.#sendSounds(controller, hasSounds);
+    }
+
+    /**
+     * Формирует и отправляет ответ Telegram: текст, карточки (media group),
+     * звуки, кнопки; при необходимости — inline-ответ или webhook-reply.
+     * @param controller Контроллер приложения
+     * @returns Тело ответа для webhook ('ok' либо конверт webhook-reply)
+     */
+    async getContent(controller: BotController): Promise<string | Record<string, unknown>> {
         if (controller.skipAutoReply) {
             return 'ok';
         }
@@ -433,14 +590,83 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             await this.#answerInlineQuery(telegramApi, requestData.inlineQueryId, controller.text);
             return 'ok';
         }
+        // Webhook-reply (opt-in: `new TelegramAdapter(token, { telegram_webhook_reply: true })`):
+        // Telegram может выполнить ОДИН метод сам по телу webhook-ответа
+        // ({method: 'sendMessage', ...}) — экономит исходящий POST. Механика
+        // grammy-style: включается явно, срабатывает один раз на запрос и только
+        // для простого текстового ответа без карточек/звуков/callback/inline —
+        // всё сложное уходит штатным POST-путём.
+        const webhookReply = this.#buildWebhookReply(controller, requestData);
+        if (webhookReply) {
+            return webhookReply;
+        }
         await this.#sendChatContent(controller, telegramApi, requestData);
         return 'ok';
+    }
+
+    /**
+     * Собирает тело webhook-reply для Telegram, если режим включён и ответ простой.
+     *
+     * Возвращает JSON-конверт `{method: 'sendMessage', ...}` для тела webhook-ответа
+     * либо null (ответ уйдёт обычным POST к Bot API). Текст проходит ту же
+     * обрезку по лимиту 4096 (со снятием parse_mode при сокращении), что и
+     * `TelegramRequest.sendMessage`: webhook-ответ не получает ответа API,
+     * и отклонённое из-за длины сообщение пропало бы молча.
+     */
+    #buildWebhookReply(
+        controller: BotController,
+        requestData: ITelegramRequestData,
+    ): Record<string, unknown> | null {
+        if (this._platformOptions?.telegram_webhook_reply !== true) {
+            return null;
+        }
+        // Callback-запросы требуют answerCallbackQuery — Telegram сам их не
+        // исполняет через webhook-тело (нужен отдельный ответ на сам callback).
+        // Сверяем по обоим источникам ID, как это делает #sendChatContent:
+        // иначе ID из platformOptions пропускал webhook-путь, спиннер кнопки
+        // оставался висеть без answerCallbackQuery.
+        if (requestData.callbackQueryId ?? controller.platformOptions.callbackQueryId) {
+            return null;
+        }
+        const hasCards = controller.isCardInit() && controller.card.images.length > 0;
+        const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
+        if (hasCards || hasSounds) {
+            return null;
+        }
+        const text = getChatText(controller.text, controller.tts);
+        if (!text) {
+            return null;
+        }
+        const params = this.#buildMessageParams(controller);
+        const { text: safeText, parseMode } = prepareTelegramMessageText(
+            text,
+            params.parse_mode,
+            this.appContext ?? null,
+        );
+        if (parseMode === undefined) {
+            delete params.parse_mode;
+        } else {
+            params.parse_mode = parseMode;
+        }
+        return {
+            method: 'sendMessage',
+            chat_id: requestData.chatId ?? controller.userId,
+            text: safeText,
+            ...(params as Record<string, unknown>),
+        };
     }
 
     static isVoice(): boolean {
         return false;
     }
 
+    /**
+     * Формирует пример webhook-запроса Telegram для локального тестирования (BotTest).
+     * @param query Текст команды пользователя
+     * @param userId Идентификатор пользователя (chat.id)
+     * @param count Номер сообщения (подставляется в update_id и message_id)
+     * @returns Заготовка update-запроса в формате webhook Telegram
+     */
     getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
         return {
             // update_id обязателен: isPlatformOnQuery распознаёт Telegram по этому полю

@@ -45,7 +45,7 @@ const regReplace = /((?:^|\s)#\w+#(?:\s|$))/g;
  *
  * @example
  * ```ts
- * import { Sound } from './components/sound/Sound';
+ * import { Sound } from 'umbot';
  *
  * // Создание экземпляра
  * const sound = new Sound();
@@ -107,7 +107,8 @@ export class Sound {
      * @param {string | null} text - Исходный текст для обработки
      * @param {TSoundProcessing<TResult>} soundProcessing - Функция обработки звуков для платформы
      * @param {BotController} controller - Контроллер бота
-     * @returns {Promise<TResult>} Текст со встроенными звуками для платформы
+     * @returns {Promise<TResult>} Текст со встроенными звуками для платформы;
+     *   при falsy-результате soundProcessing (null/undefined/'') — исходный текст без изменений
      */
     public async getSounds<TResult = unknown>(
         text: string | null,

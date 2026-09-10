@@ -56,9 +56,9 @@ export interface IButtonOptions {
     /**
      * Стиль визуального отображения кнопки.
      *
-     * Стандартный путь `addBtn`/`addLink` это поле игнорирует: Telegram-адаптер
-     * не читает `options.style`. Стиль кнопки Telegram можно задать только при
-     * ручной сборке клавиатуры через `TelegramRequest` (константы `TG_STYLE_*`).
+     * Для Telegram адаптер подставляет поле `style` в кнопку из `options.style`
+     * (Telegram Bot API 9.4+: 'primary' | 'secondary' | 'destructive' —
+     * константы `TG_STYLE_*` из `umbot/plugins`).
      *
      * Для VK цвет кнопки задаётся через `options.color`
      * ('primary' | 'secondary' | 'negative' | 'positive'); вариант через

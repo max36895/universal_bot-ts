@@ -20,7 +20,7 @@ const ALLOWED_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 /**
  * Класс, отвечающий за загрузку изображений в навык Алисы.
- * @see (https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/) Смотри тут
+ * @see https://yandex.ru/dev/dialogs/alice/doc/resource-upload-docpage/
  *
  * @class YandexImageRequest
  */
@@ -52,10 +52,14 @@ export class YandexImageRequest extends YandexRequest {
     /**
      * Получение адреса для загрузки изображения.
      *
+     * skill_id приходит из payload запроса Алисы, а вебхук Алисы не подписывается —
+     * значение полностью подконтрольно отправителю. Экранируем его в компонент URL,
+     * чтобы `../` или `?` не выводили запрос за пределы пути навыка.
+     *
      * @returns {string}
      */
     #getImagesUrl(): string {
-        return STANDARD_URL + `skills/${this.skillId}/images`;
+        return STANDARD_URL + `skills/${encodeURIComponent(this.skillId ?? '')}/images`;
     }
 
     /**

@@ -11,7 +11,7 @@ export interface IIpFilterOptions {
      * Поддерживаются IPv4 и IPv6.
      * Примеры: `'10.0.0.1'`, `'192.168.0.0/24'`, `'127.0.0.1'`, `'2001:db8::/32'`, `'::1'`.
      *
-     * ⚠️ Правила сравниваются по версии адреса: если заданы только IPv4-правила,
+     * Правила сравниваются по версии адреса: если заданы только IPv4-правила,
      * IPv6-клиенты под whitelist не попадут и будут заблокированы.
      */
     whitelist?: string[];
@@ -21,9 +21,8 @@ export interface IIpFilterOptions {
      * Поддерживаются IPv4 и IPv6.
      * Игнорируется, если задан `whitelist`.
      *
-     * ⚠️ Правила сравниваются по версии адреса: если заданы только IPv4-правила,
-     * IPv6-клиенты под blacklist не попадут и не будут заблокированы —
-     * добавляйте IPv6-правила явно.
+     * Правила сравниваются по версии адреса: если заданы только IPv4-правила,
+     * IPv6-клиенты под blacklist не попадут — добавляйте IPv6-правила явно.
      */
     blacklist?: string[];
 
@@ -42,22 +41,32 @@ interface IParsedIp {
     value: bigint;
 }
 
-/** Разбирает dotted-quad IPv4 в число. Возвращает null для некорректных строк. */
+/**
+ * Разбирает dotted-quad IPv4 в число. Возвращает null для некорректных строк.
+ */
 function parseIpv4(ip: string): bigint | null {
     const parts = ip.trim().split('.');
-    if (parts.length !== 4) return null;
+    if (parts.length !== 4) {
+        return null;
+    }
     let value = 0n;
     for (const part of parts) {
         // Строгая проверка: parseInt принимал "1e2" и "0x1A" как валидные октеты
-        if (!/^\d{1,3}$/.test(part)) return null;
+        if (!/^\d{1,3}$/.test(part)) {
+            return null;
+        }
         const n = Number(part);
-        if (n > 255) return null;
+        if (n > 255) {
+            return null;
+        }
         value = (value << 8n) | BigInt(n);
     }
     return value;
 }
 
-/** Разбирает IPv6 (включая `::`-сжатие и IPv4-хвост) в 128-битное число. */
+/**
+ * Разбирает IPv6 (включая `::`-сжатие и IPv4-хвост) в 128-битное число.
+ */
 function parseIpv6(ip: string): bigint | null {
     let addr = ip.trim().replace(/^\[/, '').replace(/\]$/, '');
     const zoneIndex = addr.indexOf('%');
@@ -144,15 +153,23 @@ function parseIp(ip: string): IParsedIp | null {
  */
 function parseCidr(cidr: string): { version: 4 | 6; value: bigint; prefix: number } | null {
     const [ipStr, prefixStr] = cidr.split('/');
-    if (!ipStr) return null;
+    if (!ipStr) {
+        return null;
+    }
     const parsed = parseIp(ipStr.trim());
-    if (!parsed) return null;
+    if (!parsed) {
+        return null;
+    }
     const maxPrefix = parsed.version === 4 ? 32 : 128;
     let prefix = maxPrefix;
     if (prefixStr !== undefined) {
-        if (!/^\d{1,3}$/.test(prefixStr.trim())) return null;
+        if (!/^\d{1,3}$/.test(prefixStr.trim())) {
+            return null;
+        }
         prefix = Number(prefixStr);
-        if (prefix > maxPrefix) return null;
+        if (prefix > maxPrefix) {
+            return null;
+        }
     }
     const mask = prefix === 0 ? 0n : ((1n << BigInt(prefix)) - 1n) << BigInt(maxPrefix - prefix);
     return { version: parsed.version, value: parsed.value & mask, prefix };
@@ -161,11 +178,15 @@ function parseCidr(cidr: string): { version: 4 | 6; value: bigint; prefix: numbe
 function ipInCidr(ip: string, cidr: string): boolean {
     const cidrParsed = parseCidr(cidr);
     const ipParsed = parseIp(ip);
-    if (!cidrParsed || !ipParsed) return false;
+    if (!cidrParsed || !ipParsed) {
+        return false;
+    }
     // Сравниваем адреса только одной версии: IPv6-клиент под правило IPv4
     // не попадает (и наоборот). Для фильтрации IPv6-трафика добавляйте
     // IPv6-правила в whitelist/blacklist.
-    if (cidrParsed.version !== ipParsed.version) return false;
+    if (cidrParsed.version !== ipParsed.version) {
+        return false;
+    }
     const maxPrefix = cidrParsed.version === 4 ? 32 : 128;
     const mask =
         cidrParsed.prefix === 0
@@ -177,14 +198,13 @@ function ipInCidr(ip: string, cidr: string): boolean {
 /**
  * Middleware для фильтрации входящих запросов по IP-адресу клиента.
  *
- * ⚠️ **Важное ограничение**: этот middleware работает **только если бот запущен через webhook**
- * (`bot.start()` или `bot.webhookHandle()`), не через long polling/console. Причина — IP клиента
- * доступен только из HTTP-заголовков.
+ * Работает только при запуске через webhook (`bot.start()` / `bot.webhookHandle()`) —
+ * IP клиента доступен только из HTTP-запроса. Если IP определить нельзя
+ * (например, `bot.run(...)` напрямую), запрос пропускается.
  *
- * Если middleware применён к запросу без HTTP-контекста (например, `bot.run(...)` напрямую),
- * то запрос **пропускается** — мы не можем определить IP, значит не можем надёжно блокировать.
- * В совокупности с IP-фильтрацией на уровне быстрого reverse proxy (nginx) это дополнительный
- * уровень защиты, а не единственный.
+ * За reverse proxy (nginx и т.п.) все запросы будут иметь IP самого прокси:
+ * IP берётся из сокета, а не из `X-Forwarded-For` (его подделывает клиент).
+ * За прокси ограничивайте доступ на уровне самого прокси.
  *
  * @example
  * ```ts
@@ -218,10 +238,8 @@ export function ipFilter(
         // requestObject здесь не подходит — это распарсенное JSON-тело платформы.
         const remoteIp = ctx.platformOptions.clientIp;
 
-        // Если нет IP (например, bot.run() в тесте или console) — не блокируем:
-        // это нужно, чтобы middleware не ломал локальную разработку и сценарии без
-        // HTTP-контекста. Но молчаливый fail-open опасен: warn'им один раз на инстанс,
-        // чтобы неблокируемые запросы не остались незамеченными.
+        // Нет IP (bot.run() без HTTP-контекста) — не блокируем, чтобы не ломать
+        // локальную разработку. Warn выводим один раз на инстанс middleware.
         if (!remoteIp) {
             if (!warnedNoIp) {
                 warnedNoIp = true;
@@ -236,8 +254,8 @@ export function ipFilter(
         }
 
         // Нормализация IPv4-mapped IPv6: "::ffff:127.0.0.1" → "127.0.0.1".
-        // Строку срезаем только когда хвост — dotted-quad: hex-форму "::ffff:102:304"
-        // разбирает parseIp, и преждевременный срез портил её в некорректный адрес.
+        // Срезаем только dotted-quad-хвост; hex-форму "::ffff:102:304"
+        // корректно разбирает parseIp.
         const ip =
             remoteIp.startsWith('::ffff:') && remoteIp.slice(7).includes('.')
                 ? remoteIp.slice(7)

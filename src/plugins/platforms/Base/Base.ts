@@ -5,7 +5,9 @@ import {
     BotController,
     BaseBotController,
     IDatabaseInfo,
+    IControllerApi,
 } from '../../../index';
+import type { TEventType } from '../../../core/events';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
@@ -67,6 +69,7 @@ export const EMPTY_CONTEXT_ERROR =
  *
  * === Опциональные ===
  * - {@link getQueryExample} — генерирует пример запроса необходимого для тестов
+ * - {@link isCorrectQuery}, {@link isSignatureCheckEnabled} — проверка подписи запроса (если платформа её присылает)
  * - {@link isLocalStorage}, {@link getLocalStorage}, {@link setLocalStorage} — если платформа поддерживает сохранение локального состояния
  * - {@link soundProcessing} — кастомная обработка TTS/звуков (для голосовых платформ, или отправка аудиофайла в боте).
  *
@@ -96,12 +99,8 @@ export abstract class BasePlatform<TQuery = unknown>
     signatureName?: string;
 
     /**
-     * Определяет лимит платформы.
-     * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
-     * В случае если у платформы нет ограничений, можно указать 0 или null.
-     * По умолчанию null
+     * Лимит запросов/сек для входящего rateLimiter; null — не ограничивать. Переопределяется адаптером платформы.
      */
-    /** Лимит запросов/сек для входящего rateLimiter; null — не ограничивать. Переопределяется адаптером платформы. */
     limit: number | null = null;
 
     /**
@@ -113,11 +112,15 @@ export abstract class BasePlatform<TQuery = unknown>
      */
     platformName: string = 'unknown';
     /**
-     * Определяет тип платформы(голосовая или чат-бот)
+     * Голосовая ли платформа (TTS-ответ в теле HTTP). Чат-платформы переопределяют на false.
      */
-    /** Голосовая ли платформа (TTS-ответ в теле HTTP). Чат-платформы переопределяют на false. */
     isVoice = true;
 
+    /**
+     * Конструктор базового адаптера платформы.
+     * @param platformToken - Токен платформы (опционально)
+     * @param additionalPlatformOptions - Дополнительные опции платформы (опционально)
+     */
     constructor(platformToken?: string, additionalPlatformOptions?: IOptions) {
         super();
         // exactOptionalPropertyTypes: поля не заполняем, если значения не переданы.
@@ -130,9 +133,38 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
+     * Универсальные события (`TEventType`), которые этот адаптер может выставить
+     * в `controller.eventType`.
+     *
+     * Источник знания для валидации `bot.addEvent(...)`: хендлер на событие,
+     * которое ни один подключённый адаптер не поддерживает, — почти всегда
+     * опечатка, и о ней предупреждают при регистрации. Таблица живёт у адаптера,
+     * а не в ядре: кастомная платформа, унаследованная от `BasePlatform`,
+     * объявляет собственный перечень и автоматически участвует в проверке.
+     *
+     * **Для кастомных платформ:** перечислите события, которые ваш `setQueryData`
+     * реально записывает в `controller.eventType`:
+     * ```ts
+     * class MyPlatformAdapter extends BasePlatform {
+     *     supportedEvents: readonly TEventType[] = ['message', 'photo', 'callback'];
+     *     // ...
+     * }
+     * ```
+     * Если платформа умеет только текст — поле можно не трогать: базовое значение
+     * `['message']` уже корректно. Событий вне `TEventType` (например, платформенная
+     * «покупка») в валидации не участвуют — их можно отслеживать в `action()` по
+     * `requestObject` как раньше.
+     *
+     * Базовое значение — только `'message'`: самый минимум, верный для любой
+     * платформы. Встроенные адаптеры переопределяют поле (Telegram — медиа и
+     * callback/inline, VK — callback, MAX — start/edited и т.д.).
+     */
+    supportedEvents: readonly TEventType[] = ['message'];
+
+    /**
      * Инициализация адаптера.
      * Определять не обязательно. Стоит указывать в случаях, когда нужно выполнить доп логику, например указать токены или писать какую-то статистику по использованию.
-     * @param {AppContext} appContext - Контекст приложения
+     * @param appContext - Контекст приложения
      */
     init(appContext: AppContext<IDatabaseInfo, TQuery>): void {
         appContext.platforms[this.platformName] = this;
@@ -141,15 +173,55 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
+     * Создаёт API-фасад платформы для `controller.api` — унифицированный доступ
+     * к исходящим возможностям платформы (`sendPhoto`, `answerCallback` и т.д.).
+     *
+     * Базовая реализация возвращает `null`: фасад считается недоступным. Ядро
+     * подключает фасад к контроллеру только у адаптеров, переопределивших этот
+     * метод, — поэтому добавить фасад своей платформе можно без правок ядра.
+     *
+     * **Для кастомных платформ:** если платформа умеет исходящие API-вызовы
+     * (отправка медиа, ответ на callback-кнопку), переопределите метод и
+     * верните свой фасад `IControllerApi`. Удобно завернуть готовую фабрику
+     * и дополнить её, либо собрать фасад с нуля. Для голосовых платформ
+     * (ответ формируется телом webhook) переопределять не нужно.
+     *
+     * @param _controller - Контроллер текущего запроса (не используется
+     *   базовой реализацией; доступен переопределяющим методам)
+     * @returns Фасад либо `null`, если для платформы он недоступен
+     *
+     * @example
+     * ```ts
+     * class MyPlatformAdapter extends BasePlatform {
+     *     createApi(controller: BotController): IControllerApi | null {
+     *         return makeMyApi(controller); // своя фабрика фасада
+     *     }
+     * }
+     * ```
+     */
+    createApi(_controller: BotController): IControllerApi | null {
+        return null;
+    }
+
+    /**
      * Генерирует пример входящего запроса для локального тестирования вашего приложения.
      * Позволяет эмулировать запрос от платформы с заданным текстом, ID пользователя, номером сообщения и состоянием.
      * Необходимо указывать для того, чтобы можно было корректно проверить работоспособность приложения.
      *
-     * Обязательно определите метод, если планируется тестирования приложения через инструменты предоставляемые платформой. Это существенно упростит процесс разработки приложения.
+     * Обязательно определите метод, если планируется тестирование приложения через инструменты предоставляемые платформой. Это существенно упростит процесс разработки приложения.
      * @param query Запрос пользователя
      * @param userId Идентификатор пользователя
      * @param count Порядковый номер запроса
      * @param state Данные из локального хранилища
+     * @returns Пример входящего запроса платформы (Record)
+     *
+     * @example
+     * ```ts
+     * // Пример переопределения для кастомной платформы
+     * getQueryExample(query, userId, count, state) {
+     *     return { text: query, userId, messageId: count, state };
+     * }
+     * ```
      */
     getQueryExample(
         query: string,
@@ -169,7 +241,8 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Возвращает признак того, соответствует ли запрос текущей платформе или нет
      *
-     * @example Telegram
+     * @example Пример кастомной платформы (не поведение встроенного TelegramAdapter,
+     * который определяет запрос по полю update_id в теле)
      * ```ts
      * isPlatformOnQuery(query, headers) {
      *   return headers?.['x-telegram-bot-api-secret-token'] === this._token;
@@ -206,8 +279,8 @@ export abstract class BasePlatform<TQuery = unknown>
      *   (`options.secret` / `tokens.max_app.webhookSecret`).
      * - Для платформ без подписи (Alisa, Marusia, SmartApp) проверка пропускается из-за отсутствия `signatureName`.
      *
-     * @param {TQuery} query - Объект запроса от платформы
-     * @param {Record<string, unknown>} [headers] - HTTP-заголовки запроса
+     * @param query - Объект запроса от платформы
+     * @param headers - HTTP-заголовки запроса
      * @returns `true` — запрос валиден / проверка не включена, `false` — подпись не сошлась или отсутствует.
      */
     isCorrectQuery(query: TQuery, headers?: Record<string, unknown>): boolean {
@@ -284,7 +357,8 @@ export abstract class BasePlatform<TQuery = unknown>
     ): TContent;
 
     /**
-     * Формирует ответ с оценкой
+     * Формирует ответ на запрос оценки (по умолчанию — обычный ответ {@link getContent};
+     * спец-формат — например, SmartApp).
      * @param controller - контроллер приложения
      */
     public getRatingContext(controller: BotController): TContent {
@@ -301,6 +375,18 @@ export abstract class BasePlatform<TQuery = unknown>
      * Если платформа не поддерживает возможность начать диалог самостоятельно, то можно оставить метод пустым, либо вывести любую заглушку.
      * @param userId Ид пользователя, которому нужно отправить сообщение
      * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
+     * @returns Результат getContent() — ответ в формате платформы (TContent), либо boolean для платформ без рассылки
+     *
+     * @example
+     * ```ts
+     * // Отправка простого текста
+     * adapter.send('user123', 'Привет!');
+     *
+     * // Отправка через контроллер (текст + кнопки/карточки)
+     * const controller = new BaseBotController(appContext);
+     * controller.text = 'Уведомление';
+     * adapter.send('user123', controller);
+     * ```
      */
     send(userId: string | number, controllerOrText: BotController | string): TContent | boolean {
         let controller: BotController;
@@ -342,11 +428,12 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
-     * При превышении допустимого времени обработки запроса пишет информацию в лог.
+     * При превышении допустимого времени обработки запроса логирует информацию.
      * Вызывается вручную в конце `getContent()` голосовых адаптеров (Alisa, Marusia, SmartApp);
      * адаптеры чат-платформ его не вызывают.
-     * - `>= MAX_TIME_REQUEST` (по умолчанию 2900 мс) — ошибка.
-     * - `>= WARNING_TIME_REQUEST` (по умолчанию 2000 мс) — warning.
+     * - `>= WARNING_TIME_REQUEST` (по умолчанию 2000 мс) — warning в лог.
+     * - `>= MAX_TIME_REQUEST` (по умолчанию 2900 мс) — текст ошибки пишется
+     *   в controller.platformOptions.error (не в лог).
      *
      * Пороги вынесены в `protected` поля — при необходимости переопределите в потомке.
      */
@@ -364,7 +451,7 @@ export abstract class BasePlatform<TQuery = unknown>
     /**
      * Дополнительная обработка для звуков.
      * В данном методе стоит реализовать логику, с помощью которой будут наложены дополнительные эффекты для озвучивания текста пользователю
-     * @param {BotController} _controller - Контроллер бота
+     * @param _controller - Контроллер бота
      */
     soundProcessing(_controller: BotController): void | Promise<void> {
         // custom logic
@@ -428,7 +515,7 @@ export abstract class BasePlatform<TQuery = unknown>
     }
 
     /**
-     * Флаг, указывающий, что платформа голосовая (например, Алиса, Маруся).
+     * Метод-флаг: указывает, что платформа голосовая (например, Алиса, Маруся).
      */
     static isVoice(): boolean {
         return true;

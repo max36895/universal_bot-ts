@@ -28,11 +28,10 @@ function escapeStr(s) {
 /**
  * Экранирует строку для безопасной вставки в JSDoc-комментарий сгенерированного кода.
  *
- * Без этого закрывающая последовательность комментария в имени блока или тексте ответа
- * досрочно закрывала JSDoc,
- * и всё, что шло следом, попадало в `src/index.ts` как исполняемый код. Поскольку flow.json
- * приходит из визуального редактора и может быть получен извне, это давало выполнение
- * произвольного кода в проекте пользователя.
+ * Закрывающая последовательность блочного комментария в тексте из flow.json
+ * закрывала бы комментарий досрочно, а всё следом попадало в сгенерированный
+ * код как исполняемый — flow.json приходит извне, так что это обязательная
+ * защита.
  *
  * @param {unknown} text — исходный текст из flow.json
  * @returns {string} текст, безопасный для вставки внутрь комментария
@@ -121,6 +120,85 @@ function getCloudFunctionName(name) {
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
     return normalized || 'my-bot';
+}
+
+/**
+ * Переносит креды MongoDB (user/pass из flow.json) в .env генерируемого проекта.
+ *
+ * MongoAdapter читает логин/пароль из переменных окружения DB_USER/DB_PASSWORD
+ * (см. AppContext), поэтому в коммит-файл src/index.ts их писать нельзя
+ * (в create-ветке CLI — ConsoleController — тот же сценарий).
+ *
+ * Семантика — как у записи токенов: существующий .env не перезаписывается,
+ * дописываются только отсутствующие переменные. Переводы строк вычищаются из
+ * значений (защита .env от инъекции дополнительных переменных).
+ *
+ * @param {string} outputPath — корень генерируемого проекта
+ * @param {object} dbConfig — объект doc.database.config из flow.json
+ */
+function appendMongoCredentialsToEnv(outputPath, dbConfig) {
+    const credentials = [
+        { envName: 'DB_USER', value: dbConfig.user },
+        { envName: 'DB_PASSWORD', value: dbConfig.pass },
+    ].filter(
+        (entry) =>
+            typeof entry.value === 'string' && entry.value.trim().replace(/[\r\n]+/g, '') !== '',
+    );
+    if (credentials.length === 0) {
+        return;
+    }
+    for (const entry of credentials) {
+        // Переводы строк вычищаем, иначе значение из flow.json допишет в .env
+        // произвольные переменные. «=» внутри значения безопасен: парсер .env
+        // режет по первому «=».
+        const original = entry.value;
+        entry.value = entry.value
+            .trim()
+            .replace(/[\r\n\0]/g, '')
+            // eslint-disable-next-line no-control-regex -- управляющие символы вычищаются намеренно (защита .env)
+            .replace(/[\u0000-\u001f\u007f]/g, '')
+            .replace(/"/g, '');
+        // Кавычка внутри значения .env валидна (парсер снимает только окружающие
+        // кавычки), но здесь она вырезается намеренно: значение переезжает и в
+        // аргументы деплоя (yc), где кавычка ломает командную строку. Искажённый
+        // пароль — источник трудно диагностируемого «Authentication failed»,
+        // поэтому молчать нельзя: предупреждаем, что в .env попало не то, что
+        // было в flow.json.
+        if (entry.value !== original.trim()) {
+            console.warn(
+                `  ВНИМАНИЕ: значение ${entry.envName} изменено при санитизации ` +
+                    '(вырезаны кавычки/управляющие символы) — оно отличается от flow.json. ' +
+                    'Проверьте .env: если пароль БД содержал кавычки, подключение упадёт с ' +
+                    '«Authentication failed». Измените пароль в БД либо введите значение в .env вручную.',
+            );
+        }
+    }
+    const envPath = path.join(outputPath, '.env');
+    let existingNames = new Set();
+    let existing = '';
+    if (fs.existsSync(envPath)) {
+        existing = fs.readFileSync(envPath, 'utf8');
+        existingNames = new Set(
+            existing
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter(Boolean)
+                .map((l) => l.split('=')[0]),
+        );
+    }
+    const missing = credentials.filter((entry) => !existingNames.has(entry.envName));
+    if (missing.length === 0) {
+        return;
+    }
+    const addition =
+        (existing === '' ? '' : existing.endsWith('\n') ? '' : '\n') +
+        missing.map((entry) => `${entry.envName}=${entry.value}`).join('\n') +
+        '\n';
+    fs.appendFileSync(envPath, addition, 'utf8');
+    console.warn(
+        `  .env: дописаны креды MongoDB (${missing.map((e) => e.envName).join(', ')}). ` +
+            'Храните их только в .env (он в .gitignore), в flow.json — лишь черновик.',
+    );
 }
 
 /**
@@ -962,9 +1040,10 @@ function findNextNonBlockNode(doc, fromId) {
  * Главная функция генерации. Создаёт полный src/index.ts из FlowDocument.
  * @param {Object} doc — FlowDocument с узлами, рёбрами и настройками
  * @param {boolean} [useCloud=false] — генерировать Yandex Cloud Function handler вместо bot.start()
+ * @param {string} [outputPath='.'] — корень генерируемого проекта (для переноса Mongo-кредов в .env)
  * @returns {string} содержимое src/index.ts
  */
-function generateIndexTs(doc, useCloud = false) {
+function generateIndexTs(doc, useCloud = false, outputPath = '.') {
     const lines = [];
     const varNames = collectVarNames(doc);
 
@@ -1104,11 +1183,39 @@ function generateIndexTs(doc, useCloud = false) {
         const dbConfig = doc.database.config || {};
         const dbHost = escapeStr(dbConfig.host || 'localhost');
         const dbName = escapeStr(dbConfig.database || 'bot_db');
+        // user/pass MongoAdapter читает из DB_USER/DB_PASSWORD (env), литералами
+        // в коммит-файл их писать нельзя — переносим в .env вместе с токенами
+        // (в create-ветке CLI тот же сценарий — см. ConsoleController).
+        appendMongoCredentialsToEnv(outputPath, dbConfig);
         lines.push(`bot.use(new MongoAdapter({ host: '${dbHost}', database: '${dbName}' }));`);
     }
     lines.push(``);
 
+    // .env пишется ниже (токены и/или Mongo-креды) — рантайм обязан его читать:
+    // без env в setAppConfig ядро в тихом режиме берёт только process.env,
+    // файл .env игнорирует, и записанные генератором токены/креды не действовали
+    // при обычном `npm start` (несимметрично с create-веткой, которая пишет
+    // config.env = './.env'). serverless-деплой не задет: loadEnvFile при
+    // отсутствии файла ругается в лог, но не ломает запуск, а переменные
+    // облака приходят через process.env тем же конвейером.
+    const tokensForEnv = Object.entries(doc.tokens || {}).some(
+        ([, tokenRaw]) =>
+            (typeof tokenRaw === 'string' && tokenRaw.trim() !== '') ||
+            (typeof tokenRaw === 'object' &&
+                tokenRaw !== null &&
+                typeof tokenRaw.token === 'string' &&
+                tokenRaw.token.trim() !== ''),
+    );
+    const mongoCredsForEnv =
+        doc.database &&
+        doc.database.type === 'mongo' &&
+        (doc.database.config || {}).user !== undefined;
+    const usesEnvFile = tokensForEnv || mongoCredsForEnv;
+
     lines.push(`bot.setAppConfig({`);
+    if (usesEnvFile) {
+        lines.push(`    env: './.env',`);
+    }
     if (doc.isLocalStorage === true) {
         lines.push(`    isLocalStorage: true,`);
     }
@@ -1586,7 +1693,11 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
     const srcDir = path.join(outputPath, 'src');
     fs.mkdirSync(srcDir, { recursive: true });
 
-    fs.writeFileSync(path.join(srcDir, 'index.ts'), generateIndexTs(doc, options.useCloud), 'utf8');
+    fs.writeFileSync(
+        path.join(srcDir, 'index.ts'),
+        generateIndexTs(doc, options.useCloud, outputPath),
+        'utf8',
+    );
     fs.writeFileSync(path.join(srcDir, 'utils.ts'), generateUtils(), 'utf8');
     fs.writeFileSync(path.join(outputPath, 'package.json'), generatePackageJson(doc), 'utf8');
     fs.writeFileSync(path.join(outputPath, 'tsconfig.json'), generateTsConfig(), 'utf8');
@@ -1663,8 +1774,17 @@ function generateFromFlow(flowJsonPath, outputPath, options = {}) {
                 console.log('  .env уже существует — токены из flow.json не перезаписаны.');
             }
         } else {
+            // Файл мог быть только что создан appendMongoCredentialsToEnv()
+            // (креды MongoDB пишутся раньше, при генерации src/index.ts).
+            // writeFileSync затёр бы их — поэтому дописываем токены к файлу,
+            // а не создаём его заново.
             const envLines = tokenEntries.map((entry) => `${entry.envName}=${entry.value}`);
-            fs.writeFileSync(envPath, envLines.join('\n') + '\n', 'utf8');
+            const existingEnv = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+            const addition =
+                (existingEnv === '' ? '' : existingEnv.endsWith('\n') ? '' : '\n') +
+                envLines.join('\n') +
+                '\n';
+            fs.appendFileSync(envPath, addition, 'utf8');
             console.log('  .env');
         }
     }
@@ -1731,26 +1851,44 @@ for (const file of ['package.json', 'package-lock.json']) {
 }
 
 const envPath = path.join(root, '.env');
-// Значения .env попадают в аргументы командной строки. При shell:true (Windows)
-// Node склеивает команду и аргументы в одну строку БЕЗ экранирования, поэтому
-// спецсимволы (&, |, ^) из значения токена исполнялись бы командной оболочкой.
-// Вырезаем переводы строк, управляющие символы и кавычки (кавычка переключает
-// режим парсинга cmd и позволила бы вырваться из квотинга аргумента).
-// '%' экранируем удвоением, а не вырезанием: cmd раскрывает %VAR% даже внутри
-// двойных кавычек (значение из недоверенного flow.json могло подставить
-// содержимое переменных окружения машины пользователя), но %% раскрывается
-// в литеральный % — легитимные секреты с процентом не искажаются.
+// Значения .env попадают в аргументы командной строки, а при shell:true (Windows)
+// Node склеивает команду и аргументы в одну строку без экранирования —
+// спецсимволы (&, |, ^, кавычки, переводы строк) из значения исполнялись бы
+// оболочкой. '%' вырезаем, а не удваиваем: в режиме командной строки (cmd /c,
+// без пакетного файла) %% НЕ раскрывается в литеральный % — это семантика
+// batch-файлов; замерено на Node 24/win10: %PATH% и %%PATH% раскрываются
+// одинаково, унося значения переменных окружения машины в аргументы деплоя.
+// Вырезание закрывает утечку; затронутые переменные помечаем warn'ом, чтобы
+// вырезание не было молчаливым — легитимное значение с % заметят сразу.
 const sanitizeEnvValue = (value) => String(value)
     .replace(/[\r\n\0]/g, '')
     .replace(/[\u0000-\u001f\u007f]/g, '')
     .replace(/"/g, '')
-    .replace(/%/g, '%%');
+    .replace(/%/g, '');
 const environment = fs.existsSync(envPath)
     ? fs.readFileSync(envPath, 'utf8').split(/\\r?\\n/).map((line) => line.trim())
           .filter((line) => line && !line.startsWith('#')).map((line) => {
               const eq = line.indexOf('=');
-              return eq === -1 ? line : line.slice(0, eq + 1) + sanitizeEnvValue(line.slice(eq + 1));
-          }).join(',')
+              if (eq === -1) return line;
+              const name = line.slice(0, eq);
+              const raw = line.slice(eq + 1);
+              const sanitized = sanitizeEnvValue(raw);
+              if (sanitized !== raw) {
+                  console.warn('[deploy] ' + name + ': вырезаны символы, ' +
+                      'недопустимые в аргументах командной строки Windows (%, кавычки, ' +
+                      'управляющие). Проверьте значение переменной.');
+              }
+              // yc CLI разделяет пары --environment запятыми: запятая внутри
+              // значения разрезала бы переменную на две битые. Такую переменную
+              // пропускаем с явным предупреждением, а не портим молча.
+              if (sanitized.includes(',')) {
+                  console.warn('[deploy] ' + name + ': значение содержит запятую — ' +
+                      'переменная НЕ передана в --environment (yc делит пары по запятым). ' +
+                      'Уберите запятую из значения или задайте переменную в консоли облака.');
+                  return null;
+              }
+              return name + '=' + sanitized;
+          }).filter((line) => line !== null).join(',')
     : '';
 const args = ['serverless', 'function', 'version', 'create',
     '--function-name', '${cloudFunctionName}', '--runtime', 'nodejs22',

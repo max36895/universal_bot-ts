@@ -10,6 +10,7 @@ import { T_VK, VK_MAX_CAROUSEL_ELEMENTS } from './constants';
  * Получение токена, необходимого для отображения картинок в карточке ВК
  * @param controller Контроллер приложения
  * @param path Путь до картинки
+ * @returns Строка-вложение (photo<owner_id>_<id>) либо `null` при ошибке загрузки/сохранения
  */
 export async function getImageInDB(
     controller: BotController,
@@ -43,6 +44,18 @@ export async function getImageInDB(
     });
 }
 
+/**
+ * Собирает элементы карусели VK из изображений карточки.
+ *
+ * Карусель ограничена VK_MAX_CAROUSEL_ELEMENTS (10) элементами; для обычной
+ * карусели каждый элемент требует минимум одну валидную кнопку (до 3),
+ * для галереи кнопки опциональны. Сборка останавливается на первом
+ * изображении, для которого не удалось получить токен.
+ *
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения
+ * @returns Массив элементов карусели (может быть неполным при сбое загрузки)
+ */
 async function getElements(
     cardInfo: ICardInfo,
     controller: BotController,
@@ -82,10 +95,20 @@ async function getElements(
             const button = image.button?.getButtons<IVkButtonObject, IVkButton>((buttons) =>
                 buttonProcessing(buttons, controller.appContext),
             );
+            // Карусель VK требует минимум одну кнопку на элемент (см. не-gallery
+            // ветку ниже). Раньше gallery-элемент без кнопок уходил без action
+            // и buttons — VK отклонял всю карусель. Элемент не попадает в
+            // карусель, разработчик получает warn.
             if (button?.buttons?.length) {
                 element.buttons = button.buttons.flat().slice(0, 3) as IVkButton[];
+                element.action = { type: 'open_photo' };
+                elements.push(element);
+            } else {
+                controller.appContext.logWarn(
+                    `[VK] Элемент карусели ${i} без валидной кнопки — пропущен: ` +
+                        'VK требует минимум одну кнопку на элемент галереи.',
+                );
             }
-            elements.push(element);
         } else {
             const element: IVkCardElement = {
                 title: Text.resize(image.title, 80),
@@ -96,7 +119,8 @@ async function getElements(
                 buttonProcessing(buttons, controller.appContext),
             );
             /*
-             * У карточки в любом случае должна быть хоть одна кнопка.
+             * Карусель VK требует минимум одну кнопку на элемент —
+             * без валидной кнопки элемент не попадает в карусель.
              * Максимальное количество кнопок 3
              */
             if (button?.one_time && button.buttons?.length) {
@@ -111,9 +135,21 @@ async function getElements(
 
 /**
  * Получает карточку для отображения в VK.
+ * Асинхронный процессор — вызывать с `await` (см. Card.getCards).
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
  * @returns {Promise<IVkCard | string[]>} Шаблон карусели (IVkCard) либо массив строк-вложений (attachment ID), либо пустой массив, если нечего отобразить
+ * @example
+ * ```ts
+ * // Одиночная картинка -> массив вложений (string[]);
+ * // 2+ картинок -> шаблон карусели (IVkCard). Обязательно await:
+ * const result = await cardProcessing(cardInfo, controller);
+ * if (!Array.isArray(result)) {
+ *     params.template = result; // carousel
+ * } else {
+ *     params.attachments = result;
+ * }
+ * ```
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,

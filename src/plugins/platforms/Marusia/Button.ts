@@ -10,6 +10,10 @@ const MARUSIA_PAYLOAD_MAX_BYTES = 4096;
 
 /**
  * Создание кнопки в формате Маруси
+ * @param button Универсальная кнопка umbot
+ * @param isCard Флаг принадлежности кнопки к карточке (формат IMarusiaButtonCard)
+ * @param appContext Контекст приложения для логирования ошибок валидации
+ * @returns Кнопка в формате Маруси либо `null`, если кнопка не прошла валидацию (пустой title, payload длиннее 4096 байт, URL длиннее 1024 байт)
  */
 function _getButton(
     button: IButtonType,
@@ -63,6 +67,7 @@ function _getButton(
  * @param buttons Кнопки, которые необходимо отобразить
  * @param isCard флаг принадлежности кнопок к карточке
  * @param appContext Контекст приложения (опционально, для логирования ошибок валидации)
+ * @returns Для карточки — первая кнопка (IMarusiaButtonCard), для обычного ответа — массив кнопок IMarusiaButton
  */
 export function buttonProcessing(
     buttons: IButtonType[],
@@ -78,7 +83,7 @@ export function buttonProcessing(
             }
         }
     } else {
-        getCorrectButtons(buttons).forEach((button) => {
+        getCorrectButtons(buttons, 10, appContext).forEach((button) => {
             const object: IMarusiaButton | null = _getButton(button, isCard, appContext);
             if (object) {
                 objects.push(object);

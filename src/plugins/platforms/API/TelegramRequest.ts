@@ -65,9 +65,61 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Минимальный контракт контекста для prepareTelegramMessageText: методу нужна
+ * только логирующая способность AppContext. Структурный тип позволяет принимать
+ * AppContext с любыми дженериками (TDbInfo/TQuery адаптера не обязаны совпадать
+ * с дефолтными).
+ */
+export type ITelegramWarnContext = Pick<AppContext, 'logWarn'>;
+
+/**
+ * Готовит текст сообщения Telegram к отправке: обрезает по лимиту 4096
+ * символов и снимает parse_mode, если текст был сокращён (оборванная
+ * HTML/Markdown-сущность ломает всё сообщение).
+ *
+ * Единая логика для обоих путей отправки — `sendMessage` и webhook-reply
+ * адаптера: ответ телом webhook не получает ответа API, поэтому обрезанное
+ * длинное сообщение там отклоняется Telegram молча, и лимит обязан
+ * применяться до сборки конверта.
+ *
+ * @param message Исходный текст сообщения
+ * @param parseMode Режим разметки из настроек адаптера (HTML/MarkdownV2) или undefined
+ * @param appContext Контекст приложения для warn-лога об обрезке (можно опустить)
+ * @returns Объект с безопасным текстом и итоговым parse_mode
+ *
+ * @example
+ * ```ts
+ * const { text, parseMode } = prepareTelegramMessageText(
+ *     'длинный текст…',
+ *     'HTML',
+ *     appContext,
+ * );
+ * ```
+ */
+export function prepareTelegramMessageText(
+    message: string,
+    parseMode: string | undefined,
+    appContext?: ITelegramWarnContext | null,
+): { text: string; parseMode: string | undefined } {
+    const isTruncated = message.length > TELEGRAM_MESSAGE_MAX_LENGTH;
+    if (!isTruncated) {
+        return { text: message, parseMode };
+    }
+    appContext?.logWarn(
+        `Telegram: текст превышает лимит ${TELEGRAM_MESSAGE_MAX_LENGTH} символов и будет сокращён.`,
+    );
+    // Обрезанный документ с разметкой почти всегда содержит оборванную
+    // сущность (<b> без закрывающего тега, * без пары), на которой Telegram
+    // отклоняет сообщение целиком — разметку снимаем.
+    const sourceMessage =
+        parseMode?.toLowerCase() === 'html' ? message.replace(/<[^>]*>/gu, '') : message;
+    return { text: Text.resize(sourceMessage, TELEGRAM_MESSAGE_MAX_LENGTH), parseMode: undefined };
+}
+
+/**
  * Класс для взаимодействия с API Telegram
  * Предоставляет методы для отправки сообщений, файлов и других типов контента
- * @see (https://core.telegram.org/bots/api) Смотри тут
+ * @see https://core.telegram.org/bots/api
  *
  * @example
  * ```ts
@@ -153,7 +205,7 @@ export class TelegramRequest {
 
     /**
      * Инициализирует токен доступа к Telegram API
-     * @param token Токен для доступа к API
+     * @param token Токен для доступа к API; допустим null — отключает заголовок Authorization
      */
     public initToken(token: string | null): void {
         this.token = token;
@@ -165,9 +217,8 @@ export class TelegramRequest {
      *
      */
     protected _getUrl(): string {
-        // Приоритет у токена, заданного через initToken(): раньше URL всегда собирался
-        // из appConfig, поэтому initToken() влиял только на проверку `if (this.token)`,
-        // а запрос уходил под токеном из конфигурации. Это ломало мульти-ботовые сценарии.
+        // Токен из initToken() приоритетнее токена из appConfig — иначе
+        // мульти-ботовые сценарии уходили бы под токеном из конфигурации.
         const token = this.token ?? this.#appContext.appConfig.tokens[T_TELEGRAM]?.token;
         return `${API_ENDPOINT}${token}/`;
     }
@@ -175,7 +226,7 @@ export class TelegramRequest {
     /**
      * Подготавливает данные для отправки файла
      * @param type Тип отправляемого файла
-     * @param file Путь к файлу или его содержимое
+     * @param file Путь к локальному файлу, URL или file_id ранее загруженного файла
      *
      */
     async #initPostFile(type: string, file: string | ITelegramMedia[]): Promise<void> {
@@ -278,22 +329,6 @@ export class TelegramRequest {
     }
 
     /**
-     * Санитизировать текст сообщения.
-     *
-     * Текст отправляется как есть: при явном parse_mode разработчик отвечает за валидность
-     * разметки и экранирует пользовательские данные через escapeHtml/escapeMarkdownV2.
-     *
-     * @param text Текст сообщения
-     * @param parseMode Режим разметки (HTML, MarkdownV2 или undefined)
-     */
-    #sanitizeTelegramMessage(text: string, parseMode?: string): string {
-        if (parseMode?.toLowerCase() === 'html') {
-            return text.replace(/<[^>]*>/gu, '');
-        }
-        return text;
-    }
-
-    /**
      * Отправляет текстовое сообщение
      * @param chatId ID чата или пользователя
      * @param message Текст сообщения
@@ -360,24 +395,19 @@ export class TelegramRequest {
             );
             return Promise.resolve(null);
         }
-        if (message.length > TELEGRAM_MESSAGE_MAX_LENGTH) {
-            this.#appContext.logWarn(
-                `TelegramRequest.sendMessage(): текст превышает лимит ${TELEGRAM_MESSAGE_MAX_LENGTH} символов и будет сокращён.`,
-            );
-        }
+        // Обрезка по лимиту и снятие parse_mode у сокращённого текста —
+        // единая логика с webhook-reply адаптера (prepareTelegramMessageText).
+        const { text: safeMessage, parseMode: safeParseMode } = prepareTelegramMessageText(
+            message,
+            params?.parse_mode,
+            this.#appContext,
+        );
         const normalizedParams: ITelegramParams = { ...(params ?? {}) };
-        const isTruncated = message.length > TELEGRAM_MESSAGE_MAX_LENGTH;
-        const parseMode = normalizedParams.parse_mode;
-        if (isTruncated && parseMode) {
+        if (safeParseMode === undefined) {
             delete normalizedParams.parse_mode;
-            this.#appContext.logWarn(
-                'TelegramRequest.sendMessage(): parse_mode отключён для сокращённого текста, чтобы не отправлять оборванную сущность.',
-            );
+        } else {
+            normalizedParams.parse_mode = safeParseMode;
         }
-        const sourceMessage = isTruncated
-            ? this.#sanitizeTelegramMessage(message, parseMode)
-            : message;
-        const safeMessage = Text.resize(sourceMessage, TELEGRAM_MESSAGE_MAX_LENGTH);
         this.#request.post = {
             chat_id: chatId,
             text: safeMessage,
@@ -494,7 +524,7 @@ export class TelegramRequest {
      * @param showAlert - Показывать как alert (true) или всплывающее уведомление (false)
      * @param url - URL для открытия после нажатия
      * @param cacheTime - Время кэширования ответа (сек)
-     * @returns Информация об отправленном сообщении или null при ошибке
+     * @returns Результат ответа на callback-запрос (подтверждение) или null при ошибке
      */
     public async answerCallbackQuery(
         callbackQueryId: string,
@@ -516,7 +546,7 @@ export class TelegramRequest {
     /**
      * Отправляет фотографию
      * @param userId ID чата или пользователя
-     * @param file Путь к файлу или его содержимое
+     * @param file Путь к локальному файлу, URL или file_id ранее загруженного файла (содержимое файла не поддерживается)
      * Поддерживаемые форматы:
      * - JPEG, JPG, PNG, GIF, WEBP
      * - Максимальный размер: 10MB
@@ -560,7 +590,7 @@ export class TelegramRequest {
     /**
      * Отправляет документ
      * @param userId ID чата или пользователя
-     * @param file Путь к файлу или его содержимое
+     * @param file Путь к локальному файлу, URL или file_id ранее загруженного файла (содержимое файла не поддерживается)
      * @param params Дополнительные параметры:
      * - caption: подпись к документу
      * - parse_mode: формат текста
@@ -590,7 +620,7 @@ export class TelegramRequest {
     /**
      * Отправляет аудиофайл
      * @param userId ID чата или пользователя
-     * @param file Путь к файлу или его содержимое
+     * @param file Путь к локальному файлу, URL или file_id ранее загруженного файла (содержимое файла не поддерживается)
      * @param params Дополнительные параметры:
      * - caption: подпись к аудио
      * - parse_mode: формат текста
@@ -623,7 +653,7 @@ export class TelegramRequest {
     /**
      * Отправляет видео
      * @param userId ID чата или пользователя
-     * @param file Путь к файлу или его содержимое
+     * @param file Путь к локальному файлу, URL или file_id ранее загруженного файла (содержимое файла не поддерживается)
      * @param params Дополнительные параметры:
      * - caption: подпись к видео
      * - parse_mode: формат текста
@@ -655,9 +685,13 @@ export class TelegramRequest {
 
     /**
      * Отправляет группу медиа
+     *
+     * Принимает 2–10 элементов: вне диапазона — warn и null.
+     *
      * @param userId ID чата или пользователя
      * @param media Массив объектов ITelegramMedia
-     * @param params Дополнительные параметры:
+     * @param params Дополнительные параметры
+     * @returns Информация об отправленной группе медиа или null при ошибке
      */
     public async sendMediaGroup(
         userId: TTelegramChatId,
@@ -700,7 +734,7 @@ export class TelegramRequest {
     }
 
     /**
-     * Записывает информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      * @param error Текст ошибки для логирования
      *
      */

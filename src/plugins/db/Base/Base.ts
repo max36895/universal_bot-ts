@@ -28,7 +28,7 @@ import { BasePlugin } from '../../Base';
  *
  * Если по техническим причинам наследование невозможно — ваш класс должен в точности реализовывать интерфейс `IDatabaseAdapter`
  *
- * ⚠️ Важно: в приложении может быть активен только один адаптер БД.
+ * Важно: в приложении может быть активен только один адаптер БД.
  */
 export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     extends BasePlugin
@@ -133,6 +133,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * @param selectData Дополнительная информация для запроса. Содержит информацию о таблице и структуре.
      * @param where Сам запрос
      * @param isOne Определяет нужно ли вернуть только 1 найденную запись, либо отдать все доступные данные.
+     * @returns IModelRes | Promise<IModelRes> — результат SELECT-запроса
      */
     public abstract _select(
         selectData: IQuery,
@@ -152,6 +153,7 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      * Метод может быть синхронным или асинхронным.
      *
      * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns boolean | Promise<boolean> — true при успешной вставке, иначе false
      */
     public abstract _insert(insertData: IQuery): boolean | Promise<boolean>;
 
@@ -160,13 +162,14 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      *
      * Этот метод вызывается внутренней логикой фреймворка для обновления данных.
      * Вы обязаны вернуть:
-     *   - `true` — если запись успешно обновлена,
+     *   - `true` — если операция выполнена без ошибок (включая случай, когда под условие не попало записей),
      *   - `false` — при любой ошибке (подключение, валидация и т.п.).
      *
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
      * Метод может быть синхронным или асинхронным.
      *
      * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns boolean | Promise<boolean> — true при успешном обновлении, иначе false
      */
     public abstract _update(updateData: IQuery): boolean | Promise<boolean>;
 
@@ -175,13 +178,14 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
      *
      * Этот метод вызывается внутренней логикой фреймворка для удаления данных.
      * Вы обязаны вернуть:
-     *   - `true` — если запись успешно удалена,
+     *   - `true` — если операция выполнена без ошибок (включая случай, когда под условие не попало записей),
      *   - `false` — при любой ошибке (подключение, валидация и т.п.).
      *
      * ⚠️ Не выбрасывайте исключения — обрабатывайте ошибки внутри и возвращайте `false`.
      * Метод может быть синхронным или асинхронным.
      *
      * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns boolean | Promise<boolean> — true при успешном удалении, иначе false
      */
     public abstract _remove(removeData: IQuery): boolean | Promise<boolean>;
 
@@ -304,9 +308,11 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     /**
      * Сохраняет запись: вставляет новую или обновляет существующую.
      * Логика:
-     * - Если `isNew === true` → вызывается `insert`
+     * - Если `isNew === true` → перед insert ключи условия мержатся в данные
+     *   (saveData.data = {...data, ...query}) и вызывается `insert`
      * - Иначе → сначала делается `selectOne` по `saveData.query`,
      *   и если запись найдена — вызывается `update`, иначе — `insert`
+     *   (тоже с мерджем ключей условия в данные)
      *
      * @param saveData Данные для запроса. Включает как запрос, так и сами данные
      * @param isNew Флаг, говорящий о том, что точно происходит добавление новой записи
@@ -368,8 +374,9 @@ export abstract class Base<TDbInfo extends IDatabaseInfo = IDatabaseInfo>
     }
 
     /**
-     * Вызывается при удалении модели или завершении сессии.
-     * Может использоваться для освобождения ресурсов, связанных с таблицей.
+     * Вызывается из destroy() при завершении работы приложения или замене адаптера
+     * (FileAdapter закрывает им каждую таблицу). Может использоваться для
+     * освобождения ресурсов, связанных с таблицей.
      * @param _tableName Название таблицы, подключение к которой закрывается
      */
     public close(_tableName: string): void | Promise<void> {

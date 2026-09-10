@@ -107,6 +107,10 @@ describe('Card test', () => {
 
         defaultCard.clear();
         defaultCard.isOne = false;
+        // С 3.1.0 clear() сбрасывает и title/desc/template (раньше они протекали
+        // из прошлого запроса при переиспользовании контроллера) — заголовок
+        // выставляем заново после очистки.
+        defaultCard.title = 'title';
         defaultCard.addImage('123456', 'Запись 1', 'Описание 1', 'Кнопка');
         defaultCard.addImage('123456', 'Запись 2', 'Описание 2', { title: 'Кнопка', url: URL });
         defaultCard.addImage('123456', 'Запись 3', 'Описание 3', {
@@ -432,6 +436,8 @@ describe('Card test', () => {
 
         defaultCard.clear();
         defaultCard.isOne = false;
+        // clear() сбрасывает title (3.1.0) — заголовок выставляем заново.
+        defaultCard.title = 'title';
         defaultCard.addImage('123456', 'Запись 1', 'Описание 1', 'Кнопка');
         defaultCard.addImage('123456', 'Запись 2', 'Описание 2', { title: 'Кнопка', url: URL });
         defaultCard.addImage('123456', 'Запись 3', 'Описание 3', {
@@ -525,27 +531,28 @@ describe('Card test', () => {
         // а не количество карточек: три карточки встают по 2 колонки в один ряд,
         // одиночная растягивается на все 6.
         // Text заполняется даже без кнопки — иначе title/description молча теряются.
+        // <br> разделяет заголовок и описание (3.1.0) — без него тексты склеивались.
         const viberCard: IViberCard[] = [
             {
                 Columns: 2,
                 Rows: 3,
                 Image: '123456',
                 ActionType: 'none',
-                Text: '<font color=#000><b>1</b></font><font color=#000>запись: 1</font>',
+                Text: '<font color=#000><b>1</b></font><br><font color=#000>запись: 1</font>',
             },
             {
                 Columns: 2,
                 Rows: 3,
                 Image: '123456',
                 ActionType: 'none',
-                Text: '<font color=#000><b>2</b></font><font color=#000>запись: 2</font>',
+                Text: '<font color=#000><b>2</b></font><br><font color=#000>запись: 2</font>',
             },
             {
                 Columns: 2,
                 Rows: 3,
                 Image: '123456',
                 ActionType: 'none',
-                Text: '<font color=#000><b>3</b></font><font color=#000>запись: 3</font>',
+                Text: '<font color=#000><b>3</b></font><br><font color=#000>запись: 3</font>',
             },
         ];
         botController.appType = T_VIBER;
@@ -614,19 +621,24 @@ describe('Card test', () => {
 
     it('ограничивает заголовок и описание VK-карусели 80 символами', async () => {
         botController.appType = T_VK;
+        // С 3.1.0 VK требует минимум одну валидную кнопку на элемент галереи:
+        // элемент без кнопки уходил в template без action/buttons, и VK
+        // отклонял всю карусель. Кнопка не влияет на проверяемые лимиты текста.
+        const vkButtons = new Buttons(appContext);
+        vkButtons.addBtn('Открыть');
         defaultCard.images = [
             {
                 imageToken: 'photo1_1',
                 title: 't'.repeat(81),
                 desc: 'd'.repeat(81),
-                button: new Buttons(appContext),
+                button: vkButtons,
                 params: {},
             },
             {
                 imageToken: 'photo1_2',
                 title: 'Вторая',
                 desc: 'Описание',
-                button: new Buttons(appContext),
+                button: vkButtons,
                 params: {},
             },
         ];
@@ -662,5 +674,80 @@ describe('Card test', () => {
         ]);
         defaultCard.clear();
         expect(await defaultCard.getCards(MaxCard.cardProcessing, botController)).toEqual(null);
+    });
+
+    it('clear() сбрасывает заголовок, описание и template — ничего не протекает в следующий запрос', async () => {
+        // Регрессия 3.1.0: при переиспользовании контроллера (BotTest,
+        // _setBotController) clear() ранее сбрасывал только изображения —
+        // title/desc/template протекали из прошлого запроса в новый ответ.
+        botController.appType = T_ALISA;
+        defaultCard.template = {
+            type: AlisaConstants.ALISA_CARD_ITEMS_LIST,
+            items: [{ title: 'из прошлого запроса' }],
+        };
+
+        defaultCard.clear();
+        expect(defaultCard.title).toBeNull();
+        expect(defaultCard.desc).toBeNull();
+        expect(defaultCard.template).toBeNull();
+        expect(defaultCard.isOne).toBe(false);
+        expect(defaultCard.isUsedGallery).toBe(false);
+
+        // После clear() карточка без title не синтезирует заголовок ItemsList
+        // (description включается всегда — вплоть до пустой строки, как и
+        // у addOneImage без описания).
+        defaultCard.addImage('123456', 'Свежая запись');
+        await expect(
+            defaultCard.getCards(AlisaCard.cardProcessing, botController),
+        ).resolves.toEqual({
+            type: AlisaConstants.ALISA_CARD_ITEMS_LIST,
+            items: [{ title: 'Свежая запись', description: '', image_id: '123456' }],
+        });
+    });
+
+    it('VK-галерея пропускает элементы без валидной кнопки — VK требует кнопку на элемент', async () => {
+        // Регрессия 3.1.0: gallery-элемент без кнопок уходил в template без
+        // action/buttons — VK отклонял всю карусель целиком. Теперь элемент
+        // пропускается с warn (задокументировано в CHANGELOG 3.1.0).
+        // Warn идёт через controller.appContext — шпионим на нём, а не на
+        // локальном appContext из beforeEach.
+        const warnSpy = jest
+            .spyOn(botController.appContext, 'logWarn')
+            .mockImplementation(() => {});
+        botController.appType = T_VK;
+        const vkButtons = new Buttons(appContext);
+        vkButtons.addBtn('Открыть');
+        defaultCard.images = [
+            {
+                imageToken: 'photo1_1',
+                title: 'С кнопкой',
+                desc: 'Описаниe 1',
+                button: vkButtons,
+                params: {},
+            },
+            {
+                imageToken: 'photo1_2',
+                title: 'Без кнопки',
+                desc: 'Описание 2',
+                button: new Buttons(appContext),
+                params: {},
+            },
+        ];
+        defaultCard.isUsedGallery = true;
+
+        const result = (await defaultCard.getCards(
+            VkCard.cardProcessing,
+            botController,
+        )) as IVkCard;
+
+        // Элемент без кнопки не попал в карусель, валидный — остался.
+        expect(result.type).toBe('carousel');
+        expect(result.elements).toHaveLength(1);
+        expect(result.elements[0].title).toBe('С кнопкой');
+        // Пропуск сопровождается warn — разработчик видит причину.
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('без валидной кнопки — пропущен'),
+        );
+        warnSpy.mockRestore();
     });
 });

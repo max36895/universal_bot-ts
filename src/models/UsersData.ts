@@ -28,7 +28,7 @@ const ATTRS_LABEL = {
 };
 
 /**
- * Тип для мета-данных
+ * Тип для метаданных
  */
 export type TMetaType = Record<string, unknown> | string | null | undefined;
 /**
@@ -109,6 +109,8 @@ export interface IUserDataModelState extends IModelState {
  * @example
  * Работа с разными платформами:
  * ```ts
+ * import { T_ALISA, T_TELEGRAM } from 'umbot/plugins';
+ *
  * const userData = new UsersData(appContext);
  *
  * // Для Алисы
@@ -129,6 +131,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * Создает экземпляр модели пользовательских данных.
      * Предоставляет унифицированный интерфейс для хранения данных пользователя.
      *
+     * @param {AppContext} appContext - Контекст приложения
+     *
      * @example
      * ```ts
      * const userData = new UsersData(appContext);
@@ -146,7 +150,9 @@ export class UsersData extends Model<IUserDataModelState> {
         };
     }
 
-    /** Первичный ключ таблицы — userId. */
+    /**
+     * Первичный ключ таблицы — userId.
+     */
     protected getId(): TKey {
         return 'userId';
     }
@@ -154,7 +160,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Уникальный идентификатор пользователя.
      * Может быть строкой или числом в зависимости от платформы.
-     * @example "123456789" для Telegram, 123456789 для VK
+     * @example "123456789" для Telegram (строка), 123456789 для VK (число)
      */
     get userId(): string | number | null | undefined {
         return this.state.userId;
@@ -255,7 +261,8 @@ export class UsersData extends Model<IUserDataModelState> {
     }
 
     /**
-     * Ищет одну запись в хранилище по текущим параметрам.
+     * Ищет одну запись в хранилище по первичному ключу userId
+     * (platform/meta в поиске не участвуют — фильтруйте результат сами при необходимости).
      *
      * @returns {Promise<boolean>} true, если запись найдена
      *
@@ -264,7 +271,10 @@ export class UsersData extends Model<IUserDataModelState> {
      * const userData = new UsersData(appContext);
      * userData.userId = 'user123';
      * if (await userData.getOne()) {
-     *   console.log('Пользователь найден:', userData.data);
+     *   // data может быть string | Record<string,unknown> | null | undefined:
+     *   // сужаем тип перед чтением полей
+     *   const progress = (userData.data as Record<string, unknown>)?.progress;
+     *   console.log('Пользователь найден, прогресс:', progress);
      * } else {
      *   console.log('Пользователь не найден');
      * }
@@ -283,7 +293,9 @@ export class UsersData extends Model<IUserDataModelState> {
         const seen = new WeakSet();
         return JSON.stringify(obj, (_, value) => {
             if (typeof value === 'object' && value !== null) {
-                if (seen.has(value)) return '[Circular]';
+                if (seen.has(value)) {
+                    return '[Circular]';
+                }
                 seen.add(value);
             }
             return value;
@@ -321,7 +333,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * @param data - Данные для инициализации
      * @remarks
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
-     * - Парсинг выполняется всегда, когда meta/data — JSON-строка, начинающаяся с "{" или "["
+     * - meta парсится только если это JSON-строка, начинающаяся с "{" или "[";
+     *   data парсируется всегда, когда это строка (без проверки первого символа)
      *
      * @example
      * ```ts
@@ -332,7 +345,8 @@ export class UsersData extends Model<IUserDataModelState> {
      *   data: '{"progress":75}',
      *   platform: T_TELEGRAM
      * });
-     * console.log(userData.meta.lastVisit); // строка '2024-03-20T12:00:00Z' (JSON.parse не создаёт Date)
+     * // init() распарсила JSON-строки meta и data в объекты
+     * console.log((userData.meta as { lastVisit?: string }).lastVisit); // строка '2024-03-20T12:00:00Z' (JSON.parse не создаёт Date)
      * console.log(userData.data.progress); // 75
      * ```
      */

@@ -36,7 +36,7 @@ npm run dev
 Ваш запрос: > любимый
 Ответ: > Ваш любимый напиток — кофе. Закажем?
 Ваш запрос: > да
-Ответ: > Заказ №2 принят: средний кофе для Иван. Итого: 210 ₽.
+Ответ: > Заказ №2 принят: средний кофе для Иван. Итого: 180 ₽.
 ```
 
 А теперь то же самое на двух разных платформах — и это один и тот же код. В тестах (`tests/coffee.test.ts`) бот отвечает и структурированным JSON-ом Алисе, и сообщением Telegram:
@@ -58,7 +58,7 @@ npm run dev
 | Типизированный `userData` без контроллера     | `src/menu.ts` — `CoffeeCtx = BotController<ICoffeeUserData>`              |
 | Состояние: история, любимый напиток, итог     | `src/types/ICoffeeUserData.ts`, `src/menu.ts` — `completeOrder`           |
 | Продуктовый слой: цены, лояльность            | `src/menu.ts` — `MENU`, `SIZES`, `getPrice`, `LOYALTY_EVERY`              |
-| Кнопки (`buttons.addBtn`)                     | `src/index.ts` — `showWelcome`, команды, подтверждение заказа             |
+| Кнопки (`buttons.addBtn`)                     | `src/index.ts` — `showWelcome`, команды; `src/menu.ts` — `completeOrder`  |
 | Карточка-галерея с ценами (`card.addImage`)   | `src/index.ts` — команда `menu`                                           |
 | NLU: подтверждение (`YANDEX.CONFIRM`)         | `src/index.ts` — шаг `confirm_favorite`                                   |
 | NLU: извлечение числа («закажу два кофе»)     | `src/menu.ts` — `extractCount`                                            |
@@ -104,6 +104,7 @@ npm run dev
     | Viber       | `VIBER_TOKEN`                                        |
     | MAX         | `MAX_TOKEN`                                          |
     | Маруся      | `MARUSIA_TOKEN`                                      |
+    | SmartApp    | `SMARTAPP_TOKEN`                                     |
     | TTS в чатах | `SPEECH_KIT_TOKEN`                                   |
 
     Пример: `TELEGRAM_TOKEN=*** npm start`.

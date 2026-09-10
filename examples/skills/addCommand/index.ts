@@ -19,7 +19,7 @@ bot.addCommand('bigImage', ['картинка', 'изображен'], (_, botCo
 bot.addCommand('list', ['список', 'галер'], (_, botController) => {
     botController.tts = 'Галерея из нескольких изображений';
     botController.card.title = 'Галерея';
-    botController.card.addImage('565656/78878', 'Элемент с картинкой"', 'Описание изображения');
+    botController.card.addImage('565656/78878', 'Элемент с картинкой', 'Описание изображения');
     botController.card.addImage(null, 'Элемент без изображения', 'Описание изображения');
     botController.card.button.addBtn('Текст в footer');
 });

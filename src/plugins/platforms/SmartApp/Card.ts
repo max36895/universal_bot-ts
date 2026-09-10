@@ -17,7 +17,9 @@ function buttonCardProcessing(
     return buttonProcessing(buttons, true);
 }
 
-/** Возвращает только явно заданную разработчиком подпись кнопки карточки. */
+/**
+ * Возвращает только явно заданную разработчиком подпись кнопки карточки.
+ */
 function getButtonTitle(image: IImageType<ISberSmartImageParam>): string {
     return Text.resize(image.button?.buttons[0]?.title || '', 64);
 }
@@ -85,7 +87,9 @@ function getOneElement(image: IImageType<ISberSmartImageParam>): ISberSmartAppCa
     return res;
 }
 
-/** Формирует карточку только с изображением, не создавая отсутствующую подпись. */
+/**
+ * Формирует карточку только с изображением, не создавая отсутствующую подпись.
+ */
 function getImageOnlyItem(
     image: IImageType<ISberSmartImageParam>,
     button: ISberSmartAppCardAction | null,
@@ -178,7 +182,9 @@ function getCardItem(
 
 /**
  * Получает карточку для отображения в Сбер Салют (SmartApp).
+ * Синхронный процессор — `await` не требуется (см. Card.getCards).
  * @param cardInfo Информация о карточке
+ * @returns Элемент items ({card}) с list_card либо `null`, если нечего отобразить
  */
 export function cardProcessing(cardInfo: ICardInfo): ISberSmartAppItem | null {
     const countImage = cardInfo.images.length;

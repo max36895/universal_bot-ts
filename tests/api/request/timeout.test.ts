@@ -123,7 +123,12 @@ describe('Request: AbortSignal-таймаут', () => {
         const result = await req.send<unknown>();
 
         expect(result.status).toBe(false);
-        expect(result.err).toBe(abortErr);
+        // Нормализация в Request.#run (3.1.0): не-Error исключение превращается
+        // в строку. В песочнице Jest DOMException не проходит `instanceof Error`
+        // (кросс-контекстный instanceof), поэтому err приходит строкой; в чистом
+        // Node DOMException — наследник Error и остаётся объектом. Контракт
+        // IRequestSend.err допускает оба варианта: `Error | string`.
+        expect([abortErr, String(abortErr)]).toContain(result.err);
         expect(result.data).toBeNull();
     });
 });

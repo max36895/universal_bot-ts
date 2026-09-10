@@ -249,6 +249,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
      * Проверяет, установлено ли соединение, для конкретного клиента.
      *
      * @param client Клиент, у которого проверяем соединение
+     * @returns Promise<boolean> — true, если команда ping выполнена успешно
      */
     protected async isConnectedWith(client: MongoClient): Promise<boolean> {
         try {
@@ -357,7 +358,9 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
         return true;
     }
 
-    /** Логирует отклонённый запрос без раскрытия самих данных запроса. */
+    /**
+     * Логирует отклонённый запрос без раскрытия самих данных запроса.
+     */
     #logRejectedQuery(reason: string): void {
         this._appContext?.logError(
             `MongoAdapter: запрос отклонён — ${reason}. ` +
@@ -369,6 +372,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Выполняет UPDATE-запрос.
      * @param updateData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешном обновлении, иначе false (нет данных/первичного ключа, запрещённый запрос, ошибка драйвера)
      */
     public async _update(updateData: IQuery): Promise<boolean> {
         let update = updateData.data;
@@ -418,12 +422,13 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Выполняет INSERT-запрос.
      * @param insertData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешной вставке, иначе false (нет данных/первичного ключа, запрещённый запрос, ошибка драйвера)
      */
     public async _insert(insertData: IQuery): Promise<boolean> {
         let insert = insertData.data;
         if (this._appContext.database.databaseInfo) {
             insert = this.validate(insertData, insert);
-            // $-ключи и ключи прототипа в данных записи — инъекция в драйвер
+            // $-ключи и ключи прототипа — защита от NoSQL-инъекции в драйвер
             if (!this.#isSafeMongoQuery(insert, 'data')) {
                 return false;
             }
@@ -451,12 +456,13 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Выполняет DELETE-запрос.
      * @param removeData Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
+     * @returns true при успешном удалении, иначе false (нет данных, запрещённый запрос, ошибка драйвера)
      */
     public async _remove(removeData: IQuery): Promise<boolean> {
         let remove = removeData.query;
         if (this._appContext.database.databaseInfo) {
             remove = this.validate(removeData, remove);
-            // $ne/$where в условии удаления — инъекция фильтра: отвергаем до драйвера
+            // Запрещённые операторы в фильтре ($where и т.п.) — отвергаем до драйвера
             if (!this.#isSafeMongoQuery(remove, 'where')) {
                 return false;
             }
@@ -501,7 +507,13 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
                 return null;
             }
         } catch (err) {
-            this._saveLog(err as string, err as Error);
+            // Раньше сюда попадал err as string при не-Error исключении: в текст
+            // лога уходил "[object Object]", и реальная причина (например,
+            // MongoNetworkError) не читалась без раскопок meta.
+            this._saveLog(
+                err instanceof Error ? err.message : String(err),
+                err instanceof Error ? err : undefined,
+            );
             return null;
         }
     }
@@ -518,9 +530,11 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
     /**
      * Валидация запросов.
-     * Валидирует запрос, приводя его к корректному виду
-     * @param {IQuery} query - Запрос для валидации
-     * @param {IQueryData | null} element - Элемент данных
+     * Правила валидации (query.rules) применяются к element — метод мутирует
+     * и возвращает его. При element === null возвращается {}.
+     * @param query - Запрос: источник правил валидации (query.rules)
+     * @param element - Валидируемый элемент данных
+     * @returns Валидированный элемент; при element === null — {}
      */
     public validate(query: IQuery, element: IQueryData | null): IQueryData {
         if (!element) {
@@ -564,6 +578,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
      * @param selectData Дополнительная информация для запроса. Содержит информацию о таблице и структуре.
      * @param where Сам запрос
      * @param isOne Определяет нужно ли вернуть только 1 найденную запись, либо отдать все доступные данные.
+     * @returns Promise<IModelRes> — результат выборки ({ status: true, data } при успехе, { status: false, error } при ошибке/запрете)
      */
     public async _select(
         selectData: IQuery,
@@ -650,7 +665,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
 
     /**
      * Закрывает все подключения к БД.
-     * Все процессы завершаются, и происходит сохранение данных.
+     * Все процессы завершаются; Mongo при закрытии ничего не сохраняет (в отличие от FileAdapter).
      */
     public async destroy(): Promise<void> {
         return this.close('');
@@ -659,7 +674,7 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
     /**
      * Закрывает подключение к определенной таблице.
      * В MongoDB нет концепции "закрытия таблицы". Метод close() закрывает всё соединение с базой.
-     * @param {string} tableName - Имя таблицы
+     * @param tableName - Имя таблицы
      */
     public async close(tableName: string): Promise<void> {
         await super.close(tableName);

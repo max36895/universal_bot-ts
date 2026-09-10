@@ -22,18 +22,24 @@ export const T_FORMAT_MARKDOWN = 'MarkdownV2';
 /**
  * Стиль кнопки — акцентный (зелёный в тёмной теме).
  * Доступен для inline-кнопок и reply-кнопок в Telegram Bot API 9.4+.
+ * Задаётся через `options.style` при добавлении кнопки (`addBtn`/`addLink`)
+ * либо вручную при сборке клавиатуры через TelegramRequest.
  */
 export const TG_STYLE_PRIMARY = 'primary';
 
 /**
  * Стиль кнопки — вторичный (серый).
  * Доступен для inline-кнопок и reply-кнопок в Telegram Bot API 9.4+.
+ * Задаётся через `options.style` при добавлении кнопки (`addBtn`/`addLink`)
+ * либо вручную при сборке клавиатуры через TelegramRequest.
  */
 export const TG_STYLE_SECONDARY = 'secondary';
 
 /**
  * Стиль кнопки — деструктивный (красный).
  * Доступен для inline-кнопок и reply-кнопок в Telegram Bot API 9.4+.
+ * Задаётся через `options.style` при добавлении кнопки (`addBtn`/`addLink`)
+ * либо вручную при сборке клавиатуры через TelegramRequest.
  */
 export const TG_STYLE_DESTRUCTIVE = 'destructive';
 

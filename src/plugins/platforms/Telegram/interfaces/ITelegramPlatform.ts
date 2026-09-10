@@ -13,17 +13,29 @@
  * Информация об отправителе сообщения
  */
 export interface ITelegramMessageFrom {
-    /** ID пользователя */
+    /**
+     * ID пользователя
+     */
     id: number;
-    /** Является ли ботом */
+    /**
+     * Является ли ботом
+     */
     is_bot: boolean;
-    /** Имя */
+    /**
+     * Имя
+     */
     first_name?: string;
-    /** Фамилия */
+    /**
+     * Фамилия
+     */
     last_name?: string;
-    /** Имя пользователя */
+    /**
+     * Имя пользователя
+     */
     username?: string;
-    /** Код языка */
+    /**
+     * Код языка
+     */
     language_code?: string;
 }
 
@@ -31,15 +43,25 @@ export interface ITelegramMessageFrom {
  * Информация о чате
  */
 export interface ITelegramMessageChat {
-    /** ID чата */
+    /**
+     * ID чата
+     */
     id: number;
-    /** Имя */
+    /**
+     * Имя
+     */
     first_name?: string;
-    /** Фамилия */
+    /**
+     * Фамилия
+     */
     last_name?: string;
-    /** Имя пользователя */
+    /**
+     * Имя пользователя
+     */
     username?: string;
-    /** Тип чата */
+    /**
+     * Тип чата
+     */
     type?: string;
 }
 
@@ -47,15 +69,25 @@ export interface ITelegramMessageChat {
  * Сообщение Telegram
  */
 export interface ITelegramMessage {
-    /** ID сообщения */
+    /**
+     * ID сообщения
+     */
     message_id: number;
-    /** Информация об отправителе */
+    /**
+     * Информация об отправителе
+     */
     from?: ITelegramMessageFrom;
-    /** Информация о чате */
+    /**
+     * Информация о чате
+     */
     chat: ITelegramMessageChat;
-    /** Дата отправки */
+    /**
+     * Дата отправки
+     */
     date?: number;
-    /** Текст сообщения */
+    /**
+     * Текст сообщения
+     */
     text: string;
 }
 
@@ -64,9 +96,13 @@ export interface ITelegramMessage {
  * Содержит различные типы входящих данных
  */
 export interface ITelegramContent {
-    /** ID обновления */
+    /**
+     * ID обновления
+     */
     update_id?: number;
-    /** Входящее сообщение */
+    /**
+     * Входящее сообщение
+     */
     message?: ITelegramMessage;
     /**
      * Отредактированное сообщение.
@@ -103,15 +139,25 @@ export interface ITelegramContent {
      * @see https://core.telegram.org/bots/api#choseninlineresult
      */
     chosen_inline_result?: {
-        /** Идентификатор выбранного результата. */
+        /**
+         * Идентификатор выбранного результата.
+         */
         result_id: string;
-        /** Пользователь, выбравший результат. */
+        /**
+         * Пользователь, выбравший результат.
+         */
         from: ITelegramMessageFrom;
-        /** Исходный inline-запрос. */
+        /**
+         * Исходный inline-запрос.
+         */
         query: string;
-        /** Геопозиция пользователя, если она была доступна. */
+        /**
+         * Геопозиция пользователя, если она была доступна.
+         */
         location?: Record<string, unknown>;
-        /** Идентификатор отправленного inline-сообщения. */
+        /**
+         * Идентификатор отправленного inline-сообщения.
+         */
         inline_message_id?: string;
     };
     /**
@@ -161,7 +207,7 @@ export type TTelegramQuestionType = 'quiz' | 'regular';
 
 /**
  * Тип идентификатора чата в Telegram
- * - string: для публичных каналов (channelname)
+ * - string: для публичных каналов (@channelname)
  * - number: для приватных чатов и групп
  */
 export type TTelegramChatId = string | number;
@@ -202,7 +248,7 @@ export interface ITelegramMedia {
  * const pollParams: ITelegramParams = {
  *   chat_id: 123456789,
  *   question: "What is your favorite color?",
- *   options: ["Red", "Blue", "Green"],
+ *   options: [{ text: 'Red' }, { text: 'Blue' }, { text: 'Green' }],
  *   type: "regular",
  *   is_anonymous: false
  * };
@@ -212,7 +258,7 @@ export interface ITelegramParams {
     /**
      * Уникальный идентификатор целевого чата или имя пользователя целевого канала
      * - Для приватных чатов: числовой ID
-     * - Для каналов: channelname
+     * - Для каналов: имя с префиксом «@» (например, "@channelname")
      */
     chat_id?: TTelegramChatId;
 
@@ -230,6 +276,7 @@ export interface ITelegramParams {
 
     /**
      * Отключает предварительный просмотр ссылок.
+     * Устарело в Bot API — заменено параметром link_preview_options.
      * @defaultValue false
      */
     disable_web_page_preview?: boolean;
@@ -416,17 +463,17 @@ export interface ITelegramChat {
     id: number;
 
     /**
-     * Имя пользователя
+     * Имя (first_name)
      */
     first_name: string;
 
     /**
-     * Фамилия пользователя
+     * Фамилия (last_name)
      */
     last_name: string;
 
     /**
-     * Никнейм пользователя
+     * Никнейм пользователя (username, без @)
      */
     username: string;
 
@@ -554,6 +601,9 @@ export interface IFileInfo {
 
 /**
  * Интерфейс с информацией о фотографии
+ *
+ * В апдейте Telegram приходит массивом (ITelegramPhoto[]): первый элемент —
+ * минимальное разрешение, последний — максимальное.
  *
  * @example
  * ```ts
@@ -871,11 +921,27 @@ export interface ITelegramResult {
     description?: string;
 }
 
+/**
+ * Payload callback-кнопки Telegram (объект).
+ */
 export type TButtonPayload = Record<string, unknown>;
 
+/**
+ * @interface ITelegramReplyButton
+ * Кнопка reply-клавиатуры Telegram (отображается вместо стандартной клавиатуры).
+ */
 export interface ITelegramReplyButton {
+    /**
+     * Текст на кнопке.
+     */
     text?: string;
+    /**
+     * Запросить у пользователя номер телефона (кнопка «Поделиться номером»).
+     */
     request_contact?: boolean;
+    /**
+     * Запросить у пользователя геолокацию (кнопка «Отправить местоположение»).
+     */
     request_location?: boolean;
     /**
      * Стиль кнопки (Telegram Bot API 9.4+).
@@ -891,13 +957,18 @@ export interface ITelegramReplyButton {
  * Используется для создания кнопок, которые отображаются непосредственно в сообщении:
  * - Кнопки-ссылки
  * - Кнопки с callback-данными
- * - Кнопки с URL и callback-данными
+ *
+ * url и callback_data взаимоисключающие: кнопка содержит либо ссылку, либо callback-данные.
  *
  * @example
  * ```ts
- * const inlineButton: ITelegramInlineKeyboard = {
+ * const urlButton: ITelegramInlineKeyboard = {
  *     text: 'Открыть сайт',
- *     url: 'http://localhost',
+ *     url: 'http://localhost'
+ * };
+ *
+ * const callbackButton: ITelegramInlineKeyboard = {
+ *     text: 'Открыть раздел',
  *     callback_data: { action: 'open_site' }
  * };
  * ```
@@ -943,7 +1014,7 @@ export interface ITelegramInlineKeyboard {
  *
  * // Reply-кнопки
  * const replyKeyboard: ITelegramKeyboard = {
- *     keyboard: ['Кнопка 1', 'Кнопка 2']
+ *     keyboard: [[{ text: 'Кнопка 1' }], [{ text: 'Кнопка 2' }]]
  * };
  *
  * // Удаление клавиатуры
@@ -954,11 +1025,12 @@ export interface ITelegramInlineKeyboard {
  */
 export interface ITelegramKeyboard {
     /**
-     * Кнопки в виде ссылки
+     * Inline-кнопки (ссылки и/или callback) — массив массивов (рядов) кнопок
      */
     inline_keyboard?: ITelegramInlineKeyboard[][];
     /**
-     * Кнопки в виде кнопок. Отображаются вместо клавиатуры
+     * Reply-кнопки, отображаемые вместо стандартной клавиатуры устройства, —
+     * массив массивов (рядов) кнопок
      */
     keyboard?: ITelegramReplyButton[][];
     /**

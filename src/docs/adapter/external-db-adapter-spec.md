@@ -76,11 +76,18 @@ import { BaseDbAdapter } from 'umbot/plugins';
 **Выход `_select` — `IModelRes`:**
 
 ```ts
-// успех (даже если найдено 0 записей)
+// успех: записи нашлись
 { status: true, data: [{ id: 1, name: 'Alice' }] }
+// запись не найдена (пустая выборка)
+{ status: false }
 // ошибка
 { status: false, error: 'Connection timeout' }
 ```
+
+**Важно:** `status: true` — только когда данные реально есть; при отсутствии записи возвращайте
+`{ status: false }`. Так работают встроенные `FileAdapter` и `MongoAdapter`, а `Model.save()`
+решает insert-vs-update по `selectOne().status` — ложный `status: true` на пустой выборке
+сломает сохранение (update вместо insert).
 
 **Важно:** не выбрасывайте исключения из `_select/_insert/_update/_remove`. Обрабатывайте ошибки внутри и возвращайте `status: false` / `false`.
 
@@ -170,6 +177,8 @@ export class RedisAdapter extends BaseDbAdapter<IRedisDbInfo> {
     connect(): Promise<boolean> {
         // 1. создать клиент из this._dbOptions (host/user/pass/database/options)
         // 2. сохранить в this._appContext.database.databaseInfo
+        //    (базовый класс уже создал пустой объект в init(); вы заполняете его
+        //    своим клиентом/пулом — это конвенция, а не обязанность интеграции)
         // 3. вернуть true при успехе, false при ошибке (не бросать)
         return Promise.resolve(true);
     }
@@ -256,7 +265,7 @@ const bot = new Bot()
 
 - [ ] Наследуется от `BaseDbAdapter`, переопределены только `_`-методы.
 - [ ] `connect`/`isConnected`/`destroy`/`close` реализованы и безопасны к повторному вызову.
-- [ ] `_select` возвращает `IModelRes` (`status: true` даже при 0 записей).
+- [ ] `_select` возвращает `IModelRes` (`status: true` только при найденных записях; отсутствие записи — `status: false`).
 - [ ] Нет исключений из методов контракта.
 - [ ] Поддержаны операторы `$gt/$gte/$lt/$lte/$ne/$in` (минимум).
 - [ ] `umbot` в peerDependencies, драйвер БД в dependencies.

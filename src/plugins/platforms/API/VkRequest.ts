@@ -35,14 +35,14 @@ const VK_API_ENDPOINT = 'https://api.vk.ru/method/';
 /**
  * Класс для взаимодействия с API ВКонтакте
  * Предоставляет методы для отправки сообщений, загрузки файлов и работы с другими функциями API
- * @see (https://vk.ru/dev/bots_docs) Смотри тут
+ * @see https://vk.ru/dev/bots_docs
  *
  * @example
  * ```ts
- * import { VkRequest } from './api/VkRequest';
+ * import { VkRequest } from 'umbot/plugins';
  *
- * // Создание экземпляра
- * const vk = new VkRequest();
+ * // Создание экземпляра (appContext обязателен)
+ * const vk = new VkRequest(appContext);
  * vk.initToken('your-vk-token');
  *
  * // Отправка простого сообщения
@@ -65,11 +65,13 @@ const VK_API_ENDPOINT = 'https://api.vk.ru/method/';
  *   keyboard: JSON.stringify(keyboard)
  * });
  *
- * // Загрузка и отправка фото
+ * // Загрузка и отправка фото.
+ * // Поля photo/server/hash у IVkUploadFile опциональны —
+ * // перед вызовом photosSaveMessagesPhoto проверяем их наличие
  * const server = await vk.photosGetMessagesUploadServer(12345);
  * if (server) {
  *   const upload = await vk.upload(server.upload_url, 'path/to/photo.jpg');
- *   if (upload) {
+ *   if (upload?.photo && upload?.server && upload?.hash) {
  *     const photo = await vk.photosSaveMessagesPhoto(
  *       upload.photo,
  *       upload.server,
@@ -208,11 +210,13 @@ export class VkRequest {
      *
      * @example
      * ```ts
-     * // Загрузка фото
+     * // Загрузка фото.
+     * // Поля photo/server/hash у IVkUploadFile опциональны —
+     * // перед вызовом photosSaveMessagesPhoto проверяем их наличие
      * const server = await vk.photosGetMessagesUploadServer(12345);
      * if (server) {
      *   const upload = await vk.upload(server.upload_url, 'photo.jpg');
-     *   if (upload) {
+     *   if (upload?.photo && upload?.server && upload?.hash) {
      *     const photo = await vk.photosSaveMessagesPhoto(
      *       upload.photo,
      *       upload.server,
@@ -272,7 +276,8 @@ export class VkRequest {
      * @param message Текст сообщения
      * @param params Дополнительные параметры:
      * - random_id: уникальный ID для избежания повторов
-     * - attachment: медиавложения в формате "<type><owner_id>_<media_id>"
+     * - attachments: массив вложений "<type><owner_id>_<media_id>"
+     *   (объединяются через запятую в параметр attachment)
      *   Примеры:
      *   - Фото: "photo123456_789"
      *   - Документ: "doc123456_789"
@@ -355,8 +360,7 @@ export class VkRequest {
         };
 
         if (typeof peerId !== 'number') {
-            // peer_id может быть строкой (screen_name). В форме VK API `undefined` превращается в
-            // строку "undefined" и ломает запрос — удаляем поле полностью.
+            // peer_id может быть строкой (screen_name) — тогда адресат идёт через domain.
             this._request.post.domain = peerId;
             delete this._request.post.peer_id;
         }
@@ -386,9 +390,8 @@ export class VkRequest {
                     this._appContext.logWarn(
                         'VkRequest.messagesSend(): keyboard и template взаимоисключающи в VK API. Template будет удалён.',
                     );
-                    // Именно delete, а не `= undefined`: httpBuildQuery сериализует
-                    // значение через String(), и в тело запроса уходило `template=undefined`,
-                    // на что VK отвечает ошибкой 100 (invalid parameter).
+                    // delete, а не `= undefined`: httpBuildQuery сериализует значение
+                    // через String(), и VK ответил бы ошибкой 100 на `template=undefined`.
                     delete this._request.post.template;
                 }
                 if (typeof p.keyboard !== 'string') {
@@ -417,8 +420,6 @@ export class VkRequest {
     ): Promise<IVkUsersGet[] | null> {
         if (typeof userId === 'number') {
             // Документированный параметр users.get — user_ids (список через запятую).
-            // Числовая ветка раньше отправляла legacy-алиас user_id, которого нет
-            // в документации API 5.199.
             this._request.post = { user_ids: String(userId) };
         } else if (Array.isArray(userId)) {
             this._request.post = { user_ids: userId.join(',') };
@@ -588,7 +589,7 @@ export class VkRequest {
     }
 
     /**
-     * Записывает информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      * @param error Текст или объект ошибки для логирования
      */
     protected _log(error: Error | string = ''): void {

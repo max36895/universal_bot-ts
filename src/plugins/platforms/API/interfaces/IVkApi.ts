@@ -187,8 +187,8 @@ export interface IVkParams {
     chat_id?: number;
 
     /**
-     * ID получателей сообщения.
-     * Используется при создании новой беседы
+     * ID получателей сообщения — список user_id через запятую,
+     * не более 100 значений (и для рассылки, и при создании беседы)
      */
     user_ids?: number[];
 
@@ -226,7 +226,7 @@ export interface IVkParams {
     /**
      * ID пересылаемых сообщений.
      * Разделяются запятой.
-     * Пример: "123,431,544"
+     * Пример: [123, 431, 544]
      */
     forward_messages?: number[];
 
@@ -393,11 +393,9 @@ export interface IVkUsersGet extends IVkApi {
  * @example
  * ```ts
  * const uploadServer: IVkUploadServer = {
- *   response: {
- *     upload_url: "{UPLOAD_URL}",
- *     album_id: "123456789",
- *     group_id: "987654321"
- *   }
+ *   upload_url: "https://pu.vk.com/...",
+ *   album_id: "123456789",
+ *   group_id: "987654321"
  * };
  * ```
  */
@@ -424,18 +422,16 @@ export interface IVkUploadServer extends IVkApi {
  * @example
  * ```ts
  * const savedPhoto: IVkPhotosSave = {
- *   response: [{
- *     id: 123456789,
- *     pid: 987654321,
- *     aid: 123456,
- *     owner_id: 123456789,
- *     src: "/photo123456789_987654321",
- *     src_big: "/photo123456789_987654321_big",
- *     src_small: "/photo123456789_987654321_small",
- *     created: 1234567890,
- *     src_xbig: "/photo123456789_987654321_xbig",
- *     src_xxbig: "/photo123456789_987654321_xxbig"
- *   }]
+ *   id: 123456789,
+ *   pid: 987654321,
+ *   aid: 123456,
+ *   owner_id: 123456789,
+ *   src: "/photo123456789_987654321",
+ *   src_big: "/photo123456789_987654321_big",
+ *   src_small: "/photo123456789_987654321_small",
+ *   created: 1234567890,
+ *   src_xbig: "/photo123456789_987654321_xbig",
+ *   src_xxbig: "/photo123456789_987654321_xxbig"
  * };
  * ```
  */
@@ -446,7 +442,7 @@ export interface IVkPhotosSave extends IVkApi {
     id: number;
 
     /**
-     * ID изображения
+     * ID изображения (legacy, в актуальных ответах VK не возвращается)
      */
     pid: number;
 
@@ -553,7 +549,7 @@ export interface IVkGraffiti extends IVkDocInfo {
  * ```ts
  * const audioMessage: IVkAudioMessageInfo = {
  *   duration: 30,
- *   waleform: [0, 1, 2, 3, 4, 5],
+ *   waveform: [0, 1, 2, 3, 4, 5],
  *   link_ogg: "{...}.ogg",
  *   link_mp3: "{...}.mp3"
  * };
@@ -568,7 +564,7 @@ export interface IVkAudioMessageInfo {
     /**
      * Массив значений для визуализации звука
      */
-    waleform: number[];
+    waveform: number[];
 
     /**
      * URL .ogg файла
@@ -590,7 +586,7 @@ export interface IVkAudioMessageInfo {
  *   id: 123456789,
  *   owner_id: 987654321,
  *   duration: 30,
- *   waleform: [0, 1, 2, 3, 4, 5],
+ *   waveform: [0, 1, 2, 3, 4, 5],
  *   link_ogg: "/audio_message123456789_987654321.ogg",
  *   link_mp3: "/audio_message123456789_987654321.mp3"
  * };
@@ -616,7 +612,7 @@ export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {}
  *   },
  *   audio_message: {
  *     duration: 30,
- *     waleform: [0, 1, 2, 3, 4, 5],
+ *     waveform: [0, 1, 2, 3, 4, 5],
  *     link_ogg: "/audio_message123456789_987654321.ogg",
  *     link_mp3: "/audio_message123456789_987654321.mp3"
  *   }
@@ -733,24 +729,10 @@ export interface IVKDoc extends IVkDocInfo {
  * @example
  * ```ts
  * const savedDoc: IVkDocSave = {
- *   response: {
- *     type: "doc",
- *     id: 123456789,
- *     owner_id: 987654321,
- *     url: "/doc123456789_987654321",
- *     title: "document.pdf",
- *     size: 1024,
- *     ext: "pdf",
- *     date: 1234567890,
- *     type: 1,
- *     preview: {
- *       photo: [
- *         "/photo123456789_987654321_s",
- *         "/photo123456789_987654321_m",
- *         "/photo123456789_987654321_x"
- *       ]
- *     }
- *   }
+ *   type: "doc",
+ *   id: 123456789,
+ *   owner_id: 987654321,
+ *   url: "/doc123456789_987654321"
  * };
  * ```
  */
@@ -808,7 +790,7 @@ export interface IVkDocSave extends IVkDocInfo, IVkApi {
      * Массив значений для визуализации звука
      * Для голосового сообщения
      */
-    waleform?: number[];
+    waveform?: number[];
 
     /**
      * URL .ogg файла

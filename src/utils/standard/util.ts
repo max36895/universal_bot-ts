@@ -22,7 +22,7 @@ import { join } from 'node:path';
  *
  * @param data - Данные для сериализации
  * @param replacer - Функция замены (по умолчанию null)
- * @param space - Отступы для форматирования (по умолчанию '\t')
+ * @param space - Отступы для форматирования; не задан — без отступов (как JSON.stringify)
  * @returns JSON-строка или строковое представление данных
  *
  * @example
@@ -78,6 +78,7 @@ export function rand(min: number, max: number): number {
 /**
  * Метод, возвращающий количество ключей в объекте
  * @param {object | Record<string, unknown>} obj - Объект для подсчёта ключей
+ * @returns {number} Количество ключей в объекте
  */
 export function keysCount(obj: object | Record<string, unknown>): number {
     // Такой вариант быстрее Object.keys, но до тех пор, пока не был delete.
@@ -107,7 +108,9 @@ const SIMILAR_SAMPLE_COUNT = 8;
 
 /**
  * Вычисляет процент схожести двух текстов
- * Использует алгоритм LCS (Longest Common Subsequence)
+ * При суммарной длине строк до 2000 символов использует алгоритм LCS
+ * (Longest Common Subsequence); свыше — дешёвую эвристику окон
+ * (сравнение нескольких равномерно распределённых участков строк)
  *
  * @param {string} first - Первый текст для сравнения
  * @param {string} second - Второй текст для сравнения
@@ -115,8 +118,8 @@ const SIMILAR_SAMPLE_COUNT = 8;
  *
  * @example
  * ```ts
- * similarText('привет', 'привт'); // -> ~90
- * similarText('hello', 'world'); // -> ~20
+ * similarText('привет', 'привт'); // -> ~91
+ * similarText('hello', 'world'); // -> 20
  * similarText('same', 'same'); // -> 100
  * ```
  */
@@ -226,7 +229,7 @@ export interface FileOperationResult<T> {
 }
 
 /**
- * Быстрое сравнение на то похож введенный текст на имя файла или нет
+ * Быстрая проверка, похож ли текст на имя файла
  * @param str Проверяемая строка
  */
 function looksLikeFilePath(str: string): boolean {
@@ -242,18 +245,23 @@ function looksLikeFilePath(str: string): boolean {
 /**
  * Синхронно проверяет существование файла
  *
+ * Путь должен выглядеть как файл: точка не в начале/конце, расширение
+ * до 5 символов из словесных символов. Путь без расширения (или похожий
+ * на директорию) вернёт false без обращения к файловой системе.
+ *
  * @param {string} file - Путь к проверяемому файлу
  * @returns {boolean} true, если файл существует и это файл, иначе false
  *
  * @example
  * ```ts
- * isFile('path/to/file.txt'); // -> true
- * isFile('path/to/directory'); // -> false
- * isFile('nonexistent.txt'); // -> false
+ * isFileSync('path/to/file.txt'); // -> true
+ * isFileSync('path/to/directory'); // -> false (не похоже на файл)
+ * isFileSync('nonexistent.txt'); // -> false
  * ```
  */
 export function isFileSync(file: string): boolean {
-    // Если в тексте нет точки, значит это явно не файл
+    // Строка должна выглядеть как путь к файлу: точка не в начале/конце,
+    // расширение до 5 символов из словесных символов (looksLikeFilePath)
     if (looksLikeFilePath(file)) {
         const fileInfo = getFileInfoSync(file);
         return !!(fileInfo.success && fileInfo.data?.isFile());
@@ -454,11 +462,14 @@ export function mkdirSync(path: string, mask: fs.Mode = '0774'): FileOperationRe
 }
 
 /**
- * Синхронно сохраняет данные в файл
+ * Синхронно сохраняет данные в файл.
+ * data обязана быть валидной JSON-строкой: при невалидном JSON сохранение
+ * не выполняется и возвращается false (ошибка логируется через errorLogger).
+ * Асинхронный аналог saveData этой проверки не делает.
  * @param {IDir} dir - Объект с путем и названием файла
- * @param {string} data - Сохраняемые данные
- * @param {string} mode - Режим записи
- * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
+ * @param {string} data - Сохраняемые данные (валидная JSON-строка)
+ * @param {string} [mode] - Режим записи
+ * @param {TLoggerCb} [errorLogger] - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
 export function saveDataSync(
@@ -530,18 +541,23 @@ export async function getFileInfo(fileName: string): Promise<FileOperationResult
 /**
  * Асинхронно проверяет существование файла
  *
+ * Путь должен выглядеть как файл: точка не в начале/конце, расширение
+ * до 5 символов из словесных символов. Путь без расширения (или похожий
+ * на директорию) вернёт false без обращения к файловой системе.
+ *
  * @param {string} file - Путь к проверяемому файлу
  * @returns {Promise<boolean>} true, если файл существует и это файл, иначе false
  *
  * @example
  * ```ts
- * isFile('path/to/file.txt'); // -> true
- * isFile('path/to/directory'); // -> false
- * isFile('nonexistent.txt'); // -> false
+ * await isFile('path/to/file.txt'); // -> true
+ * await isFile('path/to/directory'); // -> false (не похоже на файл)
+ * await isFile('nonexistent.txt'); // -> false
  * ```
  */
 export async function isFile(file: string): Promise<boolean> {
-    // Если в тексте нет точки, значит это явно не файл
+    // Строка должна выглядеть как путь к файлу: точка не в начале/конце,
+    // расширение до 5 символов из словесных символов (looksLikeFilePath)
     if (looksLikeFilePath(file)) {
         const fileInfo = await getFileInfo(file);
         return !!(fileInfo.success && fileInfo.data?.isFile());
@@ -661,8 +677,8 @@ export async function unlink(fileName: string): Promise<FileOperationResult<void
  * Сохраняет данные в файл
  * @param {IDir} dir - Объект с путем и названием файла
  * @param {string} data - Сохраняемые данные
- * @param {string} mode - Режим записи
- * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
+ * @param {string} [mode] - Режим записи
+ * @param {TLoggerCb} [errorLogger] - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
 export async function saveData(
@@ -749,9 +765,9 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
  *
  * @example
  * ```ts
- * // В консоли:
- * // > Enter your name: John
- * const name = await stdin(); // -> 'John'
+ * // Приглашение нужно напечатать самостоятельно, stdin() ничего не выводит:
+ * // console.log('Enter your name:');
+ * const name = await stdin(); // -> 'John' (введённая строка)
  * ```
  */
 export function stdin(): Promise<string> {

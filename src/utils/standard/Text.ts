@@ -25,12 +25,12 @@ export type TPattern = string | readonly string[];
 
 /**
  * Тип для поиска совпадений в тексте с учетом регулярных выражений.
- * Может быть строкой или массивом строк.
+ * Может быть строкой, регулярным выражением или их массивом.
  *
  * @example
  * ```ts
- * const pattern: TPattern = /привет/;
- * const patterns: TPattern = ['привет', /здравствуйте/];
+ * const pattern: TPatternReg = /привет/;
+ * const patterns: TPatternReg = ['привет', /здравствуйте/];
  * ```
  */
 export type TPatternReg = PatternItem | readonly PatternItem[];
@@ -51,12 +51,12 @@ export type TPatternReg = PatternItem | readonly PatternItem[];
 export interface ITextSimilarity {
     /**
      * Статус успешности сравнения текстов
-     * true - если процент схожести превышает пороговое значение
+     * true - если процент схожести не менее порогового значения
      */
     status: boolean;
 
     /**
-     * Индекс совпавшего текста в массиве или null для строки.
+     * Индекс совпавшего текста в массиве; 0 для одиночной строки; null — если совпадений нет.
      * Используется при сравнении с массивом текстов
      */
     index: number | null;
@@ -78,7 +78,8 @@ let MAX_CACHE_SIZE = 3000;
 
 function setMemoryLimit(): void {
     const total = os.totalmem();
-    // На всякий случай ограничиваем кэш, если в кэш будут класть группы
+    // Ограничиваем размер кэша сверху: регулярка с группами может занять заметно
+    // больше памяти, поэтому на машинах с малым объёмом RAM держим кэш меньше.
     if (total < 0.8 * 1024 ** 3) {
         MAX_CACHE_SIZE = 2000;
     } else if (total < 3 * 1024 ** 3) {
@@ -147,7 +148,7 @@ const REJECT_PATTERNS = new RegExp(
  * Text.getEnding(5, ['яблоко', 'яблока', 'яблок']); // -> 'яблок'
  *
  * // Проверка схожести
- * Text.textSimilarity('привет', 'привт', 80); // -> { status: true, percent: 90, ... }
+ * Text.textSimilarity('привет', 'привт', 80); // -> { status: true, percent: ~91, ... }
  * ```
  */
 export class Text {
@@ -167,9 +168,9 @@ export class Text {
     static readonly #regexObjectCache = new WeakMap<RegExp, RegExp>();
 
     /**
-     * Минимальное количество использований среди записей в кэше.
-     * Используется для быстрого вытеснения редко используемых записей
-     * без необходимости сортировки всего кэша.
+     * Порог вытеснения записей из кэша: удаляются паттерны, чей счётчик
+     * использований не выше этого значения. После вытеснения сбрасывается в 0
+     * (см. #evictRegexCache).
      */
     static #minCacheUsage = 0;
 
@@ -179,7 +180,7 @@ export class Text {
      * `String.substring` режет по code unit'ам UTF-16, поэтому обрыв ровно между
      * старшим и младшим суррогатом эмодзи оставляет «половину символа». Такая строка
      * невалидна в UTF-8: платформы либо показывают U+FFFD, либо отклоняют сообщение.
-     * Поэтому при попадании на старший суррогат отступаем на один code unit назад.
+     * Поэтому при попадании обрезки на старший суррогат отступаем на один code unit назад.
      *
      * @param text Исходный текст
      * @param size Максимальная длина в code unit'ах UTF-16
@@ -314,7 +315,7 @@ export class Text {
     /**
      * Проверяет наличие совпадений в тексте по шаблонам
      *
-     * @param {TPattern} patterns - Шаблоны для поиска
+     * @param {TPatternReg} patterns - Шаблоны для поиска
      * @param {string} text - Проверяемый текст
      * @param {boolean} useDirectRegExp - Использовать исходные RegExp напрямую без нормализации и кэширования
      * @param {RegExpConstructor} customReg - Произвольный обработчик для регулярных выражений
@@ -378,6 +379,52 @@ export class Text {
     }
 
     /**
+     * Возвращает скомпилированное регулярное выражение для слота команды.
+     *
+     * Использует те же кэши, что и `isSayText` (WeakMap для RegExp-объектов,
+     * кэш с вытеснением наименее используемых паттернов для строковых шаблонов):
+     * повторные вызовы не компилируют регулярку заново. Предназначено для извлечения
+     * групп совпадения (`exec`) после того, как команда уже сработала — например,
+     * для заполнения `controller.match`.
+     *
+     * @param {PatternItem} slot Слот команды: RegExp или строка-паттерн
+     * @param {boolean} [useDirectRegExp=false] Не нормализовать и не кэшировать RegExp
+     * @param {RegExpConstructor} [customReg] Кастомный движок RegExp (например, re2)
+     * @returns {RegExp | null} Скомпилированное выражение или null, если слот не строка и не RegExp
+     *
+     * @example
+     * ```ts
+     * const reg = Text.getMatchRegExp(/(\d+)/);
+     * const match = reg?.exec('заказ 5'); // match?.[1] === '5'
+     * ```
+     */
+    public static getMatchRegExp(
+        slot: PatternItem,
+        useDirectRegExp: boolean = false,
+        customReg: RegExpConstructor | undefined = undefined,
+    ): RegExp | null {
+        // Строковый паттерн компилируется через тот же кэш с вытеснением наименее
+        // используемых паттернов, что и поиск команд (#getCachedRegex): вызов из
+        // горячего пути на каждый совпавший запрос не должен платить за new RegExp заново.
+        if (typeof slot === 'string') {
+            return Text.#getCachedRegex(slot, customReg);
+        }
+        if (!isRegex(slot)) {
+            return null;
+        }
+        if (useDirectRegExp) {
+            return slot;
+        }
+        const cached = Text.#regexObjectCache.get(slot);
+        if (cached) {
+            return cached;
+        }
+        const re = getRegExpOrSelf(slot, 'ium', customReg);
+        Text.#regexObjectCache.set(slot, re);
+        return re;
+    }
+
+    /**
      * Проверяет наличие совпадений в тексте
      *
      * @param {TPatternReg} find - Искомый текст или массив текстов
@@ -406,7 +453,9 @@ export class Text {
         useDirectRegExp: boolean = false,
         customReg: RegExpConstructor | undefined = undefined,
     ): boolean {
-        if (!text) return false;
+        if (!text) {
+            return false;
+        }
 
         if (isPattern) {
             return Text.#isSayPattern(find, text, useDirectRegExp, customReg);
@@ -458,21 +507,27 @@ export class Text {
             if (item.cReq <= Text.#minCacheUsage) {
                 Text.#regexCache.delete(k);
                 removed++;
-                if (removed >= target) break;
+                if (removed >= target) {
+                    break;
+                }
             }
         }
 
         if (removed < target && Text.#regexCache.size > 0) {
             let newMin = Infinity;
             for (const item of Text.#regexCache.values()) {
-                if (item.cReq < newMin) newMin = item.cReq;
+                if (item.cReq < newMin) {
+                    newMin = item.cReq;
+                }
             }
             Text.#minCacheUsage = newMin;
             for (const [k, item] of Text.#regexCache) {
                 if (item.cReq <= Text.#minCacheUsage) {
                     Text.#regexCache.delete(k);
                     removed++;
-                    if (removed >= target) break;
+                    if (removed >= target) {
+                        break;
+                    }
                 }
             }
         }
@@ -520,7 +575,8 @@ export class Text {
     }
 
     /**
-     * Очищает кэш регулярных выражений.
+     * Очищает кэш регулярных выражений (только кэш строковых паттернов;
+     * WeakMap для RegExp-объектов очищать не нужно — записи удаляются сборщиком мусора).
      * Стоит вызывать только в крайних случаях
      */
     public static clearCache(): void {
@@ -550,8 +606,15 @@ export class Text {
     /**
      * Заменяет ключ в тексте на значение
      * @param {string} key - Ключ для замены
-     * @param {string | string[]} value - Значение для замены
+     * @param {string | string[]} value - Значение для замены (из массива выбирается случайный вариант)
      * @param {string} text - Исходный текст
+     * @returns {string} Текст с заменённым ключом
+     *
+     * @example
+     * ```ts
+     * Text.textReplace('#name#', 'Иван', 'Привет, #name#!'); // -> 'Привет, Иван!'
+     * Text.textReplace('#name#', ['Иван', 'Пётр'], 'Привет, #name#!'); // -> случайное имя
+     * ```
      */
     public static textReplace(key: string, value: string | string[], text: string): string {
         return text.replaceAll(key, Text.getText(value));
@@ -608,7 +671,7 @@ export class Text {
      * // -> {
      * //   status: true,
      * //   index: 0,
-     * //   percent: 90,
+     * //   percent: ~91,
      * //   text: 'привт'
      * // }
      *
@@ -617,7 +680,7 @@ export class Text {
      * // -> {
      * //   status: true,
      * //   index: 0,
-     * //   percent: 90,
+     * //   percent: ~91,
      * //   text: 'привт'
      * // }
      * ```

@@ -6,18 +6,18 @@
  * запись», из-за чего пользователь с таким platform-id ошибочно считался
  * существующим, а его данные потом молча не сохранялись.
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
+import { writeFileSync } from 'fs';
 import { join } from 'path';
 import { AppContext } from '../../src';
 import { FileAdapter } from '../../src/plugins';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 describe('FileAdapter: защита от зарезервированных ключей в select', () => {
     let dir: string;
     let adapter: FileAdapter;
 
     beforeEach(() => {
-        dir = mkdtempSync(join(tmpdir(), 'umbot-filedb-'));
+        dir = createTestDir('filedb');
         writeFileSync(
             join(dir, 'UsersData.json'),
             JSON.stringify({ '123': { userId: '123', data: '{"score":1}' } }),
@@ -30,8 +30,11 @@ describe('FileAdapter: защита от зарезервированных кл
         adapter.init(appContext);
     });
 
-    afterEach(() => {
-        rmSync(dir, { recursive: true, force: true });
+    afterEach(async () => {
+        // _insert ставит debounce-таймеры записи: без close они стреляют после
+        // removeTestDir и пересоздают папку с пустой таблицей в tests/.tmp.
+        await adapter.destroy();
+        await removeTestDir(dir);
     });
 
     it('обычная выборка по первичному ключу работает', () => {

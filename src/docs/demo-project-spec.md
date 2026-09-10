@@ -23,7 +23,7 @@
 - применяет middleware (rateLimiter, requestId);
 - работает одинаково на всех платформах через `fullPlatforms`.
 
-Выбор «кофейни» не случаен: домен знаком каждому, в нём естественно возникают команды, шаги, формы, состояние и карточки — все ключевые примитивы фреймворка.
+Домен «кофейни» выбран потому, что в нём естественно возникают команды, шаги, формы, состояние и карточки — все ключевые примитивы фреймворка.
 
 ## 3. Функциональные требования
 
@@ -48,12 +48,23 @@
 
 `onComplete`: сохранить заказ в `userData.history`, обновить `userData.favorite`, подтвердить заказ текстом с кнопкой «Ещё заказ».
 
+Отдельный шаг `confirm_favorite` (`addStep`): если у пользователя уже есть любимый напиток,
+бот сначала спрашивает «как обычно?» и при подтверждении повторяет последний заказ.
+
 ### 3.3 Состояние (`userData`)
 
 ```ts
+interface ICoffeeOrder {
+    drink: string; // напиток
+    size: string; // объём
+    name: string; // имя
+    total: number; // итоговая сумма (0, если сработала лояльность)
+    ts: number; // время оформления (unix-мс)
+}
+
 interface ICoffeeUserData extends IUserData {
     favorite?: string;
-    history?: { drink: string; size: string; name: string; ts: number }[];
+    history?: ICoffeeOrder[];
 }
 ```
 
@@ -64,7 +75,8 @@ interface ICoffeeUserData extends IUserData {
 
 ### 3.4 NLU
 
-- `nlu.getIntent('confirm')` для подтверждения в диалоге;
+- подтверждение в диалоге — интент `YANDEX.CONFIRM` (`Nlu.T_INTENT_CONFIRM`) с текстовым фолбэком
+  («да», «конечно» и т.п. через `Text.isSayTrue`) для консоли и чат-платформ;
 - извлечение числа из фразы («два кофе») через `nlu` / `Text`.
 
 ### 3.5 Middleware

@@ -52,6 +52,8 @@ function getServerAction(
  * Получение кнопок в формате SmartApp
  * @param buttons Кнопки, которые необходимо отобразить
  * @param isCard флаг принадлежности кнопок к карточке
+ * @param appContext Контекст приложения (для логирования ошибок валидации)
+ * @returns Для карточки — действие ISberSmartAppCardAction, для обычного ответа — массив кнопок suggestions; `null`, если кнопка не прошла валидацию
  */
 export function buttonProcessing(
     buttons: IButtonType[],
@@ -79,7 +81,7 @@ export function buttonProcessing(
         }
         return null;
     } else {
-        getCorrectButtons(buttons, 8).forEach((button) => {
+        getCorrectButtons(buttons, 8, appContext).forEach((button) => {
             const title = Text.resize(button.title || '', 64);
             if (title) {
                 const object: ISberSmartAppSuggestionButton = {

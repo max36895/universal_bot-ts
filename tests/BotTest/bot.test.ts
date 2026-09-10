@@ -11,9 +11,7 @@ import {
     fullPlatforms,
     FileAdapter,
 } from '../../src/plugins';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 class TestBotController extends BotController {
     constructor() {
@@ -102,9 +100,9 @@ function getSkills(cb: (skill: TAppType) => Promise<void>, title: string): void 
 const fileAdapter = new FileAdapter();
 let bot: TestBot;
 // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень репозитория.
-// Перенаправляем их во временную папку, чтобы прогон тестов не оставлял
-// артефактов в репо (UsersData.json, ImageTokens.json и пр.).
-const TEST_DATA_DIR = mkdtempSync(join(tmpdir(), 'umbot-test-bottest-'));
+// Перенаправляем их в тестовую папку (tests/.tmp) — путь известен, артефакты
+// упавшего прогона можно разобрать (UMBOT_TEST_KEEP).
+const TEST_DATA_DIR = createTestDir('bottest');
 describe('umbot', () => {
     beforeAll(() => {
         bot = new TestBot();
@@ -155,11 +153,11 @@ describe('umbot', () => {
 
     afterAll(async () => {
         fileAdapter.setCachedFileData('UserData', undefined);
-        // close() флашит таблицы FileAdapter в json/: без await rmSync удалит
-        // папку раньше, чем асинхронная запись пересоздаст её с файлами.
+        // close() флашит таблицы FileAdapter в json/: без await removeTestDir
+        // удалит папку раньше, чем асинхронная запись пересоздаст её с файлами.
         await bot.close();
         jest.resetAllMocks();
-        rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+        await removeTestDir(TEST_DATA_DIR);
     });
 
     describe('run bot test', () => {

@@ -1,4 +1,4 @@
-import { IButtonType, ICardInfo, Text, BotController } from '../../../index';
+import { IButtonType, ICardInfo, Text, BotController, AppContext } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { MarusiaRequest } from '../API';
@@ -21,15 +21,20 @@ import {
 /**
  * Возвращает кнопки в формате Маруси
  * @param buttons Кнопки для отображения
+ * @param appContext Контекст приложения — передаётся дальше в buttonProcessing,
+ * чтобы предупреждения о невалидной кнопке не терялись (без него кнопка
+ * отбрасывалась молча)
+ * @returns Первая кнопка в карточечном формате IMarusiaButtonCard
  */
-function marusiaCardButton(buttons: IButtonType[]): IMarusiaButtonCard {
-    return buttonProcessing(buttons, true) as IMarusiaButtonCard;
+function marusiaCardButton(buttons: IButtonType[], appContext?: AppContext): IMarusiaButtonCard {
+    return buttonProcessing(buttons, true, appContext) as IMarusiaButtonCard;
 }
 
 /**
- * Получение токена, необходимого для отображения картинок в карточке Марусе
+ * Получение токена, необходимого для отображения картинок в карточке Маруси
  * @param controller Контроллер приложения
  * @param path Путь до картинки
+ * @returns Токен загруженного изображения либо `null` при ошибке загрузки/сохранения
  */
 export async function getImageInDB(
     controller: BotController,
@@ -72,17 +77,23 @@ export async function getImageInDB(
  *      * Заголовок: 128 символов
  *      * Описание: 256 символов
  *
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения
  * @returns {Promise<IMarusiaImage[]>} Массив элементов карточки
  */
 async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise<IMarusiaImage[]> {
     const items: IMarusiaImage[] = [];
     const maxCount = cardInfo.usedGallery ? MARUSIA_MAX_GALLERY_IMAGES : MARUSIA_MAX_IMAGES;
     const images = cardInfo.images.slice(0, maxCount);
+    // Замыкание передаёт appContext в обработку кнопок: иначе warn о невалидной
+    // кнопке терялся, и кнопка исчезала молча.
+    const cardButton = (buttons: IButtonType[]): IMarusiaButtonCard =>
+        marusiaCardButton(buttons, controller.appContext);
     for (const image of images) {
         const title = Text.resize(image.title || cardInfo.title || '', 128);
         let button: IMarusiaButtonCard | null = null;
         if (!cardInfo.usedGallery) {
-            button = image.button?.getButtons<IMarusiaButtonCard>(marusiaCardButton) || null;
+            button = image.button?.getButtons<IMarusiaButtonCard>(cardButton) || null;
             if (!button?.text) {
                 button = null;
             }
@@ -120,7 +131,12 @@ async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise
     return items;
 }
 
-/** Собирает одиночную карточку Маруси и загружает изображение при необходимости. */
+/**
+ * Собирает одиночную карточку Маруси и загружает изображение при необходимости.
+ * @param cardInfo Информация о карточке
+ * @param controller Контроллер приложения
+ * @returns Карточка BigImage либо `null`, если нет изображения или токен не получен
+ */
 async function getBigImage(
     cardInfo: ICardInfo,
     controller: BotController,
@@ -135,14 +151,17 @@ async function getBigImage(
     if (!image.imageToken) {
         return null;
     }
-    let button: IMarusiaButtonCard | null = image.button?.getButtons(marusiaCardButton) || null;
+    const cardButton = (buttons: IButtonType[]): IMarusiaButtonCard =>
+        marusiaCardButton(buttons, controller.appContext);
+    let button: IMarusiaButtonCard | null = image.button?.getButtons(cardButton) || null;
     if (!button?.text) {
-        button = cardInfo.buttons.getButtons(marusiaCardButton);
+        button = cardInfo.buttons.getButtons(cardButton);
     }
     const object: IMarusiaBigImage = {
         type: MARUSIA_CARD_BIG_IMAGE,
         image_id: image.imageToken,
         title: Text.resize(image.title || cardInfo.title, 128),
+        // Лимит описания BigImage у Маруси — 256 символов (у Алисы 1024)
         description: Text.resize(image.desc || cardInfo.description, 256),
     };
     if (button?.text) {
@@ -153,6 +172,7 @@ async function getBigImage(
 
 /**
  * Получает карточку для отображения в Марусе.
+ * Асинхронный процессор — вызывать с `await` (см. Card.getCards).
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
  * @returns {Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null>} Объект карточки (BigImage, ItemsList или ImageGallery) либо `null`, если нечего отобразить
@@ -186,7 +206,9 @@ export async function cardProcessing(
     if (!object.items.length) {
         return null;
     }
-    const btn: IMarusiaButtonCard | null = cardInfo.buttons.getButtons(marusiaCardButton);
+    const btn: IMarusiaButtonCard | null = cardInfo.buttons.getButtons((buttons: IButtonType[]) =>
+        marusiaCardButton(buttons, controller.appContext),
+    );
     if (btn?.text) {
         object.footer = {
             text: btn.text,

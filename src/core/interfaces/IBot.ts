@@ -4,11 +4,12 @@
  */
 
 import { AppContext } from '../AppContext';
-import { BotController } from '../../controller';
+import { BotController, IControllerApi } from '../../controller';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { IButtonType, Buttons, IImageType, ISound } from '../../components';
 import { IModelRes, TQueryCb, IQuery, IQueryData } from '../../models';
 import { Bot } from '../Bot';
+import type { TEventType } from '../events';
 
 /**
  * Тип содержимого запроса к голосовому навыку или боту
@@ -55,7 +56,10 @@ export interface IBotResponse {
     /**
      * Статус код ответа.
      *  - 200 в случае успеха
-     *  - 400 в случае если отправлен пустой запрос, или фреймворк завершил обработку с ошибкой.
+     *  - 400 в случае, если отправлен пустой/некорректный запрос, или фреймворк завершил обработку с ошибкой.
+     *  - 401 при неверном токене/подписи вебхука
+     *  - 404 если платформа вернула 'notFound'
+     *  - 413 если тело запроса превышает лимит
      *  - 500 в случае ошибки самого сервера
      */
     statusCode: number;
@@ -156,8 +160,9 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     /**
      * Имя http-заголовка, в котором платформа передаёт подпись/секрет вебхука.
      *
-     * Заполняется адаптером для платформ с поддержкой подписи
-     * (Telegram, VK, Viber, MAX). Отсутствие поля означает, что проверка
+     * Заполняется адаптером для платформ с подписью в http-заголовке
+     * (Telegram, Viber, MAX). VK проверяет секрет в теле запроса и
+     * задаёт только `isSignatureCheckEnabled`. Отсутствие поля означает, что проверка
      * подписи для платформы недоступна по построению (Alisa, Marusia, SmartApp).
      * Используется ядром для предупреждения при старте о вебхуке без защиты.
      */
@@ -229,7 +234,9 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * Формирует контекст для отправки рейтинга (если поддерживается платформой).
      *
      * Используется только на платформах с поддержкой рейтинга (например, Сбер SmartApp).
-     * Если рейтинг не поддерживается — метод может не реализовываться или возвращать пустой объект.
+     * Метод обязателен, но `BasePlatform` уже даёт реализацию по умолчанию
+     * (делегирует `getContent`), поэтому переопределять его нужно только
+     * для спец-формата рейтинга.
      *
      * @param controller - контроллер приложения
      * @returns данные для отправки рейтинга
@@ -256,6 +263,17 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * Уникальное имя платформы (например, 'telegram', 'alisa').
      */
     platformName: string;
+    /**
+     * Универсальные события (`TEventType`), которые адаптер может выставить
+     * в `controller.eventType`. Источник знания для валидации `bot.addEvent(...)`:
+     * таблица принадлежит адаптеру, поэтому кастомные платформы участвуют
+     * в проверке автоматически.
+     *
+     * Опционально: `BasePlatform` уже объявляет дефолт `['message']`, поэтому
+     * наследникам достаточно переопределить поле при поддержке других событий.
+     * Отсутствие поля (прямая реализация интерфейса) приравнивается к `['message']`.
+     */
+    supportedEvents?: readonly TEventType[];
     /**
      * Указывает, поддерживает ли платформа локальное хранилище.
      *
@@ -314,12 +332,42 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * @param userId Ид пользователя, которому нужно отправить сообщение
      * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
      */
+    // TODO: тип возврата unknown | boolean вырождается в unknown — стоит упростить до unknown
     send(userId: string | number, controllerOrText: BotController | string): unknown | boolean;
+
+    /**
+     * Создаёт API-фасад платформы для `controller.api`.
+     *
+     * Фасад даёт бизнес-логике доступ к исходящим возможностям платформы
+     * (отправить медиа, ответить на callback-кнопку) без ручного конструирования
+     * платформенных Request-классов. Ядро вызывает этот метод само — знает о
+     * платформах только через данный контракт, поэтому добавить фасад новой
+     * платформе можно, не трогая ядро.
+     *
+     * Опционален: `BasePlatform` даёт реализацию по умолчанию (возвращает
+     * `null` — фасад недоступен), поэтому переопределять его нужно только
+     * платформам с исходящими API-вызовами. Голосовым платформам (Алиса,
+     * Маруся, SmartApp) фасад не нужен: их ответ формируется телом webhook.
+     *
+     * @param controller - Контроллер текущего запроса
+     * @returns Фасад либо `null`, если для платформы он недоступен
+     *
+     * @example
+     * ```ts
+     * class MyPlatformAdapter extends BasePlatform {
+     *     // Своя платформа + свой фасад — достаточно переопределить один метод
+     *     createApi(controller: BotController): IControllerApi | null {
+     *         return makeMyApi(controller);
+     *     }
+     * }
+     * ```
+     */
+    createApi?(controller: BotController): IControllerApi | null;
 
     /**
      * Определяет лимит платформы.
      * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
-     * В случае если у платформы нет ограничений, можно указать 0 или null.
+     * В случае, если у платформы нет ограничений, можно указать 0 или null.
      * По умолчанию null
      */
     limit: number | null;
@@ -375,7 +423,7 @@ export interface IDatabaseAdapter extends IPlugin {
     /**
      * Выполняет SELECT-запрос.
      * @param selectData Дополнительная информация для запроса. Содержит информацию о таблице и структуре.
-     * @param where Сам запрос
+     * @param where Условия фильтрации (WHERE)
      * @param isOne Определяет нужно ли вернуть только 1 найденную запись, либо отдать все доступные данные.
      */
     select: (selectData: IQuery, where: IQueryData | null, isOne: boolean) => Promise<IModelRes>;
@@ -407,7 +455,7 @@ export interface IDatabaseAdapter extends IPlugin {
 
     /**
      * Сохраняет данные (INSERT или UPDATE в зависимости от `isNew`).
-     * @param query Данные для запроса. Включает как запроса, так и сами данные
+     * @param query Данные для запроса. Включает как запрос, так и сами данные
      * @param isNew Флаг, говорящий о том, что добавляется новая запись
      */
     save(query: IQuery, isNew: boolean): Promise<boolean>;

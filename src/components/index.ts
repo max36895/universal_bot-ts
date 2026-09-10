@@ -33,7 +33,7 @@
  *
  * 1. **Стандартная навигация**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements: number = 5;
@@ -46,7 +46,7 @@
  *
  * 2. **Навигация с командами**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements: number = 5;
@@ -63,7 +63,7 @@
  *
  * 3. **Управление текущей страницей**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements = 5;
@@ -82,7 +82,7 @@
  *
  * 4. **Выбор элемента из списка**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements = 5;
@@ -96,7 +96,7 @@
  *
  * 5. **Работа с объектами**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * interface MenuItem {
  *     title: string;

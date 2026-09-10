@@ -28,7 +28,8 @@ npm start
 
 > Проект, сгенерированный через `from-flow`, не содержит dev-сервера с hot-reload — скрипта `npm run dev` нет.
 > Для разработки используйте классический цикл: изменить код → `npm run build` → `npm start`.
-> Если нужен hot-reload, используйте [шаблон `default`/`quiz` через CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html).
+> Шаблоны `default`/`quiz` через CLI hot-reload тоже не дают (запуск там тот же: `npm run build && npm start`),
+> но при создании с режимом `dev` точка входа использует `BotTest` — интерактивную консольную отладку без HTTP-сервера.
 
 Подробнее о CLI: [документация umbot CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html)
 
@@ -54,21 +55,21 @@ npm start
 }
 ```
 
-| Поле             | Тип      | Описание                                                                                                    |
-| ---------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
-| `schemaVersion`  | string   | Версия формата. По умолчанию `"1.0"`.                                                                       |
-| `name`           | string   | Имя проекта (используется в package.json и заголовке).                                                      |
-| `version`        | string   | Версия проекта (semver).                                                                                    |
-| `description`    | string   | Описание бота.                                                                                              |
-| `platforms`      | string[] | Платформы: `"telegram"`, `"alisa"`, `"marusia"`, `"vk"`, `"smart_app"`, `"max_app"`, `"viber"`.             |
-| `database`       | object   | Конфигурация БД (см. ниже).                                                                                 |
-| `isLocalStorage` | boolean  | Сохранять userData в localStorage (для тестов).                                                             |
-| `nodes`          | array    | Все узлы графа (команды, шаги, условия, действия, ответы).                                                  |
-| `edges`          | array    | Связи между узлами.                                                                                         |
-| `fallback`       | object   | Ответ на нераспознанный ввод: `{ "text": "..." }`.                                                          |
-| `welcome`        | object   | Приветственное сообщение: `{ "text": "...", "buttons": [] }`.                                               |
-| `helpText`       | object   | Текст справки (опционально): `{ "text": "..." }`.                                                           |
-| `variables`      | object   | Зарегистрированные переменные: `{ "name": "comment", ... }`. Ключ — имя переменной, значение — комментарий. |
+| Поле             | Тип      | Описание                                                                                                        |
+| ---------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `schemaVersion`  | string   | Версия формата. По умолчанию `"1.0"`.                                                                           |
+| `name`           | string   | Имя проекта (используется в package.json и заголовке).                                                          |
+| `version`        | string   | Версия проекта (semver).                                                                                        |
+| `description`    | string   | Описание бота.                                                                                                  |
+| `platforms`      | string[] | Платформы: `"telegram"`, `"alisa"`, `"marusia"`, `"vk"`, `"smart_app"`, `"max_app"`, `"viber"`.                 |
+| `database`       | object   | Конфигурация БД (см. ниже).                                                                                     |
+| `isLocalStorage` | boolean  | Сохранять userData в локальное хранилище платформы (голосовые платформы) вместо БД.                             |
+| `nodes`          | array    | Все узлы графа (команды, шаги, условия, действия, ответы).                                                      |
+| `edges`          | array    | Связи между узлами.                                                                                             |
+| `fallback`       | object   | Ответ на нераспознанный ввод: `{ "text": "..." }`.                                                              |
+| `welcome`        | object   | Приветственное сообщение: `{ "text": "...", "buttons": [] }`.                                                   |
+| `helpText`       | object   | Текст справки (опционально): `{ "text": "..." }`.                                                               |
+| `variables`      | object   | Зарегистрированные переменные: `{ "name": "comment", ... }`. Поле визуального редактора — генератор игнорирует. |
 
 ---
 
@@ -79,7 +80,9 @@ npm start
 1. **`bot.addCommand(name, slots, handler)`** — реагирует на слова-триггеры (слоты).
 2. **`bot.addStep(name, handler)`** — активируется через `ctrl.thisIntentName = 'stepName'`.
 
-**Действия, условия, ответы — это INLINE КОД внутри обработчиков**. Standalone блоки (response/action/condition), подключённые через edges, генерируются как отдельные `addStep`.
+**Действия, условия, ответы — это INLINE КОД внутри обработчиков**. Standalone блоки (response/action/condition),
+подключённые через edges, генерируются как отдельные переиспользуемые функции `__<name>(ctrl: BotController)`,
+вызываемые из команд/шагов (или из других блоков). Узел без входящих edges в код не попадает вовсе.
 
 ---
 
@@ -111,18 +114,18 @@ npm start
 }
 ```
 
-| Поле         | Тип             | Обязательно | Описание                                  |
-| ------------ | --------------- | ----------- | ----------------------------------------- |
-| `type`       | `"command"`     | да          | Тип узла                                  |
-| `id`         | string          | да          | Уникальный ID                             |
-| `name`       | string          | да          | Имя команды (в генерируемом коде)         |
-| `slots`      | string[]        | да          | Слова-триггеры (без учёта регистра)       |
-| `isPattern`  | boolean         | нет         | Если `true`, слоты — регулярные выражения |
-| `saveTo`     | string          | нет         | Сохранить ввод в userData                 |
-| `varComment` | string          | нет         | Комментарий к переменной                  |
-| `actions`    | ActionBlock[]   | нет         | Инлайн-действия                           |
-| `conditions` | FlowCondition[] | нет         | Инлайн-условия                            |
-| `response`   | FlowResponse    | да          | Настройки ответа                          |
+| Поле         | Тип             | Обязательно | Описание                                                        |
+| ------------ | --------------- | ----------- | --------------------------------------------------------------- |
+| `type`       | `"command"`     | да          | Тип узла                                                        |
+| `id`         | string          | да          | Уникальный ID                                                   |
+| `name`       | string          | да          | Имя команды (в генерируемом коде)                               |
+| `slots`      | string[]        | да          | Слова-триггеры (без учёта регистра)                             |
+| `isPattern`  | boolean         | нет         | Если `true`, слоты — регулярные выражения                       |
+| `saveTo`     | string          | нет         | Сохранить ввод в userData                                       |
+| `varComment` | string          | нет         | Комментарий к переменной (поле редактора, генератор игнорирует) |
+| `actions`    | ActionBlock[]   | нет         | Инлайн-действия                                                 |
+| `conditions` | FlowCondition[] | нет         | Инлайн-условия                                                  |
+| `response`   | FlowResponse    | да          | Настройки ответа                                                |
 
 ### Step Node
 
@@ -147,17 +150,17 @@ npm start
 }
 ```
 
-| Поле         | Тип                           | Обязательно | Описание                             |
-| ------------ | ----------------------------- | ----------- | ------------------------------------ |
-| `type`       | `"step"`                      | да          | Тип узла                             |
-| `id`         | string                        | да          | Уникальный ID                        |
-| `name`       | string                        | да          | Имя шага (для thisIntentName)        |
-| `prompt`     | FlowPrompt                    | да          | Текст вопроса, TTS, кнопки, карточка |
-| `saveTo`     | string                        | да          | Поле в userData для сохранения       |
-| `saveAs`     | `"original"` \| `"lowercase"` | нет         | Регистр сохраняемого ввода           |
-| `varComment` | string                        | нет         | Комментарий к переменной             |
-| `actions`    | ActionBlock[]                 | нет         | Инлайн-действия                      |
-| `conditions` | FlowCondition[]               | нет         | Инлайн-условия                       |
+| Поле         | Тип                           | Обязательно | Описание                                                        |
+| ------------ | ----------------------------- | ----------- | --------------------------------------------------------------- |
+| `type`       | `"step"`                      | да          | Тип узла                                                        |
+| `id`         | string                        | да          | Уникальный ID                                                   |
+| `name`       | string                        | да          | Имя шага (для thisIntentName)                                   |
+| `prompt`     | FlowPrompt                    | да          | Текст вопроса, TTS, кнопки, карточка                            |
+| `saveTo`     | string                        | да          | Поле в userData для сохранения                                  |
+| `saveAs`     | `"original"` \| `"lowercase"` | нет         | Регистр сохраняемого ввода                                      |
+| `varComment` | string                        | нет         | Комментарий к переменной (поле редактора, генератор игнорирует) |
+| `actions`    | ActionBlock[]                 | нет         | Инлайн-действия                                                 |
+| `conditions` | FlowCondition[]               | нет         | Инлайн-условия                                                  |
 
 > Навигация между шагами осуществляется через edges (связи), а не через поле `next`.
 
@@ -198,7 +201,7 @@ npm start
 | `lt`         | `Number(a) < Number(b)`         | Меньше                    |
 | `lte`        | `Number(a) <= Number(b)`        | Меньше или равно          |
 | `contains`   | `String(a).includes(String(b))` | Содержит                  |
-| `isEmpty`    | `!a \|\| a === ''`              | Пусто / не определено     |
+| `isEmpty`    | `!a`                            | Пусто / не определено     |
 | `isNotEmpty` | `!!a && a !== ''`               | Не пусто                  |
 | `isSayTrue`  | `Text.isSayTrue(String(a))`     | Пользователь сказал «да»  |
 | `isSayFalse` | `Text.isSayFalse(String(a))`    | Пользователь сказал «нет» |
@@ -289,6 +292,8 @@ npm start
 }
 ```
 
+> Поля `emotion` и `sounds` — поля визуального редактора, генератор их игнорирует.
+
 ### FlowPrompt
 
 ```json
@@ -313,10 +318,10 @@ npm start
 }
 ```
 
-| Поле             | Описание                                           |
-| ---------------- | -------------------------------------------------- |
-| `type: "action"` | Кнопка-действие. `targetNodeId` — ID шага/команды. |
-| `type: "link"`   | Кнопка-ссылка. `url` — URL.                        |
+| Поле             | Описание                                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| `type: "action"` | Кнопка-действие. `targetNodeId` генератор сейчас игнорирует — генерируется только `addBtn(title)`. |
+| `type: "link"`   | Кнопка-ссылка. `url` — URL.                                                                        |
 
 ### FlowCard
 
@@ -341,6 +346,11 @@ npm start
 | `list`    | Список изображений (вертикально) |
 | `gallery` | Горизонтальная прокрутка         |
 
+> Поле `type` генератор игнорирует: для каждого элемента `images` генерируется
+> `ctrl.card.addImage(src, title, description)` (при наличии кнопки у элемента — четвёртым аргументом
+> добавляется её текст), а итоговый вид карточки (BigImage, ItemsList, ImageGallery и т.п.)
+> каждая платформа выбирает сама по числу изображений.
+
 ### ActionBlock
 
 ```json
@@ -349,19 +359,19 @@ npm start
 { "type": "http_request", "url": "https://api.com", "method": "GET", "headers": "{ \"Auth\": \"token\" }", "body": "{\"key\": \"{{var}}\"}", "saveResponseTo": "data" }
 ```
 
-| Поле             | Тип    | Описание                                                |
-| ---------------- | ------ | ------------------------------------------------------- |
-| `type`           | string | `"set_variable"` / `"random_number"` / `"http_request"` |
-| `field`          | string | Имя переменной в userData                               |
-| `fieldComment`   | string | Комментарий к переменной (отображается в UI)            |
-| `value`          | string | Выражение для set_variable (поддерживает `{{var}}`)     |
-| `min`            | number | Минимум для random_number (по умолчанию 1)              |
-| `max`            | number | Максимум для random_number (по умолчанию 10)            |
-| `url`            | string | URL для http_request (поддерживает `{{var}}`)           |
-| `method`         | string | HTTP метод: `"GET"` / `"POST"`                          |
-| `headers`        | string | Заголовки как JSON строка                               |
-| `body`           | string | Тело запроса как JSON строка (поддерживает `{{var}}`)   |
-| `saveResponseTo` | string | Сохранить ответ в userData                              |
+| Поле             | Тип    | Описание                                                                             |
+| ---------------- | ------ | ------------------------------------------------------------------------------------ |
+| `type`           | string | `"set_variable"` / `"random_number"` / `"http_request"`                              |
+| `field`          | string | Имя переменной в userData                                                            |
+| `fieldComment`   | string | Комментарий к переменной (поле редактора, генератор игнорирует)                      |
+| `value`          | string | Выражение для set_variable (поддерживает `{{var}}`)                                  |
+| `min`            | number | Минимум для random_number (по умолчанию 1)                                           |
+| `max`            | number | Максимум для random_number (по умолчанию 10)                                         |
+| `url`            | string | URL для http_request (вставляется литералом, без `{{var}}`)                          |
+| `method`         | string | HTTP метод: `"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"`, `"HEAD"`, `"OPTIONS"` |
+| `headers`        | string | Заголовки как JSON строка                                                            |
+| `body`           | string | Тело запроса как JSON строка (поддерживает `{{var}}`)                                |
+| `saveResponseTo` | string | Сохранить ответ в userData                                                           |
 
 ### FlowCondition
 
@@ -380,8 +390,11 @@ npm start
 ### ConditionResponse
 
 ```json
-{ "text": "Текст", "buttons": [], "targetNodeId": "step_id" }
+{ "text": "Текст", "buttons": [] }
 ```
+
+> `targetNodeId` задаётся на верхнем уровне объекта условия (`{ "variable": "...", "targetNodeId": "step_id" }`),
+> а не внутри ответа: генератор читает его только там и только для ветки true (навигация через `thisIntentName`).
 
 ---
 
@@ -411,9 +424,11 @@ Step → Condition (next)
 Condition → Response (branch_true)
 Condition → Response (branch_false)
 Response → Step (next)  — для циклов
-Command → Response (next) — Response генерируется как addStep
-Command → Action (next) — Action генерируется как addStep
-Command → Condition (next) — Condition генерируется как addStep
+Command → Response (next) — Response генерируется как функция __name(ctrl), вызываемая из команды
+Command → Action (next) — Action генерируется как функция __name(ctrl), вызываемая из команды
+Command → Condition (next) — генерируется по одному из двух механизмов: standalone-узел Condition
+  (подключён через edge) становится отдельной функцией __name(ctrl); inline-условия из массива
+  cmd.conditions встраиваются прямо в тело команды (без отдельной функции)
 ```
 
 ---
@@ -427,7 +442,10 @@ Command → Condition (next) — Condition генерируется как addSt
 "Привет, {{userName}}!"  →  setText(ctrl, `Привет, ${ctrl.userData.userName}!`)
 ```
 
-> Переменные работают в: text (response/prompt), body (http_request), value (set_variable).
+> Подстановка `{{var}}` работает во всех текстовых полях, которые проходят через textExpr: `text` (response, prompt,
+> fallback, welcome, helpText) и тексты action-блоков. В `value` (set_variable) значение с `{{}}` тоже подставляется
+> как шаблонная строка; арифметика типа `num1 + num2` (имена без `{{}}`) вычисляется отдельным парсером выражений.
+> В URL `http_request` подстановка НЕ выполняется — адрес вставляется литералом.
 
 ---
 
@@ -436,15 +454,20 @@ Command → Condition (next) — Condition генерируется как addSt
 ```json
 {
     "type": "file",
-    "config": { "filePath": "./data" }
+    "config": {}
 }
 ```
 
-| Тип     | Описание          | Генерируемый код                                                                  |
-| ------- | ----------------- | --------------------------------------------------------------------------------- |
-| `file`  | Файловое хранение | `import { FileAdapter } from 'umbot/plugins'; bot.use(new FileAdapter());`        |
-| `mongo` | MongoDB           | `import { MongoAdapter } from 'umbot/plugins'; bot.use(new MongoAdapter({...}));` |
-| `none`  | Без БД            | Не импортирует адаптер                                                            |
+| Тип     | Описание          | Генерируемый код                                                                                                                                                                                                                                                                            |
+| ------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `file`  | Файловое хранение | `import { FileAdapter } from 'umbot/plugins'; bot.use(new FileAdapter());` — без аргументов; отдельного файла конфигурации генератор не создаёт, путь к данным задаётся в `appConfig.json`-разделе самого проекта через `bot.setAppConfig({ json: ... })`, поле `config` здесь игнорируется |
+| `mongo` | MongoDB           | `import { MongoAdapter } from 'umbot/plugins'; bot.use(new MongoAdapter({ host: '...', database: '...' }));` — из `config.host`/`config.database`                                                                                                                                           |
+| `none`  | Без БД            | Не импортирует адаптер                                                                                                                                                                                                                                                                      |
+
+> Для `mongo`: `user`/`pass` из `database.config` в исходный код не пишутся — генератор
+> переносит их в `.env` генерируемого проекта (переменные `DB_USER`/`DB_PASSWORD`), откуда их
+> читает фреймворк. Существующий `.env` не перезаписывается: дописываются только
+> отсутствующие переменные. `MongoAdapter` подключается к MongoDB по `host`/`database`.
 
 ---
 
@@ -457,6 +480,7 @@ Command → Condition (next) — Condition генерируется как addSt
 ```json
 {
     "type": "command",
+    "id": "n1",
     "name": "greeting",
     "slots": ["привет"],
     "response": { "text": "Привет!" }
@@ -466,7 +490,7 @@ Command → Condition (next) — Condition генерируется как addSt
 **Генерируемый код:**
 
 ```typescript
-bot.addCommand('greeting', ['привет'], (cmd, ctrl) => {
+bot.addCommand('greeting', ['привет'], (cmd: string, ctrl: BotController): void => {
     setText(ctrl, 'Привет!');
 });
 ```
@@ -479,12 +503,14 @@ bot.addCommand('greeting', ['привет'], (cmd, ctrl) => {
 [
     {
         "type": "command",
+        "id": "n1",
         "name": "start",
         "slots": ["начать"],
         "response": { "text": "Как вас зовут?" }
     },
     {
         "type": "step",
+        "id": "n2",
         "name": "enterName",
         "prompt": { "text": "Как вас зовут?" },
         "saveTo": "userName"
@@ -492,26 +518,29 @@ bot.addCommand('greeting', ['привет'], (cmd, ctrl) => {
 ]
 ```
 
+(между узлами — edge `{ "from": "n1", "to": "n2", "type": "next" }`)
+
 **Генерируемый код:**
 
 ```typescript
-bot.addCommand('start', ['начать'], (cmd, ctrl) => {
+bot.addCommand('start', ['начать'], (cmd: string, ctrl: BotController): void => {
     setText(ctrl, 'Как вас зовут?');
     ctrl.thisIntentName = 'enterName';
 });
-bot.addStep('enterName', (ctrl) => {
-    setText(ctrl, `Приятно познакомиться, ${ctrl.userData.userName}!`);
-    ctrl.userData.name = ctrl.userCommand ?? '';
+bot.addStep('enterName', (ctrl: BotController): void => {
+    setText(ctrl, 'Как вас зовут?');
+    ctrl.userData.userName = ctrl.originalUserCommand ?? ctrl.userCommand ?? '';
 });
 ```
 
-### Паттерн 3: Условие (switch-case)
+### Паттерн 3: Условие (if/else)
 
 **JSON:**
 
 ```json
 {
     "type": "condition",
+    "id": "n3",
     "name": "check",
     "variable": "score",
     "operator": "gte",
@@ -519,19 +548,17 @@ bot.addStep('enterName', (ctrl) => {
 }
 ```
 
-**Генерируемый код:**
+**Генерируемый код** (функция блока; вызывается из команды/шага, подключённого edge `next`):
 
 ```typescript
-bot.addStep('check', (ctrl) => {
-    const condVar = ctrl.userData.score;
-    const condVal = 100;
-    // Оператор превращается в выражение внутри if (для gte — числовое сравнение)
-    if (Number(condVar) >= Number(condVal)) {
-        setText(ctrl, 'Вы победили!');
+/** Условие: проверяем score больше или равно 100 */
+function __check(ctrl: BotController): void {
+    if (Number(ctrl.userData.score) >= Number(100)) {
+        __win(ctrl); // блок, подключённый edge branch_true
     } else {
-        setText(ctrl, `Счёт: ${ctrl.userData.score}`);
+        __lose(ctrl); // блок, подключённый edge branch_false
     }
-});
+}
 ```
 
 ### Паттерн 4: Картинки (галерея)
@@ -541,6 +568,7 @@ bot.addStep('check', (ctrl) => {
 ```json
 {
     "type": "command",
+    "id": "n4",
     "name": "gallery",
     "slots": ["галерея"],
     "response": {
@@ -558,7 +586,7 @@ bot.addStep('check', (ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-bot.addCommand('gallery', ['галерея'], (cmd, ctrl) => {
+bot.addCommand('gallery', ['галерея'], (cmd: string, ctrl: BotController): void => {
     setText(ctrl, 'Выберите:');
     ctrl.card.addImage('https://example.com/1.jpg', 'iPhone', '999₽');
 });
@@ -571,6 +599,7 @@ bot.addCommand('gallery', ['галерея'], (cmd, ctrl) => {
 ```json
 {
     "type": "command",
+    "id": "n5",
     "name": "menu",
     "slots": ["меню"],
     "response": {
@@ -583,12 +612,13 @@ bot.addCommand('gallery', ['галерея'], (cmd, ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-bot.addCommand('menu', ['меню'], (cmd, ctrl) => {
+bot.addCommand('menu', ['меню'], (cmd: string, ctrl: BotController): void => {
     setText(ctrl, 'Выберите:');
     ctrl.buttons.addBtn('Помощь');
-    ctrl.thisIntentName = '__menu_handler__';
 });
 ```
+
+> `targetNodeId` у кнопок сейчас игнорируется: генерируется только `addBtn(title)` (или `addLink` для `type: "link"`).
 
 ### Паттерн 6: isEnd — закрыть диалог
 
@@ -597,6 +627,7 @@ bot.addCommand('menu', ['меню'], (cmd, ctrl) => {
 ```json
 {
     "type": "command",
+    "id": "n6",
     "name": "bye",
     "slots": ["пока"],
     "response": { "text": "До свидания!", "isEnd": true }
@@ -606,7 +637,7 @@ bot.addCommand('menu', ['меню'], (cmd, ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-bot.addCommand('bye', ['пока'], (cmd, ctrl) => {
+bot.addCommand('bye', ['пока'], (cmd: string, ctrl: BotController): void => {
     setText(ctrl, 'До свидания!');
     ctrl.isEnd = true;
 });
@@ -619,6 +650,7 @@ bot.addCommand('bye', ['пока'], (cmd, ctrl) => {
 ```json
 {
     "type": "command",
+    "id": "n7",
     "name": "tts_demo",
     "slots": ["озвучь"],
     "response": { "text": "Текст на экране", "tts": "Текст для озвучки" }
@@ -628,7 +660,7 @@ bot.addCommand('bye', ['пока'], (cmd, ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-bot.addCommand('tts_demo', ['озвучь'], (cmd, ctrl) => {
+bot.addCommand('tts_demo', ['озвучь'], (cmd: string, ctrl: BotController): void => {
     setText(ctrl, 'Текст на экране');
     setTTS(ctrl, 'Текст для озвучки');
 });
@@ -641,6 +673,7 @@ bot.addCommand('tts_demo', ['озвучь'], (cmd, ctrl) => {
 ```json
 {
     "type": "action",
+    "id": "n8",
     "name": "fetch_data",
     "actions": [
         {
@@ -654,15 +687,31 @@ bot.addCommand('tts_demo', ['озвучь'], (cmd, ctrl) => {
 }
 ```
 
-**Генерируемый код:**
+**Генерируемый код** (функция блока; вызывается с `await` из команды/шага, подключённых edge `next`):
 
 ```typescript
-bot.addStep('fetch_data', async (ctrl) => {
+/** Действие: HTTP-запрос к https://api.example.com/data */
+async function __fetch_data(ctrl: BotController): Promise<void> {
     // fetchWithTimeout — обёртка с таймаутом 2000 мс, генерируется автоматически в ./utils
-    const response = await fetchWithTimeout('https://api.example.com/data');
-    ctrl.userData.apiResult = await response.json();
+    try {
+        const response = await fetchWithTimeout('https://api.example.com/data');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const responseText = await response.text();
+        let data: unknown = null;
+        if (responseText.trim()) {
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                data = responseText;
+            }
+        }
+        ctrl.userData.apiResult = data;
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setText(ctrl, `Ошибка запроса: ${errorMessage}`);
+    }
     setText(ctrl, `Получено: ${ctrl.userData.apiResult}`);
-});
+}
 ```
 
 ### Паттерн 9: Случайное число
@@ -672,6 +721,7 @@ bot.addStep('fetch_data', async (ctrl) => {
 ```json
 {
     "type": "action",
+    "id": "n9",
     "name": "roll",
     "actions": [{ "type": "random_number", "field": "dice", "min": 1, "max": 6 }],
     "text": "Выпало: {{dice}}"
@@ -681,10 +731,11 @@ bot.addStep('fetch_data', async (ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-bot.addStep('roll', (ctrl) => {
+/** Действие: сгенерировать случайное число в dice */
+function __roll(ctrl: BotController): void {
     ctrl.userData.dice = rand(1, 6);
     setText(ctrl, `Выпало: ${ctrl.userData.dice}`);
-});
+}
 ```
 
 ### Паттерн 10: Установка переменной
@@ -694,6 +745,7 @@ bot.addStep('roll', (ctrl) => {
 ```json
 {
     "type": "action",
+    "id": "n10",
     "name": "set_score",
     "actions": [{ "type": "set_variable", "field": "score", "value": "0" }]
 }
@@ -702,9 +754,10 @@ bot.addStep('roll', (ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-bot.addStep('set_score', (ctrl) => {
+/** Действие: установить переменную score */
+function __set_score(ctrl: BotController): void {
     ctrl.userData.score = 0;
-});
+}
 ```
 
 ### Паттерн 11: Standalone response блок (через edge)
@@ -712,15 +765,16 @@ bot.addStep('set_score', (ctrl) => {
 **JSON:**
 
 ```json
-{ "type": "response", "name": "show_help", "response": { "text": "Это справка." } }
+{ "type": "response", "id": "n11", "name": "show_help", "response": { "text": "Это справка." } }
 ```
 
-**Генерируемый код:**
+**Генерируемый код** (функция блока; вызывается из команды/шага, подключённых edge `next`):
 
 ```typescript
-bot.addStep('show_help', (ctrl) => {
+/** Ответ: "Это справка." */
+function __show_help(ctrl: BotController): void {
     setText(ctrl, 'Это справка.');
-});
+}
 ```
 
 ### Паттерн 12: HTTP body с переменными
@@ -740,12 +794,22 @@ bot.addStep('show_help', (ctrl) => {
 **Генерируемый код:**
 
 ```typescript
-// body передаётся как template literal вместо JSON.parse
+// body — валидный JSON: генератор парсит его и собирает обратно через
+// JSON.stringify, подставляя переменные; template literal — только fallback для невалидного JSON
 const response = await fetchWithTimeout('https://api.com', {
     method: 'POST',
-    body: `{"user": "${ctrl.userData.userName}", "score": "${ctrl.userData.score}"}`,
+    body: JSON.stringify({ user: `${ctrl.userData.userName}`, score: `${ctrl.userData.score}` }),
+    headers: { 'Content-Type': 'application/json' }, // при теле — всегда добавляются
 });
-ctrl.userData.result = await response.json();
+// Ответ читается как текст и парсится с fallback на сырую строку при невалидном JSON
+const responseText = await response.text();
+let data: unknown;
+try {
+    data = JSON.parse(responseText);
+} catch {
+    data = responseText;
+}
+ctrl.userData.result = data; // тип unknown, не Promise
 ```
 
 ---
@@ -753,7 +817,7 @@ ctrl.userData.result = await response.json();
 ## Импорты (генерируются условно)
 
 ```typescript
-import { Bot, FALLBACK_COMMAND } from 'umbot';
+import { Bot, BotController, FALLBACK_COMMAND } from 'umbot';
 import { fullPlatforms } from 'umbot/plugins'; // если 7 платформ
 import { Text } from 'umbot'; // только при isSayTrue/isSayFalse/isUrl
 import { setText, setTTS, fetchWithTimeout } from './utils'; // условно
@@ -779,7 +843,10 @@ import { FileAdapter, MongoAdapter } from 'umbot/plugins'; // по database.type
 ## Валидация имён
 
 - **Имена узлов (name)** используются как идентификаторы команд в сгенерированном коде.
-  Генерируемый код преобразует их в строковые slug-идентификаторы (`__` + name); санитизации имён
-  в валидные JS-символы не производится — для надёжности используйте ASCII-идентификаторы без пробелов.
-- **Имена переменных (saveTo, field)** — имена, начинающиеся с цифры, оборачиваются в скобки: `ctrl.userData['123field']`
+  Для standalone блоков генерируется имя функции `__` + name: не-ASCII символы заменяются на `_`
+  (`replace(/[^a-zA-Z0-9_$]/g, '_')`), имя с цифры в начале получает префикс `_`; при коллизиях имён
+  добавляется суффикс `_2`, `_3`, ...; пустое имя заменяется на `_block`. Для надёжности
+  используйте ASCII-идентификаторы без пробелов.
+- **Имена переменных (saveTo, field)** — имена, не являющиеся валидным JS-идентификатором
+  (например, начинающиеся с цифры), оборачиваются в скобки: `ctrl.userData['123field']`
 - **Package name** — начинается с буквы, валидный npm identifier

@@ -2,9 +2,7 @@ import { Bot } from '../../src';
 import { BotController } from '../../src/controller';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 function getContent(query: string, count = 0): string {
     return JSON.stringify({
@@ -44,10 +42,10 @@ describe('Middleware', () => {
     beforeAll(() => {
         bot = new Bot();
         // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень
-        // репозитория. Перенаправляем во временную папку, чтобы прогон тестов
-        // не оставлял артефактов в репо (UsersData.json и пр.).
+        // репозитория. Перенаправляем в тестовую папку (tests/.tmp) —
+        // артефакты в репо не попадают, а путь при отладке известен.
         bot.setAppConfig({
-            json: mkdtempSync(join(tmpdir(), 'umbot-test-middleware-')),
+            json: createTestDir('middleware'),
         });
         bot.setLogger({
             error: () => {},
@@ -65,10 +63,10 @@ describe('Middleware', () => {
         bot.clearUse();
     });
     afterAll(async () => {
-        // close() флашит таблицы FileAdapter в json/: без await rmSync удалит
-        // папку раньше, чем асинхронная запись пересоздаст её с файлами.
+        // close() флашит таблицы FileAdapter в json/: без await removeTestDir
+        // удалит папку раньше, чем асинхронная запись пересоздаст её с файлами.
         await bot.close();
-        rmSync(bot.getAppContext().appConfig.json, { recursive: true, force: true });
+        await removeTestDir(bot.getAppContext().appConfig.json);
     });
 
     it('should call global middleware', async () => {

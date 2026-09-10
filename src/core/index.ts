@@ -12,11 +12,15 @@ export * from './interfaces/IAppContext';
 export * from './Bot';
 export * from './AppContext';
 export * from './constants';
+export * from './events';
 export {
+    CommandReg,
     type ICommandParam,
+    type IDangerRegex,
     type TCommandResolver,
     type TSlots,
     type IStepParam,
+    type IEventParam,
     type IGroupData,
 } from './utils/CommandReg';
 export { createPlugin } from './plugin';

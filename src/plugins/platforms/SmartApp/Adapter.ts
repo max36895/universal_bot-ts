@@ -1,4 +1,5 @@
 import { Text, BotController, Request, IRequestSend } from '../../../index';
+import type { TEventType } from '../../../core/events';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
 import { soundProcessing } from './Sound';
@@ -24,7 +25,7 @@ import {
  *
  * Поддерживает:
  * - голосовые и текстовые запросы;
- * - карточки, кнопки, TTS-эффекты;
+ * - карточки и кнопки; звуки/TTS-эффекты не встраиваются (маркеры звуков вычищаются);
  *
  * === Локальное хранилище ===
  * Адаптер использует внешнее SmartApp Code API для хранения данных пользователя.
@@ -61,9 +62,23 @@ import {
  * @see BasePlatform
  */
 export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookRequest> {
-    /** Идентификатор платформы Сбер SmartApp. */
+    /**
+     * Идентификатор платформы Сбер SmartApp.
+     */
     platformName = T_SMART_APP;
+    /**
+     * Универсальные события SmartApp (для валидации addEvent).
+     */
+    supportedEvents: readonly TEventType[] = ['message', 'start', 'rating'];
 
+    /**
+     * Проверяет, что входящий webhook-запрос принадлежит SmartApp.
+     * Опознаёт запрос по заголовкам `x-sber-smartapp-webhook-token`/`x-sber-token`
+     * либо по связке полей messageName + uuid + payload.character + payload.app_info.
+     * @param query Входящий webhook-запрос
+     * @param headers Заголовки HTTP-запроса
+     * @returns `true`, если запрос относится к платформе SmartApp
+     */
     isPlatformOnQuery(
         query: ISberSmartAppWebhookRequest,
         headers?: Record<string, unknown>,
@@ -94,8 +109,8 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
      * - MESSAGE_TO_SKILL: сообщение пользователя
      * - CLOSE_APP: закрытие приложения
      * - SERVER_ACTION: действие сервера
-     * - RUN_APP: запуск приложения
-     * - RATING_RESULT: результат оценки
+     * - RUN_APP: запуск приложения (messageId сбрасывается в 0)
+     * - RATING_RESULT: результат оценки (messageId сбрасывается в 0)
      */
     #initUserCommand(content: ISberSmartAppWebhookRequest, controller: BotController): void {
         controller.requestObject = content;
@@ -120,6 +135,9 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
                     controller.userCommand = controller.originalUserCommand = controller.payload;
                 }*/
                 if (content.messageName === 'RUN_APP') {
+                    // Запуск приложения — универсальное событие 'start'
+                    // (deep-link параметры уже в controller.payload).
+                    controller.eventType = 'start';
                     controller.messageId = 0;
                     controller.originalUserCommand = controller.userCommand;
                     controller.userCommand = '';
@@ -127,6 +145,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
                 break;
 
             case 'RATING_RESULT':
+                controller.eventType = 'rating';
                 controller.payload = content.payload as unknown as Record<string, unknown>;
                 controller.messageId = 0;
                 {
@@ -149,6 +168,13 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         }
     }
 
+    /**
+     * Разбирает запрос SmartApp и наполняет контроллер данными: команда,
+     * NLU, персонаж, сессия, метаданные и данные экрана устройства.
+     * @param query Входящий webhook-запрос SmartApp
+     * @param controller Контроллер приложения
+     * @returns `true`, если запрос успешно разобран
+     */
     setQueryData(query: ISberSmartAppWebhookRequest, controller: BotController): boolean {
         if (this.appContext) {
             if (query) {
@@ -285,6 +311,13 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         return payload;
     }
 
+    /**
+     * Формирует итоговый webhook-ответ SmartApp (ANSWER_TO_USER): текст,
+     * TTS/SSML, карточки, кнопки и команду закрытия приложения.
+     * Синхронный метод — возвращает готовый объект без промиса.
+     * @param controller Контроллер приложения
+     * @returns {ISberSmartAppWebhookResponse} Готовый ответ для webhook SmartApp
+     */
     getContent(controller: BotController): ISberSmartAppWebhookResponse {
         const result: ISberSmartAppWebhookResponse = {
             messageName: 'ANSWER_TO_USER',
@@ -307,7 +340,8 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
 
     /**
      * Формирует ответ с оценкой навыка
-     * @returns {ISberSmartAppWebhookResponse} Объект ответа для webhook`а
+     * @param controller Контроллер приложения
+     * @returns {ISberSmartAppWebhookResponse} Объект ответа для вебхука
      */
     public getRatingContext(controller: BotController): ISberSmartAppWebhookResponse {
         return {
@@ -360,6 +394,9 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
 
     /**
      * Сохраняет данные пользователя в хранилище
+     * @param data Данные для сохранения
+     * @param controller Контроллер приложения
+     * @returns Результат HTTP-запроса к внешнему хранилищу
      */
     protected async _setUserData(
         data: unknown,
@@ -372,6 +409,11 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         return await request.send();
     }
 
+    /**
+     * Сохраняет данные пользователя во внешнее хранилище SmartApp.
+     * @param data Данные для сохранения
+     * @param controller Контроллер приложения
+     */
     public async setLocalStorage(data: unknown, controller: BotController): Promise<void> {
         const result = await this._setUserData(data, controller);
         if (!result.status) {
@@ -383,8 +425,9 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
     }
 
     /**
-     * Получает данные из локального хранилища
-     * @returns  Данные из хранилища или строка с ошибкой
+     * Получает данные из локального хранилища.
+     * @param controller Контроллер приложения
+     * @returns Данные пользователя либо пустой объект {}; ошибки логируются через logError
      */
     public getLocalStorage<TStorageResult = unknown>(
         controller: BotController,
@@ -392,14 +435,28 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         return this._getUserData(controller) as Promise<TStorageResult>;
     }
 
+    /**
+     * SmartApp всегда имеет внешнее хранилище, поэтому возвращает `true`.
+     */
     isLocalStorage(): boolean {
         return true;
     }
 
+    /**
+     * SmartApp не поддерживает push-сообщения, поэтому всегда возвращает `false`.
+     */
     send(): boolean {
         return false;
     }
 
+    /**
+     * Формирует пример webhook-запроса SmartApp (MESSAGE_TO_SKILL)
+     * для локального тестирования (BotTest).
+     * @param query Текст команды пользователя
+     * @param userId Идентификатор пользователя (uuid.userId)
+     * @param count Номер сообщения (messageId; 0 — новая сессия)
+     * @returns Заготовка запроса в формате webhook SmartApp
+     */
     getQueryExample(query: string, userId: string, count: number): Record<string, unknown> {
         return {
             messageName: 'MESSAGE_TO_SKILL',

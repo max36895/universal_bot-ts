@@ -13,7 +13,7 @@ import { performance } from 'node:perf_hooks';
  * Функция для получения конфигурации пользовательского приложения
  *
  * @remarks Сохранён для обратной совместимости (2.x): самим фреймворком не
- * используется — кастомные платформы подключаются через `BasePlatformAdapter`
+ * используется — кастомные платформы подключаются через `BasePlatform`
  * (см. `getQueryExample`).
  *
  * @callback TUserBotConfigCb
@@ -91,6 +91,15 @@ export class BotTest extends Bot {
     /**
      * Создает тестовое приложение. Контроллер опционален — если не передан,
      * используется BaseBotController.
+     *
+     * @param {TAppType} [type] - Тип платформы (по умолчанию автоопределение)
+     * @param {TBotControllerClass} [botController] - Класс контроллера с логикой приложения
+     * @returns Созданный экземпляр BotTest
+     *
+     * @example
+     * ```ts
+     * const botTest = new BotTest('alisa', MyController);
+     * ```
      */
     constructor(type?: TAppType, botController?: TBotControllerClass) {
         super(type, botController);
@@ -104,6 +113,14 @@ export class BotTest extends Bot {
 
     /**
      * Переустанавливает класс контроллера и обновляет переиспользуемый тестовый экземпляр.
+     *
+     * @param {TBotControllerClass} fn - Новый класс контроллера
+     * @returns {this} Текущий экземпляр для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * botTest.initBotController(MyController); // заменить контроллер между тестами
+     * ```
      */
     initBotController(fn: TBotControllerClass): this {
         this._botController = new fn(this.getAppContext());
@@ -176,9 +193,8 @@ export class BotTest extends Bot {
                 this.setContent(JSON.parse(this._content));
             }
             this._setBotController(this._botController);
-            // Флаг выставляем на каждой итерации: clearStoreData() в конце цикла
-            // сбрасывает его в false, и со второго хода адаптеры уходили бы
-            // в реальные API платформ прямо из консольного теста.
+            // Выставляем на каждой итерации: clearStoreData() сбрасывает флаг,
+            // и адаптеры ушли бы в реальные API платформ из консольного теста.
             this._botController.skipAutoReply = true;
 
             const result: IResponse = (await this.run(this.appType)) as IResponse;
@@ -257,10 +273,15 @@ export class BotTest extends Bot {
 
     /**
      * Запускает обработку запроса
-     * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит за классом.
+     * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит на классе.
      * @param {TAppType | null} [appType] - Тип платформы. Если не передан, принудительно используется `alisa` (автоопределение в BotTest не выполняется)
      * @param {string | null} [content] - Содержимое запроса
      * @returns {Promise<TRunResult>} Результат обработки запроса
+     *
+     * @example
+     * ```ts
+     * const result = await botTest.run('alisa', JSON.stringify(query));
+     * ```
      */
     public run(appType?: TAppType | null, content?: string | null): Promise<TRunResult> {
         this.appType = appType || 'alisa';
@@ -272,7 +293,8 @@ export class BotTest extends Bot {
      * Упрощённый способ вызвать `bot.run(...)` с автоматической подготовкой query.
      *
      * Если запрашиваемая платформа зарегистрирована в `platforms` — используется её
-     * `getQueryExample` для генерации валидного payload. Иначе возвращается ошибка.
+     * `getQueryExample` для генерации валидного payload. Иначе метод выбрасывает
+     * исключение (throw new Error).
      *
      * @remarks
      * На время симуляции включается `skipAutoReply`, поэтому чат-платформы

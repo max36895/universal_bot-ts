@@ -12,17 +12,29 @@
  * Информация о пользователе Viber
  */
 export interface IViberUser {
-    /** Уникальный идентификатор пользователя */
+    /**
+     * Уникальный идентификатор пользователя
+     */
     id: string;
-    /** Имя пользователя */
+    /**
+     * Имя пользователя
+     */
     name: string;
-    /** URL аватара пользователя */
+    /**
+     * URL аватара пользователя
+     */
     avatar?: string;
-    /** Код страны (2 буквы) */
+    /**
+     * Код страны (2 буквы)
+     */
     country?: string;
-    /** Язык устройства пользователя */
+    /**
+     * Язык устройства пользователя
+     */
     language?: string;
-    /** Максимальная поддерживаемая версия Viber API */
+    /**
+     * Максимальная поддерживаемая версия Viber API
+     */
     api_version: number;
 }
 
@@ -31,9 +43,13 @@ export interface IViberUser {
  * Поддерживает различные типы контента: текст, медиа, местоположение, контакты
  */
 export interface IViberMessage {
-    /** Тип сообщения (text, picture, video, file, location, contact, sticker) */
+    /**
+     * Тип сообщения (text, picture, video, file, location, contact, sticker)
+     */
     type: string;
-    /** Текст сообщения */
+    /**
+     * Текст сообщения
+     */
     text: string;
     /**
      * URL медиа-контента
@@ -46,9 +62,13 @@ export interface IViberMessage {
      * Используется при type='location'
      */
     location?: {
-        /** Широта */
+        /**
+         * Широта
+         */
         lat: number;
-        /** Долгота */
+        /**
+         * Долгота
+         */
         lon: number;
     };
     /**
@@ -56,14 +76,22 @@ export interface IViberMessage {
      * Используется при type='contact'
      */
     contact?: {
-        /** Имя контакта */
+        /**
+         * Имя контакта
+         */
         name: string;
-        /** Номер телефона */
+        /**
+         * Номер телефона
+         */
         phone_number: string;
-        /** URL аватара */
+        /**
+         * URL аватара
+         */
         avatar: string;
     };
-    /** Данные для отслеживания */
+    /**
+     * Данные для отслеживания
+     */
     tracking_data?: string;
     /**
      * Имя файла
@@ -97,21 +125,28 @@ export interface IViberContent {
      * Определяет, какое событие вызвало обратный вызов
      */
     event: string;
-    /** Время события в формате Unix timestamp */
+    /**
+     * Время события в формате Unix timestamp
+     */
     timestamp?: number;
-    /** Уникальный идентификатор сообщения */
+    /**
+     * Уникальный идентификатор сообщения
+     */
     message_token?: number;
     /**
      * Информация об отправителе
-     * Для event='message' содержит данные отправителя
+     * Для event='message' содержит данные отправителя сообщения
      */
     sender?: IViberUser;
     /**
      * Информация о пользователе
-     * Для event='message' содержит данные отправителя
+     * Для событий conversation_started / subscribed / unsubscribed
+     * содержит данные пользователя; для event='message' отправитель — в поле sender
      */
     user?: IViberUser;
-    /** Информация о сообщении */
+    /**
+     * Информация о сообщении
+     */
     message?: IViberMessage;
 }
 
@@ -139,7 +174,7 @@ export interface IViberContent {
 export interface IViberButton {
     /**
      * Количество колонок, которые занимает кнопка.
-     * Максимальное значение - 6.
+     * Span по ширине в сетке ButtonsGroupColumns (1–6).
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -152,7 +187,7 @@ export interface IViberButton {
 
     /**
      * Количество строк, которые занимает кнопка.
-     * Максимальное значение - 2.
+     * Span по высоте в сетке ButtonsGroupRows (1–7).
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -170,6 +205,7 @@ export interface IViberButton {
      * - open-url - открытие URL
      * - share-phone - поделиться номером телефона
      * - location-picker - выбор местоположения
+     * - none - ячейка без действия (текстовые ячейки карточек rich_media, T_NONE)
      * @example
      * ```ts
      * const button: IViberButton = {
@@ -360,43 +396,36 @@ export interface IViberButtonObject {
 
 /**
  * @interface IViberCard
- * Интерфейс для карточки в Viber.
- * Расширяет интерфейс IViberButton, добавляя специфичные для Viber свойства.
+ * Псевдоним IViberButton — элемент rich_media.
  *
  * Особенности:
  * - Поддерживает форматированный текст (HTML)
- * - Позволяет настраивать размеры карточки (Columns и Rows от 1 до 6)
+ * - Позволяет настраивать размеры карточки (Columns 1–6 по ширине, Rows 1–7 по высоте)
  * - Может содержать изображения и кнопки
  * - Поддерживает различные стили текста
  * - ActionBody обязателен только для действий reply, open-url, share-phone и location-picker
  *
  * @example
  * ```ts
- * // Создание простой карточки
+ * // Создание простой карточки: кнопка мерджится в сам элемент,
+ * // вложенного поля Buttons у элемента rich_media нет
  * const card: IViberCard = {
  *     Columns: 6, // Максимальная ширина
- *     Rows: 6,    // Максимальная высота
+ *     Rows: 7,    // Максимальная высота
  *     Image: '/image.jpg',
  *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#ccc>Описание</font>',
- *     ActionType: 'reply',  // Обязательное поле
- *     ActionBody: 'card_action'  // Обязательное поле
+ *     ActionType: 'reply',  // опционально; для ячеек без действия — 'none'
+ *     ActionBody: 'card_action'  // опционально; обязателен для действий с переходом/ответом
  * };
  *
- * // Создание карточки с кнопкой
+ * // Создание карточки с кнопкой: поля кнопки задаются на самом элементе
  * const cardWithButton: IViberCard = {
  *     Columns: 6,
- *     Rows: 6,
+ *     Rows: 7,
  *     Image: '/image.jpg',
  *     Text: '<font color=#000><b>Заголовок</b></font><br><font color=#ccc>Описание</font>',
  *     ActionType: 'reply',
- *     ActionBody: 'button_action',
- *     Buttons: [{
- *         Columns: 6,
- *         Rows: 1,
- *         Text: '<font color=#fff>Нажми меня</font>',
- *         ActionType: 'reply',
- *         ActionBody: 'button_click'
- *     }]
+ *     ActionBody: 'button_action'
  * };
  * ```
  */

@@ -307,6 +307,7 @@ const STANDARD_EFFECTS: IEffect[] = [
  * Получение токена, необходимого для воспроизведения звуков в Алисе
  * @param controller Контроллер приложения
  * @param path Путь до аудиофайла
+ * @returns Токен загруженного звука либо `null` при ошибке загрузки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
@@ -332,6 +333,7 @@ export async function getSoundInDB(
 /**
  * Получение корректного ответа для озвучивания запроса пользователю Алисы
  * @param soundInfo Информация необходимая для обработки аудио
+ * @returns Строка TTS с подставленными тегами стандартных звуков и эффектов Алисы
  */
 export function soundProcessing(soundInfo: ISoundInfo): string {
     return defaultSoundProcessing(soundInfo, STANDARD_SOUNDS, STANDARD_EFFECTS);
