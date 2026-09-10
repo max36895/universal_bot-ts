@@ -21,6 +21,8 @@ import {
     VkAdapter,
 } from '../../src/plugins';
 import { Server } from 'http';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 class MyReg extends RegExp {
@@ -132,6 +134,10 @@ describe('Bot', () => {
         'DB_NAME',
     ];
     const savedEnv: Record<string, string | undefined> = {};
+    // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень репозитория.
+    // Перенаправляем их во временную папку, чтобы прогон тестов не оставлял
+    // артефактов в репо (UsersData.json, warn.log и пр.).
+    const TEST_DATA_DIR = mkdtempSync(join(tmpdir(), 'umbot-test-bot-'));
     beforeAll(() => {
         ENV_KEYS.forEach((key) => {
             savedEnv[key] = process.env[key];
@@ -146,10 +152,12 @@ describe('Bot', () => {
                 process.env[key] = savedEnv[key];
             }
         });
+        rmSync(TEST_DATA_DIR, { recursive: true, force: true });
     });
 
     beforeEach(() => {
         bot = new TestBot();
+        bot.setAppConfig({ json: TEST_DATA_DIR, error_log: TEST_DATA_DIR });
         bot.setLogger({
             error: () => {},
         });
@@ -160,9 +168,14 @@ describe('Bot', () => {
             .mockResolvedValue(Promise.resolve(true));
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         jest.resetAllMocks();
-        bot.close();
+        // Тесты describe('setAppConfig') подменяют json/error_log собственными
+        // путями; возвращаем их во временную папку ДО close(), иначе destroy()
+        // FileAdapter флашит таблицы по этому пути за пределы репозитория.
+        bot.getAppContext().appConfig.json = TEST_DATA_DIR;
+        bot.getAppContext().appConfig.error_log = TEST_DATA_DIR;
+        await bot.close();
         bot.clearCommands();
         unlinkSync(join(bot.getAppContext().appConfig.json, 'UsersData.json'));
     });

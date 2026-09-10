@@ -63,6 +63,13 @@ const bot = new Bot(T_ALISA);
 bot.setAppConfig({
     isLocalStorage: true,
 });
+// Заглушка логгера: без неё logWarn/logError пишут файлы в дефолтные
+// json/ и logs/ в корне репозитория.
+bot.setLogger({
+    error: () => {},
+    warn: () => {},
+    log: () => {},
+});
 bot.use(fullPlatforms);
 // Не будем подключать адаптер бд если храним данные внутри самой платформы
 if (!bot.getAppContext().appConfig.isLocalStorage) {

@@ -1,6 +1,9 @@
 import { Bot, BotController, SoundConstants, Text } from '../../src';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { performance } from 'node:perf_hooks';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Базовое потребление памяти не должно превышать 400кб
 let BASE_MEMORY_USED = 400;
@@ -140,8 +143,15 @@ async function getPerformance(fn: () => Promise<void>, bot?: Bot): Promise<void>
 describe('umbot', () => {
     let bot: Bot;
 
+    // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень
+    // репозитория. Перенаправляем во временную папку: сьют прогоняет сотни
+    // итераций с карточками/кнопками, и FileAdapter оставлял в репо
+    // UsersData/ImageTokens/SoundTokens.json (вкл. осиротевшие .tmp).
+    const TEST_DATA_DIR = mkdtempSync(join(tmpdir(), 'umbot-test-perf-'));
+
     beforeEach(() => {
         bot = new Bot();
+        bot.setAppConfig({ json: TEST_DATA_DIR, error_log: TEST_DATA_DIR });
         bot.setLogger({
             error: () => {},
         });
@@ -149,10 +159,15 @@ describe('umbot', () => {
         bot.use(new FileAdapter());
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         bot.clearCommands();
-        bot.close();
+        await bot.close();
         jest.resetAllMocks();
+    });
+    afterAll(() => {
+        // afterEach уже дожидается close(), так что флашей после rmSync нет;
+        // rmSync оставлен здесь на случай отмены тестов Jest'ом.
+        rmSync(TEST_DATA_DIR, { recursive: true, force: true });
     });
     describe('run performance', () => {
         // Простое текстовое отображение

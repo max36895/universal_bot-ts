@@ -1,4 +1,4 @@
-import { BotController, TAppType, SoundConstants, unlinkSync } from '../../src';
+import { BotController, TAppType, SoundConstants } from '../../src';
 import { BotTest } from '../../src/core/BotTest';
 import {
     T_ALISA,
@@ -11,6 +11,9 @@ import {
     fullPlatforms,
     FileAdapter,
 } from '../../src/plugins';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 class TestBotController extends BotController {
     constructor() {
@@ -98,9 +101,14 @@ function getSkills(cb: (skill: TAppType) => Promise<void>, title: string): void 
 
 const fileAdapter = new FileAdapter();
 let bot: TestBot;
+// Дефолтные пути записи (json/, logs/) указывают в cwd — в корень репозитория.
+// Перенаправляем их во временную папку, чтобы прогон тестов не оставлял
+// артефактов в репо (UsersData.json, ImageTokens.json и пр.).
+const TEST_DATA_DIR = mkdtempSync(join(tmpdir(), 'umbot-test-bottest-'));
 describe('umbot', () => {
     beforeAll(() => {
         bot = new TestBot();
+        bot.setAppConfig({ json: TEST_DATA_DIR, error_log: TEST_DATA_DIR });
         bot.setLogger({
             error: () => {},
         });
@@ -145,11 +153,13 @@ describe('umbot', () => {
         bot.clearUse();
     });
 
-    afterAll(() => {
+    afterAll(async () => {
         fileAdapter.setCachedFileData('UserData', undefined);
-        bot.close();
+        // close() флашит таблицы FileAdapter в json/: без await rmSync удалит
+        // папку раньше, чем асинхронная запись пересоздаст её с файлами.
+        await bot.close();
         jest.resetAllMocks();
-        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
+        rmSync(TEST_DATA_DIR, { recursive: true, force: true });
     });
 
     describe('run bot test', () => {

@@ -1,7 +1,9 @@
-import { Bot, unlinkSync } from '../../src';
+import { Bot } from '../../src';
 import { BotController } from '../../src/controller';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 function getContent(query: string, count = 0): string {
@@ -41,6 +43,12 @@ describe('Middleware', () => {
 
     beforeAll(() => {
         bot = new Bot();
+        // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень
+        // репозитория. Перенаправляем во временную папку, чтобы прогон тестов
+        // не оставлял артефактов в репо (UsersData.json и пр.).
+        bot.setAppConfig({
+            json: mkdtempSync(join(tmpdir(), 'umbot-test-middleware-')),
+        });
         bot.setLogger({
             error: () => {},
             warn: () => {},
@@ -56,9 +64,11 @@ describe('Middleware', () => {
         bot.clearCommands();
         bot.clearUse();
     });
-    afterAll(() => {
-        bot.close();
-        unlinkSync(join(bot.getAppContext().appConfig.json, 'UsersData.json'));
+    afterAll(async () => {
+        // close() флашит таблицы FileAdapter в json/: без await rmSync удалит
+        // папку раньше, чем асинхронная запись пересоздаст её с файлами.
+        await bot.close();
+        rmSync(bot.getAppContext().appConfig.json, { recursive: true, force: true });
     });
 
     it('should call global middleware', async () => {

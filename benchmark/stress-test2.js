@@ -23,6 +23,13 @@ const MEASUREMENT_ITERATIONS = 10; // Замеров для статистики
 async function createCleanBot() {
     const bot = new Bot('alisa');
     bot.setAppConfig({ isLocalStorage: true });
+    // Заглушка логгера: без неё logWarn/logError пишут файлы в дефолтные
+    // json/ и logs/ в корне репозитория.
+    bot.setLogger({
+        error: () => {},
+        warn: () => {},
+        log: () => {},
+    });
     bot.initBotController(StressController);
     bot.use(fullPlatforms);
     bot.use(new AlisaAdapter());
