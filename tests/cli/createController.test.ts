@@ -1,41 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as ts from 'typescript';
+import { expectProjectToTypeCheck } from '../helpers/typecheck';
 
 const CreateController = require('../../cli/controllers/CreateController.js').create;
 
 const TEST_DIR = path.join(__dirname, '__create_output__');
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
-
-function expectProjectToTypeCheck(projectPath: string): void {
-    const configPath = path.join(projectPath, 'tsconfig.json');
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-    expect(configFile.error).toBeUndefined();
-
-    const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, projectPath);
-    const program = ts.createProgram(parsedConfig.fileNames, {
-        ...parsedConfig.options,
-        baseUrl: PROJECT_ROOT,
-        ignoreDeprecations: '6.0',
-        noEmit: true,
-        outDir: undefined,
-        types: ['node'],
-        typeRoots: [path.join(PROJECT_ROOT, 'node_modules', '@types')],
-        paths: {
-            umbot: ['dist/index.d.ts'],
-            'umbot/*': ['dist/*'],
-        },
-        rootDir: undefined,
-    });
-    const diagnostics = ts.getPreEmitDiagnostics(program);
-    expect(
-        ts.formatDiagnosticsWithColorAndContext(diagnostics, {
-            getCanonicalFileName: (fileName) => fileName,
-            getCurrentDirectory: () => PROJECT_ROOT,
-            getNewLine: () => ts.sys.newLine,
-        }),
-    ).toBe('');
-}
 
 beforeEach(() => {
     if (fs.existsSync(TEST_DIR)) {
@@ -383,7 +352,7 @@ describe('CreateController', () => {
             expectProjectToTypeCheck(projectDir);
         });
 
-        it('использует выбранный порт и Node.js 20 во всех production-артефактах', async () => {
+        it('использует выбранный порт и Node.js 24 во всех production-артефактах', async () => {
             const projectDir = path.join(TEST_DIR, 'production-port');
             const ctrl = new CreateController();
             ctrl.params = { path: projectDir, port: 8080 };
@@ -396,9 +365,9 @@ describe('CreateController', () => {
                 path.join(projectDir, '.github', 'workflows', 'deploy.yml'),
                 'utf8',
             );
-            expect(dockerFile).toContain('FROM node:20-alpine');
+            expect(dockerFile).toContain('FROM node:24-alpine');
             expect(dockerFile).toContain('EXPOSE 8080');
-            expect(workflow).toContain("node-version: '20'");
+            expect(workflow).toContain("node-version: '24'");
             expect(workflow).toContain('-p 8080:8080');
             expect(workflow).toContain('npm install');
         });

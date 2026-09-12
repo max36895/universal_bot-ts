@@ -1,3 +1,6 @@
+/**
+ * Обработка звуков SmartApp: маркеры звуков вычищаются, текст уходит с типом application/ssml.
+ */
 import { ISoundInfo } from '../../../index';
 
 /**

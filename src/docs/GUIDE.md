@@ -1,4 +1,4 @@
-# `umbot` — Инструкция по созданию голосовых навыков и чат-ботов
+# umbot — инструкция по созданию голосовых навыков и чат-ботов
 
 > **О руководстве**
 > Это подробное руководство по разработке кроссплатформенных голосовых навыков и чат-ботов на фреймворке `umbot`.
@@ -40,7 +40,7 @@
 
 ## Что такое `umbot`
 
-`umbot` — это TypeScript-фреймворк для разработки **голосовых навыков** (Алиса, Маруся, Сбер Салют) и **чат-ботов** (
+`umbot` — это TypeScript-фреймворк для разработки **голосовых навыков** (Алиса, Маруся, Сбер SmartApp) и **чат-ботов** (
 Telegram, VK, MAX, Viber). Главная идея: **пишете логику один раз — запускаете на любой поддерживаемой платформе**.
 
 Фреймворк **ориентирован на голосовые платформы**: весь голосовой функционал (TTS, звуки, SSML-эффекты, звуки природы,
@@ -65,7 +65,7 @@ Telegram, VK, MAX, Viber). Главная идея: **пишете логику 
 
 ### Для кого
 
-- Разработчики голосовых навыков (Алиса, Маруся, Сбер Салют) — основная аудитория.
+- Разработчики голосовых навыков (Алиса, Маруся, Сбер SmartApp) — основная аудитория.
 - Команды, поддерживающие бота сразу на нескольких платформах (голосовых + чат-ботах).
 - Те, кто хочет начать с одной платформы, но заложить архитектуру на будущее.
 
@@ -451,11 +451,11 @@ import { run, IConfig, TMode } from 'umbot/build';
 | `FALLBACK_COMMAND`    | `'*'`         | Имя fallback-команды                      |
 | `T_ALISA`             | `'alisa'`     | Идентификатор платформы Алиса             |
 | `T_MARUSIA`           | `'marusia'`   | Маруся                                    |
-| `T_SMART_APP`         | `'smart_app'` | Сбер Салют                                |
+| `T_SMART_APP`         | `'smart_app'` | Сбер SmartApp                             |
 | `T_TELEGRAM`          | `'telegram'`  | Telegram                                  |
 | `T_VK`                | `'vk'`        | ВКонтакте                                 |
 | `T_VIBER`             | `'viber'`     | Viber                                     |
-| `T_MAX_APP`           | `'max_app'`   | MAX (ВК)                                  |
+| `T_MAX_APP`           | `'max_app'`   | MAX                                       |
 
 ---
 
@@ -890,7 +890,7 @@ DB_NAME=umbot
 > читается из env автоматически (как и остальные токены выше), а `webhookSecret` фреймворк из env не читает —
 > передайте его вручную: `webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET`.
 > Это обязательный шаг для production — см.
-> [configuration.md → Проверка подписи вебхука](configuration.md#проверка-подписи-вебхука-обязательно-для-production).
+> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
 
 ### Доступ к контексту в рантайме
 
@@ -1400,7 +1400,7 @@ public action(intentName: string | null, isCommand?: boolean, isStep?: boolean):
 `controller.run()` проверяет в следующем порядке (до первого совпадения):
 
 0. **Событие** — обработчики `bot.addEvent` по `controller.eventType` (вызываются первыми, до шагов и команд;
-   хендлер может вернуть `false` — тогда событие «не его» и конвейер продолжается).
+   обработчик может вернуть `false` — тогда событие «не его» и конвейер продолжается).
 1. **Шаг** — если `oldIntentName` зарегистрирован как шаг.
 2. **Команда** — поиск до первой подошедшей. Порядок зависит от типа слота:
     - сначала проверяются **точные совпадения строк** (O(1) по хэш-индексу);
@@ -1734,10 +1734,11 @@ SmartApp — 8; MAX — 30**. У MAX платформа допускает до 
 
 Платформо-специфичные опции (через `options`):
 
-| Платформа | Опции в `options`                                                                                      |
-| --------- | ------------------------------------------------------------------------------------------------------ |
-| VK        | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'` |
-| Viber     | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'`                              |
+| Платформа | Опции в `options`                                                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| VK        | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'`                                                                                   |
+| Telegram  | `request_contact` / `request_location` (bool) — запрос контакта/геолокации; `style` — стиль inline-кнопки (`TG_STYLE_PRIMARY`/`TG_STYLE_SECONDARY`/`TG_STYLE_DESTRUCTIVE`, Bot API 9.4+) |
+| Viber     | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'`                                                                                                                |
 
 Примеры:
 
@@ -1749,6 +1750,9 @@ this.buttons.addBtn('B', '', '', { _group: 1, color: 'secondary' });
 // Telegram: запрос контакта/геолокации
 this.buttons.addBtn('Отправить телефон', '', '', { request_contact: true });
 this.buttons.addBtn('Отправить гео', '', '', { request_location: true });
+
+// Telegram: стиль inline-кнопки (Bot API 9.4+; константы — из 'umbot/plugins')
+this.buttons.addBtn('Купить', '', 'buy', { style: TG_STYLE_SECONDARY });
 
 // Viber: кастомный тип
 this.buttons.addBtn('Геолокация', '', '', {
@@ -2095,9 +2099,9 @@ bot.addCommand('фото', ['фото'], async (_, ctx) => {
 - `answerCallback(text, showAlert?)` — уведомление на нажатие callback-кнопки (вне callback-запроса — warn и `null`).
 - `can(method)` — проверка поддержки метода платформой (у Viber возвращает `false`).
 - Своя платформа подключает фасад переопределением метода адаптера `createApi(controller)` — как, см.
-  [platform-integration.md](platform-integration.md), раздел «API платформы».
-- Полная матрица и сигнатуры — в [api-reference.md](api-reference.md), раздел «API платформы», и в
-  [platform-integration.md](platform-integration.md).
+  [platform-integration.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html), раздел «API платформы».
+- Полная матрица и сигнатуры — в [api-reference.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html), раздел «API платформы», и в
+  [platform-integration.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html).
 
 ---
 
@@ -2231,7 +2235,7 @@ Telegram — 15 (адаптер обрезает клавиатуру начин
 - **Звуки не поддерживаются** — кастомные звуки не отправляются; `controller.tts` при пустом `text` уходит
   как обычный текст (без звуковой разметки), при заполненном `text` — не используется.
 
-#### SmartApp (Сбер Салют)
+#### SmartApp (Сбер SmartApp)
 
 - **Без токена** — аутентификация через Sber-экосистему.
 - **Эмоции** — `controller.emotion = 'radost'` (22 варианта: `pechal`, `laugh`, `ok_prinyato`, ...).
@@ -2240,7 +2244,7 @@ Telegram — 15 (адаптер обрезает клавиатуру начин
 - **Rating flow** — `controller.isSendRating = true` запускает оценку навыка. Результат придёт позже в
   `controller.userEvents.rating`.
 
-#### MAX (мессенджер VK)
+#### MAX
 
 - Токен от MAX Platform API.
 - TTS через Yandex SpeechKit (`appConfig.tokens.max_app.speech_kit_token`).
@@ -2611,7 +2615,7 @@ bot.use(authMiddleware(process.env.SECRET!));
 
 ## Preload — предзагрузка медиа
 
-Загрузка изображений и звуков на платформу занимает 200–1000 мс. Для первого пользователя это означает долгой ответ и
+Загрузка изображений и звуков на платформу занимает 200–1000 мс. Для первого пользователя это означает долгий ответ и
 риск упереться в практический лимит голосовых платформ (~3 с; предупреждение фреймворка — после 2 с).
 
 `Preload` загружает все медиа при старте приложения, чтобы первый ответ был таким же быстрым, как и все последующие.
@@ -2852,7 +2856,7 @@ adapter.init(appContext);
 Перед запуском в продакшене убедитесь, что всё выполнено:
 
 - [ ] **Режим `strict_prod`** — включен через `bot.setAppMode('strict_prod')`
-- [ ] **Проверка подписи вебхука включена** — задан `tokens.telegram.webhookSecret` / `tokens.max_app.webhookSecret` / `tokens.vk.secret_key`; при старте в логе нет предупреждения «Вебхук принимает запросы платформ [...] БЕЗ проверки подписи». У Алисы/Марусии/SmartApp подписи нет в принципе — не считайте их `userId` аутентифицированной идентичностью. Подробнее — [configuration.md → Проверка подписи вебхука](configuration.md#проверка-подписи-вебхука-обязательно-для-production)
+- [ ] **Проверка подписи вебхука включена** — задан `tokens.telegram.webhookSecret` / `tokens.max_app.webhookSecret` / `tokens.vk.secret_key`; при старте в логе нет предупреждения «Вебхук принимает запросы платформ [...] БЕЗ проверки подписи». У Алисы/Маруси/SmartApp подписи нет в принципе — не считайте их `userId` аутентифицированной идентичностью. Подробнее — [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production)
 - [ ] **Re2 установлен** — `npm install re2` (ускорение RegExp в 2-15 раз)
 - [ ] **MongoAdapter вместо FileAdapter** — FileAdapter хранит данные в памяти, не подходит для production
 - [ ] **Preload для медиа** — все изображения и звуки предзагружены (иначе первый ответ > 1 сек)

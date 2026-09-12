@@ -1,3 +1,6 @@
+/**
+ * Построение кнопок Алисы: лимит 10 кнопок, title до 64 символов, payload до 4096 байт и URL до 1024 байт.
+ */
 import { Text, IButtonType, AppContext } from '../../../index';
 import { IAlisaButton, IAlisaButtonCard } from './interfaces/IAlisaPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';

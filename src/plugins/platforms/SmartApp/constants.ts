@@ -1,3 +1,6 @@
+/**
+ * Константы адаптера SmartApp (Сбер): лимит bubble-текста 250 символов.
+ */
 import { ISberSmartAppAnnotations } from './interfaces/ISmartAppPlatform';
 
 /**

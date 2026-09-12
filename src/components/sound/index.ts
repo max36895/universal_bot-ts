@@ -11,4 +11,7 @@ export * from './interfaces';
 
 export * from './Sound';
 
+/**
+ * Стандартные звуки и эффекты голосовых платформ: константы `S_AUDIO_*`/`S_EFFECT_*`, паузы `getPause`.
+ */
 export * as SoundConstants from './constants';

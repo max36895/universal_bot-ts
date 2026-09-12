@@ -1,3 +1,6 @@
+/**
+ * Построение карточек Алисы: BigImage, ItemsList (до 5) и ImageGallery (до 10) с лимитами полей по протоколу Яндекс.Диалогов.
+ */
 import { IButtonType, ICardInfo, Text, BotController, AppContext } from '../../../index';
 
 import { buttonProcessing } from './Button';

@@ -1,3 +1,6 @@
+/**
+ * Обработка звуков Алисы: стандартные звуки, `<speaker>` и TTS-эффекты в тексте озвучки.
+ */
 import { ISoundInfo, ISound, BotController, SoundConstants, IEffect } from '../../../index';
 import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
 import { T_ALISA } from './constants';

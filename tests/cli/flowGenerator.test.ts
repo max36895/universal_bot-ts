@@ -1,11 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as ts from 'typescript';
 import { generateFromFlow, validateFlowSchema } from './../../cli/flowGenerator';
+import { expectProjectToTypeCheck } from '../helpers/typecheck';
 
 const TEST_DIR = path.join(__dirname, '__test_output__');
 const JSON_DIR = path.join(TEST_DIR, 'json');
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 beforeEach(() => {
     if (fs.existsSync(TEST_DIR)) {
@@ -30,36 +29,6 @@ function writeJsonAndGenerate(
     fs.writeFileSync(jsonPath, JSON.stringify(doc, null, 2));
     generateFromFlow(jsonPath, outputPath, options);
     return fs.readFileSync(path.join(outputPath, 'src', 'index.ts'), 'utf8');
-}
-
-function expectProjectToTypeCheck(projectPath: string): void {
-    const configPath = path.join(projectPath, 'tsconfig.json');
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-    expect(configFile.error).toBeUndefined();
-
-    const parsedConfig = ts.parseJsonConfigFileContent(configFile.config, ts.sys, projectPath);
-    const program = ts.createProgram(parsedConfig.fileNames, {
-        ...parsedConfig.options,
-        baseUrl: PROJECT_ROOT,
-        ignoreDeprecations: '6.0',
-        noEmit: true,
-        outDir: undefined,
-        types: ['node'],
-        typeRoots: [path.join(PROJECT_ROOT, 'node_modules', '@types')],
-        paths: {
-            umbot: ['dist/index.d.ts'],
-            'umbot/*': ['dist/*'],
-        },
-        rootDir: undefined,
-    });
-    const diagnostics = ts.getPreEmitDiagnostics(program);
-    expect(
-        ts.formatDiagnosticsWithColorAndContext(diagnostics, {
-            getCanonicalFileName: (fileName) => fileName,
-            getCurrentDirectory: () => PROJECT_ROOT,
-            getNewLine: () => ts.sys.newLine,
-        }),
-    ).toBe('');
 }
 
 describe('flowGenerator', () => {
@@ -1069,8 +1038,8 @@ describe('flowGenerator', () => {
             );
 
             expect(packageTemplate.dependencies.umbot).toBe('3.1.0');
-            expect(packageTemplate.devDependencies.typescript).toBe('5.9.3');
-            expect(packageTemplate.devDependencies['@types/node']).toBe('20.19.43');
+            expect(packageTemplate.devDependencies.typescript).toBe('6.0.3');
+            expect(packageTemplate.devDependencies['@types/node']).toBe('24.13.4');
             expect(workflow).not.toContain("cache: 'npm'");
             expect(
                 fs.readFileSync(path.join(__dirname, '../../cli/template/.gitignore'), 'utf8'),
@@ -2030,8 +1999,8 @@ describe('flowGenerator', () => {
             };
 
             expect(packageJson.dependencies.umbot).toBe('3.1.0');
-            expect(packageJson.devDependencies.typescript).toBe('5.9.3');
-            expect(packageJson.devDependencies['@types/node']).toBe('20.19.43');
+            expect(packageJson.devDependencies.typescript).toBe('6.0.3');
+            expect(packageJson.devDependencies['@types/node']).toBe('24.13.4');
         });
 
         it('не даёт закрыть JSDoc-комментарий и внедрить код через flow.json', () => {

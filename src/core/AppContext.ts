@@ -422,7 +422,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Собирает конфигурацию окружения из process.env: токены платформ и настройки БД.
-     * Вынесено из {@link #getEnvVars}, чтобы деструктуризация не раздувала метод.
+     * Вынесено из `#getEnvVars`, чтобы деструктуризация не раздувала метод.
      * @returns Объект с переменными окружения (пустой, если process.env недоступен)
      */
     #readEnvFromProcess(): IEnvConfig {

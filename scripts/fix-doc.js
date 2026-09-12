@@ -18,8 +18,23 @@ const config = {
         'jest.config.js',
         'eslint.config.js',
         '.pretterrc',
+        // Отчёты аудита: не проектная документация, ссылки внутри них —
+        // цитаты находок с обрезанными примерами, валидировать их нельзя.
+        'docs-seo-ai-audit-report.md',
+        'docs-audit-report.md',
+        'prompt-doc-seo-audit.md',
     ],
-    excludeDirs: ['node_modules', '.git', '.idea', '.github', '.vscode', '.agents', 'tests'],
+    excludeDirs: [
+        'node_modules',
+        '.git',
+        '.idea',
+        '.github',
+        '.vscode',
+        '.agents',
+        'tests',
+        'audit',
+        'tmp-surgery',
+    ],
     rootExcludeDirs: ['dist', 'coverage', 'docs'],
     ignoredExtensions: [
         '.png',
@@ -162,10 +177,23 @@ function isRelativePath(p) {
     return p.startsWith('./') || p.startsWith('../');
 }
 
+/**
+ * Обрезает захваченный URL до последнего валидного символа.
+ * Жадный класс [^\s…]+ захватывал хвосты из markdown-обрамления:
+ * бэктик (`…html`), многоточие-«…» и буквы после .html — и «валидная»
+ * ссылка с мусорным хвостом помечалась битой.
+ */
+function trimUrlTail(url) {
+    // .htmld` → .html (буква прилипла к расширению), отрезаем бэктики
+    // и любые не-URL символы после .html (…html → …/html-хвосты).
+    const m = url.match(/^(.*?\.html)([`'\"<>…].*)?$/);
+    return m ? m[1] : url;
+}
+
 function resolveFilePath(urlOrPath, currentFile) {
     let localPath;
 
-    // Fix: ссылка может содержать #якорь (например, ./GUIDE.md#раздел).
+    // Ссылка может содержать #якорь (например, ./GUIDE.md#раздел).
     // Раньше фрагмент не отсекался, проверка endsWith('.md') не проходила,
     // и корректная ссылка помечалась как битая.
     const hashIndex = urlOrPath.indexOf('#');
@@ -175,17 +203,25 @@ function resolveFilePath(urlOrPath, currentFile) {
         // URL - конвертируем в путь и резолвим от корня проекта
         localPath = path.resolve(PROJECT_ROOT, urlToFilePath(target));
     } else if (target.endsWith('.md') && !target.startsWith('http')) {
-        if (isRelativePath(target)) {
-            // Относительный путь - резолвим относительно текущего файла
-            if (currentFile) {
-                const currentDir = path.dirname(currentFile);
-                localPath = path.resolve(currentDir, target);
-            } else {
-                localPath = path.resolve(target);
-            }
+        // Любая .md-ссылка в markdown относительна к директории текущего
+        // файла: и './x.md'/'../x.md', и голая 'x.md' (GUIDE.md → GUIDE.md
+        // из соседнего гайда). Раньше голая ссылка резолвилась от корня
+        // репозитория и живая ссылка помечалась битой.
+        if (currentFile) {
+            const currentDir = path.dirname(currentFile);
+            localPath = path.resolve(currentDir, target);
         } else {
-            // Путь от корня проекта (например, src/docs/GUIDE.md)
-            localPath = path.resolve(PROJECT_ROOT, target);
+            localPath = path.resolve(target);
+        }
+
+        // Fallback для путей от корня проекта (например, 'src/docs/GUIDE.md'
+        // из корневого README): если от директории файла не нашли — пробуем
+        // от корня репозитория.
+        if (!fs.existsSync(localPath)) {
+            const fromRoot = path.resolve(PROJECT_ROOT, target);
+            if (fs.existsSync(fromRoot)) {
+                localPath = fromRoot;
+            }
         }
     } else {
         return null;
@@ -247,11 +283,17 @@ function findLinksInFile(filePath) {
     const urlRegex = new RegExp(escapeRegex(config.baseUrl) + '[^\\s\\)\\]"\'<>]+', 'g');
     let match;
     while ((match = urlRegex.exec(content)) !== null) {
+        const url = trimUrlTail(match[0]);
+        // URL без .html — обрывок (например, обрезанный пример в цитате) или
+        // ссылка на страницу вне documents/; не исправляем и не ругаемся,
+        // если это не похоже на ссылку на реальный гайд.
+        if (!url.endsWith('.html')) continue;
         links.push({
             type: 'url',
-            value: match[0],
+            value: url,
             line: content.substring(0, match.index).split('\n').length,
             index: match.index,
+            length: match[0].length,
         });
     }
 
@@ -323,11 +365,15 @@ function processFiles() {
                     const localPath = urlToFilePath(urlWithoutHash);
                     const newUrl = filePathToUrl(localPath, version) + hash;
 
+                    // length: URL в файле мог быть длиннее распарсенного
+                    // значения (жадный хвост из бэктиков) — заменяем по
+                    // фактической длине вхождения.
+                    const rawLength = link.length || link.value.length;
                     if (link.value !== newUrl) {
                         content =
                             content.substring(0, link.index) +
                             newUrl +
-                            content.substring(link.index + link.value.length);
+                            content.substring(link.index + rawLength);
                         updatedFiles.add(filePath);
                     }
                 } else if (link.type === 'path') {

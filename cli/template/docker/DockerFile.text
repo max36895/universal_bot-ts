@@ -1,7 +1,7 @@
 # === umbot production Dockerfile ===
 
 # Stage 1: сборка
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
@@ -13,7 +13,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: runtime
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Создаём непривилегированного пользователя
 RUN addgroup -g 1001 -S nodejs && \

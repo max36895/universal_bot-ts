@@ -1,3 +1,6 @@
+/**
+ * Построение карусели VK: до 10 элементов, токены изображений через upload-flow photos.saveMessagesPhoto.
+ */
 import { ICardInfo, ImageTokens, BotController, Text } from '../../../index';
 
 import { buttonProcessing } from './Button';

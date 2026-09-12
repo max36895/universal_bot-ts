@@ -1,3 +1,6 @@
+/**
+ * Обработка звуков VK: загрузка аудио через docs.getMessagesUploadServer и отправка вложением.
+ */
 import { ISoundInfo, Text, unlink, BotController } from '../../../index';
 import { YandexSpeechKit, VkRequest } from '../API';
 import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';

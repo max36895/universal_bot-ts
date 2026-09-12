@@ -1,3 +1,6 @@
+/**
+ * Построение кнопок MAX: до 30 рядов по одной кнопке, текст обязателен, URL до 2048 символов.
+ */
 import { AppContext, IButtonType } from '../../../index';
 
 import { IMaxButtonObject, IMaxButton } from './interfaces/IMaxPlatform';

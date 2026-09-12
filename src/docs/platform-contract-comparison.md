@@ -156,7 +156,7 @@ VK на техобслуживании).
 через общий транспорт VK (`api.vk.ru/method/`, `access_token`, `v`), 1:1 с
 [dev.vk.com/ru/marusia/api](https://dev.vk.com/ru/marusia/api). 📄 ✅
 
-## 7. SmartApp (Салют) — ответ на webhook
+## 7. SmartApp — ответ на webhook
 
 Источник: протокол SmartApp (salute.sber.ru, SmartApp API) 📄 — портал в день сверки
 недоступен для автоматической сверки (редирект на developers.sber.ru); факты по

@@ -1,3 +1,6 @@
+/**
+ * Построение кнопок Маруси: лимит 10 кнопок, title до 64 символов, payload до 4096 байт.
+ */
 import { Text, IButtonType, AppContext } from '../../../index';
 import { IMarusiaButtonCard, IMarusiaButton } from './interfaces/IMarusiaPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';

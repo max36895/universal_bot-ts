@@ -1,3 +1,6 @@
+/**
+ * Обработка звуков Telegram: TTS-часть синтезируется через Yandex SpeechKit и отправляется аудио-файлом.
+ */
 import { ISoundInfo, SoundTokens, unlink, BotController } from '../../../index';
 import { TelegramRequest, YandexSpeechKit } from '../API';
 import { TTelegramChatId } from './interfaces/ITelegramPlatform';

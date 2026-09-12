@@ -1,7 +1,7 @@
-# API Reference
+# Справочник API umbot
 
 Данный справочник содержит описание основных публичных классов, методов и интерфейсов фреймворка umbot. Для начала
-работы смотрите раздел [«Быстрый старт»](getting-started.md).
+работы смотрите раздел [«Быстрый старт»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_getting-started.html).
 
 ## Основные классы
 
@@ -320,7 +320,7 @@ type TCommandResolver = (
 
 ### Событийный роутинг (`addEvent`)
 
-Декларативная обработка не-текстовых апдейтов — аналог `bot.on(':photo')` в Telegram-фреймворках, но для всех подключённых платформ сразу. Адаптер определяет тип события и записывает его в `controller.eventType`; хендлеры `addEvent` вызываются **до** шагов и команд.
+Декларативная обработка не-текстовых апдейтов — аналог `bot.on(':photo')` в Telegram-фреймворках, но для всех подключённых платформ сразу. Адаптер определяет тип события и записывает его в `controller.eventType`; обработчики `addEvent` вызываются **до** шагов и команд.
 
 ```ts
 // Универсальные события (TEventType):
@@ -348,7 +348,7 @@ const ALL_EVENT_TYPES: readonly TEventType[]; // перечень всех 17 у
 function isEventType(event: string): event is TEventType; // true, если имя события известно фреймворку
 ```
 
-Поддержка объявляется самим адаптером (поле `supportedEvents`): Telegram — медиа/callback/inline/edited/каналы; VK — message/callback; MAX — message/callback/start/edited; Viber — медиа-типы/start/subscribed/unsubscribed; Алиса — message/auth; SmartApp — message/start/rating; Маруся — message. Хендлер просто не вызывается там, где событие физически невозможно — мультиплатформенный бот не ломается. Кастомная платформа (`BasePlatform`) объявляет собственный `supportedEvents` и автоматически участвует в валидации: `bot.addEvent` предупреждает, если событие не поддерживает ни один подключённый адаптер (хендлер при этом регистрируется и заработает после подключения нужной платформы).
+Поддержка объявляется самим адаптером (поле `supportedEvents`): Telegram — медиа/callback/inline/edited/каналы; VK — message/callback; MAX — message/callback/start/edited; Viber — медиа-типы/start/subscribed/unsubscribed; Алиса — message/auth; SmartApp — message/start/rating; Маруся — message/auth. Обработчик просто не вызывается там, где событие физически невозможно — мультиплатформенный бот не ломается. Кастомная платформа (`BasePlatform`) объявляет собственный `supportedEvents` и автоматически участвует в валидации: `bot.addEvent` предупреждает, если событие не поддерживает ни один подключённый адаптер (обработчик при этом регистрируется и заработает после подключения нужной платформы).
 
 Сводная таблица `supportedEvents` по адаптерам (значения — из `supportedEvents` в коде адаптеров):
 
@@ -359,7 +359,7 @@ function isEventType(event: string): event is TEventType; // true, если им
 | MAX       | `message`, `callback`, `start`, `message_edited`                                                                                           |
 | Viber     | `message`, `photo`, `video`, `document`, `contact`, `location`, `sticker`, `start`, `subscribed`, `unsubscribed`                           |
 | Алиса     | `message`, `auth`                                                                                                                          |
-| Маруся    | `message`                                                                                                                                  |
+| Маруся    | `message`, `auth`                                                                                                                          |
 | SmartApp  | `message`, `start`, `rating`                                                                                                               |
 
 ```ts
@@ -387,12 +387,12 @@ class MyController extends BotController {
 }
 ```
 
-Семантика хендлера:
+Семантика обработчика:
 
 - вернул что угодно, кроме `false` (включая `void`) — событие перехвачено: строка, если возвращена, станет текстом ответа; обработка завершена, команды не ищутся;
 - вернул `false` — «событие не моё», конвейер продолжится (шаги → команды → интенты → fallback); только так можно передать запрос обычному конвейеру;
-- `async`-хендлеры поддерживаются, фреймворк дожидается результата;
-- несколько хендлеров одного события идут по порядку регистрации до первого не-`false`.
+- `async`-обработчики поддерживаются, фреймворк дожидается результата;
+- несколько обработчиков одного события идут по порядку регистрации до первого не-`false`.
 
 ### Действия кнопок (`addAction`)
 
@@ -411,7 +411,7 @@ bot.addAction('buy', (_, ctx) => {
 });
 ```
 
-На платформах без callback-кнопок (Алиса, Маруся) кнопки отправляют текст, который матчится штатным слотом — хендлер не требуется.
+На платформах без callback-кнопок (Алиса, Маруся) кнопки отправляют текст, который матчится штатным слотом — обработчик не требуется.
 
 ### Группы регулярных выражений (`match`)
 
@@ -430,7 +430,7 @@ bot.addCommand('order', [/(?:заказ|купить)\s+(\d+)/], (_, ctx) => {
 Унифицированный доступ к возможностям активной платформы из обработчика — без ручного конструирования Request-классов:
 
 ```ts
-// photo-хендлер: отправляем фото в ответ
+// photo-обработчик: отправляем фото в ответ
 bot.addEvent('photo', async (ctx) => {
     await ctx.api?.sendPhoto('answer.jpg', { caption: 'Вот ваш отчёт' });
     ctx.skipAutoReply = true; // ответ уже отправлен вручную
@@ -455,7 +455,7 @@ bot.addAction('buy', async (_, ctx) => {
 
 Фасад — ленивый объект: создаётся при первом обращении к `ctx.api`, на голосовых платформах (Алиса, Маруся, SmartApp) равен `null` (их ответ формируется телом webhook — используйте `card`/`sound`). Неподдерживаемые методы логируют предупреждение и возвращают `null`; поддержка проверяется заранее через `can()`. У Viber `can()` возвращает `false` для всех методов — Bot API Viber требует URL и размер файла, поэтому фасад там недоступен.
 
-Фасад выбирается адаптером: метод `createApi(controller)` контракта `IPlatformAdapter` (базовая реализация `BasePlatform` возвращает `null`). Кастомная платформа подключает свой фасад переопределением этого метода — возвращает объект, реализующий `IControllerApi`; пример — в [platform-integration.md](platform-integration.md), раздел «API платформы».
+Фасад выбирается адаптером: метод `createApi(controller)` контракта `IPlatformAdapter` (базовая реализация `BasePlatform` возвращает `null`). Кастомная платформа подключает свой фасад переопределением этого метода — возвращает объект, реализующий `IControllerApi`; пример — в [platform-integration.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html), раздел «API платформы».
 
 ### Формы (`addForm`)
 
@@ -527,9 +527,9 @@ getImage(
     appContext: AppContext,
     image: string | null,
     title: string,
-    desc?: string,
-    button?: TButton | null,
-    isToken?: boolean
+    desc = '',
+    button: TButton | null = null,
+    isToken = false
 ): IImageType | null
 ```
 

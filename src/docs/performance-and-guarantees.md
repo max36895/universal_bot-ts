@@ -158,7 +158,7 @@ npm run stress
 ```
 
 Полные результаты (включая память, разные типы регулярок, сравнение «первый vs повторный запуск») — в
-файле [src/docs/BENCHMARKS.md](BENCHMARKS.md)
+файле [src/docs/BENCHMARKS.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html)
 (он же онлайн: https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html).
 
 Также есть возможность запустить тестирование в легком и долгом режиме.

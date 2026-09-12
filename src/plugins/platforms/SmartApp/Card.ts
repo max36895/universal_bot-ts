@@ -1,3 +1,6 @@
+/**
+ * Построение карточек SmartApp: list_card с image_cell_view/text_cell_view, только URL-изображения.
+ */
 import { IButtonType, ICardInfo, IImageType, Text } from '../../../index';
 import { buttonProcessing } from './Button';
 import {
@@ -181,7 +184,7 @@ function getCardItem(
 }
 
 /**
- * Получает карточку для отображения в Сбер Салют (SmartApp).
+ * Получает карточку для отображения в Сбер SmartApp.
  * Синхронный процессор — `await` не требуется (см. Card.getCards).
  * @param cardInfo Информация о карточке
  * @returns Элемент items ({card}) с list_card либо `null`, если нечего отобразить

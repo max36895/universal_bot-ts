@@ -1,3 +1,6 @@
+/**
+ * Построение карточек Маруси: BigImage, ItemsList (до 5) и ImageGallery (до 7 изображений).
+ */
 import { IButtonType, ICardInfo, Text, BotController, AppContext } from '../../../index';
 
 import { buttonProcessing } from './Button';

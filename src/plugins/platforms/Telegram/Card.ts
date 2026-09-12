@@ -1,3 +1,6 @@
+/**
+ * Построение карточек Telegram: sendPhoto для одиночного фото и sendMediaGroup для 2–10 изображений.
+ */
 import { ICardInfo, ImageTokens, Text, BotController } from '../../../index';
 
 import { TelegramRequest } from '../API';

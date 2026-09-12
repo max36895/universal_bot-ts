@@ -1,3 +1,6 @@
+/**
+ * Построение карточек Viber: rich_media с min_api_version 7 и лимитом тела запроса 30 КБ.
+ */
 import { BotController, ICardInfo, Text, IImageType, IButtonType } from '../../../index';
 
 import { buttonProcessing } from './Button';

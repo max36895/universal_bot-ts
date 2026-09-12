@@ -1,3 +1,6 @@
+/**
+ * Построение кнопок SmartApp: до 8 кнопок-подсказок с server_action и deep_link.
+ */
 import { AppContext, Text, IButtonType } from '../../../index';
 
 import {

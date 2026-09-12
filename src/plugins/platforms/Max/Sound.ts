@@ -1,3 +1,6 @@
+/**
+ * Обработка звуков MAX: TTS через Yandex SpeechKit и отправка аудиофайлов через /uploads.
+ */
 import { ISoundInfo, isFile, Text, unlink, BotController } from '../../../index';
 import { getSoundToken } from '../Base/utils';
 import { IMaxAudio, MaxRequest, YandexSpeechKit } from '../API';

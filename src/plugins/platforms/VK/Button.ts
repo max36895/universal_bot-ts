@@ -1,3 +1,6 @@
+/**
+ * Построение клавиатуры VK: label до 40 символов, payload до 255 байт, цвета и группировка в ряды.
+ */
 import { Buttons, IButtonType, Text } from '../../../index';
 import { IVkButton, IVkButtonObject } from './interfaces/IVkPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';

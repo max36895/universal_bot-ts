@@ -1,3 +1,6 @@
+/**
+ * Обработка звуков Маруси: стандартные звуки из набора marusia-sounds и загруженные аудиофайлы.
+ */
 import { ISoundInfo, ISound, BotController, SoundConstants } from '../../../index';
 import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
 import { MarusiaRequest } from '../API';

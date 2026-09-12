@@ -1,9 +1,9 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
+        "module": "Node16",
         "target": "ES2023",
         "lib": ["ES2023", "DOM"],
-        "moduleResolution": "node",
+        "moduleResolution": "Node16",
         "removeComments": true,
         "sourceMap": false,
         "skipLibCheck": true,

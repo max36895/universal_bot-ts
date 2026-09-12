@@ -77,9 +77,9 @@ const VK_API_ENDPOINT = 'https://api.vk.ru/method/';
  *       upload.server,
  *       upload.hash
  *     );
- *     if (photo) {
+ *     if (photo?.[0]) {
  *       await vk.messagesSend(12345, 'Фото:', {
- *         attachments: [`photo${photo.owner_id}_${photo.id}`]
+ *         attachments: [`photo${photo[0].owner_id}_${photo[0].id}`]
  *       });
  *     }
  *   }
@@ -221,7 +221,7 @@ export class VkRequest {
      *       upload.photo,
      *       upload.server,
      *       upload.hash
-     *     );
+     *     ); // IVkPhotosSave[] — берём первый элемент
      *   }
      * }
      *

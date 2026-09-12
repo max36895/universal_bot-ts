@@ -104,4 +104,57 @@ describe('scripts/fix-doc.js', () => {
         expect(content).toContain('.sub_page.html');
         expect(content).not.toContain('#');
     });
+
+    it('не помечает битой голую .md-ссылку из той же директории', () => {
+        // Регресс: 'platform-integration.md' из src/docs/GUIDE.md резолвился
+        // от корня репозитория и живая ссылка падала с exit 1.
+        createFixture({
+            'src/docs/GUIDE.md':
+                '# Guide\n\nСм. [гайд](configuration.md#раздел) и [другой](api-reference.md)\n',
+            'src/docs/configuration.md': '# Конфигурация\n',
+            'src/docs/api-reference.md': '# API\n',
+        });
+
+        const { status, output } = runFixDoc(TEST_DIR);
+
+        expect(status).toBe(0);
+        expect(output).toContain('Все ссылки корректны');
+        const content = fs.readFileSync(path.join(TEST_DIR, 'src/docs/GUIDE.md'), 'utf8');
+        expect(content).toContain('umbot_v-3.1_.src_docs_configuration.html#раздел');
+        expect(content).toContain('umbot_v-3.1_.src_docs_api-reference.html');
+    });
+
+    it('перезапускается идемпотентно: второй прогон ничего не меняет', () => {
+        createFixture({
+            'src/docs/GUIDE.md': '# Guide\n\nСм. [гайд](configuration.md)\n',
+            'src/docs/configuration.md': '# Конфигурация\n',
+        });
+
+        runFixDoc(TEST_DIR);
+        const afterFirst = fs.readFileSync(path.join(TEST_DIR, 'src/docs/GUIDE.md'), 'utf8');
+
+        const { status } = runFixDoc(TEST_DIR);
+        const afterSecond = fs.readFileSync(path.join(TEST_DIR, 'src/docs/GUIDE.md'), 'utf8');
+
+        expect(status).toBe(0);
+        expect(afterFirst).toEqual(afterSecond);
+    });
+
+    it('обрезает мусорный хвост URL после .html (бэктик)', () => {
+        // Регресс: жадный URL-регекс захватывал бэктик после .html —
+        // валидная ссылка в markdown-обрамлении помечалась битой.
+        createFixture({
+            'report.md':
+                '# Отчёт\n\nСсылка в бэктиках: `https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html`\n',
+            'src/docs/FAQ.md': '# FAQ\n',
+        });
+
+        const { status } = runFixDoc(TEST_DIR);
+
+        expect(status).toBe(0);
+        const content = fs.readFileSync(path.join(TEST_DIR, 'report.md'), 'utf8');
+        expect(content).toContain(
+            '`https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html`',
+        );
+    });
 });

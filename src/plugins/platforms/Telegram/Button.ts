@@ -1,3 +1,6 @@
+/**
+ * Построение кнопок Telegram: inline-клавиатуры до 40 кнопок, callback_data 1–64 байта, style (Bot API 9.4+).
+ */
 import { IButtonType, AppContext } from '../../../index';
 
 import {

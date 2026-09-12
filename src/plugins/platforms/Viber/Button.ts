@@ -1,3 +1,6 @@
+/**
+ * Построение кнопок Viber: rich_media-сетка 6×7, до 6 кнопок в текущей реализации адаптера.
+ */
 import { AppContext, IButtonType } from '../../../index';
 import { IViberButton, IViberButtonObject } from './interfaces/IViberPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';

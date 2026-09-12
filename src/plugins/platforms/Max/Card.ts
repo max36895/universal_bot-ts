@@ -1,3 +1,6 @@
+/**
+ * Построение карточек MAX: загрузка изображений через /uploads и вложения до 12 элементов в сообщении.
+ */
 import { ICardInfo, ImageTokens, Text, BotController } from '../../../index';
 
 import { IMaxCard, MaxRequest } from '../API';

@@ -1523,7 +1523,7 @@ function generatePackageJson(doc) {
         main: './dist/index.js',
         scripts: { start: 'node ./dist/index.js', build: 'tsc' },
         dependencies,
-        devDependencies: { typescript: '5.9.3', '@types/node': '20.19.43' },
+        devDependencies: { typescript: '6.0.3', '@types/node': '24.13.4' },
     };
     return JSON.stringify(pkg, null, 2);
 }

@@ -390,13 +390,21 @@ export interface IVkUsersGet extends IVkApi {
 /**
  * Интерфейс для сервера загрузки фотографий в VK
  *
+ * Ответ VK приходит в конверте `{ response: ... }` (см. {@link IVkApi});
+ * `VkRequest.call()` снимает конверт и возвращает содержимое `response`
+ * с полями этого интерфейса напрямую.
+ *
  * @example
  * ```ts
+ * // Развёрнутое значение (то, что возвращает photosGetMessagesUploadServer)
  * const uploadServer: IVkUploadServer = {
  *   upload_url: "https://pu.vk.com/...",
  *   album_id: "123456789",
  *   group_id: "987654321"
  * };
+ *
+ * // Сырой ответ платформы до снятия конверта:
+ * // { response: { upload_url: "https://pu.vk.com/..." } }
  * ```
  */
 export interface IVkUploadServer extends IVkApi {
@@ -418,6 +426,9 @@ export interface IVkUploadServer extends IVkApi {
 
 /**
  * Интерфейс для сохранения фотографии в VK
+ *
+ * `photosSaveMessagesPhoto` возвращает **массив** `IVkPhotosSave[]` —
+ * данные загруженного фото в первом элементе (`photo[0]`).
  *
  * @example
  * ```ts
