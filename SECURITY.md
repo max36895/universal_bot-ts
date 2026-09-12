@@ -33,7 +33,7 @@
 ### Как сообщить об уязвимости
 
 1. **GitHub Issues**
-    - Перейдите по ссылке: [Создать Issue](https://github.com/max36895/universal_bot-ts/issues/new/choose)
+    - Перейдите по ссылке: [Создать Issue](https://github.com/max36895/umbot/issues/new/choose)
     - Выберите шаблон "Отчет об ошибке" (bug_report)
     - Подробно опишите проблему, включая:
         - Версию umbot

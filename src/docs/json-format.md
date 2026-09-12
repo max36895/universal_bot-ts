@@ -31,7 +31,7 @@ npm start
 > Шаблоны `default`/`quiz` через CLI hot-reload тоже не дают (запуск там тот же: `npm run build && npm start`),
 > но при создании с режимом `dev` точка входа использует `BotTest` — интерактивную консольную отладку без HTTP-сервера.
 
-Подробнее о CLI: [документация umbot CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html)
+Подробнее о CLI: [документация umbot CLI](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.cli_README.html)
 
 ---
 

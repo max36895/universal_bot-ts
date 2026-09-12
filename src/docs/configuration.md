@@ -269,7 +269,7 @@ bot.use(new MaxAdapter('YOUR_MAX_TOKEN', { secret: 'YOUR_SECRET' }));
 - для чувствительных данных вводите собственную верификацию пользователя (PIN-код, привязка внешнего аккаунта);
 - не храните в `userData` голосовых платформ данные, потеря или подмена которых критична.
 
-Дополнительный слой для любых платформ — `ipFilter` (см. [middleware.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_middleware.html)): ограничение входящих
+Дополнительный слой для любых платформ — `ipFilter` (см. [middleware.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_middleware.html)): ограничение входящих
 запросов по диапазонам IP платформ (например, только для Telegram: `149.154.160.0/20`, `91.108.4.0/22`).
 
 ---
@@ -323,4 +323,4 @@ npm install re2
 
 ---
 
-Подробнее о конфигурации (`IAppConfig`, `IAppParam`), приоритете токенов и содержимом `.env` — в разделе [Конфигурация: IAppConfig и IAppParam](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html#конфигурация-iappconfig-и-iappparam).
+Подробнее о конфигурации (`IAppConfig`, `IAppParam`), приоритете токенов и содержимом `.env` — в разделе [Конфигурация: IAppConfig и IAppParam](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html#конфигурация-iappconfig-и-iappparam).

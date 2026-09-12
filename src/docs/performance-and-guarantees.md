@@ -146,7 +146,7 @@ Burst-тесты (тысячи параллельных запросов) на �
 
 ```bash
 # Установка
-git clone https://github.com/max36895/universal_bot-ts.git
+git clone https://github.com/max36895/umbot.git
 npm install
 npm run build
 
@@ -158,8 +158,8 @@ npm run stress
 ```
 
 Полные результаты (включая память, разные типы регулярок, сравнение «первый vs повторный запуск») — в
-файле [src/docs/BENCHMARKS.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html)
-(он же онлайн: https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html).
+файле [src/docs/BENCHMARKS.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html)
+(он же онлайн: https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_BENCHMARKS.html).
 
 Также есть возможность запустить тестирование в легком и долгом режиме.
 В легком режиме регистрируется 5 команд вместо 1000 (всего с фиксированными start/help/fallback — 8 против 1003).

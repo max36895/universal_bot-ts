@@ -5,7 +5,7 @@
 > Документ содержит архитектурные паттерны, примеры кода и справочник API.
 >
 > **Версия фреймворка:** `umbot@3.1.x`
-> **Репозиторий:** https://github.com/max36895/universal_bot-ts
+> **Репозиторий:** https://github.com/max36895/umbot
 > **npm:** https://www.npmjs.com/package/umbot
 
 ---
@@ -855,7 +855,7 @@ export default function (): IAppParam {
 
 > Практический совет: не смешивайте способы для одной платформы. Либо передавайте токен в конструкторе адаптера
 > и не настраивайте `env`, либо используйте `.env`/`process.env` и создавайте адаптеры без токена
-> (подробнее — в разделе [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html)).
+> (подробнее — в разделе [Конфигурация и безопасность](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html)).
 
 ### Содержимое `.env`
 
@@ -895,7 +895,7 @@ DB_NAME=umbot
 > читается из env автоматически (как и остальные токены выше), а `webhookSecret` фреймворк из env не читает —
 > передайте его вручную: `webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET`.
 > Это обязательный шаг для production — см.
-> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
+> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
 
 ### Доступ к контексту в рантайме
 
@@ -966,7 +966,7 @@ class Bot<
 | `removeEvent(eventType): this`                  | Удалить все обработчики указанного события                                                                                                                                                  |
 | `clearEvents(): this`                           | Удалить все событийные обработчики                                                                                                                                                          |
 | `addAction(actionName, cb): this`               | Обработчик нажатия кнопки по payload — эквивалент `addCommand(actionName, [actionName], cb)` (нормализация payload на Telegram/VK/MAX)                                                      |
-| `addForm(name, options): this`                  | Зарегистрировать многошаговую форму с валидацией полей (подробнее — [api-reference.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html#формы-addform)) |
+| `addForm(name, options): this`                  | Зарегистрировать многошаговую форму с валидацией полей (подробнее — [api-reference.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_api-reference.html#формы-addform)) |
 | `removeForm(name): this`                        | Удалить форму и все её шаги                                                                                                                                                                 |
 | `clearUse(): this`                              | Удалить все плагины/middleware                                                                                                                                                              |
 
@@ -2135,9 +2135,9 @@ bot.addCommand('фото', ['фото'], async (_, ctx) => {
 - `answerCallback(text, showAlert?)` — уведомление на нажатие callback-кнопки (вне callback-запроса — warn и `null`).
 - `can(method)` — проверка поддержки метода платформой (у Viber возвращает `false`).
 - Своя платформа подключает фасад переопределением метода адаптера `createApi(controller)` — как, см.
-  [platform-integration.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html), раздел «API платформы».
-- Полная матрица и сигнатуры — в [api-reference.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html), раздел «API платформы», и в
-  [platform-integration.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html).
+  [platform-integration.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html), раздел «API платформы».
+- Полная матрица и сигнатуры — в [api-reference.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_api-reference.html), раздел «API платформы», и в
+  [platform-integration.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html).
 
 ---
 
@@ -2180,7 +2180,7 @@ bot.use(new SmartAppAdapter()); // без токена — аутентифик�
 
 > Нужна своя платформа (Discord, Slack, WhatsApp, корпоративный мессенджер)? `umbot` поддерживает добавление кастомных
 > адаптеров через `BasePlatformAdapter`. Подробное руководство —
-> в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html).
+> в [официальной документации](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html).
 
 ### Авто-определение платформы
 
@@ -2386,7 +2386,7 @@ multi-process safe. Подходит для production-нагрузок.
 
 Нужна другая БД? `umbot` поддерживает кастомные адаптеры через `BaseDbAdapter` — реализуйте 5 методов (`_select`,
 `_insert`, `_update`, `_remove`, `isConnected`) и зарегистрируйте через `bot.use(new MyAdapter())`. Пример реализации —
-в [официальной документации](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_dbAdapter.html) и
+в [официальной документации](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_adapter_dbAdapter.html) и
 в `examples/skills/userDbConnect/` репозитория.
 
 ### Что фреймворк хранит в БД автоматически
@@ -2626,7 +2626,7 @@ bot.use(requestId());
 у `authGuard` трактуются как отказ, у `maintenance` — логируются, и запрос пропускается дальше.
 `ipFilter` берёт IP из `platformOptions.clientIp` (заполняется в `webhookHandle` из сокета
 HTTP-запроса); при вызове `bot.run()` напрямую IP нет — запрос пропускается (fail-open).
-Подробности и примеры — в [middleware.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_middleware.html).
+Подробности и примеры — в [middleware.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_middleware.html).
 
 ### Своё middleware как фабрика
 
@@ -2903,7 +2903,7 @@ adapter.init(appContext);
 Перед запуском в продакшене убедитесь, что всё выполнено:
 
 - [ ] **Режим `strict_prod`** — включен через `bot.setAppMode('strict_prod')`
-- [ ] **Проверка подписи вебхука включена** — задан `tokens.telegram.webhookSecret` / `tokens.max_app.webhookSecret` / `tokens.vk.secret_key`; при старте в логе нет предупреждения «Вебхук принимает запросы платформ [...] БЕЗ проверки подписи». У Алисы/Маруси/SmartApp подписи нет в принципе — не считайте их `userId` аутентифицированной идентичностью. Подробнее — [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production)
+- [ ] **Проверка подписи вебхука включена** — задан `tokens.telegram.webhookSecret` / `tokens.max_app.webhookSecret` / `tokens.vk.secret_key`; при старте в логе нет предупреждения «Вебхук принимает запросы платформ [...] БЕЗ проверки подписи». У Алисы/Маруси/SmartApp подписи нет в принципе — не считайте их `userId` аутентифицированной идентичностью. Подробнее — [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production)
 - [ ] **Re2 установлен** — `npm install re2` (ускорение RegExp в 2-15 раз)
 - [ ] **MongoAdapter вместо FileAdapter** — FileAdapter хранит данные в памяти, не подходит для production
 - [ ] **Preload для медиа** — все изображения и звуки предзагружены (иначе первый ответ > 1 сек)

@@ -7,7 +7,7 @@
 const path = require('node:path');
 const { TMP_DIR } = require('./lib');
 
-const REPO_URL = 'https://github.com/max36895/universal_bot-ts';
+const REPO_URL = 'https://github.com/max36895/umbot';
 
 const HELP_TEXT =
     'umbot live-test. Команды: «текст», «кнопки», «карточка», «галерея», ' +

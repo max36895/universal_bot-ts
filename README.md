@@ -13,7 +13,7 @@
 [![npm version](https://badge.fury.io/js/umbot.svg)](https://badge.fury.io/js/umbot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
-[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html)
+[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html)
 
 ---
 
@@ -31,7 +31,7 @@
   команд, занимает **менее 30 мс даже в самом сложном случае (fallback)**; в большинстве случаев — единицы–десятки
   миллисекунд. На бизнес-логику остаётся практически весь бюджет голосовых платформ: фреймворк пишет предупреждение
   при обработке дольше 2000 мс и ошибку — дольше 2900 мс, практический ориентир — ~3 секунды (подробнее — в
-  [«Производительность и гарантии»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)).
+  [«Производительность и гарантии»](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)).
 - При первичной загрузке медиафайлов время ответа может вырасти на 200–1000 мс на файл — поэтому `umbot` рекомендует
   заранее загружать необходимые ресурсы через класс `Preload`.
 - Безопасная обработка регулярных выражений с защитой от ReDoS из коробки
@@ -175,7 +175,7 @@ export class EchoController extends BotController {
 
 Протестируйте приложение, и в случае необходимости опубликуйте его.
 
-👉 [Подробное руководство по запуску](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_getting-started.html)
+👉 [Подробное руководство по запуску](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_getting-started.html)
 
 ## Производительность
 
@@ -190,7 +190,7 @@ export class EchoController extends BotController {
 
 - Тесты проводились без сетевых вызовов и операций с базами данных, поэтому цифры показывают потенциал ядра фреймворка.
 - В реальном проекте итоговый RPS будет определяться внешними факторами (сеть, БД, логика приложения).
-- На реальном сервере (2 ядра / 4 ГБ RAM) с фоновой нагрузкой фреймворк показывает **16 000+ RPS** — подробнее в [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html).
+- На реальном сервере (2 ядра / 4 ГБ RAM) с фоновой нагрузкой фреймворк показывает **16 000+ RPS** — подробнее в [Производительность и гарантии](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html).
 
 Длительное тестирование (48 часов) не выявило утечек памяти или снижения производительности: средняя пропускная
 способность в последовательном сценарии осталась на уровне **~67 000 RPS**, а потребление памяти стабильно.
@@ -199,35 +199,35 @@ export class EchoController extends BotController {
 
 Подробная документация доступна в следующих разделах:
 
-- [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_getting-started.html) - Подробное описание, для
+- [Быстрый старт](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_getting-started.html) - Подробное описание, для
   быстрого старта проекта
-- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html)
-- [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html) - Подробное описание всех классов,
+- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html)
+- [API Reference](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_api-reference.html) - Подробное описание всех классов,
   методов и интерфейсов
-- [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html) - Руководство по
+- [Поддерживаемые платформы](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html) - Руководство по
   интеграции с различными платформами
-- [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html)
-- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_http-client.html)
-- [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)
-- [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_testing.html)
-- [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_deployment.html)
-- [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_middleware.html)
-- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html)
+- [Конфигурация и безопасность](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html)
+- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_http-client.html)
+- [Производительность и гарантии](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)
+- [Тестирование](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_testing.html)
+- [Развертывание](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_deployment.html)
+- [Middleware](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_middleware.html)
+- [FAQ](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_FAQ.html)
 
 ### Полезные ссылки
 
-- 📚 [Официальная документация](https://www.maxim-m.ru/bot/ts-doc/index.html)
+- 📚 [Официальная документация](https://www.maxim-m.ru/docs/umbot/index.html)
 - 📢 [Telegram канал](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw)
 - 💬 [Telegram группа](https://t.me/mm_universal_bot)
 - 📦 [npm package](https://www.npmjs.com/package/umbot)
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
-- [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples)
-- [Список изменений](https://github.com/max36895/universal_bot-ts/blob/main/CHANGELOG.md)
-- [Миграция с umbot 2.x на 3.0](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_migration-2x-to-3x.html)
+- [Примеры проектов](https://github.com/max36895/umbot/tree/main/examples)
+- [Список изменений](https://github.com/max36895/umbot/blob/main/CHANGELOG.md)
+- [Миграция с umbot 2.x на 3.0](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_migration-2x-to-3x.html)
 
 ## 🛠 Инструменты разработчика
 
-- [CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.cli_README.html) команды
+- [CLI](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.cli_README.html) команды
 
 ### Визуальный редактор (Umbot Flow Editor)
 
@@ -250,7 +250,7 @@ export class EchoController extends BotController {
     ```
 5. Готовый проект в папке `my-bot`
 
-[Описание JSON-формата](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_json-format.html) — полная спецификация всех типов узлов, связей и правил генерации кода.
+[Описание JSON-формата](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_json-format.html) — полная спецификация всех типов узлов, связей и правил генерации кода.
 
 ## 📝 Лицензия
 
@@ -261,4 +261,4 @@ MIT License. См. [LICENSE](./LICENSE) для деталей.
 Если у вас есть вопросы или предложения:
 
 - 📧 Email: maximco36895@yandex.ru
-- 🐛 [Issues на GitHub](https://github.com/max36895/universal_bot-ts/issues)
+- 🐛 [Issues на GitHub](https://github.com/max36895/umbot/issues)

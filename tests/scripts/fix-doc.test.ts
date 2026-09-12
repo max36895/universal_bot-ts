@@ -145,7 +145,7 @@ describe('scripts/fix-doc.js', () => {
         // валидная ссылка в markdown-обрамлении помечалась битой.
         createFixture({
             'report.md':
-                '# Отчёт\n\nСсылка в бэктиках: `https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html`\n',
+                '# Отчёт\n\nСсылка в бэктиках: `https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_FAQ.html`\n',
             'src/docs/FAQ.md': '# FAQ\n',
         });
 
@@ -154,7 +154,7 @@ describe('scripts/fix-doc.js', () => {
         expect(status).toBe(0);
         const content = fs.readFileSync(path.join(TEST_DIR, 'report.md'), 'utf8');
         expect(content).toContain(
-            '`https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html`',
+            '`https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_FAQ.html`',
         );
     });
 });

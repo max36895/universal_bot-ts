@@ -1,7 +1,7 @@
 # Справочник API umbot
 
 Данный справочник содержит описание основных публичных классов, методов и интерфейсов фреймворка umbot. Для начала
-работы смотрите раздел [«Быстрый старт»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_getting-started.html).
+работы смотрите раздел [«Быстрый старт»](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_getting-started.html).
 
 ## Основные классы
 
@@ -456,7 +456,7 @@ bot.addAction('buy', async (_, ctx) => {
 
 Фасад — ленивый объект: создаётся при первом обращении к `ctx.api`, на голосовых платформах (Алиса, Маруся, SmartApp) равен `null` (их ответ формируется телом webhook — используйте `card`/`sound`). Неподдерживаемые методы логируют предупреждение и возвращают `null`; поддержка проверяется заранее через `can()`. У Viber `can()` возвращает `false` для всех методов — Bot API Viber требует URL и размер файла, поэтому фасад там недоступен.
 
-Фасад выбирается адаптером: метод `createApi(controller)` контракта `IPlatformAdapter` (базовая реализация `BasePlatform` возвращает `null`). Кастомная платформа подключает свой фасад переопределением этого метода — возвращает объект, реализующий `IControllerApi`; пример — в [platform-integration.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-integration.html), раздел «API платформы».
+Фасад выбирается адаптером: метод `createApi(controller)` контракта `IPlatformAdapter` (базовая реализация `BasePlatform` возвращает `null`). Кастомная платформа подключает свой фасад переопределением этого метода — возвращает объект, реализующий `IControllerApi`; пример — в [platform-integration.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html), раздел «API платформы».
 
 ### Формы (`addForm`)
 

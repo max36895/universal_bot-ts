@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const config = {
-    baseUrl: 'https://www.maxim-m.ru/bot/ts-doc/documents/',
+    baseUrl: 'https://www.maxim-m.ru/docs/umbot/documents/',
     excludeFiles: [
         'AGENTS.md',
         'SECURITY.md',

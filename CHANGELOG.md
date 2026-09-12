@@ -102,6 +102,8 @@
 - **Бенчмарки**: `predictMemoryUsage` в `benchmark/command.js` пересчитан по фактическим замерам (~466 Б/строковая команда, ~0.8 КБ/isPattern, ×12 прогонов на каждый count с учётом фрагментации V8 кучи). Старая формула (2 Б/команду) была занижена в сотни раз — на 200 000 команд тест падал по heap OOM с дампом вместо честного сообщения «Недостаточно памяти». Теперь тест честно отказывается от 200 000+ команд и печатает рекомендацию. В `stress-test.js` формула наоборот завышена в 14 раз — приведена к фактическим 1 КБ/команду.
 - **Бенчмарки**: приведён к профессиональному виду вывод всех запускаемых бенчмарков. `command.js`: исправлен XOR-баг в `memResult` — ветка ГБ была недостижима (`(abs < 1024) ^ 2` всегда truthy), 2 ГБ печатались как «2048.00MB», единицы KB/MB/GB не соответствовали переданным килобайтам; времена ниже 1 мс печатались как «0.0002800 мс» (7 знаков) — теперь «0.28 мкс»; двойной знак «+-4.63 КБ» у отрицательных приростов убран. `stress-test.js`: «MB» в русском выводе → «МБ», «Rss» → «RSS» (аббревиатура), «p95 latency» → «p95 (время ответа)». `um.js`: исправлена опечатка «ассихронный» в названии сценария, добавлена легенда вердиктов (`++` / `== паритет` / `+-` / `--`) — раньше их приходилось расшифровывать по звёздочкам в подвале.
 - **Публичный API (типы)**: класс `CommandReg` (тип публичного поля `AppContext.command`), интерфейс `IDangerRegex` (возврат `CommandReg.isDangerRegex()`) и тип `ITelegramWarnContext` (параметр `prepareTelegramMessageText()`) экспортированы из `umbot` и `umbot/plugins` — раньше они фигурировали в сигнатурах публичных членов, но не попадали в сгенерированную документацию и не были доступны потребителям для типизации. Чистое расширение, обратная совместимость не затронута. Заодно устранены все предупреждения typedoc (мёртвые entry points `cli/index.ts`/`src/docs`, битая ссылка на приватный `#getCache` в JSDoc `Nlu`).
+- **Ссылки**: публичный адрес документации изменён с `https://www.maxim-m.ru/bot/ts-doc` на `https://www.maxim-m.ru/docs/umbot` — обновлены все ссылки в README, гайдах `src/docs/`, `cli/README.md`, примерах и скриптах, генерирующих ссылки (`scripts/fix-doc.js` — `baseUrl` для переписывания markdown-ссылок; `scriptDoc.js` — `DOCS_URL` для canonical/og:url/sitemap.xml/llms.txt). Файлы на сервере не переносятся: путь `/docs/umbot/*` обслуживается внутренней перезаписью Apache из прежней физической папки `bot/ts-doc`, а старые ссылки `/bot/ts-doc/*` пока получают временный (302) редирект — после стабилизации его стоит поменять на постоянный (301), чтобы поисковики склеили адреса (canonical/og:url/sitemap уже указывают на новый путь). Готовые правила для `.htaccess` — `htaccess-docs.txt` в корне репозитория.
+- **Ссылки**: все ссылки на репозиторий GitHub переведены с `max36895/universal_bot-ts` на `max36895/umbot` (README, SECURITY.md, CHANGELOG, `typedoc.json`, `package.json`, примеры, live-тест) в связи с переименованием репозитория; старые адреса продолжают открываться через штатный редирект GitHub.
 
 ### Безопасность
 
@@ -941,32 +943,32 @@
 
 Создание бета-версии инструмента
 
-[3.1.0]: https://github.com/max36895/universal_bot-ts/compare/a89231e...v-3.1.0
-[3.0.14]: https://github.com/max36895/universal_bot-ts/compare/83d4f92...a89231e
-[3.0.13]: https://github.com/max36895/universal_bot-ts/compare/3.0.12...83d4f92
-[3.0.12]: https://github.com/max36895/universal_bot-ts/compare/3.0.11...3.0.12
-[3.0.11]: https://github.com/max36895/universal_bot-ts/compare/150fd6a...3.0.11
-[3.0.10]: https://github.com/max36895/universal_bot-ts/compare/7ac593d...150fd6a
-[3.0.9]: https://github.com/max36895/universal_bot-ts/compare/bebbb6f...7ac593d
-[3.0.8]: https://github.com/max36895/universal_bot-ts/compare/b3f2728...bebbb6f
-[3.0.7]: https://github.com/max36895/universal_bot-ts/compare/c82a196...b3f2728
-[3.0.6]: https://github.com/max36895/universal_bot-ts/compare/c180b80...c82a196
-[3.0.5]: https://github.com/max36895/universal_bot-ts/compare/7f54c02...c180b80
-[3.0.4]: https://github.com/max36895/universal_bot-ts/compare/67ad827...7f54c02
-[3.0.3]: https://github.com/max36895/universal_bot-ts/compare/75d2f08...67ad827
-[3.0.2]: https://github.com/max36895/universal_bot-ts/compare/bd8b55b...75d2f08
-[3.0.1]: https://github.com/max36895/universal_bot-ts/compare/369776c...bd8b55b
-[3.0.0]: https://github.com/max36895/universal_bot-ts/compare/v2.2.x...369776c
-[2.2.x]: https://github.com/max36895/universal_bot-ts/compare/v2.1.0...v2.2.x
-[2.1.0]: https://github.com/max36895/universal_bot-ts/compare/2.0.0...v2.1.0
-[2.0.0]: https://github.com/max36895/universal_bot-ts/compare/1.1.8...2.0.0
-[1.1.8]: https://github.com/max36895/universal_bot-ts/compare/656ce54...1.1.8
-[1.1.6]: https://github.com/max36895/universal_bot-ts/compare/1.1.5...656ce54
-[1.1.5]: https://github.com/max36895/universal_bot-ts/compare/1036441...1.1.5
-[1.1.4]: https://github.com/max36895/universal_bot-ts/compare/8ca7440...1036441
-[1.1.3]: https://github.com/max36895/universal_bot-ts/compare/1.1.2...8ca7440
-[1.1.2]: https://github.com/max36895/universal_bot-ts/compare/fcb3e32...1.1.2
-[1.1.1]: https://github.com/max36895/universal_bot-ts/compare/1.1...fcb3e32
-[1.1]: https://github.com/max36895/universal_bot-ts/compare/1.0...1.1
-[1.0]: https://github.com/max36895/universal_bot-ts/compare/0.9...1.0
-[0.9-beta]: https://github.com/max36895/universal_bot-ts/releases/tag/0.9
+[3.1.0]: https://github.com/max36895/umbot/compare/a89231e...v-3.1.0
+[3.0.14]: https://github.com/max36895/umbot/compare/83d4f92...a89231e
+[3.0.13]: https://github.com/max36895/umbot/compare/3.0.12...83d4f92
+[3.0.12]: https://github.com/max36895/umbot/compare/3.0.11...3.0.12
+[3.0.11]: https://github.com/max36895/umbot/compare/150fd6a...3.0.11
+[3.0.10]: https://github.com/max36895/umbot/compare/7ac593d...150fd6a
+[3.0.9]: https://github.com/max36895/umbot/compare/bebbb6f...7ac593d
+[3.0.8]: https://github.com/max36895/umbot/compare/b3f2728...bebbb6f
+[3.0.7]: https://github.com/max36895/umbot/compare/c82a196...b3f2728
+[3.0.6]: https://github.com/max36895/umbot/compare/c180b80...c82a196
+[3.0.5]: https://github.com/max36895/umbot/compare/7f54c02...c180b80
+[3.0.4]: https://github.com/max36895/umbot/compare/67ad827...7f54c02
+[3.0.3]: https://github.com/max36895/umbot/compare/75d2f08...67ad827
+[3.0.2]: https://github.com/max36895/umbot/compare/bd8b55b...75d2f08
+[3.0.1]: https://github.com/max36895/umbot/compare/369776c...bd8b55b
+[3.0.0]: https://github.com/max36895/umbot/compare/v2.2.x...369776c
+[2.2.x]: https://github.com/max36895/umbot/compare/v2.1.0...v2.2.x
+[2.1.0]: https://github.com/max36895/umbot/compare/2.0.0...v2.1.0
+[2.0.0]: https://github.com/max36895/umbot/compare/1.1.8...2.0.0
+[1.1.8]: https://github.com/max36895/umbot/compare/656ce54...1.1.8
+[1.1.6]: https://github.com/max36895/umbot/compare/1.1.5...656ce54
+[1.1.5]: https://github.com/max36895/umbot/compare/1036441...1.1.5
+[1.1.4]: https://github.com/max36895/umbot/compare/8ca7440...1036441
+[1.1.3]: https://github.com/max36895/umbot/compare/1.1.2...8ca7440
+[1.1.2]: https://github.com/max36895/umbot/compare/fcb3e32...1.1.2
+[1.1.1]: https://github.com/max36895/umbot/compare/1.1...fcb3e32
+[1.1]: https://github.com/max36895/umbot/compare/1.0...1.1
+[1.0]: https://github.com/max36895/umbot/compare/0.9...1.0
+[0.9-beta]: https://github.com/max36895/umbot/releases/tag/0.9

@@ -1,12 +1,12 @@
 # umbot-demo — «Кофейня-бот»
 
-**Один код — 7 платформ.** Это законченный демо-бот на фреймворке [umbot](https://github.com/max36895/universal_bot-ts): бариста принимает заказы через многошаговую форму, запоминает любимый напиток, считает итоговую сумму и дарит каждый 5-й кофе. Один и тот же код без изменений отвечает и голосовой Алисе, и Telegram, и VK, и ещё четырём платформам.
+**Один код — 7 платформ.** Это законченный демо-бот на фреймворке [umbot](https://github.com/max36895/umbot): бариста принимает заказы через многошаговую форму, запоминает любимый напиток, считает итоговую сумму и дарит каждый 5-й кофе. Один и тот же код без изменений отвечает и голосовой Алисе, и Telegram, и VK, и ещё четырём платформам.
 
 ## Быстрый старт
 
 ```bash
-git clone https://github.com/max36895/universal_bot-ts.git
-cd universal_bot-ts/examples/umbot-demo
+git clone https://github.com/max36895/umbot.git
+cd umbot/examples/umbot-demo
 npm install
 npm run dev
 ```
@@ -115,7 +115,7 @@ npm run dev
 
 ## Документация
 
-- Руководство: [`src/docs/GUIDE.md`](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html)
-- Справочник API: [`src/docs/api-reference.md`](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html)
-- Тестирование: [`src/docs/testing.md`](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_testing.html)
+- Руководство: [`src/docs/GUIDE.md`](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html)
+- Справочник API: [`src/docs/api-reference.md`](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_api-reference.html)
+- Тестирование: [`src/docs/testing.md`](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_testing.html)
 - Сгенерированная TypeDoc-документация: папка [`docs/`](../../docs) в корне репозитория

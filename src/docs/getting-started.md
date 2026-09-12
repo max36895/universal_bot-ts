@@ -327,7 +327,7 @@ bot.setAppConfig({
 ```
 
 Что за что отвечает каждая платформа и как сгенерировать секрет — в
-[configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
+[configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
 У Алисы, Маруси и SmartApp подписи вебхука нет в принципе (ограничение платформ): не считайте
 `userId` этих платформ аутентифицированной идентичностью.
 
@@ -418,7 +418,7 @@ bot.setAppConfig({ isLocalStorage: false });
 
 **Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`. Если вы наследуетесь от `BotController` напрямую, задайте `this.text` в `action()`. Адаптеры не придумывают ответ: Алиса и Маруся сохранят пустые поля и запишут предупреждение, а чат-платформы не станут отправлять недопустимое пустое сообщение.
 
-Подробнее об этом механизме — в разделе [«Порядок диспетчера»](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html#порядок-диспетчера) в GUIDE.md.
+Подробнее об этом механизме — в разделе [«Порядок диспетчера»](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html#порядок-диспетчера) в GUIDE.md.
 
 ```ts
 // Решение: вручную обрабатывайте default-case в action()
@@ -459,7 +459,7 @@ bot.setAppMode('strict_prod'); // ← обязательно включите!
 
 ### Как добавить поддержку новой платформы?
 
-Достаточно создать адаптер для нужной платформы согласно [документации по созданию адаптера платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html) и после подключить его к приложению.
+Достаточно создать адаптер для нужной платформы согласно [документации по созданию адаптера платформы](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html) и после подключить его к приложению.
 Если все сделано верно, то при получении запроса от новой платформы, фреймворк корректно отработает запрос, и вернет
 данные в нужном для платформы виде.
 
@@ -542,4 +542,4 @@ this.card
     .setTitle('Галерея изображений');
 ```
 
-Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_FAQ.html).
+Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_FAQ.html).

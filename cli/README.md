@@ -209,7 +209,7 @@ interface ProjectConfig {
 
 **Цепочка:** Визуальный редактор → JSON-конфигурация → `npx umbot create from-flow` → TypeScript-проект
 
-> Подробное описание JSON-формата: [src/docs/json-format.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_json-format.html)
+> Подробное описание JSON-формата: [src/docs/json-format.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_json-format.html)
 
 #### Использование
 

@@ -186,7 +186,7 @@ bot.use(new TelegramAdapter('YOUR_BOT_TOKEN')); // Способ 1: токен в
 > выполнения логики). **Без `webhookSecret` адаптер принимает любой запрос с полем `update_id`** —
 > любой, кто узнает URL вебхука, сможет слать сообщения от имени любого пользователя; это допустимо
 > только для локальной отладки. Подробнее — в
-> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
+> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
 
 ### Особенности
 
@@ -316,7 +316,7 @@ bot.use(new MaxAdapter('YOUR_BOT_TOKEN', { secret: 'YOUR_WEBHOOK_SECRET' })); //
 > заголовком (401). **Без секрета адаптер принимает любой запрос с полями `update_type` +
 > `timestamp`** — любой, кто узнает URL вебхука, сможет слать сообщения от имени любого
 > пользователя; допустимо только для локальной отладки. Подробнее — в
-> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
+> [configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
 
 ### Особенности
 
@@ -433,7 +433,7 @@ bot.setAppConfig({
 умеет загружать аудиофайлы в Марусю (`marusia.getAudioUploadLink` → upload → `marusia.createAudio`),
 поэтому кастомные звуки работают у обеих голосовых платформ — у Алисы и Маруси. Предзагрузка — через
 `Preload.loadSounds(paths, [T_ALISA, T_MARUSIA])`: токены звуков кэшируются в БД (как у Алисы),
-маршрут тот же, что и в [контрактной сверке](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-contract-comparison.html#маруся-исходящие-картинки-аудио)
+маршрут тот же, что и в [контрактной сверке](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-contract-comparison.html#маруся-исходящие-картинки-аудио)
 (раздел 6, «Исходящие API-запросы Маруси»).
 В обработчике достаточно работать с `controller.sound` — адаптер сам подберёт токен по пути к файлу.
 
@@ -737,7 +737,7 @@ ctx.text = `*Пользователь:* ${userName}`;
   личный диалог (ID чата — в `platformOptions.chatId`).
 - **API.** Базовый URL — `platform-api2.max.ru`; авторизация заголовком `Authorization: <token>`
   (query-параметры платформа больше не поддерживает). Детальное сравнение контракта —
-  в [platform-contract-comparison.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_platform-contract-comparison.html#4-max).
+  в [platform-contract-comparison.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-contract-comparison.html#4-max).
 
 ### SmartApp (Сбер)
 
@@ -764,7 +764,7 @@ ctx.text = `*Пользователь:* ${userName}`;
 
 Две кросс-платформенные возможности 3.1.0 закрывают то, что раньше требовало ручного разбора
 `requestObject` под каждую платформу. Полный справочник API (сигнатуры, примеры) —
-в [api-reference.md](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_api-reference.html); здесь — привязка к платформам.
+в [api-reference.md](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_api-reference.html); здесь — привязка к платформам.
 
 ### Событийный роутинг (`bot.addEvent`)
 
