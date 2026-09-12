@@ -1,7 +1,8 @@
 import { Text, BotController, Request, IRequestSend } from '../../../index';
 import type { TEventType } from '../../../core/events';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
-import { buttonProcessing } from './Button';
+import { buttonProcessing, SMART_APP_DEFAULT_ACTION_ID } from './Button';
+import { normalizeActionPayload } from '../Base/utils';
 import { soundProcessing } from './Sound';
 import { cardProcessing } from './Card';
 import { T_SMART_APP, DEVICE, ANNOTATIONS, SMART_APP_STORAGE_URL } from './constants';
@@ -130,18 +131,7 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
 
             case 'SERVER_ACTION':
             case 'RUN_APP':
-                controller.payload = content.payload?.server_action?.parameters;
-                /*if (typeof controller.payload === 'string') {
-                    controller.userCommand = controller.originalUserCommand = controller.payload;
-                }*/
-                if (content.messageName === 'RUN_APP') {
-                    // Запуск приложения — универсальное событие 'start'
-                    // (deep-link параметры уже в controller.payload).
-                    controller.eventType = 'start';
-                    controller.messageId = 0;
-                    controller.originalUserCommand = controller.userCommand;
-                    controller.userCommand = '';
-                }
+                this.#initServerAction(content, controller);
                 break;
 
             case 'RATING_RESULT':
@@ -166,6 +156,42 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         if (!controller.userCommand) {
             controller.userCommand = controller.originalUserCommand;
         }
+    }
+
+    /**
+     * Разбирает SERVER_ACTION (нажатие кнопки с payload) и RUN_APP (запуск).
+     *
+     * Текущая форма SmartApp API — `{action_id, parameters}`; устаревшая —
+     * `{type, payload}`, читаются обе. Для SERVER_ACTION имя действия — свой
+     * `action_id` либо `command`/`action`/`value` из параметров (как addAction
+     * на Telegram/VK/MAX).
+     *
+     * @param content Объект webhook-запроса SmartApp
+     * @param controller Экземпляр контроллера приложения
+     */
+    #initServerAction(content: ISberSmartAppWebhookRequest, controller: BotController): void {
+        const serverAction = content.payload?.server_action as
+            { action_id?: string; parameters?: unknown; payload?: unknown } | undefined;
+        const params = (serverAction?.parameters ?? serverAction?.payload) as
+            Record<string, unknown> | undefined;
+        controller.payload = params;
+        if (content.messageName === 'SERVER_ACTION') {
+            const actionId = serverAction?.action_id;
+            const name =
+                actionId && actionId !== SMART_APP_DEFAULT_ACTION_ID
+                    ? actionId
+                    : (params?.command ?? params?.action ?? params?.value ?? params);
+            controller.userCommand = normalizeActionPayload(name);
+            controller.originalUserCommand =
+                typeof params?.value === 'string' ? params.value : controller.userCommand;
+            return;
+        }
+        // RUN_APP: запуск приложения — универсальное событие 'start'
+        // (deep-link параметры уже в controller.payload).
+        controller.eventType = 'start';
+        controller.messageId = 0;
+        controller.originalUserCommand = controller.userCommand;
+        controller.userCommand = '';
     }
 
     /**
@@ -254,6 +280,9 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
             projectName: session.projectName,
             auto_listening: !controller.isEnd,
             finished: controller.isEnd,
+            // items — обязательное поле ANSWER_TO_USER (SmartApp API): даже без
+            // текста и карточек отправляется пустой массив.
+            items: [],
         };
 
         if (controller.emotion) {
@@ -406,6 +435,9 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
         request.header = Request.HEADER_JSON;
         request.url = SmartAppAdapter.#getStorageUrl(controller);
         request.post = data as Record<string, unknown>;
+        // Хранилище отвечает на сохранение 200 с пустым телом (без JSON),
+        // поэтому ответ читаем текстом — иначе успешная запись считалась бы ошибкой.
+        request.isConvertJson = false;
         return await request.send();
     }
 

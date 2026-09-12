@@ -29,7 +29,7 @@ import { getErrorMsg } from './constants';
  *   const uploadLink = await marusia.marusiaGetPictureUploadLink();
  *   if (uploadLink) {
  *     // Загружаем изображение
- *     const upload = await marusia.upload(uploadLink.picture_upload_link, imagePath);
+ *     const upload = await marusia.upload(uploadLink.picture_upload_link, imagePath, 'photo');
  *     if (upload && upload.photo && upload.server && upload.hash) {
  *       // Сохраняем изображение (поля IVkUploadFile опциональны —
  *       // перед вызовом проверяем их наличие)
@@ -91,7 +91,7 @@ export class MarusiaRequest extends VkRequest {
      * const uploadLink = await marusia.marusiaGetPictureUploadLink();
      * if (uploadLink) {
      *   // Загрузка изображения
-     *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg');
+     *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg', 'photo');
      *   if (upload) {
      *     console.log('Изображение загружено:', upload);
      *   }
@@ -121,7 +121,7 @@ export class MarusiaRequest extends VkRequest {
      * // после проверки upload сохраняем их в константы-строки
      * const uploadLink = await marusia.marusiaGetPictureUploadLink();
      * if (uploadLink) {
-     *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg');
+     *   const upload = await marusia.upload(uploadLink.picture_upload_link, 'image.jpg', 'photo');
      *   if (upload?.photo && upload?.server && upload?.hash) {
      *     const photo: string = upload.photo;
      *     const server: string = upload.server;

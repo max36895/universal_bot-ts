@@ -486,8 +486,10 @@ MAX_TOKEN=your-max-token
 SMARTAPP_TOKEN=your-smartapp-token
 
 # Yandex SpeechKit — TTS для чат-платформ (Telegram/VK/Max);
-# значение автоматически записывается в speech_kit_token всех трёх платформ
-SPEECH_KIT_TOKEN=your-speechkit-token
+# значение автоматически записывается в speech_kit_token всех трёх платформ.
+# Рекомендуется API-ключ сервисного аккаунта (уходит как `Api-Key`); IAM-токен `t1.…`
+# тоже принимается (уходит как `Bearer`), но живёт не больше 12 часов.
+SPEECH_KIT_TOKEN=your-speechkit-api-key
 
 # Подключение к MongoDB: host — полная connection string с протоколом
 DB_HOST=mongodb://localhost:27017

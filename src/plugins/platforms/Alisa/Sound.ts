@@ -2,7 +2,7 @@
  * Обработка звуков Алисы: стандартные звуки, `<speaker>` и TTS-эффекты в тексте озвучки.
  */
 import { ISoundInfo, ISound, BotController, SoundConstants, IEffect } from '../../../index';
-import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
+import { getSoundToken, defaultSoundProcessing, cacheMediaToken } from '../Base/utils';
 import { T_ALISA } from './constants';
 import { YandexSoundRequest } from '../API';
 
@@ -325,9 +325,8 @@ export async function getSoundInDB(
         const res = await yandexApi.downloadSoundFile(path);
         if (res?.id) {
             model.soundToken = res.id;
-            if (await model.save(true)) {
-                return model.soundToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });

@@ -143,16 +143,28 @@ async function main() {
     clearInterval(sampler);
     gcObserver.disconnect();
 
+    const wallMs = performance.now() - startMs;
+    // Квантили считаем ДО замера retained и затем освобождаем массив задержек:
+    // он растёт на 8 байт на запрос и, оставаясь живым к финальному GC, попал бы
+    // в «утечку» участника пропорционально числу запросов.
+    latencies.sort((a, b) => a - b);
+    const q = (p) =>
+        latencies.length
+            ? latencies[Math.min(latencies.length - 1, Math.floor(latencies.length * p))]
+            : 0;
+    const quantiles = {
+        p50Us: q(0.5) * 1000,
+        p95Us: q(0.95) * 1000,
+        p99Us: q(0.99) * 1000,
+        maxUs: (latencies[latencies.length - 1] || 0) * 1000,
+    };
+    latencies.length = 0;
+
     // Retained-финал: весь транзиентный мусор собран; разница с базой — утечка.
     global.gc();
     await new Promise((r) => setTimeout(r, 200));
     const retainedFinal = process.memoryUsage().heapUsed;
     const leakTotalKB = Math.max(0, (retainedFinal - retainedBase) / 1024);
-
-    const wallMs = performance.now() - startMs;
-    const sorted = [...latencies].sort((a, b) => a - b);
-    const q = (p) =>
-        sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] : 0;
 
     const firstSample = samples[0] || { heapUsed: retainedBase, rss: 0 };
     const lastSample = samples[samples.length - 1] || firstSample;
@@ -163,10 +175,7 @@ async function main() {
         totalSent,
         totalFailed,
         rps: Math.round(totalSent / (wallMs / 1000)),
-        p50Us: q(0.5) * 1000,
-        p95Us: q(0.95) * 1000,
-        p99Us: q(0.99) * 1000,
-        maxUs: (sorted[sorted.length - 1] || 0) * 1000,
+        ...quantiles,
         gcSharePct: (gcPauseMs / wallMs) * 100,
         heapFirstMB: firstSample.heapUsed / 1024 / 1024,
         heapLastMB: lastSample.heapUsed / 1024 / 1024,

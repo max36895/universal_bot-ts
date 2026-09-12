@@ -7,6 +7,46 @@ import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
 /**
+ * Кэширует токен загруженного медиафайла в БД (ImageTokens/SoundTokens).
+ *
+ * Кэш — оптимизация, а не условие работы: токен уже получен от платформы и
+ * возвращается вызывающему независимо от результата записи (без DB-адаптера
+ * `model.save()` всегда возвращает false).
+ *
+ * @param model Модель с заполненными path/platform и токеном
+ * @param controller Контроллер приложения (контекст, логгер)
+ *
+ * @example
+ * ```ts
+ * model.imageToken = result.id;
+ * await cacheMediaToken(model, controller);
+ * return model.imageToken;
+ * ```
+ */
+export async function cacheMediaToken(
+    model: ImageTokens | SoundTokens,
+    controller: BotController,
+): Promise<void> {
+    // Без DB-адаптера кэшировать некуда — это штатный режим, не ошибка.
+    if (!controller.appContext.database.adapter) {
+        return;
+    }
+    try {
+        if (!(await model.save(true))) {
+            controller.appContext.logWarn(
+                'Токен медиафайла получен, но не сохранён в БД — при следующем ответе файл будет загружен повторно.',
+                { platform: model.platform, path: model.path },
+            );
+        }
+    } catch (error) {
+        controller.appContext.logWarn(
+            'Не удалось сохранить токен медиафайла в БД — при следующем ответе файл будет загружен повторно.',
+            { platform: model.platform, path: model.path, error },
+        );
+    }
+}
+
+/**
  * Callback для загрузки изображения на платформу.
  * Вызывается только при cache miss — когда токен для файла ещё не был сгенерирован.
  *
@@ -186,11 +226,10 @@ export function removeSound(text: string): string {
 /**
  * Возвращает текст, который нужно отправить в чат-платформу.
  *
- * Ядро копирует `text` в `tts` только для голосовых платформ, а обратного копирования
- * не было: разработчик, заполнивший в общей бизнес-логике только `ctx.tts`, получал
- * на Telegram, VK, Viber и MAX **полное молчание** — сообщение просто не отправлялось.
- * Поэтому при пустом `text` берём `tts`, предварительно убрав из него звуковую
- * SSML-разметку, которая в чате бессмысленна.
+ * Ядро копирует `text` в `tts` только для голосовых платформ. Чтобы бизнес-логика,
+ * заполнившая только `ctx.tts`, не молчала на Telegram, VK, Viber и MAX, при пустом
+ * `text` берём `tts`, предварительно убрав из него звуковую SSML-разметку, которая
+ * в чате бессмысленна.
  *
  * @param text Текст ответа (`controller.text`)
  * @param tts Озвучиваемый текст (`controller.tts`)
@@ -269,6 +308,64 @@ export function defaultSoundProcessing(
 }
 
 /**
+ * Нужно ли чат-платформе (Telegram/VK/MAX) обрабатывать звук для ответа.
+ *
+ * Звук отправляется, если заданы звуки (`controller.sound.sounds`) ИЛИ задан
+ * `tts` при настроенном `speech_kit_token` платформы (tts озвучивается через
+ * SpeechKit).
+ *
+ * @param controller Контроллер текущего запроса
+ * @param platformName Идентификатор платформы (ключ в appConfig.tokens)
+ * @returns `true`, если нужно вызвать soundProcessing платформы
+ *
+ * @example
+ * ```ts
+ * if (shouldProcessChatSound(controller, T_TELEGRAM)) {
+ *     await controller.sound.getSounds(controller.tts, soundProcessing, controller);
+ * }
+ * ```
+ */
+export function shouldProcessChatSound(controller: BotController, platformName: string): boolean {
+    if (controller.isSoundInit() && controller.sound.sounds.length > 0) {
+        return true;
+    }
+    return (
+        !!controller.tts && !!controller.appContext.appConfig.tokens[platformName]?.speech_kit_token
+    );
+}
+
+const SOUND_MARKUP_REGEXPS: readonly RegExp[] = [
+    /#pause_<\[\d+\]>#/g,
+    /sil\s*<\[\d+\]>/g,
+    /<[^>]*>/g,
+    /#[\w-]+#/g,
+];
+
+/**
+ * Готовит текст для синтеза речи на чат-платформах: убирает звуковую разметку
+ * голосовых платформ (маркеры звуков `#game_win#`, паузы, теги `<speaker>`),
+ * которую иначе SpeechKit зачитал бы вслух.
+ *
+ * @param text Текст TTS из контроллера
+ * @returns Чистый текст для синтеза (пустая строка, если озвучивать нечего)
+ *
+ * @example
+ * ```ts
+ * getSpeechText('Победа! #game_win#'); // 'Победа!'
+ * ```
+ */
+export function getSpeechText(text: string | null | undefined): string {
+    if (!text) {
+        return '';
+    }
+    let result = text;
+    for (const reg of SOUND_MARKUP_REGEXPS) {
+        result = result.replace(reg, ' ');
+    }
+    return result.replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Базовая обработка аудио: получает токены звуков через `getSoundInDB`
  * и собирает их в массив строк для отправки платформе.
  *
@@ -314,13 +411,22 @@ export function initUserCommand(request: IAlisaRequest, controller: BotControlle
         // original_utterance может отсутствовать в malformed-запросе — `?.` обязателен.
         controller.originalUserCommand = request.original_utterance?.trim() || '';
     } else {
-        if (typeof request.payload === 'string') {
-            controller.userCommand = request.payload;
-            controller.originalUserCommand = request.payload;
-        } else {
-            controller.userCommand = request.command?.trim() || '';
-            controller.originalUserCommand = request.original_utterance?.trim() || '';
-        }
+        // ButtonPressed по протоколу НЕ содержит command/original_utterance —
+        // только payload и nlu.tokens (слова надписи кнопки).
+        const buttonText = (request.nlu?.tokens ?? []).join(' ');
+        const utterance = request.original_utterance?.trim() || buttonText;
+        // Как у Telegram/VK/MAX: payload 'buy' или {command|action: 'buy'} → 'buy',
+        // чтобы срабатывали addAction/addCommand.
+        const hasActionName =
+            typeof request.payload === 'string' ||
+            (typeof request.payload === 'object' &&
+                request.payload !== null &&
+                (typeof request.payload.command === 'string' ||
+                    typeof request.payload.action === 'string'));
+        const fromPayload = hasActionName ? normalizeActionPayload(request.payload) : '';
+        controller.userCommand = fromPayload || request.command?.trim() || buttonText;
+        controller.originalUserCommand =
+            typeof request.payload === 'string' ? request.payload : utterance;
         controller.payload = request.payload;
     }
     if (!controller.userCommand) {
@@ -512,7 +618,7 @@ export function setThisUserToNlu(
  * с этим payload. Хелпер извлекает имя действия:
  * - `'buy'` → `'buy'`;
  * - `'{"command":"buy"}'` / `{ command: 'buy' }` → `'buy'`;
- * - прочий JSON/текст — возвращается как есть (матчинг по слоту, как раньше).
+ * - прочий JSON/текст — возвращается как есть (матчинг по слоту).
  *
  * Так кнопка с payload вызывает `bot.addAction('buy', ...)` / команду `buy`
  * без ручного разбора — как `bot.action()` в популярных фреймворках.

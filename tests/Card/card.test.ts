@@ -107,9 +107,8 @@ describe('Card test', () => {
 
         defaultCard.clear();
         defaultCard.isOne = false;
-        // С 3.1.0 clear() сбрасывает и title/desc/template (раньше они протекали
-        // из прошлого запроса при переиспользовании контроллера) — заголовок
-        // выставляем заново после очистки.
+        // clear() сбрасывает и title/desc/template — заголовок выставляем
+        // заново после очистки.
         defaultCard.title = 'title';
         defaultCard.addImage('123456', 'Запись 1', 'Описание 1', 'Кнопка');
         defaultCard.addImage('123456', 'Запись 2', 'Описание 2', { title: 'Кнопка', url: URL });
@@ -215,7 +214,7 @@ describe('Card test', () => {
             defaultCard.getCards(MarusiaCard.cardProcessing, botController),
         ).resolves.toEqual({
             type: MarusiaConstants.MARUSIA_CARD_ITEMS_LIST,
-            items: [{ image_id: '123456', title: '', description: '' }],
+            items: [{ image_id: 123456 }],
         });
     });
     it('Get Alisa card for addOneImage', async () => {
@@ -372,158 +371,61 @@ describe('Card test', () => {
     });
 
     it('Get Marusia card', async () => {
+        // Протокол скиллов Маруси: ItemsList — {type, items: [{image_id}]},
+        // BigImage — {type, image_id}; image_id — integer. Заголовков, описаний,
+        // header/footer и кнопок в карточках Маруси нет.
         const marusiaCard: IMarusiaItemsList = {
             type: MarusiaConstants.MARUSIA_CARD_ITEMS_LIST,
-            header: {
-                text: 'title',
-            },
-            items: [
-                {
-                    title: '1',
-                    description: 'запись: 1',
-                    image_id: '123456',
-                },
-                {
-                    title: '2',
-                    description: 'запись: 2',
-                    image_id: '123456',
-                },
-                {
-                    title: '3',
-                    description: 'запись: 3',
-                    image_id: '123456',
-                },
-            ],
+            items: [{ image_id: 123456 }, { image_id: 123456 }, { image_id: 123456 }],
         };
         botController.appType = T_ALISA;
         expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
             marusiaCard,
         );
 
+        // Кнопка карточки в протоколе Маруси не поддерживается — карточка не меняется.
         defaultCard.button.addBtn('1', URL);
-        marusiaCard.footer = {
-            text: '1',
-            button: {
-                text: '1',
-                url: URL,
-            },
-        };
         expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
             marusiaCard,
         );
 
         defaultCard.isOne = true;
-
         const marusiaCardOne: IMarusiaBigImage = {
             type: MarusiaConstants.MARUSIA_CARD_BIG_IMAGE,
-            image_id: '123456',
-            title: '1',
-            description: 'запись: 1',
-            button: {
-                text: '1',
-                url: URL,
-            },
+            image_id: 123456,
         };
         expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
             marusiaCardOne,
         );
 
-        defaultCard.button = new Buttons(appContext);
-        delete marusiaCardOne.button;
-        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
-            marusiaCardOne,
-        );
-
+        // Лимит ItemsList — 5 элементов; галерея (нет в протоколе) уходит ItemsList до 7.
         defaultCard.clear();
-        defaultCard.isOne = false;
-        // clear() сбрасывает title (3.1.0) — заголовок выставляем заново.
-        defaultCard.title = 'title';
-        defaultCard.addImage('123456', 'Запись 1', 'Описание 1', 'Кнопка');
-        defaultCard.addImage('123456', 'Запись 2', 'Описание 2', { title: 'Кнопка', url: URL });
-        defaultCard.addImage('123456', 'Запись 3', 'Описание 3', {
-            title: 'Кнопка',
-            payload: { text: 'text' },
-        });
-        const marusiaCardButton = {
+        for (let i = 0; i < 8; i++) {
+            defaultCard.addImage('123456', `Запись ${i}`, `Описание ${i}`, 'Кнопка');
+        }
+        const list = (await defaultCard.getCards(
+            MarusiaCard.cardProcessing,
+            botController,
+        )) as IMarusiaItemsList;
+        expect(list.type).toBe(MarusiaConstants.MARUSIA_CARD_ITEMS_LIST);
+        expect(list.items).toHaveLength(5);
+        defaultCard.isUsedGallery = true;
+        const gallery = (await defaultCard.getCards(
+            MarusiaCard.cardProcessing,
+            botController,
+        )) as IMarusiaItemsList;
+        expect(gallery.type).toBe(MarusiaConstants.MARUSIA_CARD_ITEMS_LIST);
+        expect(gallery.items).toHaveLength(7);
+    });
+
+    it('Marusia: изображение без числового image_id пропускается', async () => {
+        defaultCard.clear();
+        defaultCard.addImage('photo-not-a-number', 'A', 'a');
+        defaultCard.addImage('777', 'B', 'b');
+        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual({
             type: MarusiaConstants.MARUSIA_CARD_ITEMS_LIST,
-            header: {
-                text: 'title',
-            },
-            items: [
-                {
-                    title: 'Запись 1',
-                    description: 'Описание 1',
-                    image_id: '123456',
-                    button: {
-                        text: 'Кнопка',
-                    },
-                },
-                {
-                    title: 'Запись 2',
-                    description: 'Описание 2',
-                    image_id: '123456',
-                    button: {
-                        text: 'Кнопка',
-                        url: URL,
-                    },
-                },
-                {
-                    title: 'Запись 3',
-                    description: 'Описание 3',
-                    image_id: '123456',
-                    button: {
-                        text: 'Кнопка',
-                        payload: {
-                            text: 'text',
-                        },
-                    },
-                },
-            ],
-        };
-        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
-            marusiaCardButton,
-        );
-
-        defaultCard.addImage('123456', 'Запись 4', 'Описание 4', 'Кнопка');
-        defaultCard.addImage('123456', 'Запись 5', 'Описание 5', 'Кнопка');
-        defaultCard.addImage('123456', 'Запись 6', 'Описание 6', 'Кнопка');
-        defaultCard.addImage('123456', 'Запись 7', 'Описание 7', 'Кнопка');
-        defaultCard.addImage('123456', 'Запись 7', 'Описание 7', 'Кнопка');
-        defaultCard.addImage('123456', 'Запись 8', 'Описание 8', 'Кнопка');
-
-        marusiaCardButton.items.push({
-            title: 'Запись 4',
-            description: 'Описание 4',
-            image_id: '123456',
-            button: {
-                text: 'Кнопка',
-            },
+            items: [{ image_id: 777 }],
         });
-        marusiaCardButton.items.push({
-            title: 'Запись 5',
-            description: 'Описание 5',
-            image_id: '123456',
-            button: {
-                text: 'Кнопка',
-            },
-        });
-        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
-            marusiaCardButton,
-        );
-
-        defaultCard.isOne = true;
-        const marusiaCardOneNew = {
-            type: MarusiaConstants.MARUSIA_CARD_BIG_IMAGE,
-            title: 'Запись 1',
-            description: 'Описание 1',
-            image_id: '123456',
-            button: {
-                text: 'Кнопка',
-            },
-        };
-        expect(await defaultCard.getCards(MarusiaCard.cardProcessing, botController)).toEqual(
-            marusiaCardOneNew,
-        );
     });
 
     it('Get Viber card', async () => {
@@ -748,6 +650,35 @@ describe('Card test', () => {
         expect(warnSpy).toHaveBeenCalledWith(
             expect.stringContaining('без валидной кнопки — пропущен'),
         );
+        warnSpy.mockRestore();
+    });
+
+    it('VK: выравнивает число кнопок у элементов карусели (одинаковая структура)', async () => {
+        // VK отклоняет карусель целиком, если элементы различаются структурой
+        // (первый элемент задаёт структуру остальных).
+        const warnSpy = jest
+            .spyOn(botController.appContext, 'logWarn')
+            .mockImplementation(() => {});
+        botController.appType = T_VK;
+        const twoButtons = new Buttons(appContext);
+        twoButtons.addBtn('Купить');
+        twoButtons.addBtn('Подробнее');
+        const oneButton = new Buttons(appContext);
+        oneButton.addBtn('Подробнее');
+        defaultCard.images = [
+            { imageToken: 'photo1_1', title: 'A', desc: 'a', button: twoButtons, params: {} },
+            { imageToken: 'photo1_2', title: 'B', desc: 'b', button: oneButton, params: {} },
+        ];
+        defaultCard.isUsedGallery = true;
+
+        const result = (await defaultCard.getCards(
+            VkCard.cardProcessing,
+            botController,
+        )) as IVkCard;
+
+        expect(result.elements).toHaveLength(2);
+        expect(result.elements.map((e) => e.buttons?.length)).toEqual([1, 1]);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('разное число кнопок'));
         warnSpy.mockRestore();
     });
 });

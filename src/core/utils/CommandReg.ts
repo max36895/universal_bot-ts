@@ -232,9 +232,10 @@ export interface IStepParam<TBotController extends BotController = BotController
      * @param {BotController} botController - Контроллер с бизнес-логикой приложения для управления ответом
      * @returns
      * - `void` или `Promise<void>` — шаг активен. Обработка останавливается на этом шаге, ожидается ввод пользователя.
-     * - `false` — шаг **игнорируется**. Фреймворк считает, что шаг не применим, и передаёт управление дальше.
+     * - `false` (или `Promise<false>` у async-обработчика) — шаг **игнорируется**. Фреймворк считает,
+     *   что шаг не применим, и передаёт управление дальше (команды → интенты → fallback).
      */
-    cb: (botController: TBotController) => void | Promise<void> | false;
+    cb: (botController: TBotController) => void | false | Promise<void | false>;
 }
 
 /**

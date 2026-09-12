@@ -5,7 +5,7 @@ import { ICardInfo, ImageTokens, BotController, Text } from '../../../index';
 
 import { buttonProcessing } from './Button';
 import { VkRequest } from '../API';
-import { getImageToken, getPlatformRequestData } from '../Base/utils';
+import { getImageToken, getPlatformRequestData, cacheMediaToken } from '../Base/utils';
 import { IVkButton, IVkButtonObject, IVkCard, IVkCardElement } from './interfaces/IVkPlatform';
 import { T_VK, VK_MAX_CAROUSEL_ELEMENTS } from './constants';
 
@@ -31,7 +31,8 @@ export async function getImageInDB(
             return null;
         }
 
-        const upload = await api.upload(server.upload_url, path);
+        // Сервер загрузки фото VK принимает файл только в поле `photo`.
+        const upload = await api.upload(server.upload_url, path, 'photo');
         if (!upload?.photo || !upload.server || !upload.hash) {
             return null;
         }
@@ -39,9 +40,8 @@ export async function getImageInDB(
         const photo = await api.photosSaveMessagesPhoto(upload.photo, upload.server, upload.hash);
         if (photo?.[0]?.id) {
             model.imageToken = `photo${photo[0].owner_id}_${photo[0].id}`;
-            if (await model.save(true)) {
-                return model.imageToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.imageToken;
         }
         return null;
     });
@@ -87,7 +87,7 @@ async function getElements(
                 `[VK] Не удалось получить image_id для изображения ${i} — ` +
                     `карточка и все последующие (${maxImages - i}) пропущены.`,
             );
-            return elements;
+            break;
         }
         if (cardInfo.usedGallery) {
             const element: IVkCardElement = {
@@ -99,9 +99,8 @@ async function getElements(
                 buttonProcessing(buttons, controller.appContext),
             );
             // Карусель VK требует минимум одну кнопку на элемент (см. не-gallery
-            // ветку ниже). Раньше gallery-элемент без кнопок уходил без action
-            // и buttons — VK отклонял всю карусель. Элемент не попадает в
-            // карусель, разработчик получает warn.
+            // ветку ниже), иначе VK отклоняет всю карусель. Элемент без кнопок
+            // не попадает в карусель, разработчик получает warn.
             if (button?.buttons?.length) {
                 element.buttons = button.buttons.flat().slice(0, 3) as IVkButton[];
                 element.action = { type: 'open_photo' };
@@ -130,6 +129,52 @@ async function getElements(
                 element.buttons = button.buttons.flat().slice(0, 3) as IVkButton[];
                 element.action = { type: 'open_photo' };
                 elements.push(element);
+            } else {
+                // Как и в gallery-ветке: пропуск карточки должен быть виден в логах.
+                controller.appContext.logWarn(
+                    `[VK] Элемент карусели ${i} без валидной кнопки — пропущен: ` +
+                        'VK требует минимум одну кнопку на элемент карусели.',
+                );
+            }
+        }
+    }
+    return alignElementButtons(elements, controller);
+}
+
+/**
+ * Выравнивает число кнопок у элементов карусели.
+ *
+ * VK требует одинаковую структуру всех элементов карусели (первый элемент
+ * задаёт структуру остальных): карусель, где у одной карточки 2 кнопки, а у
+ * другой 1, отклоняется целиком. Лишние кнопки обрезаются до минимального
+ * числа среди элементов — так карусель уходит, а разработчик получает warn.
+ *
+ * @param elements Элементы карусели (у каждого минимум одна кнопка)
+ * @param controller Контроллер приложения (для логирования)
+ * @returns Те же элементы с одинаковым числом кнопок
+ */
+function alignElementButtons(
+    elements: IVkCardElement[],
+    controller: BotController,
+): IVkCardElement[] {
+    if (elements.length < 2) {
+        return elements;
+    }
+    let minButtons = Infinity;
+    let maxButtons = 0;
+    for (const element of elements) {
+        const count = element.buttons?.length ?? 0;
+        minButtons = Math.min(minButtons, count);
+        maxButtons = Math.max(maxButtons, count);
+    }
+    if (minButtons !== maxButtons) {
+        controller.appContext.logWarn(
+            `[VK] У элементов карусели разное число кнопок (${minButtons}–${maxButtons}); ` +
+                `VK требует одинаковую структуру элементов — оставлено ${minButtons} кнопок у каждого.`,
+        );
+        for (const element of elements) {
+            if (element.buttons) {
+                element.buttons = element.buttons.slice(0, minButtons);
             }
         }
     }

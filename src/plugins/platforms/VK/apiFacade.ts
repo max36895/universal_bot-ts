@@ -10,6 +10,8 @@ import { BotController } from '../../../controller';
 import type { IControllerApi, TApiMethod } from '../../../controller';
 import { VkRequest } from '../API/VkRequest';
 import { getPlatformRequestData } from '../Base/utils';
+import { getVkDocAttachment } from './Sound';
+import { basename } from 'node:path';
 
 /**
  * Технические данные VK-адаптера, которые использует фасад.
@@ -44,7 +46,8 @@ export function makeVkApi(controller: BotController): IControllerApi {
             if (!uploadServer?.upload_url) {
                 return null;
             }
-            const upload = await request().upload(uploadServer.upload_url, image);
+            // Сервер загрузки фото VK принимает файл только в поле `photo`.
+            const upload = await request().upload(uploadServer.upload_url, image, 'photo');
             if (!upload) {
                 return null;
             }
@@ -75,13 +78,15 @@ export function makeVkApi(controller: BotController): IControllerApi {
             if (!upload?.file) {
                 return null;
             }
-            const saved = await request().docsSave(upload.file, 'document');
-            if (!saved?.id) {
+            const attachment = getVkDocAttachment(
+                await request().docsSave(upload.file, basename(file) || 'document'),
+            );
+            if (!attachment) {
                 return null;
             }
             return toRecord(
                 await request().messagesSend(peerId(), params?.caption ?? '', {
-                    attachments: [`doc${saved.owner_id}_${saved.id}`],
+                    attachments: [attachment],
                 }),
             );
         },

@@ -230,6 +230,64 @@ describe('CLI stats (computeLogStats)', () => {
         warnSpy.mockRestore();
     });
 
+    it('не сохраняет плоские *_token и db.pass в коммит-файлы при create БЕЗ isEnv', async () => {
+        // Без isEnv плоские params.*_token и config.db.pass не должны попасть
+        // plaintext в Params.ts/Config.ts (как и config.tokens).
+        const projectDir = path.join(tmpDir, 'flat-noenv-bot');
+        const logSpy = jest.spyOn(console, 'log').mockImplementation();
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+        await main(
+            {
+                command: 'create',
+                appName: 'flat_noenv_bot',
+                mode: 'prod',
+                hostname: '0.0.0.0',
+                port: 3000,
+                params: {
+                    path: projectDir,
+                    params: {
+                        welcome_text: 'Привет!',
+                        telegram_token: 'SUPERSECRET-TG-123',
+                        vk_token: 'SUPERSECRET-VK-456',
+                    },
+                    config: {
+                        db: {
+                            host: 'db-host',
+                            user: 'db-user',
+                            pass: 'SUPERSECRET-DB',
+                            database: 'db',
+                        },
+                    },
+                },
+            },
+            ['node', 'umbot', 'create', 'flat_noenv_bot'],
+        );
+
+        const paramsContent = fs.readFileSync(
+            path.join(projectDir, 'src', 'config', 'Flat_noenv_botParams.ts'),
+            'utf8',
+        );
+        expect(paramsContent).toContain('Привет!');
+        expect(paramsContent).not.toContain('SUPERSECRET-TG-123');
+        expect(paramsContent).not.toContain('SUPERSECRET-VK-456');
+
+        const configContent = fs.readFileSync(
+            path.join(projectDir, 'src', 'config', 'Flat_noenv_botConfig.ts'),
+            'utf8',
+        );
+        expect(configContent).not.toContain('SUPERSECRET-DB');
+        // Несекретные параметры подключения остаются.
+        expect(configContent).toContain('db-host');
+
+        const warnCalls = warnSpy.mock.calls.map((c) => String(c[0]));
+        expect(warnCalls.find((w) => w.includes('params.telegram_token'))).toBeDefined();
+        expect(warnCalls.find((w) => w.includes('config.db.pass'))).toBeDefined();
+
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+    });
+
     it('санитизирует имя env-переменной из ключа платформы config.tokens (инъекция переменной)', async () => {
         const projectDir = path.join(tmpDir, 'tokens-envname-bot');
         const logSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -248,8 +306,8 @@ describe('CLI stats (computeLogStats)', () => {
                     params: { welcome_text: 'Привет!' },
                     config: {
                         // Ключ с переводом строки пытается дописать произвольную
-                        // переменную в .env; без allowlist-санитизации имени это
-                        // работало (косяк F2 повторного аудита)
+                        // переменную в .env; allowlist-санитизация имени это
+                        // блокирует
                         tokens: { 'x\nEVIL_INJECTED=1': 'v' },
                     },
                 },

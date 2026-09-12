@@ -1,6 +1,5 @@
 // stress-test-fixed.js
-// ⚠️ Раньше импортировал fullPlatforms и Adapter из dist/index — их там нет
-// (это экспорты dist/plugins), из-за чего бот оставался без адаптеров.
+// fullPlatforms и адаптеры экспортируются из dist/plugins, а не из dist/index.
 const { Bot, BotController } = require('./../dist/index');
 const { fullPlatforms, AlisaAdapter } = require('./../dist/plugins');
 const crypto = require('node:crypto');

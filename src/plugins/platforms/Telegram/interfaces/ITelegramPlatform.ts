@@ -945,7 +945,7 @@ export interface ITelegramReplyButton {
     request_location?: boolean;
     /**
      * Стиль кнопки (Telegram Bot API 9.4+).
-     * Возможные значения: 'primary', 'secondary', 'destructive'
+     * Возможные значения (Bot API): 'primary', 'success', 'danger'
      */
     style?: string;
 }
@@ -988,7 +988,7 @@ export interface ITelegramInlineKeyboard {
     callback_data?: TButtonPayload | string;
     /**
      * Стиль кнопки (Telegram Bot API 9.4+).
-     * Возможные значения: 'primary', 'secondary', 'destructive'
+     * Возможные значения (Bot API): 'primary', 'success', 'danger'
      */
     style?: string;
 }

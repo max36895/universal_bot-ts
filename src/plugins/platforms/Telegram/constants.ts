@@ -20,7 +20,7 @@ export const T_FORMAT_HTML = 'HTML';
 export const T_FORMAT_MARKDOWN = 'MarkdownV2';
 
 /**
- * Стиль кнопки — акцентный (зелёный в тёмной теме).
+ * Стиль кнопки — основной (синий).
  * Доступен для inline-кнопок и reply-кнопок в Telegram Bot API 9.4+.
  * Задаётся через `options.style` при добавлении кнопки (`addBtn`/`addLink`)
  * либо вручную при сборке клавиатуры через TelegramRequest.
@@ -28,20 +28,31 @@ export const T_FORMAT_MARKDOWN = 'MarkdownV2';
 export const TG_STYLE_PRIMARY = 'primary';
 
 /**
- * Стиль кнопки — вторичный (серый).
+ * Стиль кнопки — успешное действие (зелёный).
  * Доступен для inline-кнопок и reply-кнопок в Telegram Bot API 9.4+.
  * Задаётся через `options.style` при добавлении кнопки (`addBtn`/`addLink`)
  * либо вручную при сборке клавиатуры через TelegramRequest.
  */
-export const TG_STYLE_SECONDARY = 'secondary';
+export const TG_STYLE_SUCCESS = 'success';
 
 /**
- * Стиль кнопки — деструктивный (красный).
+ * Стиль кнопки — опасное действие (красный).
  * Доступен для inline-кнопок и reply-кнопок в Telegram Bot API 9.4+.
  * Задаётся через `options.style` при добавлении кнопки (`addBtn`/`addLink`)
  * либо вручную при сборке клавиатуры через TelegramRequest.
  */
-export const TG_STYLE_DESTRUCTIVE = 'destructive';
+export const TG_STYLE_DANGER = 'danger';
+
+/**
+ * Допустимые значения `style` кнопок по Bot API: «danger», «success», «primary».
+ * Любое другое значение Telegram отклоняет вместе со всем сообщением, поэтому
+ * адаптер пропускает неизвестный стиль с предупреждением.
+ */
+export const TG_BUTTON_STYLES: readonly string[] = [
+    TG_STYLE_PRIMARY,
+    TG_STYLE_SUCCESS,
+    TG_STYLE_DANGER,
+];
 
 /**
  * Максимальная длина callback_data в байтах для inline-кнопок Telegram Bot API.

@@ -278,12 +278,19 @@ describe('MaxAdapter: eventType', () => {
             {
                 update_type: 'bot_started',
                 timestamp: 1,
+                chat_id: 777,
                 user: { user_id: 42 },
+                payload: 'ref_promo',
             } as never,
             controller,
         );
         expect(controller.eventType).toBe('start');
-        expect(controller.skipAutoReply).toBe(true);
+        // Нажатие «Начать» — первое касание: приветствие должно уйти
+        // (skipAutoReply заглушил бы и welcome, и addEvent('start')).
+        expect(controller.skipAutoReply).toBe(false);
+        expect(controller.messageId).toBe(0);
+        // Параметр deep-link из события bot_started.
+        expect(controller.payload).toBe('ref_promo');
     });
 });
 

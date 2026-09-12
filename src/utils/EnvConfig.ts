@@ -154,7 +154,9 @@ export interface IEnvConfig {
      *
      * @example
      * ```ts
-     * SPEECH_KIT_TOKEN=t1.9eudPPnNzQzPycnMjMyLp8iYz8iZy8...
+     * # API-ключ сервисного аккаунта (уходит как `Api-Key`) — рекомендуется;
+     * # IAM-токен `t1.…` тоже принимается (уходит как `Bearer`), но живёт ≤12 ч.
+     * SPEECH_KIT_TOKEN=AQVN...
      * ```
      */
     SPEECH_KIT_TOKEN?: string;

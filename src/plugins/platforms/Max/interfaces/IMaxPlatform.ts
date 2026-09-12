@@ -224,6 +224,11 @@ export interface IMaxRequestContent {
     user?: IMaxSender;
 
     /**
+     * Параметр deep-link запуска бота (событие `bot_started`).
+     */
+    payload?: string | null;
+
+    /**
      * Признак события из канала.
      */
     is_channel?: boolean;
@@ -293,6 +298,8 @@ export interface IMaxButton {
 
     /**
      * Интент кнопки, влияющий на её визуальное оформление (например, цвет).
+     * Передаётся только для кнопки типа 'callback'. В текущей документации MAX
+     * и официальном SDK поля нет (наследие TamTam) — поведение не гарантируется.
      */
     intent?: 'default' | 'positive' | 'negative';
 
@@ -302,8 +309,8 @@ export interface IMaxButton {
     url?: string;
 
     /**
-     * Флаг, указывающий, является ли кнопка "быстрой".
-     * Быстрые кнопки могут исчезать после нажатия.
+     * Флаг «быстрой» отправки геолокации (без подтверждения).
+     * Поддерживается только кнопкой типа 'request_geo_location'.
      */
     quick?: boolean;
 
@@ -313,7 +320,8 @@ export interface IMaxButton {
     web_app?: string;
 
     /**
-     * ID контакта, используемый при нажатии кнопки типа 'request_contact'.
+     * ID бота, чьё мини-приложение открывает кнопка типа 'open_app'.
+     * Поддерживается только кнопкой типа 'open_app'.
      */
     contact_id?: number;
 }

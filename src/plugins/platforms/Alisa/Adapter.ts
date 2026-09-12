@@ -110,6 +110,14 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
     supportedEvents: readonly TEventType[] = ['message', 'auth'];
 
     /**
+     * Предупреждение о нескольких хранилищах state уже выведено. Алиса при
+     * включённом хранении присылает session/application (и user) в каждом
+     * запросе — это штатный протокол, поэтому сообщаем о выборе один раз,
+     * а не спамим лог на каждом запросе горячего пути.
+     */
+    #warnedMultipleStates = false;
+
+    /**
      * Инициализирует адаптер: вызывает базовую инициализацию и пробрасывает
      * переданный в конструкторе токен в конфигурацию платформы.
      * @param appContext Контекст приложения (конфиги, токены, логгер)
@@ -198,7 +206,8 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
      */
     #setState(controller: BotController, state: IAlisaRequestState): void {
         const populatedStates = [state.user, state.application, state.session].filter(Boolean);
-        if (populatedStates.length > 1) {
+        if (populatedStates.length > 1 && !this.#warnedMultipleStates) {
+            this.#warnedMultipleStates = true;
             this.appContext?.logWarn(
                 'AlisaAdapter.setQueryData(): запрос содержит несколько хранилищ state; выбран наиболее приоритетный доступный уровень user → application → session.',
             );
@@ -271,6 +280,9 @@ export class AlisaAdapter extends BasePlatform<string | IAlisaWebhookRequest> {
                         version: VERSION,
                         response: {
                             text: 'pong',
+                            // end_session — обязательное поле ответа по протоколу;
+                            // без него health-check мог считать навык неотвечающим.
+                            end_session: false,
                         },
                     };
                 }

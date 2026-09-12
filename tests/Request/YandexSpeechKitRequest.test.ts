@@ -7,12 +7,22 @@ import { unlink } from '../../src/utils';
 const appContext = new AppContext();
 appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
+/** Параметры последнего вызова fetch: тело и заголовки. */
+function lastRequest(): { body: string; headers: Record<string, string> } {
+    const calls = (global.fetch as jest.Mock).mock.calls;
+    const options = calls[calls.length - 1][1] as RequestInit;
+    return {
+        body: String(options.body),
+        headers: options.headers as Record<string, string>,
+    };
+}
+
 describe('YandexSpeechKit', () => {
     let tts: YandexSpeechKit;
 
     beforeEach(() => {
         tts = new YandexSpeechKit('tts-token', appContext);
-        (global.fetch as jest.Mock).mockClear();
+        (global.fetch as jest.Mock).mockReset();
     });
 
     it('should synthesize speech', async () => {
@@ -28,17 +38,72 @@ describe('YandexSpeechKit', () => {
         tts.format = YandexSpeechKit.F_OGGOPUS;
         const result = await tts.getTts('Привет, Алиса!');
         if (result) {
-            unlink(result?.fileName);
+            await unlink(result.fileName);
         }
         expect(result?.audioData).toEqual(buffer);
         expect(global.fetch).toHaveBeenCalledWith(
             'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize',
-            expect.objectContaining({
-                body: expect.stringContaining(
-                    '"text":"Привет, Алиса!","lang":"ru-RU","voice":"oksana","format":"oggopus","emotion":"neutral","speed":1',
-                ),
-            }),
+            expect.objectContaining({ method: 'POST' }),
         );
+        const params = new URLSearchParams(lastRequest().body);
+        expect(params.get('text')).toBe('Привет, Алиса!');
+        expect(params.get('lang')).toBe('ru-RU');
+        expect(params.get('voice')).toBe('oksana');
+        expect(params.get('format')).toBe('oggopus');
+        expect(params.get('emotion')).toBe('neutral');
+        expect(params.get('speed')).toBe('1');
+    });
+
+    it('отправляет тело в x-www-form-urlencoded: JSON SpeechKit v1 отклоняет (400)', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(0),
+        });
+        const res = await tts.getTts('Тест');
+        if (res) {
+            await unlink(res.fileName);
+        }
+        const { body, headers } = lastRequest();
+        expect(headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+        expect(body.startsWith('{')).toBe(false);
+    });
+
+    it('API-ключ уходит схемой Api-Key, а не OAuth', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(0),
+        });
+        const res = await tts.getTts('Тест');
+        if (res) {
+            await unlink(res.fileName);
+        }
+        expect(lastRequest().headers.Authorization).toBe('Api-Key tts-token');
+    });
+
+    it('IAM-токен (t1.) уходит схемой Bearer', async () => {
+        const iam = new YandexSpeechKit('t1.abc', appContext);
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(0),
+        });
+        const res = await iam.getTts('Тест');
+        if (res) {
+            await unlink(res.fileName);
+        }
+        expect(lastRequest().headers.Authorization).toBe('Bearer t1.abc');
+    });
+
+    it('явно заданная схема авторизации передаётся как есть', async () => {
+        const explicit = new YandexSpeechKit('Bearer custom-iam', appContext);
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(0),
+        });
+        const res = await explicit.getTts('Тест');
+        if (res) {
+            await unlink(res.fileName);
+        }
+        expect(lastRequest().headers.Authorization).toBe('Bearer custom-iam');
     });
 
     it('should include emotion and speed for supported voices', async () => {
@@ -53,11 +118,11 @@ describe('YandexSpeechKit', () => {
         const res = await tts.getTts('Тест');
 
         if (res) {
-            unlink(res.fileName);
+            await unlink(res.fileName);
         }
 
-        const body = (global.fetch as jest.Mock).mock.calls[0][1].body as string;
-        expect(body).toContain('"emotion":"good"');
-        expect(body).toContain('"speed":1.5');
+        const params = new URLSearchParams(lastRequest().body);
+        expect(params.get('emotion')).toBe('good');
+        expect(params.get('speed')).toBe('1.5');
     });
 });

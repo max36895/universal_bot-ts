@@ -14,6 +14,7 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
    ├── core/ # THE CORE OF THE FRAMEWORK. Has no dependencies on the plugins/ folder.
    │ ├── Bot.ts # Main orchestrator class. Manages the lifecycle, middleware, and command registration.
    │ ├── AppContext.ts # State storage: configs, tokens, plugin registry, logger, metrics.
+   │ ├── utils/MemorySessionStorage.ts # In-process userData session (LRU + TTL, no timers): isLocalStorage on platforms without localStorage and no DB adapter.
    │ └── interfaces/ # Strict TypeScript contracts (IAppConfig, IAppParam, IPlatformAdapter, etc.).
    ├── controller/ # USER BUSINESS LOGIC.
    │ ├── BotController.ts# Base class that the user inherits. Contains text, buttons, card, nlu, userData, and state.
@@ -102,15 +103,15 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
     - **`umbot-write-tests`** — how to write unit tests and integration tests with `BotTest`, how to stub logger, mock fetch, isolate DB.
 9. Platform compatibility matrix (reference for contributors)
 
-    | Platform | Text limit   | Buttons/row | Card types                                      | Webhook signature                 |
-    | -------- | ------------ | ----------- | ----------------------------------------------- | --------------------------------- |
-    | Alisa    | 1024         | unlimited   | BigImage, ItemsList, ImageGallery (до 10)       | (none)                            |
-    | Marusia  | 1024         | unlimited   | BigImage, ItemsList (до 5), ImageGallery (до 7) | (none)                            |
-    | Telegram | 4096         | unlimited   | Photo, MediaGroup                               | `x-telegram-bot-api-secret-token` |
-    | VK       | 4096         | unlimited   | Carousel                                        | `secret_key` in body              |
-    | Max      | 4000         | 7x30        | Inline keyboard                                 | `x-max-bot-api-secret`            |
-    | Viber    | 7000         | 6x7         | RichMedia                                       | `x-viber-content-signature`       |
-    | SmartApp | 250 (bubble) | -           | ListCard                                        | (none)                            |
+    | Platform | Text limit   | Buttons/row | Card types                                | Webhook signature                 |
+    | -------- | ------------ | ----------- | ----------------------------------------- | --------------------------------- |
+    | Alisa    | 1024         | unlimited   | BigImage, ItemsList, ImageGallery (до 10) | (none)                            |
+    | Marusia  | 1024 (≠ ∅)   | unlimited   | BigImage, ItemsList (image_id: int only)  | (none)                            |
+    | Telegram | 4096         | unlimited   | Photo, MediaGroup                         | `x-telegram-bot-api-secret-token` |
+    | VK       | 4096         | unlimited   | Carousel                                  | `secret_key` in body              |
+    | Max      | 4000         | 7x30        | Inline keyboard                           | `x-max-bot-api-secret`            |
+    | Viber    | 7000         | 6x7         | RichMedia                                 | `x-viber-content-signature`       |
+    | SmartApp | 250 (bubble) | -           | ListCard                                  | (none)                            |
 
     When changing limits or adding platforms, update this table.
 
@@ -118,7 +119,8 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
     - **Alisa cards** — the docs do NOT mark `image_id` as required in `ItemsList` or
       `ImageGallery` items (there is no "Обязательный" column at all), and a text-only item
       is a working, field-tested scenario. Do not silently drop items without an image.
-      `ItemsList` holds 1–5 items, `ImageGallery` 1–10. Limits: `header.text`/`footer.text` 64,
+      `ItemsList` holds 1–5 items, `ImageGallery` 1–10 (the card spec page says 1–10; the
+      response-format overview page still says 1–7 — the spec page is treated as authoritative). Limits: `header.text`/`footer.text` 64,
       `items[].title` 128, `items[].description` 256, `BigImage.description` 1024,
       `button.text` 64, `button.url` 1024 bytes, `button.payload` 4096 bytes.
       `response.text` MAY be empty — but only when `tts` is filled.
@@ -142,6 +144,33 @@ You are an AI agent working with the umbot framework codebase. Your task is to m
       `url` и `callback_data` взаимоисключающи в одной кнопке. `sendMediaGroup` принимает
       2–10 элементов (одиночное фото — через `sendPhoto`). Upload-операции
       (sendPhoto/sendAudio/sendMediaGroup) требуют таймаут ~30 с, обычные методы — ~5 с.
+    - **Marusia** — custom skills were shut down by VK on 2024-12-20 and the protocol docs were removed
+      from dev.vk.com; the format was checked against the archived copy. Response requires `session`
+      (echo) and a NON-empty `text` (unlike Alisa). Cards: `BigImage {type, image_id:int}`,
+      `ItemsList {type, items:[{image_id:int}]}`, `MiniApp`, `Link` — no ImageGallery, no titles/buttons.
+      Buttons: only `title`/`url`/`payload` (payload is a JSON object).
+    - **Alisa ButtonPressed** — the request has NO `command`/`original_utterance`, only `payload` and
+      `nlu.tokens`; button `payload` in the response must be a JSON object (strings are wrapped into
+      `{command}`). Health-check `ping` must be answered with a full valid response (`end_session` required).
+    - **SmartApp** — `server_action` is `{action_id, parameters}` (`{type, payload}` is deprecated);
+      `payload.items` is required in ANSWER_TO_USER; `pronounceText` has no documented length limit.
+    - **Telegram voice** — synthesized OGG/Opus goes via `sendVoice`; `sendAudio` accepts only MP3/M4A.
+    - **MAX bot_started** — carries `payload` (deep-link) and must be answered (welcome), not skipped.
+    - **MAX buttons** — per the official SDK (`@maxhub/max-bot-api`): `quick` exists only on
+      `request_geo_location`, `contact_id`/`web_app` only on `open_app`, `payload` on
+      `callback`/`clipboard`/`open_app` (never on `link`). `intent` is absent from current docs and
+      SDK (TamTam legacy) and is sent only for `callback`.
+    - **VK uploads** — photos (`photos.getMessagesUploadServer`) must be uploaded in the multipart
+      field `photo`, documents/voice in `file`. `docs.save` returns `{type, doc | audio_message}` —
+      ids live in the nested object. Carousel elements must share one structure (same button count)
+      and the message text is mandatory with a carousel.
+    - **MAX uploads** — the upload-server response for `audio`/`video` is `retval` (not JSON); their
+      token comes from the `POST /uploads` step. Never cache the one-time upload `url` as a token.
+    - **SpeechKit TTS** — body `application/x-www-form-urlencoded`, auth `Api-Key <key>` or
+      `Bearer <IAM>`; the `OAuth` scheme belongs to the Dialogs API only.
+    - **Telegram button `style`** — only `danger`, `success`, `primary`.
+    - **Viber welcome** — the reply to `conversation_started` goes in the webhook response body;
+      REST `send_message` to a not-yet-subscribed user is rejected.
     - **Viber** — тело исходящего запроса к API ограничено 30 КБ (проверяется в
       `ViberRequest.call()`); `rich_media` требует `min_api_version >= 7`.
     - **Request (общее)** — `_getOptions()` возвращает `undefined` при ошибке attach-файла:

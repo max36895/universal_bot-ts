@@ -1524,6 +1524,8 @@ function generatePackageJson(doc) {
         scripts: { start: 'node ./dist/index.js', build: 'tsc' },
         dependencies,
         devDependencies: { typescript: '6.0.3', '@types/node': '24.13.4' },
+        // Совпадает с шаблоном create и рантаймом Yandex Cloud Functions (nodejs22).
+        engines: { node: '>=22.0.0' },
     };
     return JSON.stringify(pkg, null, 2);
 }
@@ -1541,6 +1543,11 @@ function generateTsConfig() {
                 skipLibCheck: true,
                 outDir: './dist',
                 rootDir: './src',
+                // С TypeScript 6.0 `types` по умолчанию пуст: без явного node
+                // глобальный setTimeout резолвится из lib.es (возвращает number),
+                // и сгенерированный utils.ts (`setTimeout(...).unref()`) не
+                // компилируется. Шаблон `create` задаёт то же самое.
+                types: ['node'],
             },
             include: ['src/**/*'],
         },

@@ -24,3 +24,10 @@ benchmark/comparison/baseline.json
 /docs-seo-ai-audit-report.md
 /docs-audit-report.md
 /prompt-doc-seo-audit.md
+
+# Артефакты тестов (FileAdapter-таблицы, логи) — см. tests/helpers/tmpDir.ts
+/tests/.tmp/
+
+# live-test: локальные токены и артефакты прогона
+/live-test/.env
+/live-test/.tmp/

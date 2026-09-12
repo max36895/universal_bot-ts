@@ -87,7 +87,8 @@ describe('Buttons test', () => {
     });
 
     it('сохраняет payload кнопки Алисы и Маруси размером ровно 4096 байт', () => {
-        const payload = 'x'.repeat(4096);
+        // Сериализованный объект — ровно 4096 байт (граница лимита включительно).
+        const payload = { d: 'x'.repeat(4096 - '{"d":""}'.length) };
         defaultButtons.clear();
         defaultButtons.addBtn('Граница', null, payload);
 
@@ -96,6 +97,19 @@ describe('Buttons test', () => {
         ]);
         expect(defaultButtons.getButtons(MarusiaButton.buttonProcessing)).toEqual([
             expect.objectContaining({ payload }),
+        ]);
+    });
+
+    it('строковый payload Алисы и Маруси оборачивается в JSON-объект {command}', () => {
+        // По протоколу payload кнопки — JSON-объект; строка ушла бы вне контракта.
+        defaultButtons.clear();
+        defaultButtons.addBtn('Купить', null, 'buy');
+
+        expect(defaultButtons.getButtons(AlisaButton.buttonProcessing)).toEqual([
+            expect.objectContaining({ payload: { command: 'buy' } }),
+        ]);
+        expect(defaultButtons.getButtons(MarusiaButton.buttonProcessing)).toEqual([
+            expect.objectContaining({ payload: { command: 'buy' } }),
         ]);
     });
 
@@ -127,34 +141,14 @@ describe('Buttons test', () => {
     });
 
     it('Get buttons Marusia', () => {
+        // В протоколе кнопок Маруси только title/url/payload — поля hide нет.
         const alisaButtons = [
-            {
-                title: '1',
-                hide: true,
-            },
-            {
-                title: '1',
-                hide: false,
-                url: DEFAULT_URL,
-            },
-            {
-                title: '2',
-                hide: true,
-            },
-            {
-                title: '2',
-                hide: false,
-                url: DEFAULT_URL,
-            },
-            {
-                title: '3',
-                hide: true,
-            },
-            {
-                title: '3',
-                hide: false,
-                url: DEFAULT_URL,
-            },
+            { title: '1' },
+            { title: '1', url: DEFAULT_URL },
+            { title: '2' },
+            { title: '2', url: DEFAULT_URL },
+            { title: '3' },
+            { title: '3', url: DEFAULT_URL },
         ];
         expect(defaultButtons.getButtons(MarusiaButton.buttonProcessing)).toEqual(alisaButtons);
     });
@@ -368,7 +362,7 @@ describe('Buttons test', () => {
                         message_name: 'SERVER_ACTION',
                         server_action: {
                             action_id: 'umbot_action',
-                            payload: { orderId: 42 },
+                            parameters: { orderId: 42 },
                         },
                     },
                 ],
@@ -393,8 +387,8 @@ describe('Buttons test', () => {
     it('Get buttons Telegram with style (inline callback)', () => {
         defaultButtons.clear();
         defaultButtons.addBtn('Подтвердить', null, { action: 'confirm' }, { style: 'primary' });
-        defaultButtons.addBtn('Удалить', null, { action: 'delete' }, { style: 'destructive' });
-        defaultButtons.addBtn('Отмена', null, { action: 'cancel' }, { style: 'secondary' });
+        defaultButtons.addBtn('Удалить', null, { action: 'delete' }, { style: 'danger' });
+        defaultButtons.addBtn('Готово', null, { action: 'done' }, { style: 'success' });
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
         // С 3.1.0 style проставляется и в inline-кнопки (Bot API 9.4+):
@@ -412,14 +406,14 @@ describe('Buttons test', () => {
                     {
                         text: 'Удалить',
                         callback_data: '{"action":"delete"}',
-                        style: 'destructive',
+                        style: 'danger',
                     },
                 ],
                 [
                     {
-                        text: 'Отмена',
-                        callback_data: '{"action":"cancel"}',
-                        style: 'secondary',
+                        text: 'Готово',
+                        callback_data: '{"action":"done"}',
+                        style: 'success',
                     },
                 ],
             ],
@@ -429,11 +423,11 @@ describe('Buttons test', () => {
     it('Get buttons Telegram with style (reply)', () => {
         defaultButtons.clear();
         defaultButtons.addBtn('ОК');
-        defaultButtons.addBtn('Удалить', null, undefined, { style: 'destructive' });
+        defaultButtons.addBtn('Удалить', null, undefined, { style: 'danger' });
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
         expect(result).toEqual({
-            keyboard: [[{ text: 'ОК' }], [{ text: 'Удалить', style: 'destructive' }]],
+            keyboard: [[{ text: 'ОК' }], [{ text: 'Удалить', style: 'danger' }]],
             resize_keyboard: true,
         });
     });
@@ -443,13 +437,12 @@ describe('Buttons test', () => {
         defaultButtons.addBtn('Кнопка', null, { action: 'test' }, { style: 'invalid_value' });
 
         const result = defaultButtons.getButtons(TelegramButton.buttonProcessing);
-        // style передаётся как есть (passthrough): адаптер не валидирует перечень
-        // значений — некорректный стиль Telegram отклонит сам с понятной ошибкой
-        // валидации API, молчаливое игнорирование маскировало бы опечатку.
+        // Bot API принимает только primary/success/danger; с любым другим
+        // значением Telegram отклоняет всё сообщение. Поэтому неизвестный стиль
+        // пропускается (кнопка уходит без style), а разработчик получает warn —
+        // так же адаптеры поступают с невалидным payload.
         expect(result).toEqual({
-            inline_keyboard: [
-                [{ text: 'Кнопка', callback_data: '{"action":"test"}', style: 'invalid_value' }],
-            ],
+            inline_keyboard: [[{ text: 'Кнопка', callback_data: '{"action":"test"}' }]],
         });
     });
 

@@ -193,9 +193,8 @@ function trimUrlTail(url) {
 function resolveFilePath(urlOrPath, currentFile) {
     let localPath;
 
-    // Ссылка может содержать #якорь (например, ./GUIDE.md#раздел).
-    // Раньше фрагмент не отсекался, проверка endsWith('.md') не проходила,
-    // и корректная ссылка помечалась как битая.
+    // Ссылка может содержать #якорь (например, ./GUIDE.md#раздел) — отсекаем
+    // его, иначе проверка endsWith('.md') не пройдёт.
     const hashIndex = urlOrPath.indexOf('#');
     const target = hashIndex !== -1 ? urlOrPath.substring(0, hashIndex) : urlOrPath;
 
@@ -205,8 +204,7 @@ function resolveFilePath(urlOrPath, currentFile) {
     } else if (target.endsWith('.md') && !target.startsWith('http')) {
         // Любая .md-ссылка в markdown относительна к директории текущего
         // файла: и './x.md'/'../x.md', и голая 'x.md' (GUIDE.md → GUIDE.md
-        // из соседнего гайда). Раньше голая ссылка резолвилась от корня
-        // репозитория и живая ссылка помечалась битой.
+        // из соседнего гайда), а не от корня репозитория.
         if (currentFile) {
             const currentDir = path.dirname(currentFile);
             localPath = path.resolve(currentDir, target);
@@ -377,8 +375,7 @@ function processFiles() {
                         updatedFiles.add(filePath);
                     }
                 } else if (link.type === 'path') {
-                    // Fix: сохраняем #якорь при переписывании ссылки,
-                    // раньше фрагмент молча терялся.
+                    // Сохраняем #якорь при переписывании ссылки.
                     const pathHashIndex = link.value.indexOf('#');
                     const pathHash =
                         pathHashIndex !== -1 ? link.value.substring(pathHashIndex) : '';

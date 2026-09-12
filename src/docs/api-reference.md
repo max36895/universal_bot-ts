@@ -230,6 +230,7 @@ interface IAppConfig {
     json?: string; // Путь к директории JSON
     db?: IAppDB; // Конфигурация базы данных
     isLocalStorage?: boolean; // Использование локального хранилища
+    memorySession?: IMemorySessionConfig | false; // Сессия userData в памяти процесса (платформы без localStorage, без БД)
     env?: string; // Путь к .env файлу или 'local' для process.env
     tokens?: ITokenPlatform; // Токены платформ (telegram, vk и др.)
 }
@@ -788,11 +789,11 @@ import { T_ALISA, T_TELEGRAM } from 'umbot/plugins';
 
 const preload = new Preload(bot.getAppContext());
 
-// Загрузка изображений
-await Promise.all(preload.loadImages(['./img.jpg'], [T_ALISA]));
+// Загрузка изображений (для Алисы нужен skill_id навыка)
+await Promise.all(preload.loadImages(['./img.jpg'], [T_ALISA], { alisaSkillId: 'ваш-skill-id' }));
 
 // Загрузка звуков
-await Promise.all(preload.loadSounds(['./sound.mp3'], [T_ALISA]));
+await Promise.all(preload.loadSounds(['./sound.mp3'], [T_ALISA], { alisaSkillId: 'ваш-skill-id' }));
 
 // Telegram требует ID получателя
 await Promise.all(preload.loadImages(['./img.jpg'], [T_TELEGRAM], { telegramUseId: 123 }));

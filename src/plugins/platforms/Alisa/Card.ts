@@ -5,7 +5,7 @@ import { IButtonType, ICardInfo, Text, BotController, AppContext } from '../../.
 
 import { buttonProcessing } from './Button';
 import { YandexImageRequest } from '../API';
-import { getImageToken } from '../Base/utils';
+import { getImageToken, cacheMediaToken } from '../Base/utils';
 import {
     IAlisaBigImage,
     IAlisaButtonCard,
@@ -57,9 +57,8 @@ export async function getImageInDB(
             : await yImage.downloadImageFile(path);
         if (result?.id) {
             model.imageToken = result?.id;
-            if (await model.save(true)) {
-                return model.imageToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.imageToken;
         }
         return null;
     });

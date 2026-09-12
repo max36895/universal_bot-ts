@@ -56,7 +56,12 @@ export function expectProjectToTypeCheck(projectPath: string): void {
                 extends: './tsconfig.json',
                 compilerOptions: {
                     noEmit: true,
-                    types: ['node'],
+                    // `types` намеренно НЕ переопределяем: проверяется ровно тот
+                    // набор типов, который задаёт tsconfig проекта: с types: ['node']
+                    // здесь тест не заметил бы, что генератор from-flow его забыл
+                    // (TS 6.0: types по умолчанию пуст). typeRoots нужен только
+                    // для поиска @types в репозитории: проверяемые проекты
+                    // зависимостей не устанавливают.
                     typeRoots: [join(PROJECT_ROOT, 'node_modules', '@types')],
                     paths: {
                         umbot: [join(PROJECT_ROOT, 'dist', 'index.d.ts')],

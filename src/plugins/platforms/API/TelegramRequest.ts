@@ -263,9 +263,8 @@ export class TelegramRequest {
             this.#request.attach = file as string;
             this.#request.attachName = type;
         } else {
-            // Telegram принимает уже загруженный файл как строковый file_id. Раньше любая
-            // строка без URL считалась локальным путём, поэтому кэшированный file_id
-            // доходил до Request.isFile() и отклонялся как несуществующий файл.
+            // Telegram принимает уже загруженный файл как строковый file_id — это не
+            // локальный путь, и проверять его через Request.isFile() нельзя.
             this.#request.post[type] = file;
         }
     }
@@ -281,7 +280,7 @@ export class TelegramRequest {
         userId: TTelegramChatId | null = null,
     ): Promise<ITelegramResult | null> {
         this.#request.maxTimeQuery =
-            /^(sendPhoto|sendDocument|sendAudio|sendVideo|sendMediaGroup)$/u.test(method)
+            /^(sendPhoto|sendDocument|sendAudio|sendVoice|sendVideo|sendMediaGroup)$/u.test(method)
                 ? TELEGRAM_UPLOAD_TIMEOUT
                 : 5500;
         if (userId) {
@@ -648,6 +647,41 @@ export class TelegramRequest {
             };
         }
         return this.call('sendAudio', userId);
+    }
+
+    /**
+     * Отправляет голосовое сообщение.
+     *
+     * По Bot API голосовое сообщение — это OGG/Opus (а также MP3/M4A); именно
+     * в OGG/Opus синтезирует речь Yandex SpeechKit. `sendAudio` для такого
+     * файла не подходит: он принимает только MP3/M4A (музыкальный плеер).
+     *
+     * @param userId ID чата или пользователя
+     * @param file Путь к локальному файлу, URL или file_id ранее загруженного голосового
+     * @param params Дополнительные параметры (caption, duration, reply_markup и т.д.)
+     * @returns Информация об отправленном сообщении или null при ошибке
+     *
+     * @example
+     * ```ts
+     * await telegram.sendVoice(chatId, './tts.ogg');
+     * ```
+     */
+    public async sendVoice(
+        userId: TTelegramChatId,
+        file: string,
+        params: ITelegramParams | null = null,
+    ): Promise<ITelegramResult | null> {
+        await this.#initPostFile('voice', file);
+        if (params) {
+            this.#request.post = {
+                ...params,
+                ...(params.caption
+                    ? { caption: Text.resize(params.caption, TELEGRAM_CAPTION_MAX_LENGTH) }
+                    : {}),
+                ...this.#request.post,
+            };
+        }
+        return this.call('sendVoice', userId);
     }
 
     /**

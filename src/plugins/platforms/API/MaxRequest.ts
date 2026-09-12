@@ -60,6 +60,52 @@ async function waitForMaxMessageTurn(key: string): Promise<void> {
 }
 
 /**
+ * Разбирает ответ сервера загрузки MAX.
+ * Для image/file это JSON, для audio/video — `retval` (не JSON): такой ответ
+ * даёт пустой объект, токен в этом случае берётся с шага POST /uploads.
+ *
+ * @param body Тело ответа сервера загрузки (текст)
+ * @returns Разобранный объект ответа (пустой, если это не JSON-объект)
+ */
+function parseMaxUploadResponse(body: unknown): Record<string, unknown> {
+    if (body && typeof body === 'object') {
+        return body as Record<string, unknown>;
+    }
+    if (typeof body !== 'string' || !body.trim().startsWith('{')) {
+        return {};
+    }
+    try {
+        const parsed: unknown = JSON.parse(body);
+        return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * Достаёт токен вложения из ответа загрузки: `token` верхнего уровня либо
+ * `photos.<id>.token` (формат ответа загрузки изображений).
+ *
+ * @param uploaded Разобранный ответ сервера загрузки
+ * @returns Токен вложения или undefined
+ */
+function getMaxUploadToken(uploaded: Record<string, unknown>): string | undefined {
+    if (typeof uploaded.token === 'string' && uploaded.token) {
+        return uploaded.token;
+    }
+    const photos = uploaded.photos;
+    if (photos && typeof photos === 'object') {
+        for (const photo of Object.values(photos as Record<string, unknown>)) {
+            const token = (photo as { token?: unknown } | null)?.token;
+            if (typeof token === 'string' && token) {
+                return token;
+            }
+        }
+    }
+    return undefined;
+}
+
+/**
  * Класс для взаимодействия с API Max
  * Предоставляет методы для отправки сообщений, загрузки файлов
  * @see https://dev.max.ru/docs-api
@@ -218,20 +264,34 @@ export class MaxRequest {
             this.#request.attachName = 'data';
             this.#request.isAttachContent = this.isAttachContent;
             this.#request.header = Request.HEADER_FORM_DATA;
+            // Ответ сервера загрузки читаем текстом: для image/file это JSON
+            // с token, а для audio/video — `retval` (не JSON), токен для них
+            // выдан на первом шаге.
+            this.#request.isConvertJson = false;
             const previousTimeout = this.#request.maxTimeQuery;
             this.#request.maxTimeQuery = MAX_UPLOAD_TIMEOUT;
             let data;
             try {
-                data = await this.#request.send<IMaxUploadFile>(uploadTarget.url);
+                data = await this.#request.send<string>(uploadTarget.url);
             } finally {
                 this.#request.maxTimeQuery = previousTimeout;
             }
-            if (data.status && data.data) {
-                return {
-                    ...data.data,
-                    url: uploadTarget.url,
-                    ...(uploadTarget.token ? { token: uploadTarget.token } : {}),
-                };
+            if (data.status) {
+                const uploaded = parseMaxUploadResponse(data.data);
+                // audio/video: токен выдан на шаге POST /uploads;
+                // image/file: токен приходит в ответе загрузки.
+                const token = uploadTarget.token ?? getMaxUploadToken(uploaded);
+                if (token) {
+                    return {
+                        ...uploaded,
+                        url: uploadTarget.url,
+                        token,
+                    };
+                }
+                this.#appContext.logWarn(
+                    `MaxRequest.upload(): сервер загрузки не вернул token для типа "${type}" — вложение не может быть отправлено.`,
+                );
+                return null;
             }
             this.#log(data.err);
         } else {

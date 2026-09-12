@@ -23,4 +23,10 @@ export {
     type IEventParam,
     type IGroupData,
 } from './utils/CommandReg';
+export {
+    MemorySessionStorage,
+    MEMORY_SESSION_MAX_SIZE,
+    MEMORY_SESSION_TTL,
+    type IMemorySessionConfig,
+} from './utils/MemorySessionStorage';
 export { createPlugin } from './plugin';

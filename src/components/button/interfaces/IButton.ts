@@ -57,7 +57,7 @@ export interface IButtonOptions {
      * Стиль визуального отображения кнопки.
      *
      * Для Telegram адаптер подставляет поле `style` в кнопку из `options.style`
-     * (Telegram Bot API 9.4+: 'primary' | 'secondary' | 'destructive' —
+     * (Telegram Bot API 9.4+: 'primary' | 'success' | 'danger' —
      * константы `TG_STYLE_*` из `umbot/plugins`).
      *
      * Для VK цвет кнопки задаётся через `options.color`

@@ -640,6 +640,15 @@ export interface ISberSmartAppSuggestionAction {
      */
     server_action?: {
         action_id: string;
+        /**
+         * Параметры действия — по контракту SmartApp API (`{action_id, parameters}`)
+         * приходят обратно в запросе SERVER_ACTION в `payload.server_action.parameters`.
+         */
+        parameters?: Record<string, unknown>;
+        /**
+         * Устаревшая форма server_action (`{type, payload}`); адаптер её не отправляет.
+         * @deprecated Используйте parameters.
+         */
         payload?: Record<string, unknown>;
     };
 

@@ -9,7 +9,34 @@ import {
     ITelegramReplyButton,
 } from './interfaces/ITelegramPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
-import { TG_CALLBACK_DATA_MAX_LENGTH } from './constants';
+import { TG_BUTTON_STYLES, TG_CALLBACK_DATA_MAX_LENGTH } from './constants';
+
+/**
+ * Возвращает валидный стиль кнопки из `options.style` либо `undefined`.
+ *
+ * Bot API принимает только «danger», «success» и «primary»; неизвестное
+ * значение (например, VK-цвет 'positive' из общих options) приводит к отказу
+ * Telegram отправить всё сообщение. Такой стиль пропускается с предупреждением —
+ * кнопка уходит со стилем приложения по умолчанию.
+ *
+ * @param button Универсальная кнопка umbot
+ * @param appContext Контекст приложения для логирования
+ * @returns Стиль для поля `style` либо `undefined`
+ */
+function getButtonStyle(button: IButtonType, appContext?: AppContext): string | undefined {
+    const style = button.options?.style;
+    if (style === undefined || style === null || style === '') {
+        return undefined;
+    }
+    const value = String(style);
+    if (TG_BUTTON_STYLES.includes(value)) {
+        return value;
+    }
+    appContext?.logWarn(
+        `[Telegram] Неизвестный стиль кнопки "${value}" пропущен: Bot API принимает только ${TG_BUTTON_STYLES.join(', ')}.`,
+    );
+    return undefined;
+}
 
 /**
  * Добавляет url-кнопку в inline-набор.
@@ -22,12 +49,14 @@ import { TG_CALLBACK_DATA_MAX_LENGTH } from './constants';
  * @param title Проверенный (непустой) текст кнопки
  * @param url Ссылка кнопки
  * @param inlines Накопитель inline-кнопок
+ * @param appContext Контекст приложения для логирования ошибок валидации
  */
 function pushUrlButton(
     button: IButtonType,
     title: string,
     url: string,
     inlines: ITelegramInlineKeyboard[],
+    appContext?: AppContext,
 ): void {
     // url и callback_data взаимоисключающие в Telegram API
     const urlButton: ITelegramInlineKeyboard = {
@@ -35,8 +64,9 @@ function pushUrlButton(
         url,
     };
     // Стиль кнопки (Bot API 9.4+), константы TG_STYLE_*.
-    if (button.options?.style) {
-        urlButton.style = String(button.options.style);
+    const style = getButtonStyle(button, appContext);
+    if (style) {
+        urlButton.style = style;
     }
     inlines.push(urlButton);
 }
@@ -76,8 +106,9 @@ function pushCallbackButton(
         text: title,
         callback_data: callbackData,
     };
-    if (button.options?.style) {
-        inline.style = String(button.options.style);
+    const style = getButtonStyle(button, appContext);
+    if (style) {
+        inline.style = style;
     }
     inlines.push(inline);
 }
@@ -88,8 +119,14 @@ function pushCallbackButton(
  * @param button Универсальная кнопка umbot (нужна только для options)
  * @param title Проверенный (непустой) текст кнопки
  * @param reply Накопитель reply-кнопок
+ * @param appContext Контекст приложения для логирования ошибок валидации
  */
-function pushReplyButton(button: IButtonType, title: string, reply: ITelegramReplyButton[]): void {
+function pushReplyButton(
+    button: IButtonType,
+    title: string,
+    reply: ITelegramReplyButton[],
+    appContext?: AppContext,
+): void {
     const replyBtn: ITelegramReplyButton = { text: title };
     if (button.options?.request_contact) {
         replyBtn.request_contact = true;
@@ -97,8 +134,9 @@ function pushReplyButton(button: IButtonType, title: string, reply: ITelegramRep
     if (button.options?.request_location) {
         replyBtn.request_location = true;
     }
-    if (button.options?.style) {
-        replyBtn.style = String(button.options.style);
+    const style = getButtonStyle(button, appContext);
+    if (style) {
+        replyBtn.style = style;
     }
     reply.push(replyBtn);
 }
@@ -126,11 +164,11 @@ function pushButton(
         return;
     }
     if (button.url) {
-        pushUrlButton(button, button.title, button.url, inlines);
+        pushUrlButton(button, button.title, button.url, inlines, appContext);
     } else if (button.payload) {
         pushCallbackButton(button, button.title, button.payload, inlines, appContext);
     } else {
-        pushReplyButton(button, button.title, reply);
+        pushReplyButton(button, button.title, reply, appContext);
     }
 }
 
@@ -157,8 +195,7 @@ export function buttonProcessing(
         if (rInline) {
             if (rCount) {
                 // Telegram не умеет совмещать inline_keyboard и обычную keyboard в одном
-                // сообщении: приходится выбирать одну. Раньше reply-кнопки просто исчезали,
-                // и разработчик видел на Telegram не тот набор кнопок, что на VK/MAX/Viber.
+                // сообщении: приходится выбирать одну, и разработчик должен об этом узнать.
                 appContext?.logWarn(
                     `[Telegram] В ответе одновременно заданы inline-кнопки (${rInline}) и обычные (${rCount}). ` +
                         'Telegram принимает только один тип клавиатуры в сообщении — отправлены будут inline-кнопки, ' +

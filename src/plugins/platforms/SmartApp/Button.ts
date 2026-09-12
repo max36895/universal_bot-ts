@@ -10,9 +10,17 @@ import {
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
 /**
- * Приводит универсальный payload к обязательной структуре server_action.
- * SmartApp API принимает в payload только объект, поэтому строковые данные
- * сохраняются в поле value без потери информации.
+ * action_id, который фреймворк ставит server_action кнопки, если payload не
+ * задаёт свой `action_id`. Адаптер по нему понимает, что имя действия
+ * нужно брать из параметров (`command`/`action`/`value`).
+ */
+export const SMART_APP_DEFAULT_ACTION_ID = 'umbot_action';
+
+/**
+ * Приводит универсальный payload к структуре server_action SmartApp API:
+ * `{action_id, parameters}` (форма `{type, payload}` устарела). Параметры —
+ * только объект, поэтому строковые данные сохраняются в поле value без потери
+ * информации. В запросе SERVER_ACTION платформа возвращает их в `parameters`.
  */
 function getServerAction(
     payload: unknown,
@@ -26,16 +34,15 @@ function getServerAction(
             ? (payload as Record<string, unknown>)
             : null;
     if (typeof payloadObject?.action_id === 'string') {
+        const params = payloadObject.parameters ?? payloadObject.payload;
         return {
             type: 'server_action',
             message_name: 'SERVER_ACTION',
             server_action: {
                 action_id: payloadObject.action_id,
-                payload:
-                    typeof payloadObject.payload === 'object' &&
-                    payloadObject.payload !== null &&
-                    !Array.isArray(payloadObject.payload)
-                        ? (payloadObject.payload as Record<string, unknown>)
+                parameters:
+                    typeof params === 'object' && params !== null && !Array.isArray(params)
+                        ? (params as Record<string, unknown>)
                         : {},
             },
         };
@@ -45,8 +52,8 @@ function getServerAction(
         type: 'server_action',
         message_name: 'SERVER_ACTION',
         server_action: {
-            action_id: 'umbot_action',
-            payload: payloadObject ?? { value: payload },
+            action_id: SMART_APP_DEFAULT_ACTION_ID,
+            parameters: payloadObject ?? { value: payload },
         },
     };
 }

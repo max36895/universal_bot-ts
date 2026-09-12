@@ -21,6 +21,7 @@ import {
     setThisUserToNlu,
     telegramMessageEvent,
     tryParse,
+    shouldProcessChatSound,
 } from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
@@ -141,10 +142,9 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             this.appContext?.logWarn(`TelegramAdapter.isPlatformOnQuery(): ${EMPTY_QUERY_ERROR}`);
             return false;
         }
-        // Telegram помечает update_id'ом любой апдейт. Раньше проверялся ещё и набор
-        // известных полей, поэтому my_chat_member, poll_answer, message_reaction и т.п.
-        // не опознавались как Telegram, запрос падал с 500, а Telegram бесконечно
-        // ретраил его и блокировал очередь обновлений.
+        // Telegram помечает update_id'ом любой апдейт. Набор известных полей не
+        // проверяем: иначе my_chat_member, poll_answer, message_reaction и т.п.
+        // получали бы 500, а Telegram ретраил бы их и блокировал очередь обновлений.
         return typeof query.update_id === 'number';
     }
 
@@ -559,7 +559,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         // (и вложенный Buttons) на каждый запрос, когда они не используются —
         // как и в остальных адаптерах.
         const hasCards = controller.isCardInit() && controller.card.images.length > 0;
-        const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
+        const hasSounds = shouldProcessChatSound(controller, this.platformName);
         const hasButtons = controller.isButtonsInit() && controller.buttons.buttons.length > 0;
 
         await this.#sendText(controller, telegramApi, chatId, params, {
@@ -587,7 +587,13 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             this.platformName,
         );
         if (requestData.inlineQueryId) {
-            await this.#answerInlineQuery(telegramApi, requestData.inlineQueryId, controller.text);
+            // Как и обычный ответ: если заполнен только tts, отдаём его текстом,
+            // иначе inline-результат уходил пустым.
+            await this.#answerInlineQuery(
+                telegramApi,
+                requestData.inlineQueryId,
+                getChatText(controller.text, controller.tts),
+            );
             return 'ok';
         }
         // Webhook-reply (opt-in: `new TelegramAdapter(token, { telegram_webhook_reply: true })`):
@@ -629,7 +635,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
             return null;
         }
         const hasCards = controller.isCardInit() && controller.card.images.length > 0;
-        const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
+        const hasSounds = shouldProcessChatSound(controller, this.platformName);
         if (hasCards || hasSounds) {
             return null;
         }

@@ -197,7 +197,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         // {"command":"buy"} приходит как текстовое сообщение '{"command":"buy"}').
         // Нормализуем «именную» кнопку в userCommand, чтобы срабатывал
         // addAction/addCommand — как в Telegram/VK/MAX. Обычный текст
-        // нормализация не меняет (lower + trim — идентично прежнему поведению).
+        // нормализация не меняет (только lower + trim).
         controller.userCommand = normalizeActionPayload(raw);
         controller.originalUserCommand = raw;
         controller.messageId = query.message_token ?? 0;
@@ -285,12 +285,52 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
     }
 
     /**
+     * Формирует приветственное сообщение для события `conversation_started`.
+     *
+     * Пользователь ещё не подписан на бота, поэтому REST `send_message` Viber
+     * отклонит — приветствие отдаётся JSON-телом HTTP-ответа на webhook
+     * (единственный документированный канал). Так можно передать ровно одно
+     * сообщение: карточки и звуки в приветствие не попадают.
+     *
+     * @param controller Контроллер приложения
+     * @param viberApi Клиент Viber API (для сборки тела)
+     * @param params Параметры сообщения (клавиатура)
+     * @returns Тело webhook-ответа с приветствием либо 'ok', если отправлять нечего
+     */
+    #getWelcomeContent(
+        controller: BotController,
+        viberApi: ViberRequest,
+        params: IViberParams,
+    ): Record<string, unknown> | string {
+        const hasCards = controller.isCardInit() && controller.card.images.length > 0;
+        const hasSounds = controller.isSoundInit() && controller.sound.sounds.length > 0;
+        if (hasCards || hasSounds) {
+            controller.appContext.logWarn(
+                'ViberAdapter.getContent(): на conversation_started Viber принимает только одно приветственное сообщение — карточки и звуки не отправлены.',
+            );
+        }
+        const text = getChatText(controller.text, controller.tts);
+        if (!text) {
+            return 'ok';
+        }
+        return (
+            viberApi.buildWelcomeMessage(
+                (controller.appContext.appConfig.tokens[this.platformName]?.sender as
+                    string | IViberSender | undefined) ?? null,
+                text,
+                params,
+            ) ?? 'ok'
+        );
+    }
+
+    /**
      * Формирует и отправляет ответ Viber: текст, клавиатуру, карточки
      * (rich media) и звуки; звуки и карточки уходят отдельными вызовами API.
+     * На `conversation_started` приветствие возвращается телом webhook-ответа.
      * @param controller Контроллер приложения
-     * @returns Тело ответа для webhook ('ok')
+     * @returns Тело ответа для webhook ('ok' либо JSON приветственного сообщения)
      */
-    async getContent(controller: BotController): Promise<string> {
+    async getContent(controller: BotController): Promise<string | Record<string, unknown>> {
         if (!controller.skipAutoReply) {
             const viberApi = new ViberRequest(controller.appContext);
             viberApi.apiVersion = controller.platformOptions.apiVersion;
@@ -303,6 +343,11 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
             if (keyboard) {
                 params.keyboard = keyboard;
                 params.keyboard.Type = 'keyboard';
+            }
+            if (
+                (controller.requestObject as IViberContent | null)?.event === 'conversation_started'
+            ) {
+                return this.#getWelcomeContent(controller, viberApi, params);
             }
 
             // Viber отклоняет type=text с пустым text. Карточки и звуки

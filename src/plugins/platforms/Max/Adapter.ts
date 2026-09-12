@@ -15,6 +15,7 @@ import {
     getPlatformRequestData,
     normalizeActionPayload,
     setThisUserToNlu,
+    shouldProcessChatSound,
 } from '../Base/utils';
 
 type IMaxRequestData = Record<string, unknown> & {
@@ -216,20 +217,26 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
      */
     #setServiceData(query: IMaxRequestContent, controller: BotController): void {
         controller.userId = query.user?.user_id ?? 0;
+        // bot_started — пользователь нажал «Начать»: это первое касание, и ему
+        // отвечают приветствием (как conversation_started у Viber или RUN_APP у
+        // SmartApp), поэтому skipAutoReply не ставится.
+        // Параметр deep-link приходит в payload события.
+        if (query.update_type === 'bot_started') {
+            controller.eventType = 'start';
+            controller.userCommand = '';
+            controller.messageId = 0;
+            controller.payload = query.payload ?? null;
+            if (query.chat_id !== undefined) {
+                getPlatformRequestData<IMaxRequestData>(controller, this.platformName).chatId =
+                    query.chat_id;
+            }
+            return;
+        }
+        // Остальные служебные события ответа не требуют, но несут тип для
+        // addEvent: message_edited — редактирование. Прочие (bot_added,
+        // dialog_*) пока не имеют универсального события ('message').
         controller.skipAutoReply = true;
-        // Служебные события MAX не требуют ответа, но несут тип для addEvent:
-        // bot_started — начало диалога (deep-link payload в controller.payload
-        // НЕ заполняется — событие несёт только chat_id), message_edited —
-        // редактирование. Остальные (bot_added, dialog_*) пока не имеют
-        // универсального события и остаются без eventType ('message').
         switch (query.update_type) {
-            case 'bot_started':
-                controller.eventType = 'start';
-                if (query.chat_id !== undefined) {
-                    getPlatformRequestData<IMaxRequestData>(controller, this.platformName).chatId =
-                        query.chat_id;
-                }
-                return;
             case 'message_edited':
                 controller.eventType = 'message_edited';
                 break;
@@ -321,7 +328,7 @@ export class MaxAdapter extends BasePlatform<string | IMaxRequestContent> {
         if (controller.isCardInit() && controller.card.images.length) {
             params.attachments = await controller.card.getCards(cardProcessing, controller);
         }
-        if (controller.isSoundInit() && controller.sound.sounds.length) {
+        if (shouldProcessChatSound(controller, this.platformName)) {
             const attach = await controller.sound.getSounds(
                 controller.tts,
                 soundProcessing,

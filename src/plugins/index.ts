@@ -56,9 +56,9 @@ export {
     T_TELEGRAM,
     T_FORMAT_HTML,
     T_FORMAT_MARKDOWN,
-    TG_STYLE_DESTRUCTIVE,
+    TG_STYLE_DANGER,
     TG_STYLE_PRIMARY,
-    TG_STYLE_SECONDARY,
+    TG_STYLE_SUCCESS,
 } from './platforms/Telegram/constants';
 export { escapeMarkdownV2, escapeHtml } from './platforms/API/TelegramRequest';
 
@@ -77,7 +77,7 @@ export * as MarusiaButton from './platforms/Marusia/Button';
  */
 export * as MarusiaSound from './platforms/Marusia/Sound';
 /**
- * Построение карточек Маруси: BigImage, ItemsList (до 5) и ImageGallery (до 7 изображений).
+ * Построение карточек Маруси: BigImage и ItemsList (элементы — только integer image_id; галерея уходит как ItemsList).
  */
 export * as MarusiaCard from './platforms/Marusia/Card';
 export { T_MARUSIA } from './platforms/Marusia/constants';

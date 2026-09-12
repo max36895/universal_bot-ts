@@ -148,9 +148,8 @@ export class ViberRequest {
                         this.#appContext.appConfig.tokens[T_VIBER]?.api_version,
                 );
                 // Сериализуем тело один раз: строка используется и для проверки
-                // размера, и как тело запроса (postInString). Раньше JSON.stringify
-                // выполнялся дважды — здесь и внутри Request._getOptions, — что
-                // вдвое увеличивало CPU-стоимость каждого исходящего запроса.
+                // размера, и как тело запроса (postInString), поэтому
+                // Request._getOptions не делает JSON.stringify повторно.
                 // Для FormData сериализация бессмысленна — он отправляется как есть.
                 if (!(this.#request.post instanceof FormData)) {
                     let serializedPost: string;
@@ -258,20 +257,82 @@ export class ViberRequest {
         }
         this.#request.post ??= {};
         if (!(this.#request.post instanceof FormData)) {
-            if (text.length > VIBER_MAX_TEXT_LENGTH) {
-                this.#appContext.logWarn(
-                    `ViberRequest.sendMessage(): текст превышает лимит ${VIBER_MAX_TEXT_LENGTH} символов и будет сокращён.`,
-                );
-            }
             this.#request.post = {
                 ...(params ?? {}),
                 receiver,
                 sender: normalizedSender,
-                text: Text.resize(text, VIBER_MAX_TEXT_LENGTH),
+                text: this.#resizeText(text, 'sendMessage'),
                 type: 'text',
             };
         }
         return this.call<IViberApi>('send_message');
+    }
+
+    /**
+     * Собирает тело приветственного сообщения (welcome message) для ответа
+     * на событие `conversation_started` — без отправки через REST API.
+     *
+     * `conversation_started` приходит до подписки пользователя, и
+     * `send_message` для неподписанного пользователя Viber отклоняет.
+     * Единственный документированный канал приветствия — JSON в теле
+     * HTTP-ответа на этот webhook: те же параметры, что у `send_message`,
+     * `receiver` не обязателен. Лимиты (sender 28 символов, текст 7000,
+     * тело 30 КБ, `min_api_version`) применяются те же, что при отправке.
+     *
+     * @param sender Отправитель (имя/объект); если не задан — из конфигурации
+     * @param text Текст сообщения
+     * @param params Дополнительные параметры (клавиатура, tracking_data и т.д.)
+     * @returns Тело ответа webhook либо `null`, если sender не задан или тело превышает 30 КБ
+     *
+     * @example
+     * ```ts
+     * const body = new ViberRequest(appContext).buildWelcomeMessage(null, 'Добро пожаловать!');
+     * // вернуть body в ответ на webhook conversation_started
+     * ```
+     */
+    public buildWelcomeMessage(
+        sender: IViberSender | string | null,
+        text: string,
+        params: IViberParams | null = null,
+    ): Record<string, unknown> | null {
+        const normalizedSender = this.#getSender(sender ?? undefined);
+        if (!normalizedSender) {
+            return null;
+        }
+        const body: Record<string, unknown> = {
+            ...(params ?? {}),
+            sender: normalizedSender,
+            text: this.#resizeText(text, 'buildWelcomeMessage'),
+            type: 'text',
+        };
+        body.min_api_version = normalizeApiVersion(
+            body.min_api_version ??
+                this.apiVersion ??
+                this.#appContext.appConfig.tokens[T_VIBER]?.api_version,
+        );
+        const bytes = Buffer.byteLength(JSON.stringify(body), 'utf8');
+        if (bytes > VIBER_MAX_REQUEST_BYTES) {
+            this.#appContext.logWarn(
+                `ViberRequest.buildWelcomeMessage(): размер сообщения ${bytes} байт превышает лимит ${VIBER_MAX_REQUEST_BYTES} байт. Приветствие не отправлено.`,
+            );
+            return null;
+        }
+        return body;
+    }
+
+    /**
+     * Обрезает текст до лимита Viber (7000 символов) с предупреждением.
+     * @param text Исходный текст
+     * @param method Имя метода — для сообщения в логе
+     * @returns Текст в пределах лимита
+     */
+    #resizeText(text: string, method: string): string {
+        if (text.length > VIBER_MAX_TEXT_LENGTH) {
+            this.#appContext.logWarn(
+                `ViberRequest.${method}(): текст превышает лимит ${VIBER_MAX_TEXT_LENGTH} символов и будет сокращён.`,
+            );
+        }
+        return Text.resize(text, VIBER_MAX_TEXT_LENGTH);
     }
 
     /**

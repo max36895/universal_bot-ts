@@ -15,6 +15,7 @@ import {
     normalizeActionPayload,
     setThisUserToNlu,
     tryParse,
+    shouldProcessChatSound,
 } from '../Base/utils';
 import { timingSafeEqual } from 'crypto';
 
@@ -43,7 +44,7 @@ const VK_USER_CACHE_MAX_SIZE = 5000;
 /**
  * Кэш ответов `users.get`.
  *
- * Раньше `users.get` уходил на каждое входящее сообщение: это второй сетевой вызов
+ * Без кэша `users.get` уходил бы на каждое входящее сообщение: второй сетевой вызов
  * к VK на каждый ответ бота, лишняя задержка и расход лимита 30 запросов в секунду.
  * Имя пользователя меняется редко, поэтому держим его в памяти процесса.
  */
@@ -363,9 +364,8 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
             case 'confirmation': {
                 // Токен подтверждения вебхука: приоритет у опции конструктора,
                 // запасной вариант — конфигурация (tokens.vk.confirmation_token),
-                // куда попадает в том числе env-переменная VK_CONFIRMATION_TOKEN.
-                // Раньше читалась только опция конструктора, поэтому настройка
-                // через .env/process.env (особенно с fullPlatforms) не работала.
+                // куда попадает в том числе env-переменная VK_CONFIRMATION_TOKEN
+                // (нужно для настройки через .env/process.env и fullPlatforms).
                 const confirmToken =
                     this._platformOptions?.vk_confirmation_token ??
                     this.appContext.appConfig.tokens?.[this.platformName]?.confirmation_token;
@@ -382,8 +382,8 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
 
             default:
                 // Прочие события группы (message_reply, message_allow, group_join, like_add и т.п.)
-                // ответа не требуют. Раньше здесь возвращался false, запрос падал с 500,
-                // а VK Callback API после нескольких неудач отключает сервер как нерабочий.
+                // ответа не требуют, но должны получить "ok": на ошибки VK Callback API
+                // после нескольких неудач отключает сервер как нерабочий.
                 controller.skipAutoReply = true;
                 if (query.object && typeof query.object === 'object') {
                     const object = query.object as unknown as Record<string, unknown>;
@@ -513,7 +513,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
             if (keyboard && params.template === undefined) {
                 params.keyboard = keyboard;
             }
-            if (controller.isSoundInit() && controller.sound.sounds.length) {
+            if (shouldProcessChatSound(controller, this.platformName)) {
                 const attach = await controller.sound.getSounds(
                     controller.tts,
                     soundProcessing,
@@ -524,15 +524,39 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                     params.attachments = attachments;
                 }
             }
+            // Если заполнен только tts, используем его как текст сообщения:
+            // иначе общая с голосовой платформой логика оставляла бы ВК без ответа.
+            let text = getChatText(controller.text, controller.tts);
+            if (!text && params.template !== undefined) {
+                text = this.#getCarouselText(controller);
+            }
             await vkApi.messagesSend(
                 (requestData.peerId ?? controller.userId) as string,
-                // Если заполнен только tts, используем его как текст сообщения:
-                // иначе общая с голосовой платформой логика оставляла бы ВК без ответа.
-                Text.resize(getChatText(controller.text, controller.tts), 4096),
+                Text.resize(text, 4096),
                 params,
             );
         }
         return 'ok';
+    }
+
+    /**
+     * Текст сообщения для карусели, когда ответ не содержит текста.
+     *
+     * VK требует непустой `message` в сообщении с каруселью и без него
+     * отклоняет всё сообщение. Берём заголовок карточки, затем заголовок
+     * первого элемента; если нет и их — предупреждаем (VK ответит ошибкой).
+     *
+     * @param controller Контроллер приложения
+     * @returns Текст для сообщения с каруселью (пустой, если взять неоткуда)
+     */
+    #getCarouselText(controller: BotController): string {
+        const text = controller.card.title || controller.card.images[0]?.title || '';
+        if (!text) {
+            controller.appContext.logWarn(
+                'VkAdapter.getContent(): VK требует текст сообщения для карусели, а в ответе нет ни текста, ни заголовка карточки — сообщение будет отклонено.',
+            );
+        }
+        return text;
     }
 
     static isVoice(): boolean {

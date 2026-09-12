@@ -1928,6 +1928,37 @@ describe('flowGenerator', () => {
             expectProjectToTypeCheck(path.join(TEST_DIR, 'empty_http_response'));
         });
 
+        it('tsconfig from-flow явно подключает типы node (TS 6.0: types по умолчанию пуст)', () => {
+            // Без types: ['node'] сгенерированный utils.ts (setTimeout(...).unref())
+            // не собирается у пользователя: TS2339 'unref' does not exist on type 'number'.
+            // Хелпер тайпчека не подставляет types сам — проверяется
+            // ровно пользовательский tsconfig.
+            writeJsonAndGenerate('tsconfig_types', {
+                name: 'test',
+                nodes: [
+                    {
+                        type: 'command',
+                        id: 'c1',
+                        name: 'load',
+                        actions: [
+                            {
+                                type: 'http_request',
+                                method: 'GET',
+                                url: 'https://api.example.com/resource',
+                                saveResponseTo: 'result',
+                            },
+                        ],
+                    },
+                ],
+                edges: [],
+            });
+            const tsconfig = JSON.parse(
+                fs.readFileSync(path.join(TEST_DIR, 'tsconfig_types', 'tsconfig.json'), 'utf8'),
+            ) as { compilerOptions: { types?: string[] } };
+            expect(tsconfig.compilerOptions.types).toEqual(['node']);
+            expectProjectToTypeCheck(path.join(TEST_DIR, 'tsconfig_types'));
+        });
+
         it('does not insert arbitrary code from set_variable or random_number bounds', () => {
             const code = writeJsonAndGenerate('safe_action_values', {
                 name: 'test',

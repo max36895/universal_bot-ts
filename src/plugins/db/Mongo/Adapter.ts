@@ -507,9 +507,8 @@ export class MongoAdapter extends Base<IMongoDbInfo> {
                 return null;
             }
         } catch (err) {
-            // Раньше сюда попадал err as string при не-Error исключении: в текст
-            // лога уходил "[object Object]", и реальная причина (например,
-            // MongoNetworkError) не читалась без раскопок meta.
+            // Не-Error исключение приводим к строке явно, чтобы в логе была
+            // причина, а не "[object Object]".
             this._saveLog(
                 err instanceof Error ? err.message : String(err),
                 err instanceof Error ? err : undefined,

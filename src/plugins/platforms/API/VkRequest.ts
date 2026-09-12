@@ -197,6 +197,11 @@ export class VkRequest {
      * Загружает файл на сервера ВКонтакте
      * @param url URL для загрузки файла
      * @param file Путь к файлу или его содержимое
+     * @param fieldName Имя multipart-поля с файлом. Сервер загрузки фото
+     * (`photos.getMessagesUploadServer`) принимает файл только в поле `photo` —
+     * с полем `file` он возвращает пустой `photo: "[]"`, и сохранение фото падает.
+     * Документы и голосовые (`docs.getMessagesUploadServer`) ждут поле `file`
+     * (значение по умолчанию).
      * @returns Информация о загруженном файле или null при ошибке
      *
      * @remarks
@@ -215,7 +220,7 @@ export class VkRequest {
      * // перед вызовом photosSaveMessagesPhoto проверяем их наличие
      * const server = await vk.photosGetMessagesUploadServer(12345);
      * if (server) {
-     *   const upload = await vk.upload(server.upload_url, 'photo.jpg');
+     *   const upload = await vk.upload(server.upload_url, 'photo.jpg', 'photo');
      *   if (upload?.photo && upload?.server && upload?.hash) {
      *     const photo = await vk.photosSaveMessagesPhoto(
      *       upload.photo,
@@ -239,8 +244,13 @@ export class VkRequest {
      * }
      * ```
      */
-    public async upload(url: string, file: string): Promise<IVkUploadFile | null> {
+    public async upload(
+        url: string,
+        file: string,
+        fieldName: 'file' | 'photo' = 'file',
+    ): Promise<IVkUploadFile | null> {
         this._request.attach = file;
+        this._request.attachName = fieldName;
         this._request.isAttachContent = this.isAttachContent;
         this._request.header = Request.HEADER_FORM_DATA;
         // Загрузка файла — тяжёлая операция: на медленном восходящем канале дефолтные

@@ -1,18 +1,13 @@
 /**
- * Построение карточек Маруси: BigImage, ItemsList (до 5) и ImageGallery (до 7 изображений).
+ * Построение карточек Маруси по протоколу скиллов: BigImage (одно изображение)
+ * и ItemsList (набор изображений). Элементы карточек Маруси содержат только
+ * `image_id` (integer) — заголовков, описаний и кнопок в карточках нет.
  */
-import { IButtonType, ICardInfo, Text, BotController, AppContext } from '../../../index';
+import { ICardInfo, BotController } from '../../../index';
 
-import { buttonProcessing } from './Button';
 import { MarusiaRequest } from '../API';
-import { getImageToken } from '../Base/utils';
-import {
-    IMarusiaImage,
-    IMarusiaButtonCard,
-    IMarusiaBigImage,
-    IMarusiaItemsList,
-    IMarusiaImageGallery,
-} from './interfaces/IMarusiaPlatform';
+import { getImageToken, cacheMediaToken } from '../Base/utils';
+import { IMarusiaBigImage, IMarusiaItemsList } from './interfaces/IMarusiaPlatform';
 import {
     T_MARUSIA,
     MARUSIA_MAX_IMAGES,
@@ -20,18 +15,6 @@ import {
     MARUSIA_CARD_BIG_IMAGE,
     MARUSIA_CARD_ITEMS_LIST,
 } from './constants';
-
-/**
- * Возвращает кнопки в формате Маруси
- * @param buttons Кнопки для отображения
- * @param appContext Контекст приложения — передаётся дальше в buttonProcessing,
- * чтобы предупреждения о невалидной кнопке не терялись (без него кнопка
- * отбрасывалась молча)
- * @returns Первая кнопка в карточечном формате IMarusiaButtonCard
- */
-function marusiaCardButton(buttons: IButtonType[], appContext?: AppContext): IMarusiaButtonCard {
-    return buttonProcessing(buttons, true, appContext) as IMarusiaButtonCard;
-}
 
 /**
  * Получение токена, необходимого для отображения картинок в карточке Маруси
@@ -50,173 +33,100 @@ export async function getImageInDB(
             return null;
         }
 
-        const upload = await mImage.upload(uploadLink.picture_upload_link, path);
+        // Картинки Маруси загружаются на ту же инфраструктуру, что и фото VK
+        // (ответ {server, photo, hash}) — файл принимается только в поле `photo`.
+        const upload = await mImage.upload(uploadLink.picture_upload_link, path, 'photo');
         if (!upload?.photo || !upload.server || !upload.hash) {
             return null;
         }
 
         const picture = await mImage.marusiaSavePicture(upload.photo, upload.server, upload.hash);
         if (picture?.photo_id) {
-            model.imageToken = picture.photo_id;
-            if (await model.save(true)) {
-                return model.imageToken;
-            }
+            model.imageToken = String(picture.photo_id);
+            await cacheMediaToken(model, controller);
+            return model.imageToken;
         }
         return null;
     });
 }
 
 /**
- * Получает элементы карточки для Маруси.
+ * Приводит токен изображения к `image_id` протокола Маруси (integer).
+ * Токены хранятся строкой (модель ImageTokens), а протокол требует число.
  *
- * Процесс работы:
- * 1. Определяет максимальное количество изображений:
- *    - Для галереи: MARUSIA_MAX_GALLERY_IMAGES (7)
- *    - Для списка: MARUSIA_MAX_IMAGES (5)
- * 2. Обрабатывает каждое изображение:
- *    - Создает токен изображения, если его нет
- *    - Добавляет кнопки (если не галерея)
- *    - Ограничивает длину текста:
- *      * Заголовок: 128 символов
- *      * Описание: 256 символов
- *
- * @param cardInfo Информация о карточке
- * @param controller Контроллер приложения
- * @returns {Promise<IMarusiaImage[]>} Массив элементов карточки
+ * @param token Токен изображения
+ * @returns Числовой image_id либо `null`, если токен не число
  */
-async function _getItem(cardInfo: ICardInfo, controller: BotController): Promise<IMarusiaImage[]> {
-    const items: IMarusiaImage[] = [];
-    const maxCount = cardInfo.usedGallery ? MARUSIA_MAX_GALLERY_IMAGES : MARUSIA_MAX_IMAGES;
-    const images = cardInfo.images.slice(0, maxCount);
-    // Замыкание передаёт appContext в обработку кнопок: иначе warn о невалидной
-    // кнопке терялся, и кнопка исчезала молча.
-    const cardButton = (buttons: IButtonType[]): IMarusiaButtonCard =>
-        marusiaCardButton(buttons, controller.appContext);
-    for (const image of images) {
-        const title = Text.resize(image.title || cardInfo.title || '', 128);
-        let button: IMarusiaButtonCard | null = null;
-        if (!cardInfo.usedGallery) {
-            button = image.button?.getButtons<IMarusiaButtonCard>(cardButton) || null;
-            if (!button?.text) {
-                button = null;
-            }
-        }
-        if (!image.imageToken) {
-            if (image.imageDir) {
-                image.imageToken = await getImageInDB(controller, image.imageDir);
-            }
-        }
-        // Документация платформы не помечает image_id обязательным, и карточка
-        // с одним текстом — рабочий сценарий. Поэтому элемент без токена остаётся
-        // в ответе; предупреждаем только тогда, когда картинку явно просили, но
-        // получить её не удалось — иначе разработчик не поймёт, куда она делась.
-        if (!image.imageToken && image.imageDir) {
-            controller.appContext.logWarn(
-                `[Marusia] Не удалось получить image_id для "${image.imageDir}". ` +
-                    'Элемент карточки будет показан без изображения.',
-            );
-        }
-        const item: IMarusiaImage = {
-            title,
-        };
-        if (!cardInfo.usedGallery) {
-            item.description = Text.resize(image.desc, 256);
-        }
-
-        if (image.imageToken) {
-            item.image_id = image.imageToken;
-        }
-        if (button && !cardInfo.usedGallery) {
-            item.button = button;
-        }
-        items.push(item);
-    }
-    return items;
+function toMarusiaImageId(token: string): number | null {
+    const id = Number(token);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 /**
- * Собирает одиночную карточку Маруси и загружает изображение при необходимости.
+ * Возвращает image_id изображений карточки, загружая их при необходимости.
+ * Изображения без корректного image_id пропускаются с предупреждением:
+ * в протоколе Маруси image_id — обязательное поле элемента.
+ *
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns Карточка BigImage либо `null`, если нет изображения или токен не получен
+ * @param limit Максимальное число изображений
+ * @returns Список числовых image_id
  */
-async function getBigImage(
+async function getImageIds(
     cardInfo: ICardInfo,
     controller: BotController,
-): Promise<IMarusiaBigImage | null> {
-    const image = cardInfo.images[0];
-    if (!image) {
-        return null;
+    limit: number,
+): Promise<number[]> {
+    const ids: number[] = [];
+    for (const image of cardInfo.images.slice(0, limit)) {
+        if (!image.imageToken && image.imageDir) {
+            image.imageToken = await getImageInDB(controller, image.imageDir);
+        }
+        const id = image.imageToken ? toMarusiaImageId(image.imageToken) : null;
+        if (id === null) {
+            controller.appContext.logWarn(
+                `[Marusia] Нет корректного image_id (integer) для "${image.imageDir ?? image.imageToken ?? ''}" — ` +
+                    'изображение пропущено: в карточках Маруси image_id обязателен.',
+            );
+            continue;
+        }
+        ids.push(id);
     }
-    if (!image.imageToken && image.imageDir) {
-        image.imageToken = await getImageInDB(controller, image.imageDir);
-    }
-    if (!image.imageToken) {
-        return null;
-    }
-    const cardButton = (buttons: IButtonType[]): IMarusiaButtonCard =>
-        marusiaCardButton(buttons, controller.appContext);
-    let button: IMarusiaButtonCard | null = image.button?.getButtons(cardButton) || null;
-    if (!button?.text) {
-        button = cardInfo.buttons.getButtons(cardButton);
-    }
-    const object: IMarusiaBigImage = {
-        type: MARUSIA_CARD_BIG_IMAGE,
-        image_id: image.imageToken,
-        title: Text.resize(image.title || cardInfo.title, 128),
-        // Лимит описания BigImage у Маруси — 256 символов (у Алисы 1024)
-        description: Text.resize(image.desc || cardInfo.description, 256),
-    };
-    if (button?.text) {
-        object.button = button;
-    }
-    return object;
+    return ids;
 }
 
 /**
  * Получает карточку для отображения в Марусе.
  * Асинхронный процессор — вызывать с `await` (см. Card.getCards).
+ *
+ * По протоколу скиллов Маруси карточка изображений — это `BigImage`
+ * (`{type, image_id}`) либо `ItemsList` (`{type, items: [{image_id}]}`).
+ * Типа `ImageGallery` у Маруси нет — галерея отправляется как `ItemsList`.
+ * Заголовки, описания и кнопки изображений в карточках Маруси не
+ * поддерживаются: текст ответа передавайте в `controller.text`.
+ *
  * @param cardInfo Информация о карточке
  * @param controller Контроллер приложения
- * @returns {Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null>} Объект карточки (BigImage, ItemsList или ImageGallery) либо `null`, если нечего отобразить
+ * @returns {Promise<IMarusiaBigImage | IMarusiaItemsList | null>} Карточка либо `null`, если нет ни одного изображения с image_id
  */
 export async function cardProcessing(
     cardInfo: ICardInfo,
     controller: BotController,
-): Promise<IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery | null> {
-    const countImage = cardInfo.images.length;
-    if (!countImage) {
+): Promise<IMarusiaBigImage | IMarusiaItemsList | null> {
+    if (!cardInfo.images.length) {
         return null;
     }
     if (cardInfo.showOne) {
-        return getBigImage(cardInfo, controller);
+        const [imageId] = await getImageIds(cardInfo, controller, 1);
+        return imageId === undefined ? null : { type: MARUSIA_CARD_BIG_IMAGE, image_id: imageId };
     }
-    if (cardInfo.usedGallery) {
-        const object: IMarusiaImageGallery = {
-            type: 'ImageGallery',
-        };
-        object.items = await _getItem(cardInfo, controller);
-        return object.items.length ? object : null;
-    }
-    const object: IMarusiaItemsList = {
-        type: MARUSIA_CARD_ITEMS_LIST,
-    };
-    const headerText = Text.resize(cardInfo.title || cardInfo.images[0]?.title || '', 64);
-    if (headerText) {
-        object.header = { text: headerText };
-    }
-    object.items = await _getItem(cardInfo, controller);
-    if (!object.items.length) {
+    const limit = cardInfo.usedGallery ? MARUSIA_MAX_GALLERY_IMAGES : MARUSIA_MAX_IMAGES;
+    const ids = await getImageIds(cardInfo, controller, limit);
+    if (!ids.length) {
         return null;
     }
-    const btn: IMarusiaButtonCard | null = cardInfo.buttons.getButtons((buttons: IButtonType[]) =>
-        marusiaCardButton(buttons, controller.appContext),
-    );
-    if (btn?.text) {
-        object.footer = {
-            text: btn.text,
-            button: btn,
-        };
-    }
-    return object;
+    return {
+        type: MARUSIA_CARD_ITEMS_LIST,
+        items: ids.map((imageId) => ({ image_id: imageId })),
+    };
 }

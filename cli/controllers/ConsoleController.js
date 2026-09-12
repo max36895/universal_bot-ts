@@ -7,6 +7,21 @@ const fs = require('node:fs');
 
 const VERSION = '3.1.0';
 
+/**
+ * Плоские поля токенов в `params` JSON-конфига (наследие 2.x). Фреймворк 3.x их
+ * не читает — секрет в них только утекал бы в сгенерированный Params.ts.
+ */
+const FLAT_TOKEN_KEYS = [
+    'telegram_token',
+    'vk_token',
+    'vk_confirmation_token',
+    'viber_token',
+    'alisa_token',
+    'yandex_token',
+    'marusia_token',
+    'max_token',
+];
+
 function getFlags(argv) {
     const flags = [];
     argv.forEach((arg) => {
@@ -212,6 +227,33 @@ async function main(
                         );
                     }
                 }
+                if (!param.params?.isEnv) {
+                    // Без isEnv секреты попали бы plaintext в коммит-файлы
+                    // src/config/*Params.ts / *Config.ts (config.tokens в этом
+                    // сценарии тоже вычищаются).
+                    // Плоские *_token в params фреймворк 3.x не читает вовсе, а
+                    // DB_PASSWORD из окружения имеет приоритет над db.pass, поэтому
+                    // вычищаем их с предупреждением, как и config.tokens.
+                    const removed = [];
+                    for (const key of FLAT_TOKEN_KEYS) {
+                        if (create.params?.params?.[key]) {
+                            removed.push(`params.${key}`);
+                        }
+                        delete create.params?.params?.[key];
+                    }
+                    if (create.params?.config?.db?.pass) {
+                        removed.push('config.db.pass');
+                        delete create.params.config.db.pass;
+                    }
+                    if (removed.length) {
+                        console.warn(
+                            `ВНИМАНИЕ: секреты (${removed.join(', ')}) удалены из генерируемой ` +
+                                'конфигурации, чтобы не попасть в коммит. Передайте isEnv=true, чтобы ' +
+                                'записать их в .env, либо задайте переменные окружения ' +
+                                '(TELEGRAM_TOKEN, VK_TOKEN, DB_PASSWORD и т.д.) при деплое.',
+                        );
+                    }
+                }
                 if (param.params?.isEnv) {
                     envContent = envPairList
                         .filter(
@@ -224,14 +266,9 @@ async function main(
                         .join('\n');
 
                     delete create.params?.config?.db;
-                    delete create.params?.params?.telegram_token;
-                    delete create.params?.params?.vk_token;
-                    delete create.params?.params?.vk_confirmation_token;
-                    delete create.params?.params?.viber_token;
-                    delete create.params?.params?.alisa_token;
-                    delete create.params?.params?.yandex_token;
-                    delete create.params?.params?.marusia_token;
-                    delete create.params?.params?.max_token;
+                    for (const key of FLAT_TOKEN_KEYS) {
+                        delete create.params?.params?.[key];
+                    }
                 }
                 await create.init(param.appName, type);
                 if (envContent) {

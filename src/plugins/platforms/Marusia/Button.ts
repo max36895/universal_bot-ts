@@ -12,6 +12,23 @@ import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 const MARUSIA_PAYLOAD_MAX_BYTES = 4096;
 
 /**
+ * Приводит payload кнопки к JSON-объекту, как требует протокол: у Алисы и
+ * Маруси payload — «произвольный JSON-объект». Строковый payload (типичный
+ * для Telegram/VK: `addBtn('Купить', null, 'buy')`) оборачивается в
+ * `{command: 'buy'}` — при нажатии адаптер превращает его обратно в команду
+ * `buy`, поэтому addAction/addCommand работают одинаково на всех платформах.
+ *
+ * @param payload Payload универсальной кнопки
+ * @returns Payload-объект для ответа платформе
+ */
+function toPayloadObject(payload: unknown): Record<string, unknown> {
+    if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+        return payload as Record<string, unknown>;
+    }
+    return { command: typeof payload === 'string' ? payload : JSON.stringify(payload) };
+}
+
+/**
  * Создание кнопки в формате Маруси
  * @param button Универсальная кнопка umbot
  * @param isCard Флаг принадлежности кнопки к карточке (формат IMarusiaButtonCard)
@@ -31,18 +48,19 @@ function _getButton(
                 text: title,
             };
         } else {
+            // Поля hide в протоколе кнопок Маруси нет (только title/url/payload).
             object = <IMarusiaButton>{
                 title,
-                hide: button.hide,
             };
         }
         if (button.payload) {
-            const payloadStr = serializePlatformPayload(button.payload, 'Marusia', appContext);
+            const payloadObject = toPayloadObject(button.payload);
+            const payloadStr = serializePlatformPayload(payloadObject, 'Marusia', appContext);
             if (payloadStr === null) {
                 return null;
             }
             if (Buffer.byteLength(payloadStr, 'utf8') <= MARUSIA_PAYLOAD_MAX_BYTES) {
-                object.payload = button.payload;
+                object.payload = payloadObject;
             } else {
                 appContext?.logWarn(
                     `[Marusia] Payload кнопки превышает ${MARUSIA_PAYLOAD_MAX_BYTES} байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Кнопка будет пропущена без изменения payload.`,

@@ -2,8 +2,14 @@
  * Обработка звуков VK: загрузка аудио через docs.getMessagesUploadServer и отправка вложением.
  */
 import { ISoundInfo, Text, unlink, BotController } from '../../../index';
-import { YandexSpeechKit, VkRequest } from '../API';
-import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';
+import { YandexSpeechKit, VkRequest, IVkDocSave } from '../API';
+import {
+    getBaseDataSoundProcessing,
+    getPlatformRequestData,
+    getSoundToken,
+    cacheMediaToken,
+    getSpeechText,
+} from '../Base/utils';
 import { T_VK } from './constants';
 
 /**
@@ -12,6 +18,59 @@ import { T_VK } from './constants';
 function getPeerId(controller: BotController): string | number {
     const requestData = getPlatformRequestData<{ peerId?: string | number }>(controller, T_VK);
     return requestData.peerId ?? (controller.userId as string | number);
+}
+
+/**
+ * Формирует строку-вложение `doc<owner_id>_<id>` из ответа `docs.save`.
+ *
+ * `docs.save` возвращает объект-обёртку `{ type, doc | audio_message | graffiti }`,
+ * а идентификаторы лежат во вложенном объекте. Верхний уровень — запасной
+ * вариант для старых версий API.
+ *
+ * @param saved Ответ `docs.save` (или null при ошибке)
+ * @returns Строка-вложение либо `null`, если идентификаторов в ответе нет
+ */
+export function getVkDocAttachment(saved: IVkDocSave | null): string | null {
+    if (!saved) {
+        return null;
+    }
+    const doc = (saved.doc ?? saved.audio_message ?? saved.graffiti ?? saved) as {
+        id?: number;
+        owner_id?: number;
+    };
+    if (doc.id === undefined || doc.owner_id === undefined) {
+        return null;
+    }
+    return `doc${doc.owner_id}_${doc.id}`;
+}
+
+/**
+ * Загружает аудиофайл в VK как голосовое сообщение (без кэширования токена).
+ *
+ * @param controller Контроллер приложения
+ * @param path Путь до аудиофайла
+ * @param isAttachContent Передано ли содержимое файла вместо пути
+ * @returns Строка-вложение `doc<owner_id>_<id>` либо `null` при ошибке
+ */
+async function uploadVoiceMessage(
+    controller: BotController,
+    path: string,
+    isAttachContent: boolean = false,
+): Promise<string | null> {
+    const vkApi = new VkRequest(controller.appContext);
+    vkApi.isAttachContent = isAttachContent;
+    const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
+        getPeerId(controller),
+        'audio_message',
+    );
+    if (!uploadServerResponse?.upload_url) {
+        return null;
+    }
+    const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, path);
+    if (!uploadResponse?.file) {
+        return null;
+    }
+    return getVkDocAttachment(await vkApi.docsSave(uploadResponse.file, 'Voice message'));
 }
 
 /**
@@ -33,23 +92,11 @@ export async function getSoundInDB(
         return null;
     }
     return getSoundToken(path, T_VK, controller, async (model) => {
-        const vkApi = new VkRequest(controller.appContext);
-        vkApi.isAttachContent = isAttachContent;
-        const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
-            getPeerId(controller),
-            'audio_message',
-        );
-        if (uploadServerResponse) {
-            const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, path);
-            if (uploadResponse?.file) {
-                const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
-                if (doc) {
-                    model.soundToken = `doc${doc.owner_id}_${doc.id}`;
-                    if (await model.save(true)) {
-                        return model.soundToken;
-                    }
-                }
-            }
+        const attachment = await uploadVoiceMessage(controller, path, isAttachContent);
+        if (attachment) {
+            model.soundToken = attachment;
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
@@ -76,11 +123,16 @@ export async function soundProcessing(
             return data;
         }
         const speechKit = new YandexSpeechKit(token as string, controller.appContext);
-        const content = await speechKit.getTts(text);
+        // Разметку звуков голосовых платформ SpeechKit зачитал бы вслух.
+        const speechText = getSpeechText(text);
+        const content = speechText ? await speechKit.getTts(speechText) : null;
         let sText = null;
         if (content) {
             // SpeechKit возвращает путь к временному файлу, а не его содержимое.
-            sText = await getSoundInDB(controller, content.fileName);
+            // Токен TTS не кэшируем: путь уникален для каждого ответа и больше
+            // не встретится, а запись в SoundTokens на каждую озвучку бесконечно
+            // раздувала бы таблицу (и кэш FileAdapter в памяти).
+            sText = await uploadVoiceMessage(controller, content.fileName);
             try {
                 await unlink(content.fileName);
             } catch {

@@ -54,6 +54,43 @@ describe('VkAdapter', () => {
         expect(sendMessage.mock.calls[0][2]?.keyboard).toBeUndefined();
     });
 
+    it('без текста ответа подставляет в message заголовок карточки (VK требует текст у карусели)', async () => {
+        const sendMessage = jest
+            .spyOn(VkRequest.prototype, 'messagesSend')
+            .mockResolvedValue({ message_id: 1 });
+        controller.text = '';
+        controller.card.title = 'Каталог';
+        controller.card.addImage('photo1_1', 'Первая', 'Описание', 'Открыть');
+        controller.card.addImage('photo1_2', 'Вторая', 'Описание', 'Открыть');
+
+        const adapter = new VkAdapter();
+        adapter.init(appContext);
+        await adapter.getContent(controller);
+
+        expect(sendMessage).toHaveBeenCalledWith(
+            12345,
+            'Каталог',
+            expect.objectContaining({
+                template: expect.objectContaining({ type: 'carousel' }),
+            }),
+        );
+    });
+
+    it('без заголовка карточки берёт заголовок первого элемента карусели', async () => {
+        const sendMessage = jest
+            .spyOn(VkRequest.prototype, 'messagesSend')
+            .mockResolvedValue({ message_id: 1 });
+        controller.text = '';
+        controller.card.addImage('photo1_1', 'Первая', 'Описание', 'Открыть');
+        controller.card.addImage('photo1_2', 'Вторая', 'Описание', 'Открыть');
+
+        const adapter = new VkAdapter();
+        adapter.init(appContext);
+        await adapter.getContent(controller);
+
+        expect(sendMessage.mock.calls[0][1]).toBe('Первая');
+    });
+
     describe('isCorrectQuery', () => {
         it('returns true when secret_key is not configured', () => {
             const adapter = new VkAdapter();

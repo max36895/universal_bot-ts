@@ -25,8 +25,10 @@ export interface ITTSResult {
  * ```ts
  * import { YandexSpeechKit } from 'umbot/plugins';
  *
- * // Создание экземпляра с токеном (appContext обязателен)
- * const speechKit = new YandexSpeechKit('your-oauth-token', appContext);
+ * // Создание экземпляра (appContext обязателен). Токен — API-ключ сервисного
+ * // аккаунта (уйдёт как `Api-Key ...`) или IAM-токен `t1....` (уйдёт как `Bearer ...`).
+ * // OAuth-токен Яндекс.Диалогов SpeechKit не принимает.
+ * const speechKit = new YandexSpeechKit('your-api-key', appContext);
  *
  * // Настройка параметров синтеза
  * speechKit.lang = YandexSpeechKit.L_RU;     // Русский язык
@@ -223,7 +225,7 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Создает экземпляр YandexSpeechKit
-     * @param oauth Авторизационный токен для синтеза речи
+     * @param oauth API-ключ сервисного аккаунта или IAM-токен (`t1....`) Yandex Cloud
      * @param appContext Контекст приложения
      */
     public constructor(oauth: string | null = null, appContext: AppContext) {
@@ -237,11 +239,34 @@ export class YandexSpeechKit extends YandexRequest {
     }
 
     /**
-     * Инициализация параметров для отправки запроса
+     * Формирует заголовок Authorization по контракту Yandex Cloud.
+     *
+     * SpeechKit не принимает схему `OAuth` (её понимает только API Диалогов):
+     * допустимы `Api-Key <ключ>` для API-ключа сервисного аккаунта и
+     * `Bearer <IAM-токен>`. IAM-токен узнаётся по префиксу `t1.`, остальное
+     * считается API-ключом. Уже заданную схему (`Api-Key ...`/`Bearer ...`)
+     * передаём как есть — так можно явно указать нужную.
+     *
+     * @param token Токен из `speech_kit_token` / `SPEECH_KIT_TOKEN`
+     * @returns Значение заголовка Authorization
+     */
+    protected override _getAuthorizationHeader(token: string): string {
+        if (/^(Api-Key|Bearer)\s/i.test(token)) {
+            return token;
+        }
+        return token.startsWith('t1.') ? `Bearer ${token}` : `Api-Key ${token}`;
+    }
+
+    /**
+     * Инициализация параметров для отправки запроса.
+     *
+     * SpeechKit v1 принимает тело только в `application/x-www-form-urlencoded`
+     * (на JSON отвечает 400 «unsupported content-type»), поэтому параметры
+     * сериализуются в строку формы, а не отдаются Request как объект.
      */
     #initPost(): void {
-        this._request.post = {
-            text: this.text,
+        const params: Record<string, string> = {
+            text: this.text ?? '',
             lang: this.lang,
             voice: this.voice,
             format: this.format,
@@ -254,7 +279,7 @@ export class YandexSpeechKit extends YandexRequest {
                 YandexSpeechKit.V_NICK,
             ].indexOf(this.voice) === -1
         ) {
-            this._request.post.emotion = this.emotion;
+            params.emotion = this.emotion;
         }
         if (
             this.voice !== YandexSpeechKit.V_ALENA &&
@@ -266,14 +291,20 @@ export class YandexSpeechKit extends YandexRequest {
             if (this.speed < 0.1 || this.speed > 3.0) {
                 this.speed = 1.0;
             }
-            this._request.post.speed = this.speed;
+            params.speed = String(this.speed);
         }
         if (this.format === YandexSpeechKit.F_LPCM && this.sampleRateHertz) {
-            this._request.post.sampleRateHertz = this.sampleRateHertz;
+            params.sampleRateHertz = String(this.sampleRateHertz);
         }
         if (this.folderId) {
-            this._request.post.folderId = this.folderId;
+            params.folderId = String(this.folderId);
         }
+        this._request.post = null;
+        this._request.postInString = new URLSearchParams(params).toString();
+        this._request.header = {
+            ...(this._request.header as Record<string, string> | null),
+            'Content-Type': 'application/x-www-form-urlencoded',
+        };
     }
 
     /**

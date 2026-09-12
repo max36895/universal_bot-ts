@@ -2,7 +2,7 @@
  * Обработка звуков MAX: TTS через Yandex SpeechKit и отправка аудиофайлов через /uploads.
  */
 import { ISoundInfo, isFile, Text, unlink, BotController } from '../../../index';
-import { getSoundToken } from '../Base/utils';
+import { getSoundToken, cacheMediaToken, getSpeechText } from '../Base/utils';
 import { IMaxAudio, MaxRequest, YandexSpeechKit } from '../API';
 import { T_MAX_APP } from './constants';
 
@@ -14,16 +14,27 @@ import { T_MAX_APP } from './constants';
  */
 async function getSoundInDB(controller: BotController, path: string): Promise<string | null> {
     return getSoundToken(path, T_MAX_APP, controller, async (model) => {
-        const api = new MaxRequest(controller.appContext);
-        const upload = await api.upload(path, 'audio');
-        if (upload?.token || upload?.url) {
-            model.soundToken = upload.token || upload.url;
-            if (await model.save(true)) {
-                return model.soundToken;
-            }
+        const token = await uploadAudio(controller, path);
+        if (token) {
+            model.soundToken = token;
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
+}
+
+/**
+ * Загружает аудиофайл в MAX без кэширования токена.
+ * Кэшируется только токен вложения: upload.url — одноразовый адрес загрузки,
+ * а не ссылка на аудио.
+ * @param controller Контроллер приложения
+ * @param path Путь до аудиофайла
+ * @returns Токен аудио-вложения либо `null` при ошибке загрузки
+ */
+async function uploadAudio(controller: BotController, path: string): Promise<string | null> {
+    const upload = await new MaxRequest(controller.appContext).upload(path, 'audio');
+    return upload?.token ?? null;
 }
 
 /**
@@ -67,10 +78,15 @@ export async function soundProcessing(
             return data.length ? data : null;
         }
         const speechKit = new YandexSpeechKit(token as string, controller.appContext);
-        const content = await speechKit.getTts(text);
+        // Разметку звуков голосовых платформ SpeechKit зачитал бы вслух.
+        const speechText = getSpeechText(text);
+        const content = speechText ? await speechKit.getTts(speechText) : null;
         let sText = null;
         if (content) {
-            sText = await getSoundInDB(controller, content.fileName);
+            // Токен TTS не кэшируем: путь временного файла уникален для каждого
+            // ответа, и запись в SoundTokens на каждую озвучку бесконечно
+            // раздувала бы таблицу.
+            sText = await uploadAudio(controller, content.fileName);
             try {
                 await unlink(content.fileName);
             } catch {

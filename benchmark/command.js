@@ -20,9 +20,6 @@ function memResult(valueKB) {
     // Значения приходят в КИЛОБАЙТАХ и могут быть уже отформатированы строкой
     // (startMemory/afterRunMemory записываются как (heapUsed / 1024).toFixed(2)).
     // Форматируем человекочитаемо: КБ -> МБ -> ГБ.
-    // Раньше здесь был XOR-баг: (abs < 1024) ^ 2 всегда truthy, из-за чего ветка ГБ
-    // была недостижима, а 2 ГБ печатались как «2048.00MB»; единицы KB/MB/GB
-    // подписаны без перевода и не соответствовали переданным КБ.
     const num = typeof valueKB === 'string' ? parseFloat(valueKB) : valueKB;
     const abs = Math.abs(num);
     if (abs < 1024) {

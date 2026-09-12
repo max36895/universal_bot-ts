@@ -21,6 +21,7 @@ import {
     IEventParam,
 } from './utils/CommandReg';
 import { ALL_EVENT_TYPES, isEventType, type TEventType } from './events';
+import { MemorySessionStorage } from './utils/MemorySessionStorage';
 import { IncomingMessage, ServerResponse, createServer, Server } from 'node:http';
 import type { BotController, IPlatformData, IUserData } from '../controller';
 import { AppContext, T_AUTO } from './AppContext';
@@ -445,6 +446,13 @@ export class Bot<
      * за жизнь процесса.
      */
     readonly #warnedNoLocalStoragePlatforms = new Set<TAppType>();
+
+    /**
+     * Сессия userData в памяти процесса: `isLocalStorage: true`, платформа
+     * без локального хранилища, DB-адаптер не подключён. Создаётся лениво —
+     * конфигурации с БД или localStorage платформы за неё не платят.
+     */
+    #memorySession: MemorySessionStorage<IUserData> | null = null;
 
     #plugins: (IPlugin | ((bot: Bot) => void))[] = [];
 
@@ -1635,7 +1643,10 @@ export class Bot<
         if (botController.platformOptions.usedLocalStorage) {
             botController.state = localStateData as TPlatformState;
         }
-        if (userData && !this.#appContext.appConfig.isLocalStorage) {
+        // Метод вызывается только когда localStorage платформы не используется
+        // (выключен в конфиге ИЛИ платформа его не поддерживает — чат-платформы),
+        // поэтому источник userData — БД, независимо от appConfig.isLocalStorage.
+        if (userData) {
             const query = {
                 userId: botController.userId,
             };
@@ -1665,35 +1676,32 @@ export class Bot<
      * @param platformClass Адаптер платформы
      * @param userData Модель пользователя (если подключён DB-адаптер)
      * @param appType Тип платформы (для дедупликации предупреждений)
-     * @returns Флаг локального хранилища и признак нового пользователя
+     * @returns Флаг локального хранилища, признак нового пользователя и ключ
+     * сессии в памяти (`null`, если сессия в памяти не используется)
      */
     async #initRequestState(
         botController: BotController<TUserData, TPlatformState>,
         platformClass: IPlatformAdapter,
         userData: UsersData | undefined,
         appType: TAppType,
-    ): Promise<{ isLocalStorage: boolean; isNewUser: boolean }> {
+    ): Promise<{ isLocalStorage: boolean; isNewUser: boolean; memoryKey: string | null }> {
         botController.platformOptions.usedLocalStorage =
             platformClass.isLocalStorage(botController);
         const isLocalStorage: boolean =
             this.#appContext.appConfig.isLocalStorage &&
             botController.platformOptions.usedLocalStorage;
 
+        let memoryKey: string | null = null;
         if (
             this.#appContext.appConfig.isLocalStorage &&
             !botController.platformOptions.usedLocalStorage &&
             !this.#appContext.database.adapter
         ) {
-            // Предупреждение зависит только от конфигурации, а не от запроса —
-            // достаточно вывести его один раз на платформу.
-            if (!this.#warnedNoLocalStoragePlatforms.has(appType)) {
-                this.#warnedNoLocalStoragePlatforms.add(appType);
-                this.#appContext.logWarn(
-                    `Bot:run(): Платформа "${appType}" не поддерживает локальное хранилище, ` +
-                        `а DB-адаптер не подключён. userData не будет сохраняться между запросами. ` +
-                        `Подключите DB-адаптер (FileAdapter/MongoAdapter) или отключите isLocalStorage.`,
-                    { platform: appType, userId: botController.userId },
-                );
+            const userId = botController.userId;
+            const memorySession = this.#getMemorySession(appType, userId);
+            if (memorySession && userId !== null && userId !== undefined && userId !== '') {
+                memoryKey = `${platformClass.platformName}:${userId}`;
+                botController.userData = (memorySession.get(memoryKey) ?? {}) as TUserData;
             }
         }
 
@@ -1705,10 +1713,72 @@ export class Bot<
                 localStateData = await localStateData;
             }
             botController.userData = localStateData as TUserData;
-        } else {
+        } else if (!memoryKey) {
             isNewUser = await this.#initUserData(botController, userData, localStateData);
         }
-        return { isLocalStorage, isNewUser };
+        return { isLocalStorage, isNewUser, memoryKey };
+    }
+
+    /**
+     * Возвращает сессию в памяти процесса (создаёт при первом обращении) и один
+     * раз на платформу предупреждает, где живут данные.
+     *
+     * @param appType Тип платформы (для дедупликации предупреждений)
+     * @param userId Пользователь запроса (для метаданных лога)
+     * @returns Хранилище или `null`, если сессия в памяти отключена (`memorySession: false`)
+     */
+    #getMemorySession(
+        appType: TAppType,
+        userId: string | number | null | undefined,
+    ): MemorySessionStorage<IUserData> | null {
+        const config = this.#appContext.appConfig.memorySession;
+        const storage =
+            config === false
+                ? null
+                : (this.#memorySession ??= new MemorySessionStorage<IUserData>(config));
+        // Предупреждение зависит только от конфигурации, а не от запроса —
+        // достаточно вывести его один раз на платформу.
+        if (!this.#warnedNoLocalStoragePlatforms.has(appType)) {
+            this.#warnedNoLocalStoragePlatforms.add(appType);
+            this.#appContext.logWarn(this.#getMemorySessionWarning(appType, storage), {
+                platform: appType,
+                userId,
+            });
+        }
+        return storage;
+    }
+
+    /**
+     * Текст предупреждения о хранении userData без БД и localStorage платформы.
+     *
+     * @param appType Тип платформы
+     * @param storage Сессия в памяти или `null`, если она отключена
+     * @returns Текст предупреждения
+     */
+    #getMemorySessionWarning(
+        appType: TAppType,
+        storage: MemorySessionStorage<IUserData> | null,
+    ): string {
+        const prefix =
+            `Bot:run(): Платформа "${appType}" не поддерживает локальное хранилище, ` +
+            'а DB-адаптер не подключён';
+        if (!storage) {
+            return (
+                `${prefix}, сессия в памяти отключена (memorySession: false). ` +
+                'userData не будет сохраняться между запросами. ' +
+                'Подключите DB-адаптер (FileAdapter/MongoAdapter).'
+            );
+        }
+        const ttl = storage.ttl
+            ? `${Math.round(storage.ttl / 60000)} мин. с последнего запроса`
+            : 'без ограничения по времени';
+        return (
+            `${prefix} — userData хранится в памяти процесса ` +
+            `(до ${storage.maxSize} пользователей, ${ttl}). ` +
+            'Данные теряются при перезапуске и не разделяются между процессами ' +
+            '(кластер, несколько реплик, serverless). ' +
+            'Для надёжного хранения подключите DB-адаптер (FileAdapter/MongoAdapter).'
+        );
     }
 
     /**
@@ -1731,7 +1801,7 @@ export class Bot<
             botController.userId = userData.escapeString(botController.userId as string | number);
             userData.platform = platformClass.platformName;
         }
-        const { isLocalStorage, isNewUser } = await this.#initRequestState(
+        const { isLocalStorage, isNewUser, memoryKey } = await this.#initRequestState(
             botController,
             platformClass,
             userData,
@@ -1776,7 +1846,11 @@ export class Bot<
             // в валидный для платформы ответ.
             content = await this.#getPlatformContent(botController, platformClass);
         } finally {
-            await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
+            if (memoryKey) {
+                this.#saveMemorySession(memoryKey, botController.userData);
+            } else {
+                await this.#saveUserData(botController, userData, isNewUser, isLocalStorage);
+            }
         }
         if (botController.platformOptions.error) {
             this.#appContext.logError(botController.platformOptions.error);
@@ -1785,6 +1859,26 @@ export class Bot<
             this._clearState(botController);
         }
         return content;
+    }
+
+    /**
+     * Сохраняет userData в сессию в памяти процесса. Пустые данные не храним:
+     * бот, не использующий userData, не занимает память под каждого пользователя.
+     *
+     * @param memoryKey Ключ сессии (платформа + id пользователя)
+     * @param data Данные пользователя после обработки запроса
+     */
+    #saveMemorySession(memoryKey: string, data: TUserData): void {
+        if (!this.#memorySession) {
+            return;
+        }
+        if (data && keysCount(data)) {
+            // Сохраняется ссылка: clearStoreData() переприсваивает userData
+            // новым объектом, поэтому сохранённые данные не обнуляются.
+            this.#memorySession.set(memoryKey, data);
+        } else {
+            this.#memorySession.delete(memoryKey);
+        }
     }
 
     /**
@@ -2838,6 +2932,8 @@ export class Bot<
         }
         // Также необходимо почистить все подключенные плагины.
         this.clearUse();
+        this.#memorySession?.clear();
+        this.#memorySession = null;
         await this.#appContext.close();
     }
 

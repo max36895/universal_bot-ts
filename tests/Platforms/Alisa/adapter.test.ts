@@ -228,10 +228,12 @@ describe('AlisaAdapter', () => {
             const result = adapter.setQueryData(query, controller);
 
             expect(result).toBe(true);
+            // end_session — обязательное поле ответа по протоколу Яндекс.Диалогов.
             expect(controller.platformOptions.sendInInit).toEqual({
                 version: '1.0',
                 response: {
                     text: 'pong',
+                    end_session: false,
                 },
             });
         });

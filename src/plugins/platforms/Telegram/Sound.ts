@@ -1,10 +1,17 @@
 /**
- * Обработка звуков Telegram: TTS-часть синтезируется через Yandex SpeechKit и отправляется аудио-файлом.
+ * Обработка звуков Telegram: TTS-часть синтезируется через Yandex SpeechKit и отправляется
+ * голосовым сообщением (sendVoice, OGG/Opus); звуковые файлы — через sendAudio.
  */
 import { ISoundInfo, SoundTokens, unlink, BotController } from '../../../index';
 import { TelegramRequest, YandexSpeechKit } from '../API';
 import { TTelegramChatId } from './interfaces/ITelegramPlatform';
-import { getBaseDataSoundProcessing, getPlatformRequestData, getSoundToken } from '../Base/utils';
+import {
+    getBaseDataSoundProcessing,
+    getPlatformRequestData,
+    getSoundToken,
+    cacheMediaToken,
+    getSpeechText,
+} from '../Base/utils';
 import { T_TELEGRAM } from './constants';
 
 /**
@@ -36,9 +43,8 @@ export async function getSoundInDB(
 
         if (sound?.ok && sound.result?.audio?.file_id !== undefined) {
             model.soundToken = sound.result.audio.file_id;
-            if (await model.save(true)) {
-                return model.soundToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
@@ -70,9 +76,13 @@ export async function soundProcessing(
             return data;
         }
         const speechKit = new YandexSpeechKit(token as string, controller.appContext);
-        const content = await speechKit.getTts(text);
+        // Разметку звуков голосовых платформ SpeechKit зачитал бы вслух.
+        const speechText = getSpeechText(text);
+        const content = speechText ? await speechKit.getTts(speechText) : null;
         if (content) {
-            await new TelegramRequest(controller.appContext).sendAudio(
+            // SpeechKit синтезирует OGG/Opus — это формат голосового сообщения
+            // (sendVoice). sendAudio по Bot API принимает только MP3/M4A.
+            await new TelegramRequest(controller.appContext).sendVoice(
                 getChatId(controller),
                 content.fileName,
             );

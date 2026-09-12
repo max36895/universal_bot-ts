@@ -86,8 +86,15 @@ export async function removeTestDir(dir: string): Promise<void> {
     if (KEEP_SUITE && basename(dir).startsWith(`${KEEP_SUITE}-`)) {
         return;
     }
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, RM_OPTIONS);
     await sleep(RECREATE_GRACE_MS);
     // Папка пересоздана хвостом tmp+rename — зачищаем повторно.
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, RM_OPTIONS);
 }
+
+/**
+ * Опции удаления с повторами: на Windows только что записанный файл ещё
+ * короткое время удерживается системой (индексатор, антивирус), и rmSync
+ * может упасть с EPERM/EBUSY. Node повторяет удаление сам (maxRetries).
+ */
+const RM_OPTIONS = { recursive: true, force: true, maxRetries: 10, retryDelay: 50 } as const;

@@ -77,7 +77,7 @@ describe('isRegexLikelySafe', () => {
         });
     });
 
-    describe('лестницы внутри групп и backreference (байпасы, найденные повторным аудитом)', () => {
+    describe('лестницы внутри групп и backreference', () => {
         const dangerousHidden = [
             '(?:a*a*)c', // цепочка внутри группы без внешнего квантификатора: ~161 c на 7000
             '(?:a*a*a*)c',

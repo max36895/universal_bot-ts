@@ -1127,7 +1127,7 @@ export abstract class BotController<
      * из pUtils). Значение сначала держится в приватном буфере: если логика
      * приложения ни разу не обратится к {@link nlu}, объект Nlu и его кэш
      * не создаются вовсе. При первом обращении буфер переносится в Nlu
-     * (`nlu.getUserName()` возвращает те же данные, что и раньше).
+     * (`nlu.getUserName()` возвращает переданные данные).
      *
      * @param {INluThisUser} thisUser Данные отправителя; пустые поля
      * интерпретируются как отсутствие данных
@@ -1297,10 +1297,25 @@ export abstract class BotController<
      */
     #sendCustomCommandResolver(startTimer: number): void | null | Promise<void | null> {
         if (this.appContext.command.customCommandResolver) {
-            const res = this.appContext.command.customCommandResolver(
-                this.userCommand as string,
-                this.appContext.commands,
-            );
+            // Ошибка пользовательского резолвера (sync-исключение или reject)
+            // не должна превращаться в 500 для платформы: считаем, что команда
+            // не найдена, и продолжаем цепочку intent → fallback.
+            const onResolverError = (error: unknown): null => {
+                this.appContext.logError(
+                    `BotController: Произошла ошибка в customCommandResolver. Текст ошибки: "${error}"`,
+                    { error },
+                );
+                return null;
+            };
+            let res: string | null | Promise<string | null>;
+            try {
+                res = this.appContext.command.customCommandResolver(
+                    this.userCommand as string,
+                    this.appContext.commands,
+                );
+            } catch (error) {
+                return onResolverError(error);
+            }
             const cb = (result: string | null): void | null | Promise<void> => {
                 const command = result ? this.appContext.commands.get(result) : null;
                 if (result && command) {
@@ -1352,7 +1367,7 @@ export abstract class BotController<
                 }
             };
             if (isPromise(res)) {
-                return res.then(cb);
+                return res.then(cb, onResolverError);
             }
             return cb(res);
         }
@@ -1491,7 +1506,7 @@ export abstract class BotController<
      * Проверяет совпадение одной команды с текстом пользователя.
      * Вынесено из цикла {@link _getCommand} для читаемости: hot-путь —
      * прямой `.exec` для одиночного stateless-RegExp (без обёртки isSayText),
-     * остальные типы слотов идут через Text.isSayText как раньше.
+     * остальные типы слотов идут через Text.isSayText.
      *
      * Побочный эффект: найденное совпадение записывается в {@link match} —
      * обработчик команды получает группы регулярки без повторного прогона.
@@ -1715,7 +1730,22 @@ export abstract class BotController<
         isStep: boolean = false,
     ): void {
         const start = this.appContext?.usedMetric ? performance.now() : 0;
-        const res = this.action(commandName, isCommand, isStep) as void | Promise<void>;
+        let res: void | Promise<void>;
+        try {
+            res = this.action(commandName, isCommand, isStep) as void | Promise<void>;
+        } catch (error) {
+            // Синхронное исключение обрабатываем так же, как async-ошибку:
+            // до webhook-обработчика оно дошло бы как 500 (Telegram повторяет
+            // апдейт, VK отключает сервер).
+            this.appContext?.logError(
+                `BotController: Произошла ошибка внутри action() для "${commandName}". Текст ошибки: "${error}"`,
+                { error },
+            );
+            if (!this.text) {
+                this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
+            }
+            res = undefined;
+        }
         if (isPromise(res)) {
             // Типичная ловушка: async-вариант action() компилируется без ошибки,
             // но фреймворк не дожидается результата, и всё после первого await
@@ -1758,7 +1788,7 @@ export abstract class BotController<
                 }
             }
             if (step) {
-                let res: void | Promise<void> | false;
+                let res: void | false | Promise<void | false>;
                 try {
                     res = step.cb(this);
                 } catch (error) {
@@ -1772,11 +1802,19 @@ export abstract class BotController<
                     return;
                 }
                 if (res) {
-                    return res
-                        .then(() => {
+                    // Двухаргументный then: ошибка самого шага гасится здесь,
+                    // а продолжение конвейера (async-отказ шага) обрабатывает
+                    // ошибки своими цепочками, как и синхронный путь.
+                    return res.then(
+                        (result) => {
+                            if (result === false) {
+                                // Асинхронный шаг отказался — как и при синхронном
+                                // false, продолжаем обычный конвейер (команды → интенты).
+                                return this.#runCommandOrIntent();
+                            }
                             this._actionMetric(step.stepName, false, true);
-                        })
-                        .catch((error) => {
+                        },
+                        (error) => {
                             this.appContext.logError(
                                 `BotController: Произошла ошибка во время обработки шага "${step.stepName}". Текст ошибки: "${error}"`,
                                 {
@@ -1788,7 +1826,8 @@ export abstract class BotController<
                             if (!this.text) {
                                 this.text = 'Не удалось выполнить шаг диалога. Попробуйте ещё раз.';
                             }
-                        });
+                        },
+                    );
                 } else if (res === false) {
                     // Если передали false, значит хотят чтобы шаг не выполнялся, и дальше пошла логика с обработкой команд.
                     // Как правило, нужно в случаях, когда был записан какой-то шаг, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
@@ -1934,8 +1973,7 @@ export abstract class BotController<
      *
      * Единственная реализация последовательности — вызывается из {@link run},
      * и из `#runEventHandlers`, когда событийный обработчик отказался от
-     * события (`false`). Раньше конвейер дублировался в двух методах, и правка
-     * одного забывалась в другом.
+     * события (`false`).
      *
      * @returns Промис, если какая-то из веток асинхронная, иначе void
      */
@@ -1944,6 +1982,18 @@ export abstract class BotController<
         if (stepResult !== null) {
             return stepResult;
         }
+        return this.#runCommandOrIntent();
+    }
+
+    /**
+     * Часть конвейера после шагов: команда → интент/fallback.
+     *
+     * Вызывается из {@link #runPipeline} и из `#stepResolver`, когда
+     * асинхронный шаг вернул `false` (шаг не применим).
+     *
+     * @returns Промис, если какая-то из веток асинхронная, иначе void
+     */
+    #runCommandOrIntent(): void | Promise<void> {
         const commandResult = this._getCommand();
         if (isPromise(commandResult)) {
             return commandResult.then((result) => {

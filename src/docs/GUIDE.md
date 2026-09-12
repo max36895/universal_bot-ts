@@ -736,6 +736,9 @@ interface IAppConfig {
     /** Использовать локальное хранилище платформы вместо БД (Алиса/Маруся/SmartApp) */
     isLocalStorage?: boolean;
 
+    /** Сессия userData в памяти процесса для платформ без localStorage (по умолчанию 10 000 польз., 24 ч; false — выкл.) */
+    memorySession?: IMemorySessionConfig | false;
+
     /** Путь к .env файлу ИЛИ строка 'local' для использования process.env */
     env?: string;
 
@@ -871,7 +874,9 @@ MAX_TOKEN=abc123...
 
 # Yandex SpeechKit — для TTS на чат-ботах (Telegram/VK/Max).
 # Значение автоматически записывается в speech_kit_token всех трёх платформ.
-SPEECH_KIT_TOKEN=t1.9eud...
+# Рекомендуется API-ключ сервисного аккаунта (уходит как `Api-Key`); IAM-токен `t1.…`
+# тоже принимается (уходит как `Bearer`), но живёт не больше 12 часов.
+SPEECH_KIT_TOKEN=AQVN...
 
 # Подключение к MongoDB (если используете MongoAdapter)
 DB_HOST=mongodb://localhost:27017
@@ -1443,7 +1448,8 @@ public action(intentName: string | null, isCommand?: boolean, isStep?: boolean):
 Чтобы избежать путаницы, используйте следующее правило:
 
 > **Если подключён DB-адаптер (`FileAdapter`, `MongoAdapter` или свой) — `userData` всегда берётся из БД. Если
-> DB-адаптер НЕ подключён и `isLocalStorage: true` — `userData` берётся из локального хранилища платформы.**
+> DB-адаптер НЕ подключён и `isLocalStorage: true` — `userData` берётся из локального хранилища платформы, а на
+> платформах без него (Telegram, VK, MAX, Viber) — из сессии в памяти процесса.**
 
 То есть:
 
@@ -1451,6 +1457,7 @@ public action(intentName: string | null, isCommand?: boolean, isStep?: boolean):
 | --------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
 | ✅ Да (любой)         | любое значение   | **из БД** (адаптер сам читает/пишет)                                                                |
 | ❌ Нет                | `true`           | **из локального хранилища платформы** (Алиса/Маруся/SmartApp)                                       |
+| ❌ Нет                | `true`           | Telegram/VK/MAX/Viber: **из сессии в памяти процесса** — см. [ниже](#сессия-в-памяти-процесса)      |
 | ❌ Нет                | `false`          | `userData` остаётся пустым — режим без персистентности: валиден, но данные между запросами не живут |
 
 Это логично: БД — это полноценное персистентное хранилище, которое всегда работает. Локальное хранилище — это
@@ -1463,16 +1470,18 @@ public action(intentName: string | null, isCommand?: boolean, isStep?: boolean):
 сама прокидывает между запросами в теле запроса/ответа — без БД, без серверов.
 
 `state` заполняется только когда `isLocalStorage: true` **И** платформа его поддерживает (Алиса, Маруся, SmartApp). На
-Telegram/VK/Viber/Max локального хранилища нет — `state` всегда `null`.
+Telegram/VK/Viber/Max локального хранилища нет — `state` всегда `null`, а `userData` без БД хранится в памяти
+процесса.
 
 Связь между `userData` и `state` зависит от того, подключён DB-адаптер или нет:
 
-| Конфигурация                                         | `userData`                            | `state`                                                                      |
-| ---------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- |
-| **DB-адаптер подключён** + `isLocalStorage: true`    | **из БД** (адаптер читает/пишет)      | **из локального хранилища платформы** — это **другой объект**                |
-| **DB-адаптер НЕ подключён** + `isLocalStorage: true` | **из локального хранилища платформы** | **тот же объект**, что и `userData` (ссылка)                                 |
-| DB-адаптер подключён + `isLocalStorage: false`       | из БД                                 | `null`                                                                       |
-| DB-адаптер НЕ подключён + `isLocalStorage: false`    | пустой                                | `null` (данные не персистентны — фреймворк пишет warning при первом запросе) |
+| Конфигурация                                                            | `userData`                            | `state`                                                       |
+| ----------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------- |
+| **DB-адаптер подключён** + `isLocalStorage: true`                       | **из БД** (адаптер читает/пишет)      | **из локального хранилища платформы** — это **другой объект** |
+| **DB-адаптер НЕ подключён** + `isLocalStorage: true`                    | **из локального хранилища платформы** | **тот же объект**, что и `userData` (ссылка)                  |
+| DB-адаптер подключён + `isLocalStorage: false`                          | из БД                                 | `null`                                                        |
+| DB-адаптер НЕ подключён + `isLocalStorage: true`, Telegram/VK/MAX/Viber | из сессии в памяти процесса           | `null`                                                        |
+| DB-адаптер НЕ подключён + `isLocalStorage: false`                       | пустой                                | `null` (данные между запросами не сохраняются)                |
 
 **Ключевое отличие первого и второго случая:**
 
@@ -1522,16 +1531,43 @@ bot.setAppConfig({ isLocalStorage: true });
 - `state` — **отдельный** объект из локального хранилища (лёгкие временные данные текущего диалога).
 - Используется редко, когда чётко нужно разделить «долгоживущие» и «короткоживущие» данные.
 
+### Сессия в памяти процесса
+
+Если включён `isLocalStorage: true`, платформа локального хранилища не поддерживает (Telegram, VK, MAX, Viber), а
+DB-адаптер не подключён, `userData` хранится в памяти процесса — так же, как `MemorySessionStorage` у grammY. Шаги
+диалога (`addStep`) и счётчики в `userData` работают без БД.
+
+```ts
+bot.setAppConfig({
+    isLocalStorage: true,
+    // Необязательно. По умолчанию: до 10 000 пользователей, 24 часа с последнего запроса пользователя.
+    memorySession: { maxSize: 50_000, ttl: 60 * 60 * 1000 },
+});
+```
+
+Ограничения — те же, что у любой сессии в памяти:
+
+- **данные теряются при перезапуске** процесса (деплой, падение, рестарт контейнера);
+- **данные не разделяются между процессами**: кластер, несколько реплик за балансировщиком, serverless (Yandex Cloud
+  Functions — каждый вызов может попасть в новый экземпляр);
+- при превышении `maxSize` вытесняется пользователь, дольше всех не писавший боту; после `ttl` без запросов данные
+  пользователя удаляются;
+- пустой `userData` в памяти не хранится.
+
+Фреймворк один раз на платформу пишет предупреждение, где живут данные. Для надёжного хранения подключите
+DB-адаптер (`FileAdapter`, `MongoAdapter`) — тогда сессия в памяти не используется. `memorySession: false` отключает
+её: `userData` между запросами не сохраняется (поведение до 3.1.0).
+
 ### Правила сохранения
 
 Когда вы мутируете `controller.userData` и/или `controller.state`, фреймворк после `action()` сам определяет, куда
 сохранять:
 
-| Что заполнено                            | Куда сохраняется                                                                             |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Только `userData`                        | БД (если подключена) или локальное хранилище (если `isLocalStorage=true` и БД не подключена) |
-| Только `state`                           | Локальное хранилище платформы                                                                |
-| И `userData`, и `state` (разные объекты) | `userData` → БД, `state` → локальное хранилище                                               |
+| Что заполнено                            | Куда сохраняется                                                                                                                         |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Только `userData`                        | БД (если подключена) или локальное хранилище (если `isLocalStorage=true` и БД не подключена; на Telegram/VK/MAX/Viber — память процесса) |
+| Только `state`                           | Локальное хранилище платформы                                                                                                            |
+| И `userData`, и `state` (разные объекты) | `userData` → БД, `state` → локальное хранилище                                                                                           |
 
 Вам не нужно вызывать никаких методов «сохранения» — фреймворк делает это автоматически.
 
@@ -1734,11 +1770,11 @@ SmartApp — 8; MAX — 30**. У MAX платформа допускает до 
 
 Платформо-специфичные опции (через `options`):
 
-| Платформа | Опции в `options`                                                                                                                                                                        |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| VK        | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'`                                                                                   |
-| Telegram  | `request_contact` / `request_location` (bool) — запрос контакта/геолокации; `style` — стиль inline-кнопки (`TG_STYLE_PRIMARY`/`TG_STYLE_SECONDARY`/`TG_STYLE_DESTRUCTIVE`, Bot API 9.4+) |
-| Viber     | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'`                                                                                                                |
+| Платформа | Опции в `options`                                                                                                                                                                                                                                    |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| VK        | `_group` (число) — группировка в строки; `color: 'primary' \| 'secondary' \| 'positive' \| 'negative'`                                                                                                                                               |
+| Telegram  | `request_contact` / `request_location` (bool) — запрос контакта/геолокации; `style` — стиль inline-кнопки (`TG_STYLE_PRIMARY`/`TG_STYLE_SUCCESS`/`TG_STYLE_DANGER`, Bot API 9.4+; другие значения Telegram отклоняет — адаптер их пропускает с warn) |
+| Viber     | `ActionType: 'reply' \| 'open-url' \| 'location-picker' \| 'share-phone'`                                                                                                                                                                            |
 
 Примеры:
 
@@ -1752,7 +1788,7 @@ this.buttons.addBtn('Отправить телефон', '', '', { request_conta
 this.buttons.addBtn('Отправить гео', '', '', { request_location: true });
 
 // Telegram: стиль inline-кнопки (Bot API 9.4+; константы — из 'umbot/plugins')
-this.buttons.addBtn('Купить', '', 'buy', { style: TG_STYLE_SECONDARY });
+this.buttons.addBtn('Купить', '', 'buy', { style: TG_STYLE_SUCCESS });
 
 // Viber: кастомный тип
 this.buttons.addBtn('Геолокация', '', '', {
@@ -2205,8 +2241,9 @@ Telegram — 15 (адаптер обрезает клавиатуру начин
 #### Telegram
 
 - **Токен** — от @BotFather.
-- **Состояния нет** — нужна БД для `userData`. Telegram не поддерживает локальное хранилище: если включён
-  `isLocalStorage: true` без DB-адаптера, фреймворк пишет warning (данные между запросами не сохраняются), но работает.
+- **Состояния нет** — Telegram не поддерживает локальное хранилище. При `isLocalStorage: true` без DB-адаптера
+  `userData` хранится в [памяти процесса](#сессия-в-памяти-процесса): теряется при перезапуске и не разделяется между
+  процессами. Для надёжного хранения подключите БД.
 - **Проактивная отправка** — `bot.send(userId, text, T_TELEGRAM)` работает (в отличие от голосовых платформ).
 - **TTS через SpeechKit** — для озвучки текста нужен `appConfig.tokens.telegram.speech_kit_token`. Без него
   `controller.tts` игнорируется.
@@ -2633,13 +2670,18 @@ import { T_ALISA, T_VK, T_TELEGRAM } from 'umbot/plugins';
 
 const preload = new Preload(bot.getAppContext());
 
+// API ресурсов Алисы адресуется по навыку: skill_id из консоли Яндекс.Диалогов.
+// Без alisaSkillId Алиса пропускается с предупреждением.
+const alisa = { alisaSkillId: 'ваш-skill-id' };
+
 // Возвращает массив промисов — нужно дождаться всех
 const imagePromises = preload.loadImages(
     ['./media/img1.jpg', './media/img2.png'],
     [T_ALISA, T_VK], // только для этих платформ
+    alisa,
 );
 
-const soundPromises = preload.loadSounds(['./media/beep.mp3', './media/win.mp3'], [T_ALISA]);
+const soundPromises = preload.loadSounds(['./media/beep.mp3', './media/win.mp3'], [T_ALISA], alisa);
 
 // Для Telegram звуки тоже требуют получателя (opts — третий аргумент, как у loadImages)
 const tgSoundPromises = preload.loadSounds(['./media/beep.mp3'], [T_TELEGRAM], {
@@ -2661,12 +2703,12 @@ bot.start('0.0.0.0', 3000);
 
 ### API Preload
 
-| Метод          | Параметры                                                                 | Возвращаемое значение       | Описание                           |
-| -------------- | ------------------------------------------------------------------------- | --------------------------- | ---------------------------------- |
-| `loadImages`   | `images: string[]`, `platforms?: TAppType[]`, `opts?: { telegramUseId? }` | `Promise<string \| null>[]` | Загрузить изображения на платформы |
-| `loadSounds`   | `sounds: string[]`, `platforms?: TAppType[]`, `opts?: { telegramUseId? }` | `Promise<string \| null>[]` | Загрузить звуки на платформы       |
-| `removeImages` | `images: string[]`, `platforms?: TAppType[]`                              | `Promise<boolean>[]`        | Удалить изображения с платформ     |
-| `removeSounds` | `sounds: string[]`, `platforms?: TAppType[]`                              | `Promise<boolean>[]`        | Удалить звуки с платформ           |
+| Метод          | Параметры                                                                                | Возвращаемое значение       | Описание                           |
+| -------------- | ---------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------- |
+| `loadImages`   | `images: string[]`, `platforms?: TAppType[]`, `opts?: { telegramUseId?, alisaSkillId? }` | `Promise<string \| null>[]` | Загрузить изображения на платформы |
+| `loadSounds`   | `sounds: string[]`, `platforms?: TAppType[]`, `opts?: { telegramUseId?, alisaSkillId? }` | `Promise<string \| null>[]` | Загрузить звуки на платформы       |
+| `removeImages` | `images: string[]`, `platforms?: TAppType[]`, `opts?: { alisaSkillId? }`                 | `Promise<boolean>[]`        | Удалить изображения с платформ     |
+| `removeSounds` | `sounds: string[]`, `platforms?: TAppType[]`, `opts?: { alisaSkillId? }`                 | `Promise<boolean>[]`        | Удалить звуки с платформ           |
 
 Результат `loadImages`/`loadSounds` — токен (или id) загруженного медиа на платформе; `null`, если загрузка
 не удалась. Проверяйте успех по `!== null`, а не по булеву значению.
@@ -2679,8 +2721,12 @@ bot.start('0.0.0.0', 3000);
 ### Удаление медиа
 
 ```ts
-await Promise.all(preload.removeImages(['./media/old.jpg'], [T_ALISA]));
-await Promise.all(preload.removeSounds(['./media/old.mp3'], [T_ALISA]));
+await Promise.all(
+    preload.removeImages(['./media/old.jpg'], [T_ALISA], { alisaSkillId: 'ваш-skill-id' }),
+);
+await Promise.all(
+    preload.removeSounds(['./media/old.mp3'], [T_ALISA], { alisaSkillId: 'ваш-skill-id' }),
+);
 ```
 
 ### Когда использовать
@@ -2688,6 +2734,7 @@ await Promise.all(preload.removeSounds(['./media/old.mp3'], [T_ALISA]));
 - **Всегда**, если у вас в навыке есть изображения или звуки.
 - Особенно критично для голосовых платформ из-за практического лимита ~3 с (предупреждение — после 2 с).
 - Telegram требует `telegramUseId` — реального пользователя, которому будут отправлены фото для получения `file_id`.
+- Алиса требует `alisaSkillId` — API ресурсов Алисы адресуется по навыку, а вне запроса skill_id взять неоткуда.
 
 ---
 
@@ -3338,7 +3385,9 @@ bot.setLogger({
 **Причины:**
 
 - `isLocalStorage: false` и не подключён DB-адаптер → данные не сохраняются.
-- `isLocalStorage: true` на Telegram/VK (нет локального хранилища) и не подключён DB-адаптер.
+- `isLocalStorage: true` на Telegram/VK/MAX/Viber без DB-адаптера → данные в памяти процесса: теряются при
+  перезапуске, не видны другим процессам/репликам и соседним вызовам serverless-функции. Подключите DB-адаптер.
+- `memorySession: false` и не подключён DB-адаптер.
 - Поле равно `undefined` → Алиса его не сохранит. Используйте `null` для удаления.
 - Объём превысил 1 КБ (state Алисы) → фреймворк пишет ошибку в лог и не отправляет поле платформе, поэтому данные
   не сохраняются (сами значения в `userData` не очищаются).
@@ -3686,8 +3735,12 @@ bot.initBotController(MyController);
 
 const preload = new Preload(bot.getAppContext());
 await Promise.all([
-    ...preload.loadImages(['./media/img1.jpg', './media/img2.png'], [T_ALISA]),
-    ...preload.loadSounds(['./media/win.mp3', './media/lose.mp3'], [T_ALISA]),
+    ...preload.loadImages(['./media/img1.jpg', './media/img2.png'], [T_ALISA], {
+        alisaSkillId: 'ваш-skill-id',
+    }),
+    ...preload.loadSounds(['./media/win.mp3', './media/lose.mp3'], [T_ALISA], {
+        alisaSkillId: 'ваш-skill-id',
+    }),
 ]);
 
 bot.start('0.0.0.0', 3000);

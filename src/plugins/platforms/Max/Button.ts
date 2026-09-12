@@ -7,6 +7,34 @@ import { IMaxButtonObject, IMaxButton } from './interfaces/IMaxPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
 /**
+ * Выставляет поля, специфичные для типа кнопки, только своему типу
+ * (схема кнопок официального SDK @maxhub/max-bot-api): `quick` — только у
+ * `request_geo_location`, `contact_id` — только у `open_app`. В кнопки других
+ * типов эти поля не попадают.
+ * `intent` нет ни в документации MAX, ни в SDK (наследие TamTam, где он был
+ * только у callback) — передаём его лишь callback-кнопке.
+ *
+ * @param object Кнопка MAX с уже определённым типом
+ * @param options Опции универсальной кнопки
+ */
+function applyTypeSpecificOptions(object: IMaxButton, options: Record<string, unknown>): void {
+    if (
+        object.type === 'callback' &&
+        (options.intent === 'default' ||
+            options.intent === 'positive' ||
+            options.intent === 'negative')
+    ) {
+        object.intent = options.intent;
+    }
+    if (object.type === 'request_geo_location' && typeof options.quick === 'boolean') {
+        object.quick = options.quick;
+    }
+    if (object.type === 'open_app' && typeof options.contact_id === 'number') {
+        object.contact_id = options.contact_id;
+    }
+}
+
+/**
  * Получение кнопок в формате Max
  * @param buttons Кнопки, которые необходимо отобразить
  * @param appContext Контекст приложения (для логирования ошибок валидации)
@@ -46,14 +74,15 @@ export function buttonProcessing(
             object.type = 'link';
             object.url = button.url;
         }
-        if (button.payload) {
+        // У link-кнопки MAX поле payload не документировано (оно есть только у
+        // callback/clipboard), поэтому для кнопки-ссылки payload не передаём:
+        // универсальная кнопка часто несёт payload для других платформ.
+        if (button.payload && !button.url) {
             const payload = serializePlatformPayload(button.payload, 'MAX', appContext);
             if (payload === null) {
                 return;
             }
-            if (!button.url) {
-                object.type = 'callback';
-            }
+            object.type = 'callback';
             object.payload = payload;
         }
         // Не переносим универсальные/чужие опции платформ в тело MAX: API
@@ -69,25 +98,13 @@ export function buttonProcessing(
             delete object.payload;
             delete object.url;
         }
-        if (
-            options.intent === 'default' ||
-            options.intent === 'positive' ||
-            options.intent === 'negative'
-        ) {
-            object.intent = options.intent;
-        }
-        if (typeof options.quick === 'boolean') {
-            object.quick = options.quick;
-        }
         if (typeof options.web_app === 'string') {
             object.type = 'open_app';
             object.web_app = options.web_app;
             delete object.payload;
             delete object.url;
         }
-        if (typeof options.contact_id === 'number') {
-            object.contact_id = options.contact_id;
-        }
+        applyTypeSpecificOptions(object, options);
         // Универсальный API не задаёт раскладку, поэтому каждая кнопка получает
         // отдельную строку — это всегда валидная форма MAX API.
         finalButtons.push([object]);

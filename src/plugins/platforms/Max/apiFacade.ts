@@ -100,7 +100,14 @@ export function makeMaxApi(controller: BotController): IControllerApi {
             // dialogId включает очередь «не чаще 2 callback-ответов/сек на диалог»
             // в MaxRequest.answerCallback — без неё MAX отвечает 429 на быстрые
             // повторные нажатия (контракт платформы, см. AGENTS.md §9).
-            return request().answerCallback(data.callbackId, text, null, data.chatId);
+            // Ключ диалога — как в адаптере (chatId ?? userId): в личке chatId
+            // не заполняется, и без userId очередь не включалась вовсе.
+            return request().answerCallback(
+                data.callbackId,
+                text,
+                null,
+                data.chatId ?? controller.userId ?? undefined,
+            );
         },
         can(method: TApiMethod): boolean {
             return (MAX_SUPPORTED as readonly string[]).includes(method);

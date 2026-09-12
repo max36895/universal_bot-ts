@@ -103,6 +103,11 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
     supportedEvents: readonly TEventType[] = ['message', 'auth'];
 
     /**
+     * Предупреждение о нескольких хранилищах state уже выведено (один раз на адаптер).
+     */
+    #warnedMultipleStates = false;
+
+    /**
      * Инициализирует адаптер: вызывает базовую инициализацию и пробрасывает
      * переданный в конструкторе токен в конфигурацию платформы.
      * @param appContext Контекст приложения (конфиги, токены, логгер)
@@ -166,7 +171,9 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
      * @param state Объект состояния из запроса Маруси (`user` или `session`)
      */
     #setState(controller: BotController, state: IMarusiaRequestState): void {
-        if (state.user && state.session) {
+        // Оба хранилища в запросе — штатная ситуация: сообщаем о выборе один раз.
+        if (state.user && state.session && !this.#warnedMultipleStates) {
+            this.#warnedMultipleStates = true;
             this.appContext?.logWarn(
                 'MarusiaAdapter.setQueryData(): запрос содержит user и session state; выбран более приоритетный user state.',
             );
@@ -215,6 +222,13 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                         response: {
                             text: 'pong',
                             end_session: false,
+                        },
+                        // session обязателен в ответе Маруси — как и в обычном
+                        // ответе (getContent), эхо данных сессии запроса.
+                        session: {
+                            session_id: query.session.session_id ?? '',
+                            message_id: query.session.message_id ?? 0,
+                            user_id: String(query.session.user_id ?? ''),
                         },
                     };
                     return true;
@@ -294,9 +308,21 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
                   ) as IMarusiaButton[])
                 : [];
         }
-        // Пустой text допустим, если заполнен tts (как и в Алисе) — предупреждаем
-        // только когда пусто и то, и другое, иначе warn сыпался на валидных ответах.
-        if (!response.text && !response.tts) {
+        // В отличие от Алисы, протокол Маруси требует непустой text («Не должен
+        // быть пустым»). Если бизнес-логика заполнила только tts, показываем его
+        // без звуковой разметки и знаков ударения.
+        if (!response.text && response.tts) {
+            response.text = Text.resize(
+                response.tts
+                    .replace(/sil\s*<\[\d+\]>/g, '')
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/[+`^]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim(),
+                1024,
+            );
+        }
+        if (!response.text) {
             this.appContext?.logWarn(
                 'MarusiaAdapter._getResponse(): text и tts пусты. Ответ сохранён без подстановки; такой вариант находится вне документированного контракта Маруси.',
             );

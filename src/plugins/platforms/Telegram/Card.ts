@@ -5,7 +5,7 @@ import { ICardInfo, ImageTokens, Text, BotController } from '../../../index';
 
 import { TelegramRequest } from '../API';
 import { ITelegramMedia, TTelegramChatId } from './interfaces/ITelegramPlatform';
-import { getImageToken, getPlatformRequestData } from '../Base/utils';
+import { getImageToken, getPlatformRequestData, cacheMediaToken } from '../Base/utils';
 import { T_TELEGRAM } from './constants';
 
 const MAX_TELEGRAM_MEDIA_GROUP_ITEMS = 10;
@@ -43,9 +43,8 @@ export async function getImageInDB(
             const lastPhoto = photo.result.photo.at(-1);
             if (lastPhoto) {
                 model.imageToken = lastPhoto.file_id;
-                if (await model.save(true)) {
-                    return model.imageToken;
-                }
+                await cacheMediaToken(model, controller);
+                return model.imageToken;
             }
         }
         return null;

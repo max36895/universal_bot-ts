@@ -61,9 +61,10 @@ describe('MaxRequest', () => {
             ok: true,
             json: async () => uploadTarget,
         });
+        // Ответ сервера загрузки читается текстом (у audio/video он не JSON).
         (global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
-            json: async () => mockResponse,
+            text: async () => JSON.stringify(mockResponse),
         });
 
         const result = await max.upload('test.jpg', 'image');
@@ -89,13 +90,38 @@ describe('MaxRequest', () => {
 
     it('should keep audio token returned by the upload target request', async () => {
         const uploadTarget = { url: 'https://upload.max.test/audio', token: 'audio-token' };
+        // Для audio/video сервер загрузки отвечает `retval` — не JSON, токен
+        // берётся из ответа на POST /uploads.
         (global.fetch as jest.Mock)
             .mockResolvedValueOnce({ ok: true, json: async () => uploadTarget })
-            .mockResolvedValueOnce({ ok: true, json: async () => ({ retval: 'ok' }) });
+            .mockResolvedValueOnce({ ok: true, text: async () => '<retval>1</retval>' });
 
         const result = await max.upload('test.mp3', 'audio');
 
-        expect(result).toEqual({ url: uploadTarget.url, token: 'audio-token', retval: 'ok' });
+        expect(result).toEqual({ url: uploadTarget.url, token: 'audio-token' });
+    });
+
+    it('достаёт токен изображения из формата photos.<id>.token', async () => {
+        const uploadTarget = { url: 'https://upload.max.test/image' };
+        (global.fetch as jest.Mock)
+            .mockResolvedValueOnce({ ok: true, json: async () => uploadTarget })
+            .mockResolvedValueOnce({
+                ok: true,
+                text: async () => JSON.stringify({ photos: { abc: { token: 'photo-token' } } }),
+            });
+
+        const result = await max.upload('test.jpg', 'image');
+
+        expect(result?.token).toBe('photo-token');
+    });
+
+    it('без токена в ответе загрузки возвращает null, а не одноразовый upload-URL', async () => {
+        const uploadTarget = { url: 'https://upload.max.test/image' };
+        (global.fetch as jest.Mock)
+            .mockResolvedValueOnce({ ok: true, json: async () => uploadTarget })
+            .mockResolvedValueOnce({ ok: true, text: async () => '{}' });
+
+        expect(await max.upload('test.jpg', 'image')).toBeNull();
     });
 
     // === Отправка сообщения ===

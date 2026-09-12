@@ -183,6 +183,10 @@ export const handler = async (event: Record<string, unknown>) => {
 определяет платформу по содержимому, проверяет подпись webhook (`isCorrectQuery`) и возвращает
 готовый HTTP-ответ `{ statusCode, body }`. Именно этот код использует генератор `from-flow --usecloud`.
 
+> В serverless `isLocalStorage: true` надёжно хранит данные только на Алисе, Марусе и SmartApp (состояние приходит в
+> запросе). На Telegram/VK/MAX/Viber без DB-адаптера `userData` живёт в памяти экземпляра функции и теряется, когда
+> вызов попадает в новый экземпляр, — для шагов диалога на чат-платформах подключите БД (например, `MongoAdapter`).
+
 Подробнее о serverless — в разделе [Рецепты: Serverless](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.1_.src_docs_GUIDE.html#рецепты-cookbook).
 
 ## Чеклист деплоя

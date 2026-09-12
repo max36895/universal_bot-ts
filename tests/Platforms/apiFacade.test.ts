@@ -35,6 +35,7 @@ import {
     VkAdapter,
     ViberAdapter,
     BasePlatformAdapter,
+    MaxRequest,
 } from '../../src/plugins';
 import { makePlatformApi } from '../../src/plugins/platforms/Base/apiFacade';
 import { makeViberApi } from '../../src/plugins/platforms/Viber/apiFacade';
@@ -328,7 +329,8 @@ describe('MAX-фасад: вложения и answerCallback', () => {
                 })
                 .mockResolvedValueOnce({
                     ok: true,
-                    json: async () => ({ token: 'tok-1' }),
+                    // Ответ сервера загрузки читается текстом (у audio/video — не JSON).
+                    text: async () => JSON.stringify({ token: 'tok-1' }),
                 })
                 .mockResolvedValueOnce({
                     ok: true,
@@ -408,7 +410,8 @@ describe('VK-фасад: caption у sendDocument', () => {
             })
             .mockResolvedValueOnce({
                 ok: true,
-                json: async () => ({ response: { id: 10, owner_id: 5 } }),
+                // Документированный ответ docs.save: обёртка {type, doc: {...}}.
+                json: async () => ({ response: { type: 'doc', doc: { id: 10, owner_id: 5 } } }),
             })
             .mockResolvedValueOnce({
                 ok: true,
@@ -539,5 +542,68 @@ describe('IPlatformAdapter.createApi: контракт фасада', () => {
         expect(new ViberAdapter('viber-token').createApi(controller)?.can('sendPhoto')).toBe(false);
         // Голосовые платформы не переопределяют createApi — фасад недоступен.
         expect(new AlisaAdapter().createApi(controller)).toBeNull();
+    });
+});
+
+describe('Контракты загрузки: VK photo-поле, MAX dialogId в личке', () => {
+    beforeEach(() => {
+        (global.fetch as jest.Mock).mockReset();
+    });
+
+    it('VK sendPhoto загружает фото в multipart-поле photo (иначе VK вернёт photo: "[]")', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_VK] = { token: 'vk-token', v: '5.199' };
+        const controller = new TestController(context);
+        controller.appType = 'vk';
+        controller.userId = 42;
+        (global.fetch as jest.Mock)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ response: { upload_url: 'http://localhost/u' } }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ server: 1, photo: '[{"photo":"x"}]', hash: 'h' }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ response: [{ id: 7, owner_id: 3 }] }),
+            })
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ response: 1 }) });
+        const api = makePlatformApi(controller) as IControllerApi;
+        await api.sendPhoto(__filename);
+        const calls = (global.fetch as jest.Mock).mock.calls;
+        const uploadBody = calls[1]?.[1]?.body as FormData;
+        expect(uploadBody).toBeInstanceOf(FormData);
+        expect(uploadBody.has('photo')).toBe(true);
+        expect(uploadBody.has('file')).toBe(false);
+        expect(String(calls[3]?.[1]?.body)).toContain(
+            `attachment=${encodeURIComponent('photo3_7')}`,
+        );
+    });
+
+    it('MAX answerCallback в личке использует userId как ключ диалога', async () => {
+        const context = createContext();
+        context.appConfig.tokens[T_MAX_APP] = { token: 'max-token' };
+        const controller = new TestController(context);
+        controller.appType = 'max_app';
+        controller.userId = 100;
+        const adapter = new MaxAdapter('max-token');
+        adapter.init(context);
+        // Личный диалог: recipient без chat_id.
+        await adapter.setQueryData(
+            {
+                update_type: 'message_callback',
+                callback: { callback_id: 'cb-dm', user: { user_id: 100 }, payload: 'buy' },
+                message: { recipient: { user_id: 1 }, sender: { user_id: 100 } },
+            } as never,
+            controller,
+        );
+        const spy = jest.spyOn(MaxRequest.prototype, 'answerCallback');
+        (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({}) });
+        const api = makePlatformApi(controller) as IControllerApi;
+        await api.answerCallback('ок');
+        expect(spy).toHaveBeenCalledWith('cb-dm', 'ок', null, 100);
+        spy.mockRestore();
     });
 });

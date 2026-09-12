@@ -6,6 +6,23 @@ import { IAlisaButton, IAlisaButtonCard } from './interfaces/IAlisaPlatform';
 import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
 
 /**
+ * Приводит payload кнопки к JSON-объекту, как требует протокол: у Алисы и
+ * Маруси payload — «произвольный JSON-объект». Строковый payload (типичный
+ * для Telegram/VK: `addBtn('Купить', null, 'buy')`) оборачивается в
+ * `{command: 'buy'}` — при нажатии адаптер превращает его обратно в команду
+ * `buy`, поэтому addAction/addCommand работают одинаково на всех платформах.
+ *
+ * @param payload Payload универсальной кнопки
+ * @returns Payload-объект для ответа платформе
+ */
+function toPayloadObject(payload: unknown): Record<string, unknown> {
+    if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+        return payload as Record<string, unknown>;
+    }
+    return { command: typeof payload === 'string' ? payload : JSON.stringify(payload) };
+}
+
+/**
  * Создание кнопки в формате Алисы
  * @param button Универсальная кнопка umbot
  * @param isCard Флаг принадлежности кнопки к карточке (формат IAlisaButtonCard)
@@ -31,12 +48,13 @@ function _getButton(
             };
         }
         if (button.payload) {
-            const payloadStr = serializePlatformPayload(button.payload, 'Alisa', appContext);
+            const payloadObject = toPayloadObject(button.payload);
+            const payloadStr = serializePlatformPayload(payloadObject, 'Alisa', appContext);
             if (payloadStr === null) {
                 return null;
             }
             if (Buffer.byteLength(payloadStr, 'utf8') <= 4096) {
-                object.payload = button.payload;
+                object.payload = payloadObject;
             } else {
                 appContext?.logWarn(
                     `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Кнопка будет пропущена без изменения payload.`,

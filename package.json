@@ -142,7 +142,8 @@
         "stress:compare:viber": "node ./benchmark/comparison/stress.js viber.js",
         "stress:compare:max": "node ./benchmark/comparison/stress.js max.js",
         "baseline:update": "node --expose-gc ./benchmark/comparison/baseline.js update",
-        "baseline:check": "node --expose-gc ./benchmark/comparison/baseline.js check"
+        "baseline:check": "node --expose-gc ./benchmark/comparison/baseline.js check",
+        "live": "node live-test"
     },
     "engines": {
         "node": ">=20.19.0"

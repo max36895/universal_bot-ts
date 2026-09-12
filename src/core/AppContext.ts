@@ -300,7 +300,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     /**
      * Конфигурация приложения
      */
-    public appConfig: Required<IAppConfig> = {
+    public appConfig: Required<Omit<IAppConfig, 'memorySession'>> &
+        Pick<IAppConfig, 'memorySession'> = {
         error_log: join(process.cwd(), 'logs'),
         json: join(process.cwd(), 'json'),
         db: { host: '', user: '', pass: '', database: '' },
@@ -462,8 +463,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
             DB_NAME,
         } = process.env;
         // exactOptionalPropertyTypes: поля заполняем только реально существующими
-        // значениями — undefined-поля удаляем, как это делала деструктуризация
-        // в объект внутри прежней реализации.
+        // значениями, undefined-поля не добавляем.
         const env: Record<string, string> = {};
         for (const [key, value] of Object.entries({
             VIBER_TOKEN,
@@ -755,9 +755,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      *
      * Имя метрики и label проходят тот же конвейер маскирования секретов, что и
      * logError/logWarn: в label может попасть, например, полный URL запроса, а
-     * для Telegram он содержит токен бота (`https://api.telegram.org/bot<ТОКЕН>/...`).
-     * Раньше label уходил в кастомный логгер как есть, и токен утекал в системы
-     * наблюдаемости.
+     * для Telegram он содержит токен бота (`https://api.telegram.org/bot<ТОКЕН>/...`),
+     * который не должен попасть в системы наблюдаемости.
      *
      * @param name - имя метрики
      * @param value - значение

@@ -176,9 +176,7 @@ describe('AppContext: маскирование секретов (logError / logW
     });
 
     it('маскирует значения полей api_key / vk_secret_key / oauth / private_key (без кавычек)', () => {
-        // Текущая реализация regVk2 находит ключи без кавычек (см. src/core/AppContext.ts PATTERNS).
-        // JSON-формат с кавычками {"api_key": "..."} НЕ маскируется — это известный P0-баг,
-        // оформлен отдельно (см. docs/BUGS или трекер); здесь фиксируем фактическое поведение.
+        // Ключи без кавычек находит regVk2 (см. src/core/AppContext.ts PATTERNS).
         ctx.logError(
             'payload: api_key:"secretValue12345" client_secret:"abcdef123456789" private_key:"rsaKeyData999"',
         );
@@ -191,6 +189,16 @@ describe('AppContext: маскирование секретов (logError / logW
         expect(msg).toContain('api_key:"***"');
         expect(msg).toContain('client_secret:"***"');
         expect(msg).toContain('private_key:"***"');
+    });
+
+    it('маскирует значения секретных полей в JSON с кавычками у ключей', () => {
+        ctx.logError(
+            'payload: {"api_key": "secretValue12345", "client_secret": "abcdef123456789"}',
+        );
+        const [msg] = errorSpy.mock.calls[0];
+        expect(msg).not.toContain('secretValue12345');
+        expect(msg).not.toContain('abcdef123456789');
+        expect(msg).toContain('"api_key":"***"');
     });
 
     it('маскирует длинную произвольную строку в кавычках (regToken: 30-256 символов)', () => {

@@ -4,7 +4,7 @@
 import { ICardInfo, ImageTokens, Text, BotController } from '../../../index';
 
 import { IMaxCard, MaxRequest } from '../API';
-import { getImageToken } from '../Base/utils';
+import { getImageToken, cacheMediaToken } from '../Base/utils';
 import { T_MAX_APP } from './constants';
 
 /**
@@ -23,11 +23,13 @@ export async function getImageInDB(
     return getImageToken(path, T_MAX_APP, controller, async (model: ImageTokens) => {
         const api = new MaxRequest(controller.appContext);
         const upload = await api.upload(path, 'image');
-        if (upload?.token || upload?.url) {
-            model.imageToken = upload.token || upload.url;
-            if (await model.save(true)) {
-                return model.imageToken;
-            }
+        // Кэшируем только токен вложения. upload.url — одноразовый адрес
+        // загрузки (upload.do), а не ссылка на картинку: отправленный как
+        // payload.url он давал битое вложение и навсегда оседал в кэше.
+        if (upload?.token) {
+            model.imageToken = upload.token;
+            await cacheMediaToken(model, controller);
+            return model.imageToken;
         }
         return null;
     });

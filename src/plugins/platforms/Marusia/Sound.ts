@@ -2,7 +2,7 @@
  * Обработка звуков Маруси: стандартные звуки из набора marusia-sounds и загруженные аудиофайлы.
  */
 import { ISoundInfo, ISound, BotController, SoundConstants } from '../../../index';
-import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
+import { getSoundToken, defaultSoundProcessing, cacheMediaToken } from '../Base/utils';
 import { MarusiaRequest } from '../API';
 import { T_MARUSIA } from './constants';
 
@@ -257,9 +257,8 @@ export async function getSoundInDB(
         const sound = await mImage.marusiaCreateAudio(upload);
         if (sound?.id) {
             model.soundToken = sound.id;
-            if (await model.save(true)) {
-                return model.soundToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
