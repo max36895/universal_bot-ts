@@ -2,6 +2,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { computeLogStats, generateEnv, main } from '../../cli/controllers/ConsoleController.js';
 
+/**
+ * Читает сгенерированный файл конфигурации проекта, сверяя имя с учётом регистра.
+ * На Windows/macOS ФС регистронезависима, и неверный регистр в пути проходил
+ * локально, но падал в CI на Linux — проверка через readdirSync ловит это везде.
+ */
+function readGeneratedConfig(projectDir: string, fileName: string): string {
+    const configDir = path.join(projectDir, 'src', 'config');
+    expect(fs.readdirSync(configDir)).toContain(fileName);
+    return fs.readFileSync(path.join(configDir, fileName), 'utf8');
+}
+
 describe('CLI stats (computeLogStats)', () => {
     const tmpDir = path.join(__dirname, '__stats_tmp__');
     const logFile = path.join(tmpDir, 'app.log');
@@ -108,10 +119,7 @@ describe('CLI stats (computeLogStats)', () => {
         expect(envContent).toContain('TELEGRAM_TOKEN=SECRET-TELEGRAM-TOKEN');
         expect(envContent).toContain('DB_HOST=db-host');
 
-        const paramsContent = fs.readFileSync(
-            path.join(projectDir, 'src', 'config', 'Leak_botParams.ts'),
-            'utf8',
-        );
+        const paramsContent = readGeneratedConfig(projectDir, 'leak_botParams.ts');
         expect(paramsContent).toContain('Привет!');
         expect(paramsContent).not.toContain('SECRET-ALISA-TOKEN');
         expect(paramsContent).not.toContain('SECRET-YANDEX-TOKEN');
@@ -119,10 +127,7 @@ describe('CLI stats (computeLogStats)', () => {
         expect(paramsContent).not.toContain('SECRET-VK-TOKEN');
 
         // db-конфиг с паролем также не должен попасть в коммитящийся Config.ts
-        const configContent = fs.readFileSync(
-            path.join(projectDir, 'src', 'config', 'Leak_botConfig.ts'),
-            'utf8',
-        );
+        const configContent = readGeneratedConfig(projectDir, 'leak_botConfig.ts');
         expect(configContent).not.toContain('db-pass');
         expect(configContent).toContain('./.env');
 
@@ -168,10 +173,7 @@ describe('CLI stats (computeLogStats)', () => {
         expect(envContent).toContain('VIBER_TOKEN=SECRET-VIBER-BY-CONFIG-TOKEN');
         expect(envContent).toContain('MAX_TOKEN=SECRET-MAX-BY-CONFIG-TOKEN');
 
-        const configContent = fs.readFileSync(
-            path.join(projectDir, 'src', 'config', 'Tokens_leak_botConfig.ts'),
-            'utf8',
-        );
+        const configContent = readGeneratedConfig(projectDir, 'tokens_leak_botConfig.ts');
         expect(configContent).not.toContain('SECRET-TG-BY-CONFIG-TOKEN');
         expect(configContent).not.toContain('SECRET-VIBER-BY-CONFIG-TOKEN');
         expect(configContent).not.toContain('SECRET-MAX-BY-CONFIG-TOKEN');
@@ -213,10 +215,7 @@ describe('CLI stats (computeLogStats)', () => {
 
         // .env не генерируется без isEnv — секреты некуда мигрировать,
         // поэтому они обязаны исчезнуть из сериализуемой конфигурации
-        const configContent = fs.readFileSync(
-            path.join(projectDir, 'src', 'config', 'Tokens_noenv_botConfig.ts'),
-            'utf8',
-        );
+        const configContent = readGeneratedConfig(projectDir, 'tokens_noenv_botConfig.ts');
         expect(configContent).not.toContain('SECRET-TG-NO-ENV');
         expect(configContent).not.toContain('tokens');
 
@@ -264,18 +263,12 @@ describe('CLI stats (computeLogStats)', () => {
             ['node', 'umbot', 'create', 'flat_noenv_bot'],
         );
 
-        const paramsContent = fs.readFileSync(
-            path.join(projectDir, 'src', 'config', 'Flat_noenv_botParams.ts'),
-            'utf8',
-        );
+        const paramsContent = readGeneratedConfig(projectDir, 'flat_noenv_botParams.ts');
         expect(paramsContent).toContain('Привет!');
         expect(paramsContent).not.toContain('SUPERSECRET-TG-123');
         expect(paramsContent).not.toContain('SUPERSECRET-VK-456');
 
-        const configContent = fs.readFileSync(
-            path.join(projectDir, 'src', 'config', 'Flat_noenv_botConfig.ts'),
-            'utf8',
-        );
+        const configContent = readGeneratedConfig(projectDir, 'flat_noenv_botConfig.ts');
         expect(configContent).not.toContain('SUPERSECRET-DB');
         // Несекретные параметры подключения остаются.
         expect(configContent).toContain('db-host');
