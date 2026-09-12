@@ -8,7 +8,7 @@ import { FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from '../core
 import { isPromise } from '../utils/isPromise';
 import { IGroupData, getGroupRegExpCompiled, IEventParam } from '../core/utils/CommandReg';
 import type { TEventType } from '../core/events';
-import type { TPatternRegExp } from '../utils/standard/RegExp';
+import { __$usedRe2, type TPatternRegExp } from '../utils/standard/RegExp';
 
 /*
  * Оптимизация производительности:
@@ -1450,7 +1450,10 @@ export abstract class BotController<
         // итерации, в отличие от for...of по Map. Снимок актуален: пересобирается
         // в CommandReg на addCommand/removeCommand/clearCommands.
         const commandList = commandReg.getActualCommandsList();
-        const useDirectRegExp = (commandReg.commands as Map<string, ICommandParam>).size < 500;
+        // С re2 RegExp-слоты не используются напрямую: Text пересоберёт их через
+        // re2 (с кэшем), иначе нативный движок обходил бы защиту от ReDoS.
+        const useDirectRegExp =
+            !__$usedRe2 && (commandReg.commands as Map<string, ICommandParam>).size < 500;
         const getCustomRegExp = this.#getCustomRegExp;
         const userCommand = this.userCommand;
         let contCount = 0;

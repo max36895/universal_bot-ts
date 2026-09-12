@@ -3,7 +3,6 @@
 const { Bot, BotController } = require('./../dist/index');
 const { fullPlatforms, AlisaAdapter } = require('./../dist/plugins');
 const crypto = require('node:crypto');
-const os = require('node:os');
 
 class StressController extends BotController {
     action(intentName) {
@@ -15,7 +14,6 @@ const PHRASES = ['привет', 'пока', 'справка' /* ... */];
 
 // 1. ОДИН размер теста для стабильности
 const FIXED_CONCURRENCY = 100; // Фиксированное количество параллельных запросов
-const WARMUP_ITERATIONS = 3; // Прогрев системы
 const MEASUREMENT_ITERATIONS = 10; // Замеров для статистики
 
 // 2. Изолированный тест с полной очисткой
@@ -129,7 +127,7 @@ async function stableRpsTest(options = {}) {
     }, durationSeconds * 1000);
 
     // Worker-функция для параллельных запросов
-    const worker = async (workerId) => {
+    const worker = async () => {
         const requestGenerator = generateRequests(Infinity);
         while (isRunning && metrics.requestsCompleted <= 5e5) {
             const text = requestGenerator.next().value;
@@ -152,7 +150,7 @@ async function stableRpsTest(options = {}) {
     // Запускаем workers
     const workers = [];
     for (let i = 0; i < concurrency; i++) {
-        workers.push(worker(i));
+        workers.push(worker());
     }
 
     await Promise.all(workers);

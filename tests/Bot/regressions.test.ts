@@ -12,7 +12,7 @@ import {
     VkSound,
     IViberContent,
 } from '../../src/plugins';
-import { Preload } from '../../src/preload';
+import { Preload } from '../../src/Preload';
 import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 const silentLogger = { error: (): void => {}, warn: (): void => {}, log: (): void => {} };
@@ -361,5 +361,97 @@ describe('Контракты кнопок MAX по схеме SDK', () => {
         });
         expect(geo).toEqual({ type: 'request_geo_location', text: 'Где я', quick: true });
         expect(app).toEqual({ type: 'open_app', text: 'Апп', web_app: 'app', contact_id: 7 });
+    });
+});
+
+describe('Команды из одних RegExp без isPattern', () => {
+    let bot: Bot;
+
+    beforeEach(() => {
+        (global.fetch as jest.Mock).mockReset();
+        (global.fetch as jest.Mock).mockResolvedValue({
+            ok: true,
+            json: async () => ({ ok: true, result: {} }),
+        });
+        bot = new Bot('telegram');
+        bot.setLogger(silentLogger);
+        bot.initBotController(EchoController);
+        bot.use(new TelegramAdapter('tg-token'));
+        bot.addCommand('*', [], (_t, ctx) => {
+            ctx.text = 'fallback';
+        });
+    });
+
+    afterEach(async () => {
+        await bot.close();
+    });
+
+    it('сохраняют собственные флаги слотов, а не получают ium при склейке', async () => {
+        // Без флага m «^» означает начало всего текста: «ну\nда» не должно
+        // совпасть с /^да$/. Склейка с 'ium' молча включала бы многострочный режим.
+        bot.addCommand('yes-no', [/^да$/, /^нет$/], (_t, ctx) => {
+            ctx.text = 'ответ';
+        });
+        await bot.run('telegram', tgUpdate('ну\nда', 30));
+        expect(lastTelegramText()).toBe('fallback');
+        await bot.run('telegram', tgUpdate('нет', 31));
+        expect(lastTelegramText()).toBe('ответ');
+    });
+
+    it('с одинаковыми флагами склеиваются в одно выражение с этими же флагами', () => {
+        bot.addCommand('yes-no', [/^да$/s, /^нет$/s], () => {});
+        const command = bot.getAppContext().commands.get('yes-no');
+        expect(command?.regExp).toBeInstanceOf(RegExp);
+        expect(command?.regExp?.flags).toBe('s');
+    });
+
+    it('с разными флагами проверяются по отдельности', async () => {
+        bot.addCommand('mixed', [/^да$/i, /^нет$/], (_t, ctx) => {
+            ctx.text = 'ответ';
+        });
+        expect(bot.getAppContext().commands.get('mixed')?.regExp).toBeUndefined();
+        await bot.run('telegram', tgUpdate('нет', 32));
+        expect(lastTelegramText()).toBe('ответ');
+        await bot.run('telegram', tgUpdate('ну\nнет', 33));
+        expect(lastTelegramText()).toBe('fallback');
+    });
+});
+
+describe('Служебные апдейты Telegram не запускают бизнес-логику', () => {
+    let bot: Bot;
+
+    beforeEach(() => {
+        (global.fetch as jest.Mock).mockReset();
+        (global.fetch as jest.Mock).mockResolvedValue({
+            ok: true,
+            json: async () => ({ ok: true, result: {} }),
+        });
+        bot = new Bot('telegram');
+        bot.setLogger(silentLogger);
+        bot.initBotController(EchoController);
+        bot.use(new TelegramAdapter('tg-token'));
+    });
+
+    afterEach(async () => {
+        await bot.close();
+    });
+
+    it('my_chat_member подтверждается без fallback и middleware', async () => {
+        const fallback = jest.fn();
+        const middleware = jest.fn(async (_ctx: BotController, next: () => Promise<void>) => {
+            await next();
+        });
+        bot.use(middleware);
+        bot.addCommand('*', [], fallback);
+
+        const result = await bot.run('telegram', {
+            update_id: 40,
+            my_chat_member: { chat: { id: 1 }, from: { id: 1 } },
+        });
+
+        expect(result).toBe('ok');
+        expect(fallback).not.toHaveBeenCalled();
+        expect(middleware).not.toHaveBeenCalled();
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 });

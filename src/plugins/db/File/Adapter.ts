@@ -298,9 +298,21 @@ export class FileAdapter extends Base<IFileDbInfo> {
      * @private
      */
     async #forceSave(tableName: string): Promise<void> {
+        // Снимаем отложенные записи сразу, чтобы за время ожидания ниже
+        // debounce-таймер не запустил ещё одну запись того же файла.
+        this.#clearTimeOutFileData(tableName);
+        // Сначала дожидаемся выполняемой записи: если начать финальную параллельно,
+        // старый снимок может записаться позже и перезаписать итоговые данные.
+        // Её сбой или обрыв по shutdown тоже означал бы потерю изменений,
+        // которые cb() уже считал сохранёнными.
+        const inFlight = this.#inFlightSaves.get(tableName);
+        if (inFlight) {
+            await inFlight;
+        }
+        // Данные читаем после ожидания: кэш редактируется по ссылке, и за это
+        // время в него могли попасть новые изменения.
         const data = this.getCachedFileData(tableName).data;
         if (data) {
-            this.#clearTimeOutFileData(tableName);
             try {
                 await this._appContext?.saveFileData(`${tableName}.json`, data);
             } catch (e) {
@@ -309,13 +321,6 @@ export class FileAdapter extends Base<IFileDbInfo> {
                     { error: e },
                 );
             }
-        }
-        // Даже без изменений в кэше дожидаемся выполняемой записи: её сбой
-        // или обрыв по shutdown означал бы потерю последних изменений,
-        // которые cb() уже считал сохранёнными.
-        const inFlight = this.#inFlightSaves.get(tableName);
-        if (inFlight) {
-            await inFlight;
         }
     }
 

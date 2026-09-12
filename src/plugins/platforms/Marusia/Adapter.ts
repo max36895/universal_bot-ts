@@ -1,4 +1,4 @@
-import { Text, BotController, AppContext, IButtonType } from '../../../index';
+import { Text, BotController, AppContext, IButtonType, stripTags } from '../../../index';
 import type { TEventType } from '../../../core/events';
 import { BasePlatform, EMPTY_QUERY_ERROR } from '../Base/Base';
 import { buttonProcessing } from './Button';
@@ -313,9 +313,7 @@ export class MarusiaAdapter extends BasePlatform<string | IMarusiaWebhookRequest
         // без звуковой разметки и знаков ударения.
         if (!response.text && response.tts) {
             response.text = Text.resize(
-                response.tts
-                    .replace(/sil\s*<\[\d+\]>/g, '')
-                    .replace(/<[^>]*>/g, '')
+                stripTags(response.tts.replace(/sil\s*<\[\d+\]>/g, ''))
                     .replace(/[+`^]/g, '')
                     .replace(/\s+/g, ' ')
                     .trim(),

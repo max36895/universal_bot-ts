@@ -2,7 +2,7 @@ import { ImageTokens, SoundTokens } from '../../../models';
 import { BotController } from '../../../controller';
 import { ISoundInfo } from '../../../core';
 import type { TEventType } from '../../../core/events';
-import { isFile, Text } from '../../../utils';
+import { isFile, stripTags, Text } from '../../../utils';
 import { IButtonType, IEffect, ISound } from '../../../components';
 import { IAlisaRequest } from '../Alisa/interfaces/IAlisaPlatform';
 
@@ -334,12 +334,8 @@ export function shouldProcessChatSound(controller: BotController, platformName: 
     );
 }
 
-const SOUND_MARKUP_REGEXPS: readonly RegExp[] = [
-    /#pause_<\[\d+\]>#/g,
-    /sil\s*<\[\d+\]>/g,
-    /<[^>]*>/g,
-    /#[\w-]+#/g,
-];
+const PAUSE_MARKUP_REGEXPS: readonly RegExp[] = [/#pause_<\[\d+\]>#/g, /sil\s*<\[\d+\]>/g];
+const SOUND_MARKER_REGEXP = /#[\w-]+#/g;
 
 /**
  * Готовит текст для синтеза речи на чат-платформах: убирает звуковую разметку
@@ -359,9 +355,12 @@ export function getSpeechText(text: string | null | undefined): string {
         return '';
     }
     let result = text;
-    for (const reg of SOUND_MARKUP_REGEXPS) {
+    for (const reg of PAUSE_MARKUP_REGEXPS) {
         result = result.replace(reg, ' ');
     }
+    // Теги снимаются линейным stripTags: регулярка /<[^>]*>/ квадратична
+    // на тексте вида «<<<<…» без закрывающей «>».
+    result = stripTags(result, ' ').replace(SOUND_MARKER_REGEXP, ' ');
     return result.replace(/\s+/g, ' ').trim();
 }
 

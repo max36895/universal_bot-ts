@@ -275,6 +275,7 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
                 'TelegramAdapter.setQueryData(): апдейт message без объекта chat пропущен как некорректный.',
             );
             controller.skipAutoReply = true;
+            controller.platformOptions.sendInInit = 'ok';
             return true;
         }
         controller.userId = message.from?.id ?? message.chat.id;
@@ -375,7 +376,11 @@ export class TelegramAdapter extends BasePlatform<string | ITelegramContent> {
         // message_reaction, my_chat_join_request и др.). Отвечать на них нечем, но
         // и ошибкой это не является: вернув false, мы отдавали Telegram 500, а он
         // повторял тот же апдейт снова и снова.
+        // sendInInit подтверждает апдейт сразу, до бизнес-логики: иначе на каждый
+        // служебный апдейт срабатывали бы middleware и fallback-команда
+        // (skipAutoReply глушит только отправку ответа, но не сам запуск логики).
         controller.skipAutoReply = true;
+        controller.platformOptions.sendInInit = 'ok';
         this.appContext?.log(
             `TelegramAdapter.setQueryData(): апдейт update_id=${query.update_id} не содержит поддерживаемого события. Ответ не отправляется.`,
         );

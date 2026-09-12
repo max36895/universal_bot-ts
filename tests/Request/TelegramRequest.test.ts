@@ -218,6 +218,24 @@ describe('TelegramRequest', () => {
         expect(body.correct_option_ids).toEqual([1]);
     });
 
+    it('should send correct_option_ids sorted and without duplicates', async () => {
+        (global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ ok: true, result: {} }),
+        });
+
+        await telegram.sendPoll(12345, 'Q?', ['One', 'Two', 'Three'], {
+            type: 'quiz',
+            correct_option_ids: [2, 0, 2],
+        });
+
+        const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string) as {
+            correct_option_ids?: number[];
+        };
+        // Bot API требует монотонно возрастающий список индексов.
+        expect(body.correct_option_ids).toEqual([0, 2]);
+    });
+
     it('should reject quiz polls with an out-of-range correct option index', async () => {
         const result = await telegram.sendPoll(12345, 'Q?', ['One'], {
             type: 'quiz',

@@ -107,16 +107,21 @@ export function getRegExp(
 }
 
 /**
- * Возвращает RegExp напрямую, если передан объект RegExp без флагов g/y
- * и не задан customReg, иначе компилирует через getRegExp.
+ * Возвращает RegExp напрямую, если передан объект RegExp без флагов g/y,
+ * не задан customReg и не подключён re2, иначе компилирует через getRegExp.
  * g/y хранят позицию поиска в lastIndex и небезопасны для переиспользования,
  * поэтому такие объекты пересобираются. Избегает повторной компиляции regexp
  * при повторной обработке одного и того же объекта.
  *
+ * При подключённом re2 нативный объект пересобирается через re2 — иначе
+ * уязвимое к ReDoS выражение из слота команды выполнялось бы штатным движком
+ * Node в обход установленного безопасного движка. Если re2 не поддерживает
+ * синтаксис выражения (lookbehind, обратные ссылки), используется исходный объект.
+ *
  * @param {TPatternRegExp | TPatternRegExp[]} reg - Регулярное выражение или массив выражений
  * @param {string} [flags='ium'] - Флаги для регулярного выражения (используются, если передана строка)
  * @param {RegExpConstructor} [customReg] - Произвольная реализация RegExp (если задана — всегда компилирует через неё)
- * @returns {customRegExp} Исходный RegExp (если он stateless и без customReg) либо скомпилированное выражение
+ * @returns {customRegExp} Исходный RegExp (если он stateless, без customReg и без re2) либо скомпилированное выражение
  */
 export function getRegExpOrSelf(
     reg: TPatternRegExp | TPatternRegExp[],
@@ -126,7 +131,14 @@ export function getRegExpOrSelf(
     // Regexp с g/y хранит позицию поиска в lastIndex, поэтому такой объект нельзя
     // переиспользовать между запросами — пересобираем его без флагов состояния.
     if (!Array.isArray(reg) && isRegex(reg) && !customReg && !reg.global && !reg.sticky) {
-        return reg;
+        if (!__$usedRe2) {
+            return reg;
+        }
+        try {
+            return new Re2(reg.source, reg.flags);
+        } catch {
+            return reg;
+        }
     }
     return getRegExp(reg, flags, customReg);
 }

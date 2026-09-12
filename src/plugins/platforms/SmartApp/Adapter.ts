@@ -257,10 +257,26 @@ export class SmartAppAdapter extends BasePlatform<string | ISberSmartAppWebhookR
      * @returns `true`, если в тексте есть SSML-теги (`<speak>`, `<speaker>`, `<break/>` и т.п.)
      */
     static #isSsml(text: string): boolean {
-        // Тег обязан начинаться с буквы сразу после «<» и иметь закрывающую «>»:
-        // иначе обычный текст вида «если x < y» помечался как SSML, и парсер Сбера
-        // ломался на незаэкранированных символах.
-        return /<\/?[a-z][^>]*>/i.test(text);
+        // Тег обязан начинаться с буквы сразу после «<» (или «</») и иметь
+        // закрывающую «>»: иначе обычный текст вида «если x < y» помечался как SSML,
+        // и парсер Сбера ломался на незаэкранированных символах.
+        // Эквивалент /<\/?[a-z][^>]*>/i за линейное время: регулярка квадратична
+        // на тексте вида «<a<a<a…» без «>». Достаточно, чтобы начало тега стояло
+        // левее последней «>» в тексте.
+        const lastGt = text.lastIndexOf('>');
+        let lt = text.indexOf('<');
+        while (lt !== -1 && lt < lastGt) {
+            let letterPos = lt + 1;
+            if (text.charCodeAt(letterPos) === 47 /* / */) {
+                letterPos++;
+            }
+            const code = text.charCodeAt(letterPos) | 32; // приведение к нижнему регистру
+            if (code >= 97 && code <= 122 && letterPos < lastGt) {
+                return true;
+            }
+            lt = text.indexOf('<', lt + 1);
+        }
+        return false;
     }
 
     /**

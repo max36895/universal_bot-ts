@@ -21,6 +21,7 @@ import {
     unlink,
     saveData,
     httpBuildQuery,
+    stripTags,
 } from '../../src/utils/standard/util';
 import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
@@ -444,5 +445,38 @@ describe('saveData (async)', () => {
         expect(result).toBe(true);
         expect(fs.existsSync(singleDir)).toBe(true);
         expect(fs.existsSync(path.join(singleDir, 'async_data.json'))).toBe(true);
+    });
+});
+
+describe('stripTags', () => {
+    it('совпадает с replace(/<[^>]*>/g) на произвольных строках', () => {
+        const alphabet = ['<', '>', 'a', ' ', '/', 'b'];
+        let seed = 7;
+        const next = (): number => {
+            seed = (seed * 1103515245 + 12345) % 2147483648;
+            return seed;
+        };
+        for (let i = 0; i < 2000; i++) {
+            const len = next() % 16;
+            let text = '';
+            for (let j = 0; j < len; j++) {
+                text += alphabet[next() % alphabet.length];
+            }
+            expect(stripTags(text)).toBe(text.replace(/<[^>]*>/g, ''));
+            expect(stripTags(text, ' ')).toBe(text.replace(/<[^>]*>/g, ' '));
+        }
+    });
+
+    it('снимает теги и не трогает одиночную «<»', () => {
+        expect(stripTags('<b>Привет</b>, мир')).toBe('Привет, мир');
+        expect(stripTags('x < y')).toBe('x < y');
+        expect(stripTags('<speaker audio="a.opus">текст')).toBe('текст');
+    });
+
+    it('работает за линейное время на «<<<<…» без закрывающей «>»', () => {
+        const text = '<'.repeat(200_000);
+        const start = performance.now();
+        expect(stripTags(text)).toBe(text);
+        expect(performance.now() - start).toBeLessThan(200);
     });
 });

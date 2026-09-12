@@ -249,3 +249,18 @@ describe('Nlu test', () => {
         expect(nlu.isIntentRepeat()).toBe(true);
     });
 });
+
+describe('Nlu.getLink: граничные случаи', () => {
+    it('схема без адреса ссылкой не считается', () => {
+        expect(Nlu.getLink('http://...').result).toBeNull();
+        expect(Nlu.getLink('см. https://). и дальше http://ok.ru').result).toEqual([
+            'http://ok.ru',
+        ]);
+    });
+
+    it('не зависает на длинной строке без пробелов', () => {
+        const start = performance.now();
+        Nlu.getLink('http://'.repeat(20_000) + '.'.repeat(20_000));
+        expect(performance.now() - start).toBeLessThan(500);
+    });
+});

@@ -1,5 +1,11 @@
 import { ILogger, TLoggerCb } from '../interfaces/ILogger';
-import { getRegExp, __$usedRe2, isRegex, TPatternRegExp } from '../../utils/standard/RegExp';
+import {
+    getRegExp,
+    getRegExpOrSelf,
+    __$usedRe2,
+    isRegex,
+    TPatternRegExp,
+} from '../../utils/standard/RegExp';
 import { isRegexLikelySafe } from './utils';
 import os from 'os';
 import { BotController } from '../../controller';
@@ -24,6 +30,12 @@ export interface IGroupData {
      * `null` — группа ещё не собрана.
      */
     regExp: RegExp | null | string;
+    /**
+     * Флаги объединённого выражения группы. По умолчанию `ium`; группа из
+     * команд, у которых все слоты — RegExp (без isPattern), собирается
+     * с флагами самих слотов, чтобы склейка не меняла их семантику.
+     */
+    flags?: string;
 }
 
 /**
@@ -56,7 +68,7 @@ export function getGroupRegExpCompiled(
     if (cached && cached.pattern === groupData.regExp) {
         return cached.regExp;
     }
-    const regExp = getRegExp(groupData.regExp, 'ium', customReg);
+    const regExp = getRegExp(groupData.regExp, groupData.flags ?? 'ium', customReg);
     // Прогреваем регулярку сразу после компиляции — первые вызовы .test/.exec
     // у нового объекта заметно медленнее.
     regExp.test('__umbot_testing');
@@ -116,6 +128,11 @@ interface IGroup {
     regLength: number;
     butchRegexp: unknown[];
     regExpSize: number;
+    /**
+     * Флаги объединённого выражения: в одну группу попадают только команды
+     * с одинаковыми флагами склейки.
+     */
+    flags: string;
 }
 
 /**
@@ -487,6 +504,7 @@ export class CommandReg {
         isRegUp: boolean = true,
     ): void {
         group.butchRegexp ??= [];
+        groupData.flags = group.flags;
         const parts = slots.map((s) => {
             return `(${typeof s === 'string' ? s : s.source})`;
         });
@@ -508,7 +526,7 @@ export class CommandReg {
             }
             this.#oldFnGroup = (): void => {
                 const finalPattern = group.butchRegexp.join('|');
-                const regExp = getRegExp(finalPattern, 'ium', this.getCustomRegExp());
+                const regExp = getRegExp(finalPattern, group.flags, this.getCustomRegExp());
                 if (isRegUp) {
                     // прогреваем регулярку
                     regExp.test('__umbot_testing');
@@ -550,7 +568,12 @@ export class CommandReg {
         this.#noFullGroups = null;
     }
 
-    #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
+    #addRegexpInGroup(
+        commandName: string,
+        slots: TSlots,
+        isRegexp: boolean,
+        flags: string = 'ium',
+    ): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
         if (
             this.#commandGroupMode === 'no-group' ||
@@ -562,6 +585,11 @@ export class CommandReg {
             if (!isRegexLikelySafe(slots.join('|'), false)) {
                 this.#closeRegexpGroup();
                 return commandName;
+            }
+            // Группа компилируется с одним набором флагов: команда с другими
+            // флагами открывает новую группу, иначе склейка изменила бы её семантику.
+            if (this.#noFullGroups && this.#noFullGroups.flags !== flags) {
+                this.#closeRegexpGroup();
             }
             if (this.#noFullGroups) {
                 let groupName = this.#noFullGroups.name;
@@ -592,6 +620,7 @@ export class CommandReg {
                         regLength: 0,
                         butchRegexp: [],
                         regExpSize: 0,
+                        flags,
                     };
                 }
                 groupData.commands.push(commandName);
@@ -614,16 +643,18 @@ export class CommandReg {
                 // именем capture-группы: например, дефис недопустим в RegExp.
                 // Поиск группы всегда использует числовые имена _0, _1, … .
                 butchRegexp.push(`(?<_0>${parts.join('|')})`);
-                const regExp = getRegExp(`${butchRegexp.join('|')}`, 'ium', this.getCustomRegExp());
+                const regExp = getRegExp(`${butchRegexp.join('|')}`, flags, this.getCustomRegExp());
                 this.#noFullGroups = {
                     name: commandName,
                     regLength: slots.length,
                     butchRegexp,
                     regExpSize: regExp.source.length,
+                    flags,
                 };
                 this.regexpGroup.set(commandName, {
                     commands: [commandName],
                     regExp,
+                    flags,
                 });
                 return commandName;
             }
@@ -670,6 +701,7 @@ export class CommandReg {
                     regLength: 0,
                     butchRegexp: [],
                     regExpSize: 0,
+                    flags: group.flags ?? 'ium',
                 };
                 const groupData: IGroupData = {
                     commands: newCommands,
@@ -698,6 +730,7 @@ export class CommandReg {
                         regLength: 0,
                         butchRegexp: [],
                         regExpSize: 0,
+                        flags: group.flags ?? 'ium',
                     };
                     const groupData: IGroupData = {
                         commands: newCommands,
@@ -732,7 +765,9 @@ export class CommandReg {
      *        - string → как литерал (поиск подстроки),
      *        - RegExp → как регулярное выражение
      *   - Если ВСЕ слоты — готовые RegExp, isPattern для строк не применяется
-     *     (строк нет) и команда трактуется как pattern.
+     *     (строк нет) и команда трактуется как pattern. Без явного isPattern
+     *     слоты склеиваются с их собственными (общими) флагами, а не с `ium`;
+     *     слоты с разными флагами проверяются по отдельности.
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -826,21 +861,14 @@ export class CommandReg {
 
         const isPatternCommand = isPattern || this.#isAllRegExpSlots(slots);
         let correctSlots: TSlots = this.strictMode ? [] : slots;
-        let regExp;
-        let groupName;
+        let regExp: RegExp | undefined;
+        let groupName: string | null | undefined;
         if (isPatternCommand) {
-            correctSlots = this.isDangerRegex(slots).slots;
-            if (correctSlots.length) {
-                groupName = this.#addRegexpInGroup(commandName, correctSlots, true);
-                if (groupName === commandName) {
-                    this.#regExpCommandCount++;
-                    if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
-                        regExp = getRegExp(correctSlots, 'ium', this.getCustomRegExp());
-                        regExp.test('__umbot_testing');
-                        regExp.test('');
-                    }
-                }
-            }
+            ({ correctSlots, regExp, groupName } = this.#registerPatternSlots(
+                commandName,
+                slots,
+                isPattern,
+            ));
         } else {
             this.#addRegexpInGroup(commandName, correctSlots, false);
             for (let i = 0; i < slots.length; i++) {
@@ -874,6 +902,46 @@ export class CommandReg {
     }
 
     /**
+     * Регистрирует слоты pattern-команды: отбрасывает небезопасные (strictMode),
+     * включает команду в группу регулярок и компилирует объединённое выражение.
+     *
+     * Явный isPattern склеивает слоты с флагами 'ium', как и раньше. Команда
+     * из одних RegExp без isPattern склеивается с флагами самих слотов:
+     * иначе /^да$/ получил бы флаг m (и i, u) и стал бы совпадать с «ну\nда».
+     *
+     * @param commandName Имя команды
+     * @param slots Слоты команды
+     * @param isPattern Явно переданный флаг isPattern
+     * @returns Безопасные слоты, скомпилированное выражение и имя группы
+     */
+    #registerPatternSlots(
+        commandName: string,
+        slots: TSlots,
+        isPattern: boolean,
+    ): { correctSlots: TSlots; regExp: RegExp | undefined; groupName: string | null | undefined } {
+        const correctSlots = this.isDangerRegex(slots).slots;
+        let regExp: RegExp | undefined;
+        let groupName: string | null | undefined;
+        const flags = isPattern ? 'ium' : this.#getCommonFlags(correctSlots);
+        if (flags === null) {
+            // Флаги слотов различаются — одним выражением их не выразить:
+            // слоты проверяются по отдельности, каждый со своими флагами.
+            this.#addRegexpInGroup(commandName, correctSlots, false);
+        } else if (correctSlots.length) {
+            groupName = this.#addRegexpInGroup(commandName, correctSlots, true, flags);
+            if (groupName === commandName) {
+                this.#regExpCommandCount++;
+                if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
+                    regExp = getRegExp(correctSlots, flags, this.getCustomRegExp());
+                    regExp.test('__umbot_testing');
+                    regExp.test('');
+                }
+            }
+        }
+        return { correctSlots, regExp, groupName };
+    }
+
+    /**
      * Проверяет, что ВСЕ слоты команды — готовые RegExp (строковых нет).
      *
      * Такая команда семантически эквивалентна isPattern: строк в слотах нет,
@@ -894,6 +962,32 @@ export class CommandReg {
             }
         }
         return true;
+    }
+
+    /**
+     * Возвращает общие флаги RegExp-слотов (без stateful `g`/`y`) — с ними
+     * объединение слотов в одно выражение не меняет семантику матчинга.
+     * `RegExp.flags` всегда в каноническом порядке, поэтому достаточно
+     * сравнения строк.
+     *
+     * @param slots Слоты команды (все — RegExp)
+     * @returns Общие флаги или null, если флаги слотов различаются
+     */
+    #getCommonFlags(slots: TSlots): string | null {
+        let common: string | null = null;
+        for (let i = 0; i < slots.length; i++) {
+            const slot = slots[i];
+            if (!isRegex(slot)) {
+                continue;
+            }
+            const flags = slot.flags.replace(/[gy]/g, '');
+            if (common === null) {
+                common = flags;
+            } else if (common !== flags) {
+                return null;
+            }
+        }
+        return common ?? '';
     }
 
     /**
@@ -943,19 +1037,22 @@ export class CommandReg {
      *
      * Наличие движка проверяем по plugins.regExp напрямую, без вызова
      * getCustomRegExp(): у плагина-функции могут быть сайд-эффекты.
+     * При установленном re2 слот один раз пересобирается через него
+     * (getRegExpOrSelf) — быстрый путь не должен обходить безопасный движок.
      *
      * @param slots Слоты команды после валидации ReDoS
      * @returns Готовый к прямому тесту RegExp или undefined, если условия не выполнены
      */
     #getSingleStatelessRegExp(slots: TSlots): RegExp | undefined {
+        const slot = slots[0];
         if (
             !this.plugins.regExp &&
             slots.length === 1 &&
-            isRegex(slots[0]) &&
-            !slots[0].global &&
-            !slots[0].sticky
+            isRegex(slot) &&
+            !slot.global &&
+            !slot.sticky
         ) {
-            return slots[0];
+            return __$usedRe2 ? getRegExpOrSelf(slot) : slot;
         }
         return undefined;
     }

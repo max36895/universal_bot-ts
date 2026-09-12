@@ -105,3 +105,40 @@ describe('CommandReg: группировка all-RegExp слотов (isPattern 
         expect(commandReg.regexpGroup.get('r1')?.commands).toEqual(['r1', 'r2']);
     });
 });
+
+describe('CommandReg: флаги групп all-RegExp слотов', () => {
+    it('группа компилируется с флагами слотов, а не с ium', () => {
+        const commandReg = new CommandReg(logger, {} as TAppPlugin);
+        commandReg.setCommandGroupMode('group');
+        commandReg.addCommand('r1', [/^r1$/], () => {});
+        commandReg.addCommand('r2', [/^r2$/], () => {});
+        const group = commandReg.regexpGroup.get('r1');
+        expect(group?.commands).toEqual(['r1', 'r2']);
+        expect(group?.flags).toBe('');
+        const compiled = group ? getGroupRegExpCompiled(group) : null;
+        // Без флага m «^» — начало всего текста, а не строки.
+        expect(compiled?.test('r2')).toBe(true);
+        expect(compiled?.test('x\nr2')).toBe(false);
+    });
+
+    it('команда с другими флагами открывает новую группу', () => {
+        const commandReg = new CommandReg(logger, {} as TAppPlugin);
+        commandReg.setCommandGroupMode('group');
+        commandReg.addCommand('a1', [/^a1$/u], () => {});
+        commandReg.addCommand('a2', [/^a2$/u], () => {});
+        commandReg.addCommand('b1', [/^b1$/s], () => {});
+        commandReg.addCommand('b2', [/^b2$/s], () => {});
+        expect(commandReg.regexpGroup.get('a1')?.commands).toEqual(['a1', 'a2']);
+        expect(commandReg.regexpGroup.get('a1')?.flags).toBe('u');
+        expect(commandReg.regexpGroup.get('b1')?.commands).toEqual(['b1', 'b2']);
+        expect(commandReg.regexpGroup.get('b1')?.flags).toBe('s');
+    });
+
+    it('явный isPattern сохраняет прежнюю склейку с ium', () => {
+        const commandReg = new CommandReg(logger, {} as TAppPlugin);
+        commandReg.setCommandGroupMode('group');
+        commandReg.addCommand('p1', [/^p1$/], () => {}, true);
+        commandReg.addCommand('p2', [/^p2$/], () => {}, true);
+        expect(commandReg.regexpGroup.get('p1')?.flags).toBe('ium');
+    });
+});

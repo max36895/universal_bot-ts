@@ -190,6 +190,46 @@ export function similarText(first: string, second: string): number {
 }
 
 /**
+ * Удаляет из текста теги вида `<...>` (HTML, SSML, `<speaker ...>`),
+ * заменяя каждый на `replacement`.
+ *
+ * Результат совпадает с `text.replace(/<[^>]*>/g, replacement)`, но работает
+ * за линейное время: регулярка на строке вида `<<<<…` без закрывающей `>`
+ * от каждой `<` просматривает остаток строки — O(n²) на пользовательском вводе.
+ * Функция предназначена для получения простого текста, а не для санитизации
+ * HTML: одиночная `<` без закрывающей `>` остаётся в тексте как есть.
+ *
+ * @param {string} text - Исходный текст
+ * @param {string} [replacement=''] - Чем заменить каждый тег
+ * @returns {string} Текст без тегов
+ *
+ * @example
+ * ```ts
+ * stripTags('<b>Привет</b>, мир'); // -> 'Привет, мир'
+ * stripTags('x < y'); // -> 'x < y'
+ * ```
+ */
+export function stripTags(text: string, replacement: string = ''): string {
+    let lt = text.indexOf('<');
+    if (lt === -1) {
+        return text;
+    }
+    let result = '';
+    let pos = 0;
+    while (lt !== -1) {
+        const gt = text.indexOf('>', lt + 1);
+        // Закрывающей «>» дальше нет — ни одна последующая «<» тоже не станет тегом.
+        if (gt === -1) {
+            break;
+        }
+        result += text.slice(pos, lt) + replacement;
+        pos = gt + 1;
+        lt = text.indexOf('<', pos);
+    }
+    return result + text.slice(pos);
+}
+
+/**
  * Результат выполнения операции с файлом
  *
  * @template T - Тип данных, возвращаемых при успешной операции

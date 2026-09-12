@@ -1,6 +1,6 @@
 // BotTest наследует Bot, поэтому пример работает и как HTTP-сервер,
 // и в интерактивном консольном режиме (закомментированный блок в конце файла)
-import { BotTest, IBotTestParams } from 'umbot/test';
+import { BotTest } from 'umbot/test';
 import { fullPlatforms, FileAdapter } from 'umbot/plugins'; // Подключаем все необходимые адаптеры
 import skillGameConfig from './config/skillGameConfig';
 import skillGameParam from './config/skillGameParam';
@@ -14,10 +14,9 @@ bot.setPlatformParams(skillGameParam());
 bot.initBotController(GameController); // Подключаем контроллер для работы приложения
 // Для запуска приложения в консоли закомментируйте bot.start() ниже
 // и раскомментируйте этот блок:
-// const params: IBotTestParams = {
+// bot.test({
 //     isShowResult: true,
 //     isShowStorage: false,
 //     isShowTime: true,
-// };
-// bot.test(params);
+// });
 bot.start('localhost', 3000); // Запускаем приложение

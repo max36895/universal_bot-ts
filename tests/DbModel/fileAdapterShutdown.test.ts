@@ -110,6 +110,55 @@ describe('FileAdapter: сохранность данных при close/destroy'
 
         expect(readTable(dir)).toEqual({ '7': { userId: '7', visits: 3 } });
     });
+
+    it('финальная запись close() стартует только после завершения in-flight записи', async () => {
+        // Две параллельные записи одного файла могут завершиться в обратном
+        // порядке: старый снимок перезаписал бы итоговый при graceful shutdown.
+        const events: string[] = [];
+        let releaseFirst = (): void => {};
+        let calls = 0;
+        const realSave = appContext.saveFileData.bind(appContext);
+        appContext.saveFileData = jest.fn((fileName: string, data: unknown) => {
+            if (fileName !== 'UsersData.json') {
+                return realSave(fileName, data);
+            }
+            const n = ++calls;
+            events.push(`start-${n}`);
+            if (n === 1) {
+                return new Promise<boolean>((resolve) => {
+                    releaseFirst = (): void => {
+                        events.push('end-1');
+                        resolve(true);
+                    };
+                });
+            }
+            events.push(`end-${n}`);
+            return Promise.resolve(true);
+        });
+
+        jest.useFakeTimers();
+        try {
+            adapter._insert({
+                tableName: 'UsersData',
+                primaryKeyName: 'userId',
+                data: { userId: '42', score: 1 },
+            });
+            // debounce-таймер срабатывает — запись уходит «в полёт».
+            jest.advanceTimersByTime(1000);
+        } finally {
+            jest.useRealTimers();
+        }
+        expect(events).toEqual(['start-1']);
+
+        const closing = adapter.close('UsersData');
+        await new Promise((resolve) => setImmediate(resolve));
+        // Пока первая запись не завершилась, финальная не начинается.
+        expect(events).toEqual(['start-1']);
+
+        releaseFirst();
+        await closing;
+        expect(events).toEqual(['start-1', 'end-1', 'start-2', 'end-2']);
+    });
 });
 
 describe('FileAdapter: детекция многопроцессного доступа', () => {

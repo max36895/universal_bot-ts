@@ -191,8 +191,10 @@ export class Nlu {
 
     /**
      * Регулярное выражение для поиска URL-ссылок.
-     * Поддерживает HTTP и HTTPS протоколы. Точки внутри ссылки сохраняются,
-     * а концевая пунктуация (точка, запятая, скобка и т.п.) в совпадение не попадает.
+     * Поддерживает HTTP и HTTPS протоколы. Концевая пунктуация (точка, запятая,
+     * скобка и т.п.) отрезается в {@link getLink} — не в самой регулярке:
+     * вариант с исключающим последним символом (`[^\s]*[^\s.,;:!?)\]]`)
+     * откатывается и квадратичен на длинной строке без пробелов.
      *
      * @example
      * ```ts
@@ -201,7 +203,11 @@ export class Nlu {
      * // https://example.com/path/page.html
      * ```
      */
-    private static readonly LINK_REGEX = /(https?:\/\/[^\s]*[^\s.,;:!?)\]])/giu;
+    private static readonly LINK_REGEX = /https?:\/\/\S+/giu;
+    /**
+     * Концевая пунктуация, которая не считается частью ссылки.
+     */
+    private static readonly LINK_TRAILING_PUNCTUATION = '.,;:!?)]';
     /**
      * Тип сущности: ФИО.
      * Используется для извлечения имен, фамилий и отчеств.
@@ -742,7 +748,15 @@ export class Nlu {
     public static getLink(query: string): INluResult<string[] | null> {
         const matches: string[] = [];
         for (const m of query.matchAll(Nlu.LINK_REGEX)) {
-            matches.push(m[0]);
+            const link = m[0];
+            let end = link.length;
+            while (end > 0 && Nlu.LINK_TRAILING_PUNCTUATION.includes(link.charAt(end - 1))) {
+                end--;
+            }
+            // После «://» должен остаться хотя бы один символ: «http://...» — не ссылка.
+            if (end > link.indexOf('//') + 2) {
+                matches.push(link.slice(0, end));
+            }
         }
         return {
             status: matches.length > 0,

@@ -4,7 +4,7 @@ import {
     ITelegramResult,
     TTelegramChatId,
 } from '../Telegram/interfaces/ITelegramPlatform';
-import { AppContext, isFile, Request, Text } from '../../../index';
+import { AppContext, isFile, Request, Text, stripTags } from '../../../index';
 import { T_TELEGRAM } from '../Telegram/constants';
 import { getErrorMsg, getErrorToken } from './constants';
 
@@ -111,8 +111,9 @@ export function prepareTelegramMessageText(
     // Обрезанный документ с разметкой почти всегда содержит оборванную
     // сущность (<b> без закрывающего тега, * без пары), на которой Telegram
     // отклоняет сообщение целиком — разметку снимаем.
-    const sourceMessage =
-        parseMode?.toLowerCase() === 'html' ? message.replace(/<[^>]*>/gu, '') : message;
+    // Текст уходит без parse_mode, т.е. отображается как простой текст —
+    // stripTags здесь снимает разметку, а не санитизирует HTML.
+    const sourceMessage = parseMode?.toLowerCase() === 'html' ? stripTags(message) : message;
     return { text: Text.resize(sourceMessage, TELEGRAM_MESSAGE_MAX_LENGTH), parseMode: undefined };
 }
 
@@ -504,6 +505,9 @@ export class TelegramRequest {
                 );
                 return null;
             }
+            // Bot API требует монотонно возрастающий список индексов:
+            // [2, 0] или [1, 1] Telegram отклонил бы — сортируем и убираем дубли.
+            normalizedParams.correct_option_ids = [...new Set(optionIds)].sort((a, b) => a - b);
         }
 
         this.#request.post = {

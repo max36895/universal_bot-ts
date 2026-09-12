@@ -752,7 +752,7 @@ function generateButtonCode(buttons, indent, shuffle = false) {
 }
 
 /**
- * Рекурсивно проверяет, нужен ли async для блока (HTTP в нём или в 연결ённых блоках).
+ * Рекурсивно проверяет, нужен ли async для блока (HTTP в нём или в связанных блоках).
  * @param {Object} block — проверяемый блок
  * @param {Object} doc — FlowDocument
  * @param {Array} connectedBlocks — связанные блоки

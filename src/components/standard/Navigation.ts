@@ -317,6 +317,28 @@ export class Navigation<ElementType = TElementType> {
     }
 
     /**
+     * Возвращает число, которым заканчивается текст («выбери 2» → 2).
+     *
+     * Цифры ищутся проходом с конца строки, а не регуляркой /(\d+)(?=\s*$)/:
+     * на длинной строке цифр с нецифровым хвостом («000…0x») она квадратична.
+     *
+     * @param text Текст пользователя
+     * @returns Число в конце текста или null, если текст не оканчивается цифрами
+     */
+    static #getTrailingNumber(text: string): number | null {
+        const trimmed = text.trim();
+        let digitsStart = trimmed.length;
+        while (digitsStart > 0) {
+            const code = trimmed.charCodeAt(digitsStart - 1);
+            if (code < 48 || code > 57) {
+                break;
+            }
+            digitsStart--;
+        }
+        return digitsStart < trimmed.length ? +trimmed.slice(digitsStart) : null;
+    }
+
+    /**
      * Выбор элемента из списка по тексту или номеру.
      * Поддерживает поиск по тексту с учетом схожести и выбор по номеру
      *
@@ -354,15 +376,10 @@ export class Navigation<ElementType = TElementType> {
             this.elements = elements;
         }
 
-        let number: number | null = null;
         // Число трактуем как выбор элемента, только если это последнее слово
         // текста («выбери 1», «2»): «закажи 2 литра» должно уйти в поиск по
         // схожести, а не выбрать 2-й элемент.
-        const trimmed = text.trim();
-        const lastWord = /(\d+)(?=\s*$)/imu.exec(trimmed);
-        if (lastWord) {
-            number = +lastWord[0];
-        }
+        const number = Navigation.#getTrailingNumber(text);
 
         const start: number = this.thisPage * this.maxVisibleElements;
         let index: number = 1;

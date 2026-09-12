@@ -281,6 +281,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
         const message = object?.message;
         if (!object || !message) {
             controller.skipAutoReply = true;
+            controller.platformOptions.sendInInit = 'ok';
             this.appContext?.logWarn(
                 'VkAdapter.setQueryData(): message_new без object.message пропущен как некорректное событие.',
             );
@@ -316,6 +317,7 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
             // успешным: на 4xx VK Callback API повторяет событие. Помечаем событие
             // как не требующее ответа и подтверждаем его статусом 200.
             controller.skipAutoReply = true;
+            controller.platformOptions.sendInInit = 'ok';
             controller.userId = query.object?.user_id ?? null;
             this.appContext?.log(
                 'VkAdapter.setQueryData(): message_event без payload пропущен без ответа.',
@@ -384,7 +386,11 @@ export class VkAdapter extends BasePlatform<string | IVkRequestContent> {
                 // Прочие события группы (message_reply, message_allow, group_join, like_add и т.п.)
                 // ответа не требуют, но должны получить "ok": на ошибки VK Callback API
                 // после нескольких неудач отключает сервер как нерабочий.
+                // sendInInit подтверждает событие до бизнес-логики: иначе
+                // message_reply (приходит на каждое исходящее сообщение бота)
+                // и прочие события прогоняли бы middleware и fallback-команду.
                 controller.skipAutoReply = true;
+                controller.platformOptions.sendInInit = 'ok';
                 if (query.object && typeof query.object === 'object') {
                     const object = query.object as unknown as Record<string, unknown>;
                     controller.userId =

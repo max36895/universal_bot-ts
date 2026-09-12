@@ -268,7 +268,11 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
                 // Служебные события — не сообщения пользователя, автоответ на них
                 // не нужен. Событие 'webhook' Viber присылает при вызове set_webhook
                 // и ждёт HTTP 200, без него вебхук не регистрируется.
+                // sendInInit подтверждает событие до бизнес-логики: delivered/seen
+                // приходят на каждое исходящее сообщение и иначе прогоняли бы
+                // middleware и fallback-команду.
                 controller.skipAutoReply = true;
+                controller.platformOptions.sendInInit = 'ok';
                 return true;
 
             case 'message':
@@ -278,6 +282,7 @@ export class ViberAdapter extends BasePlatform<IViberContent | string> {
         // Неизвестные/новые типы событий Viber тоже не должны приводить к 5xx:
         // на ошибку сервера Viber повторяет доставку и в итоге отключает вебхук.
         controller.skipAutoReply = true;
+        controller.platformOptions.sendInInit = 'ok';
         this.appContext?.log(
             `ViberAdapter.setQueryData(): событие "${query.event}" не поддерживается и было пропущено.`,
         );
