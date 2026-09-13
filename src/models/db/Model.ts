@@ -12,6 +12,10 @@ import { IDataValue, IModelRes, IModelRules, TQueryCb } from '../interface';
 import { IQueryData, IQuery, getQueryData, TKey } from './QueryData';
 import { AppContext, IDbResult } from '../../core';
 
+/**
+ * Состояние модели: произвольный набор полей, восстанавливаемых из БД
+ * (generic-ограничение публичного `Model<TState>`).
+ */
 export interface IModelState {
     [key: string]: unknown;
 }
@@ -35,6 +39,10 @@ export interface ISelectOneModelRes extends Omit<IModelRes, 'data'> {
  * @example
  * ```ts
  * class UserModel extends Model<UserState> {
+ *   public constructor(appContext: AppContext) {
+ *     super(appContext);
+ *   }
+ *
  *   // Определение правил валидации
  *   rules(): IModelRules[] {
  *     return [
@@ -58,8 +66,8 @@ export interface ISelectOneModelRes extends Omit<IModelRes, 'data'> {
  *   }
  * }
  *
- * // Использование модели
- * const user = new UserModel();
+ * // Использование модели (конструктор требует контекст приложения)
+ * const user = new UserModel(appContext);
  * user.state.username = 'John';
  * user.state.age = 25;
  * await user.save();
@@ -117,7 +125,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      *
      * @returns Массив правил валидации
-     * @virtual
+     * @abstract
      */
     public abstract rules(): IModelRules[];
 
@@ -137,7 +145,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      *
      * @returns Объект с метками атрибутов
-     * @virtual
+     * @abstract
      */
     public abstract attributeLabels(): TState;
 
@@ -153,17 +161,19 @@ export abstract class Model<TState extends IModelState> {
      * ```
      *
      * @returns Имя таблицы
-     * @virtual
+     * @abstract
      */
     public abstract tableName(): string;
 
     /**
      * Создает новый экземпляр модели.
-     * Инициализирует контроллер базы данных и состояние модели
+     * Инициализирует контекст приложения и параметры запроса (queryData)
+     *
+     * @param {AppContext} appContext - Контекст приложения (адаптер БД, логгер, метрики)
      *
      * @example
      * ```ts
-     * const user = new UserModel();
+     * const user = new UserModel(appContext);
      * ```
      */
     protected constructor(appContext: AppContext) {
@@ -188,7 +198,8 @@ export abstract class Model<TState extends IModelState> {
      * }
      * ```
      *
-     * @returns Promise<boolean> - true если подключение активно
+     * @returns {Promise<boolean> | boolean} true если подключение активно
+     *   (синхронно false без адаптера БД, иначе Promise от адаптера)
      */
     public isConnected(): Promise<boolean> | boolean {
         if (this._appContext.database.adapter) {
@@ -205,7 +216,7 @@ export abstract class Model<TState extends IModelState> {
      * const safe = model.escapeString("O'Connor");
      * ```
      *
-     * @param text - Текст для экранирования
+     * @param text - Строка или число для экранирования
      * @returns Экранированная строка
      */
     public escapeString(text: string | number): string {
@@ -232,7 +243,7 @@ export abstract class Model<TState extends IModelState> {
      * ```
      */
     public validate(): void {
-        // TODO document why this method 'validate' is empty
+        // Базовая реализация пуста — переопределяется в наследниках для валидации данных
     }
 
     /**
@@ -256,6 +267,7 @@ export abstract class Model<TState extends IModelState> {
      *
      * @example
      * ```ts
+     * // Объект: значения сопоставляются по именам полей (меткам attributeLabels)
      * model.init({
      *   id: 1,
      *   username: 'John',
@@ -297,7 +309,7 @@ export abstract class Model<TState extends IModelState> {
      * ```ts
      * const result = await model.selectOne();
      * if (result.status) {
-     *   model.init(result.data);
+     *   model.init(result.data ?? null); // data опционален, init() допускает null
      * }
      * ```
      *
@@ -329,7 +341,7 @@ export abstract class Model<TState extends IModelState> {
      * Подготавливает данные для сохранения или обновления
      */
     #initData(): void {
-        // Не назвать через "#", так как есть proxy
+        // Приватный метод подготовки queryData: вызывается из save() и update().
         this.validate();
         const idName = this.queryData.primaryKeyName;
         if (idName) {
@@ -440,6 +452,15 @@ export abstract class Model<TState extends IModelState> {
     /**
      * Выполняет произвольный запрос к базе данных
      *
+     * @example
+     * ```ts
+     * // Объект условий — точные значения полей
+     * const res = await model.where({ age: 25 });
+     *
+     * // Строка условий формата getQueryData
+     * const res2 = await model.where('`age`=25 `status`="active"');
+     * ```
+     *
      * @param where - Условия запроса
      * @param isOne - Флаг выборки одной записи
      * @returns Promise с результатом запроса
@@ -465,7 +486,7 @@ export abstract class Model<TState extends IModelState> {
      * ```ts
      * const found = await model.whereOne({ id: 1 });
      * if (found) {
-     *   console.log('Record found');
+     *   console.log('Запись найдена');
      * }
      * ```
      *
@@ -484,9 +505,15 @@ export abstract class Model<TState extends IModelState> {
     /**
      * Выполняет произвольный запрос к базе данных
      *
+     * Типы client/db зависят от подключённого адаптера БД —
+     * для MongoAdapter это MongoClient и Db из драйвера mongodb.
+     * Для FileAdapter `_query` не реализован — метод вернёт `null`.
+     *
      * @example
      * ```ts
-     * const result = await model.query(async (client, db) => {
+     * import type { MongoClient, Db } from 'mongodb';
+     *
+     * const result = await model.query(async (client: MongoClient, db: Db) => {
      *   const collection = db.collection('users');
      *   return await collection.aggregate([
      *     { $match: { age: { $gt: 18 } } },

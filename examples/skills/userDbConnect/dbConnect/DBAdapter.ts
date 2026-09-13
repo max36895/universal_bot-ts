@@ -32,8 +32,11 @@ export default class DBAdapter extends BaseDbAdapter {
     public _select(selectData: IQuery, where: IQueryData | null, isOne: boolean): IModelRes {
         const data: IData = (this._appContext.database.databaseInfo?.[selectData.tableName] ||
             {}) as IData;
-        if (data[where?.[selectData.primaryKeyName as string]]) {
-            return { status: true, data: data[where?.[selectData.primaryKeyName as string]] };
+        const id = where
+            ? (where[selectData.primaryKeyName as string] as string | undefined)
+            : undefined;
+        if (id !== undefined && data[id]) {
+            return { status: true, data: data[id] };
         }
         return {
             status: false,

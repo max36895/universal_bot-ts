@@ -1,14 +1,80 @@
 import { ILogger, TLoggerCb } from '../interfaces/ILogger';
-import { getRegExp, __$usedRe2, isRegex, TPatternRegExp } from '../../utils/standard/RegExp';
+import {
+    getRegExp,
+    getRegExpOrSelf,
+    __$usedRe2,
+    isRegex,
+    TPatternRegExp,
+} from '../../utils/standard/RegExp';
 import { isRegexLikelySafe } from './utils';
 import os from 'os';
 import { BotController } from '../../controller';
 import { TAppPlugin } from '../interfaces/IAppContext';
 import { TCommandGroupMode } from '../interfaces/IBot';
+import { Text } from '../../utils';
+import { FALLBACK_COMMAND } from '../constants';
+import type { TEventType } from '../events';
 
+/**
+ * Данные группы команд для оптимизации поиска.
+ * Используется внутренне фреймворком для группировки команд с RegExp.
+ */
 export interface IGroupData {
+    /**
+     * Имена команд в этой группе
+     */
     commands: string[];
+    /**
+     * Объединённое регулярное выражение для группы. Строка — временная стадия
+     * до debounce-пересборки (компилируется через getGroupRegExpCompiled),
+     * `null` — группа ещё не собрана.
+     */
     regExp: RegExp | null | string;
+    /**
+     * Флаги объединённого выражения группы. По умолчанию `ium`; группа из
+     * команд, у которых все слоты — RegExp (без isPattern), собирается
+     * с флагами самих слотов, чтобы склейка не меняла их семантику.
+     */
+    flags?: string;
+}
+
+/**
+ * Кэш скомпилированных регулярных выражений групп, чей паттерн хранится строкой
+ * (случай, когда количество групп превысило MAX_COUNT_FOR_GROUP). Ключ — объект
+ * группы, значение — паттерн, для которого собран RegExp: строка паттерна растёт
+ * при добавлении команд, поэтому кэш сверяет её и пересобирает только при изменении.
+ */
+const groupCompiledRegExp = new WeakMap<IGroupData, { pattern: string; regExp: RegExp }>();
+
+/**
+ * Возвращает скомпилированное регулярное выражение группы.
+ * Для строкового паттерна результат кэшируется: перекомпиляция на каждом запросе
+ * в горячем пути поиска команд стоила заметного CPU.
+ * @param groupData Данные группы
+ * @param customReg Кастомный конструктор RegExp (например, re2)
+ * @returns Скомпилированное выражение или null, если группа пуста
+ */
+export function getGroupRegExpCompiled(
+    groupData: IGroupData,
+    customReg?: RegExpConstructor,
+): RegExp | null {
+    if (groupData.regExp === null) {
+        return null;
+    }
+    if (typeof groupData.regExp !== 'string') {
+        return groupData.regExp;
+    }
+    const cached = groupCompiledRegExp.get(groupData);
+    if (cached && cached.pattern === groupData.regExp) {
+        return cached.regExp;
+    }
+    const regExp = getRegExp(groupData.regExp, groupData.flags ?? 'ium', customReg);
+    // Прогреваем регулярку сразу после компиляции — первые вызовы .test/.exec
+    // у нового объекта заметно медленнее.
+    regExp.test('__umbot_testing');
+    regExp.test('');
+    groupCompiledRegExp.set(groupData, { pattern: groupData.regExp, regExp });
+    return regExp;
 }
 
 const LIMIT_COMMANDS = [1e4, 5e4, 1e5];
@@ -17,13 +83,13 @@ let MAX_COUNT_FOR_GROUP = 0;
 let MAX_COUNT_FOR_REG = 0;
 
 /**
- * Устанавливает ограничение на использование активных регулярных выражений. Нужен для того, чтобы приложение не падало под нагрузкой.
+ * Устанавливает ограничение на количество активных регулярных выражений. Нужна для того, чтобы приложение не падало под нагрузкой.
  */
 function setMemoryLimit(): void {
     const total = os.totalmem();
-    // re2 гораздо лучше работает с оперативной память, а также ограничение на использование памяти не такое суровое
-    // например нативный reqExp уронит node при 3_400 группах, либо при 68_000 обычных регулярках (В этот лимит никогда не попадем, так как максимум активных регулярок порядка 10_000)
-    // Поэтому если нет re2, то лимиты на количество активных регулярок должно быть меньше, для групп сильно меньше
+    // re2 гораздо лучше работает с оперативной памятью, а также ограничение на использование памяти не такое суровое:
+    // например, нативный RegExp уронит node при 3 400 группах либо при 68 000 обычных регулярках
+    // (в этот лимит никогда не попадём, так как максимум активных регулярок порядка 10 000)
     if (total < 0.8 * 1024 ** 3) {
         MAX_COUNT_FOR_GROUP = 200;
         MAX_COUNT_FOR_REG = 1000;
@@ -38,7 +104,8 @@ function setMemoryLimit(): void {
         MAX_COUNT_FOR_REG = 7000;
     }
 
-    // Если нет re2, то количество активных регулярок для групп, нужно сильно сократить, иначе возможно падение nodejs
+    // Если re2 нет, количество активных регулярок для групп нужно сильно сократить, иначе возможно падение nodejs:
+    // для групп — в 20 раз, для одиночных регулярных выражений — вдвое
     if (!__$usedRe2) {
         MAX_COUNT_FOR_GROUP /= 20;
         MAX_COUNT_FOR_REG /= 2;
@@ -48,29 +115,10 @@ function setMemoryLimit(): void {
 setMemoryLimit();
 
 /**
- * Специальное имя команды для обработки неизвестных запросов.
- *
- * Если ни одна из зарегистрированных команд не сработала,
- * и существует команда с именем `FALLBACK_COMMAND`,
- * её callback будет выполнен как fallback-обработчик.
- *
- * @example
- * ```ts
- * bot.addCommand(FALLBACK_COMMAND, [], (cmd, ctrl) => {
- *   ctrl.text = 'Извините, я вас не понял. Скажите "помощь" для списка команд.';
- *   ctrl.buttons.addBtn('Помощь');
- * });
- * ```
- *
- * @remarks
- * - Fallback срабатывает только если нет совпадений по слотам.
- * - Не влияет на стандартные интенты (`welcome`, `help`).
- * - Можно зарегистрировать только одну fallback-команду (последняя перезапишет предыдущую).
- * - Можно просто передать "*"
+ * Результат проверки слотов на опасные регулярные выражения (ReDoS):
+ * статус и, в зависимости от режима strictMode, безопасные либо исходные слоты.
  */
-export const FALLBACK_COMMAND = '*';
-
-interface IDangerRegex {
+export interface IDangerRegex {
     status: boolean;
     slots: TSlots;
 }
@@ -80,6 +128,11 @@ interface IGroup {
     regLength: number;
     butchRegexp: unknown[];
     regExpSize: number;
+    /**
+     * Флаги объединённого выражения: в одну группу попадают только команды
+     * с одинаковыми флагами склейки.
+     */
+    flags: string;
 }
 
 /**
@@ -98,6 +151,7 @@ export type TSlots = TPatternRegExp[];
  * const command: ICommandParam = {
  *   slots: ['привет', 'здравствуй'],
  *   isPattern: false,
+ *   isRegExpString: false,
  *   cb: (text, controller) => {
  *     controller.text = 'Привет! Рад вас видеть!';
  *   }
@@ -121,8 +175,8 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * Функция-обработчик команды
      *
      * @param {string} userCommand - Текст команды пользователя
-     * @param {BotController} [botController] - Контроллер с бизнес-логикой приложения для управления ответом
-     * @returns {void | string} - Строка ответа или void
+     * @param {BotController} botController - Контроллер с бизнес-логикой приложения для управления ответом
+     * @returns {void | string | Promise<void | string>} - Строка ответа или void
      *
      * Если функция возвращает строку, она автоматически устанавливается как ответ для платформы.
      */
@@ -140,14 +194,26 @@ export interface ICommandParam<TBotController extends BotController = BotControl
      * Скомпилированное регулярное выражение
      */
     regExp?: RegExp;
+    /**
+     * true, если слот-строка скомпилирована как регулярное выражение (isPattern).
+     */
     isRegExpString: boolean;
+    /**
+     * Предвычисленный быстрый путь: у команды ровно один слот, он RegExp без
+     * stateful-флагов `g`/`y`, и кастомный движок regexp не подключён.
+     * Поиск вызывает `test` напрямую, минуя обёртку Text.isSayText.
+     * @private
+     */
+    __$singleStatelessRegExp?: RegExp;
 }
 
 /**
  * Параметры конфигурации шага диалога.
  *
- * Используется для регистрации шагов в системе. Шаги сохраняются между сессиями
- * и автоматически восстанавливаются при повторном входе пользователя в навык.
+ * Используется для регистрации шагов в системе. Между сессиями персистится
+ * только указатель активного шага (oldIntentName в state/userData); сами
+ * определения шагов живут в памяти приложения. Активный шаг автоматически
+ * восстанавливается при повторном входе пользователя в навык.
  *
  * @example
  * ```ts
@@ -182,10 +248,30 @@ export interface IStepParam<TBotController extends BotController = BotController
      *
      * @param {BotController} botController - Контроллер с бизнес-логикой приложения для управления ответом
      * @returns
-     * - `void` или `undefined` — шаг активен. Обработка останавливается на этом шаге, ожидается ввод пользователя.
-     * - `false` — шаг **игнорируется**. Фреймворк считает, что шаг не применим, и передаёт управление дальше.
+     * - `void` или `Promise<void>` — шаг активен. Обработка останавливается на этом шаге, ожидается ввод пользователя.
+     * - `false` (или `Promise<false>` у async-обработчика) — шаг **игнорируется**. Фреймворк считает,
+     *   что шаг не применим, и передаёт управление дальше (команды → интенты → fallback).
      */
-    cb: (botController: TBotController) => void | Promise<void> | false;
+    cb: (botController: TBotController) => void | false | Promise<void | false>;
+}
+
+/**
+ * Параметры событийного обработчика (`bot.addEvent`).
+ *
+ * Обработчик получает контроллер, у которого адаптер уже заполнил `eventType`
+ * и поля события (`userCommand`, `payload`, `requestObject`).
+ */
+export interface IEventParam<TBotController extends BotController = BotController> {
+    /**
+     * Универсальный тип события, на который подписан обработчик.
+     */
+    eventType: TEventType;
+    /**
+     * Функция-обработчик события. Вызывается до поиска шагов и команд.
+     *
+     * Как и обработчик команды, может вернуть строку — она станет текстом ответа.
+     */
+    cb: (botController: TBotController) => void | string | Promise<void | string> | false;
 }
 
 /**
@@ -193,7 +279,7 @@ export interface IStepParam<TBotController extends BotController = BotController
  * Кастомный обработчик может быть как синхронным, так и асинхронным. В случае успешного нахождения команды, возвращается название этой команды. В противном случае возвращается null
  * @param userCommand - Команда пользователя
  * @param commands - Список всех зарегистрированных команд
- * @return {string} - Имя команды
+ * @returns {string | null | Promise<string | null>} - Имя найденной команды или null, если совпадений нет
  */
 export type TCommandResolver = (
     userCommand: string,
@@ -201,14 +287,23 @@ export type TCommandResolver = (
 ) => string | null | Promise<string | null>;
 
 /**
- * Класс, который берет на себя всю обязанность за регистрацию команд и шагов
- * @internal Используется только внутри фреймворка
+ * Класс, который берет на себя всю обязанность за регистрацию команд и шагов.
+ * Экземпляр не создаётся напрямую — он доступен как `ctx.appContext.command`
+ * в обработчиках и middleware.
+ *
+ * @example
+ * ```ts
+ * // Динамическая регистрация команды из middleware или обработчика
+ * ctx.appContext.command.addCommand('dyn', ['динамика'], (cmd, ctrl) => {
+ *     ctrl.text = 'Команда добавлена в рантайме';
+ * });
+ * ```
  */
 export class CommandReg {
     #regExpCommandCount = 0;
 
     /**
-     * Сгруппированные регулярные выражения. Начинает отрабатывать как только было задано более 250 регулярных выражений
+     * Сгруппированные регулярные выражения. Начинает отрабатывать как только было задано более 300 регулярных выражений
      */
     public regexpGroup: Map<string, IGroupData> = new Map();
     #noFullGroups: IGroup | null = null;
@@ -220,12 +315,42 @@ export class CommandReg {
 
     readonly #exactMatchMap = new Map<string, string>();
     /**
+     * Снимок команд для горячего цикла поиска.
+     *
+     * Перебор Map через `for...of` аллоцирует пару-массив на каждой итерации —
+     * при скане тысяч команд это лишний мусор на каждый запрос. Снимок хранится
+     * обычным массивом пар и пересобирается лениво: мутации только помечают
+     * его флагом, пересборка происходит при первом поиске. Источник правды —
+     * {@link commands} (Map).
+     */
+    public commandsList: [string, ICommandParam][] = [];
+
+    #commandsListDirty = true;
+
+    /**
+     * Возвращает актуальный снимок команд, пересобирая его при необходимости.
+     * Вызывается из горячего цикла поиска команд: при неизменном наборе команд
+     * (обычный прод-режим) стоимость — одна проверка булевого флага.
+     */
+    public getActualCommandsList(): [string, ICommandParam][] {
+        if (this.#commandsListDirty) {
+            this.commandsList = [];
+            for (const entry of this.commands) {
+                this.commandsList.push(entry);
+            }
+            this.#commandsListDirty = false;
+        }
+        return this.commandsList;
+    }
+
+    /**
      * Добавленные шаги для обработки
      */
     public steps: Map<string, IStepParam> = new Map();
+
     /**
      * Флаг строгого режима работы приложения.
-     * В строгом режиме работы, все ReDOS регулярные выражения не будут добавляться.
+     * В строгом режиме работы, все ReDoS регулярные выражения не будут добавляться.
      */
     public strictMode: boolean = false;
 
@@ -240,18 +365,35 @@ export class CommandReg {
     private readonly logWarn: TLoggerCb;
     private readonly plugins: TAppPlugin;
 
+    /**
+     * Конструктор класса CommandReg.
+     *
+     * @param {ILogger} logger - Логгер для вывода предупреждений и ошибок
+     * @param {TAppPlugin} plugins - Плагины приложения (для получения кастомного RegExp)
+     */
     constructor(logger: ILogger, plugins: TAppPlugin) {
         this.logWarn = logger.warn as TLoggerCb;
         this.logError = logger.error as TLoggerCb;
         this.plugins = plugins;
     }
 
+    /**
+     * Поиск команды по точному совпадению (без RegExp).
+     *
+     * @param {string} userCommand - Команда пользователя (в нижнем регистре)
+     * @returns {string | undefined} Имя найденной команды или undefined
+     */
     getExactMatchCommand(userCommand: string): string | undefined {
+        // Пустая карта — точного совпадения быть не может.
+        if (this.#exactMatchMap.size === 0) {
+            return undefined;
+        }
         return this.#exactMatchMap.get(userCommand);
     }
 
     /**
-     * Возвращает кастомный обработчик для обработки регулярных выражений
+     * Возвращает конструктор RegExp (например, re2), заданный плагином regExp,
+     * для компиляции регулярных выражений. Если плагин не подключён — undefined.
      */
     getCustomRegExp(): RegExpConstructor | undefined {
         const reg = this.plugins.regExp;
@@ -261,21 +403,61 @@ export class CommandReg {
         return undefined;
     }
 
+    /**
+     * Устанавливает режим группировки регулярных выражений.
+     *
+     * @param {TCommandGroupMode} mode - Режим группировки: 'auto', 'group' или 'no-group'
+     */
     setCommandGroupMode(mode: TCommandGroupMode): void {
         this.#commandGroupMode = mode;
     }
 
     /**
-     * Определяет опасная передана регулярка или нет
-     * @param slots
+     * Сообщает о найденном небезопасном регулярном выражении.
+     *
+     * Уровень намеренно зависит от окружения. Без `re2` движок регулярных выражений
+     * Node подвержен катастрофическому бэктрекингу: одно сообщение пользователя
+     * может занять поток на минуты, и бот перестанет отвечать вообще всем.
+     * Поэтому такая связка — это ошибка, а не предупреждение.
+     *
+     * @param patterns Небезопасные шаблоны
+     */
+    #logDangerRegex(patterns: string): void {
+        const base = `Найдено небезопасное регулярное выражение (ReDoS), проверьте его корректность: ${patterns}`;
+        if (this.strictMode) {
+            this.logError(`${base}. Выражение отключено (strictMode).`, {});
+            return;
+        }
+        if (!__$usedRe2) {
+            this.logError(
+                `${base}. Пакет re2 не установлен, поэтому выражение выполняется штатным движком Node ` +
+                    'с экспоненциальным бэктрекингом: специально подобранное сообщение пользователя ' +
+                    'заблокирует поток и бот перестанет отвечать всем. Установите re2 (npm i re2) ' +
+                    'либо включите strictMode, либо перепишите выражение.',
+                {},
+            );
+            return;
+        }
+        this.logWarn(`${base}. Выражение выполняется через re2 без бэктрекинга.`, {});
+    }
+
+    /**
+     * Проверяет, что переданное регулярное выражение не содержит уязвимых к ReDoS конструкций.
+     *
+     * Если выражение признано небезопасным:
+     * - В обычном режиме пишется сообщение (ошибка без `re2`, предупреждение с ним),
+     *   и выражение используется как есть.
+     * - В `strictMode` — пишется ошибка, и небезопасные слоты отбрасываются
+     *   (`status: false`; для одиночного RegExp возвращаются пустые слоты,
+     *   для массива — только безопасные слоты).
+     *
+     * @param slots Слот(ы) или регулярное выражение для проверки.
+     * @returns Исходные слоты (в обычном режиме) или безопасные слоты с флагом ошибки.
      */
     isDangerRegex(slots: TSlots | RegExp): IDangerRegex {
         if (isRegex(slots)) {
             if (!isRegexLikelySafe(slots.source, true)) {
-                this[this.strictMode ? 'logError' : 'logWarn'](
-                    `Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: ${slots.source}`,
-                    {},
-                );
+                this.#logDangerRegex(slots.source);
                 if (this.strictMode) {
                     return {
                         status: false,
@@ -303,10 +485,7 @@ export class CommandReg {
             }
             const status = errors.length === 0;
             if (!status) {
-                this[this.strictMode ? 'logError' : 'logWarn']?.(
-                    `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: ${errors.join(', ')}`,
-                    {},
-                );
+                this.#logDangerRegex(errors.join(', '));
                 errors.length = 0;
             }
             return { status, slots: this.strictMode ? correctSlots : slots };
@@ -325,12 +504,13 @@ export class CommandReg {
         isRegUp: boolean = true,
     ): void {
         group.butchRegexp ??= [];
+        groupData.flags = group.flags;
         const parts = slots.map((s) => {
             return `(${typeof s === 'string' ? s : s.source})`;
         });
         const groupIndex = group.butchRegexp.length;
         // Для уменьшения длины регулярного выражения, а также для исключения случая,
-        // когда имя команды может быть не корректным для имени группы, сами задаем корректное имя с учетом индекса
+        // когда имя команды может быть некорректным для имени группы, сами задаём корректное имя с учётом индекса
         const pat = `(?<_${groupIndex}>${parts?.join('|')})`;
         group.butchRegexp.push(pat);
         group.regExpSize += pat.length;
@@ -345,8 +525,8 @@ export class CommandReg {
                 this.#timeOutReg = undefined;
             }
             this.#oldFnGroup = (): void => {
-                const pattern = group.butchRegexp.join('|');
-                const regExp = getRegExp(pattern, 'ium', this.getCustomRegExp());
+                const finalPattern = group.butchRegexp.join('|');
+                const regExp = getRegExp(finalPattern, group.flags, this.getCustomRegExp());
                 if (isRegUp) {
                     // прогреваем регулярку
                     regExp.test('__umbot_testing');
@@ -358,6 +538,7 @@ export class CommandReg {
             };
 
             this.#timeOutReg = setTimeout(this.#oldFnGroup, 35).unref();
+            groupData.regExp = pattern;
             return;
         } else {
             if (this.#timeOutReg && this.#oldGroupName !== group.name) {
@@ -371,7 +552,28 @@ export class CommandReg {
         groupData.regExp = pattern;
     }
 
-    #addRegexpInGroup(commandName: string, slots: TSlots, isRegexp: boolean): string | null {
+    /**
+     * Закрывает текущую группу, чтобы следующая отдельная команда не попала внутрь её диапазона.
+     */
+    #closeRegexpGroup(): void {
+        if (!this.#noFullGroups) {
+            return;
+        }
+        if (
+            this.regexpGroup.has(this.#noFullGroups.name) &&
+            ((this.regexpGroup.get(this.#noFullGroups.name) as IGroupData).commands.length || 0) < 2
+        ) {
+            this.regexpGroup.delete(this.#noFullGroups.name);
+        }
+        this.#noFullGroups = null;
+    }
+
+    #addRegexpInGroup(
+        commandName: string,
+        slots: TSlots,
+        isRegexp: boolean,
+        flags: string = 'ium',
+    ): string | null {
         // Если количество команд до 300, то нет необходимости в объединении регулярок, так как это не даст сильного преимущества
         if (
             this.#commandGroupMode === 'no-group' ||
@@ -381,7 +583,13 @@ export class CommandReg {
         }
         if (isRegexp) {
             if (!isRegexLikelySafe(slots.join('|'), false)) {
+                this.#closeRegexpGroup();
                 return commandName;
+            }
+            // Группа компилируется с одним набором флагов: команда с другими
+            // флагами открывает новую группу, иначе склейка изменила бы её семантику.
+            if (this.#noFullGroups && this.#noFullGroups.flags !== flags) {
+                this.#closeRegexpGroup();
             }
             if (this.#noFullGroups) {
                 let groupName = this.#noFullGroups.name;
@@ -392,12 +600,15 @@ export class CommandReg {
                 ) {
                     const command = this.commands.get(this.#noFullGroups.name);
                     if (command) {
-                        command.regExp = undefined;
+                        // exactOptionalPropertyTypes: убираем поле целиком, а не
+                        // присваиваем undefined.
+                        delete command.regExp;
                         command.isRegExpString = false;
                         this.commands.set(this.#noFullGroups.name, command);
                     }
                 }
-                // В среднем 9 символов зарезервировано под стандартный шаблон для группы регулярки. Даем примерно 60 регулярок по 5 символов
+                // В среднем 9 символов резервируется под стандартный шаблон группы.
+                // Позволяет примерно 60 команд с регулярками при суммарной длине шаблонов до 850 символов
                 if (
                     this.#noFullGroups.regLength >= 60 ||
                     (this.#noFullGroups.regExpSize || 0) > 850
@@ -409,6 +620,7 @@ export class CommandReg {
                         regLength: 0,
                         butchRegexp: [],
                         regExpSize: 0,
+                        flags,
                     };
                 }
                 groupData.commands.push(commandName);
@@ -427,31 +639,27 @@ export class CommandReg {
                 const parts = slots.map((s) => {
                     return `(${typeof s === 'string' ? s : s.source})`;
                 });
-                butchRegexp.push(`(?<${commandName}>${parts?.join('|')})`);
-                const regExp = getRegExp(`${butchRegexp.join('|')}`, 'ium', this.getCustomRegExp());
+                // Имя команды — публичный произвольный идентификатор и не может быть
+                // именем capture-группы: например, дефис недопустим в RegExp.
+                // Поиск группы всегда использует числовые имена _0, _1, … .
+                butchRegexp.push(`(?<_0>${parts.join('|')})`);
+                const regExp = getRegExp(`${butchRegexp.join('|')}`, flags, this.getCustomRegExp());
                 this.#noFullGroups = {
                     name: commandName,
                     regLength: slots.length,
                     butchRegexp,
                     regExpSize: regExp.source.length,
+                    flags,
                 };
                 this.regexpGroup.set(commandName, {
                     commands: [commandName],
                     regExp,
+                    flags,
                 });
                 return commandName;
             }
         } else {
-            if (this.#noFullGroups) {
-                if (
-                    this.regexpGroup.has(this.#noFullGroups.name) &&
-                    ((this.regexpGroup.get(this.#noFullGroups.name) as IGroupData).commands
-                        .length || 0) < 2
-                ) {
-                    this.regexpGroup.delete(this.#noFullGroups.name);
-                }
-                this.#noFullGroups = null;
-            }
+            this.#closeRegexpGroup();
             return null;
         }
     }
@@ -480,12 +688,20 @@ export class CommandReg {
                 const newCommands = group?.commands.filter((gCommand) => {
                     return gCommand !== commandName;
                 });
+                // Если других команд в группе не осталось — группа не нужна
+                if (!newCommands.length) {
+                    return;
+                }
                 const newCommandName = newCommands[0];
+                if (!newCommandName) {
+                    return;
+                }
                 const nGroup: IGroup = {
                     name: newCommandName,
                     regLength: 0,
                     butchRegexp: [],
                     regExpSize: 0,
+                    flags: group.flags ?? 'ium',
                 };
                 const groupData: IGroupData = {
                     commands: newCommands,
@@ -509,10 +725,12 @@ export class CommandReg {
                         return gCommand !== commandName;
                     });
                     const nGroup: IGroup = {
-                        name: commandName,
+                        // Хост группы не меняется — удаляемая команда не была хостом
+                        name: command.__$groupName as string,
                         regLength: 0,
                         butchRegexp: [],
                         regExpSize: 0,
+                        flags: group.flags ?? 'ium',
                     };
                     const groupData: IGroupData = {
                         commands: newCommands,
@@ -520,7 +738,7 @@ export class CommandReg {
                     };
                     getReg(
                         groupData,
-                        commandName,
+                        command.__$groupName as string,
                         newCommands,
                         nGroup,
                         typeof group.regExp !== 'string',
@@ -541,10 +759,15 @@ export class CommandReg {
      * @param {TSlots} slots - Триггеры для активации команды
      *   - Если элемент — строка → ищется как подстрока (`text.includes(...)`).
      *   - Если элемент — RegExp → проверяется как регулярное выражение (`.test(text)`).
-     *   - Параметр `isPattern` учитывается **только если в `slots` нет RegExp**.
-     *   - Если в slots присутствует хотя бы один RegExp, параметр isPattern игнорируется. Каждый элемент обрабатывается по своему типу:
+     *   - При `isPattern = true` строковые слоты компилируются в одно объединённое
+     *     регулярное выражение с флагом `ium`.
+     *   - При `isPattern = false` каждый элемент обрабатывается по своему типу:
      *        - string → как литерал (поиск подстроки),
      *        - RegExp → как регулярное выражение
+     *   - Если ВСЕ слоты — готовые RegExp, isPattern для строк не применяется
+     *     (строк нет) и команда трактуется как pattern. Без явного isPattern
+     *     слоты склеиваются с их собственными (общими) флагами, а не с `ium`;
+     *     слоты с разными флагами проверяются по отдельности.
      * @param {ICommandParam['cb']} cb - Функция-обработчик команды
      * @param {boolean} isPattern - Использовать регулярные выражения (по умолчанию false)
      *
@@ -620,13 +843,12 @@ export class CommandReg {
         }
         if (commandName === FALLBACK_COMMAND) {
             this.commands.set(commandName, {
-                slots: undefined,
                 isPattern: false,
                 cb: cb as ICommandParam['cb'],
-                regExp: undefined,
                 isRegExpString: false,
                 __$groupName: commandName,
             });
+            this.#commandsListDirty = true;
             return;
         }
 
@@ -636,26 +858,24 @@ export class CommandReg {
                 `Задано ${this.commands.size} команд, скорее всего команды задаются через цикл, который возможно отработал некорректно. Проверьте корректность работы приложения, а также корректность добавленных команд.`,
             );
         }
+
+        const isPatternCommand = isPattern || this.#isAllRegExpSlots(slots);
         let correctSlots: TSlots = this.strictMode ? [] : slots;
-        let regExp;
-        let groupName;
-        if (isPattern) {
-            correctSlots = this.isDangerRegex(slots).slots;
-            if (correctSlots.length) {
-                groupName = this.#addRegexpInGroup(commandName, correctSlots, true);
-                if (groupName === commandName) {
-                    this.#regExpCommandCount++;
-                    if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
-                        regExp = getRegExp(correctSlots, 'ium', this.getCustomRegExp());
-                        regExp.test('__umbot_testing');
-                        regExp.test('');
-                    }
-                }
-            }
+        let regExp: RegExp | undefined;
+        let groupName: string | null | undefined;
+        if (isPatternCommand) {
+            ({ correctSlots, regExp, groupName } = this.#registerPatternSlots(
+                commandName,
+                slots,
+                isPattern,
+            ));
         } else {
             this.#addRegexpInGroup(commandName, correctSlots, false);
             for (let i = 0; i < slots.length; i++) {
                 const slot = slots[i];
+                if (!slot) {
+                    continue;
+                }
                 if (isRegex(slot)) {
                     const res = this.isDangerRegex(slot);
                     if (res.status && this.strictMode) {
@@ -673,15 +893,168 @@ export class CommandReg {
             }
         }
         if (correctSlots.length) {
-            this.commands.set(commandName, {
-                slots: correctSlots,
-                isPattern,
-                cb: cb as ICommandParam['cb'],
-                regExp,
-                isRegExpString: typeof regExp !== 'string',
-                __$groupName: groupName,
-            });
+            this.commands.set(
+                commandName,
+                this.#buildCommandParam(correctSlots, isPatternCommand, cb, regExp, groupName),
+            );
+            this.#commandsListDirty = true;
         }
+    }
+
+    /**
+     * Регистрирует слоты pattern-команды: отбрасывает небезопасные (strictMode),
+     * включает команду в группу регулярок и компилирует объединённое выражение.
+     *
+     * Явный isPattern склеивает слоты с флагами 'ium', как и раньше. Команда
+     * из одних RegExp без isPattern склеивается с флагами самих слотов:
+     * иначе /^да$/ получил бы флаг m (и i, u) и стал бы совпадать с «ну\nда».
+     *
+     * @param commandName Имя команды
+     * @param slots Слоты команды
+     * @param isPattern Явно переданный флаг isPattern
+     * @returns Безопасные слоты, скомпилированное выражение и имя группы
+     */
+    #registerPatternSlots(
+        commandName: string,
+        slots: TSlots,
+        isPattern: boolean,
+    ): { correctSlots: TSlots; regExp: RegExp | undefined; groupName: string | null | undefined } {
+        const correctSlots = this.isDangerRegex(slots).slots;
+        let regExp: RegExp | undefined;
+        let groupName: string | null | undefined;
+        const flags = isPattern ? 'ium' : this.#getCommonFlags(correctSlots);
+        if (flags === null) {
+            // Флаги слотов различаются — одним выражением их не выразить:
+            // слоты проверяются по отдельности, каждый со своими флагами.
+            this.#addRegexpInGroup(commandName, correctSlots, false);
+        } else if (correctSlots.length) {
+            groupName = this.#addRegexpInGroup(commandName, correctSlots, true, flags);
+            if (groupName === commandName) {
+                this.#regExpCommandCount++;
+                if (this.#regExpCommandCount < MAX_COUNT_FOR_REG) {
+                    regExp = getRegExp(correctSlots, flags, this.getCustomRegExp());
+                    regExp.test('__umbot_testing');
+                    regExp.test('');
+                }
+            }
+        }
+        return { correctSlots, regExp, groupName };
+    }
+
+    /**
+     * Проверяет, что ВСЕ слоты команды — готовые RegExp (строковых нет).
+     *
+     * Такая команда семантически эквивалентна isPattern: строк в слотах нет,
+     * «строковая» интерпретация не нужна. Выделено из addCommand для
+     * читаемости и снижения сложности метода.
+     *
+     * @param slots Слоты команды
+     * @returns true, если массив непуст и каждый элемент — RegExp
+     */
+    #isAllRegExpSlots(slots: TSlots): boolean {
+        if (slots.length === 0) {
+            return false;
+        }
+        for (let i = 0; i < slots.length; i++) {
+            const slot = slots[i];
+            if (!slot || !isRegex(slot)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Возвращает общие флаги RegExp-слотов (без stateful `g`/`y`) — с ними
+     * объединение слотов в одно выражение не меняет семантику матчинга.
+     * `RegExp.flags` всегда в каноническом порядке, поэтому достаточно
+     * сравнения строк.
+     *
+     * @param slots Слоты команды (все — RegExp)
+     * @returns Общие флаги или null, если флаги слотов различаются
+     */
+    #getCommonFlags(slots: TSlots): string | null {
+        let common: string | null = null;
+        for (let i = 0; i < slots.length; i++) {
+            const slot = slots[i];
+            if (!isRegex(slot)) {
+                continue;
+            }
+            const flags = slot.flags.replace(/[gy]/g, '');
+            if (common === null) {
+                common = flags;
+            } else if (common !== flags) {
+                return null;
+            }
+        }
+        return common ?? '';
+    }
+
+    /**
+     * Собирает запись команды для реестра.
+     *
+     * exactOptionalPropertyTypes: опциональные поля (`regExp`, `__$groupName`,
+     * `__$singleStatelessRegExp`) заполняются только реальными значениями,
+     * без протаскивания undefined.
+     *
+     * @param slots Слоты команды после валидации ReDoS
+     * @param isPattern Флаг регулярных выражений
+     * @param cb Обработчик команды
+     * @param regExp Скомпилированное выражение (если есть)
+     * @param groupName Имя группы регулярок (если есть)
+     * @returns Готовая запись ICommandParam
+     */
+    #buildCommandParam<TBotController extends BotController>(
+        slots: TSlots,
+        isPattern: boolean,
+        cb: ICommandParam<TBotController>['cb'],
+        regExp: RegExp | undefined,
+        groupName: string | null | undefined,
+    ): ICommandParam {
+        const commandParam: ICommandParam = {
+            slots,
+            isPattern,
+            cb: cb as ICommandParam['cb'],
+            isRegExpString: regExp !== undefined,
+        };
+        if (regExp !== undefined) {
+            commandParam.regExp = regExp;
+        }
+        if (groupName !== undefined) {
+            commandParam.__$groupName = groupName;
+        }
+        const singleStatelessRegExp = this.#getSingleStatelessRegExp(slots);
+        if (singleStatelessRegExp !== undefined) {
+            commandParam.__$singleStatelessRegExp = singleStatelessRegExp;
+        }
+        return commandParam;
+    }
+
+    /**
+     * Вычисляет RegExp для быстрого пути поиска: команда с ровно одним слотом-RegExp
+     * без stateful-флагов `g`/`y` и без кастомного движка может проверяться
+     * прямым `.test` в горячем цикле, минуя обёртку Text.isSayText.
+     *
+     * Наличие движка проверяем по plugins.regExp напрямую, без вызова
+     * getCustomRegExp(): у плагина-функции могут быть сайд-эффекты.
+     * При установленном re2 слот один раз пересобирается через него
+     * (getRegExpOrSelf) — быстрый путь не должен обходить безопасный движок.
+     *
+     * @param slots Слоты команды после валидации ReDoS
+     * @returns Готовый к прямому тесту RegExp или undefined, если условия не выполнены
+     */
+    #getSingleStatelessRegExp(slots: TSlots): RegExp | undefined {
+        const slot = slots[0];
+        if (
+            !this.plugins.regExp &&
+            slots.length === 1 &&
+            isRegex(slot) &&
+            !slot.global &&
+            !slot.sticky
+        ) {
+            return __$usedRe2 ? getRegExpOrSelf(slot) : slot;
+        }
+        return undefined;
     }
 
     /**
@@ -695,7 +1068,7 @@ export class CommandReg {
         }
         if (this.commands.has(commandName)) {
             const command = this.commands.get(commandName);
-            if (command?.isPattern && command.regExp) {
+            if (command?.isPattern && (command.regExp || command.__$groupName)) {
                 this.#regExpCommandCount--;
                 if (this.#regExpCommandCount < 0) {
                     this.#regExpCommandCount = 0;
@@ -706,13 +1079,20 @@ export class CommandReg {
                     this.#exactMatchMap.delete(slot);
                 }
             });
+            // Сначала удаляем из regexp-групп (пока информация о команде ещё доступна),
+            // и только потом удаляем из this.commands — иначе #removeRegexpInGroup
+            // не сможет найти принадлежность к группе через __$groupName.
+            this.#removeRegexpInGroup(commandName);
             this.commands.delete(commandName);
+        } else {
+            // Команды нет в this.commands, но она могла остаться хостом группы
+            this.#removeRegexpInGroup(commandName);
         }
-        this.#removeRegexpInGroup(commandName);
+        this.#commandsListDirty = true;
     }
 
     /**
-     * Удаляет все команды
+     * Удаляет все зарегистрированные команды
      */
     public clearCommands(): void {
         this.commands.clear();
@@ -724,6 +1104,8 @@ export class CommandReg {
         this.#oldFnGroup = undefined;
         clearTimeout(this.#timeOutReg);
         this.#timeOutReg = undefined;
+        this.#commandsListDirty = true;
+        Text.clearCache();
     }
 
     /**
@@ -734,21 +1116,21 @@ export class CommandReg {
      * следующее сообщение пользователя будет обработано этим обработчиком.
      *
      * > 💡 Обработчик получает полный `BotController`, как и в командах:
-     * > доступны `this.text`, `this.userData`, `this.buttons`, `this.setStep()` и т.д.
+     * > доступны `this.text`, `this.userData`, `this.buttons`, `this.thisIntentName` и т.д.
      *
      * @param stepName — Уникальное имя шага (например, `'enter_email'`).
      * @param handler — Функция, вызываемая при получении сообщения в этом шаге.
-     * @returns Текущий экземпляр `Bot` (для цепочки вызовов).
+     * @returns Текущий экземпляр `CommandReg`.
      *
      * @example
      * ```ts
      * bot.addStep('confirm_age', (ctx) => {
      *   if (ctx.userCommand === 'да') {
      *     ctx.text = 'Отлично! Добро пожаловать.';
-     *     ctx.clearStep(); // завершаем сценарий
+     *     ctx.thisIntentName = null; // завершаем сценарий
      *   } else {
      *     ctx.text = 'Извините, вход запрещён.';
-     *     ctx.setStep('goodbye'); // переходим к другому шагу
+     *     ctx.thisIntentName = 'goodbye'; // переходим к другому шагу
      *   }
      * });
      * ```
@@ -768,10 +1150,10 @@ export class CommandReg {
      * Удаляет зарегистрированный шаг по имени.
      *
      * После удаления шаг больше не будет обрабатываться, даже если активен у пользователя.
-     * (Рекомендуется завершать активные сценарии через `ctx.clearStep()` перед удалением.)
+     * (Рекомендуется завершать активные сценарии через `ctx.thisIntentName = null` перед удалением.)
      *
      * @param stepName — Имя шага для удаления.
-     * @returns Текущий экземпляр `Bot`.
+     * @returns Текущий экземпляр `CommandReg`.
      */
     public removeStep(stepName: string): this {
         this.steps.delete(stepName);
@@ -784,10 +1166,98 @@ export class CommandReg {
      * > ⚠️ Это **глобальная операция**: все сценарии станут недоступны.
      * > Используйте с осторожностью (например, при перезагрузке логики приложения).
      *
-     * @returns Текущий экземпляр `Bot`.
+     * @returns Текущий экземпляр `CommandReg`.
      */
     public clearSteps(): this {
         this.steps.clear();
+        return this;
+    }
+
+    /**
+     * Добавленные событийные обработчики (`bot.addEvent`). Ключ — тип события.
+     *
+     * @internal Реестр принадлежит только {@link addEvent}/{@link removeEvent}/
+     * {@link clearEvents}: внешние мутации рассинхронизируют `#hasEvents`, и
+     * обработчики молча перестанут вызываться. Для чтения используйте
+     * {@link events} и {@link hasEvents}.
+     */
+    #events: Map<TEventType, IEventParam['cb'][]> = new Map();
+
+    /**
+     * Быстрый флаг «есть хоть один событийный обработчик» для горячего пути run().
+     * Поддерживается методами addEvent/removeEvent/clearEvents.
+     */
+    #hasEvents: boolean = false;
+
+    /**
+     * Зарегистрированные событийные обработчики (только чтение).
+     *
+     * Readonly-аксессор над внутренним реестром: Map не пересоздаётся, чтение
+     * в горячем пути `BotController.#eventResolver` остаётся дешёвым. Мутации
+     * извне запрещены — только через {@link addEvent}/{@link removeEvent}/{@link clearEvents}.
+     */
+    public get events(): ReadonlyMap<TEventType, IEventParam['cb'][]> {
+        return this.#events;
+    }
+
+    /**
+     * Флаг «есть хоть один событийный обработчик» (только чтение).
+     *
+     * Обновляется методами регистрации/очистки; прямое присваивание извне
+     * невозможно, поэтому флаг не разъедется с реестром.
+     */
+    public get hasEvents(): boolean {
+        return this.#hasEvents;
+    }
+
+    /**
+     * Регистрирует обработчик универсального события платформы.
+     *
+     * Обработчики событий вызываются до поиска шагов и команд. На одно событие
+     * можно зарегистрировать несколько обработчиков: они опрашиваются в порядке
+     * регистрации, пока один не вернёт строку-ответ (цепочка останавливается).
+     * Обработчик с `false` передаёт событие следующему обработчику; когда все
+     * отказались — запрос уходит в обычный конвейер (шаг → команда → интент →
+     * fallback).
+     *
+     * @param eventType Универсальный тип события (`'photo'`, `'callback'`, …)
+     * @param cb Функция-обработчик; может вернуть строку (текст ответа) или
+     *   `false` (событие «не мой» — обработка продолжится по обычному конвейеру)
+     */
+    public addEvent<TBotController extends BotController = BotController>(
+        eventType: TEventType,
+        cb: IEventParam<TBotController>['cb'],
+    ): this {
+        const handlers = this.#events.get(eventType);
+        if (handlers) {
+            handlers.push(cb as IEventParam['cb']);
+        } else {
+            this.#events.set(eventType, [cb as IEventParam['cb']]);
+        }
+        this.#hasEvents = true;
+        return this;
+    }
+
+    /**
+     * Удаляет все обработчики указанного события.
+     *
+     * @param eventType Тип события
+     * @returns Текущий экземпляр `CommandReg`
+     */
+    public removeEvent(eventType: TEventType): this {
+        this.#events.delete(eventType);
+        this.#hasEvents = this.#events.size > 0;
+        return this;
+    }
+
+    /**
+     * Удаляет **все** зарегистрированные событийные обработчики.
+     *
+     * @returns Текущий экземпляр `CommandReg`
+     */
+    public clearEvents(): this {
+        this.#events.clear();
+        this.#hasEvents = false;
         return this;
     }
 }

@@ -75,7 +75,7 @@ export interface IMaxMessageBody {
     /**
      * Вложения к сообщению.
      */
-    attachments?: IMaxAttachment;
+    attachments?: IMaxAttachment[] | IMaxAttachment;
 
     /**
      * Разметка текста (например, для выделения, ссылок).
@@ -110,7 +110,7 @@ export interface IMaxMessage {
     /**
      * Информация об отправителе сообщения.
      */
-    sender: IMaxSender;
+    sender?: IMaxSender;
 
     /**
      * Информация о получателе сообщения (например, для личных сообщений).
@@ -165,7 +165,7 @@ export interface IMaxMessage {
     /**
      * Основное тело сообщения.
      */
-    body: IMaxMessageBody;
+    body: IMaxMessageBody | null;
 
     /**
      * Статистика по сообщению.
@@ -185,13 +185,28 @@ export interface IMaxMessage {
 
 /**
  * Интерфейс, описывающий структуру содержимого обновления от Max App.
- * Представляет собой полный объект, получаемый от webhook`а.
+ * Представляет собой полный объект, получаемый с вебхука.
  */
 export interface IMaxRequestContent {
     /**
      * Тип обновления.
      */
-    update_type: 'message_created' | 'message_callback' | 'message_editing' | 'message_removed';
+    update_type:
+        | 'bot_added'
+        | 'bot_started'
+        | 'bot_stopped'
+        | 'bot_removed'
+        | 'chat_title_changed'
+        | 'dialog_cleared'
+        | 'dialog_muted'
+        | 'dialog_unmuted'
+        | 'dialog_removed'
+        | 'message_callback'
+        | 'message_created'
+        | 'message_edited'
+        | 'message_removed'
+        | 'user_added'
+        | 'user_removed';
 
     /**
      * Временная метка обновления (предположительно, в формате Unix timestamp).
@@ -199,9 +214,47 @@ export interface IMaxRequestContent {
     timestamp?: number;
 
     /**
+     * ID чата или канала для служебных событий.
+     */
+    chat_id?: number;
+
+    /**
+     * Пользователь, связанный со служебным событием.
+     */
+    user?: IMaxSender;
+
+    /**
+     * Параметр deep-link запуска бота (событие `bot_started`).
+     */
+    payload?: string | null;
+
+    /**
+     * Признак события из канала.
+     */
+    is_channel?: boolean;
+
+    /**
      * Объект сообщения, связанного с обновлением.
      */
-    message: IMaxMessage;
+    message?: IMaxMessage;
+
+    /**
+     * Данные нажатия callback-кнопки.
+     */
+    callback?: {
+        /**
+         * Идентификатор, обязательный для ответа через POST /answers.
+         */
+        callback_id: string;
+        /**
+         * Полезная нагрузка кнопки.
+         */
+        payload?: string;
+        /**
+         * Пользователь, нажавший кнопку.
+         */
+        user?: IMaxSender;
+    };
 
     /**
      * Языковой стандарт (locale) пользователя, инициировавшего обновление.
@@ -222,8 +275,16 @@ export interface IMaxButton {
      * - 'request_geo_location': Запрашивает геолокацию у пользователя.
      * - 'request_contact': Запрашивает контактные данные у пользователя.
      * - 'open_app': Открывает другое приложение Max App.
+     * - 'clipboard': Копирует текст из payload в буфер обмена пользователя.
      */
-    type: 'message' | 'link' | 'callback' | 'request_geo_location' | 'request_contact' | 'open_app';
+    type:
+        | 'message'
+        | 'link'
+        | 'callback'
+        | 'request_geo_location'
+        | 'request_contact'
+        | 'open_app'
+        | 'clipboard';
 
     /**
      * Текст, отображаемый на кнопке.
@@ -237,6 +298,8 @@ export interface IMaxButton {
 
     /**
      * Интент кнопки, влияющий на её визуальное оформление (например, цвет).
+     * Передаётся только для кнопки типа 'callback'. В текущей документации MAX
+     * и официальном SDK поля нет (наследие TamTam) — поведение не гарантируется.
      */
     intent?: 'default' | 'positive' | 'negative';
 
@@ -246,8 +309,8 @@ export interface IMaxButton {
     url?: string;
 
     /**
-     * Флаг, указывающий, является ли кнопка "быстрой".
-     * Быстрые кнопки могут исчезать после нажатия.
+     * Флаг «быстрой» отправки геолокации (без подтверждения).
+     * Поддерживается только кнопкой типа 'request_geo_location'.
      */
     quick?: boolean;
 
@@ -257,7 +320,8 @@ export interface IMaxButton {
     web_app?: string;
 
     /**
-     * ID контакта, используемый при нажатии кнопки типа 'request_contact'.
+     * ID бота, чьё мини-приложение открывает кнопка типа 'open_app'.
+     * Поддерживается только кнопкой типа 'open_app'.
      */
     contact_id?: number;
 }
@@ -268,7 +332,8 @@ export interface IMaxButton {
  */
 export interface IMaxButtonObject {
     /**
-     * Массив кнопок Max App.
+     * Строки inline-клавиатуры. Плоский массив сохранён для обратной совместимости
+     * и нормализуется перед отправкой.
      */
-    buttons: IMaxButton[];
+    buttons: IMaxButton[][] | IMaxButton[];
 }

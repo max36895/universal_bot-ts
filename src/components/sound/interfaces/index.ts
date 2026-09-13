@@ -43,7 +43,7 @@ export interface IEffect {
      */
     key: string;
     /**
-     * Звуки, соответствующие ключу
+     * Звуковой эффект, соответствующий ключу
      */
     effect: string;
 }

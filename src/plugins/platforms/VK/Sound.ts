@@ -1,78 +1,143 @@
-import { ISoundInfo, isFile, Text, unlink, BotController } from '../../../index';
-import { YandexSpeechKit, VkRequest } from '../API';
-import { getSoundToken } from '../Base/utils';
+/**
+ * Обработка звуков VK: загрузка аудио через docs.getMessagesUploadServer и отправка вложением.
+ */
+import { ISoundInfo, Text, unlink, BotController } from '../../../index';
+import { YandexSpeechKit, VkRequest, IVkDocSave } from '../API';
+import {
+    getBaseDataSoundProcessing,
+    getPlatformRequestData,
+    getSoundToken,
+    cacheMediaToken,
+    getSpeechText,
+} from '../Base/utils';
 import { T_VK } from './constants';
+
+/**
+ * Возвращает peer_id диалога, из которого пришёл запрос.
+ */
+function getPeerId(controller: BotController): string | number {
+    const requestData = getPlatformRequestData<{ peerId?: string | number }>(controller, T_VK);
+    return requestData.peerId ?? (controller.userId as string | number);
+}
+
+/**
+ * Формирует строку-вложение `doc<owner_id>_<id>` из ответа `docs.save`.
+ *
+ * `docs.save` возвращает объект-обёртку `{ type, doc | audio_message | graffiti }`,
+ * а идентификаторы лежат во вложенном объекте. Верхний уровень — запасной
+ * вариант для старых версий API.
+ *
+ * @param saved Ответ `docs.save` (или null при ошибке)
+ * @returns Строка-вложение либо `null`, если идентификаторов в ответе нет
+ */
+export function getVkDocAttachment(saved: IVkDocSave | null): string | null {
+    if (!saved) {
+        return null;
+    }
+    const doc = (saved.doc ?? saved.audio_message ?? saved.graffiti ?? saved) as {
+        id?: number;
+        owner_id?: number;
+    };
+    if (doc.id === undefined || doc.owner_id === undefined) {
+        return null;
+    }
+    return `doc${doc.owner_id}_${doc.id}`;
+}
+
+/**
+ * Загружает аудиофайл в VK как голосовое сообщение (без кэширования токена).
+ *
+ * @param controller Контроллер приложения
+ * @param path Путь до аудиофайла
+ * @param isAttachContent Передано ли содержимое файла вместо пути
+ * @returns Строка-вложение `doc<owner_id>_<id>` либо `null` при ошибке
+ */
+async function uploadVoiceMessage(
+    controller: BotController,
+    path: string,
+    isAttachContent: boolean = false,
+): Promise<string | null> {
+    const vkApi = new VkRequest(controller.appContext);
+    vkApi.isAttachContent = isAttachContent;
+    const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
+        getPeerId(controller),
+        'audio_message',
+    );
+    if (!uploadServerResponse?.upload_url) {
+        return null;
+    }
+    const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, path);
+    if (!uploadResponse?.file) {
+        return null;
+    }
+    return getVkDocAttachment(await vkApi.docsSave(uploadResponse.file, 'Voice message'));
+}
 
 /**
  * Получение токена, необходимого для воспроизведения звуков в Vk
  * @param controller Контроллер приложения
- * @param path Путь до аудиофайла
+ * @param path Путь до аудиофайла (URL не поддерживается — VK требует загрузку файла)
  * @param isAttachContent Определяет передано ли содержимое файла или сам файл
+ * @returns Строка-вложение (doc<owner_id>_<id>) либо `null` при ошибке загрузки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
     path: string,
     isAttachContent: boolean = false,
 ): Promise<string | null> {
-    return getSoundToken(path, T_VK, controller, async (model) => {
-        const vkApi = new VkRequest(controller.appContext);
-        vkApi.isAttachContent = isAttachContent;
-        const uploadServerResponse = await vkApi.docsGetMessagesUploadServer(
-            controller.userId as string,
-            'audio_message',
+    if (Text.isUrl(path)) {
+        controller.appContext.logWarn(
+            'VK.getSoundInDB(): VK принимает голосовые сообщения только после загрузки файла; URL пропущен.',
         );
-        if (uploadServerResponse) {
-            const uploadResponse = await vkApi.upload(uploadServerResponse.upload_url, path);
-            if (uploadResponse) {
-                const doc = await vkApi.docsSave(uploadResponse.file, 'Voice message');
-                if (doc) {
-                    model.soundToken = `doc${doc.owner_id}_${doc.id}`;
-                    if (await model.save(true)) {
-                        return model.soundToken;
-                    }
-                }
-            }
+        return null;
+    }
+    return getSoundToken(path, T_VK, controller, async (model) => {
+        const attachment = await uploadVoiceMessage(controller, path, isAttachContent);
+        if (attachment) {
+            model.soundToken = attachment;
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
 }
 
 /**
- * Получение корректного ответа для озвучивания запроса пользователю VK
+ * Получение корректного ответа для озвучивания запроса пользователю VK:
+ * загружает аудио (в т.ч. TTS через SpeechKit) как голосовое сообщение.
  * @param soundInfo Информация необходимая для обработки аудио
  * @param controller Контроллер приложения
+ * @returns Массив строк-вложений (doc<owner_id>_<id>) для отправки в attachments
  */
 export async function soundProcessing(
     soundInfo: ISoundInfo,
     controller: BotController,
 ): Promise<string[]> {
-    const { sounds, text } = soundInfo;
-    const data: string[] = [];
-    if (sounds) {
-        for (let i = 0; i < sounds.length; i++) {
-            const sound = sounds[i];
-            if (sound.sounds !== undefined && sound.key !== undefined) {
-                let sText: string | null = Text.getText(sound.sounds);
-                if (Text.isUrl(sText) || (await isFile(sText))) {
-                    sText = await getSoundInDB(controller, sText);
-                }
+    const { text } = soundInfo;
+    const data: string[] = await getBaseDataSoundProcessing(soundInfo, controller, getSoundInDB);
 
-                if (sText) {
-                    data.push(sText);
-                }
-            }
-        }
-    }
     if (text) {
-        const speechKit = new YandexSpeechKit(
-            controller.appContext.appConfig.tokens[T_VK].speech_kit_token as string,
-            controller.appContext,
-        );
-        const content = await speechKit.getTts(text);
+        const token = controller.appContext.appConfig.tokens[T_VK]?.speech_kit_token;
+        if (!token) {
+            controller.appContext.logWarn('VK: speech_kit_token не настроен, TTS недоступен');
+            return data;
+        }
+        const speechKit = new YandexSpeechKit(token as string, controller.appContext);
+        // Разметку звуков голосовых платформ SpeechKit зачитал бы вслух.
+        const speechText = getSpeechText(text);
+        const content = speechText ? await speechKit.getTts(speechText) : null;
         let sText = null;
         if (content) {
-            sText = await getSoundInDB(controller, content.fileName, true);
-            await unlink(content.fileName);
+            // SpeechKit возвращает путь к временному файлу, а не его содержимое.
+            // Токен TTS не кэшируем: путь уникален для каждого ответа и больше
+            // не встретится, а запись в SoundTokens на каждую озвучку бесконечно
+            // раздувала бы таблицу (и кэш FileAdapter в памяти).
+            sText = await uploadVoiceMessage(controller, content.fileName);
+            try {
+                await unlink(content.fileName);
+            } catch {
+                // Игнорируем ошибку удаления временного файла
+            }
         }
         if (sText) {
             data.push(sText);

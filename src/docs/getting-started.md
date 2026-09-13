@@ -1,4 +1,4 @@
-# Руководство по началу работы с umbot: создание приложения для Алисы, Telegram и VK на TypeScript
+# Быстрый старт: первый навык или чат-бот на umbot
 
 В этом руководстве вы узнаете, как быстро создать мультиплатформенное приложение для голосовых навыков и чат‑ботов с помощью фреймворка `umbot` на TypeScript.
 
@@ -31,7 +31,7 @@ import { join } from 'node:path';
 
 // Создаем контроллер с логикой навыка
 class MyController extends BotController {
-    public action(intentName: string): void {
+    public action(intentName: string | null): void {
         switch (intentName) {
             case WELCOME_INTENT_NAME:
                 this.text = 'Привет! Я новый навык.';
@@ -52,7 +52,7 @@ class MyController extends BotController {
 // Инициализируем приложение
 const bot = new Bot();
 // Подключаем все доступные платформы
-// Если вам нужны только голосовые платформы, используйте voicePlatforms или конкретный адаптер если нужна только одна платформа
+// Если вам нужны только голосовые платформы, используйте voicePlatforms или конкретный адаптер, если нужна только одна платформа
 bot.use(fullPlatforms);
 
 // Настраиваем команды
@@ -143,7 +143,13 @@ this.card.addImage('image.jpg').setTitle('Заголовок').setDescription('�
 #### Управление состоянием пользователя
 
 ```ts
-// Сохранение данных
+// Для TypeScript, объявите интерфейс и передайте его в BotController
+interface IUserState {
+    counter?: number;
+}
+class MyController extends BotController<IUserState> {}
+
+// Внутри controller.userData теперь знает про counter
 this.userData.counter = 42;
 
 // Прочитать данные
@@ -179,7 +185,7 @@ bot.addCommand('greeting', ['привет', 'здравствуй'], (_, control
 
 ```
 src/
-├── controllers/      # Контроллеры с логикой (Если нужно)
+├── controller/       # Контроллеры с логикой (Если нужно)
 ├── plugins/          # Дополнительные плагины (Если нужно)
 ├── utils/            # Вспомогательные функции (Если нужно)
 ├── config/           # Конфигурация (Если нужно)
@@ -196,7 +202,7 @@ interface IGameState {
 }
 
 class GameController extends BotController<IGameState> {
-    public action(intentName: string): void {
+    public action(intentName: string | null): void {
         // Теперь this.userData типизирован как IGameState
         this.userData.score = 100;
     }
@@ -207,7 +213,8 @@ class GameController extends BotController<IGameState> {
 
 ```ts
 try {
-    const result = await this.processUserInput();
+    // Ваша асинхронная логика (запрос к API, работа с БД и т.д.)
+    const result = await fetchExternalData();
     this.text = `Успешно: ${result}`;
 } catch (error) {
     console.error('Ошибка:', error);
@@ -224,19 +231,27 @@ if (!this.userData.initialized) {
     this.userData.score = 0;
 }
 
-// Сброс состояния
+// Сброс состояния — мутируйте, а не переприсваивайте
 if (intentName === 'restart') {
-    this.userData = {};
+    Object.keys(this.userData).forEach((key) => delete this.userData[key]);
     this.text = 'Игра начата заново';
 }
 ```
+
+> **Важно:** не делайте `this.userData = {};` — фреймворк хранит ссылку на объект
+> и при полном переприсваивании отслеживание изменений может сломаться.
+> Вместо этого мутируйте или удаляйте поля по одному.
+>
+> **Нюанс Алисы:** у локального хранилища Алисы `delete` и `= undefined` **не удаляют поле** —
+> при следующем запросе оно вернётся со старым значением. Для удаления поля на Алисе
+> присваивайте `null`: `this.userData.tempData = null`.
 
 ## Отладка
 
 ### 1. Локальное тестирование
 
 ```ts
-import { BotTest } from 'umbot';
+import { BotTest } from 'umbot/test';
 import { fullPlatforms } from 'umbot/plugins';
 
 const bot = new BotTest();
@@ -246,7 +261,29 @@ bot.use(fullPlatforms);
 bot.test();
 ```
 
-### 2. Логирование
+### 2. Локальная отладка с реальными платформами (туннель)
+
+Консольный режим `BotTest` не требует сети, но для проверки с реальной платформой нужен вебхук.
+Платформы не умеют отправлять запросы на `localhost` — им нужен публичный HTTPS-адрес.
+На время разработки поднимите туннель, который пробросит ваш локальный порт в интернет:
+
+```bash
+# ngrok
+ngrok http 3000
+
+# или cloudflared (Cloudflare Tunnel)
+cloudflared tunnel --url http://localhost:3000
+```
+
+Инструмент выдаст публичный URL вида `https://xxxx.ngrok-free.app`. Запустите приложение
+(`bot.start('localhost', 3000)`) и укажите этот URL в качестве вебхука в консоли разработчика
+платформы. После отладки удалите URL и разверните приложение на сервере с HTTPS
+(см. «Запуск в production»).
+
+> ⚠️ URL туннеля временный и подходит только для разработки. Не оставляйте продакшн-вебхук
+> указывать на туннель.
+
+### 3. Логирование
 
 ```ts
 // В контроллере
@@ -262,18 +299,145 @@ bot.setAppMode('dev');
 
 ## Запуск в production
 
-Для продакшн‑окружения используйте режим `strict_prod` и настройте webhook.
+Для продакшн‑окружения используйте режим `strict_prod`, настройте webhook и **включите проверку подписи вебхука**.
 
 ```ts
-bot.setAppMode('strict_prod'); // включает строгие проверки безопасности
+bot.setAppMode('strict_prod'); // включает строгие проверки безопасности (блокирует ReDoS-регулярки)
 bot.start('0.0.0.0', 8080); // запуск HTTP-сервера
+```
+
+### Проверка подписи вебхука — обязательный шаг
+
+Пока проверка подписи не включена, любой, кто узнает URL вашего вебхука, может отправлять боту
+поддельные запросы от имени **любого** пользователя — в том числе обходить авторизацию по `userId`
+и читать/перезаписывать чужие данные. URL вебхука утекает легко (логи, реестры доменов), поэтому
+секрет нужно задать до первого продакшн-запроса:
+
+```ts
+bot.setAppConfig({
+    tokens: {
+        // Секрет задаётся с двух сторон: при регистрации вебхука у платформы
+        // (setWebhook у Telegram, настройки группы VK, подписка MAX) и здесь.
+        telegram: { webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET },
+        vk: { secret_key: process.env.VK_SECRET_KEY },
+        max_app: { webhookSecret: process.env.MAX_WEBHOOK_SECRET },
+        // Viber проверяет подпись автоматически по самому токену бота — ничего дополнительно задавать не нужно.
+    },
+});
+```
+
+Что за что отвечает каждая платформа и как сгенерировать секрет — в
+[configuration.md → Проверка подписи вебхука](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html#проверка-подписи-вебхука-обязательно-для-production).
+У Алисы, Маруси и SmartApp подписи вебхука нет в принципе (ограничение платформ): не считайте
+`userId` этих платформ аутентифицированной идентичностью.
+
+## Чеклист перед запуском
+
+Убедитесь, что всё выполнено:
+
+- [ ] **Режим `strict_prod`** — включен через `bot.setAppMode('strict_prod')`
+- [ ] **Проверка подписи вебхука включена** — задан `webhookSecret` (Telegram/MAX) или `secret_key` (VK); при старте в логе нет предупреждения «БЕЗ проверки подписи». Для Алисы/Маруси/SmartApp подписи нет — продумайте собственную верификацию чувствительных действий
+- [ ] **intents настроены** — при необходимости `bot.setPlatformParams({ intents: [...] })`. Учтите: переданный массив **заменяет** встроенные интенты `welcome`/`help`, поэтому либо добавьте их в свой список, либо задайте собственные слоты для приветствия и помощи
+- [ ] **Токены в .env** — не в коде, не в git. Проверьте `.gitignore`
+- [ ] **MongoAdapter вместо FileAdapter** — FileAdapter держит всю таблицу в памяти (риск OOM на больших данных) и рассчитан на один процесс, поэтому не подходит для production
+- [ ] **Preload для медиа** — все изображения и звуки предзагружены (первая загрузка медиа занимает 200–1000 мс на файл и может съесть бюджет ответа голосовой платформы)
+- [ ] **rateLimiter подключен** — `bot.use(rateLimiter())` для защиты от превышения лимитов платформ
+- [ ] **error_log настроен** — `bot.setAppConfig({ error_log: './logs' })`
+- [ ] **HTTPS настроен** — обязателен для Алисы, Сбера, Viber
+- [ ] **Webhook URL зарегистрирован** — в консоли разработчика каждой платформы
+
+## Типичные ошибки
+
+### Команда не срабатывает
+
+**Причина:** Регистр. `controller.userCommand` автоматически приводится к нижнему регистру.
+
+```ts
+// ❌ Неправильно — слот с заглавной буквы
+bot.addCommand('greet', ['Привет'], (_, bc) => {
+    bc.text = 'Привет!';
+});
+
+// ✅ Правильно — слот в нижнем регистре
+bot.addCommand('greet', ['привет'], (_, bc) => {
+    bc.text = 'Привет!';
+});
+```
+
+### Бот отвечает стандартным текстом на приветствие
+
+**Причина:** Не задан свой `welcome_text` в `setPlatformParams` — фреймворк отвечает placeholder-текстом по умолчанию.
+
+```ts
+// ❌ Не настроено — ответит стандартным текстом приветствия
+bot.setPlatformParams({ intents: [] });
+
+// ✅ Правильно — свой текст приветствия
+bot.setPlatformParams({
+    welcome_text: 'Привет! Я могу помочь.',
+    intents: [],
+});
+```
+
+### TypeScript ошибка "'bc.userData.score' is of type 'unknown'"
+
+**Причина:** `userData` без дженерика типизирован как `IUserData` с индексной сигнатурой `[key: string]: unknown` —
+запись любого поля разрешена, но чтение в арифметике (`+= 10`) уже нет: значение имеет тип `unknown`.
+
+```ts
+// ❌ Неправильно — TypeScript не знает про score
+bot.addCommand('play', ['играть'], (_, bc) => {
+    bc.userData.score += 10; // Ошибка!
+});
+
+// ✅ Правильно — аннотируем тип
+bot.addCommand('play', ['играть'], (_, bc: BotController<MyData>) => {
+    bc.userData.score += 10; // OK
+});
+```
+
+### Данные не сохраняются между запросами
+
+**Причина:** Не подключен DB-adapter и `isLocalStorage: false`.
+
+```ts
+import { MongoAdapter } from 'umbot/plugins';
+
+// ❌ Неправильно — данные теряются
+bot.setAppConfig({ isLocalStorage: false });
+
+// ✅ Вариант 1: локальное хранилище (для голосовых платформ)
+bot.setAppConfig({ isLocalStorage: true });
+
+// ✅ Вариант 2: БД (для чат-ботов)
+bot.use(new MongoAdapter({ host: '...', database: '...' }));
+bot.setAppConfig({ isLocalStorage: false });
+```
+
+### Пустой ответ вместо "Не поняла"
+
+**Причина:** Используете `BotController` вместо `BaseBotController`. Автоматическая установка `empty_text` работает только через `BaseBotController`. Если вы наследуетесь от `BotController` напрямую, задайте `this.text` в `action()`. Адаптеры не придумывают ответ: Алиса и Маруся сохранят пустые поля и запишут предупреждение, а чат-платформы не станут отправлять недопустимое пустое сообщение.
+
+Подробнее об этом механизме — в разделе [«Порядок диспетчера»](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html#порядок-диспетчера) в GUIDE.md.
+
+```ts
+// Решение: вручную обрабатывайте default-case в action()
+public action(intentName: string | null): void {
+    switch (intentName) {
+        case WELCOME_INTENT_NAME:
+            this.text = 'Привет!';
+            break;
+        default:
+            if (!this.text) this.text = 'Не поняла. Скажите "помощь".';
+    }
+}
 ```
 
 ## 🔐 Безопасность и защита от ReDoS
 
 При использовании регулярных выражений в командах (`addCommand(..., isPattern: true)`) или интентах, фреймворк проверяет их на потенциальные ReDoS‑уязвимости.
 
-⚠️ **По умолчанию (`appMode: false`) небезопасные RegExp всё равно регистрируются!**  
+⚠️ **По умолчанию (`appMode: 'dev'`) небезопасные RegExp всё равно регистрируются!**  
 Это сделано для гибкости в разработке, но порой **недопустимо в production**.
 
 ✅ **Рекомендация для production включить строгую проверку**:
@@ -295,7 +459,7 @@ bot.setAppMode('strict_prod'); // ← обязательно включите!
 
 ### Как добавить поддержку новой платформы?
 
-Достаточно создать адаптер для нужной платформы согласно документации и после подключить его к приложению.
+Достаточно создать адаптер для нужной платформы согласно [документации по созданию адаптера платформы](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_adapter_platformAdapter.html) и после подключить его к приложению.
 Если все сделано верно, то при получении запроса от новой платформы, фреймворк корректно отработает запрос, и вернет
 данные в нужном для платформы виде.
 
@@ -316,14 +480,28 @@ TELEGRAM_TOKEN=your-telegram-token
 VK_TOKEN=your-vk-token
 VK_CONFIRMATION_TOKEN=your-vk-confirmation-token
 VIBER_TOKEN=your-viber-token
-YANDEX_TOKEN=your-alisa-token
+ALISA_TOKEN=your-alisa-token
 MARUSIA_TOKEN=your-marusia-token
+MAX_TOKEN=your-max-token
+SMARTAPP_TOKEN=your-smartapp-token
 
-DB_HOST=localhost
+# Yandex SpeechKit — TTS для чат-платформ (Telegram/VK/Max);
+# значение автоматически записывается в speech_kit_token всех трёх платформ.
+# Рекомендуется API-ключ сервисного аккаунта (уходит как `Api-Key`); IAM-токен `t1.…`
+# тоже принимается (уходит как `Bearer`), но живёт не больше 12 часов.
+SPEECH_KIT_TOKEN=your-speechkit-api-key
+
+# Подключение к MongoDB: host — полная connection string с протоколом
+DB_HOST=mongodb://localhost:27017
 DB_USER=user
 DB_PASSWORD=password
 DB_NAME=bot_db
 ```
+
+> `YANDEX_TOKEN` для Алисы устарел и сохранён только для обратной совместимости — используйте `ALISA_TOKEN` (при обоих заданных приоритет у него). `SMARTAPP_TOKEN` нужна только для SmartApp (Сбер); при работе без этой платформы её можно не задавать.
+
+> ⚠️ **Не коммитьте `.env` в git!** Он уже добавлен в шаблонный `.gitignore` при генерации через CLI,
+> но если создаёте файл вручную — проверьте, что он в исключениях.
 
 Если все необходимые токены лежат в `process.env`, то можно в свойство `env` передать значение `local`.
 
@@ -340,11 +518,14 @@ bot.setAppConfig({
 
 ```ts
 bot.setAppConfig({
-    isLocalStorage: true, // Данные хранятся на стороне платформы
+    isLocalStorage: true, // Данные хранятся в локальном хранилище платформы (поддерживается голосовыми платформами)
     // или
-    isLocalStorage: false, // данные хранятся в вашей БД
+    isLocalStorage: false, // данные хранятся в вашей БД (подключите адаптер: MongoAdapter и т.п.)
 });
 ```
+
+> У чат-платформ (Telegram, VK, Max, Viber) локального хранилища нет: при
+> `isLocalStorage: true` без подключённого БД-адаптера их данные не сохранятся.
 
 ### Как добавить кнопки быстрых ответов?
 
@@ -361,4 +542,4 @@ this.card
     .setTitle('Галерея изображений');
 ```
 
-Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ.html).
+Больше вопросов и ответов можно найти в [разделе FAQ](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_FAQ.html).

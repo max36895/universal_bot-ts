@@ -3,7 +3,7 @@ import { Text } from '../../utils';
 import { AppContext } from '../../core';
 
 /**
- * Базовый тип для задания placeholder для кнопок
+ * Тип payload-данных кнопки (строка или объект)
  */
 export type TBtnPayload = Record<string, unknown> | string | null;
 
@@ -24,7 +24,7 @@ export interface IButtonType<TButtonPayload = TBtnPayload> {
 
     /**
      * URL для перехода при нажатии на кнопку.
-     * Для кнопок-ссылок обязательный параметр.
+     * Обязателен для кнопок-ссылок (B_LINK); для саджестов может быть null.
      */
     url?: string | null;
 
@@ -35,9 +35,9 @@ export interface IButtonType<TButtonPayload = TBtnPayload> {
     payload: TButtonPayload | null;
 
     /**
-     * Флаг, определяющий отображение кнопки как сайджеста.
+     * Флаг, определяющий отображение кнопки как саджеста.
      * true - интерактивная кнопка
-     * false - кнопка-ссылка (сайджест)
+     * false - кнопка-ссылка (саджест)
      */
     hide: boolean;
 
@@ -46,10 +46,6 @@ export interface IButtonType<TButtonPayload = TBtnPayload> {
      * Могут включать специфичные для платформы настройки.
      */
     options: IButtonOptions;
-}
-
-function getUrlSeparator(url: string): string {
-    return url.includes('?') ? '&' : '?';
 }
 
 function init<TButtonPayload = TBtnPayload>(
@@ -71,12 +67,20 @@ function init<TButtonPayload = TBtnPayload>(
         };
         let correctUrl = url;
         if (correctUrl && Text.isUrl(correctUrl)) {
+            const hashIndex = correctUrl.indexOf('#');
+            const baseUrl = hashIndex !== -1 ? correctUrl.substring(0, hashIndex) : correctUrl;
+            const fragment = hashIndex !== -1 ? correctUrl.substring(hashIndex) : '';
+
             if (appContext?.platformParams.utm_text === null) {
-                if (!correctUrl.includes('utm_source')) {
-                    correctUrl += `${getUrlSeparator(correctUrl)}utm_source=${options.utmSource || 'umBot'}&utm_medium=${options.utmMedium || 'cpc'}&utm_campaign=${options.utmCampaign || 'phone'}`;
+                if (!baseUrl.includes('utm_source')) {
+                    const separator = baseUrl.includes('?') ? '&' : '?';
+                    correctUrl = `${baseUrl}${separator}utm_source=${encodeURIComponent(options.utmSource || 'umbot')}&utm_medium=${encodeURIComponent(options.utmMedium || 'cpc')}&utm_campaign=${encodeURIComponent(options.utmCampaign || 'phone')}${fragment}`;
                 }
             } else if (appContext?.platformParams.utm_text) {
-                correctUrl += getUrlSeparator(correctUrl) + appContext?.platformParams.utm_text;
+                if (!baseUrl.includes('utm_source')) {
+                    const separator = baseUrl.includes('?') ? '&' : '?';
+                    correctUrl = `${baseUrl}${separator}${appContext?.platformParams.utm_text}${fragment}`;
+                }
             }
         } else {
             correctUrl = null;
@@ -87,12 +91,12 @@ function init<TButtonPayload = TBtnPayload>(
 }
 
 /**
- * Возвращает кнопку в виде сайджеста (ссылки под текстом).
+ * Возвращает кнопку в виде саджеста (ссылки под текстом).
  *
  * @param {AppContext} appContext Контекст приложения
- * @param {string} title Текст кнопки
- * @param {string} [url=''] URL для перехода (должен начинаться с http:// или https://)
- * @param {TButtonPayload} [payload=null] Дополнительные данные для обработки нажатия
+ * @param {string | null} title Текст кнопки
+ * @param {string | null} [url=''] URL для перехода (должен начинаться с http:// или https://)
+ * @param {TBtnPayload | null} [payload=null] Дополнительные данные для обработки нажатия
  * @param {IButtonOptions} [options={}] Дополнительные параметры:
  * - utmSource: источник перехода
  * - utmMedium: тип рекламного канала
@@ -101,23 +105,23 @@ function init<TButtonPayload = TBtnPayload>(
  * @example
  * ```ts
  * // Простая ссылка
- * const button1 = getButton('Перейти на сайт', 'http://localhost');
+ * const button1 = getLinkButton(appContext, 'Перейти на сайт', 'http://localhost');
  *
  * // Ссылка с UTM-метками
- * const button2 = getButton('Купить', 'http://localhost/product', null, {
+ * const button2 = getLinkButton(appContext, 'Купить', 'http://localhost/product', null, {
  *   utmSource: 'bot',
  *   utmMedium: 'button',
  *   utmCampaign: 'spring_sale'
  * });
  *
  * // Ссылка с дополнительными данными
- * const button3 = getButton('Подробнее', 'http://localhost/article', {
+ * const button3 = getLinkButton(appContext, 'Подробнее', 'http://localhost/article', {
  *   action: 'read',
  *   article_id: 123
  * });
  * ```
  *
- * @returns {IButtonType | null} Возвращается объект, если кнопка добавлена, и null в случае, если переданы некорректные настройки для кнопки
+ * @returns {IButtonType | null} Возвращается null, только если title === null (кнопка не создаётся); невалидный URL не отклоняет кнопку — он превращается в `url: null`
  */
 export function getLinkButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,
@@ -133,16 +137,28 @@ export function getLinkButton<TButtonPayload = TBtnPayload>(
  * Возвращает кнопку в виде интерактивной кнопки.
  *
  * @param {AppContext} appContext Контекст приложения
- * @param {string} title Текст кнопки
- * @param {string} [url=''] URL для перехода
- * @param {TButtonPayload} [payload=null] Дополнительные данные для обработки нажатия.
+ * @param {string | null} title Текст кнопки
+ * @param {string | null} [url=''] URL для перехода
+ * @param {TBtnPayload | null} [payload=null] Дополнительные данные для обработки нажатия.
  *                                        Может быть строкой или объектом.
  * @param {IButtonOptions} [options={}] Дополнительные параметры:
  * - utmSource: источник перехода
  * - utmMedium: тип рекламного канала
  * - utmCampaign: название рекламной кампании
  *
- * @returns {IButtonType | null} Возвращается объект, если кнопка добавлена, и null в случае, если переданы некорректные настройки для кнопки.
+ * @returns {IButtonType | null} Возвращается null, только если title === null (кнопка не создаётся); невалидный URL не отклоняет кнопку — он превращается в `url: null`
+ *
+ * @example
+ * ```ts
+ * // Простая интерактивная кнопка
+ * const button1 = getButton(appContext, 'Выбрать');
+ *
+ * // Кнопка с payload для обработки нажатия
+ * const button2 = getButton(appContext, 'Купить', null, {
+ *   action: 'buy',
+ *   itemId: 123
+ * });
+ * ```
  */
 export function getButton<TButtonPayload = TBtnPayload>(
     appContext: AppContext,

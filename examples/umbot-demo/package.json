@@ -1,0 +1,31 @@
+{
+    "name": "umbot-demo",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Кофейня-бот — эталонный демо-проект на фреймворке umbot: команды, формы, userData, карточки, NLU и middleware",
+    "author": "Maxim-M",
+    "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "dev": "npm run build && node dist/dev.js",
+        "start": "npm run build && node dist/server.js",
+        "test": "jest",
+        "lint": "eslint ."
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/max36895/umbot/"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^20.19.30",
+        "eslint": "^10.2.0",
+        "globals": "^17.4.0",
+        "jest": "^30.3.0",
+        "ts-jest": "^29.4.9",
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.60.0",
+        "umbot": "file:../.."
+    }
+}

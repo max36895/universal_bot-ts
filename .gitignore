@@ -1,9 +1,33 @@
+/node_modules/*
+.gigacode/*
+.mimocode/*
+.vscode/*
+.zcode/*
+/repos/*
 .idea/*
 /logs/*
 /json/*
 /dist/*
 /docs/*
-/node_modules/*
-/reps/*
 /coverage/*
 /package-lock.json
+benchmark/comparison/node_modules/*
+benchmark/comparison/package-lock.json
+# baseline.json — JIT-метрики машины CI; создаётся npm run baseline:update
+# на той же машине, где гоняется ночной baseline:check (см. BENCHMARKS.md).
+benchmark/comparison/baseline.json
+
+# Временные песочницы аудита/профилировки: сгенерированные CLI-проекты и
+# отладочные скрипты — не исходники umbot (lint их не проверяет).
+/audit/*
+/tmp-surgery/*
+/docs-seo-ai-audit-report.md
+/docs-audit-report.md
+/prompt-doc-seo-audit.md
+
+# Артефакты тестов (FileAdapter-таблицы, логи) — см. tests/helpers/tmpDir.ts
+/tests/.tmp/
+
+# live-test: локальные токены и артефакты прогона
+/live-test/.env
+/live-test/.tmp/

@@ -1,4 +1,4 @@
-import { Text, Button } from 'umbot';
+import { Text, IButtonType } from 'umbot';
 
 /**
  * Свой формат для кнопок
@@ -21,7 +21,7 @@ export interface IButton {
  * Получение кнопок в нужном формате
  * @param buttons Информация о кнопках
  */
-export function buttonProcessing(buttons: Button[]): IButton[] | null {
+export function buttonProcessing(buttons: IButtonType[]): IButton[] | null {
     const objects: IButton[] = [];
 
     buttons.forEach((button) => {

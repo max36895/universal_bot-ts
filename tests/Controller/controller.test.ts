@@ -2,6 +2,7 @@ import { MyController } from './MyController';
 import { AppContext } from '../../src';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('Controller', () => {
     const uController = new MyController(appContext);
@@ -88,5 +89,24 @@ describe('Controller', () => {
         expect(uController.actionName).toEqual('text');
 
         appContext.command.removeCommand('text');
+    });
+
+    it('clearStoreData сбрасывает технические данные платформы и кэш NLU', () => {
+        const controller = new MyController(appContext);
+        controller.platformOptions.sendInInit = 'vk-confirmation-token';
+        controller.platformOptions.requestData = { telegram: { callbackQueryId: '1' } };
+        controller.nlu.setNlu({
+            entities: [{ type: 'YANDEX.FIO', value: { first_name: 'Иван' }, tokens: {} }],
+        } as never);
+        // Прогреваем внутренний кэш разобранных сущностей
+        expect(controller.nlu.getFio().status).toBe(true);
+
+        controller.clearStoreData();
+
+        // platformOptions переживал сброс, и, например, VK-подтверждение
+        // возвращалось в ответ на любое следующее сообщение.
+        expect(controller.platformOptions).toEqual({});
+        // Кэш NLU тоже нужно чистить, иначе getFio() отдаёт сущности прошлого запроса.
+        expect(controller.nlu.getFio().status).toBe(false);
     });
 });

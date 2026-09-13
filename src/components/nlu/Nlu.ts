@@ -12,19 +12,23 @@ import { Text } from '../../utils';
 
 /**
  * @class Nlu
- * Класс для обработки естественного языка и извлечения сущностей из текста.
+ * Класс для работы с результатами NLU платформы и извлечения контактов из текста.
  *
  * Основные возможности:
- * - Извлечение имен, дат, времени и геолокации
+ * - Чтение ФИО, дат, времени, геолокации и чисел из сущностей NLU (entities),
+ *   заполненных платформой; собственных парсеров у класса нет
  * - Распознавание встроенных интентов (согласие, отказ, помощь)
  * - Поиск контактной информации (email, телефоны, ссылки)
  * - Кэширование результатов для оптимизации производительности
  *
- * Платформенные ограничения:
- * - Алиса: полная поддержка всех сущностей
+ * Платформенные ограничения (геттеры getFio/getGeo/getDateTime/getNumber читают
+ * только `nlu.entities`, заполненные платформой):
+ * - Алиса: заполняет все сущности и интенты
  * - Маруся: ограниченная поддержка геолокации
- * - VK: базовая поддержка через регулярные выражения
- * - Telegram: базовая поддержка через регулярные выражения
+ * - VK, Telegram, Viber, Max: адаптеры заполняют только thisUser (см. getUserName());
+ *   сущности и интенты на этих платформах пустые — getFio()/getGeo()/getDateTime()/
+ *   getNumber() вернут status=false. Для поиска по произвольному тексту
+ *   используйте статические методы Nlu.getPhone()/Nlu.getEMail()/Nlu.getLink()
  *
  * Поддерживаемые форматы:
  *
@@ -54,32 +58,33 @@ import { Text } from '../../utils';
  *
  * @example
  * ```ts
- * import { Nlu } from './components/nlu/Nlu';
+ * import { Nlu } from 'umbot';
  *
  * const nlu = new Nlu();
  *
  * // Извлечение имени
  * const fio = nlu.getFio();
  * if (fio.status) {
- *   console.log('Имя:', fio.result[0].first_name);
- *   console.log('Фамилия:', fio.result[0].last_name);
+ *   console.log('Имя:', fio.result?.[0]?.first_name);
+ *   console.log('Фамилия:', fio.result?.[0]?.last_name);
  * }
  *
  * // Извлечение даты и времени
  * const datetime = nlu.getDateTime();
  * if (datetime.status) {
- *   const date = datetime.result[0];
- *   console.log('Дата:', date.year, date.month, date.day);
- *   console.log('Время:', date.hour, date.minute);
+ *   const date = datetime.result?.[0];
+ *   console.log('Дата:', date?.year, date?.month, date?.day);
+ *   console.log('Время:', date?.hour, date?.minute);
  * }
  *
  * // Извлечение геолокации
  * const geo = nlu.getGeo();
  * if (geo.status) {
- *   const location = geo.result[0];
- *   console.log('Город:', location.city);
- *   console.log('Страна:', location.country);
- *   console.log('Координаты:', location.latitude, location.longitude);
+ *   const location = geo.result?.[0];
+ *   console.log('Город:', location?.city);
+ *   console.log('Страна:', location?.country);
+ *   console.log('Улица:', location?.street);
+ *   console.log('Дом:', location?.house_number);
  * }
  *
  * // Проверка встроенных интентов
@@ -143,7 +148,18 @@ export class Nlu {
      * }
      * ```
      */
-    readonly #cachedData: Map<string, unknown[] | null> = new Map();
+    #cachedData: Map<string, unknown[] | null> | null = null;
+
+    /**
+     * Возвращает кэш сущностей, создавая его при первом обращении:
+     * у чат-платформ к сущностям обычно не обращаются вовсе.
+     */
+    #getCache(): Map<string, unknown[] | null> {
+        if (!this.#cachedData) {
+            this.#cachedData = new Map();
+        }
+        return this.#cachedData;
+    }
 
     /**
      * Регулярное выражение для поиска email адресов.
@@ -175,17 +191,23 @@ export class Nlu {
 
     /**
      * Регулярное выражение для поиска URL-ссылок.
-     * Поддерживает HTTP и HTTPS протоколы.
+     * Поддерживает HTTP и HTTPS протоколы. Концевая пунктуация (точка, запятая,
+     * скобка и т.п.) отрезается в {@link getLink} — не в самой регулярке:
+     * вариант с исключающим последним символом (`[^\s]*[^\s.,;:!?)\]]`)
+     * откатывается и квадратичен на длинной строке без пробелов.
      *
      * @example
      * ```ts
      * // Находит ссылки вида:
      * // http://localhost
-     * // http://localhost/path
+     * // https://example.com/path/page.html
      * ```
      */
-    private static readonly LINK_REGEX = /((https?:\/\/)\S+\b)/gimu;
-
+    private static readonly LINK_REGEX = /https?:\/\/\S+/giu;
+    /**
+     * Концевая пунктуация, которая не считается частью ссылки.
+     */
+    private static readonly LINK_TRAILING_PUNCTUATION = '.,;:!?)]';
     /**
      * Тип сущности: ФИО.
      * Используется для извлечения имен, фамилий и отчеств.
@@ -194,7 +216,7 @@ export class Nlu {
      * ```ts
      * const fio = nlu.getFio();
      * if (fio.status) {
-     *     console.log(fio.result[0].first_name); // "Иван"
+     *     console.log(fio.result?.[0]?.first_name); // "Иван"
      * }
      * ```
      */
@@ -222,12 +244,12 @@ export class Nlu {
      * ```ts
      * const geo = nlu.getGeo();
      * if (geo.status) {
-     *     const location = geo.result[0];
+     *     const location = geo.result?.[0];
      *     console.log('Страна:', location.country);
      *     console.log('Город:', location.city);
      *     console.log('Улица:', location.street);
      *     console.log('Номер дома:', location.house_number);
-     *     console.log('Координаты:', location.latitude, location.longitude);
+     *     console.log('Аэропорт:', location.airport);
      * }
      * ```
      */
@@ -255,21 +277,21 @@ export class Nlu {
      * ```ts
      * const dateTime = nlu.getDateTime();
      * if (dateTime.status) {
-     *     const date = dateTime.result[0];
+     *     const date = dateTime.result?.[0];
      *
      *     // Абсолютная дата
-     *     if (date.year && date.month && date.day) {
+     *     if (date?.year && date.month && date.day) {
      *         console.log(`Дата: ${date.day}.${date.month}.${date.year}`);
      *     }
      *
      *     // Время
-     *     if (date.hour !== undefined) {
+     *     if (date?.hour !== undefined) {
      *         console.log(`Время: ${date.hour}:${date.minute || '00'}`);
      *     }
      *
-     *     // Относительное время
-     *     if (date.relative) {
-     *         console.log(`Относительно: ${date.relative}`);
+     *     // Относительная дата
+     *     if (date?.day_is_relative) {
+     *         console.log(`Через ${date.day} дней`);
      *     }
      * }
      * ```
@@ -317,22 +339,15 @@ export class Nlu {
      * Встроенный интент: Согласие.
      * Используется для распознавания положительных ответов.
      *
-     * Поддерживаемые варианты:
-     * - Прямое согласие: "да", "конечно", "хорошо"
-     * - Подтверждение: "верно", "правильно", "точно"
-     * - Готовность: "готов", "можно", "давай"
-     * - Одобрение: "отлично", "супер", "класс"
+     * Определяется интентом YANDEX.CONFIRM, присланным платформой;
+     * при его отсутствии срабатывает текстовый фолбэк Text.isSayTrue
+     * («да», «конечно», «согласен/согласна», «подтверждаю» и т.п.).
      *
      * @example
      * ```ts
-     * // Проверка на согласие
-     * if (nlu.isIntentConfirm()) {
-     *     console.log('Пользователь согласился');
-     * }
-     *
-     * // Проверка конкретной фразы
+     * // Проверка на согласие (интент + текстовый фолбэк)
      * if (nlu.isIntentConfirm('да, конечно')) {
-     *     console.log('Явное согласие');
+     *     console.log('Пользователь согласился');
      * }
      * ```
      */
@@ -342,22 +357,15 @@ export class Nlu {
      * Встроенный интент: Отказ.
      * Используется для распознавания отрицательных ответов.
      *
-     * Поддерживаемые варианты:
-     * - Прямой отказ: "нет", "не надо", "отмена"
-     * - Отрицание: "неверно", "неправильно"
-     * - Несогласие: "не хочу", "не буду"
-     * - Отмена: "стоп", "хватит", "прекрати"
+     * Определяется интентом YANDEX.REJECT, присланным платформой;
+     * при его отсутствии срабатывает текстовый фолбэк Text.isSayFalse
+     * («нет», «неа», «не...»).
      *
      * @example
      * ```ts
-     * // Проверка на отказ
-     * if (nlu.isIntentReject()) {
-     *     console.log('Пользователь отказался');
-     * }
-     *
-     * // Проверка конкретной фразы
+     * // Проверка на отказ (интент + текстовый фолбэк)
      * if (nlu.isIntentReject('нет, спасибо')) {
-     *     console.log('Вежливый отказ');
+     *     console.log('Пользователь отказался');
      * }
      * ```
      */
@@ -391,7 +399,9 @@ export class Nlu {
 
     /**
      * Конструктор класса Nlu.
-     * Инициализирует пустой объект NLU и кэш данных.
+     * Инициализирует пустой объект NLU. Кэш данных в конструкторе не
+     * аллоцируется — он создаётся лениво при первом извлечении сущности
+     * (приватный метод #getCache).
      */
     public constructor() {
         this.#nlu = {};
@@ -399,16 +409,30 @@ export class Nlu {
 
     /**
      * Возвращает объект nlu, который был обработан платформой, либо заполнен из плагина
+     *
+     * @returns {INlu} Объект данных NLU (entities, intents, thisUser, tokens)
+     *
+     * @example
+     * ```ts
+     * const nlu = this.nlu.getNluValue();
+     * if (nlu.thisUser) {
+     *     console.log('Отправитель:', nlu.thisUser.username);
+     * }
+     * ```
      */
     public getNluValue(): INlu {
         return this.#nlu;
     }
 
     /**
-     * Устанавливает данные NLU и очищает кэш.
+     * Устанавливает данные NLU.
      *
-     * @param nlu - Данные NLU для обработки
-     * @param isClearCache - Флаг, говорящий о том, что нужно сбросить кэш
+     * Кэш извлечённых сущностей очищается только при `isClearCache = true` —
+     * без этого повторный вызов с новыми данными продолжит возвращать
+     * закэшированные результаты по старым данным.
+     *
+     * @param {INlu} nlu - Данные NLU для обработки
+     * @param {boolean} [isClearCache=false] - Флаг, говорящий о том, что нужно сбросить кэш
      * @example
      * ```ts
      * nlu.setNlu({
@@ -424,7 +448,7 @@ export class Nlu {
     public setNlu(nlu: INlu, isClearCache: boolean = false): void {
         this.#nlu = nlu;
         if (isClearCache) {
-            this.#cachedData.clear();
+            this.#getCache().clear();
         }
     }
 
@@ -436,8 +460,9 @@ export class Nlu {
      * @returns Массив найденных сущностей или null
      */
     #getData<T = object>(type: string): T[] | null {
-        if (this.#cachedData.has(type)) {
-            return (this.#cachedData.get(type) as T[]) || null;
+        const cache = this.#getCache();
+        if (cache.has(type)) {
+            return (cache.get(type) as T[]) || null;
         }
         let data: (object | number)[] | null = null;
         if (Array.isArray(this.#nlu.entities)) {
@@ -448,7 +473,7 @@ export class Nlu {
                 }
             });
         }
-        this.#cachedData.set(type, data);
+        cache.set(type, data);
         return data;
     }
 
@@ -460,9 +485,9 @@ export class Nlu {
      * ```ts
      * const user = nlu.getUserName();
      * if (user) {
-     *     console.log('ID пользователя:', user.user_id);
      *     console.log('Имя пользователя:', user.first_name);
      *     console.log('Фамилия пользователя:', user.last_name);
+     *     console.log('Username:', user.username);
      * }
      * ```
      */
@@ -471,17 +496,18 @@ export class Nlu {
     }
 
     /**
-     * Получает ФИО из текста.
+     * Получает ФИО из сущностей NLU (entities), заполненных платформой.
+     * На чат-платформах без NLU результат будет пуст (status=false).
      *
      * @returns {INluResult<INluFIO[]>} Результат поиска ФИО
      * @example
      * ```ts
      * const fio = nlu.getFio();
      * if (fio.status) {
-     *     const person = fio.result[0];
-     *     console.log('Имя:', person.first_name);
-     *     console.log('Фамилия:', person.last_name);
-     *     console.log('Отчество:', person.patronymic_name);
+     *     const person = fio.result?.[0];
+     *     console.log('Имя:', person?.first_name);
+     *     console.log('Фамилия:', person?.last_name);
+     *     console.log('Отчество:', person?.patronymic_name);
      * }
      * ```
      */
@@ -495,19 +521,20 @@ export class Nlu {
     }
 
     /**
-     * Получает геолокацию из текста.
+     * Получает геолокацию из сущностей NLU (entities), заполненных платформой.
+     * На чат-платформах без NLU результат будет пуст (status=false).
      *
      * @returns {INluResult<INluGeo[]>} Результат поиска геолокации
      * @example
      * ```ts
      * const geo = nlu.getGeo();
      * if (geo.status) {
-     *     const location = geo.result[0];
-     *     console.log('Страна:', location.country);
-     *     console.log('Город:', location.city);
-     *     console.log('Улица:', location.street);
-     *     console.log('Номер дома:', location.house_number);
-     *     console.log('Координаты:', location.latitude, location.longitude);
+     *     const location = geo.result?.[0];
+     *     console.log('Страна:', location?.country);
+     *     console.log('Город:', location?.city);
+     *     console.log('Улица:', location?.street);
+     *     console.log('Номер дома:', location?.house_number);
+     *     console.log('Аэропорт:', location?.airport);
      * }
      * ```
      */
@@ -521,20 +548,21 @@ export class Nlu {
     }
 
     /**
-     * Получает дату и время из текста.
+     * Получает дату и время из сущностей NLU (entities), заполненных платформой.
+     * На чат-платформах без NLU результат будет пуст (status=false).
      *
      * @returns {INluResult<INluDateTime[]>} Результат поиска даты и времени
      * @example
      * ```ts
      * const dateTime = nlu.getDateTime();
      * if (dateTime.status) {
-     *     const dt = dateTime.result[0];
-     *     if (dt.year) console.log('Год:', dt.year);
-     *     if (dt.month) console.log('Месяц:', dt.month);
-     *     if (dt.day) console.log('День:', dt.day);
-     *     if (dt.hour !== undefined) console.log('Час:', dt.hour);
-     *     if (dt.minute !== undefined) console.log('Минуты:', dt.minute);
-     *     if (dt.relative) console.log('Относительное время:', dt.relative);
+     *     const dt = dateTime.result?.[0];
+     *     if (dt?.year) console.log('Год:', dt.year);
+     *     if (dt?.month) console.log('Месяц:', dt.month);
+     *     if (dt?.day) console.log('День:', dt.day);
+     *     if (dt?.hour !== undefined) console.log('Час:', dt.hour);
+     *     if (dt?.minute !== undefined) console.log('Минуты:', dt.minute);
+     *     if (dt?.day_is_relative) console.log('Относительный день:', dt.day);
      * }
      * ```
      */
@@ -548,17 +576,18 @@ export class Nlu {
     }
 
     /**
-     * Получает числа из текста.
+     * Получает числа из сущностей NLU (entities), заполненных платформой.
+     * На чат-платформах без NLU результат будет пуст (status=false).
      *
      * @returns {INluResult<number[]>} Результат поиска чисел
      * @example
      * ```ts
      * const number = nlu.getNumber();
      * if (number.status) {
-     *     const value = number.result[0];
+     *     const value = number.result?.[0];
      *     console.log('Число:', value);
      *     // Проверка типа числа
-     *     if (Number.isInteger(value)) {
+     *     if (value !== undefined && Number.isInteger(value)) {
      *         console.log('Целое число');
      *     } else {
      *         console.log('Дробное число');
@@ -577,6 +606,9 @@ export class Nlu {
 
     /**
      * Проверяет наличие интента согласия в тексте.
+     *
+     * Если интент YANDEX.CONFIRM не найден в NLU и передан текст,
+     * он дополнительно проверяется через Text.isSayTrue («да», «конечно» и т.п.).
      *
      * @param {string} [userCommand=''] - Текст для проверки
      * @returns {boolean} true если найден интент согласия
@@ -598,6 +630,9 @@ export class Nlu {
     /**
      * Проверяет наличие интента отказа в тексте.
      *
+     * Если интент YANDEX.REJECT не найден в NLU и передан текст,
+     * он дополнительно проверяется через Text.isSayFalse («нет», «не хочу» и т.п.).
+     *
      * @param {string} [userCommand=''] - Текст для проверки
      * @returns {boolean} true если найден интент отказа
      * @example
@@ -616,7 +651,8 @@ export class Nlu {
     }
 
     /**
-     * Проверяет наличие интента помощи в тексте.
+     * Проверяет интент помощи в `nlu.intents` (YANDEX.HELP от платформы).
+     * Текстового фолбэка нет — в отличие от confirm/reject, без интента метод вернёт false.
      *
      * @returns {boolean} true если найден интент помощи
      * @example
@@ -631,7 +667,8 @@ export class Nlu {
     }
 
     /**
-     * Проверяет наличие интента повтора в тексте.
+     * Проверяет интент повтора в `nlu.intents` (YANDEX.REPEAT от платформы).
+     * Текстового фолбэка нет — в отличие от confirm/reject, без интента метод вернёт false.
      *
      * @returns {boolean} true если найден интент повтора
      * @example
@@ -697,7 +734,7 @@ export class Nlu {
      * Извлекает ссылки из текста.
      *
      * @param {string} query - Текст для поиска
-     * @returns {INluResult<string[]>} Результат поиска ссылок
+     * @returns {INluResult<string[] | null>} Результат поиска ссылок
      * @example
      * ```ts
      * const links = Nlu.getLink('Посетите http://localhost');
@@ -709,7 +746,18 @@ export class Nlu {
      * ```
      */
     public static getLink(query: string): INluResult<string[] | null> {
-        const matches = [...query.matchAll(Nlu.LINK_REGEX)].map((m) => m[0]);
+        const matches: string[] = [];
+        for (const m of query.matchAll(Nlu.LINK_REGEX)) {
+            const link = m[0];
+            let end = link.length;
+            while (end > 0 && Nlu.LINK_TRAILING_PUNCTUATION.includes(link.charAt(end - 1))) {
+                end--;
+            }
+            // После «://» должен остаться хотя бы один символ: «http://...» — не ссылка.
+            if (end > link.indexOf('//') + 2) {
+                matches.push(link.slice(0, end));
+            }
+        }
         return {
             status: matches.length > 0,
             result: matches.length ? matches : null,
@@ -720,7 +768,7 @@ export class Nlu {
      * Извлекает телефонные номера из текста.
      *
      * @param {string} query - Текст для поиска
-     * @returns {INluResult<string[]>} Результат поиска телефонов
+     * @returns {INluResult<string[] | null>} Результат поиска телефонов
      * @example
      * ```ts
      * const phones = Nlu.getPhone('Позвоните по номеру +7 (999) 123-45-67 или 8-800-555-35-35');
@@ -732,7 +780,10 @@ export class Nlu {
      * ```
      */
     public static getPhone(query: string): INluResult<string[] | null> {
-        const matches = [...query.matchAll(Nlu.PHONE_REGEX)].map((m) => m[0]);
+        const matches: string[] = [];
+        for (const m of query.matchAll(Nlu.PHONE_REGEX)) {
+            matches.push(m[0]);
+        }
         return {
             status: matches.length > 0,
             result: matches.length ? matches : null,
@@ -743,7 +794,7 @@ export class Nlu {
      * Извлекает email адреса из текста.
      *
      * @param {string} query - Текст для поиска
-     * @returns {INluResult<string[]>} Результат поиска email
+     * @returns {INluResult<string[] | null>} Результат поиска email
      * @example
      * ```ts
      * const emails = Nlu.getEMail('Напишите на email@example.com или support@test.ru');
@@ -755,7 +806,10 @@ export class Nlu {
      * ```
      */
     public static getEMail(query: string): INluResult<string[] | null> {
-        const matches = [...query.matchAll(Nlu.EMAIL_REGEX)].map((m) => m[0]);
+        const matches: string[] = [];
+        for (const m of query.matchAll(Nlu.EMAIL_REGEX)) {
+            matches.push(m[0]);
+        }
         return {
             status: matches.length > 0,
             result: matches.length ? matches : null,

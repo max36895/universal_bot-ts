@@ -12,6 +12,10 @@ import { performance } from 'node:perf_hooks';
 /**
  * Функция для получения конфигурации пользовательского приложения
  *
+ * @remarks Сохранён для обратной совместимости (2.x): самим фреймворком не
+ * используется — кастомные платформы подключаются через `BasePlatform`
+ * (см. `getQueryExample`).
+ *
  * @callback TUserBotConfigCb
  * @param query - Пользовательский запрос
  * @param userId - Идентификатор пользователя
@@ -56,6 +60,11 @@ interface IResponse {
  * Также предоставляет интерактивный режим для отладки и тестирования функциональности.
  * Для того чтобы протестировать необходимую платформу, необходимо указать `appType`, в случае если значение не указано или установлено в auto, то для тестирования будет использоваться первая платформа.
  *
+ * ⚠️ Особенность `run()` без явного `appType`: он принудительно использует `alisa` (а не первую
+ * зарегистрированную платформу) — поэтому при тестировании только чат-платформ передавайте
+ * `appType` явно: `bot.run('telegram', ...)`. Интерактивный `test()` использует первую
+ * зарегистрированную платформу, как описано выше.
+ *
  * @extends Bot
  *
  * @example
@@ -79,6 +88,19 @@ interface IResponse {
 export class BotTest extends Bot {
     protected _botController: BotController;
 
+    /**
+     * Создает тестовое приложение. Контроллер опционален — если не передан,
+     * используется BaseBotController.
+     *
+     * @param {TAppType} [type] - Тип платформы (по умолчанию автоопределение)
+     * @param {TBotControllerClass} [botController] - Класс контроллера с логикой приложения
+     * @returns Созданный экземпляр BotTest
+     *
+     * @example
+     * ```ts
+     * const botTest = new BotTest('alisa', MyController);
+     * ```
+     */
     constructor(type?: TAppType, botController?: TBotControllerClass) {
         super(type, botController);
         if (botController) {
@@ -89,6 +111,17 @@ export class BotTest extends Bot {
         this._setBotController(this._botController);
     }
 
+    /**
+     * Переустанавливает класс контроллера и обновляет переиспользуемый тестовый экземпляр.
+     *
+     * @param {TBotControllerClass} fn - Новый класс контроллера
+     * @returns {this} Текущий экземпляр для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * botTest.initBotController(MyController); // заменить контроллер между тестами
+     * ```
+     */
     initBotController(fn: TBotControllerClass): this {
         this._botController = new fn(this.getAppContext());
         this._setBotController(this._botController);
@@ -138,7 +171,6 @@ export class BotTest extends Bot {
         let count: number = 0;
         let state: string | IUserData = {};
         let isEnd = false;
-        this._botController.skipAutoReply = true;
         if (this.getAppContext().appMode !== 'strict_prod') {
             this.setAppMode('dev');
         }
@@ -161,6 +193,9 @@ export class BotTest extends Bot {
                 this.setContent(JSON.parse(this._content));
             }
             this._setBotController(this._botController);
+            // Выставляем на каждой итерации: clearStoreData() сбрасывает флаг,
+            // и адаптеры ушли бы в реальные API платформ из консольного теста.
+            this._botController.skipAutoReply = true;
 
             const result: IResponse = (await this.run(this.appType)) as IResponse;
             const platformAdapter = this.getAppContext().platforms;
@@ -221,24 +256,116 @@ export class BotTest extends Bot {
         const userId: string = 'user_local_test';
         let appType = this.appType;
         if (appType === 'auto') {
-            appType = Object.keys(this.getAppContext().platforms)[0];
+            // Если платформы не зарегистрированы, откатываемся на документированный
+            // дефолт 'alisa' (как в run()) вместо падения на undefined.
+            appType = Object.keys(this.getAppContext().platforms)[0] || 'alisa';
             this.appType = appType;
         }
-        if (!this.getAppContext().platforms[appType].isVoice) {
+        const platformAdapter = appType ? this.getAppContext().platforms[appType] : undefined;
+        if (platformAdapter && !platformAdapter.isVoice) {
             this._botController.skipAutoReply = false;
         }
-        return this.getAppContext().platforms[appType].getQueryExample(query, userId, count, state);
+        if (platformAdapter) {
+            return platformAdapter.getQueryExample(query, userId, count, state);
+        }
+        return null;
     }
 
     /**
-     * Запуск обработку запроса
-     * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит за классом.
-     * @param appType
-     * @param content
+     * Запускает обработку запроса
+     * Не рекомендуется вызывать самостоятельно, ответственность за вызов метода лежит на классе.
+     * @param {TAppType | null} [appType] - Тип платформы. Если не передан, принудительно используется `alisa` (автоопределение в BotTest не выполняется)
+     * @param {string | null} [content] - Содержимое запроса
+     * @returns {Promise<TRunResult>} Результат обработки запроса
+     *
+     * @example
+     * ```ts
+     * const result = await botTest.run('alisa', JSON.stringify(query));
+     * ```
      */
     public run(appType?: TAppType | null, content?: string | null): Promise<TRunResult> {
         this.appType = appType || 'alisa';
         this._botController.appType = appType || 'alisa';
         return super.run(appType, content);
+    }
+
+    /**
+     * Упрощённый способ вызвать `bot.run(...)` с автоматической подготовкой query.
+     *
+     * Если запрашиваемая платформа зарегистрирована в `platforms` — используется её
+     * `getQueryExample` для генерации валидного payload. Иначе метод выбрасывает
+     * исключение (throw new Error).
+     *
+     * @remarks
+     * На время симуляции включается `skipAutoReply`, поэтому чат-платформы
+     * (Telegram, VK, Viber, Max) НЕ отправляют сообщение в реальное API —
+     * их `getContent()` возвращает `'ok'`. Текст ответа в этом случае остаётся
+     * в `text` контроллера. Для голосовых платформ результатом будет готовый
+     * JSON-ответ платформы (например, `res.response.text`).
+     *
+     * @example
+     * ```ts
+     * const tester = new BotTest();
+     * tester.use(new AlisaAdapter());
+     * tester.addCommand('start', ['привет'], (_, ctx) => { ctx.text = 'Привет!'; });
+     *
+     * // Голосовая платформа: ответ приходит в формате платформы
+     * const res = await tester.simulate('привет', { platform: 'alisa' }) as {
+     *   response: { text: string };
+     * };
+     * console.log(res.response.text); // 'Привет!'
+     *
+     * // Чат-платформа: отправка в API пропускается, результат — 'ok',
+     * // а текст ответа доступен через контроллер
+     * tester.use(new TelegramAdapter('token'));
+     * await tester.simulate('привет', { platform: 'telegram' }); // 'ok'
+     * ```
+     *
+     * @param query Текст пользователя (например, "привет")
+     * @param options Параметры симуляции: platform, userId, count, state
+     * @returns Ответ платформы (результат `run()`)
+     */
+    public async simulate(
+        query: string,
+        options: {
+            platform?: TAppType;
+            userId?: string;
+            count?: number;
+            state?: Record<string, unknown> | string;
+        } = {},
+    ): Promise<TRunResult> {
+        const {
+            platform = this.appType !== 'auto' ? (this.appType as TAppType) : undefined,
+            userId = 'test_user',
+            count = 0,
+            state = {},
+        } = options;
+        // appType по умолчанию — 'auto', поэтому при отсутствии явной платформы
+        // берём первую зарегистрированную (как в getSkillContent).
+        const targetPlatform =
+            platform ?? (Object.keys(this.getAppContext().platforms)[0] as TAppType | undefined);
+        const targetAdapter = targetPlatform
+            ? this.getAppContext().platforms[targetPlatform]
+            : undefined;
+        if (!targetPlatform || !targetAdapter) {
+            throw new Error(
+                `BotTest.simulate: платформа "${platform ?? 'auto'}" не зарегистрирована. ` +
+                    `Сначала вызовите bot.use(new <Platform>Adapter()).`,
+            );
+        }
+        const content = targetAdapter.getQueryExample(query, userId, count, state);
+        // Без этого флага адаптеры чат-платформ внутри getContent() реально
+        // отправляли бы сообщение в API платформы прямо из локального теста
+        // (по аналогии с флагом в test(), который выставляется на каждом ходе).
+        const oldSkipAutoReply = this._botController.skipAutoReply;
+        this._botController.skipAutoReply = true;
+        try {
+            return await this.run(
+                targetPlatform,
+                typeof content === 'string' ? content : JSON.stringify(content),
+            );
+        } finally {
+            this._botController.skipAutoReply = oldSkipAutoReply;
+        }
     }
 }

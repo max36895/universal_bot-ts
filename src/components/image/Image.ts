@@ -7,6 +7,8 @@ import { AppContext } from '../../core';
  * Интерфейс параметров изображения для настройки отображения в различных платформах.
  *
  * Особенности:
+ * - Содержит только индексную сигнатуру: конкретные именованные поля не заданы,
+ *   допустимые параметры смотрите в примерах ниже
  * - Поддерживает настройку стилей текста
  * - Позволяет задавать цвета и отступы
  * - Контролирует количество строк текста
@@ -57,17 +59,19 @@ export interface IImageParams {
 
 /**
  * Инициализация кнопки.
- * @param button
- * @param buttonInst
+ * @param {TButton} button - Кнопка (строка или объект)
+ * @param {Buttons} buttonInst - Экземпляр компонента кнопок
  */
 export function initButton(button: TButton, buttonInst: Buttons): void {
     if (typeof button === 'string') {
         buttonInst.addBtn(button);
     } else {
-        const title: string | null = button.title || button.text || null;
-        const url: string | null = button.url || null;
-        const payload = button.payload || null;
-        buttonInst.addBtn(title, url, payload as Record<string, unknown>);
+        buttonInst.addBtn(
+            button.title || button.text || null,
+            button.url || null,
+            (button.payload || null) as Record<string, unknown>,
+            button.options || {},
+        );
     }
 }
 
@@ -123,10 +127,14 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
     /**
      * Идентификатор изображения.
      * Используется для платформ, поддерживающих токены.
+     * Обычно проставляется автоматически в getImage() из аргумента image
+     * (или null, если передан URL/файл); перезапись вручную — редкий случай
+     * (например, замена токена на актуальный).
      *
      * @example
      * ```ts
-     * const image = getImage(...);
+     * const image = getImage(...); // imageToken уже проставлен автоматически
+     * // Редкий случай — явная перезапись токена:
      * image.imageToken = 'image_token_123';
      * ```
      */
@@ -172,39 +180,37 @@ export interface IImageType<TImageParams extends IImageParams = IImageParams> {
  * 1. Проверяет тип изображения (токен или путь):
  *    - Если isToken=true, использует image как токен
  *    - Иначе проверяет валидность URL или файла
- * 2. Устанавливает заголовок и описание:
- *    - Если заголовок пустой, возвращает false
- *    - Если описание пустое, устанавливает пробел
+ * 2. Устанавливает заголовок и описание без подстановки пользовательского содержимого.
  * 3. Добавляет кнопки, если они есть:
  *    - Поддерживает строковые кнопки
  *    - Поддерживает объекты кнопок
  *
- * @param {AppContext} [appContext] - Контекст приложения
+ * @param {AppContext} appContext - Контекст приложения
  * @param {string | null} image - Путь к изображению или токен
  * @param {string} title - Заголовок изображения
- * @param {string} [desc=' '] - Описание изображения
+ * @param {string} [desc=''] - Описание изображения
  * @param {TButton | null} [button=null] - Кнопки для изображения
- * @param {boolean} isToken - Флаг, говорящий о том, что явно передается токен
+ * @param {boolean} [isToken=false] - Флаг, говорящий о том, что явно передается токен
  * @returns {IImageType | null} объект если инициализация успешна, null в противном случае
  *
  * @example
  * ```ts
  * // Инициализация с URL
  * getImage(
+ *      appContext,
  *     'http://localhost/image.jpg',
  *     'Заголовок',
  *     'Описание',
  *     { title: 'Кнопка', url: 'http://localhost' },
- *     appContext
  * );
  *
  * // Инициализация с простой кнопкой
  * getImage(
+ *      appContext,
  *     'http://localhost/image.jpg',
  *     'Заголовок',
  *     'Описание',
  *     'Текст кнопки',
- *     appContext
  * );
  * ```
  */
@@ -212,7 +218,7 @@ export function getImage(
     appContext: AppContext,
     image: string | null,
     title: string,
-    desc: string = ' ',
+    desc: string = '',
     button: TButton | null = null,
     isToken: boolean = false,
 ): IImageType | null {

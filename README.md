@@ -2,7 +2,7 @@
 
 `umbot` — это TypeScript-фреймворк для разработки голосовых навыков и чат-ботов. Он даёт единую бизнес-логику для всех
 платформ — но одинаково эффективен, даже если вы работаете только с одной.
-Поддерживаются: `Яндекс.Алиса`, `Маруся`, `Сбер Салют`, а также `Telegram`, `VK`, `MAX` и `Viber` из коробки.
+Поддерживаются: `Яндекс.Алиса`, `Маруся`, `Сбер SmartApp`, а также `Telegram`, `VK`, `MAX` и `Viber` из коробки.
 
 В отличие от большинства решений, требующих отдельной реализации под каждую платформу, `umbot` абстрагирует различия в
 форматах запросов и ответов, предоставляя разработчику единый, предсказуемый интерфейс. Это позволяет писать логику один
@@ -12,42 +12,42 @@
 
 [![npm version](https://badge.fury.io/js/umbot.svg)](https://badge.fury.io/js/umbot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)]()
-[![Security](https://img.shields.io/badge/Security-A+-green)]()
-[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
+[![Supported Platforms](https://img.shields.io/badge/Platforms-7+-green)](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html)
 
 ---
 
-## 💡 Почему `umbot`?
+## Почему `umbot`?
 
 > Больше не нужно писать несколько версий одного приложения.  
-> Больше не нужно разбираться в JSON-форматах Алисы, Сбера, Маруси, Telegram, Max и тд.  
+> Больше не нужно разбираться в JSON-форматах Алисы, Сбера, Маруси, Telegram, MAX и т. д.  
 > Бизнес-логика — одна. Платформа — любая.
 
 **Ключевые преимущества:**
 
-- ✅ Одна кодовая база для любой платформы. Хотите только Алису? Легко. Решите добавить Марусю или Telegram — просто
+- Одна кодовая база для любой платформы. Хотите только Алису? Легко. Решите добавить Марусю или Telegram — просто
   добавьте нужный адаптер, логика остаётся.
-- ⚡ В типичных сценариях (до 1 000 команд) полная обработка запроса внутри фреймворка, включая поиск и выполнение
-  команд, занимает **менее 30 мс даже в самом сложном случае (fallback)**. В большинстве случаев это время составляет
-  **< 10 мс**. Это оставляет разработчику более **2.5 секунд** на выполнение собственной бизнес-логики — это критически
-  важно для платформ с жёсткими тайм-аутами (Алиса, Маруся, Сбер и др.).
-- При первичной загрузке медиафайлов время ответа может превысить 1 секунду — поэтому `umbot` предусмотрел это, и
-  рекомендует использовать предзагрузку необходимых ресурсов за счет использования класса `Preload`.
-- 🔒 Безопасная обработка регулярных выражений с защитой от ReDoS из коробки
-- 💾 Встроенное состояние, кэширование медиа, кнопки, карточки — «из коробки»
-- 🛠 TypeScript, CLI, автодополнение, 80%+ покрытие тестами
-- 🧰 Дополнительные утилиты для навигации и поиска текста, ускоряющие разработку.
+- В типичных сценариях (до 1 000 команд) полная обработка запроса внутри фреймворка, включая поиск и выполнение
+  команд, занимает **менее 30 мс даже в самом сложном случае (fallback)**; в большинстве случаев — единицы–десятки
+  миллисекунд. На бизнес-логику остаётся практически весь бюджет голосовых платформ: фреймворк пишет предупреждение
+  при обработке дольше 2000 мс и ошибку — дольше 2900 мс, практический ориентир — ~3 секунды (подробнее — в
+  [«Производительность и гарантии»](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)).
+- При первичной загрузке медиафайлов время ответа может вырасти на 200–1000 мс на файл — поэтому `umbot` рекомендует
+  заранее загружать необходимые ресурсы через класс `Preload`.
+- Безопасная обработка регулярных выражений с защитой от ReDoS из коробки
+- Встроенное состояние, кэширование медиа, кнопки, карточки — «из коробки»
+- TypeScript, CLI, автодополнение, развитое тестовое покрытие
+- Дополнительные утилиты для навигации и поиска текста, ускоряющие разработку.
 
-`umbot` — пишешь один раз, запускаешь везде.
-
-### Единый API, адаптированный под платформу
+> **Ключевая мысль:**
+> `umbot` — это не «надстройка для мультиплатформенности», а базовый слой, который делает разработку под любую платформу
+> (даже одну) быстрее, чище и готовой к масштабированию.
 
 `umbot` предоставляет унифицированный интерфейс для работы с ответами, но при этом учитывает специфику каждой платформы:
 
-- Голосовые платформы (Алиса, Маруся, Салют) — поддерживается весь доступный функционал (кнопки, аудиосообщения,
+- Голосовые платформы (Алиса, Маруся, SmartApp) — поддерживается весь доступный функционал (кнопки, аудиосообщения,
   карточки и т.д.).
-- Чат-боты (Telegram, VK, Viber и др.) — поддерживается только необходимый и востребованный набор функций (карточки,
+- Чат-боты (Telegram, VK, Viber, MAX и др.) — поддерживается только необходимый и востребованный набор функций (карточки,
   кнопки, аудиосообщения). Специфические элементы вроде опросов или кастомных интерфейсов мессенджеров исключены, так
   как они не имеют аналогов в голосовых платформах и редко нужны в кроссплатформенной логике.
 
@@ -56,7 +56,7 @@
 
 ### Чем `umbot` отличается от других решений?
 
-Большинство фреймворков (например, `telegraf`, `alice-sdk` и тд) ориентированы **только на одну платформу**. Чтобы
+Большинство фреймворков (например, `telegraf`, `alice-sdk` и т.д.) ориентированы **только на одну платформу**. Чтобы
 запустить приложение и в Алисе, и в Telegram, приходится:
 
 - писать **две (или больше) версии логики**,
@@ -69,7 +69,7 @@
 **единый API** для кнопок, карточек, голоса и текста,  
 **автоматическая адаптация** под формат каждой платформы "под капотом".
 
-Это особенно ценно, если вы уже поддерживаете навык на Алисе и хотите быстро выйти в Марусю, Max или VK — без
+Это особенно ценно, если вы уже поддерживаете навык на Алисе и хотите быстро выйти в Марусю, MAX или VK — без
 переписывания или существенных доработок кода.
 
 Даже если вы пока разрабатываете только под одну платформу, `umbot` избавляет от boilerplate, даёт единый API для работы
@@ -82,7 +82,7 @@
 
 Вы будете использовать `umbot`, если:
 
-- **Вы разрабатываете под одну платформу (Алиса, Салют, Маруся, VK и др.).**
+- **Вы разрабатываете под одну платформу (Алиса, SmartApp, Маруся, VK и др.).**
   Вы получите чистое разделение логики и транспорта, избавитесь от дублирования кода внутри проекта и заложите
   архитектуру, которая безболезненно масштабируется, когда потребуется вторая платформа. Инструмент не усложнит — он
   упорядочит.
@@ -106,21 +106,21 @@
 
 ## Поддерживаемые платформы
 
-| Платформа             | Идентификатор | Статус               |
-| :-------------------- | :------------ | -------------------- |
-| Яндекс.Алиса          | `alisa`       | ✅ Полная поддержка  |
-| Маруся                | `marusia`     | ✅ Полная поддержка  |
-| Сбер Салют (SmartApp) | `smart_app`   | ✅ Полная поддержка  |
-| Telegram              | `telegram`    | ✅ Полная поддержка  |
-| VK                    | `vk`          | ✅ Полная поддержка  |
-| Max                   | `max_app`     | ✅ Полная поддержка  |
-| Viber                 | `viber`       | ✅ Полная поддержка  |
-| **Ваша платформа**    | `...`         | ✅ За счет адаптеров |
+| Платформа          | Идентификатор | Статус            |
+| :----------------- | :------------ | ----------------- |
+| Яндекс.Алиса       | `alisa`       | Полная поддержка  |
+| Маруся             | `marusia`     | Полная поддержка  |
+| Сбер SmartApp      | `smart_app`   | Полная поддержка  |
+| Telegram           | `telegram`    | Полная поддержка  |
+| VK                 | `vk`          | Полная поддержка  |
+| MAX                | `max_app`     | Полная поддержка  |
+| Viber              | `viber`       | Полная поддержка  |
+| **Ваша платформа** | `...`         | За счет адаптеров |
 
-> 💡 **Нужна своя платформа?**  
+> **Нужна своя платформа?**  
 > Просто создайте свой адаптер согласно документации для нужной платформы и подключите его к приложению.  
 > Это позволяет интегрировать `umbot` в любую внутреннюю систему, корпоративный мессенджер или поддержать любую другую
-> платформу, например `whatsapp`.
+> платформу, например WhatsApp.
 
 ---
 
@@ -132,13 +132,14 @@
 npm install umbot
 ```
 
-Создайте и запустите проект за четыре команды:
+Создайте и запустите проект за пять команд:
 
 ```bash
 npx umbot create echo
 cd echo
 npm i
-npm run start
+npm run build
+npm start
 ```
 
 Поправьте файлы нужным вам образом.
@@ -147,9 +148,11 @@ npm run start
 ```ts
 // index.ts
 import { Bot } from 'umbot';
-import { EchoController } from './EchoController';
+import { fullPlatforms } from 'umbot/plugins';
+import { EchoController } from './controller/EchoController';
 
 const bot = new Bot()
+    .use(fullPlatforms)
     .setAppConfig({ json: './data', isLocalStorage: true })
     .initBotController(EchoController)
     .start('localhost', 3000);
@@ -160,7 +163,7 @@ const bot = new Bot()
 import { BotController, WELCOME_INTENT_NAME } from 'umbot';
 
 export class EchoController extends BotController {
-    public action(intentName: string): void {
+    public action(intentName: string | null): void {
         if (intentName === WELCOME_INTENT_NAME) {
             this.text = 'Привет! Я повторяю за вами.';
         } else {
@@ -172,7 +175,7 @@ export class EchoController extends BotController {
 
 Протестируйте приложение, и в случае необходимости опубликуйте его.
 
-👉 [Подробное руководство по запуску](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started.html)
+👉 [Подробное руководство по запуску](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_getting-started.html)
 
 ## Производительность
 
@@ -180,52 +183,74 @@ export class EchoController extends BotController {
 
 - **Пропускная способность (реалистичный сценарий)** — **41 000 RPS**  
   (эмуляция полного цикла: входящий запрос → нормализация → логика → ответ)
-- **Пиковая пропускная способность (burst)** — **40 000 RPS**  
-  (одновременная обработка тысяч параллельных вызовов)
-- **Последовательная пропускная способность (ядро)** — **66 000 RPS**  
+- **Последовательная пропускная способность (ядро)** — **~67 000 RPS**  
   (максимальная скорость одного потока)
 
 **Важно:**
 
 - Тесты проводились без сетевых вызовов и операций с базами данных, поэтому цифры показывают потенциал ядра фреймворка.
 - В реальном проекте итоговый RPS будет определяться внешними факторами (сеть, БД, логика приложения).
+- На реальном сервере (2 ядра / 4 ГБ RAM) с фоновой нагрузкой фреймворк показывает **16 000+ RPS** — подробнее в [Производительность и гарантии](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html).
 
 Длительное тестирование (48 часов) не выявило утечек памяти или снижения производительности: средняя пропускная
-способность в последовательном сценарии осталась на уровне **66 000 RPS**, а потребление памяти стабильно.
+способность в последовательном сценарии осталась на уровне **~67 000 RPS**, а потребление памяти стабильно.
 
 ## 📚 Документация
 
 Подробная документация доступна в следующих разделах:
 
-- [Быстрый старт](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_getting-started.html) - Подробное описание, для
+- [Быстрый старт](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_getting-started.html) - Подробное описание, для
   быстрого старта проекта
-- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_GUIDE.html)
-- [API Reference](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_api-reference.html) - Подробное описание всех классов,
+- [Подробная инструкция по созданию приложений](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html)
+- [API Reference](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_api-reference.html) - Подробное описание всех классов,
   методов и интерфейсов
-- [Поддерживаемые платформы](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration.html) - Руководство по
+- [Поддерживаемые платформы](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html) - Руководство по
   интеграции с различными платформами
-- [Конфигурация и безопасность](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_configuration.html)
-- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_http-client.html)
-- [Производительность и гарантии](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_performance-and-guarantees.html)
-- [Тестирование](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_testing.html)
-- [Развертывание](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_deployment.html)
-- [Middleware](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_middleware.html)
-- [FAQ](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_FAQ.html)
+- [Конфигурация и безопасность](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_configuration.html)
+- [Кастомизация HTTP-клиента](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_http-client.html)
+- [Производительность и гарантии](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_performance-and-guarantees.html)
+- [Тестирование](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_testing.html)
+- [Развертывание](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_deployment.html)
+- [Middleware](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_middleware.html)
+- [FAQ](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_FAQ.html)
 
 ### Полезные ссылки
 
-- 📚 [Официальная документация](https://www.maxim-m.ru/bot/ts-doc/index.html)
+- 📚 [Официальная документация](https://www.maxim-m.ru/docs/umbot/index.html)
 - 📢 [Telegram канал](https://t.me/joinchat/AAAAAFM8AcuniLTwBLuNsw)
 - 💬 [Telegram группа](https://t.me/mm_universal_bot)
 - 📦 [npm package](https://www.npmjs.com/package/umbot)
 - [Создание навыка "Я никогда не"](https://www.maxim-m.ru/article/sozdanie-navyika-ya-nikogda-ne)
-- [Примеры проектов](https://github.com/max36895/universal_bot-ts/tree/main/examples.md)
-- [Список изменений](https://github.com/max36895/universal_bot-ts/blob/main/CHANGELOG.md)
-- [Что ждать в следующем релизе](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_next-release.html)
+- [Примеры проектов](https://github.com/max36895/umbot/tree/main/examples)
+- [Список изменений](https://github.com/max36895/umbot/blob/main/CHANGELOG.md)
+- [Миграция с umbot 2.x на 3.0](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_migration-2x-to-3x.html)
 
 ## 🛠 Инструменты разработчика
 
-- [CLI](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.cli_README.html) команды
+- [CLI](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.cli_README.html) команды
+
+### Визуальный редактор (Umbot Flow Editor)
+
+[Umbot Flow Editor](https://flow.maxim-m.ru) — визуальный редактор для создания ботов на фреймворке umbot. Собирайте логику на холсте, экспортируйте JSON-конфигурацию и генерируйте TypeScript-проект через CLI.
+
+**Цепочка:**
+
+```
+Визуальный редактор → JSON-конфигурация → npx umbot create from-flow → TypeScript-проект → Ваш сервер
+```
+
+**Быстрый старт с редактором:**
+
+1. Откройте [редактор](https://flow.maxim-m.ru) в браузере
+2. Соберите логику бота на холсте
+3. Экспортируйте JSON-конфигурацию → скачайте `flow.json`
+4. Выполните:
+    ```bash
+    npx umbot create from-flow flow.json --output ./my-bot
+    ```
+5. Готовый проект в папке `my-bot`
+
+[Описание JSON-формата](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_json-format.html) — полная спецификация всех типов узлов, связей и правил генерации кода.
 
 ## 📝 Лицензия
 
@@ -236,4 +261,4 @@ MIT License. См. [LICENSE](./LICENSE) для деталей.
 Если у вас есть вопросы или предложения:
 
 - 📧 Email: maximco36895@yandex.ru
-- 🐛 [Issues на GitHub](https://github.com/max36895/universal_bot-ts/issues)
+- 🐛 [Issues на GitHub](https://github.com/max36895/umbot/issues)

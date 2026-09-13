@@ -1,5 +1,7 @@
 /**
- * Основной класс приложения для создания мультиплатформенных приложений, которое будет работать с голосовыми навыками и чат-ботами одновременно.
+ * Контекст приложения: конфигурация, токены, реестры, логгер и метрики.
+ * Создаётся фреймворком внутри Bot; напрямую не инстанцируется — доступ
+ * через `bot.getAppContext()`.
  *
  * Предоставляет функциональность для:
  * - Управления конфигурацией приложения
@@ -8,7 +10,7 @@
  * - Логирования и сохранения данных
  *
  * Основные возможности:
- * - Поддержка множества платформ (Алиса, Маруся, Telegram, Viber, VK)
+ * - Поддержка множества платформ (Алиса, Маруся, SmartApp, Telegram, Viber, VK, MAX)
  * - Гибкая система конфигурации
  * - Управление командами и интентами
  * - Работа с базой данных
@@ -16,8 +18,10 @@
  *
  * @example
  * ```ts
- * import { AppContext } from 'umbot';
- * const appContext = new AppContext();
+ * import { Bot } from 'umbot';
+ * const bot = new Bot();
+ * // Доступ к контексту — через getAppContext()
+ * const appContext = bot.getAppContext();
  * // Настройка конфигурации
  * appContext.setAppConfig({
  *   error_log: './logs',
@@ -60,11 +64,18 @@ import {
     THttpClient,
     IDir,
     TAppPlugin,
+    IAppDB,
 } from './interfaces/IAppContext';
 
 import { CommandReg, ICommandParam, IGroupData, IStepParam } from './utils/CommandReg';
 import { IEnvConfig, loadEnvFile } from '../utils/EnvConfig';
-import { saveData } from '../utils';
+import { saveData, safeStringify } from '../utils';
+import {
+    WELCOME_INTENT_NAME,
+    WELCOME_INTENT_SLOTS,
+    HELP_INTENT_NAME,
+    HELP_INTENT_SLOTS,
+} from './constants';
 import * as process from 'node:process';
 import { join } from 'node:path';
 
@@ -73,26 +84,55 @@ import { join } from 'node:path';
  */
 export const T_AUTO = 'auto';
 
-/**
- * Идентификатор интента приветствия
- */
-export const WELCOME_INTENT_NAME = 'welcome';
-
-/**
- * Идентификатор интента помощи
- */
-export const HELP_INTENT_NAME = 'help';
-
 const regBot = /bot\d+:[A-Za-z0-9_-]{35,}/g;
-const regVk = /vk1a[a-z0-9]{79}/g;
+// «Голый» токен Telegram <bot_id>:<хвост> — regBot требует префикс "bot"
+// и ловит его только внутри URL API.
+const regTelegramBare = /\b\d{6,12}:[A-Za-z0-9_-]{34,}\b/g;
+// Сервисный токен VK — vk1.a.<payload>, с точками.
+const regVk = /\bvk1\.a\.[A-Za-z0-9_-]{20,}/g;
+// JWT (Сбер SmartApp, OAuth-провайдеры): три base64url-сегмента через точку.
+const regJwt = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
+// Значения под «говорящими» ключами в JSON-подобных строках. Двоеточие — вне
+// захватываемой группы, чтобы паттерн срабатывал на обычном JSON.
+// password/pass — конфигурация БД попадает в логи в текстовой форме
+// ("pass":"hunter2"), а не только как metadata-ключи.
 const regVk2 =
-    /("access_token"\s*:|client_secret|vk_confirmation_token|sber_token|oauth|api_key|private_key)\s*:\s*"([^"]{8,})"/g;
+    /("(?:access_token|client_secret|vk_confirmation_token|sber_token|oauth|api_key|api-key|private_key|password|pass)"|client_secret|vk_confirmation_token|sber_token|oauth|api_key|api-key|private_key|password|pass)\s*:\s*"([^"]{8,})"/g;
 const regToken = /"[A-Za-z0-9+/=]{30,256}"/g;
-const regToken2 = /\b[A-Za-z0-9]{64,256}\b/g;
+// Произвольные «токеноподобные» строки. Порог 40: реальный токен Viber —
+// ~46 hex-символов. Дефис/underscore разрешены внутри, но не по краям.
+const regToken2 = /\b[A-Za-z0-9](?:[A-Za-z0-9_-]{38,254})[A-Za-z0-9]\b/g;
+// Токен Яндекс OAuth (Алиса): y0_A... / y1_A... — короче, чем берёт regToken2.
+const regYandexOAuth = /\by[01]_[A-Za-z0-9_-]{20,}\b/g;
+// UUID (MAX и другие платформы): 8-4-4-4-12 hex с дефисами; каждый сегмент
+// короче порога regToken2.
+const regUuid = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
+// Api-Key Yandex SpeechKit — ровно 32 hex-символа, короче порога regToken2.
+const regApiKey = /\b[A-Fa-f0-9]{32}\b/g;
+// IAM-токен Яндекса (yc CLI, Cloud Functions, serverless-деплой из CLI):
+// сегментный формат t1.<base64url>.<base64url> — точки не дают regToken2
+// (он требует непрерывную строку 38+ символов) захватить токен целиком.
+const regYandexIam = /\bt1\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g;
+
+/**
+ * Ключи метаданных, значение которых маскируется целиком независимо от формата.
+ * Формат токенов у платформ меняется, а имя поля — нет.
+ *
+ * `pass` с границей слова — иначе ключ `pass` из конфигурации БД
+ * (`db: {host, user, pass}`) не покрывался.
+ */
+const SECRET_KEY_PATTERN =
+    /token|secret|password|passwd|pass\b|api[_-]?key|private[_-]?key|authorization|credential|access[_-]?key|client[_-]?secret/i;
 
 const PATTERNS = [
     { regex: regBot, replacement: 'bot***' },
-    { regex: regVk, replacement: 'vk1a***' },
+    { regex: regTelegramBare, replacement: '***' },
+    { regex: regVk, replacement: 'vk1.a.***' },
+    { regex: regJwt, replacement: '***' },
+    { regex: regYandexOAuth, replacement: '***' },
+    { regex: regYandexIam, replacement: 't1.***' },
+    { regex: regUuid, replacement: '***' },
+    { regex: regApiKey, replacement: '***' },
     {
         regex: regVk2,
         replacement: '$1:"***"',
@@ -100,6 +140,19 @@ const PATTERNS = [
     { regex: regToken, replacement: '"***"' },
     { regex: regToken2, replacement: '***' },
 ];
+
+/**
+ * Сколько подряд неудачных попыток записи файловых логов допускается
+ * до срабатывания защиты и паузы.
+ */
+const LOG_STORAGE_MAX_FAILURES = 3;
+
+/**
+ * Длительность паузы записи файловых логов после срабатывания защиты, мс.
+ * В течение паузы накопленные записи отбрасываются: недоступный диск
+ * (read-only ФС в serverless, отсутствие прав) за это время доступнее не станет.
+ */
+const LOG_STORAGE_PAUSE_MS = 60_000;
 
 interface IErrWarnData {
     errors: string[];
@@ -127,10 +180,7 @@ interface IErrWarnData {
  *
  * @example
  * ```ts
- * // НЕ ТАК:
- * const appContext = new AppContext();
- *
- * // ТАК (правильно):
+ * // AppContext создаётся самим Bot:
  * const bot = new Bot();
  * const appContext = bot.getAppContext(); // если нужен прямой доступ
  * ```
@@ -158,7 +208,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
          */
         databaseInfo?: TDbInfo;
         /**
-         * Флаг, определяющий вызывался метод для подключения к базе данных или нет
+         * Флаг, определяющий, успешно ли подключился метод connect адаптера базы данных
          */
         isSendConnect?: boolean;
     } = {};
@@ -169,10 +219,23 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         timeout: null,
     };
 
+    /**
+     * Счётчик подряд идущих неудачных попыток записи файловых логов.
+     * Часть защиты от недоступного хранилища (см. #saveErrorData).
+     */
+    #logStorageFailCount = 0;
+
+    /**
+     * Момент времени (мс), до которого запись файловых логов приостановлена
+     * после серии сбоев. 0 — пауза не активна.
+     */
+    #logStoragePausedUntil = 0;
+
     #logErrorBind = this.logError.bind(this);
 
     /**
-     * Все зарегистрированные команды и шаги
+     * Менеджер регистрации команд, шагов и событий (CommandReg).
+     * Сами команды — через геттер `command.commands`, шаги — `command.steps`.
      */
     public command: CommandReg = new CommandReg(
         {
@@ -211,16 +274,36 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     #envVars: IEnvConfig | undefined;
 
     /**
+     * Флаг: кэш `#envVars` заполнен тихим чтением process.env без настроенного env.
+     * Такой кэш не должен прятать явно указанный env-файл при повторном вызове.
+     */
+    #envVarsFromSilentEnv = false;
+
+    /**
+     * Путь env-файла, из которого заполнен текущий кэш `#envVars`.
+     * Смена `appConfig.env` с одного файла на другой перечитывает файл,
+     * а не удерживает кэш первого пути.
+     */
+    #envVarsPath: string | null = null;
+
+    /**
      * Кастомный logger приложения
      */
     #logger: ILogger | null = null;
 
     /**
+     * Кэш значения usedMetric: геттер считается при смене логгера, а не на каждом
+     * запросе (используется в горячем пути несколько раз за запрос).
+     */
+    #usedMetricCache: boolean = false;
+
+    /**
      * Конфигурация приложения
      */
-    public appConfig: Required<IAppConfig> = {
-        error_log: join(__dirname, '..', '..', 'logs'),
-        json: join(__dirname, '..', '..', 'json'),
+    public appConfig: Required<Omit<IAppConfig, 'memorySession'>> &
+        Pick<IAppConfig, 'memorySession'> = {
+        error_log: join(process.cwd(), 'logs'),
+        json: join(process.cwd(), 'json'),
         db: { host: '', user: '', pass: '', database: '' },
         isLocalStorage: false,
         tokens: {},
@@ -236,8 +319,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         help_text: 'Текст помощи',
         empty_text: 'Извините, но я вас не понимаю',
         intents: [
-            { name: WELCOME_INTENT_NAME, slots: ['привет', 'здравст'] },
-            { name: HELP_INTENT_NAME, slots: ['помощь', 'что ты умеешь'] },
+            { name: WELCOME_INTENT_NAME, slots: WELCOME_INTENT_SLOTS },
+            { name: HELP_INTENT_NAME, slots: HELP_INTENT_SLOTS },
         ],
         utm_text: null,
     };
@@ -250,7 +333,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * ```ts
      * (input: RequestInfo, init?: RequestInit) => Promise<Response>
      * ```
-     *      *  Это позволяет:
+     * Это позволяет:
      * - добавлять retry-логику, таймауты, circuit breaker;
      * - внедрять tracing, метрики или логирование всех запросов;
      * - мокать сетевые вызовы в тестах;
@@ -272,7 +355,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      *     throw e;
      *   }
      * };
-     *```
+     * ```
      */
     public httpClient: THttpClient = global.fetch;
 
@@ -283,103 +366,142 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Закрывает все подключения, для корректного завершения работы приложения
+     *
+     * @returns {Promise<void>} Завершается, когда все подключения закрыты и логи сохранены
+     *
+     * @example
+     * ```ts
+     * await bot.getAppContext().close(); // при завершении работы приложения
+     * ```
      */
     public async close(): Promise<void> {
-        this.#saveErrorData();
+        await this.#saveErrorData();
         if (this.database.adapter && this.database.isSendConnect) {
-            return this.database.adapter.destroy();
+            await this.database.adapter.destroy();
         }
     }
 
     /**
      * Установка всех токенов из переменных окружения или параметров
+     * @param {boolean} [overwrite=true] - Перезаписывать ли уже заданные токены.
+     * `false` используется для фонового чтения process.env, чтобы не затереть
+     * токены, которые пользователь явно задал через конструктор адаптера или `setAppConfig`.
      */
-    #setTokens(): void {
+    #setTokens(overwrite: boolean = true): void {
         const envVars = this.#getEnvVars();
         if (envVars) {
             // Не самое хорошее решение, но возможно этот вариант кому-то удобен
-            if (envVars.VIBER_TOKEN) {
-                this.appConfig.tokens.viber ??= {};
-                this.appConfig.tokens.viber.token = envVars.VIBER_TOKEN;
-            }
+            const applyEnvValue = (platformName: string, field: string, value?: string): void => {
+                if (!value) {
+                    return;
+                }
+                this.appConfig.tokens[platformName] ??= {};
+                if (overwrite || this.appConfig.tokens[platformName][field] === undefined) {
+                    this.appConfig.tokens[platformName][field] = value;
+                }
+            };
 
-            if (envVars.TELEGRAM_TOKEN) {
-                this.appConfig.tokens.telegram ??= {};
-                this.appConfig.tokens.telegram.token = envVars.TELEGRAM_TOKEN;
-            }
+            applyEnvValue('viber', 'token', envVars.VIBER_TOKEN);
+            applyEnvValue('telegram', 'token', envVars.TELEGRAM_TOKEN);
+            applyEnvValue('vk', 'token', envVars.VK_TOKEN);
+            applyEnvValue('vk', 'confirmation_token', envVars.VK_CONFIRMATION_TOKEN);
+            applyEnvValue('vk', 'secret_key', envVars.VK_SECRET_KEY);
+            applyEnvValue('max_app', 'token', envVars.MAX_TOKEN);
+            applyEnvValue('marusia', 'token', envVars.MARUSIA_TOKEN);
+            applyEnvValue('alisa', 'token', envVars.ALISA_TOKEN || envVars.YANDEX_TOKEN);
+            // Токен SmartApp адаптеру не нужен (подписи у Сбера нет), но CLI
+            // генерирует SMARTAPP_TOKEN — он должен попадать в конфиг, а не отбрасываться.
+            applyEnvValue('smart_app', 'token', envVars.SMARTAPP_TOKEN);
 
-            if (envVars.VK_TOKEN) {
-                this.appConfig.tokens.vk ??= {};
-                this.appConfig.tokens.vk.token = envVars.VK_TOKEN;
-                this.appConfig.tokens.vk.confirmation_token =
-                    envVars.VK_CONFIRMATION_TOKEN || this.appConfig.tokens.vk.confirmation_token;
-            }
-
-            if (envVars.MAX_TOKEN) {
-                this.appConfig.tokens.max_app ??= {};
-                this.appConfig.tokens.max_app.token = envVars.MAX_TOKEN;
-            }
-
-            if (envVars.MARUSIA_TOKEN) {
-                this.appConfig.tokens.marusia ??= {};
-                this.appConfig.tokens.marusia.token = envVars.MARUSIA_TOKEN;
-            }
-
-            if (envVars.YANDEX_TOKEN) {
-                this.appConfig.tokens.alisa ??= {};
-                this.appConfig.tokens.alisa.token = envVars.YANDEX_TOKEN;
-            }
+            // SpeechKit отвечает за TTS в чат-платформах Telegram, VK и Max,
+            // поэтому один токен раскладывается сразу по трём платформам.
+            applyEnvValue('telegram', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
+            applyEnvValue('vk', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
+            applyEnvValue('max_app', 'speech_kit_token', envVars.SPEECH_KIT_TOKEN);
         }
     }
 
     /**
-     * Возвращает объект с настройками окружения
-     * @param {string|undefined} envPath - Путь к файлу окружения
+     * Собирает конфигурацию окружения из process.env: токены платформ и настройки БД.
+     * Вынесено из `#getEnvVars`, чтобы деструктуризация не раздувала метод.
+     * @returns Объект с переменными окружения (пустой, если process.env недоступен)
      */
-    #getEnvVars(envPath: string | undefined = this.appConfig?.env): IEnvConfig | undefined {
-        const setEnvFn = (errorMsg: string): void => {
-            let correctEnvValue = {};
-            // Используем доступ к env, чтобы получить токены для Viber, Telegram и других сервисов. Это необходимая для работы с api и базой данных.
-            // Используется только в случае если явно хотят работать с env файлами.
-            if (process.env) {
-                const {
-                    // Получаем токен для viber
-                    VIBER_TOKEN,
-                    // Получаем токен для talegram
-                    TELEGRAM_TOKEN,
-                    // Получаем токен для vk
-                    VK_TOKEN,
-                    // Получаем токен для max
-                    MAX_TOKEN,
-                    // Получаем токен для подтверждения vk
-                    VK_CONFIRMATION_TOKEN,
-                    // Получаем токен для маруси
-                    MARUSIA_TOKEN,
-                    // Получаем токен для работы с api яндекса
-                    YANDEX_TOKEN,
-                    // Получаем хост для подключения к базе
-                    DB_HOST,
-                    // Получаем имя пользователя для подключения к базе
-                    DB_USER,
-                    // Получаем пароль пользователя для подключения к базе
-                    DB_PASSWORD,
-                    // Получаем имя базы данных
-                    DB_NAME,
-                } = process.env;
-                correctEnvValue = {
-                    VIBER_TOKEN,
-                    TELEGRAM_TOKEN,
-                    VK_TOKEN,
-                    MAX_TOKEN,
-                    VK_CONFIRMATION_TOKEN,
-                    MARUSIA_TOKEN,
-                    YANDEX_TOKEN,
-                    DB_HOST,
-                    DB_USER,
-                    DB_PASSWORD,
-                    DB_NAME,
-                };
+    #readEnvFromProcess(): IEnvConfig {
+        if (!process.env) {
+            return {};
+        }
+        const {
+            // Получаем токен для viber
+            VIBER_TOKEN,
+            // Получаем токен для telegram
+            TELEGRAM_TOKEN,
+            // Получаем токен для vk
+            VK_TOKEN,
+            // Получаем токен для max
+            MAX_TOKEN,
+            // Получаем токен для подтверждения vk
+            VK_CONFIRMATION_TOKEN,
+            // Получаем секретный ключ VK Callback API
+            VK_SECRET_KEY,
+            // Получаем токен для маруси
+            MARUSIA_TOKEN,
+            // Получаем токен для Сбер SmartApp (генерируется CLI в .env)
+            SMARTAPP_TOKEN,
+            // Получаем токен для работы с api яндекса (каноническое имя)
+            ALISA_TOKEN,
+            // Устаревшее имя токена Алисы — сохранено для обратной совместимости
+            YANDEX_TOKEN,
+            // Получаем токен Yandex SpeechKit для TTS в чат-платформах
+            SPEECH_KIT_TOKEN,
+            // Получаем хост для подключения к базе
+            DB_HOST,
+            // Получаем имя пользователя для подключения к базе
+            DB_USER,
+            // Получаем пароль пользователя для подключения к базе
+            DB_PASSWORD,
+            // Получаем имя базы данных
+            DB_NAME,
+        } = process.env;
+        // exactOptionalPropertyTypes: поля заполняем только реально существующими
+        // значениями, undefined-поля не добавляем.
+        const env: Record<string, string> = {};
+        for (const [key, value] of Object.entries({
+            VIBER_TOKEN,
+            TELEGRAM_TOKEN,
+            VK_TOKEN,
+            MAX_TOKEN,
+            VK_CONFIRMATION_TOKEN,
+            VK_SECRET_KEY,
+            MARUSIA_TOKEN,
+            SMARTAPP_TOKEN,
+            ALISA_TOKEN,
+            YANDEX_TOKEN,
+            SPEECH_KIT_TOKEN,
+            DB_HOST,
+            DB_USER,
+            DB_PASSWORD,
+            DB_NAME,
+        })) {
+            if (value !== undefined) {
+                env[key] = value;
             }
+        }
+        return env as IEnvConfig;
+    }
+
+    /**
+     * Возвращает объект с настройками окружения
+     * @param {string|null|undefined} envPath - Путь к файлу окружения, `'local'` для чтения
+     * из process.env или `null`, чтобы принудительно прочитать process.env без настроенного env.
+     * Если параметр не передан, используется `appConfig.env`.
+     */
+    #getEnvVars(envPath: string | null | undefined = undefined): IEnvConfig | undefined {
+        const resolvedPath = envPath === undefined ? this.appConfig?.env : envPath;
+        const setEnvFn = (errorMsg: string, silent: boolean = false): void => {
+            // Используем доступ к env, чтобы получить токены для Viber, Telegram и других сервисов.
+            // Это необходимо для работы с api и базой данных. Используется только в случае,
+            // если явно хотят работать с env-файлами.
+            const correctEnvValue = this.#readEnvFromProcess();
             let isError = true;
             Object.values(correctEnvValue).forEach((correctEnvValue) => {
                 if (correctEnvValue) {
@@ -387,53 +509,122 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 }
             });
             if (isError) {
-                this.logError('AppContext: ' + errorMsg);
+                // В тихом режиме не ругаемся: переменные просто не заданы,
+                // и это нормальная ситуация (например, токены переданы через конструктор адаптера).
+                if (!silent) {
+                    this.logError('AppContext: ' + errorMsg);
+                }
             } else {
                 this.#envVars = correctEnvValue;
+                this.#envVarsFromSilentEnv = silent;
+                this.#envVarsPath = null;
             }
         };
-        if (envPath === 'local') {
+        if (resolvedPath === 'local') {
             setEnvFn('Не удалось получить данные из process.env');
             // Возвращаем результаты сразу, чтобы не возникло ситуации, когда пытается прочитать файл local
             return this.#envVars;
         }
-        if (this.#envVars) {
+        // Кэш от тихого чтения process.env не должен прятать явно указанный
+        // env-файл: если env настроен после тихого подхвата или путь сменился
+        // на другой файл — читаем файл заново.
+        if (
+            this.#envVars &&
+            this.#envVarsPath === resolvedPath &&
+            !(this.#envVarsFromSilentEnv && resolvedPath)
+        ) {
             return this.#envVars;
         }
-        if (envPath) {
-            const res = loadEnvFile(envPath);
+        if (resolvedPath) {
+            const res = loadEnvFile(resolvedPath);
             if (res.status) {
                 this.#envVars = res.data;
+                this.#envVarsFromSilentEnv = false;
+                this.#envVarsPath = resolvedPath;
             } else {
                 setEnvFn(
                     (res.error as string) + '. Также не удалось получить данные из process.env',
                 );
             }
+        } else {
+            // Env-файл не настроен — пробуем подтянуть токены прямо из process.env.
+            // Благодаря этому токены, переданные через `docker run -e` или переменные
+            // окружения в serverless-окружении, работают без явного `env: 'local'`.
+            setEnvFn('', true);
         }
         return this.#envVars;
     }
 
     /**
+     * Дописывает настройки БД из переменных окружения в конфиг приложения.
+     *
+     * Пишем в конфиг, только если есть настройки для подключения: существующий
+     * `appConfig.db` либо переменные DB_HOST/DB_NAME.
+     *
+     * @param {IEnvConfig} envVars Загруженные переменные окружения
+     */
+    #applyEnvDbConfig(envVars: IEnvConfig): void {
+        if (!(this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME)) {
+            return;
+        }
+        const dbConfig: IAppDB = {
+            host: envVars.DB_HOST || this.appConfig.db?.host || '',
+            database: envVars.DB_NAME || this.appConfig.db?.database || '',
+        };
+        // exactOptionalPropertyTypes: опциональные поля заполняем только
+        // реальными значениями, чтобы не протаскивать undefined в конфиг.
+        const dbUser = envVars.DB_USER || this.appConfig.db?.user;
+        if (dbUser) {
+            dbConfig.user = dbUser;
+        }
+        const dbPass = envVars.DB_PASSWORD || this.appConfig.db?.pass;
+        if (dbPass) {
+            dbConfig.pass = dbPass;
+        }
+        if (this.appConfig.db?.options) {
+            dbConfig.options = this.appConfig.db.options;
+        }
+        this.appConfig.db = dbConfig;
+    }
+
+    /**
      * Устанавливает конфигурацию приложения
-     * @param {IAppConfig} config - Пользовательская конфигурация
+     * @param {Partial<IAppConfig>} config - Пользовательская конфигурация
+     * @returns {void}
+     *
+     * @example
+     * ```ts
+     * ctx.setAppConfig({ error_log: './logs', json: './data' });
+     * ```
      */
     public setAppConfig(config: Partial<IAppConfig>): void {
-        this.appConfig = { ...this.appConfig, ...config };
-        if (config.env) {
-            const envVars = this.#getEnvVars(config.env);
+        const correctConfig: Partial<IAppConfig> = { ...config };
+        if (correctConfig.tokens) {
+            for (const platform of Object.keys(correctConfig.tokens)) {
+                this.appConfig.tokens[platform] = {
+                    ...this.appConfig.tokens[platform],
+                    ...correctConfig.tokens[platform],
+                };
+            }
+            delete correctConfig.tokens;
+        }
+        this.appConfig = {
+            ...this.appConfig,
+            ...correctConfig,
+        };
+        if (correctConfig.env) {
+            const envVars = this.#getEnvVars(correctConfig.env);
             if (envVars) {
-                // Пишем в конфиг для подключения к БД, только если есть настройки для подключения
-                if (this.appConfig.db || envVars.DB_HOST || envVars.DB_NAME) {
-                    this.appConfig.db = {
-                        ...this.appConfig.db,
-                        host: envVars.DB_HOST || this.appConfig.db?.host,
-                        user: envVars.DB_USER || this.appConfig.db?.user,
-                        pass: envVars.DB_PASSWORD || this.appConfig.db?.pass,
-                        database: envVars.DB_NAME || this.appConfig.db?.database,
-                    };
-                }
-
+                this.#applyEnvDbConfig(envVars);
                 this.#setTokens();
+            }
+        } else if (!this.appConfig.env) {
+            // Env не настроен (нет ни файла, ни 'local') — тихо пробуем дозаполнить токены
+            // из process.env, чтобы работал сценарий `docker run -e TELEGRAM_TOKEN=...`.
+            // Уже заданные токены при этом не перезаписываются.
+            const envVars = this.#getEnvVars(null);
+            if (envVars) {
+                this.#setTokens(false);
             }
         }
     }
@@ -441,9 +632,21 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     /**
      * Устанавливает параметры приложения
      * @param {IAppParam} params - Пользовательские параметры
+     * @returns {void}
+     *
+     * @example
+     * ```ts
+     * ctx.setPlatformParams({ welcome_text: 'Привет!', help_text: 'Список команд…' });
+     * ```
      */
     public setPlatformParams(params: IAppParam): void {
         this.platformParams = { ...this.platformParams, ...params };
+        if (this.platformParams.intents) {
+            this.platformParams.intents = this.platformParams.intents.map((intent) => ({
+                ...intent,
+                slots: [...intent.slots],
+            }));
+        }
         this.platformParams.intents =
             this.platformParams.intents?.filter((intent) => {
                 if (intent.is_pattern) {
@@ -458,20 +661,47 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
                 }
                 return true;
             }) || [];
-        this.#setTokens();
+        // Перезапись токенов значениями из окружения допустима только при явно
+        // настроенном env ('local' или файл). При тихом подхвате process.env
+        // токены, заданные разработчиком, не затираются.
+        this.#setTokens(!!this.appConfig.env);
     }
 
     /**
      * Позволяет установить свою реализацию для логирования
-     * @param logger
+     * @param {ILogger | null} logger - Экземпляр логгера или null для отключения
+     * @returns {void}
+     *
+     * @example
+     * ```ts
+     * ctx.setLogger({ error: (msg, meta) => console.error(msg, meta) });
+     * ```
      */
     public setLogger(logger: ILogger | null): void {
         this.#logger = logger;
+        // Кэш для горячего пути: usedMetric вызывается несколько раз на каждый
+        // запрос, а геттер делает optional-chain проверку логгера. Пересчитываем
+        // только при смене логгера.
+        this.#usedMetricCache = !!logger?.metric;
     }
 
     /**
      * Логирование информации
-     * @param args
+     *
+     * ⚠️ **Секреты не маскируются.** В отличие от {@link logError} / {@link logWarn} /
+     * {@link logMetric}, этот метод НЕ прогоняет аргументы через конвейер
+     * маскирования — они уходят в логгер как есть. Предназначен для
+     * операционных сообщений (статус сервера, метрики старта). Никогда не
+     * передавайте сюда токены, пароли и другие секреты; для диагностики
+     * с метаданными используйте `logWarn`/`logError`.
+     *
+     * @param {...unknown[]} args - Аргументы для логирования
+     *
+     * @example
+     * ```ts
+     * ctx.log('Запрос обработан за', 42, 'мс');
+     * ctx.log({ userId: '123', command: 'start' });
+     * ```
      */
     public log(...args: unknown[]): void {
         if (this.#logger?.log) {
@@ -483,59 +713,122 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Логирование ошибки
-     * @param str
-     * @param meta
+     * @param {string} str - Текст ошибки
+     * @param {Record<string, unknown>} [meta] - Дополнительные метаданные
+     *
+     * @example
+     * ```ts
+     * ctx.logError('Ошибка подключения к БД', { host: 'localhost', error: err.message });
+     * ```
      */
     public logError(str: string, meta?: Record<string, unknown>): void {
+        const [maskedText, maskedMeta] = this.#maskLogData(str, meta);
         if (this.#logger?.error) {
-            this.#logger.error(
-                this.appMode.includes('strict') ? this.#maskSecrets(str) : str,
-                meta,
-            );
+            this.#logger.error(maskedText, maskedMeta);
         } else {
-            this.#errWarnLog(
-                `${str}\n${JSON.stringify({ ...meta, trace: new Error().stack }, null, '\t')}`,
-                true,
-            );
+            const data = maskedMeta
+                ? { ...maskedMeta, trace: new Error().stack }
+                : { trace: new Error().stack };
+            const serialized = safeStringify(data, null, '\t');
+            this.#errWarnLog(`${maskedText}\n${serialized}`, true);
         }
     }
 
     /**
-     * Возвращает флаг, который говорит о том необходимо собирать метрики или нет
+     * Возвращает флаг, который говорит о том, нужно ли собирать метрики
+     *
+     * @returns {boolean} true, если заданный логгер реализует метод metric
+     *
+     * @example
+     * ```ts
+     * if (ctx.usedMetric) {
+     *   ctx.logMetric('GET_COMMAND', 0.42, { platform: 'alisa' });
+     * }
+     * ```
      */
     public get usedMetric(): boolean {
-        return !!this.#logger?.metric;
+        return this.#usedMetricCache;
     }
 
     /**
      * Логирование метрики
+     *
+     * Имя метрики и label проходят тот же конвейер маскирования секретов, что и
+     * logError/logWarn: в label может попасть, например, полный URL запроса, а
+     * для Telegram он содержит токен бота (`https://api.telegram.org/bot<ТОКЕН>/...`),
+     * который не должен попасть в системы наблюдаемости.
+     *
      * @param name - имя метрики
      * @param value - значение
      * @param label - Дополнительные метаданные
+     *
+     * @example
+     * ```ts
+     * ctx.logMetric('GET_COMMAND', 0.42, { platform: 'alisa', command: 'weather' });
+     * ctx.logMetric('DB_SELECT', 12.5, { table: 'UsersData' });
+     * ```
      */
     public logMetric(name: string, value: unknown, label: Record<string, unknown>): void {
         if (this.#logger?.metric) {
-            this.#logger.metric(name, value, label);
+            const [maskedName, maskedLabel] = this.#maskLogData(name, label);
+            this.#logger.metric(maskedName, value, maskedLabel ?? label);
         }
     }
 
-    #saveErrorData(): void {
+    async #saveErrorData(): Promise<void> {
         if (this.#errWarnData.timeout) {
             clearTimeout(this.#errWarnData.timeout);
         }
-        if (this.#errWarnData.warnings.length) {
-            this.#saveLog('warn.log', this.#errWarnData.warnings.join('\n'), false).catch(() => {
-                // ignore error
-            });
-        }
-        if (this.#errWarnData.errors.length) {
-            this.#saveLog('error.log', this.#errWarnData.errors.join('\n'), false).catch(() => {
-                // ignore error
-            });
-        }
+        const warnings = this.#errWarnData.warnings.splice(0);
+        const errors = this.#errWarnData.errors.splice(0);
         this.#errWarnData.errors = [];
         this.#errWarnData.warnings = [];
         this.#errWarnData.timeout = null;
+        if (!warnings.length && !errors.length) {
+            return;
+        }
+
+        // Защита от недоступного хранилища (read-only ФС в serverless, нет прав,
+        // путь занят файлом). Пока пауза активна, накопленные записи отбрасываются
+        // без попыток записи: о проблеме уже сообщено в stderr, а повторные попытки
+        // ничего не дадут, только раздуют память.
+        if (Date.now() < this.#logStoragePausedUntil) {
+            return;
+        }
+
+        const results = await Promise.all([
+            warnings.length
+                ? this.#saveLog('warn.log', warnings.join('\n'), false).catch(() => false)
+                : Promise.resolve(true),
+            errors.length
+                ? this.#saveLog('error.log', errors.join('\n'), false).catch(() => false)
+                : Promise.resolve(true),
+        ]);
+        if (results.every(Boolean)) {
+            // Хранилище доступно (в том числе снова доступно после паузы) —
+            // снимаем счётчик сбоев.
+            this.#logStorageFailCount = 0;
+            return;
+        }
+        this.#logStorageFailCount++;
+        if (this.#logStorageFailCount >= LOG_STORAGE_MAX_FAILURES) {
+            this.#logStorageFailCount = 0;
+            this.#logStoragePausedUntil = Date.now() + LOG_STORAGE_PAUSE_MS;
+            this.#reportLogStorageFailure();
+        }
+    }
+
+    /**
+     * Сообщает о недоступности хранилища логов в обход самого конвейера логирования.
+     * Писать об этом через logError нельзя — конвейер неисправен, получим
+     * зацикливание «ошибки записи ошибки». Поэтому напрямую в stderr.
+     */
+    #reportLogStorageFailure(): void {
+        process.stderr.write(
+            `[umbot] Не удалось записать логи в "${this.appConfig.error_log}". ` +
+                `Запись приостановлена на ${Math.round(LOG_STORAGE_PAUSE_MS / 1000)} с, ` +
+                `новые записи за это время будут отброшены.\n`,
+        );
     }
 
     #errWarnLog(msg: string, isError: boolean): void {
@@ -547,26 +840,34 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (!this.#errWarnData.timeout) {
             this.#errWarnData.timeout = setTimeout(() => {
                 this.#errWarnData.timeout = null;
-                this.#saveErrorData();
+                this.#saveErrorData().catch(() => {
+                    // Сбои записи обрабатываются внутри #saveErrorData;
+                    // логировать их здесь нельзя — новый цикл ошибок.
+                });
             }, 200).unref();
         }
     }
 
     /**
      * Логирование предупреждения
-     * @param str
-     * @param meta
+     * @param {string} str - Текст предупреждения
+     * @param {Record<string, unknown>} [meta] - Дополнительные метаданные
+     *
+     * @example
+     * ```ts
+     * ctx.logWarn('Текст обрезан до 1024 символов', { original: longText, truncated: shortText });
+     * ```
      */
     public logWarn(str: string, meta?: Record<string, unknown>): void {
+        const [maskedText, maskedMeta] = this.#maskLogData(str, meta);
         if (this.#logger?.warn) {
-            this.#logger.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, {
-                ...meta,
-            });
+            this.#logger.warn(maskedText, maskedMeta);
         } else {
             if (this.appMode === 'dev') {
-                console.warn(this.appMode.includes('strict') ? this.#maskSecrets(str) : str, meta);
+                console.warn(maskedText, maskedMeta);
             }
-            this.#errWarnLog(`${str}\n${JSON.stringify({ ...meta }, null, '\t')}`, false);
+            const serialized = safeStringify(maskedMeta, null, '\t');
+            this.#errWarnLog(`${maskedText}\n${serialized}`, false);
         }
     }
 
@@ -574,9 +875,15 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
      * Сохраняет данные в JSON файл
      * @param fileName - Имя файла
      * @param data - Данные для сохранения
-     * @returns true в случае успешного сохранения
+     * @returns Promise<boolean> — true в случае успешного сохранения
+     *
+     * @example
+     * ```ts
+     * const saved = await ctx.saveFileData('config.json', { key: 'value' });
+     * if (saved) console.log('Данные сохранены');
+     * ```
      */
-    public saveFileData(fileName: string, data: unknown): Promise<boolean> {
+    public async saveFileData(fileName: string, data: unknown): Promise<boolean> {
         const dir: IDir = {
             path: this.appConfig.json || join(__dirname, '..', '..', 'json'),
             fileName: fileName,
@@ -586,7 +893,7 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
 
     /**
      * Скрывает секретные данные в тексте
-     * @param text
+     * @param text - Текст для маскировки секретов
      */
     #maskSecrets(text: string): string {
         if (!text || this.#logger?.maskSecrets === false) {
@@ -602,11 +909,86 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
     }
 
     /**
+     * Маскирует текст и метаданные перед передачей в любой логгер.
+     *
+     * Копия метаданных создаётся рекурсивно, чтобы пользовательский объект не
+     * изменялся. Набор текущего пути нужен именно для циклов: повторная ссылка
+     * в другой ветке должна быть обработана повторно, а не ошибочно считаться циклом.
+     */
+    #maskLogData(
+        text: string,
+        meta?: Record<string, unknown>,
+    ): [string, Record<string, unknown> | undefined] {
+        if (this.#logger?.maskSecrets === false) {
+            return [text, meta];
+        }
+
+        let maskedMeta: Record<string, unknown> | undefined;
+        if (meta) {
+            try {
+                maskedMeta = this.#maskUnknown(meta, new Set()) as Record<string, unknown>;
+            } catch {
+                // Кидающий геттер или revoked Proxy в meta не должны ломать логирование:
+                // logError вызывается в catch-блоках, и исключение там потеряет исходную ошибку.
+                maskedMeta = { meta: '[meta unserializable]' };
+            }
+        }
+        return [this.#maskSecrets(text), maskedMeta];
+    }
+
+    /**
+     * Рекурсивно создаёт безопасную для логирования копию неизвестного значения.
+     */
+    #maskUnknown(value: unknown, parents: Set<object>): unknown {
+        if (typeof value === 'string') {
+            return this.#maskSecrets(value);
+        }
+        if (value === null || typeof value !== 'object') {
+            return value;
+        }
+        if (value instanceof Date) {
+            return value.toISOString();
+        }
+        if (parents.has(value)) {
+            return '[Circular]';
+        }
+
+        parents.add(value);
+        try {
+            if (value instanceof Error) {
+                return {
+                    name: value.name,
+                    message: this.#maskSecrets(value.message),
+                    ...(value.stack ? { stack: this.#maskSecrets(value.stack) } : {}),
+                };
+            }
+            if (Array.isArray(value)) {
+                return value.map((item) => this.#maskUnknown(item, parents));
+            }
+
+            const result: Record<string, unknown> = {};
+            for (const [key, item] of Object.entries(value)) {
+                // Поле с «говорящим» именем маскируем целиком вместе с вложенными
+                // объектами и массивами: формат токена у платформы может измениться,
+                // а имя поля в метаданных останется тем же.
+                if (SECRET_KEY_PATTERN.test(key)) {
+                    result[key] = '***';
+                    continue;
+                }
+                result[key] = this.#maskUnknown(item, parents);
+            }
+            return result;
+        } finally {
+            parents.delete(value);
+        }
+    }
+
+    /**
      * Сохраняет лог ошибки
      * @param {string} fileName - Имя файла лога
      * @param {string} errorText - Текст ошибки
      * @param {boolean} usedDate - Флаг, говорящий о том, нужно ли добавлять время или нет.
-     * @returns {boolean} true в случае успешного сохранения
+     * @returns {Promise<boolean>} true в случае успешного сохранения
      */
     #saveLog(
         fileName: string,
@@ -621,6 +1003,8 @@ export class AppContext<TDbInfo = IDatabaseInfo, TQuery = unknown> {
         if (this.appMode === 'dev') {
             console.error(msg);
         }
-        return saveData(dir, this.#maskSecrets(msg), 'a', this.#logErrorBind);
+        // errorLogger не передаётся: сбой записи лога через logError породил бы
+        // новую запись — цикл ошибок. Обработкой сбоев занимается #saveErrorData.
+        return saveData(dir, this.#maskSecrets(msg), 'a');
     }
 }

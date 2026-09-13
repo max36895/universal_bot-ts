@@ -1,13 +1,14 @@
 import { getImage, AppContext } from '../../src';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 describe('image', () => {
     it('Image init', () => {
         expect(getImage(appContext, '', '')).toBe(null);
 
         let image = getImage(appContext, 'test', 'title');
         expect(image?.title).toEqual('title');
-        expect(image?.desc).toEqual(' ');
+        expect(image?.desc).toEqual('');
         expect(image?.imageDir === null).toBe(true);
         expect(image?.imageToken).toEqual('test');
 
@@ -24,7 +25,7 @@ describe('image', () => {
         });
         expect(image?.button?.buttons[0].title).toEqual('btn');
         expect(image?.button?.buttons[0].url).toEqual(
-            'https://google.com?utm_source=umBot&utm_medium=cpc&utm_campaign=phone',
+            'https://google.com?utm_source=umbot&utm_medium=cpc&utm_campaign=phone',
         );
     });
 

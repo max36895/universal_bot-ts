@@ -12,19 +12,24 @@
 
 ### Почему мы переопределяем \_select, а не select?
 
-Публичные методы (`select`, `insert`, `update`, `remove`) в `BaseDbAdapter` уже написаны. Они оборачивают ваши внутренние методы (`_select`, `_insert`), чтобы замерять время выполнения и логировать метрики. Если вы переопределите select(), вы сломаете сбор метрик и логику повторных подключений. Вы всегда реализуете только методы с подчеркиванием.
+Публичные методы (`select`, `insert`, `update`, `remove`) в `BaseDbAdapter` уже написаны. Они оборачивают ваши внутренние методы (`_select`, `_insert`), чтобы замерять время выполнения и логировать метрики (управление жизненным циклом и переподключениями живёт в `connect()`/`init()` — публичные обёртки к нему отношения не имеют). Если вы переопределите select(), вы сломаете сбор метрик. Вы всегда реализуете только методы с подчеркиванием.
 
 ## Обязательный контракт (что нужно реализовать)
 
-Наследуемся от `BaseDbAdapter` и реализуем:
+Наследуемся от `BaseDbAdapter` и реализуем абстрактные методы:
 
-1. connect(): Promise<boolean> — Устанавливаете соединение с БД.
-2. isConnected(): Promise<boolean> — Проверяете, живо ли соединение (например, делаете ping БД).
-3. \_select(selectData: IQuery, where: IQueryData | null, isOne: boolean): Promise<IModelRes> — Поиск.
-4. \_insert(insertData: IQuery): Promise<boolean> — Добавление.
-5. \_update(updateData: IQuery): Promise<boolean> — Обновление.
-6. \_remove(removeData: IQuery): Promise<boolean> — Удаление.
-7. destroy(): Promise<void> — Закрываете пул соединений при остановке приложения.
+1. isConnected(): Promise<boolean> | boolean — Проверяете, живо ли соединение (например, делаете ping БД).
+2. \_select(selectData: IQuery, where: IQueryData | null, isOne: boolean): IModelRes | Promise<IModelRes> — Поиск.
+3. \_insert(insertData: IQuery): boolean | Promise<boolean> — Добавление.
+4. \_update(updateData: IQuery): boolean | Promise<boolean> — Обновление.
+5. \_remove(removeData: IQuery): boolean | Promise<boolean> — Удаление.
+
+Опционально (в базовом классе есть реализации по умолчанию):
+
+- connect(): Promise<boolean> | boolean — по умолчанию возвращает `true`. Переопределите, чтобы устанавливать реальное соединение с БД.
+- destroy(): void | Promise<void> — по умолчанию пустой метод. Переопределите, чтобы закрывать пул соединений при остановке приложения.
+- close(tableName: string): void | Promise<void> — закрытие подключения к конкретной таблице.
+- \_query(callback: TQueryCb) — по умолчанию возвращает `null`. Переопределите, если хотите поддержать произвольные запросы через `model.query()`.
 
 ## Форматы данных (Шпаргалка):
 
@@ -60,13 +65,21 @@
 То, что вы обязаны вернуть из метода `_select`.
 
 ```ts
-// Успех (даже если ничего не найдено, status должен быть true, а data - пустым массивом или null)
+// Успех: записи нашлись
 { status: true, data: { userId: '123', name: 'John' } }
 { status: true, data: [] }
+
+// Запись не найдена (пустая выборка) — тоже status: false
+{ status: false }
 
 // Ошибка (сбой подключения, синтаксическая ошибка и т.д.)
 { status: false, error: 'Connection timeout' }
 ```
+
+**Критично:** `status: true` возвращайте только когда данные реально есть. Если запись не найдена —
+возвращайте `{ status: false }`. Оба встроенных адаптера (FileAdapter, MongoAdapter) работают именно так,
+а `Model.save()` решает insert-vs-update по `selectOne().status`: ложный `status: true` на пустой выборке
+сломает сохранение (update вместо insert).
 
 Для методов `_insert`, `_update`, `_remove` вы возвращаете просто boolean (true при успехе, false при ошибке).
 
@@ -77,8 +90,8 @@
 В базовом классе `BaseDbAdapter` нет встроенного метода `validate()`.
 Однако в `MongoAdapter` он реализован для валидации данных по правилам модели (`IModelRules`).
 
-Если вы хотите, чтобы ваш адаптер также валидировал данные (обрезал строки по `max`,
-приводил типы), реализуйте метод `validate()` в своём классе:
+**Рекомендация:** Если вам нужна **дополнительная валидация** (например, обрезка строк по `max`, приведение типов),
+реализуйте метод `validate()` в своём классе:
 
 ```ts
 public validate(query: IQuery, element: IQueryData | null): IQueryData {
@@ -112,17 +125,29 @@ public async _insert(insertData: IQuery): Promise<boolean> {
 }
 ```
 
-**Примечание**: Валидация в модели (`Model.validate()`) и в адаптере (`validate()`) — это разные вещи.
+**Примечание:** Валидация в модели (`Model.validate()`) и в адаптере (`validate()`) — это разные вещи.
 Модель валидирует свои данные перед сохранением, а адаптер валидирует данные по правилам `IModelRules`
 перед выполнением запроса к БД.
+
+**Безопасность:** перед передачей `query` (where) и `data` в драйвер проверяйте их на опасные ключи —
+`__proto__`, `constructor`, `prototype` (включая вложенные объекты и составные пути вида `a.__proto__.b`)
+и объекты-операторы в данных записи. Без этой проверки возможны prototype pollution и инъекции в драйвер.
+Образец реализации — приватный метод `#isSafeMongoQuery` в `MongoAdapter` (src/plugins/db/Mongo/Adapter.ts).
 
 _Зачем тогда в `IQuery` передаются `rules`?_
 Они нужны вам для **маппинга типов** специфичных для вашей СУБД. Например, если вы пишете SQL-адаптер, вы можете использовать `rules`, чтобы понять, что поле с `type: 'object'` нужно сериализовать в JSON-строку перед вставкой, а `max: 150` использовать для динамического создания `VARCHAR(150)`.
 
+**Примечание для FileAdapter:** FileAdapter не реализует `validate()` по правилам `IModelRules`, так как
+работает только с точным совпадением значений и не поддерживает операторы. При этом его операции защищены
+от зарезервированных ключей (`__proto__`, `constructor`, `prototype`) приватным методом `#isForbiddenKey`
+проверки в select/insert/update/remove.
+
 ### 2. Хранение подключения (Connection Pool)
 
 Чтобы не создавать новое подключение к БД на каждый запрос, фреймворк предоставляет синглтон-хранилище.
-При успешном `connect()` вы должны сохранить пул соединений в `this._appContext.database.databaseInfo`.
+К моменту вызова `connect()` базовый класс уже привязал `appContext` и создал пустой `databaseInfo`
+(это делает `init()` в `Base/Base.ts`), поэтому конвенция проста: сохраняйте ваш пул/клиент в
+`this._appContext.database.databaseInfo` — оттуда его читают `_select/_insert` и внешние `model.query(callback)`.
 
 ```ts
 async connect(): Promise<boolean> {
@@ -136,7 +161,12 @@ async connect(): Promise<boolean> {
 ### 3. Произвольные запросы (\_query)
 
 Если разработчику приложения нужно выполнить "сырой" SQL-запрос или агрегацию, он использует метод `model.query(callback)`.
-В `BaseDbAdapter` публичный `query` просто вызывает `_query`. По умолчанию `_query` возвращает `null`. Если вы хотите поддержать кастомные запросы, переопределите `_query`, передав в callback ваше подключение.
+В `BaseDbAdapter` публичный `query` просто вызывает `_query`. По умолчанию `_query` возвращает `null`. Если вы хотите поддержать кастомные запросы, переопределите `_query`.
+
+Контракт callback (`TQueryCb`): `(client, db) => Promise<IModelRes>`. Первый параметр — клиент подключения,
+второй — объект базы данных (`db` у Mongo — это `client.db(...)`, у SQL-баз можно передать тот же пул).
+Callback возвращает `IModelRes`; адаптер отдаёт пользователю `data.data` при `status: true` и `null` — при ошибке
+(образец — `MongoAdapter._query`).
 
 ### 4. Обработка ошибок
 
@@ -205,12 +235,48 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
         }
     }
 
+    async _update(updateData: IQuery): Promise<boolean> {
+        const pool = this._appContext.database.databaseInfo?.pool;
+        if (!pool) return false;
+
+        try {
+            const validData = this.validate(updateData, updateData.data);
+            const sqlQuery = this.buildUpdateQuery(
+                updateData.tableName,
+                validData,
+                updateData.query,
+            );
+            await pool.execute(sqlQuery);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    async _remove(removeData: IQuery): Promise<boolean> {
+        const pool = this._appContext.database.databaseInfo?.pool;
+        if (!pool) return false;
+
+        try {
+            const sqlQuery = this.buildDeleteQuery(removeData.tableName, removeData.query);
+            await pool.execute(sqlQuery);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
     // Переопределяем _query, чтобы поддержать сырые запросы от разработчика
     public async _query(callback: TQueryCb): Promise<unknown> {
         const pool = this._appContext.database.databaseInfo?.pool;
         if (pool) {
-            // Передаем пул в callback разработчика
-            return await callback(pool, pool);
+            // Передаем клиент и базу в callback разработчика.
+            // Callback возвращает IModelRes; при status: true отдаем data.data
+            const data = await callback(pool, pool);
+            if (data && data.status) {
+                return data.data;
+            }
+            return null;
         }
         return null;
     }
@@ -230,6 +296,8 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
     }
 
     // Транслятор IQueryData в SQL (упрощенно)
+    // ⚠️ ВНИМАНИЕ: Это псевдокод для демонстрации. В реальном коде используйте
+    // параметризованные запросы (prepared statements) для защиты от SQL-инъекций!
     private buildSelectQuery(table: string, where: IQueryData | null, isOne: boolean): string {
         let sql = `SELECT * FROM ${table}`;
         if (where) {
@@ -237,9 +305,9 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
                 const val = where[key];
                 // Поддержка операторов
                 if (typeof val === 'object' && val !== null && val.$gt !== undefined) {
-                    return `${key} > ${val.$gt}`;
+                    return `${key} > ?`; // параметризованный запрос
                 }
-                return `${key} = '${val}'`;
+                return `${key} = ?`; // параметризованный запрос
             });
             sql += ` WHERE ${conditions.join(' AND ')}`;
         }
@@ -249,6 +317,16 @@ export class MyCustomDbAdapter extends BaseDbAdapter {
 
     private buildInsertQuery(table: string, data: IQueryData): string {
         // ... логика формирования INSERT
+        return '';
+    }
+
+    private buildUpdateQuery(table: string, data: IQueryData, where: IQueryData | null): string {
+        // ... логика формирования UPDATE
+        return '';
+    }
+
+    private buildDeleteQuery(table: string, where: IQueryData | null): string {
+        // ... логика формирования DELETE
         return '';
     }
 }

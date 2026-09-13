@@ -1,4 +1,4 @@
-import { BotController, IUserData } from './BotController';
+import { BotController, IPlatformData, IUserData } from './BotController';
 import { Text } from '../utils';
 
 function i18n(controller: BaseBotController): void {
@@ -15,14 +15,25 @@ function i18n(controller: BaseBotController): void {
  * Используется в качестве контроллера по умолчанию, и позволяет не создавать свой контроллер,
  * если вся обработка команд или шагов осуществляется через bot.addCommand или bot.addStep.
  *
- * Контроллер из коробки обрабатывает стандартные команды (приветствие и помощь), а также сценарий, когда ни одна из команд не была найдена.
- * Обработка базовых механик происходит только в том случае, если не была обработана ни одна команда или шаг.
+ * Стандартные команды (приветствие и помощь) обрабатываются конвейером BotController
+ * (тексты welcome_text/help_text и интенты welcome/help), а не этим action().
+ * Обработка в action происходит только в том случае, если не была обработана
+ * ни одна команда или шаг.
  */
 export class BaseBotController<
     TUserData extends IUserData = IUserData,
-> extends BotController<TUserData> {
+    TPlatformState extends IPlatformData = IPlatformData,
+> extends BotController<TUserData, TPlatformState> {
     /**
-     * Обработка команд, добавленных через slots
+     * Обработка запроса по умолчанию.
+     * Вызывается фреймворком последним, после поиска команд и шагов.
+     * Если команда или шаг уже обработали запрос (isCommand/isStep = true), метод просто применяет i18n и выходит.
+     * Если ничего не подошло — устанавливает текст из platformParams.empty_text (только если text пуст,
+     * `if (!this.text)`), затем применяет i18n.
+     *
+     * @param intentName - Имя сработавшего интента/команды/шага. null если ничего не найдено.
+     * @param isCommand - true если запрос обработан командой из addCommand
+     * @param isStep - true если запрос обработан шагом из addStep
      */
     public action(intentName: string | null, isCommand?: boolean, isStep?: boolean): void {
         if (isCommand || isStep) {

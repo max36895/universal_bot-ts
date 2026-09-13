@@ -14,11 +14,17 @@
  * Содержит информацию о входящем или исходящем сообщении
  */
 export interface IVkMessage {
-    /** Дата отправки сообщения в формате Unix timestamp */
+    /**
+     * Дата отправки сообщения в формате Unix timestamp
+     */
     date?: number;
-    /** ID отправителя сообщения */
+    /**
+     * ID отправителя сообщения
+     */
     from_id: number;
-    /** ID сообщения */
+    /**
+     * ID сообщения
+     */
     id: number;
     /**
      * Тип сообщения
@@ -26,23 +32,41 @@ export interface IVkMessage {
      * 1 - исходящее
      */
     out?: number;
-    /** ID беседы или пользователя */
+    /**
+     * ID беседы или пользователя
+     */
     peer_id?: number;
-    /** Текст сообщения */
+    /**
+     * Текст сообщения
+     */
     text: string;
-    /** ID сообщения в беседе */
+    /**
+     * ID сообщения в беседе
+     */
     conversation_message_id?: number;
-    /** Массив пересланных сообщений */
+    /**
+     * Массив пересланных сообщений
+     */
     fwd_messages?: string[];
-    /** Является ли сообщение важным */
+    /**
+     * Является ли сообщение важным
+     */
     important?: boolean;
-    /** Уникальный идентификатор сообщения */
+    /**
+     * Уникальный идентификатор сообщения (int32)
+     */
     random_id?: number;
-    /** Вложения (фото, видео, документы и т.д.) */
+    /**
+     * Вложения (фото, видео, документы и т.д.)
+     */
     attachments?: Record<string, unknown>;
-    /** Скрыто ли сообщение */
+    /**
+     * Скрыто ли сообщение
+     */
     is_hidden?: boolean;
-    /** Дополнительные данные */
+    /**
+     * Дополнительные данные
+     */
     payload?: Record<string, unknown>;
 }
 
@@ -51,24 +75,38 @@ export interface IVkMessage {
  * Содержит данные о возможностях клиента
  */
 export interface IVkClientInfo {
-    /** Поддерживаемые действия с кнопками */
+    /**
+     * Поддерживаемые действия с кнопками
+     */
     button_actions: string[];
-    /** Поддерживает ли клиент клавиатуру */
+    /**
+     * Поддерживает ли клиент клавиатуру
+     */
     keyboard: boolean;
-    /** Поддерживает ли клиент inline-клавиатуру */
+    /**
+     * Поддерживает ли клиент inline-клавиатуру
+     */
     inline_keyboard: boolean;
-    /** ID языка клиента */
+    /**
+     * ID языка клиента
+     */
     lang_id: number;
 }
 
 /**
  * Объект запроса VK.
- * Содержит информацию о сообщении и клиенте
+ * Содержит информацию о сообщении и клиенте.
+ * Для события message_event объект не содержит поля message (только payload/user_id и т.п.)
  */
 export interface IVkRequestObject {
-    /** Информация о сообщении */
-    message: IVkMessage;
-    /** Информация о клиенте */
+    /**
+     * Информация о сообщении. Отсутствует для событий без текста
+     * сообщения (например, `message_event` — callback-кнопка)
+     */
+    message?: IVkMessage;
+    /**
+     * Информация о клиенте
+     */
     clientInfo?: IVkClientInfo;
 
     /**
@@ -76,9 +114,11 @@ export interface IVkRequestObject {
      */
     user_id?: number;
     /**
-     * Идентификатор диалога со стороны бота.
+     * Идентификатор диалога со стороны бота. Присутствует только в событии
+     * `message_event` (callback-кнопка); в `message_new` peer_id лежит в
+     * `object.message.peer_id`, а не здесь.
      */
-    peer_id: number;
+    peer_id?: number;
     /**
      * Случайная строка. Активна в течение минуты, спустя минуту становится недействительной.
      */
@@ -98,15 +138,25 @@ export interface IVkRequestObject {
  * Содержит информацию о типе события и связанных данных
  */
 export interface IVkRequestContent {
-    /** Тип события (message_new, message_event и т.д.) */
+    /**
+     * Тип события (message_new, message_event и т.д.)
+     */
     type: string;
-    /** Объект запроса с данными */
+    /**
+     * Объект запроса с данными
+     */
     object?: IVkRequestObject;
-    /** ID группы */
+    /**
+     * ID группы
+     */
     group_id?: string;
-    /** ID события */
+    /**
+     * ID события
+     */
     event_id?: string;
-    /** Секретный ключ для проверки подписи */
+    /**
+     * Секретный ключ для проверки подписи
+     */
     secret?: string;
 }
 
@@ -255,6 +305,20 @@ export interface IVkButtonAction {
      * ```
      */
     payload?: string | object;
+
+    /**
+     * Хеш оплаты для кнопки vkpay.
+     * По документации VK API поле hash у vkpay-кнопки находится именно внутри action,
+     * а не на верхнем уровне объекта кнопки.
+     * @example
+     * ```ts
+     * const action: IVkButtonAction = {
+     *     type: 'vkpay',
+     *     hash: 'action=pay-to-group&group_id=1'
+     * };
+     * ```
+     */
+    hash?: string;
 }
 
 /**
@@ -310,40 +374,33 @@ export interface IVkButton {
 
     /**
      * Хеш кнопки.
-     * Используется для верификации кнопки.
+     * @deprecated VK API принимает hash только внутри action (см. {@link IVkButtonAction.hash}).
+     * Поле оставлено для обратной совместимости типов, фреймворк его больше не заполняет.
      * @example
      * ```ts
      * const button: IVkButton = {
-     *     action: { type: 'text', label: 'Нажми меня' },
-     *     hash: 'abc123'
+     *     action: { type: 'vkpay', hash: 'abc123' }
      * };
      * ```
      */
     hash?: string | null;
 
     /**
-     * Дополнительные данные кнопки.
-     * Могут содержать любую информацию.
-     * @example
-     * ```ts
-     * const button: IVkButton = {
-     *     action: { type: 'text', label: 'Нажми меня' },
-     *     payload: {
-     *         customData: 'value'
-     *     }
-     * };
-     * ```
+     * Не используется: VK принимает payload только внутри action
+     * (см. {@link IVkButtonAction.payload}); фреймворк это поле не заполняет.
+     * Поле планируется убрать из интерфейса (в VK API его нет).
      */
     payload?: Record<string, unknown>;
 
     /**
-     * Идентификатор группы кнопки.
-     * Используется для группировки кнопок.
+     * Значение группы из button.options._group, по которому адаптер
+     * группирует кнопки в ряды: все кнопки с одинаковой группой попадают
+     * в одну строку клавиатуры. Из результирующей VK-кнопки поле удаляется.
      * @example
      * ```ts
      * const button: IVkButton = {
      *     action: { type: 'text', label: 'Нажми меня' },
-     *     _group: 'navigation'
+     *     _group: '1'
      * };
      * ```
      */
@@ -406,7 +463,7 @@ export interface IVkCardElement {
      * Отображается под заголовком.
      *
      * Особенности:
-     * - Рекомендуемая длина: до 200 символов
+     * - Рекомендуемая длина: до 80 символов (лимит VK для карусели)
      * - Поддерживает переносы строк
      * - Может содержать ссылки
      *
@@ -489,6 +546,7 @@ export interface IVkCardElement {
  * @interface IVkCard
  * Интерфейс для карточки ВКонтакте.
  * Определяет структуру карточки, которая может быть каруселью или галереей.
+ * Фактически адаптер отправляет type='carousel' (галерея изображений — тоже carousel).
  *
  * Особенности:
  * - Поддерживает два типа карточек: карусель и галерея
@@ -517,9 +575,9 @@ export interface IVkCardElement {
  *     ]
  * };
  *
- * // Создание галереи фотографий
+ * // Создание галереи фотографий (галерея тоже уходит как carousel)
  * const gallery: IVkCard = {
- *     type: 'gallery',
+ *     type: 'carousel',
  *     elements: [
  *         {
  *             title: 'Фото 1',
@@ -540,20 +598,17 @@ export interface IVkCardElement {
 export interface IVkCard {
     /**
      * Тип карточки.
-     * Может быть 'carousel' для карусели или 'gallery' для галереи.
+     * Единственное значение в VK API — 'carousel'; значения 'gallery'
+     * в API нет, и фактически адаптер всегда отправляет type='carousel'
+     * (галерея изображений тоже уходит каруселью).
      *
      * Особенности:
      * - Карусель: элементы можно листать горизонтально
-     * - Галерея: элементы отображаются в сетке
-     * - Тип определяет способ отображения элементов
      *
      * @example
      * ```ts
      * // Карусель товаров
      * type: 'carousel'
-     *
-     * // Галерея фотографий
-     * type: 'gallery'
      * ```
      */
     type: string;

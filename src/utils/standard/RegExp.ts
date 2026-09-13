@@ -1,9 +1,9 @@
 type TRe2 = RegExpConstructor;
 let Re2: TRe2;
 /**
- * Флаг говорящий о том используется ли re2 для обработки регулярок или нет.
- * Нужен для того, чтобы можно было задать различные ограничения в зависимости от наличия библиотеки.
- * @private
+ * Флаг, говорящий о том, используется ли `re2` для обработки регулярных выражений.
+ * Экспортируется наружу, чтобы потребители могли адаптировать ограничения
+ * под наличие/отсутствие `re2`.
  */
 let __$usedRe2: boolean;
 try {
@@ -26,7 +26,8 @@ export type TPatternRegExp = string | RegExp;
 
 /**
  * Проверяет передано ли регулярное выражение или нет
- * @param regExp Регулярное выражение
+ * @param {TPatternRegExp | unknown} regExp - Проверяемое значение
+ * @returns {regExp is RegExp} true если значение является регулярным выражением
  */
 export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
     return !!(
@@ -37,13 +38,33 @@ export function isRegex(regExp: TPatternRegExp | unknown): regExp is RegExp {
 }
 
 /**
+ * Убирает флаги `g` и `y` из набора флагов регулярного выражения.
+ *
+ * Оба флага делают `RegExp` объектом с состоянием: `test`/`exec` двигают `lastIndex`,
+ * поэтому один и тот же скомпилированный объект на следующем вызове начинает поиск
+ * не с начала строки. Фреймворк кэширует регулярки между запросами, а искать нужно
+ * всегда по всей строке — состояние здесь только вредит.
+ *
+ * @param flags Исходные флаги
+ * @returns Флаги без `g` и `y`
+ */
+function getStatelessFlags(flags: string): string {
+    if (!flags.includes('g') && !flags.includes('y')) {
+        return flags;
+    }
+    return flags.replace(/[gy]/g, '');
+}
+
+/**
  * Возвращает скомпилированное регулярное выражение.
  * Если к проекту подключен re2, будет использоваться он, в противном случае стандартный RegExp.
- * В случае, если передан customReg, регулярное выражение будет собранно через него
- * @param reg - само регулярное выражение
- * @param flags - флаг для регулярного выражения
- * @param customReg - Произвольная реализация для обработки регулярных выражений
- * @returns
+ * В случае, если передан customReg, регулярное выражение будет собрано через него.
+ * Если передан RegExp (или массив из одного RegExp), берутся его собственные флаги
+ * вместо аргумента flags; флаги g/y отбрасываются (см. getStatelessFlags).
+ * @param {TPatternRegExp | TPatternRegExp[]} reg - Регулярное выражение или массив выражений
+ * @param {string} flags - Флаги для регулярного выражения (по умолчанию: 'ium')
+ * @param {RegExpConstructor} [customReg] - Произвольная реализация для обработки регулярных выражений
+ * @returns {customRegExp} Скомпилированное регулярное выражение
  */
 export function getRegExp(
     reg: TPatternRegExp | TPatternRegExp[],
@@ -58,8 +79,15 @@ export function getRegExp(
 
     if (Array.isArray(reg)) {
         if (reg.length === 1) {
-            pattern = getPattern(reg[0]);
-            flag = isRegex(reg[0]) ? reg[0].flags : flags;
+            const single = reg[0];
+            if (single !== undefined) {
+                pattern = getPattern(single);
+                flag = isRegex(single) ? single.flags : flags;
+            } else {
+                // Дырявый массив с единственным элементом — компилируем пустой
+                // шаблон: new RegExp('') валиден и матчит пустую строку.
+                pattern = '';
+            }
         } else {
             const aPattern: string[] = [];
             reg.forEach((r) => {
@@ -71,10 +99,48 @@ export function getRegExp(
         pattern = getPattern(reg);
         flag = isRegex(reg) ? reg.flags : flags;
     }
+    flag = getStatelessFlags(flag);
     if (customReg) {
         return new customReg(pattern, flag);
     }
     return new Re2(pattern, flag);
+}
+
+/**
+ * Возвращает RegExp напрямую, если передан объект RegExp без флагов g/y,
+ * не задан customReg и не подключён re2, иначе компилирует через getRegExp.
+ * g/y хранят позицию поиска в lastIndex и небезопасны для переиспользования,
+ * поэтому такие объекты пересобираются. Избегает повторной компиляции regexp
+ * при повторной обработке одного и того же объекта.
+ *
+ * При подключённом re2 нативный объект пересобирается через re2 — иначе
+ * уязвимое к ReDoS выражение из слота команды выполнялось бы штатным движком
+ * Node в обход установленного безопасного движка. Если re2 не поддерживает
+ * синтаксис выражения (lookbehind, обратные ссылки), используется исходный объект.
+ *
+ * @param {TPatternRegExp | TPatternRegExp[]} reg - Регулярное выражение или массив выражений
+ * @param {string} [flags='ium'] - Флаги для регулярного выражения (используются, если передана строка)
+ * @param {RegExpConstructor} [customReg] - Произвольная реализация RegExp (если задана — всегда компилирует через неё)
+ * @returns {customRegExp} Исходный RegExp (если он stateless, без customReg и без re2) либо скомпилированное выражение
+ */
+export function getRegExpOrSelf(
+    reg: TPatternRegExp | TPatternRegExp[],
+    flags: string = 'ium',
+    customReg?: RegExpConstructor,
+): customRegExp {
+    // Regexp с g/y хранит позицию поиска в lastIndex, поэтому такой объект нельзя
+    // переиспользовать между запросами — пересобираем его без флагов состояния.
+    if (!Array.isArray(reg) && isRegex(reg) && !customReg && !reg.global && !reg.sticky) {
+        if (!__$usedRe2) {
+            return reg;
+        }
+        try {
+            return new Re2(reg.source, reg.flags);
+        } catch {
+            return reg;
+        }
+    }
+    return getRegExp(reg, flags, customReg);
 }
 
 export { __$usedRe2 };

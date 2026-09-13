@@ -31,7 +31,7 @@ export function cardProcessing(cardInfo: ICardInfo, controller: BotController): 
             return {
                 images: [cardInfo.images[0].imageDir],
                 caption: Text.resize(cardInfo.images[0].title, 128),
-                button: cardInfo.images[0].button.getButtons(buttonProcessing)?.[0],
+                button: cardInfo.images[0].button?.getButtons(buttonProcessing)?.[0],
             };
         }
         return null;

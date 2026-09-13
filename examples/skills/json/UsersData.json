@@ -1,1 +1,14 @@
-{}
+{
+    "user_alisa_123456": {
+        "userId": "user_alisa_123456",
+        "meta": "{\"lastVisit\":\"2026-08-20T12:00:00.000Z\",\"usageCount\":42}",
+        "data": "{\"isGame\":true,\"example\":\"7 + 12 = ?\",\"result\":19}",
+        "platform": "alisa"
+    },
+    "987654321": {
+        "userId": "987654321",
+        "meta": "{\"firstVisit\":\"2026-07-01T09:30:00.000Z\"}",
+        "data": "{\"progress\":75,\"settings\":{\"notifications\":true}}",
+        "platform": "telegram"
+    }
+}

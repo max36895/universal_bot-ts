@@ -4,11 +4,12 @@
  */
 
 import { AppContext } from '../AppContext';
-import { BotController } from '../../controller';
+import { BotController, IControllerApi } from '../../controller';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { IButtonType, Buttons, IImageType, ISound } from '../../components';
 import { IModelRes, TQueryCb, IQuery, IQueryData } from '../../models';
 import { Bot } from '../Bot';
+import type { TEventType } from '../events';
 
 /**
  * Тип содержимого запроса к голосовому навыку или боту
@@ -20,9 +21,9 @@ import { Bot } from '../Bot';
  *   ```ts
  *   const content: TBotContent = '{"text": "Привет мир!"}';
  *   ```
- * - boolean: Флаг состояния запроса
+ * - object: Уже распарсенный объект запроса
  *   ```ts
- *   const content: TBotContent = true; // запрос успешно обработан
+ *   const content: TBotContent = { request: { command: 'Привет' } };
  *   ```
  * - null: Пустой запрос или ошибка
  *   ```ts
@@ -49,13 +50,16 @@ export type TBotContent = object | string | null;
 export type TBotAuth = string | null;
 
 /**
- * Интерфейс для базового ответ
+ * Интерфейс для базового ответа
  */
 export interface IBotResponse {
     /**
      * Статус код ответа.
      *  - 200 в случае успеха
-     *  - 400 в случае если отправлен пустой запрос, или фреймворк завершил обработку с ошибкой.
+     *  - 400 в случае, если отправлен пустой/некорректный запрос, или фреймворк завершил обработку с ошибкой.
+     *  - 401 при неверном токене/подписи вебхука
+     *  - 404 если платформа вернула 'notFound'
+     *  - 413 если тело запроса превышает лимит
      *  - 500 в случае ошибки самого сервера
      */
     statusCode: number;
@@ -71,8 +75,8 @@ export interface IBotResponse {
 export interface IBotResponseState extends IBotResponse {
     /**
      * Базовый метод для отправки ответа
-     * @param res
-     * @param state
+     * @param {ServerResponse} res - Объект ответа HTTP-сервера
+     * @param {IBotResponse} state - Состояние ответа фреймворка
      */
     defaultSend: (res: ServerResponse, state: IBotResponse) => void;
 }
@@ -121,7 +125,7 @@ export type TPluginFnResult = void | ((bot: Bot) => void);
 export interface IPluginFn {
     /**
      * Конструктор функции регистрации плагина
-     * @extends
+     * @example
      * ```ts
      * function myPlugin(appContext: AppContext, bot: Bot) {
      *      // Какая-то ваша логика
@@ -147,12 +151,33 @@ export interface IPluginFn {
 export type TPlugin = IPlugin | IPluginFn;
 
 /**
- * Интерфейс для адаптеров платформы (Алиса, Салют, Telegram, VK и др.).
+ * Интерфейс для адаптеров платформы (Алиса, SmartApp, Telegram, VK и др.).
  *
  * Обеспечивает унификацию обработки запросов от разных платформ.
  * Реализуется как плагин (`IPlugin`) и регистрируется в приложении.
  */
 export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
+    /**
+     * Имя http-заголовка, в котором платформа передаёт подпись/секрет вебхука.
+     *
+     * Заполняется адаптером для платформ с подписью в http-заголовке
+     * (Telegram, Viber, MAX). VK проверяет секрет в теле запроса и
+     * задаёт только `isSignatureCheckEnabled`. Отсутствие поля означает, что проверка
+     * подписи для платформы недоступна по построению (Alisa, Marusia, SmartApp).
+     * Используется ядром для предупреждения при старте о вебхуке без защиты.
+     */
+    signatureName?: string;
+    /**
+     * Возвращает, включена ли проверка подписи вебхука для этой платформы
+     * с текущей конфигурацией (секрет задан).
+     *
+     * Используется ядром в `bot.start()` для предупреждения о вебхуке, который
+     * принимает запросы платформы без проверки подлинности. Адаптеры платформ
+     * с подписью переопределяют метод: базовая реализация считает проверку
+     * включённой при заданных `tokens[platform].token` и `signatureName`
+     * (схема HMAC, например Viber).
+     */
+    isSignatureCheckEnabled?: () => boolean;
     /**
      * Определяет, принадлежит ли входящий запрос данной платформе.
      *
@@ -165,7 +190,7 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      *
      * @example
      * ```ts
-     * // Telegram проверяет наличие заголовка 'X-Telegram-Bot-Api-Secret-Token'
+     * // Telegram проверяет наличие заголовка 'X-Telegram-Bot-API-Secret-Token'
      * isPlatformOnQuery(query, headers) {
      *   return headers?.['x-telegram-bot-api-secret-token'] === this.secret;
      * }
@@ -174,15 +199,15 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
     isPlatformOnQuery: (query: TQuery, headers?: Record<string, unknown>) => boolean;
     /**
      * Проверяет полученный запрос от платформы на корректность.
-     * Реализация зависит от адаптера, как правило, в чувствительных платформах есть токен, который приходит с запросом, и желательно проверять что пришедший токен соответствует тому, что сохранен в настройках.
-     * @param query
-     * @param headers
+     * Реализация зависит от адаптера, как правило, в чувствительных платформах есть токен, который приходит с запросом, и желательно проверять, что пришедший токен соответствует тому, который сохранён в настройках.
+     * @param {TQuery} query - Объект запроса от платформы
+     * @param {Record<string, unknown>} [headers] - HTTP-заголовки запроса
      */
     isCorrectQuery: (query: TQuery, headers?: Record<string, unknown>) => boolean;
     /**
      * Инициализирует данные запроса в контроллере приложения.
      *
-     * Парсит входящий запрос и заполняет `controller.queryData`, `controller.user` и другие поля.
+     * Парсит входящий запрос и заполняет `controller.userCommand`, `controller.payload` и другие поля.
      * Вызывается после подтверждения, что запрос принадлежит этой платформе.
      *
      * @param query - входящий запрос
@@ -209,7 +234,9 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * Формирует контекст для отправки рейтинга (если поддерживается платформой).
      *
      * Используется только на платформах с поддержкой рейтинга (например, Сбер SmartApp).
-     * Если рейтинг не поддерживается — метод может не реализовываться или возвращать пустой объект.
+     * Метод обязателен, но `BasePlatform` уже даёт реализацию по умолчанию
+     * (делегирует `getContent`), поэтому переопределять его нужно только
+     * для спец-формата рейтинга.
      *
      * @param controller - контроллер приложения
      * @returns данные для отправки рейтинга
@@ -236,6 +263,17 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * Уникальное имя платформы (например, 'telegram', 'alisa').
      */
     platformName: string;
+    /**
+     * Универсальные события (`TEventType`), которые адаптер может выставить
+     * в `controller.eventType`. Источник знания для валидации `bot.addEvent(...)`:
+     * таблица принадлежит адаптеру, поэтому кастомные платформы участвуют
+     * в проверке автоматически.
+     *
+     * Опционально: `BasePlatform` уже объявляет дефолт `['message']`, поэтому
+     * наследникам достаточно переопределить поле при поддержке других событий.
+     * Отсутствие поля (прямая реализация интерфейса) приравнивается к `['message']`.
+     */
+    supportedEvents?: readonly TEventType[];
     /**
      * Указывает, поддерживает ли платформа локальное хранилище.
      *
@@ -294,12 +332,42 @@ export interface IPlatformAdapter<TQuery = unknown> extends IPlugin {
      * @param userId Ид пользователя, которому нужно отправить сообщение
      * @param controllerOrText Контроллер приложения или текст. Если необходимо отправить просто текст, можно передать строку, в случае, если необходимо передать картинку звук и тд, то необходимо корректно заполнить контроллер.
      */
+    // TODO: тип возврата unknown | boolean вырождается в unknown — стоит упростить до unknown
     send(userId: string | number, controllerOrText: BotController | string): unknown | boolean;
+
+    /**
+     * Создаёт API-фасад платформы для `controller.api`.
+     *
+     * Фасад даёт бизнес-логике доступ к исходящим возможностям платформы
+     * (отправить медиа, ответить на callback-кнопку) без ручного конструирования
+     * платформенных Request-классов. Ядро вызывает этот метод само — знает о
+     * платформах только через данный контракт, поэтому добавить фасад новой
+     * платформе можно, не трогая ядро.
+     *
+     * Опционален: `BasePlatform` даёт реализацию по умолчанию (возвращает
+     * `null` — фасад недоступен), поэтому переопределять его нужно только
+     * платформам с исходящими API-вызовами. Голосовым платформам (Алиса,
+     * Маруся, SmartApp) фасад не нужен: их ответ формируется телом webhook.
+     *
+     * @param controller - Контроллер текущего запроса
+     * @returns Фасад либо `null`, если для платформы он недоступен
+     *
+     * @example
+     * ```ts
+     * class MyPlatformAdapter extends BasePlatform {
+     *     // Своя платформа + свой фасад — достаточно переопределить один метод
+     *     createApi(controller: BotController): IControllerApi | null {
+     *         return makeMyApi(controller);
+     *     }
+     * }
+     * ```
+     */
+    createApi?(controller: BotController): IControllerApi | null;
 
     /**
      * Определяет лимит платформы.
      * В значение указывается количество запросов, которое можно отправить платформе за 1 секунду.
-     * В случае если у платформы нет ограничений, можно указать 0 или null.
+     * В случае, если у платформы нет ограничений, можно указать 0 или null.
      * По умолчанию null
      */
     limit: number | null;
@@ -355,23 +423,23 @@ export interface IDatabaseAdapter extends IPlugin {
     /**
      * Выполняет SELECT-запрос.
      * @param selectData Дополнительная информация для запроса. Содержит информацию о таблице и структуре.
-     * @param where Сам запрос
+     * @param where Условия фильтрации (WHERE)
      * @param isOne Определяет нужно ли вернуть только 1 найденную запись, либо отдать все доступные данные.
      */
     select: (selectData: IQuery, where: IQueryData | null, isOne: boolean) => Promise<IModelRes>;
     /**
      * Выполняет INSERT-запрос.
-     * @param insertData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param insertData — Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     insert: (insertData: IQuery) => Promise<boolean>;
     /**
      * Выполняет UPDATE-запрос.
-     * @param updateData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param updateData — Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     update: (updateData: IQuery) => Promise<boolean>;
     /**
      * Выполняет DELETE-запрос.
-     * @param removeData Дополнительная информация для запроса. Содержит сам запроса, а также название таблицы и прочие данные.
+     * @param removeData — Дополнительная информация для запроса. Содержит сам запрос, а также название таблицы и прочие данные.
      */
     remove: (removeData: IQuery) => Promise<boolean>;
     /**
@@ -387,7 +455,7 @@ export interface IDatabaseAdapter extends IPlugin {
 
     /**
      * Сохраняет данные (INSERT или UPDATE в зависимости от `isNew`).
-     * @param query Данные для запроса. Включает как запроса, так и сами данные
+     * @param query Данные для запроса. Включает как запрос, так и сами данные
      * @param isNew Флаг, говорящий о том, что добавляется новая запись
      */
     save(query: IQuery, isNew: boolean): Promise<boolean>;
@@ -400,12 +468,12 @@ export interface IDatabaseAdapter extends IPlugin {
     /**
      * Выполняет SELECT с ограничением до одной записи.
      * @param selectData Дополнительные данные для запроса
-     * @param where Сам запроса
+     * @param where — Условия поиска
      */
     selectOne: (selectData: IQuery, where: IQueryData | null) => Promise<IModelRes | null>;
     /**
      * Экранирует строку для безопасного использования в SQL-запросах.
-     * @param str Экранируемый запрос
+     * @param str — Экранируемая строка
      */
     escapeString: (str: string | number) => string;
 

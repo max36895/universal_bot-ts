@@ -1,17 +1,19 @@
 # === umbot production Dockerfile ===
 
 # Stage 1: сборка
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+# Используем npm ci, если есть lock-файл — он фиксирует проверенные версии.
+# Если lock-файла нет, npm ci упадёт, поэтому ставим зависимости через install.
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 COPY . .
 RUN npm run build
 
 # Stage 2: runtime
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Создаём непривилегированного пользователя
 RUN addgroup -g 1001 -S nodejs && \
@@ -23,13 +25,14 @@ WORKDIR /app
 COPY --from=builder --chown=umbot:nodejs /app/package*.json ./
 COPY --from=builder --chown=umbot:nodejs /app/dist ./dist
 
-# Копируем .env.example → .env (можно переопределить при запуске)
-COPY --chown=umbot:nodejs .env.example .env
+# .env монтируется при запуске контейнера: docker run --env-file .env ...
 
-RUN npm ci --only=production --omit=dev
+# Ставим runtime-зависимости тем же способом, что и на этапе сборки,
+# чтобы версии совпадали между build и runtime стадиями.
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
 USER umbot
 
-EXPOSE 3000
+EXPOSE {{port}}
 
 CMD ["node", "dist/index.js"]

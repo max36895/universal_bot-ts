@@ -15,7 +15,7 @@ const RULES: IModelRules[] = [
         type: 'text',
     },
     {
-        name: ['platformName'],
+        name: ['platform'],
         type: 'string',
     },
 ];
@@ -28,7 +28,7 @@ const ATTRS_LABEL = {
 };
 
 /**
- * Тип для мета-данных
+ * Тип для метаданных
  */
 export type TMetaType = Record<string, unknown> | string | null | undefined;
 /**
@@ -60,7 +60,7 @@ export interface IUserDataModelState extends IModelState {
      * сохраненные настройки, историю действий и т.д.
      * @example { "progress": 75, "settings": { "notifications": true } }
      */
-    data: string | Record<string, unknown> | null;
+    data: TDataType;
     /**
      * Тип платформы.
      * Определяет, на какой платформе зарегистрирован пользователь.
@@ -79,32 +79,38 @@ export interface IUserDataModelState extends IModelState {
  * - Автоматическая сериализация/десериализация данных
  *
  * @example
- * Сохранение прогресса пользователя:
+ * Сохранение прогресса пользователя (через addCommand — колбэк фреймворк ожидает):
  * ```ts
- * class GameController extends BotController {
- *   public async action(intentName: string): Promise<void> {
- *     // Загрузка данных пользователя
- *     const userData = new UsersData(this.appContext);
- *     userData.userId = this.userId;
+ * import { UsersData } from 'umbot';
  *
- *     // Если есть сохраненные данные - загружаем их
- *     if (await userData.getOne()) {
- *       const progress = userData.data.progress || 0;
- *       this.text = `Ваш текущий прогресс: ${progress}%`;
- *     } else {
- *       // Создаем новые данные
- *       userData.data = { progress: 0 };
- *       userData.meta = { firstVisit: new Date() };
- *       await userData.save();
- *       this.text = 'Добро пожаловать в игру!';
- *     }
- *   }
+ * interface IGameProgress {
+ *     progress?: number;
  * }
+ *
+ * bot.addCommand('progress', ['прогресс'], async (_text, ctx) => {
+ *     // Загрузка данных пользователя
+ *     const userData = new UsersData(ctx.appContext);
+ *     userData.userId = ctx.userId;
+ *
+ *     if (await userData.getOne()) {
+ *         // data может быть string | Record<string,unknown> | null — сужаем тип
+ *         const data = userData.data as IGameProgress | null;
+ *         const progress = data?.progress ?? 0;
+ *         ctx.text = `Ваш текущий прогресс: ${progress}%`;
+ *     } else {
+ *         userData.data = { progress: 0 };
+ *         userData.meta = { firstVisit: new Date().toISOString() };
+ *         await userData.save();
+ *         ctx.text = 'Добро пожаловать в игру!';
+ *     }
+ * });
  * ```
  *
  * @example
  * Работа с разными платформами:
  * ```ts
+ * import { T_ALISA, T_TELEGRAM } from 'umbot/plugins';
+ *
  * const userData = new UsersData(appContext);
  *
  * // Для Алисы
@@ -125,11 +131,13 @@ export class UsersData extends Model<IUserDataModelState> {
      * Создает экземпляр модели пользовательских данных.
      * Предоставляет унифицированный интерфейс для хранения данных пользователя.
      *
+     * @param {AppContext} appContext - Контекст приложения
+     *
      * @example
      * ```ts
      * const userData = new UsersData(appContext);
      * userData.userId = 'user123';
-     * userData.type = UsersData.T_TELEGRAM;
+     * userData.platform = 'telegram';
      * ```
      */
     public constructor(appContext: AppContext) {
@@ -142,6 +150,9 @@ export class UsersData extends Model<IUserDataModelState> {
         };
     }
 
+    /**
+     * Первичный ключ таблицы — userId.
+     */
     protected getId(): TKey {
         return 'userId';
     }
@@ -149,7 +160,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Уникальный идентификатор пользователя.
      * Может быть строкой или числом в зависимости от платформы.
-     * @example "123456789" для Telegram, 123456789 для VK
+     * @example "123456789" для Telegram (строка), 123456789 для VK (число)
      */
     get userId(): string | number | null | undefined {
         return this.state.userId;
@@ -157,7 +168,7 @@ export class UsersData extends Model<IUserDataModelState> {
 
     /**
      * Устанавливает уникальный идентификатор пользователя.
-     * @param userId
+     * @param {string | number | null} userId - Идентификатор пользователя
      */
     set userId(userId: string | number | null) {
         this.state.userId = userId;
@@ -178,7 +189,7 @@ export class UsersData extends Model<IUserDataModelState> {
 
     /**
      * Устанавливает метаданные пользователя.
-     * @param meta
+     * @param {TMetaType} meta - Метаданные пользователя
      */
     set meta(meta: TMetaType) {
         this.state.meta = meta;
@@ -199,7 +210,7 @@ export class UsersData extends Model<IUserDataModelState> {
 
     /**
      * Устанавливает основные данные пользователя.
-     * @param data
+     * @param {TDataType} data - Основные данные пользователя
      */
     set data(data: TDataType) {
         this.state.data = data;
@@ -224,7 +235,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Возвращает название таблицы/файла для хранения данных.
      *
-     * @return {string} Название таблицы для хранения данных пользователей
+     * @returns {string} Название таблицы для хранения данных пользователей
      */
     public tableName(): string {
         return UsersData.TABLE_NAME;
@@ -233,7 +244,7 @@ export class UsersData extends Model<IUserDataModelState> {
     /**
      * Определяет правила валидации полей модели.
      *
-     * @return {IModelRules[]} Массив правил валидации
+     * @returns {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return RULES;
@@ -243,23 +254,27 @@ export class UsersData extends Model<IUserDataModelState> {
      * Возвращает описания атрибутов модели.
      * Используется для отображения понятных названий полей.
      *
-     * @return {IUserDataModelState} Описания атрибутов
+     * @returns {IUserDataModelState} Описания атрибутов
      */
     public attributeLabels(): IUserDataModelState {
         return ATTRS_LABEL;
     }
 
     /**
-     * Ищет одну запись в хранилище по текущим параметрам.
+     * Ищет одну запись в хранилище по первичному ключу userId
+     * (platform/meta в поиске не участвуют — фильтруйте результат сами при необходимости).
      *
-     * @return {Promise<boolean>} true, если запись найдена
+     * @returns {Promise<boolean>} true, если запись найдена
      *
      * @example
      * ```ts
      * const userData = new UsersData(appContext);
      * userData.userId = 'user123';
      * if (await userData.getOne()) {
-     *   console.log('Пользователь найден:', userData.data);
+     *   // data может быть string | Record<string,unknown> | null | undefined:
+     *   // сужаем тип перед чтением полей
+     *   const progress = (userData.data as Record<string, unknown>)?.progress;
+     *   console.log('Пользователь найден, прогресс:', progress);
      * } else {
      *   console.log('Пользователь не найден');
      * }
@@ -278,7 +293,9 @@ export class UsersData extends Model<IUserDataModelState> {
         const seen = new WeakSet();
         return JSON.stringify(obj, (_, value) => {
             if (typeof value === 'object' && value !== null) {
-                if (seen.has(value)) return '[Circular]';
+                if (seen.has(value)) {
+                    return '[Circular]';
+                }
                 seen.add(value);
             }
             return value;
@@ -289,7 +306,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * Валидирует значения перед сохранением.
      * Преобразует объекты meta и data в JSON при сохранении в БД.
      *
-     * @throws {Error} Если данные не прошли валидацию
+     * @remarks Не выбрасывает исключений: циклические ссылки в meta/data
+     * автоматически заменяются на '[Circular]'.
      *
      * @example
      * ```ts
@@ -315,7 +333,8 @@ export class UsersData extends Model<IUserDataModelState> {
      * @param data - Данные для инициализации
      * @remarks
      * - При парсинге data, ошибки игнорируются для обеспечения обратной совместимости
-     * - Парсинг происходит только если включено сохранение в БД (appContext.isSaveDb === true)
+     * - meta парсится только если это JSON-строка, начинающаяся с "{" или "[";
+     *   data парсируется всегда, когда это строка (без проверки первого символа)
      *
      * @example
      * ```ts
@@ -326,7 +345,8 @@ export class UsersData extends Model<IUserDataModelState> {
      *   data: '{"progress":75}',
      *   platform: T_TELEGRAM
      * });
-     * console.log(userData.meta.lastVisit); // Date object
+     * // init() распарсила JSON-строки meta и data в объекты
+     * console.log((userData.meta as { lastVisit?: string }).lastVisit); // строка '2024-03-20T12:00:00Z' (JSON.parse не создаёт Date)
      * console.log(userData.data.progress); // 75
      * ```
      */
@@ -334,7 +354,17 @@ export class UsersData extends Model<IUserDataModelState> {
         super.init(data);
         if (typeof this.meta === 'string') {
             if (this.meta.startsWith('{') || this.meta.startsWith('[')) {
-                this.meta = JSON.parse(this.meta);
+                try {
+                    this.meta = JSON.parse(this.meta);
+                } catch (e) {
+                    this._appContext?.logError(
+                        `UserData:init() Ошибка при парсинге meta. Возможно данные повреждены.`,
+                        {
+                            error: e,
+                            meta: this.meta,
+                        },
+                    );
+                }
             }
         }
         if (typeof this.data === 'string') {

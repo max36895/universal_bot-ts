@@ -1,27 +1,4 @@
 /**
- * Тип для дополнительных данных кнопки.
- * Может содержать любые данные, которые будут переданы при нажатии на кнопку.
- *
- *
- * @example
- * ```ts
- * // Простой payload с действием
- * const payload: TButtonPayload = { action: 'click' };
- *
- * // Сложный payload с данными
- * const payload: TButtonPayload = {
- *     action: 'add_to_cart',
- *     productId: 123,
- *     quantity: 1,
- *     metadata: {
- *         source: 'catalog',
- *         timestamp: Date.now()
- *     }
- * };
- * ```
- */
-
-/**
  * @interface IButtonOptions
  * Интерфейс для дополнительных опций кнопки.
  *
@@ -32,17 +9,13 @@
  * ```ts
  * // Специфичные опции для VK
  * const vkOptions: IButtonOptions = {
- *     _group: 'vk_buttons',
- *     color: 'blue',
- *     size: 'large',
- *     vk_style: 'primary'
+ *     _group: 1, // группировка кнопок в одну строку
+ *     color: 'primary'
  * };
  *
  * // Специфичные опции для Telegram
  * const telegramOptions: IButtonOptions = {
  *     _group: 'tg_buttons',
- *     color: 'primary',
- *     size: 'large',
  *     request_contact: true
  * };
  * ```
@@ -81,18 +54,24 @@ export interface IButtonOptions {
     utmCampaign?: string;
 
     /**
+     * Стиль визуального отображения кнопки.
+     *
+     * Для Telegram адаптер подставляет поле `style` в кнопку из `options.style`
+     * (Telegram Bot API 9.4+: 'primary' | 'success' | 'danger' —
+     * константы `TG_STYLE_*` из `umbot/plugins`).
+     *
+     * Для VK цвет кнопки задаётся через `options.color`
+     * ('primary' | 'secondary' | 'negative' | 'positive'); вариант через
+     * `payload.color` поддерживается для обратной совместимости.
+     */
+    style?: string;
+
+    /**
      * Дополнительные опции для кнопки.
      * Могут включать специфичные для платформы настройки.
      *
      * @example
      * ```ts
-     * // Настройка кнопки для VK
-     * const options: IButtonOptions = {
-     *     color: 'primary',
-     *     size: 'large',
-     *     vk_style: 'primary'
-     * };
-     *
      * // Настройка кнопки для Telegram
      * const options: IButtonOptions = {
      *     request_contact: true,

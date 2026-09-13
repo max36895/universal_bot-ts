@@ -63,6 +63,18 @@ export interface IEnvConfig {
     VK_CONFIRMATION_TOKEN?: string;
 
     /**
+     * Секретный ключ для VK Callback API (опционально).
+     * Если включён в настройках группы VK, VK присылает поле `secret` в теле каждого callback-запроса.
+     * Адаптер сверяет его с этим значением для проверки подлинности запроса.
+     *
+     * @example
+     * ```ts
+     * VK_SECRET_KEY=abc123def456
+     * ```
+     */
+    VK_SECRET_KEY?: string;
+
+    /**
      * Токен для Viber API
      * Используется для авторизации в Viber API
      *
@@ -77,12 +89,31 @@ export interface IEnvConfig {
      * Токен для Яндекс.Диалоги (Алиса)
      * Используется для авторизации в API Яндекс.Диалогов
      *
+     * ⚠️ **Deprecated:** используйте {@link ALISA_TOKEN}. Этот ключ сохранён
+     * для обратной совместимости и будет удалён в следующей мажорной версии.
+     * Если заданы оба — приоритет у `ALISA_TOKEN`.
+     *
+     * @deprecated Используйте `ALISA_TOKEN`
      * @example
      * ```ts
      * YANDEX_TOKEN=1234567890abcdef
      * ```
      */
     YANDEX_TOKEN?: string;
+
+    /**
+     * Токен для Яндекс.Диалоги (Алиса)
+     * Используется для авторизации в API Яндекс.Диалогов.
+     *
+     * Заменяет `YANDEX_TOKEN` (сохранён для BC). При одновременном задании обоих
+     * приоритет у `ALISA_TOKEN`.
+     *
+     * @example
+     * ```ts
+     * ALISA_TOKEN=1234567890abcdef
+     * ```
+     */
+    ALISA_TOKEN?: string;
 
     /**
      * Токен для Маруси
@@ -115,6 +146,20 @@ export interface IEnvConfig {
      * ```
      */
     SMARTAPP_TOKEN?: string;
+
+    /**
+     * Токен Yandex SpeechKit
+     * Используется для синтеза речи (TTS) в чат-ботах: Telegram, VK и Max.
+     * Значение автоматически записывается в `speech_kit_token` токенов этих платформ.
+     *
+     * @example
+     * ```ts
+     * # API-ключ сервисного аккаунта (уходит как `Api-Key`) — рекомендуется;
+     * # IAM-токен `t1.…` тоже принимается (уходит как `Bearer`), но живёт ≤12 ч.
+     * SPEECH_KIT_TOKEN=AQVN...
+     * ```
+     */
+    SPEECH_KIT_TOKEN?: string;
 
     /**
      * Адрес сервера базы данных
@@ -191,7 +236,7 @@ export interface IEnvConfigStatus {
  * Загружает переменные окружения из файла .env
  *
  * @param {string} envPath - Путь к файлу .env
- * @returns {IEnvConfig} Объект с переменными окружения
+ * @returns {IEnvConfigStatus} Результат загрузки со статусом и данными
  *
  * @remarks
  * Функция:
@@ -203,14 +248,16 @@ export interface IEnvConfigStatus {
  * @example
  * ```ts
  * // Загрузка конфигурации
- * const config = loadEnvFile('.env');
+ * const result = loadEnvFile('.env');
  *
  * // Использование значений
- * const telegramToken = config.TELEGRAM_TOKEN;
- * const dbHost = config.DB_HOST;
+ * if (result.status) {
+ *   const telegramToken = result.data?.TELEGRAM_TOKEN;
+ *   const dbHost = result.data?.DB_HOST;
+ * } else {
+ *   console.error(result.error);
+ * }
  * ```
- *
- * @throws {Error} Если файл не найден или не может быть прочитан
  */
 export function loadEnvFile(envPath: string): IEnvConfigStatus {
     const fileData = freadSync(path.resolve(envPath));
@@ -222,7 +269,20 @@ export function loadEnvFile(envPath: string): IEnvConfigStatus {
             const trimmedLine = line.trim();
             if (trimmedLine && !trimmedLine.startsWith('#')) {
                 const [key, ...valueParts] = trimmedLine.split('=');
-                const value = valueParts.join('=').trim();
+                let value = valueParts.join('=').trim();
+                // Убираем inline comments, но только если `#` начинается с пробела
+                // (конвенция dotenv): в `DB_PASSWORD=pass#word` решётка — часть
+                // значения, а не комментарий.
+                const commentMatch = value.match(/(?:^|\s)#/);
+                if (commentMatch && commentMatch.index !== undefined) {
+                    // Проверяем, что # не внутри кавычек
+                    const beforeComment = value.substring(0, commentMatch.index);
+                    const singleQuotes = (beforeComment.match(/'/g) || []).length;
+                    const doubleQuotes = (beforeComment.match(/"/g) || []).length;
+                    if (singleQuotes % 2 === 0 && doubleQuotes % 2 === 0) {
+                        value = beforeComment.trim();
+                    }
+                }
                 if (key && value) {
                     envVars[key.trim() as keyof IEnvConfig] = value.replace(/^["']|["']$/g, '');
                 }

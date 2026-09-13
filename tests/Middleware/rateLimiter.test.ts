@@ -1,4 +1,8 @@
-import { rateLimiter } from '../../src/middleware/rateLimiter';
+import {
+    rateLimiter,
+    destroyRateLimiter,
+    RateLimitQueueOverflowError,
+} from '../../src/middleware/rateLimiter';
 import { BaseBotController } from '../../src';
 import { T_TELEGRAM, TelegramAdapter } from '../../src/plugins';
 
@@ -8,6 +12,7 @@ describe('rateLimiter middleware', () => {
 
     beforeEach(() => {
         ctx = new BaseBotController();
+        ctx.appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
         new TelegramAdapter().init(ctx.appContext);
         // Эмулируем ограничение в 2 запроса в минуту
         ctx.appContext.platforms[T_TELEGRAM].limit = 2;
@@ -18,6 +23,7 @@ describe('rateLimiter middleware', () => {
     });
 
     afterEach(() => {
+        destroyRateLimiter();
         jest.useRealTimers();
     });
 
@@ -58,11 +64,37 @@ describe('rateLimiter middleware', () => {
         // Третий должен выбросить ошибку
         const p3 = middleware(ctx, next);
 
+        await expect(p3).rejects.toBeInstanceOf(RateLimitQueueOverflowError);
         await expect(p3).rejects.toThrow('rateLimit - Превышено ограничение на размер очереди');
+        // Флаг позволяет вызывающему коду отличить отказ из-за перегрузки
+        expect(ctx.platformOptions.rateLimitOverflow).toBe(true);
         // Проверяем, что p1 и p2 выполнятся после таймера
         jest.advanceTimersByTime(1000);
         await Promise.all([p1, p2]);
         expect(next).toHaveBeenCalledTimes(4); // два первых + два из очереди
+    });
+
+    it('батч из очереди не превышает лимит за счёт свежих запросов того же окна', async () => {
+        const middleware = rateLimiter(10);
+        // Окно 1: исчерпываем лимит (2 запроса)
+        await middleware(ctx, next);
+        await middleware(ctx, next);
+        // Две задачи встают в очередь
+        const p1 = middleware(ctx, next);
+        const p2 = middleware(ctx, next);
+        // Окно 2: пачка из очереди исполняется, счётчик сбрасывается в 0
+        jest.advanceTimersByTime(1000);
+        await Promise.all([p1, p2]);
+        expect(next).toHaveBeenCalledTimes(4);
+        // Всё ещё окно 2: счётчик исчерпан пачкой, поэтому свежий запрос не
+        // проходит мгновенно, а встаёт в очередь. Раньше он проходил сразу,
+        // и реальный rps за окно доходил до 2x лимита.
+        const fresh = middleware(ctx, next);
+        expect(next).toHaveBeenCalledTimes(4);
+        // Окно 3: задача из очереди исполняется
+        jest.advanceTimersByTime(1000);
+        await fresh;
+        expect(next).toHaveBeenCalledTimes(5);
     });
 
     it('should handle multiple users separately', async () => {
@@ -84,5 +116,26 @@ describe('rateLimiter middleware', () => {
         jest.advanceTimersByTime(1000);
         await third;
         expect(next).toHaveBeenCalledTimes(5);
+    });
+
+    it('destroyRateLimiter очищает все инстансы, а не только последний', async () => {
+        ctx.appContext.platforms[T_TELEGRAM].limit = 1;
+        const limiter1 = rateLimiter(10);
+        const limiter2 = rateLimiter(10);
+
+        // Первый запрос каждого инстанса проходит, вторые встают в очередь
+        await limiter1(ctx, next);
+        const queued1 = limiter1(ctx, next);
+        await limiter2(ctx, next);
+        const queued2 = limiter2(ctx, next);
+
+        // Очереди не обработаны (таймеры не продвигали) — сработали только первые два
+        expect(next).toHaveBeenCalledTimes(2);
+
+        destroyRateLimiter();
+
+        // Оба ожидающих запроса из разных инстансов должны быть отклонены
+        await expect(queued1).rejects.toThrow('Rate limiter destroyed');
+        await expect(queued2).rejects.toThrow('Rate limiter destroyed');
     });
 });

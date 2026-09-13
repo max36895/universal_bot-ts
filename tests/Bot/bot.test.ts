@@ -2,6 +2,7 @@ import {
     AppContext,
     Bot,
     BotController,
+    FALLBACK_COMMAND,
     IPlatformData,
     IUserData,
     unlinkSync,
@@ -13,9 +14,15 @@ import {
     FileAdapter,
     IAlisaWebhookResponse,
     voicePlatforms,
+    TelegramAdapter,
+    TelegramRequest,
+    SmartAppAdapter,
+    T_SMART_APP,
+    VkAdapter,
 } from '../../src/plugins';
 import { Server } from 'http';
 import { join } from 'node:path';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 class MyReg extends RegExp {
     constructor(parent: RegExp | string, flags: string) {
@@ -55,6 +62,7 @@ class TestBotController extends BotController {
             this.state = {
                 data: 'test',
             };
+            this.text = 'test';
             return;
         }
         this.text = 'test';
@@ -106,8 +114,49 @@ let updateSpy: ReturnType<typeof jest.spyOn>;
 describe('Bot', () => {
     let bot: TestBot;
 
+    // Токены из process.env теперь тихо подхватываются даже без настроенного env,
+    // поэтому изолируем тесты от реального окружения машины.
+    const ENV_KEYS = [
+        'VIBER_TOKEN',
+        'TELEGRAM_TOKEN',
+        'VK_TOKEN',
+        'MAX_TOKEN',
+        'VK_CONFIRMATION_TOKEN',
+        'VK_SECRET_KEY',
+        'MARUSIA_TOKEN',
+        'ALISA_TOKEN',
+        'YANDEX_TOKEN',
+        'SPEECH_KIT_TOKEN',
+        'DB_HOST',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_NAME',
+    ];
+    const savedEnv: Record<string, string | undefined> = {};
+    // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень репозитория.
+    // Перенаправляем их в тестовую папку (tests/.tmp), чтобы прогон не оставлял
+    // артефактов в репо; путь известен и не теряется, как в os.tmpdir().
+    const TEST_DATA_DIR = createTestDir('bot');
+    beforeAll(() => {
+        ENV_KEYS.forEach((key) => {
+            savedEnv[key] = process.env[key];
+            delete process.env[key];
+        });
+    });
+    afterAll(async () => {
+        ENV_KEYS.forEach((key) => {
+            if (savedEnv[key] === undefined) {
+                delete process.env[key];
+            } else {
+                process.env[key] = savedEnv[key];
+            }
+        });
+        await removeTestDir(TEST_DATA_DIR);
+    });
+
     beforeEach(() => {
         bot = new TestBot();
+        bot.setAppConfig({ json: TEST_DATA_DIR, error_log: TEST_DATA_DIR });
         bot.setLogger({
             error: () => {},
         });
@@ -118,9 +167,14 @@ describe('Bot', () => {
             .mockResolvedValue(Promise.resolve(true));
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         jest.resetAllMocks();
-        bot.close();
+        // Тесты describe('setAppConfig') подменяют json/error_log собственными
+        // путями; возвращаем их во временную папку ДО close(), иначе destroy()
+        // FileAdapter флашит таблицы по этому пути за пределы репозитория.
+        bot.getAppContext().appConfig.json = TEST_DATA_DIR;
+        bot.getAppContext().appConfig.error_log = TEST_DATA_DIR;
+        await bot.close();
         bot.clearCommands();
         unlinkSync(join(bot.getAppContext().appConfig.json, 'UsersData.json'));
     });
@@ -204,6 +258,31 @@ describe('Bot', () => {
             });
             bot.use(new AlisaAdapter());
             await expect(bot.run(T_ALISA, '')).rejects.toThrow(error);
+        });
+
+        it('обрезает userCommand до 7000 символов, но сохраняет originalUserCommand', async () => {
+            bot.initBotController(TestBotController);
+            bot.setLogger({
+                error: () => {},
+                warn: () => {},
+            });
+            bot.use(new AlisaAdapter());
+
+            const longText = 'а'.repeat(20000);
+            // Снимаем контроллер через middleware: в него ядро кладёт уже
+            // обрезанный userCommand.
+            let seenUserCommand = '';
+            let seenOriginal = '';
+            bot.use((controller: TestBotController, next) => {
+                seenUserCommand = controller.userCommand ?? '';
+                seenOriginal = controller.originalUserCommand ?? '';
+                return next();
+            });
+
+            await bot.run(T_ALISA, getContent(longText));
+            expect(seenUserCommand.length).toBe(7000);
+            expect(seenOriginal.length).toBe(20000);
+            jest.resetAllMocks();
         });
 
         it('added user command', async () => {
@@ -378,6 +457,108 @@ describe('Bot', () => {
             bot.clearCommands();
         });
 
+        it('addForm проходит полный цикл до onComplete', async () => {
+            const tBot = new TestBot();
+            tBot.setAppConfig({
+                isLocalStorage: true,
+            });
+            tBot.initBotController(TestBotController);
+
+            let completedPayload: Record<string, string> | null = null;
+
+            // Стартовая команда запускает форму
+            tBot.addCommand('regForm', ['формы'], (_, bc) => {
+                bc.text = 'Как вас зовут?';
+                bc.thisIntentName = '__form_onboarding_0';
+            });
+
+            tBot.addForm('onboarding', {
+                fields: [
+                    {
+                        name: 'name',
+                        prompt: 'Как вас зовут?',
+                        validate: (v): boolean => v.length > 0,
+                    },
+                    {
+                        name: 'email',
+                        prompt: 'Ваш email?',
+                        validate: (v): string | boolean =>
+                            /\S+@\S+/.test(v) || 'Некорректный email',
+                    },
+                ],
+                onComplete: (ctx, answers) => {
+                    completedPayload = answers;
+                    ctx.text = `Готово, ${answers.name}!`;
+                },
+            });
+            tBot.use(new AlisaAdapter());
+
+            // Запускаем форму
+            let res = (await tBot.run(T_ALISA, getContent('формы', 1))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Как вас зовут?');
+
+            // Валидный ответ на первый вопрос → переход на второй
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('Иван', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Ваш email?');
+
+            // Невалидный email → ошибка + повторный prompt
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('не-email', 3, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Некорректный email\nВаш email?');
+
+            // Валидный email → onComplete
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('ivan@test.ru', 4, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            // Ответы формы сохраняются в исходном регистре (originalUserCommand),
+            // а не в нижнем, в который адаптер нормализует userCommand.
+            expect(res.response?.text).toBe('Готово, Иван!');
+            expect(completedPayload).toEqual({ name: 'Иван', email: 'ivan@test.ru' });
+        });
+
+        it('addForm корректно отменяется командой', async () => {
+            const tBot = new TestBot();
+            tBot.setAppConfig({ isLocalStorage: true });
+            tBot.initBotController(TestBotController);
+
+            let completed = false;
+
+            tBot.addCommand('signForm', ['signup'], (_, bc) => {
+                bc.text = 'Начался опрос';
+                bc.thisIntentName = '__form_signup_0';
+            });
+            tBot.addForm('signup', {
+                fields: [
+                    { name: 'q1', prompt: 'Первый вопрос?', validate: (): boolean => true },
+                    { name: 'q2', prompt: 'Второй?', validate: (): boolean => true },
+                ],
+                onComplete: (ctx) => {
+                    completed = true;
+                    ctx.text = 'complete';
+                },
+                cancelText: 'Опрос отменён',
+                cancelCommands: ['отмена'],
+            });
+            tBot.use(new AlisaAdapter());
+
+            let res = (await tBot.run(T_ALISA, getContent('signup', 1))) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Начался опрос');
+
+            // Пользователь пишет "отмена"
+            res = (await tBot.run(
+                T_ALISA,
+                getContent('отмена', 2, res.session_state as object),
+            )) as IAlisaWebhookResponse;
+            expect(res.response?.text).toBe('Опрос отменён');
+            expect(completed).toBe(false);
+        });
+
         it('local store', async () => {
             const tBot = new TestBot();
             tBot.initBotController(TestBotController);
@@ -439,15 +620,14 @@ describe('Bot', () => {
                 },
                 version: '1.0',
             });
+            // Карточка с текстом, но без картинки — рабочий сценарий Алисы:
+            // документация не помечает image_id обязательным.
             expect(await bot.run(T_ALISA, getContent('карточка'))).toEqual({
                 response: {
                     card: {
-                        header: {
-                            text: '',
-                        },
                         items: [
                             {
-                                description: ' ',
+                                description: '',
                                 title: 'Header',
                             },
                         ],
@@ -463,7 +643,115 @@ describe('Bot', () => {
         });
     });
 
+    describe('webhookEvent', () => {
+        const tgBody = JSON.stringify({
+            update_id: 1,
+            message: {
+                message_id: 1,
+                text: 'hi',
+                chat: { id: 42, type: 'private' },
+                from: { id: 42 },
+            },
+        });
+
+        it('возвращает 400 для пустого тела', async () => {
+            const res = await bot.webhookEvent(null);
+            expect(res.statusCode).toBe(400);
+        });
+
+        it('возвращает 400 для невалидного JSON', async () => {
+            // Унифицировано с webhookHandle: некорректный запрос — это 400, не 422/500.
+            const res = await bot.webhookEvent('{broken');
+            expect(res.statusCode).toBe(400);
+        });
+
+        it('возвращает 400 для валидного JSON, не являющегося объектом', async () => {
+            // Регрессия: JSON-скаляр (строка/число/массив) проходил парсинг и падал
+            // с 500 внутри пайплайна. Платформы всегда присылают объект.
+            bot.initBotController(TestBotController);
+            for (const body of ['"just a string"', '42', '[1, 2, 3]']) {
+                const res = await bot.webhookEvent(body);
+                expect(res.statusCode).toBe(400);
+            }
+        });
+
+        it('возвращает 401, если webhookSecret задан, но заголовок отсутствует', async () => {
+            bot.setAppConfig({ tokens: { telegram: { token: 'tok', webhookSecret: 'secret' } } });
+            bot.use(new TelegramAdapter());
+            const res = await bot.webhookEvent(tgBody, {});
+            expect(res.statusCode).toBe(401);
+        });
+
+        it('пропускает запрос при совпадающем webhookSecret', async () => {
+            bot.initBotController(TestBotController);
+            bot.setAppConfig({ tokens: { telegram: { token: 'tok', webhookSecret: 'secret' } } });
+            bot.use(new TelegramAdapter());
+            bot.addCommand('hi', ['hi'], (_, ctrl) => {
+                ctrl.text = 'ok';
+            });
+            const callSpy = jest
+                .spyOn(TelegramRequest.prototype, 'call')
+                .mockResolvedValue(undefined);
+            const res = await bot.webhookEvent(tgBody, {
+                'x-telegram-bot-api-secret-token': 'secret',
+            });
+            expect(res.statusCode).not.toBe(401);
+            callSpy.mockRestore();
+        });
+
+        it('возвращает 400, а не 500, если платформа не определилась', async () => {
+            bot.initBotController(TestBotController);
+            const res = await bot.webhookEvent(JSON.stringify({ unknown_platform: true }));
+            // На 5xx Telegram и VK включают повторную доставку и в итоге отключают
+            // вебхук, поэтому нераспознанный запрос должен отдавать 4xx.
+            expect(res.statusCode).toBe(400);
+        });
+    });
+
+    describe('команды с регулярными выражениями', () => {
+        it('находит команду с глобальным regexp на каждом запросе', async () => {
+            const tBot = new TestBot();
+            tBot.initBotController(TestBotController);
+            tBot.use(new AlisaAdapter());
+            let hits = 0;
+            tBot.addCommand(
+                'hi',
+                [/привет/g],
+                (_, ctrl) => {
+                    hits++;
+                    ctrl.text = 'ok';
+                },
+                true,
+            );
+            for (let i = 0; i < 4; i++) {
+                await tBot.run(T_ALISA, getContent('привет', i));
+            }
+            // RegExp с флагом g продвигает lastIndex, поэтому кэшированный объект
+            // раньше срабатывал через раз, и половина запросов уходила в fallback.
+            expect(hits).toBe(4);
+        });
+    });
+
     describe('saved state and DB', () => {
+        it('не запрашивает SmartApp storage при выключенном isLocalStorage', async () => {
+            const tBot = new TestBot();
+            tBot.initBotController(TestBotController);
+            const smartApp = new SmartAppAdapter();
+            const getStorage = jest.spyOn(smartApp, 'getLocalStorage');
+            tBot.use(smartApp);
+            tBot.addCommand('hello', ['привет'], (_text, controller) => {
+                controller.text = 'Привет';
+            });
+
+            await tBot.run(
+                T_SMART_APP,
+                JSON.stringify(smartApp.getQueryExample('привет', 'user-1', 0)),
+            );
+
+            expect(getStorage).not.toHaveBeenCalled();
+            await tBot.close();
+        });
+
         it('get state is not isLocalStorage', async () => {
             const tBot = new TestBot();
             tBot.initBotController(TestBotController);
@@ -567,6 +855,70 @@ describe('Bot', () => {
             expect(JSON.parse(select.data?.data as string).cool).toBe(true);
             bot.clearCommands();
             await userData.remove();
+            await bot.close();
+        });
+
+        it('userData читается по userId при наличии userToken (авторизованный пользователь)', async () => {
+            // Регресс: раньше #initUserData читал запись по userToken, а #saveUserData
+            // писал по userId — данные авторизованных пользователей терялись между запросами.
+            bot.setAppConfig({
+                isLocalStorage: false,
+            });
+            bot.use(new FileAdapter());
+            bot.initBotController(TestBotController);
+            bot.getAppContext().platformParams.isAuthUser = true;
+
+            let readVisits: unknown;
+            bot.addCommand('set', ['auth-set'], (_, botC) => {
+                botC.text = 'set';
+                botC.userData.visits = 42;
+            });
+            bot.addCommand('get', ['auth-get'], (_, botC) => {
+                botC.text = 'get';
+                readVisits = botC.userData.visits;
+            });
+            saveSpy.mockRestore();
+            updateSpy.mockRestore();
+            bot.use(new AlisaAdapter());
+
+            const authContent = (query: string): string =>
+                JSON.stringify({
+                    meta: {
+                        locale: 'ru-Ru',
+                        timezone: 'UTC',
+                        client_id: 'test',
+                        interfaces: {},
+                    },
+                    session: {
+                        message_id: 0,
+                        session_id: 'local',
+                        skill_id: 'local_test',
+                        user_id: 'test',
+                        new: true,
+                        user: {
+                            user_id: 'auth-user-id',
+                            access_token: 'auth-token-123',
+                        },
+                    },
+                    request: {
+                        command: query,
+                        original_utterance: query,
+                        nlu: {},
+                        type: 'SimpleUtterance',
+                    },
+                    version: '1.0',
+                });
+
+            await bot.run(T_ALISA, authContent('auth-set'));
+            await bot.run(T_ALISA, authContent('auth-get'));
+
+            expect(readVisits).toBe(42);
+
+            const userData = new UsersData(bot.getAppContext());
+            userData.platform = T_ALISA;
+            userData.userId = 'auth-user-id';
+            await userData.remove();
+            bot.clearCommands();
             await bot.close();
         });
 
@@ -704,6 +1056,83 @@ describe('Bot', () => {
             bot.close();
             expect(server.listening).toBe(false);
         });
+
+        it('предупреждает о dev-режиме, вебхуке без подписи и 0.0.0.0 при старте', async () => {
+            const warnings: string[] = [];
+            bot.setLogger({
+                error: () => {},
+                warn: (msg: string) => warnings.push(msg),
+            });
+            // Telegram без webhookSecret — подпись не проверяется
+            bot.use(new TelegramAdapter('test-token'));
+            // Алиса — signatureName не задан, предупреждения о подписи быть не должно
+            bot.use(new AlisaAdapter());
+
+            const server = bot.start('0.0.0.0', 3100);
+            await new Promise<void>((resolve) => {
+                server!.on('listening', resolve);
+                server!.on('error', resolve);
+            });
+            bot.close();
+
+            const devWarn = warnings.find((w) => w.includes('режиме dev'));
+            expect(devWarn).toBeDefined();
+
+            const noSignWarn = warnings.find((w) => w.includes('БЕЗ проверки подписи'));
+            expect(noSignWarn).toBeDefined();
+            expect(noSignWarn).toContain('telegram');
+
+            const ifaceWarn = warnings.find((w) => w.includes('0.0.0.0'));
+            expect(ifaceWarn).toBeDefined();
+        });
+
+        it('не предупреждает о подписи, когда секреты вебхуков заданы', async () => {
+            const warnings: string[] = [];
+            bot.setLogger({
+                error: () => {},
+                warn: (msg: string) => warnings.push(msg),
+            });
+            bot.getAppContext().setAppConfig({
+                tokens: {
+                    telegram: { webhookSecret: 'secret' },
+                },
+            });
+            bot.use(new TelegramAdapter('test-token'));
+            bot.setAppMode('strict_prod');
+
+            const server = bot.start('localhost', 3101);
+            await new Promise<void>((resolve) => {
+                server!.on('listening', resolve);
+                server!.on('error', resolve);
+            });
+            bot.close();
+
+            expect(warnings.find((w) => w.includes('БЕЗ проверки подписи'))).toBeUndefined();
+            expect(warnings.find((w) => w.includes('режиме dev'))).toBeUndefined();
+        });
+
+        it('предупреждает о VK без secret_key: подпись VK приходит в теле, signatureName не нужен', async () => {
+            const warnings: string[] = [];
+            bot.setLogger({
+                error: () => {},
+                warn: (msg: string) => warnings.push(msg),
+            });
+            // VK-адаптер с токеном доступа, но без vk_secret_key: signatureName
+            // у VK не задаётся (подпись — поле secret в теле), раньше это
+            // исключало VK из предупреждения целиком.
+            bot.use(new VkAdapter('vk-access-token'));
+
+            const server = bot.start('localhost', 3102);
+            await new Promise<void>((resolve) => {
+                server!.on('listening', resolve);
+                server!.on('error', resolve);
+            });
+            bot.close();
+
+            const noSignWarn = warnings.find((w) => w.includes('БЕЗ проверки подписи'));
+            expect(noSignWarn).toBeDefined();
+            expect(noSignWarn).toContain('vk');
+        });
     });
     describe('custom resolver', () => {
         it('setCustomCommandResolver', async () => {
@@ -746,6 +1175,45 @@ describe('Bot', () => {
             const run2 = await bot.run(T_ALISA, getContent('пока'));
             expect(run1).toEqual(result2);
             expect(run2).toEqual(result1);
+        });
+
+        it('вызывает action для команды, найденной custom resolver', async () => {
+            class ResolverController extends BotController {
+                action(_intentName: string | null, isCommand?: boolean): void {
+                    if (isCommand) {
+                        this.text = 'Action отработал';
+                    }
+                }
+            }
+            bot.addCommand('resolved', ['обычный слот'], (_, controller) => {
+                controller.text = 'Команда';
+            });
+            bot.use(new AlisaAdapter());
+            bot.initBotController(ResolverController);
+            bot.setCustomCommandResolver(() => 'resolved');
+
+            const result = (await bot.run(
+                T_ALISA,
+                getContent('кастомная команда', 1),
+            )) as IAlisaWebhookResponse;
+
+            expect(result.response?.text).toBe('Action отработал');
+        });
+
+        it('продолжает до fallback, когда custom resolver возвращает null', async () => {
+            bot.addCommand(FALLBACK_COMMAND, [], (_, controller) => {
+                controller.text = 'Fallback отработал';
+            });
+            bot.use(new AlisaAdapter());
+            bot.initBotController(TestBotController);
+            bot.setCustomCommandResolver(() => null);
+
+            const result = (await bot.run(
+                T_ALISA,
+                getContent('неизвестная команда', 1),
+            )) as IAlisaWebhookResponse;
+
+            expect(result.response?.text).toBe('Fallback отработал');
         });
     });
 
@@ -791,142 +1259,90 @@ describe('Bot', () => {
     });
 
     describe('findCommand', () => {
-        it('redos warning', () => {
-            let warmMessage;
-            let errorMessage;
+        /**
+         * Небезопасное выражение регистрируется, но без re2 движок Node уязвим
+         * к катастрофическому бэктрекингу: одно сообщение пользователя способно
+         * занять поток на минуты. Поэтому уровень лога зависит от окружения.
+         */
+        function captureRegexLog(fn: () => void): { warn?: string; error?: string } {
+            const captured: { warn?: string; error?: string } = {};
             bot.setLogger({
-                error: (message) => {
-                    errorMessage = message;
+                error: (message: string): void => {
+                    captured.error = message;
                 },
-                warn: (message) => {
-                    warmMessage = message;
+                warn: (message: string): void => {
+                    captured.warn = message;
                 },
             });
-            bot.addCommand('normal', [/\d+/], () => {});
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
-            bot.addCommand('normal2', ['/\\d+/'], () => {}, true);
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
+            fn();
+            return captured;
+        }
 
-            bot.addCommand('redos', [/.*/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: .*',
-            );
-            expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-
-            bot.addCommand('redos2', ['/.*/'], () => {}, true);
-            expect(warmMessage).toBe(
-                'Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /.*/',
-            );
-            expect(errorMessage).toBe(undefined);
-            bot.clearCommands();
-
-            bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], () => {}, true);
-            expect(warmMessage).toBe(
-                `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /${'test'.repeat(777)}/`,
-            );
-            expect(errorMessage).toBe(undefined);
-            bot.clearCommands();
-
+        const noop = (): void => {};
+        const UNSAFE_PATTERNS: [string, () => void][] = [
+            [
+                `/${'test'.repeat(777)}/`,
+                (): void =>
+                    bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], noop, true) && undefined,
+            ],
             // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos4', [/(a*)*/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a*)*',
-            );
-            expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-
+            ['(a*)*', (): void => bot.addCommand('redos4', [/(a*)*/], noop) && undefined],
             // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos5', [/(a|a+)+/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a|a+)+',
-            );
-            expect(errorMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
-            expect(warmMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a+){10,1000}',
-            );
-            expect(errorMessage).toBe(undefined);
+            ['(a|a+)+', (): void => bot.addCommand('redos5', [/(a|a+)+/], noop) && undefined],
+            [
+                '(a+){10,1000}',
+                // eslint-disable-next-line security/detect-unsafe-regex
+                (): void => bot.addCommand('redos6', [/(a+){10,1000}/], noop) && undefined,
+            ],
+        ];
 
+        it('не ругается на безопасные выражения', () => {
+            const safe = captureRegexLog((): void => {
+                bot.addCommand('normal', [/\d+/], noop);
+                bot.addCommand('normal2', ['/\\d+/'], noop, true);
+                // Одиночный any-quantifier линеен и не является ReDoS:
+                // раньше он отбраковывался общим правилом REG_BAD
+                bot.addCommand('normal3', [/.*/], noop);
+                bot.addCommand('normal4', ['/.*/'], noop, true);
+                // Простая фиксированная группа под квантификатором тоже безопасна
+                bot.addCommand('normal5', [/(abc)+/], noop);
+            });
+            expect(safe.warn).toBeUndefined();
+            expect(safe.error).toBeUndefined();
             bot.clearCommands();
         });
-        it('redos error', () => {
-            let warmMessage;
-            let errorMessage;
-            bot.setLogger({
-                error: (message) => {
-                    errorMessage = message;
-                },
-                warn: (message) => {
-                    warmMessage = message;
-                },
+
+        it('сообщает о каждом небезопасном выражении с объяснением последствий', () => {
+            UNSAFE_PATTERNS.forEach(([pattern, register]): void => {
+                const captured = captureRegexLog(register);
+                const message = captured.error ?? captured.warn;
+                expect(message).toContain('небезопасн');
+                expect(message).toContain(pattern);
+                // Без re2 это не предупреждение, а реальная возможность положить бота
+                // одним сообщением, поэтому сообщение уходит в error и объясняет, что делать.
+                expect(captured.error).toBeDefined();
+                expect(captured.error).toContain('re2');
+                bot.clearCommands();
             });
+        });
+
+        it('redos error', () => {
             bot.setAppMode('strict_prod');
-            bot.addCommand('normal', [/\d+/], () => {});
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
-            bot.addCommand('normal2', ['/\\d+/'], () => {}, true);
-            expect(warmMessage).toBe(undefined);
-            expect(errorMessage).toBe(undefined);
-
-            bot.addCommand('redos', [/.*/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: .*',
-            );
-            expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
+            const safe = captureRegexLog((): void => {
+                bot.addCommand('normal', [/\d+/], noop);
+                bot.addCommand('normal2', ['/\\d+/'], noop, true);
+            });
+            expect(safe.warn).toBeUndefined();
+            expect(safe.error).toBeUndefined();
             bot.clearCommands();
 
-            bot.addCommand('redos2', ['/.*/'], () => {}, true);
-            expect(errorMessage).toBe(
-                'Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /.*/',
-            );
-            expect(warmMessage).toBe(undefined);
-            bot.clearCommands();
-
-            bot.addCommand('redos3', [`/${'test'.repeat(777)}/`], () => {}, true);
-            expect(errorMessage).toBe(
-                `Найдены небезопасные регулярные выражения (ReDOS), проверьте их корректность: /${'test'.repeat(777)}/`,
-            );
-            expect(warmMessage).toBe(undefined);
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos4', [/(a*)*/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a*)*',
-            );
-            expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos5', [/(a|a+)+/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a|a+)+',
-            );
-            expect(warmMessage).toBe(undefined);
-            warmMessage = undefined;
-            errorMessage = undefined;
-            bot.clearCommands();
-            // eslint-disable-next-line security/detect-unsafe-regex
-            bot.addCommand('redos6', [/(a+){10,1000}/], () => {});
-            expect(errorMessage).toBe(
-                'Найдено небезопасное регулярное выражение (ReDOS), проверьте его корректность: (a+){10,1000}',
-            );
-            expect(warmMessage).toBe(undefined);
-
-            bot.clearCommands();
+            UNSAFE_PATTERNS.forEach(([pattern, register]): void => {
+                const captured = captureRegexLog(register);
+                expect(captured.error).toContain(pattern);
+                expect(captured.error).toContain('strictMode');
+                expect(captured.warn).toBeUndefined();
+                bot.clearCommands();
+            });
         });
 
         it('addCommand and base botController', async () => {
@@ -1085,6 +1501,28 @@ describe('Bot', () => {
             );
             res = (await bot.run(T_ALISA, getContent('by', 2))) as IAlisaWebhookResponse;
             expect(res.response?.text).toBe('by');
+        });
+
+        it('обрабатывает pattern-команду с дефисом после создания первой группы', async () => {
+            bot.initBotController(TestBotController);
+            for (let i = 0; i <= 300; i++) {
+                bot.addCommand(
+                    `command-${i}`,
+                    [`^command-${i}$`],
+                    (_, botC) => {
+                        botC.text = `handled-${i}`;
+                    },
+                    true,
+                );
+            }
+            bot.use(new AlisaAdapter());
+
+            const res = (await bot.run(
+                T_ALISA,
+                getContent('command-300', 2),
+            )) as IAlisaWebhookResponse;
+
+            expect(res.response?.text).toBe('handled-300');
         });
 
         it('used group and used regexp', async () => {
@@ -1422,6 +1860,49 @@ describe('Bot', () => {
                     token: 'your-vk-token',
                 },
             });
+        });
+
+        it('ALISA_TOKEN имеет приоритет над YANDEX_TOKEN, VK_SECRET_KEY читается', () => {
+            const envBot = new TestBot();
+            envBot.setLogger({ error: () => {}, warn: () => {} });
+            envBot.setAppConfig({
+                env: __dirname + '/env-alisa',
+            });
+            const tokens = envBot.getAppContext().appConfig.tokens;
+            expect(tokens.alisa?.token).toBe('alisa-canonical-token');
+            expect(tokens.vk?.secret_key).toBe('vk-secret-value');
+        });
+
+        it('SPEECH_KIT_TOKEN раскладывается в speech_kit_token чат-платформ', () => {
+            const envBot = new TestBot();
+            envBot.setLogger({ error: () => {}, warn: () => {} });
+            envBot.setAppConfig({
+                env: __dirname + '/env-speechkit',
+            });
+            const tokens = envBot.getAppContext().appConfig.tokens;
+            expect(tokens.telegram?.token).toBe('your-telegram-token');
+            expect(tokens.telegram?.speech_kit_token).toBe('speechkit-test-token');
+            expect(tokens.vk?.speech_kit_token).toBe('speechkit-test-token');
+            expect(tokens.max_app?.speech_kit_token).toBe('speechkit-test-token');
+        });
+    });
+
+    describe('async action()', () => {
+        it('пишет предупреждение в лог, если контроллер объявил action() как async', async () => {
+            class AsyncActionController extends BotController {
+                public async action(_intentName: string | null): Promise<void> {
+                    await Promise.resolve();
+                    this.text = 'test';
+                }
+            }
+            bot.initBotController(AsyncActionController);
+            bot.use(new AlisaAdapter());
+            const warnSpy = jest.spyOn(bot.getAppContext(), 'logWarn').mockImplementation(() => {});
+
+            await bot.run(T_ALISA, getContent('привет', 1));
+
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('action()'));
+            warnSpy.mockRestore();
         });
     });
 });

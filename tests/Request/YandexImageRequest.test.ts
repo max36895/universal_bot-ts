@@ -18,6 +18,7 @@ import { AppContext } from '../../src';
 import { YandexImageRequest } from '../../src/plugins';
 
 const appContext = new AppContext();
+appContext.setLogger({ log: () => {}, error: () => {}, warn: () => {} });
 
 describe('YandexImageRequest', () => {
     let imageApi: YandexImageRequest;

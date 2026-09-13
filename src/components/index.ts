@@ -10,9 +10,7 @@
  *    - Обработка NLU (Natural Language Understanding)
  *
  * 2. **Дополнительные компоненты** - предоставляют расширенную функциональность:
- *    - Навигация по меню
- *    - Управление состоянием
- *    - Работа с данными
+ *    - Навигация по меню (Navigation)
  *
  * > **Важно**: Системные компоненты рекомендуется использовать только через BotController.
  *
@@ -35,7 +33,7 @@
  *
  * 1. **Стандартная навигация**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements: number = 5;
@@ -48,24 +46,24 @@
  *
  * 2. **Навигация с командами**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements: number = 5;
  * const nav = new Navigation<number>(maxVisibleElements);
  *
- * // Навигация вперед
- * let showElements = nav.getPageElements(elements, 'Дальше');
+ * // Навигация вперед (текст — в нижнем регистре, как controller.userCommand)
+ * let showElements = nav.getPageElements(elements, 'дальше');
  * console.log(showElements); // -> [6, 7, 8, 9, 0]
  *
- * // Навигация назад
- * showElements = nav.getPageElements(elements, 'Назад');
+ * // Навигация назад (регистр важен: сравнение чувствительно к регистру)
+ * showElements = nav.getPageElements(elements, 'назад');
  * console.log(showElements); // -> [1, 2, 3, 4, 5]
  * ```
  *
  * 3. **Управление текущей страницей**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements = 5;
@@ -75,16 +73,16 @@
  * nav.thisPage = 1;
  *
  * // Проверка границ навигации
- * let showElements = nav.getPageElements(elements, 'Дальше');
+ * let showElements = nav.getPageElements(elements, 'дальше');
  * console.log(nav.thisPage); // -> 1 (не выходит за пределы)
  *
- * showElements = nav.getPageElements(elements, 'Назад');
+ * showElements = nav.getPageElements(elements, 'назад');
  * console.log(nav.thisPage); // -> 0
  * ```
  *
  * 4. **Выбор элемента из списка**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * const elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
  * const maxVisibleElements = 5;
@@ -98,7 +96,7 @@
  *
  * 5. **Работа с объектами**
  * ```ts
- * import { Navigation } from './standard/Navigation';
+ * import { Navigation } from 'umbot';
  *
  * interface MenuItem {
  *     title: string;

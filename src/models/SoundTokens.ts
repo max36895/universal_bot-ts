@@ -1,6 +1,6 @@
 import { IModelRules } from './interface';
 
-import { IModelState, Model } from './db/Model';
+import { IModelState, ISelectOneModelRes, Model } from './db/Model';
 import { AppContext } from '../core';
 import { TKey } from './db';
 
@@ -53,16 +53,22 @@ export interface ISoundModelState extends IModelState {
  * @extends Model<ISoundModelState>
  *
  * @example
+ * ```ts
  * // Создание и загрузка звукового файла для Telegram
  * const sound = new SoundTokens(appContext);
  * sound.path = '/path/to/audio.mp3';
  * sound.platform = T_TELEGRAM;
- * const token = await sound.selectOne();
- * if (token) {
- *     console.log('Токен для звукового файла успешно получен, токен:', token);
+ * const found = await sound.selectOne();
+ * if (found.status) {
+ *     console.log('Токен для звукового файла успешно получен, токен:', found.data?.soundToken);
  * } else {
- *     || Загрузка аудиофайла
+ *     // Загрузка аудиофайла в платформу — токен выдаёт API платформы,
+ *     // затем он присваивается модели и запись сохраняется в БД
+ *     sound.soundToken = tokenFromPlatform;
+ *     const saved = await sound.save(true); // save() возвращает boolean, а не токен
+ *     console.log('Запись сохранена:', saved);
  * }
+ * ```
  */
 export class SoundTokens extends Model<ISoundModelState> {
     /**
@@ -73,6 +79,9 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Флаг, указывающий, что передается содержимое файла.
      * Если true, то path содержит содержимое файла, а не путь к нему.
+     * Поле предназначено для пользовательского кода (аналог флага TSoundCallback);
+     * сам фреймворк его не устанавливает и не читает (VK/Sound.ts задаёт одноимённый
+     * флаг на VkRequest, а не на модель).
      * @defaultValue false
      */
     public isAttachContent: boolean;
@@ -80,6 +89,8 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Конструктор класса SoundTokens.
      * Предоставляет унифицированный интерфейс для хранения данных о загруженных аудиофайлах.
+     *
+     * @param {AppContext} appContext - Контекст приложения
      */
     public constructor(appContext: AppContext) {
         super(appContext);
@@ -89,6 +100,9 @@ export class SoundTokens extends Model<ISoundModelState> {
         this.isAttachContent = false;
     }
 
+    /**
+     * Первичный ключ таблицы — soundToken.
+     */
     protected getId(): TKey {
         return 'soundToken';
     }
@@ -104,7 +118,7 @@ export class SoundTokens extends Model<ISoundModelState> {
 
     /**
      * Устанавливает идентификатор звукового файла.
-     * @param soundToken
+     * @param {string | null} soundToken - Токен звукового файла
      */
     set soundToken(soundToken: string | null) {
         this.state.soundToken = soundToken;
@@ -121,7 +135,7 @@ export class SoundTokens extends Model<ISoundModelState> {
 
     /**
      * Устанавливает путь к файлу.
-     * @param path
+     * @param {string | null} path - Путь к аудиофайлу или URL
      */
     set path(path: string | null) {
         this.state.path = path;
@@ -137,16 +151,44 @@ export class SoundTokens extends Model<ISoundModelState> {
 
     /**
      * Устанавливает тип платформы.
-     * @param platform
+     * @param {string} platform - Тип платформы (alisa, telegram, vk и т.д.)
      */
     set platform(platform: string) {
         this.state.platform = platform;
     }
 
     /**
+     * Находит token звукового файла по пути и платформе.
+     *
+     * Для SoundTokens логичный lookup идёт по `path`+`platform`, а не по `soundToken`
+     * (он ещё null на новой модели).
+     *
+     * @returns Promise с результатом поиска `{status, data, error}`. При успехе
+     * `data` содержит найденную запись модели, а не сам токен.
+     */
+    public async selectOne(): Promise<ISelectOneModelRes> {
+        if (this._appContext.database.adapter) {
+            this.queryData.query = {
+                path: this.state.path,
+                platform: this.state.platform,
+            };
+            this.queryData.data = null;
+            return (await this._appContext.database.adapter.select(
+                this.queryData,
+                this.queryData.query,
+                true,
+            )) as ISelectOneModelRes;
+        }
+        return {
+            status: false,
+            error: 'Не указан источник для базы данных',
+        };
+    }
+
+    /**
      * Возвращает название таблицы/файла с данными.
      *
-     * @return {string} Название таблицы для хранения данных о звуковых файлах
+     * @returns {string} Название таблицы для хранения данных о звуковых файлах
      */
     public tableName(): string {
         return SoundTokens.TABLE_NAME;
@@ -155,7 +197,7 @@ export class SoundTokens extends Model<ISoundModelState> {
     /**
      * Определяет правила валидации для полей модели.
      *
-     * @return {IModelRules[]} Массив правил валидации
+     * @returns {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return RULES;
@@ -165,7 +207,7 @@ export class SoundTokens extends Model<ISoundModelState> {
      * Возвращает метки атрибутов таблицы.
      * Используется для отображения понятных названий полей.
      *
-     * @return {ISoundModelState} Объект с метками атрибутов
+     * @returns {ISoundModelState} Объект с метками атрибутов
      */
     public attributeLabels(): ISoundModelState {
         return ATTRS_LABEL;

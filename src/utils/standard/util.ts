@@ -16,6 +16,34 @@ import { IDir } from '../../core/interfaces/IAppContext';
 import { join } from 'node:path';
 
 /**
+ * Безопасная сериализация объекта в JSON-строку.
+ * При ошибке (циклические ссылки, несериализуемые объекты) возвращает строковое представление.
+ * Используется в логировании для защиты от падения JSON.stringify.
+ *
+ * @param data - Данные для сериализации
+ * @param replacer - Функция замены (по умолчанию null)
+ * @param space - Отступы для форматирования; не задан — без отступов (как JSON.stringify)
+ * @returns JSON-строка или строковое представление данных
+ *
+ * @example
+ * ```ts
+ * const result = safeStringify({ a: 1, b: { c: 2 } }, null, '\t');
+ * const circular = safeStringify({ a: circularRef }); // не бросает исключение
+ * ```
+ */
+export function safeStringify(
+    data: unknown,
+    replacer?: ((key: string, value: unknown) => unknown) | null,
+    space?: string,
+): string {
+    try {
+        return JSON.stringify(data, replacer ?? undefined, space);
+    } catch {
+        return String(data);
+    }
+}
+
+/**
  * Интерфейс для GET-параметров
  *
  * @example
@@ -49,7 +77,8 @@ export function rand(min: number, max: number): number {
 
 /**
  * Метод, возвращающий количество ключей в объекте
- * @param obj
+ * @param {object | Record<string, unknown>} obj - Объект для подсчёта ключей
+ * @returns {number} Количество ключей в объекте
  */
 export function keysCount(obj: object | Record<string, unknown>): number {
     // Такой вариант быстрее Object.keys, но до тех пор, пока не был delete.
@@ -61,8 +90,27 @@ export function keysCount(obj: object | Record<string, unknown>): number {
 }
 
 /**
+ * Максимальная суммарная длина сравниваемых строк.
+ * Ограничивает алгоритм LCS (O(n·m)) от блокировки event loop
+ * на очень длинных пользовательских входах или больших словарях.
+ */
+const MAX_SIMILAR_TEXT_TOTAL_LENGTH = 2000;
+
+/**
+ * Размер окна сравнения для длинных строк (в символах).
+ */
+const SIMILAR_SAMPLE_WINDOW = 32;
+
+/**
+ * Количество окон, равномерно распределённых по длине строки при сравнении длинных текстов.
+ */
+const SIMILAR_SAMPLE_COUNT = 8;
+
+/**
  * Вычисляет процент схожести двух текстов
- * Использует алгоритм LCS (Longest Common Subsequence)
+ * При суммарной длине строк до 2000 символов использует алгоритм LCS
+ * (Longest Common Subsequence); свыше — дешёвую эвристику окон
+ * (сравнение нескольких равномерно распределённых участков строк)
  *
  * @param {string} first - Первый текст для сравнения
  * @param {string} second - Второй текст для сравнения
@@ -70,8 +118,8 @@ export function keysCount(obj: object | Record<string, unknown>): number {
  *
  * @example
  * ```ts
- * similarText('привет', 'привт'); // -> ~90
- * similarText('hello', 'world'); // -> ~20
+ * similarText('привет', 'привт'); // -> ~91
+ * similarText('hello', 'world'); // -> 20
  * similarText('same', 'same'); // -> 100
  * ```
  */
@@ -83,7 +131,38 @@ export function similarText(first: string, second: string): number {
         return 0;
     }
 
-    // Helper function to calculate LCS length using dynamic programming
+    // Защита от O(n·m) DoS при очень длинных строках.
+    // Для типичных сценариев (максимум 30-50 символов в команде) лимит не достигается.
+    if (first.length + second.length > MAX_SIMILAR_TEXT_TOTAL_LENGTH) {
+        // Для длинных строк используем дешёвую эвристику, чтобы не грузить
+        // event loop на квадратичном DP.
+        const lengthDiff = Math.abs(first.length - second.length);
+        const maxLen = Math.max(first.length, second.length);
+        if (lengthDiff / maxLen > 0.5) {
+            return 0;
+        }
+        // Сравниваем несколько окон, равномерно распределённых по всей длине
+        // (начало, середину и конец), а не только префикс. Иначе полностью
+        // несовпадающие хвосты давали бы 100% схожесть при равных длинах.
+        const minLen = Math.min(first.length, second.length);
+        const window = Math.min(SIMILAR_SAMPLE_WINDOW, minLen);
+        const lastPos = Math.max(0, minLen - window);
+        let matched = 0;
+        for (let i = 0; i < SIMILAR_SAMPLE_COUNT; i++) {
+            const start = Math.round((lastPos * i) / (SIMILAR_SAMPLE_COUNT - 1));
+            if (first.slice(start, start + window) === second.slice(start, start + window)) {
+                matched++;
+            }
+        }
+        if (matched === 0) {
+            return 0;
+        }
+        const sampleRatio = matched / SIMILAR_SAMPLE_COUNT;
+        const lengthRatio = (maxLen - lengthDiff) / maxLen;
+        return Math.round(sampleRatio * lengthRatio * 100);
+    }
+
+    // Вычисление длины LCS (Longest Common Subsequence) методом динамического программирования
     const lcsLength = (shorter: string, longer: string): number => {
         const dp = new Int32Array(longer.length + 1);
         dp.fill(0, 0, longer.length + 1);
@@ -91,20 +170,63 @@ export function similarText(first: string, second: string): number {
         for (let i = 0; i < shorter.length; i++) {
             let prevDiag = 0;
             for (let j = 0; j < longer.length; j++) {
-                const current = dp[j + 1];
-                dp[j + 1] = shorter[i] === longer[j] ? prevDiag + 1 : Math.max(dp[j + 1], dp[j]);
+                const current = dp[j + 1] ?? 0;
+                dp[j + 1] =
+                    shorter.charAt(i) === longer.charAt(j)
+                        ? prevDiag + 1
+                        : Math.max(dp[j + 1] ?? 0, dp[j] ?? 0);
                 prevDiag = current;
             }
         }
 
-        return dp[longer.length];
+        return dp[longer.length] ?? 0;
     };
 
-    // Ensure shorter string is first for optimization
+    // Гарантируем, что короткая строка идёт первой для оптимизации
     const [a, b] = first.length <= second.length ? [first, second] : [second, first];
     const totalLength = first.length + second.length;
 
     return (lcsLength(a, b) * 200) / totalLength;
+}
+
+/**
+ * Удаляет из текста теги вида `<...>` (HTML, SSML, `<speaker ...>`),
+ * заменяя каждый на `replacement`.
+ *
+ * Результат совпадает с `text.replace(/<[^>]*>/g, replacement)`, но работает
+ * за линейное время: регулярка на строке вида `<<<<…` без закрывающей `>`
+ * от каждой `<` просматривает остаток строки — O(n²) на пользовательском вводе.
+ * Функция предназначена для получения простого текста, а не для санитизации
+ * HTML: одиночная `<` без закрывающей `>` остаётся в тексте как есть.
+ *
+ * @param {string} text - Исходный текст
+ * @param {string} [replacement=''] - Чем заменить каждый тег
+ * @returns {string} Текст без тегов
+ *
+ * @example
+ * ```ts
+ * stripTags('<b>Привет</b>, мир'); // -> 'Привет, мир'
+ * stripTags('x < y'); // -> 'x < y'
+ * ```
+ */
+export function stripTags(text: string, replacement: string = ''): string {
+    let lt = text.indexOf('<');
+    if (lt === -1) {
+        return text;
+    }
+    let result = '';
+    let pos = 0;
+    while (lt !== -1) {
+        const gt = text.indexOf('>', lt + 1);
+        // Закрывающей «>» дальше нет — ни одна последующая «<» тоже не станет тегом.
+        if (gt === -1) {
+            break;
+        }
+        result += text.slice(pos, lt) + replacement;
+        pos = gt + 1;
+        lt = text.indexOf('<', pos);
+    }
+    return result + text.slice(pos);
 }
 
 /**
@@ -147,8 +269,8 @@ export interface FileOperationResult<T> {
 }
 
 /**
- * Быстрое сравнение на то похож введенный текст на имя файла или нет
- * @param str
+ * Быстрая проверка, похож ли текст на имя файла
+ * @param str Проверяемая строка
  */
 function looksLikeFilePath(str: string): boolean {
     const i = str.lastIndexOf('.');
@@ -163,18 +285,23 @@ function looksLikeFilePath(str: string): boolean {
 /**
  * Синхронно проверяет существование файла
  *
+ * Путь должен выглядеть как файл: точка не в начале/конце, расширение
+ * до 5 символов из словесных символов. Путь без расширения (или похожий
+ * на директорию) вернёт false без обращения к файловой системе.
+ *
  * @param {string} file - Путь к проверяемому файлу
  * @returns {boolean} true, если файл существует и это файл, иначе false
  *
  * @example
  * ```ts
- * isFile('path/to/file.txt'); // -> true
- * isFile('path/to/directory'); // -> false
- * isFile('nonexistent.txt'); // -> false
+ * isFileSync('path/to/file.txt'); // -> true
+ * isFileSync('path/to/directory'); // -> false (не похоже на файл)
+ * isFileSync('nonexistent.txt'); // -> false
  * ```
  */
 export function isFileSync(file: string): boolean {
-    // Если в тексте нет точки, значит это явно не файл
+    // Строка должна выглядеть как путь к файлу: точка не в начале/конце,
+    // расширение до 5 символов из словесных символов (looksLikeFilePath)
     if (looksLikeFilePath(file)) {
         const fileInfo = getFileInfoSync(file);
         return !!(fileInfo.success && fileInfo.data?.isFile());
@@ -190,7 +317,7 @@ export function isFileSync(file: string): boolean {
  *
  * @example
  * ```ts
- * const result = getFileInfo('file.txt');
+ * const result = getFileInfoSync('file.txt');
  * if (result.success) {
  *   console.log(result.data.size); // размер файла
  *   console.log(result.data.mtime); // время последнего изменения
@@ -219,7 +346,7 @@ export function getFileInfoSync(fileName: string): FileOperationResult<fs.Stats>
  *
  * @example
  * ```ts
- * const result = fread('file.txt');
+ * const result = freadSync('file.txt');
  * if (result.success) {
  *   console.log(result.data); // содержимое файла
  * } else {
@@ -252,10 +379,10 @@ export function freadSync(fileName: string): FileOperationResult<string> {
  * @example
  * ```ts
  * // Перезапись файла
- * fwrite('file.txt', 'new content');
+ * fwriteSync('file.txt', 'new content');
  *
  * // Добавление в конец файла
- * fwrite('file.txt', 'additional content', 'a');
+ * fwriteSync('file.txt', 'additional content', 'a');
  * ```
  */
 export function fwriteSync(
@@ -263,16 +390,30 @@ export function fwriteSync(
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): FileOperationResult<void> {
+    // Уникальный tmp-суффикс защищает от race condition при параллельной записи
+    // одного и того же файла из разных частей кода (или процессов).
+    // Без него два writer'а используют один tmp-файл и данные чередуются.
+    const tmpPath =
+        mode === 'w'
+            ? `${fileName}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 9)}.tmp`
+            : undefined;
     try {
         if (mode === 'w') {
-            const tmpPath = `${fileName}.tmp`;
-            fs.writeFileSync(tmpPath, fileContent);
-            fs.renameSync(tmpPath, fileName);
+            fs.writeFileSync(tmpPath!, fileContent);
+            fs.renameSync(tmpPath!, fileName);
         } else {
             fs.appendFileSync(fileName, fileContent);
         }
         return { success: true };
     } catch (error) {
+        // Удаляем осиротевший tmp-файл при ошибке
+        if (tmpPath) {
+            try {
+                fs.unlinkSync(tmpPath);
+            } catch {
+                // Игнорируем ошибку удаления tmp файла
+            }
+        }
         return {
             success: false,
             error: error instanceof Error ? error : new Error('Failed to write file'),
@@ -288,9 +429,9 @@ export function fwriteSync(
  *
  * @example
  * ```ts
- * const result = unlink('file.txt');
+ * const result = unlinkSync('file.txt');
  * if (result.success) {
- *   console.log('File deleted successfully');
+ *   console.log('Файл успешно удалён');
  * } else {
  *   console.error(result.error);
  * }
@@ -309,15 +450,18 @@ export function unlinkSync(fileName: string): FileOperationResult<void> {
 }
 
 /**
- * Синхронно проверяет существование директории
+ * Синхронно проверяет существование пути в файловой системе
  *
- * @param {string} path - Путь к директории
- * @returns {boolean} true, если директория существует, иначе false
+ * Реализация использует fs.existsSync, поэтому вернёт true и для обычного файла,
+ * а не только для директории.
+ *
+ * @param {string} path - Путь для проверки
+ * @returns {boolean} true, если путь существует в файловой системе (не обязательно директория), иначе false
  *
  * @example
  * ```ts
- * isDir('path/to/directory'); // -> true
- * isDir('nonexistent/dir'); // -> false
+ * isDirSync('path/to/directory'); // -> true
+ * isDirSync('nonexistent/dir'); // -> false
  * ```
  */
 export function isDirSync(path: string): boolean {
@@ -337,9 +481,9 @@ export function isDirSync(path: string): boolean {
  *
  * @example
  * ```ts
- * const result = mkdir('new/directory');
+ * const result = mkdirSync('new/directory');
  * if (result.success) {
- *   console.log('Directory created successfully');
+ *   console.log('Директория успешно создана');
  * } else {
  *   console.error(result.error);
  * }
@@ -358,11 +502,14 @@ export function mkdirSync(path: string, mask: fs.Mode = '0774'): FileOperationRe
 }
 
 /**
- * Синхронно сохраняет данные в файл
+ * Синхронно сохраняет данные в файл.
+ * data обязана быть валидной JSON-строкой: при невалидном JSON сохранение
+ * не выполняется и возвращается false (ошибка логируется через errorLogger).
+ * Асинхронный аналог saveData этой проверки не делает.
  * @param {IDir} dir - Объект с путем и названием файла
- * @param {string} data - Сохраняемые данные
- * @param {string} mode - Режим записи
- * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
+ * @param {string} data - Сохраняемые данные (валидная JSON-строка)
+ * @param {string} [mode] - Режим записи
+ * @param {TLoggerCb} [errorLogger] - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
 export function saveDataSync(
@@ -385,6 +532,7 @@ export function saveDataSync(
                 mode,
             },
         );
+        return false;
     }
     const res = fwriteSync(join(dir.path, dir.fileName), data, mode);
     if (!res.success) {
@@ -402,14 +550,14 @@ export function saveDataSync(
 }
 
 /**
- * Синхронно возвращает информацию о файле
+ * Асинхронно возвращает информацию о файле
  *
  * @param {string} fileName - Путь к файлу
- * @returns {FileOperationResult<fs.Stats>} Результат операции с информацией о файле
+ * @returns {Promise<FileOperationResult<fs.Stats>>} Результат операции с информацией о файле
  *
  * @example
  * ```ts
- * const result = getFileInfo('file.txt');
+ * const result = await getFileInfo('file.txt');
  * if (result.success) {
  *   console.log(result.data.size); // размер файла
  *   console.log(result.data.mtime); // время последнего изменения
@@ -431,20 +579,25 @@ export async function getFileInfo(fileName: string): Promise<FileOperationResult
 }
 
 /**
- * Синхронно проверяет существование файла
+ * Асинхронно проверяет существование файла
+ *
+ * Путь должен выглядеть как файл: точка не в начале/конце, расширение
+ * до 5 символов из словесных символов. Путь без расширения (или похожий
+ * на директорию) вернёт false без обращения к файловой системе.
  *
  * @param {string} file - Путь к проверяемому файлу
- * @returns {boolean} true, если файл существует и это файл, иначе false
+ * @returns {Promise<boolean>} true, если файл существует и это файл, иначе false
  *
  * @example
  * ```ts
- * isFile('path/to/file.txt'); // -> true
- * isFile('path/to/directory'); // -> false
- * isFile('nonexistent.txt'); // -> false
+ * await isFile('path/to/file.txt'); // -> true
+ * await isFile('path/to/directory'); // -> false (не похоже на файл)
+ * await isFile('nonexistent.txt'); // -> false
  * ```
  */
 export async function isFile(file: string): Promise<boolean> {
-    // Если в тексте нет точки, значит это явно не файл
+    // Строка должна выглядеть как путь к файлу: точка не в начале/конце,
+    // расширение до 5 символов из словесных символов (looksLikeFilePath)
     if (looksLikeFilePath(file)) {
         const fileInfo = await getFileInfo(file);
         return !!(fileInfo.success && fileInfo.data?.isFile());
@@ -513,16 +666,29 @@ export async function fwrite(
     fileContent: string | Uint8Array,
     mode: 'w' | 'a' | string = 'w',
 ): Promise<FileOperationResult<void>> {
+    // Уникальный tmp-суффикс — защита от race condition при параллельной записи.
+    // См. fwriteSync — та же логика.
+    const tmpPath =
+        mode === 'w'
+            ? `${fileName}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 9)}.tmp`
+            : undefined;
     try {
         if (mode === 'w') {
-            const tmpPath = `${fileName}.tmp`;
-            await fsPromises.writeFile(tmpPath, fileContent);
-            await fsPromises.rename(tmpPath, fileName);
+            await fsPromises.writeFile(tmpPath!, fileContent);
+            await fsPromises.rename(tmpPath!, fileName);
         } else {
             await fsPromises.appendFile(fileName, fileContent);
         }
         return { success: true };
     } catch (error) {
+        // Удаляем осиротевший tmp-файл при ошибке
+        if (tmpPath) {
+            try {
+                await fsPromises.unlink(tmpPath);
+            } catch {
+                // Игнорируем ошибку удаления tmp файла
+            }
+        }
         return {
             success: false,
             error: error instanceof Error ? error : new Error('Failed to write file'),
@@ -551,8 +717,8 @@ export async function unlink(fileName: string): Promise<FileOperationResult<void
  * Сохраняет данные в файл
  * @param {IDir} dir - Объект с путем и названием файла
  * @param {string} data - Сохраняемые данные
- * @param {string} mode - Режим записи
- * @param {TLoggerCb} errorLogger - Функция для логирования ошибок
+ * @param {string} [mode] - Режим записи
+ * @param {TLoggerCb} [errorLogger] - Функция для логирования ошибок
  * @returns {boolean} true в случае успешного сохранения
  */
 export async function saveData(
@@ -564,20 +730,14 @@ export async function saveData(
     if (!(await isDir(dir.path))) {
         await mkdir(dir.path);
     }
-    if (data.startsWith('{')) {
-        try {
-            JSON.parse(data);
-        } catch (e) {
-            errorLogger?.(
-                `Ошибка при сохранении данных в файл: "${dir.path}/${dir.fileName}", так как данные не в json формате. Ошибка: ${(e as Error).message}`,
-                {
-                    error: e,
-                    data,
-                    mode,
-                },
-            );
-        }
-    }
+    // Валидация JSON здесь намеренно не выполняется (в отличие от saveDataSync):
+    // асинхронная запись никогда не блокируется на невалидном JSON, а единственные
+    // реальные вызывающие передают либо только что сериализованный JSON
+    // (AppContext.saveFileData), либо не-JSON строки лога в режиме дозаписи
+    // (AppContext.#saveLog, mode='a'). Повторный JSON.parse всего объёма данных
+    // приводил к лишней сериализации всей таблицы при каждом сохранении FileAdapter,
+    // а для строк лога, начинающихся с "[timestamp]", гарантированно падал и через
+    // errorLogger запускал бесконечный цикл самовоспроизводящихся ошибок.
     const res = await fwrite(join(dir.path, dir.fileName), data, mode);
     if (!res.success) {
         errorLogger?.(
@@ -615,13 +775,27 @@ export async function saveData(
  * ```
  */
 export function httpBuildQuery(formData: IGetParams, separator: string = '&'): string {
-    return Object.entries(formData)
-        .map(([key, value]) => {
-            const encodedKey = encodeURI(key);
-            const encodedValue = encodeURI(String(value)).replace(/%20/g, '+');
-            return `${encodedKey}=${encodedValue}`;
-        })
-        .join(separator);
+    let result = '';
+    let isFirst = true;
+    for (const key in formData) {
+        if (!Object.prototype.hasOwnProperty.call(formData, key)) {
+            continue;
+        }
+        // Пропускаем пустые значения: String(undefined) даёт строку "undefined",
+        // и такое поле уходило в тело запроса, ломая ответ API платформы.
+        if (formData[key] === undefined || formData[key] === null) {
+            continue;
+        }
+        const encodedKey = encodeURIComponent(key);
+        const encodedValue = encodeURIComponent(String(formData[key])).replace(/%20/g, '+');
+        if (isFirst) {
+            result = `${encodedKey}=${encodedValue}`;
+            isFirst = false;
+        } else {
+            result += `${separator}${encodedKey}=${encodedValue}`;
+        }
+    }
+    return result;
 }
 
 /**
@@ -631,9 +805,9 @@ export function httpBuildQuery(formData: IGetParams, separator: string = '&'): s
  *
  * @example
  * ```ts
- * // В консоли:
- * // > Enter your name: John
- * const name = await stdin(); // -> 'John'
+ * // Приглашение нужно напечатать самостоятельно, stdin() ничего не выводит:
+ * // console.log('Enter your name:');
+ * const name = await stdin(); // -> 'John' (введённая строка)
  * ```
  */
 export function stdin(): Promise<string> {

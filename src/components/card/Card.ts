@@ -38,7 +38,8 @@ export class Card {
 
     /**
      * Массив с изображениями или элементами карточки.
-     * Каждый элемент может содержать изображение, заголовок, описание и кнопки.
+     * Каждый элемент может содержать изображение, заголовок, описание,
+     * а опционально — и кнопки (button в IImageType).
      * @see IImageType
      * @example
      * ```ts
@@ -87,17 +88,10 @@ export class Card {
     /**
      * Произвольный шаблон для отображения карточки.
      * Используется для кастомизации отображения на определенных платформах.
-     * ⚠️ ОПАСНО: Использование этого свойства полностью обходит адаптеры платформ.
-     * Данные отправляются платформе «как есть» без преобразования в её формат.
-     *
-     * Последствия:
-     * - Карточка может не отобразиться на других платформах
-     * - Нарушается кроссплатформенность фреймворка
-     * - Ответственность за корректность формата лежит на разработчике
-     *
-     * Используйте ТОЛЬКО если:
-     * - Вы точно знаете формат ответа целевой платформы
-     * - Стандартные методы (`addImage()`, `addButton()`) не решают задачу
+     * Данные отправляются платформе «как есть» без преобразования в её формат:
+     * карточка может не отобразиться на других платформах, ответственность
+     * за корректность формата лежит на разработчике. Для типовых задач
+     * лучше подходят стандартные методы (`addImage()`, `addButton()`).
      * @example
      * ```ts
      * card.template = {
@@ -114,20 +108,20 @@ export class Card {
     #appContext: AppContext;
 
     /**
+     * Предупреждение про Card.template выводится один раз — иначе оно
+     * замусоривало бы логи при каждом getCards().
+     * @private
+     */
+    #warnedTemplate = false;
+
+    /**
      * Карточка с изображениями, заголовком и кнопками.
      *
      * Предоставляет унифицированный интерфейс для описания контента.
      * Фактическая адаптация под формат целевой платформы происходит
      * в адаптере платформы при вызове метода `getCards()`.
-     * @param appContext Контекст приложения
-     * ⚠️ Обычно НЕ создаётся вручную — автоматически передаётся через контроллер:
-     * ```ts
-     * // Правильно — через контроллер:
-     * this.card.addImage('token', 'Title');
-     *
-     * // НЕ рекомендуется — ручное создание:
-     * new Card(this.appContext); // appContext берётся из контроллера
-     * ```
+     * @param appContext Контекст приложения. Обычно не создаётся вручную —
+     * передаётся через контроллер (`this.card.addImage('token', 'Title')`).
      */
     public constructor(appContext: AppContext) {
         this.isOne = false;
@@ -140,8 +134,9 @@ export class Card {
     }
 
     /**
-     * Устанавливает контекст приложения.
-     * @param appContext
+     * Устанавливает контекст приложения (обновляет и вложенную коллекцию кнопок).
+     * @param {AppContext} appContext - Контекст приложения
+     * @returns {this} Текущий экземпляр для цепочки вызовов
      */
     public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
@@ -200,25 +195,37 @@ export class Card {
     }
 
     /**
-     * Очищает все элементы карточки.
+     * Очищает все элементы карточки, включая заголовок, описание, шаблон и
+     * кнопки карточки, а также сбрасывает флаги isOne и isUsedGallery.
+     *
+     * Сбрасывается всё: при переиспользовании контроллера (`BotTest`,
+     * `_setBotController`) иначе заголовок, описание и `template` прошлого
+     * запроса попали бы в новый ответ.
+     *
      * @returns {void}
      * @example
      * ```ts
-     * card.clear(); // Удалить все изображения
+     * card.clear(); // Удалить все изображения, заголовок, описание, шаблон и флаги
      * ```
      */
     public clear(): void {
         this.images = [];
         this.isOne = false;
         this.isUsedGallery = false;
+        this.title = null;
+        this.desc = null;
+        this.template = null;
+        // Кнопки карточки (футер/кнопка галереи) тоже относятся к ответу
+        // и не должны попасть в следующий запрос переиспользуемого контроллера.
+        this.button.clear();
     }
 
     /**
      * Добавляет изображение в карточку.
-     * @param {string} image - Идентификатор или URL изображения
+     * @param {string | null} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton} [button=null] - Кнопки для элемента
+     * @param {string} [desc=''] - Описание изображения
+     * @param {TButton | null} [button=null] - Кнопки для элемента
      * @returns {Card}
      *
      * @remarks
@@ -249,8 +256,8 @@ export class Card {
      */
     public addImage(
         image: string | null,
-        title: string = ' ',
-        desc: string = ' ',
+        title: string = '',
+        desc: string = '',
         button: TButton | null = null,
     ): this {
         const img = getImage(this.#appContext, image, title, desc, button);
@@ -264,16 +271,16 @@ export class Card {
      * Добавляет одно изображение в виде карточки. Внутри себя выставляет isOne в true.
      * Если ранее были указаны другие изображения, то они очистятся.
      * Стоит использовать в том случае, если у вас всегда должно отобразиться только 1 изображение.
-     * @param {string} image - Идентификатор или URL изображения
+     * @param {string | null} image - Идентификатор или URL изображения
      * @param {string} title - Заголовок изображения
-     * @param {string} [desc=' '] - Описание изображения
-     * @param {TButton} [button=null] - Кнопки для элемента
+     * @param {string} [desc=''] - Описание изображения
+     * @param {TButton | null} [button=null] - Кнопки для элемента
      * @returns {Card}
      */
     public addOneImage(
         image: string | null,
-        title: string = ' ',
-        desc: string = ' ',
+        title: string = '',
+        desc: string = '',
         button: TButton | null = null,
     ): this {
         this.isOne = true;
@@ -283,12 +290,36 @@ export class Card {
 
     /**
      * Получает карточку в формате для текущей платформы.
+     *
+     * Метод возвращает результат `cardProcessing` как есть: если процессор
+     * адаптера асинхронный (Telegram, VK, Алиса, Маруся, MAX) — вернётся
+     * Promise и вызов нужно делать с `await`; синхронные процессоры
+     * (Viber, SmartApp) дополнительного `await` не требуют.
+     *
+     * @param {TCardProcessing<TResult>} cardProcessing - Функция обработки карточек для платформы
+     * @param {BotController} controller - Контроллер бота
+     * @returns {TResult} Карточка в формате платформы
+     *
+     * @example
+     * ```ts
+     * // Асинхронный процессор (Telegram, VK, Алиса, Маруся, MAX) — нужен await:
+     * const cardData = await card.getCards(myAsyncCardProcessing, controller);
+     *
+     * // Синхронный процессор (Viber, SmartApp) — без await:
+     * const cardData = card.getCards(mySyncCardProcessing, controller);
+     * ```
      */
     public getCards<TResult = unknown>(
         cardProcessing: TCardProcessing<TResult>,
         controller: BotController,
     ): TResult {
         if (this.template) {
+            if (!this.#warnedTemplate) {
+                this.#warnedTemplate = true;
+                this.#appContext.logWarn(
+                    'Card.getCards(): Используется Card.template — обход адаптеров платформ. Ответ отправляется без преобразования.',
+                );
+            }
             return this.template as TResult;
         }
         return cardProcessing(

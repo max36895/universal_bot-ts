@@ -36,10 +36,12 @@ export class UserAppController extends BotController {
 
             case 'save':
                 this.text = 'Сохранено!';
-                this.userData = {
+                // Данные нужно мержить, а не перезаписывать:
+                // переопределение userData ломает сохранение в базу.
+                Object.assign(this.userData, {
                     userId: this.userId,
                     saved: this.userCommand,
-                };
+                });
                 break;
 
             case 'by':

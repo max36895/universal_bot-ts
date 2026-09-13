@@ -20,6 +20,10 @@
  */
 export type TModelRulesType = 'text' | 'string' | 'integer' | 'date' | 'int' | 'bool';
 
+/**
+ * Базовый интерфейс для данных модели.
+ * Используется как тип по умолчанию для IModelRes и методов модели.
+ */
 export interface IDataValue {
     [key: string]: unknown;
 }
@@ -133,15 +137,15 @@ export interface IModelRes<TModelData = IDataValue> {
  *
  * @example
  * ```ts
- * const queryCallback: TQueryCb = async (client, db) => {
+ * const queryCallback: TQueryCb<MongoClient, Db> = async (client, db) => {
  *   const collection = db.collection('users');
  *   const result = await collection.find({}).toArray();
  *   return { status: true, data: result };
  * };
  * ```
  *
- * @param client - Клиент MongoDB для выполнения запросов
- * @param db - Экземпляр базы данных MongoDB
+ * @param client - Клиент подключения (тип зависит от адаптера БД; для MongoAdapter — MongoClient)
+ * @param db - Дескриптор базы данных (тип зависит от адаптера БД; для MongoAdapter — Db)
  * @returns Promise с результатом выполнения запроса
  */
 export type TQueryCb<TClient = unknown, TDB = unknown> = (

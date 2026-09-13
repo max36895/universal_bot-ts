@@ -4,12 +4,13 @@
  * Time: {{time}}
  */
 import { Bot, FALLBACK_COMMAND } from 'umbot';
-import { fullPlatforms } from 'umbot/plugins';
+import { fullPlatforms, FileAdapter } from 'umbot/plugins';
 import {{name}}Config from './config/{{name}}Config';
 import {{name}}Params from './config/{{name}}Params';
 
 const bot = new Bot();
 bot.use(fullPlatforms);
+bot.use(new FileAdapter());
 bot.setAppConfig({{name}}Config());
 bot.setPlatformParams({{name}}Params());
 
@@ -19,9 +20,7 @@ bot.addCommand('my_command',['my slots'], (_, botController) => {
 
 // Fallback
 bot.addCommand(FALLBACK_COMMAND, [], (_, botController) => {
-  if (botController) {
     botController.text = 'Я вас не понял. Скажите "помощь", чтобы получить список всех команд.';
-  }
 });
 
 bot.setAppMode('dev');

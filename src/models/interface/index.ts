@@ -1,36 +1,23 @@
 /**
  * Модуль интерфейсов для работы с данными
  *
- * Предоставляет базовые интерфейсы для:
- * - Определения контрактов моделей данных
- * - Управления подключением к базе данных
- * - Работы с контроллерами моделей
+ * Предоставляет базовые контракты моделей:
+ * - Правила валидации полей модели (IModelRules)
+ * - Формат результата запроса к БД (IModelRes)
+ * - Тип колбэка для произвольных запросов (TQueryCb)
  *
  * @example
  * ```ts
- * import { IModel, IDbControllerModel } from './models/interface';
+ * import { IModelRules, IModelRes } from './models/interface';
  *
- * // Реализация базовой модели
- * class MyModel implements IModel {
- *   async get(id: string): Promise<any> {
- *     // Реализация получения данных
- *   }
+ * // Правила валидации полей модели
+ * const RULES: IModelRules[] = [
+ *     { name: ['userId'], type: 'string', max: 250 },
+ *     { name: ['score'], type: 'integer' },
+ * ];
  *
- *   async set(id: string, data: any): Promise<void> {
- *     // Реализация сохранения данных
- *   }
- * }
- *
- * // Реализация контроллера базы данных
- * class MyDbController implements IDbControllerModel {
- *   async connect(): Promise<void> {
- *     // Реализация подключения к БД
- *   }
- *
- *   async disconnect(): Promise<void> {
- *     // Реализация отключения от БД
- *   }
- * }
+ * // Результат запроса к БД
+ * const res: IModelRes = { status: true, data: { userId: '123' } };
  * ```
  */
 export * from './IModel';

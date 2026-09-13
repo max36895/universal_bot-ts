@@ -5,7 +5,21 @@ const globals = require('globals');
 
 module.exports = [
     {
-        ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'doc/**', 'examples/**'],
+        ignores: [
+            'node_modules/**',
+            'dist/**',
+            'coverage/**',
+            'doc/**',
+            'examples/**',
+            // Сгенерированные CLI-проекты — это выход генератора, а не исходники umbot
+            'build_mode_test/**',
+            'dev_min_test/**',
+            'dev_mode_test/**',
+            // Песочницы аудита/профилировки: сгенерированные CLI-проекты и
+            // отладочные скрипты вне дерева исходников
+            'audit/**',
+            'tmp-surgery/**',
+        ],
     },
     {
         files: ['**/*.ts'],
@@ -63,6 +77,9 @@ module.exports = [
             '@typescript-eslint/await-thenable': 'error',
 
             'require-atomic-updates': 'error',
+            // Фигурные скобки обязательны у всех if/else/for/while — однострочные
+            // ветки (if (x) return;) запрещены: единый стиль по всему проекту.
+            curly: ['error', 'all'],
             'max-lines-per-function': ['warn', { max: 100 }], // Меньшее значение мешает, из-за чего приходиться дробить метод, либо убирать логические разделения, благодаря которым удобнее читать код
             'no-prototype-builtins': 'warn',
             'no-constant-condition': 'warn',
@@ -85,7 +102,7 @@ module.exports = [
         },
     },
     {
-        files: ['tests/**/*.test.ts', 'tests/**/*.ts'],
+        files: ['tests/**/*.test.ts', 'tests/**/*.ts', '*.test.ts'],
         languageOptions: {
             parserOptions: {
                 projectService: false,
@@ -108,11 +125,25 @@ module.exports = [
     {
         files: ['cli/**/*.js', 'cli/**/*.ts'],
         languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'commonjs',
             parserOptions: {
                 projectService: false,
             },
+            globals: {
+                ...globals.node,
+            },
+        },
+        plugins: {
+            '@typescript-eslint': tseslint.plugin,
+            security: require('eslint-plugin-security'),
         },
         rules: {
+            ...eslint.configs.recommended.rules,
+            'security/detect-unsafe-regex': 'error',
+            'no-eval': 'error',
+            'no-implied-eval': 'error',
+            'no-new-func': 'error',
             '@typescript-eslint/await-thenable': 'off',
             '@typescript-eslint/no-misused-promises': 'off',
             '@typescript-eslint/no-floating-promises': 'off',

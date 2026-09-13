@@ -12,8 +12,8 @@ import { getErrorMsg } from './constants';
  *
  * @example
  * ```ts
- * // Создание экземпляра
- * const api = new YandexRequest('your-token');
+ * // Создание экземпляра (appContext обязателен)
+ * const api = new YandexRequest('your-token', appContext);
  *
  * // Установка нового токена
  * api.setOAuth('new-token');
@@ -25,7 +25,7 @@ import { getErrorMsg } from './constants';
  *   console.log(result);
  * } else {
  *   // Обработка ошибки
- *   console.error(api.#error);
+ *   console.error('Ошибка запроса к API Яндекса');
  * }
  * ```
  */
@@ -45,7 +45,7 @@ export class YandexRequest {
     #oauth: string | null | undefined;
 
     /**
-     * Текст последней ошибки
+     * Последняя ошибка (объект ответа API, Error или текст)
      *
      * Содержит информацию о последней возникшей ошибке
      * при выполнении запроса к API.
@@ -64,32 +64,35 @@ export class YandexRequest {
      * параметры HTTP-запросов.
      *
      * @param {string | null} [oauth=null] - OAuth-токен для авторизации
-     * @param {AppContext} [appContext] - Контекст приложения
+     * @param {AppContext} appContext - Контекст приложения (обязательный параметр)
      *
      * @remarks
-     * Если токен не указан, будет использован токен из appContext.platformParams.yandex_token.
+     * Если токен не указан, будет использован токен из `appConfig.tokens.alisa.token`
+     * (env-переменная `ALISA_TOKEN`, устаревший вариант — `YANDEX_TOKEN`).
      * Если и там токена нет, запросы будут выполняться без авторизации.
      *
      * @example
      * ```ts
      * // Создание с токеном
-     * const api = new YandexRequest('your-token');
+     * const api = new YandexRequest('your-token', appContext);
      *
-     * // Создание без токена (будет использован токен из appContext.platformParams)
-     * const api = new YandexRequest();
-     *
-     * // Создание без авторизации
-     * const api = new YandexRequest(null);
+     * // Создание без токена (будет использован ALISA_TOKEN из конфигурации)
+     * const api = new YandexRequest(null, appContext);
      * ```
      */
     public constructor(oauth: string | null = null, appContext: AppContext) {
         this._request = new Request(appContext);
         this._appContext = appContext;
         this.setOAuth(oauth || appContext.appConfig.tokens[T_ALISA]?.token || null);
-        this._request.maxTimeQuery = 1500;
+        // Загрузка ресурсов и синтез речи на медленном соединении не укладываются
+        // в 1,5 секунды, поэтому оставляем ограниченный, но реалистичный таймаут.
+        this._request.maxTimeQuery = 15_000;
         this.#error = null;
     }
 
+    /**
+     * Возвращает установленный OAuth-токен (или null, если авторизация отключена).
+     */
     public get oauth(): string | null | undefined {
         return this.#oauth;
     }
@@ -110,7 +113,7 @@ export class YandexRequest {
      *
      * @example
      * ```ts
-     * const api = new YandexRequest();
+     * const api = new YandexRequest(null, appContext);
      *
      * // Установка нового токена
      * api.setOAuth('new-token');
@@ -124,14 +127,26 @@ export class YandexRequest {
      */
     public setOAuth(oauth: string | null): void {
         this.#oauth = oauth;
-        if (this._request.header) {
-            this._request.header = {
-                ...this._request.header,
-                Authorization: `OAuth ${this.#oauth}`,
-            };
-        } else {
-            this._request.header = { Authorization: `OAuth ${this.#oauth}` };
+        const headers = { ...(this._request.header as Record<string, string> | null) };
+        delete headers.Authorization;
+        if (oauth) {
+            headers.Authorization = this._getAuthorizationHeader(oauth);
         }
+        this._request.header = Object.keys(headers).length ? headers : null;
+    }
+
+    /**
+     * Формирует значение заголовка Authorization для токена.
+     *
+     * API Яндекс.Диалогов (загрузка изображений и звуков) принимает схему `OAuth`.
+     * Сервисы Yandex Cloud используют другие схемы — наследники переопределяют метод
+     * (см. YandexSpeechKit).
+     *
+     * @param token Токен авторизации
+     * @returns Значение заголовка Authorization
+     */
+    protected _getAuthorizationHeader(token: string): string {
+        return `OAuth ${token}`;
     }
 
     /**
@@ -142,9 +157,7 @@ export class YandexRequest {
      *
      * @template T - Тип ожидаемого ответа, наследующий интерфейс IYandexApi
      * @param {string | null} [url=null] - URL-адрес эндпоинта API
-     * @returns {Promise<T | null>} - Результат запроса или null в случае ошибки
-     *
-     * @throws {Error} Если произошла ошибка сети или сервера
+     * @returns {Promise<T | null>} - Результат запроса или null в случае ошибки сети/Request
      *
      * @example
      * ```ts
@@ -155,23 +168,25 @@ export class YandexRequest {
      *   };
      * }
      *
-     * const api = new YandexRequest('token');
+     * const api = new YandexRequest('token', appContext);
      *
-     * try {
-     *   // Выполнение запроса
-     *   const response = await api.call<MyApiResponse>('...');
+     * // Выполнение запроса (метод не выбрасывает исключений).
+     * // При ошибке API ответ содержит поле error — проверяйте его явно;
+     * // null возвращается только при ошибке сети/Request.
+     * const response = await api.call<MyApiResponse>('...');
      *
-     *   if (response) {
+     * if (response) {
+     *   if ('error' in response) {
+     *     // Обработка ошибки API
+     *     console.error('Ошибка API:', response.error);
+     *   } else {
      *     // Обработка успешного ответа
      *     console.log('ID:', response.data.id);
      *     console.log('Name:', response.data.name);
-     *   } else {
-     *     // Обработка ошибки API
-     *     console.error('Ошибка API:', api.#error);
      *   }
-     * } catch (error) {
-     *   // Обработка ошибок сети или сервера
-     *   console.error('Ошибка запроса:', error);
+     * } else {
+     *   // Обработка ошибки сети/Request
+     *   console.error('Ошибка запроса к API Яндекса');
      * }
      * ```
      */
@@ -190,14 +205,14 @@ export class YandexRequest {
     }
 
     /**
-     * Сохраняет информацию об ошибках в лог-файл
+     * Пишет информацию об ошибках через AppContext.logError (структурированный логгер)
      *
-     * Записывает детальную информацию об ошибке в файл логов,
-     * включая время возникновения, URL запроса и текст ошибки.
+     * Логирует детальную информацию об ошибке,
+     * включая URL запроса и текст ошибки.
      *
-     * @param {string} [error=''] - Текст ошибки для логирования
+     * @param {Error | string} [error=''] - Текст ошибки или объект ошибки
      */
-    protected _log(error: string = ''): void {
+    protected _log(error: Error | string = ''): void {
         this._appContext.logError(getErrorMsg(error, 'YandexRequest', this._request.url), {
             error: this.#error,
         });

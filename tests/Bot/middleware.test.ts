@@ -1,7 +1,8 @@
-import { Bot, unlinkSync } from '../../src';
+import { Bot } from '../../src';
+import { BotController } from '../../src/controller';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { IAlisaWebhookResponse } from '../../src/plugins/platforms/Alisa/interfaces/IAlisaPlatform';
-import { join } from 'node:path';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 function getContent(query: string, count = 0): string {
     return JSON.stringify({
@@ -40,6 +41,12 @@ describe('Middleware', () => {
 
     beforeAll(() => {
         bot = new Bot();
+        // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень
+        // репозитория. Перенаправляем в тестовую папку (tests/.tmp) —
+        // артефакты в репо не попадают, а путь при отладке известен.
+        bot.setAppConfig({
+            json: createTestDir('middleware'),
+        });
         bot.setLogger({
             error: () => {},
             warn: () => {},
@@ -55,9 +62,11 @@ describe('Middleware', () => {
         bot.clearCommands();
         bot.clearUse();
     });
-    afterAll(() => {
-        bot.close();
-        unlinkSync(join(bot.getAppContext().appConfig.json, 'UsersData.json'));
+    afterAll(async () => {
+        // close() флашит таблицы FileAdapter в json/: без await removeTestDir
+        // удалит папку раньше, чем асинхронная запись пересоздаст её с файлами.
+        await bot.close();
+        await removeTestDir(bot.getAppContext().appConfig.json);
     });
 
     it('should call global middleware', async () => {
@@ -97,6 +106,14 @@ describe('Middleware', () => {
     });
 
     it('should skip BotController.action() if next() is not called', async () => {
+        const actionSpy = jest.fn();
+        bot.initBotController(
+            class extends BotController {
+                action(): void {
+                    actionSpy();
+                }
+            },
+        );
         bot.use((ctx, _) => {
             ctx.text = 'Прервано middleware';
             ctx.isEnd = true;
@@ -106,7 +123,10 @@ describe('Middleware', () => {
         bot.setContent(getContent('test'));
         const result = (await bot.run()) as IAlisaWebhookResponse;
 
-        expect(result.response?.text).toBe(undefined);
+        // action() не выполняется — middleware прервал цепочку
+        expect(actionSpy).not.toHaveBeenCalled();
+        // Текст, выставленный middleware, доставляется пользователю через адаптер платформы
+        expect(result.response?.text).toBe('Прервано middleware');
     });
 
     it('should execute middlewares in order', async () => {

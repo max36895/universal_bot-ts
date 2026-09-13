@@ -1,5 +1,8 @@
+/**
+ * Обработка звуков Алисы: стандартные звуки, `<speaker>` и TTS-эффекты в тексте озвучки.
+ */
 import { ISoundInfo, ISound, BotController, SoundConstants, IEffect } from '../../../index';
-import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
+import { getSoundToken, defaultSoundProcessing, cacheMediaToken } from '../Base/utils';
 import { T_ALISA } from './constants';
 import { YandexSoundRequest } from '../API';
 
@@ -295,7 +298,7 @@ const STANDARD_EFFECTS: IEffect[] = [
     },
     {
         key: SoundConstants.S_EFFECT_TRAIN_ANNOUNCE,
-        effect: '<speaker effect="train_announce"',
+        effect: '<speaker effect="train_announce">',
     },
     {
         key: SoundConstants.S_EFFECT_END,
@@ -307,6 +310,7 @@ const STANDARD_EFFECTS: IEffect[] = [
  * Получение токена, необходимого для воспроизведения звуков в Алисе
  * @param controller Контроллер приложения
  * @param path Путь до аудиофайла
+ * @returns Токен загруженного звука либо `null` при ошибке загрузки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
@@ -321,9 +325,8 @@ export async function getSoundInDB(
         const res = await yandexApi.downloadSoundFile(path);
         if (res?.id) {
             model.soundToken = res.id;
-            if (await model.save(true)) {
-                return model.soundToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
@@ -332,6 +335,7 @@ export async function getSoundInDB(
 /**
  * Получение корректного ответа для озвучивания запроса пользователю Алисы
  * @param soundInfo Информация необходимая для обработки аудио
+ * @returns Строка TTS с подставленными тегами стандартных звуков и эффектов Алисы
  */
 export function soundProcessing(soundInfo: ISoundInfo): string {
     return defaultSoundProcessing(soundInfo, STANDARD_SOUNDS, STANDARD_EFFECTS);

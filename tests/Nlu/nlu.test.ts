@@ -79,7 +79,7 @@ describe('Nlu test', () => {
         expect(Nlu.getPhone('123456').status).toBe(true);
         expect(Nlu.getPhone('12-34-56').status).toBe(true);
         expect(Nlu.getPhone('89999999999').status).toBe(true);
-        expect(Nlu.getPhone('8(999).toBe(true)999-99-99').status);
+        expect(Nlu.getPhone('8(999)999-99-99').status).toBe(true);
         expect(Nlu.getPhone('512').status).toBe(false);
         expect(Nlu.getPhone('test').status).toBe(false);
     });
@@ -97,6 +97,31 @@ describe('Nlu test', () => {
         expect(Nlu.getLink('https://test.test').status).toBe(true);
         expect(Nlu.getLink('http://test.ru').status).toBe(true);
         expect(Nlu.getLink('http://test.test').status).toBe(true);
+    });
+
+    it('Find link: полное значение не обрезается на точках', () => {
+        // Регрессия: регулярка исключала точку из совпадения и резала любую ссылку
+        // на первой же точке (https://example.com/path.html -> https://example).
+        expect(Nlu.getLink('https://example.com/path/page.html').result).toEqual([
+            'https://example.com/path/page.html',
+        ]);
+        expect(Nlu.getLink('http://site.ru:3000/app').result).toEqual(['http://site.ru:3000/app']);
+        expect(Nlu.getLink('Зайди на https://ya.ru сегодня').result).toEqual(['https://ya.ru']);
+        expect(Nlu.getLink('Две: https://a.ru и http://b.com/x?y=1').result).toEqual([
+            'https://a.ru',
+            'http://b.com/x?y=1',
+        ]);
+    });
+
+    it('Find link: концевая пунктуация не попадает в ссылку', () => {
+        expect(Nlu.getLink('Ссылка: https://ya.ru.').result).toEqual(['https://ya.ru']);
+        expect(Nlu.getLink('Смотрите (https://example.com/page).').result).toEqual([
+            'https://example.com/page',
+        ]);
+        expect(Nlu.getLink('Перечень: https://a.ru, https://b.ru!').result).toEqual([
+            'https://a.ru',
+            'https://b.ru',
+        ]);
     });
 
     it('find user name', () => {
@@ -189,7 +214,9 @@ describe('Nlu test', () => {
             },
         };
         nlu.setNlu(nluConfig);
-        expect(nlu.isIntentConfirm('да')).toBe(true);
+        // Если платформа прислала REJECT-интент (даже с пустыми slots),
+        // он в приоритете над текстовой эвристикой: 'да' трактуется как отказ.
+        expect(nlu.isIntentReject('да')).toBe(true);
     });
 
     it('isIntentHelp', () => {
@@ -220,5 +247,20 @@ describe('Nlu test', () => {
         };
         nlu.setNlu(nluConfig);
         expect(nlu.isIntentRepeat()).toBe(true);
+    });
+});
+
+describe('Nlu.getLink: граничные случаи', () => {
+    it('схема без адреса ссылкой не считается', () => {
+        expect(Nlu.getLink('http://...').result).toBeNull();
+        expect(Nlu.getLink('см. https://). и дальше http://ok.ru').result).toEqual([
+            'http://ok.ru',
+        ]);
+    });
+
+    it('не зависает на длинной строке без пробелов', () => {
+        const start = performance.now();
+        Nlu.getLink('http://'.repeat(20_000) + '.'.repeat(20_000));
+        expect(performance.now() - start).toBeLessThan(500);
     });
 });

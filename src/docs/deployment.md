@@ -8,7 +8,7 @@ SSL-сертификата до настройки CI/CD.
 
 - Сервер с публичным IP-адресом
 - Доменное имя
-- SSL-сертификат (обязателен для Алисы, Сбер SmartApp, Маруси, Viber и других платформ)
+- SSL-сертификат (обязателен для Алисы, Маруси, Сбер SmartApp, Viber и других платформ)
 
 ## Получение SSL-сертификата через acme.sh
 
@@ -74,8 +74,7 @@ sudo systemctl reload nginx
 npm run build
 ```
 
-Запустите с помощью pm2 (рекомендуется для продакшена):
-Если pm2 не установлен, то установите его:
+Запустите с помощью pm2 (рекомендуется для продакшена). Если pm2 не установлен, установите его:
 
 ```bash
 npm install -g pm2
@@ -97,7 +96,7 @@ pm2 save
 Теперь ваш навык доступен по HTTPS и готов к подключению в консолях разработчика:
 
 - Яндекс.Диалоги
-- Сбер Salute
+- Сбер SmartApp (developers.sber.ru)
 - Маруся для разработчиков
 - Telegram BotFather, VK Callback API, Viber Bot Settings и др.
 
@@ -111,7 +110,7 @@ bot.start('0.0.0.0', 3000);
 
 ### 2. Интеграция в существующее приложение (Express/Fastify)
 
-Смотри раздел: [Универсальный webhook-обработчик](https://www.maxim-m.ru/bot/ts-doc/documents/umbot_v-3.0_.src_docs_platform-integration.html#🌐-универсальный-webhook-обработчик) в руководстве по платформам.
+Смотри раздел: [Универсальный webhook-обработчик](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_platform-integration.html#🌐-универсальный-webhook-обработчик) в руководстве по платформам.
 
 ## Сборка Docker-образа
 
@@ -120,8 +119,13 @@ bot.start('0.0.0.0', 3000);
 
 ```bash
 docker build -t my-bot .
-docker run -p 3000:3000 -e YANDEX_TOKEN=... my-bot
+docker run -p 3000:3000 -e ALISA_TOKEN=... -e TELEGRAM_TOKEN=... my-bot
 ```
+
+Если `env` в конфиге не настроен, фреймворк тихо подтянет известные переменные (`TELEGRAM_TOKEN`,
+`ALISA_TOKEN`, `VK_TOKEN`, ...) из окружения контейнера и дозаполнит ими токены — явно писать
+`env: 'local'` для этого не нужно. Если же `env: 'local'` указан, значения из окружения
+перезаписывают заданные токены.
 
 ## CI/CD
 
@@ -132,3 +136,72 @@ docker run -p 3000:3000 -e YANDEX_TOKEN=... my-bot
 - Деплой на сервер через SSH.
 
 > 🔐 Безопасность: никогда не коммитьте .env в Git. Используйте GitHub Secrets.
+
+## Serverless
+
+Для платформ без постоянного сервера (Алиса, Маруся, SmartApp) можно использовать serverless-функции.
+
+### Яндекс Cloud Functions
+
+При создании проекта через CLI можно автоматически сгенерировать конфигурацию для Yandex Cloud Functions:
+
+```bash
+npx umbot create from-flow flow.json --usecloud
+```
+
+Это добавит в проект:
+
+- Экспорт `handler` в `src/index.ts` для обработки запросов Cloud Functions
+- `scripts/deploy.js` — деплой через yc CLI (запускается `npm run deploy`)
+- Справочный `serverless.yml` с конфигурацией функции (деплой его не читает — аргументы для yc собирает `scripts/deploy.js`)
+- Скрипты `deploy` и `build` в `package.json`
+
+Ручная настройка Cloud Function:
+
+```ts
+import { Bot } from 'umbot';
+import { fullPlatforms } from 'umbot/plugins';
+
+const bot = new Bot();
+bot.use(fullPlatforms);
+bot.setAppConfig({ isLocalStorage: true });
+
+// Экспорт функции для Яндекс Cloud Functions
+export const handler = async (event: Record<string, unknown>) => {
+    const content = typeof event.body === 'string' ? event.body : JSON.stringify(event.body ?? '');
+    const headers = (event.headers ?? {}) as Record<string, unknown>;
+    const result = await bot.webhookEvent(content, headers);
+    return {
+        statusCode: result.statusCode,
+        headers: { 'Content-Type': 'application/json' },
+        body: typeof result.body === 'string' ? result.body : JSON.stringify(result.body ?? ''),
+    };
+};
+```
+
+`webhookEvent()` — специальный метод для serverless-окружений: в отличие от `run()`, он сам
+определяет платформу по содержимому, проверяет подпись webhook (`isCorrectQuery`) и возвращает
+готовый HTTP-ответ `{ statusCode, body }`. Именно этот код использует генератор `from-flow --usecloud`.
+
+> В serverless `isLocalStorage: true` надёжно хранит данные только на Алисе, Марусе и SmartApp (состояние приходит в
+> запросе). На Telegram/VK/MAX/Viber без DB-адаптера `userData` живёт в памяти экземпляра функции и теряется, когда
+> вызов попадает в новый экземпляр, — для шагов диалога на чат-платформах подключите БД (например, `MongoAdapter`).
+
+Подробнее о serverless — в разделе [Рецепты: Serverless](https://www.maxim-m.ru/docs/umbot/documents/umbot_v-3.1_.src_docs_GUIDE.html#рецепты-cookbook).
+
+## Чеклист деплоя
+
+Перед запуском в продакшене убедитесь:
+
+- [ ] **Сборка завершена успешно** — `npm run build` без ошибок
+- [ ] **Тесты пройдены** — `npm run test` зелёный
+- [ ] **Режим `strict_prod`** — `bot.setAppMode('strict_prod')`
+- [ ] **Токены в переменных окружения** — не в коде, не в .env в контейнере
+- [ ] **MongoAdapter** — вместо FileAdapter (FileAdapter хранит данные в памяти)
+- [ ] **HTTPS настроен** — обязателен для Алисы, Сбера, Viber
+- [ ] **Webhook URL зарегистрирован** — в консоли разработчика каждой платформы
+- [ ] **error_log настроен** — `bot.setAppConfig({ error_log: './logs' })`
+- [ ] **Preload выполнен** — все медиафайлы предзагружены
+- [ ] **rateLimiter подключен** — `bot.use(rateLimiter())`
+- [ ] **PM2 или Docker** — для автоматического перезапуска при падении
+- [ ] **Мониторинг** — логи доступны, метрики настроены

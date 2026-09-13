@@ -1,9 +1,33 @@
+/**
+ * Построение кнопок Алисы: лимит 10 кнопок, title до 64 символов, payload до 4096 байт и URL до 1024 байт.
+ */
 import { Text, IButtonType, AppContext } from '../../../index';
 import { IAlisaButton, IAlisaButtonCard } from './interfaces/IAlisaPlatform';
-import { getCorrectButtons } from '../Base/utils';
+import { getCorrectButtons, serializePlatformPayload } from '../Base/utils';
+
+/**
+ * Приводит payload кнопки к JSON-объекту, как требует протокол: у Алисы и
+ * Маруси payload — «произвольный JSON-объект». Строковый payload (типичный
+ * для Telegram/VK: `addBtn('Купить', null, 'buy')`) оборачивается в
+ * `{command: 'buy'}` — при нажатии адаптер превращает его обратно в команду
+ * `buy`, поэтому addAction/addCommand работают одинаково на всех платформах.
+ *
+ * @param payload Payload универсальной кнопки
+ * @returns Payload-объект для ответа платформе
+ */
+function toPayloadObject(payload: unknown): Record<string, unknown> {
+    if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+        return payload as Record<string, unknown>;
+    }
+    return { command: typeof payload === 'string' ? payload : JSON.stringify(payload) };
+}
 
 /**
  * Создание кнопки в формате Алисы
+ * @param button Универсальная кнопка umbot
+ * @param isCard Флаг принадлежности кнопки к карточке (формат IAlisaButtonCard)
+ * @param appContext Контекст приложения для логирования ошибок валидации
+ * @returns Кнопка в формате Алисы либо `null`, если кнопка не прошла валидацию (пустой title, payload длиннее 4096 байт, URL длиннее 1024 байт)
  */
 function _getButton(
     button: IButtonType,
@@ -24,20 +48,29 @@ function _getButton(
             };
         }
         if (button.payload) {
-            const payloadStr =
-                typeof button.payload === 'string'
-                    ? button.payload
-                    : JSON.stringify(button.payload);
-            if (Buffer.byteLength(payloadStr, 'utf8') < 4096) {
-                object.payload = button.payload;
+            const payloadObject = toPayloadObject(button.payload);
+            const payloadStr = serializePlatformPayload(payloadObject, 'Alisa', appContext);
+            if (payloadStr === null) {
+                return null;
+            }
+            if (Buffer.byteLength(payloadStr, 'utf8') <= 4096) {
+                object.payload = payloadObject;
             } else {
                 appContext?.logWarn(
-                    `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Он будет проигнорирован.`,
+                    `[Alisa] Payload кнопки превышает 4096 байт (${Buffer.byteLength(payloadStr, 'utf8')} байт). Кнопка будет пропущена без изменения payload.`,
                 );
+                return null;
             }
         }
         if (button.url) {
-            object.url = Text.resize(button.url, 1024);
+            const urlBytes = Buffer.byteLength(button.url, 'utf8');
+            if (urlBytes > 1024) {
+                appContext?.logWarn(
+                    `[Alisa] URL кнопки превышает 1024 байта (${urlBytes} байт). Кнопка будет пропущена без изменения ссылки.`,
+                );
+                return null;
+            }
+            object.url = button.url;
         }
         return object;
     }
@@ -49,6 +82,7 @@ function _getButton(
  * @param buttons Кнопки, которые необходимо отобразить
  * @param isCard флаг принадлежности кнопок к карточке
  * @param appContext Контекст приложения, нужен для логирования ошибки
+ * @returns Для карточки — первая кнопка (IAlisaButtonCard), для обычного ответа — массив кнопок IAlisaButton
  */
 export function buttonProcessing(
     buttons: IButtonType[],
@@ -58,10 +92,13 @@ export function buttonProcessing(
     const objects: IAlisaButton[] = [];
     if (isCard) {
         if (buttons.length) {
-            return _getButton(buttons[0], isCard, appContext);
+            const firstButton = buttons[0];
+            if (firstButton) {
+                return _getButton(firstButton, isCard, appContext);
+            }
         }
     } else {
-        getCorrectButtons(buttons).forEach((button) => {
+        getCorrectButtons(buttons, 10, appContext).forEach((button) => {
             const object: IAlisaButton | null = _getButton(button, isCard, appContext);
             if (object) {
                 objects.push(object);

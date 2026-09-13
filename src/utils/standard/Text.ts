@@ -7,7 +7,7 @@
  * - Проверки схожести текстов
  * - Работы с окончаниями слов
  */
-import { getRegExp, isRegex, TPatternRegExp as PatternItem } from './RegExp';
+import { getRegExp, getRegExpOrSelf, isRegex, TPatternRegExp as PatternItem } from './RegExp';
 import { rand, similarText } from './util';
 import os from 'os';
 
@@ -25,12 +25,12 @@ export type TPattern = string | readonly string[];
 
 /**
  * Тип для поиска совпадений в тексте с учетом регулярных выражений.
- * Может быть строкой или массивом строк.
+ * Может быть строкой, регулярным выражением или их массивом.
  *
  * @example
  * ```ts
- * const pattern: TPattern = /привет/;
- * const patterns: TPattern = ['привет', /здравствуйте/];
+ * const pattern: TPatternReg = /привет/;
+ * const patterns: TPatternReg = ['привет', /здравствуйте/];
  * ```
  */
 export type TPatternReg = PatternItem | readonly PatternItem[];
@@ -51,12 +51,12 @@ export type TPatternReg = PatternItem | readonly PatternItem[];
 export interface ITextSimilarity {
     /**
      * Статус успешности сравнения текстов
-     * true - если процент схожести превышает пороговое значение
+     * true - если процент схожести не менее порогового значения
      */
     status: boolean;
 
     /**
-     * Индекс совпавшего текста в массиве или null для строки.
+     * Индекс совпавшего текста в массиве; 0 для одиночной строки; null — если совпадений нет.
      * Используется при сравнении с массивом текстов
      */
     index: number | null;
@@ -78,7 +78,8 @@ let MAX_CACHE_SIZE = 3000;
 
 function setMemoryLimit(): void {
     const total = os.totalmem();
-    // На всякий случай ограничиваем кэш, если в кэш будут класть группы
+    // Ограничиваем размер кэша сверху: регулярка с группами может занять заметно
+    // больше памяти, поэтому на машинах с малым объёмом RAM держим кэш меньше.
     if (total < 0.8 * 1024 ** 3) {
         MAX_CACHE_SIZE = 2000;
     } else if (total < 3 * 1024 ** 3) {
@@ -101,9 +102,19 @@ interface ICacheItem {
     regex: RegExp;
 }
 
-const CONFIRM_PATTERNS =
-    /(?:^|\s)да(?:^|\s|$)|(?:^|\s)конечно(?:^|\s|$)|(?:^|\s)соглас[^s]+(?:^|\s|$)|(?:^|\s)подтвер[^s]+(?:^|\s|$)/imu;
-const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|\s)не(?:^|\s|$)/imu;
+// Границы слова задаются через lookaround: ключевое слово не должно граничить
+// с буквой/цифрой, но может заканчиваться пунктуацией — «Да!», «Нет, спасибо».
+const CONFIRM_WORD_BOUNDARY = '(?<![a-zа-яё0-9_])';
+const CONFIRM_NOT_BOUNDARY = '(?![a-zа-яё0-9_])';
+const CONFIRM_PATTERNS = new RegExp(
+    `${CONFIRM_WORD_BOUNDARY}(?:да|конечно)${CONFIRM_NOT_BOUNDARY}` +
+        `|${CONFIRM_WORD_BOUNDARY}(?:соглас|подтвер)`,
+    'iu',
+);
+const REJECT_PATTERNS = new RegExp(
+    `${CONFIRM_WORD_BOUNDARY}(?:нет|неа|не)${CONFIRM_NOT_BOUNDARY}`,
+    'iu',
+);
 
 /**
  * Класс для работы с текстом и текстовыми операциями
@@ -119,8 +130,8 @@ const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|
  *
  * @example
  * ```ts
- * // Обрезка текста
- * Text.resize('Длинный текст', 5); // -> 'Длин...'
+ * // Обрезка текста (итоговая длина = size, включая троеточие)
+ * Text.resize('Длинный текст', 5); // -> 'Дл...'
  *
  * // Проверка URL
  * Text.isUrl('http://localhost'); // -> true
@@ -135,18 +146,61 @@ const REJECT_PATTERNS = /(?:^|\s)нет(?:^|\s|$)|(?:^|\s)неа(?:^|\s|$)|(?:^|
  * Text.getEnding(5, ['яблоко', 'яблока', 'яблок']); // -> 'яблок'
  *
  * // Проверка схожести
- * Text.textSimilarity('привет', 'привт', 80); // -> { status: true, percent: 90, ... }
+ * Text.textSimilarity('привет', 'привт', 80); // -> { status: true, percent: ~91, ... }
  * ```
  */
 export class Text {
     /**
-     * Кэш для скомпилированных регулярных выражений.
-     * Улучшает производительность при повторном использовании шаблонов
+     * Кэш для скомпилированных регулярных выражений, заданных строкой.
+     * Ключ — исходная строка шаблона.
      */
     static readonly #regexCache = new Map<string, ICacheItem>();
 
     /**
+     * Кэш для регулярных выражений, переданных как объект RegExp.
+     * Используем WeakMap: когда исходный RegExp-объект умирает,
+     * запись удаляется автоматически, поэтому eviction-логика не нужна.
+     * Это устраняет горячую конкатенацию `${flags}@@${source}` и Map.get(string)
+     * на каждый вызов isSayText с RegExp-слотами.
+     */
+    static readonly #regexObjectCache = new WeakMap<RegExp, RegExp>();
+
+    /**
+     * Порог вытеснения записей из кэша: удаляются паттерны, чей счётчик
+     * использований не выше этого значения. После вытеснения сбрасывается в 0
+     * (см. #evictRegexCache).
+     */
+    static #minCacheUsage = 0;
+
+    /**
+     * Обрезает строку по границе символа, не разрывая суррогатную пару.
+     *
+     * `String.substring` режет по code unit'ам UTF-16, поэтому обрыв ровно между
+     * старшим и младшим суррогатом эмодзи оставляет «половину символа». Такая строка
+     * невалидна в UTF-8: платформы либо показывают U+FFFD, либо отклоняют сообщение.
+     * Поэтому при попадании обрезки на старший суррогат отступаем на один code unit назад.
+     *
+     * @param text Исходный текст
+     * @param size Максимальная длина в code unit'ах UTF-16
+     */
+    static #safeCut(text: string, size: number): string {
+        if (size <= 0) {
+            return '';
+        }
+        let end = size;
+        const code = text.charCodeAt(end - 1);
+        // 0xD800..0xDBFF — старший суррогат, значит младший остался за границей обрезки
+        if (code >= 0xd800 && code <= 0xdbff) {
+            end--;
+        }
+        return text.substring(0, end);
+    }
+
+    /**
      * Обрезает текст до указанной длины
+     *
+     * Обрезка выполняется по границе символа: суррогатные пары (эмодзи) не разрываются,
+     * поэтому результат остаётся валидной строкой для отправки платформе.
      *
      * @param {string | null} text - Исходный текст
      * @param {number} [size=950] - Максимальная длина результата
@@ -157,6 +211,7 @@ export class Text {
      * ```ts
      * Text.resize('Длинный текст', 6); // -> 'Дли...'
      * Text.resize('Длинный текст', 6, false); // -> 'Длинны'
+     * Text.resize('aaa😀bbb', 4, false); // -> 'aaa' (эмодзи не разрезано пополам)
      * ```
      */
     public static resize(
@@ -173,11 +228,11 @@ export class Text {
         }
 
         if (!isEllipsis) {
-            return text.substring(0, size);
+            return Text.#safeCut(text, size);
         }
 
         const ellipsisSize = Math.max(0, size - 3);
-        return text.substring(0, ellipsisSize) + '...';
+        return Text.#safeCut(text, ellipsisSize) + '...';
     }
 
     /**
@@ -193,7 +248,7 @@ export class Text {
      * ```
      */
     public static isUrl(link: string): boolean {
-        if (link.startsWith('http://') || link.startsWith('https://')) {
+        if (link.startsWith('https://') || link.startsWith('http://')) {
             try {
                 new URL(link);
                 return true;
@@ -214,13 +269,13 @@ export class Text {
      * Распознает следующие паттерны:
      * - "да"
      * - "конечно"
-     * - "согласен"/"согласна"
-     * - "подтверждаю"/"подтверждаю"
+     * - "согласен"/"согласна" и производные (шаблон "соглас…")
+     * - "подтверждаю"/"подтверди" и производные (шаблон "подтвер…")
      *
      * @example
      * ```ts
      * Text.isSayTrue('да, согласен'); // -> true
-     * Text.isSayTrue('нет, не согласен'); // -> false
+     * Text.isSayTrue('нет, не хочу'); // -> false
      * ```
      */
     public static isSayTrue(text: string): boolean {
@@ -258,7 +313,7 @@ export class Text {
     /**
      * Проверяет наличие совпадений в тексте по шаблонам
      *
-     * @param {TPattern} patterns - Шаблоны для поиска
+     * @param {TPatternReg} patterns - Шаблоны для поиска
      * @param {string} text - Проверяемый текст
      * @param {boolean} useDirectRegExp - Использовать исходные RegExp напрямую без нормализации и кэширования
      * @param {RegExpConstructor} customReg - Произвольный обработчик для регулярных выражений
@@ -281,10 +336,13 @@ export class Text {
                 if (isRegex(patternBase)) {
                     const cachedRegex = useDirectRegExp
                         ? patternBase
-                        : Text.#getCachedRegex(patternBase, customReg);
+                        : (Text.#regexObjectCache.get(patternBase) ??
+                          ((): RegExp => {
+                              const re = getRegExpOrSelf(patternBase, 'ium', customReg);
+                              Text.#regexObjectCache.set(patternBase, re);
+                              return re;
+                          })());
                     if (cachedRegex.global) {
-                        // На случай если кто-то задал флаг g, сбрасываем lastIndex,
-                        // так как это может привести к некорректному результату
                         cachedRegex.lastIndex = 0;
                     }
                     const res = cachedRegex.test(text);
@@ -309,7 +367,59 @@ export class Text {
             useDirectRegExp && isRegex(pattern)
                 ? pattern
                 : Text.#getCachedRegex(pattern, customReg);
+        // У regexp с флагом g/y `test` продвигает lastIndex, поэтому на следующем запросе
+        // тот же объект начнёт поиск с середины строки и вернёт false. Кэш переиспользует
+        // объект между запросами — обязательно сбрасываем позицию перед проверкой.
+        if (cachedRegex.lastIndex !== 0) {
+            cachedRegex.lastIndex = 0;
+        }
         return cachedRegex.test(text);
+    }
+
+    /**
+     * Возвращает скомпилированное регулярное выражение для слота команды.
+     *
+     * Использует те же кэши, что и `isSayText` (WeakMap для RegExp-объектов,
+     * кэш с вытеснением наименее используемых паттернов для строковых шаблонов):
+     * повторные вызовы не компилируют регулярку заново. Предназначено для извлечения
+     * групп совпадения (`exec`) после того, как команда уже сработала — например,
+     * для заполнения `controller.match`.
+     *
+     * @param {PatternItem} slot Слот команды: RegExp или строка-паттерн
+     * @param {boolean} [useDirectRegExp=false] Не нормализовать и не кэшировать RegExp
+     * @param {RegExpConstructor} [customReg] Кастомный движок RegExp (например, re2)
+     * @returns {RegExp | null} Скомпилированное выражение или null, если слот не строка и не RegExp
+     *
+     * @example
+     * ```ts
+     * const reg = Text.getMatchRegExp(/(\d+)/);
+     * const match = reg?.exec('заказ 5'); // match?.[1] === '5'
+     * ```
+     */
+    public static getMatchRegExp(
+        slot: PatternItem,
+        useDirectRegExp: boolean = false,
+        customReg: RegExpConstructor | undefined = undefined,
+    ): RegExp | null {
+        // Строковый паттерн компилируется через тот же кэш с вытеснением наименее
+        // используемых паттернов, что и поиск команд (#getCachedRegex): вызов из
+        // горячего пути на каждый совпавший запрос не должен платить за new RegExp заново.
+        if (typeof slot === 'string') {
+            return Text.#getCachedRegex(slot, customReg);
+        }
+        if (!isRegex(slot)) {
+            return null;
+        }
+        if (useDirectRegExp) {
+            return slot;
+        }
+        const cached = Text.#regexObjectCache.get(slot);
+        if (cached) {
+            return cached;
+        }
+        const re = getRegExpOrSelf(slot, 'ium', customReg);
+        Text.#regexObjectCache.set(slot, re);
+        return re;
     }
 
     /**
@@ -341,7 +451,9 @@ export class Text {
         useDirectRegExp: boolean = false,
         customReg: RegExpConstructor | undefined = undefined,
     ): boolean {
-        if (!text) return false;
+        if (!text) {
+            return false;
+        }
 
         if (isPattern) {
             return Text.#isSayPattern(find, text, useDirectRegExp, customReg);
@@ -361,6 +473,9 @@ export class Text {
         // Оптимизированный вариант для массива: early return + includes
         for (let i = 0; i < (find as TPatternReg[]).length; i++) {
             const value = (find as TPatternReg[])[i];
+            if (value === undefined) {
+                continue;
+            }
             if (isRegex(value)) {
                 if (this.#isSayPattern(value, text, useDirectRegExp, customReg)) {
                     return true;
@@ -378,56 +493,93 @@ export class Text {
     }
 
     /**
-     * Получает или создает регулярное выражение из кэша
+     * Удаляет из кэша записи с минимальным количеством использований.
+     * Вместо сортировки всего кэша (O(n log n)) удаляет записи на уровне минимума (O(n)).
+     * Стремится удалить ~30% записей кэша; гарантированная доля не обеспечивается.
+     */
+    static #evictRegexCache(): void {
+        const target = Math.floor(MAX_CACHE_SIZE * 0.3);
+        let removed = 0;
+
+        for (const [k, item] of Text.#regexCache) {
+            if (item.cReq <= Text.#minCacheUsage) {
+                Text.#regexCache.delete(k);
+                removed++;
+                if (removed >= target) {
+                    break;
+                }
+            }
+        }
+
+        if (removed < target && Text.#regexCache.size > 0) {
+            let newMin = Infinity;
+            for (const item of Text.#regexCache.values()) {
+                if (item.cReq < newMin) {
+                    newMin = item.cReq;
+                }
+            }
+            Text.#minCacheUsage = newMin;
+            for (const [k, item] of Text.#regexCache) {
+                if (item.cReq <= Text.#minCacheUsage) {
+                    Text.#regexCache.delete(k);
+                    removed++;
+                    if (removed >= target) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Text.#minCacheUsage = 0;
+    }
+
+    /**
+     * Получает регулярное выражение из кэша либо компилирует и сохраняет его.
+     * Если кэш переполнен, вызывает внутреннюю очистку кэша (evict).
      *
-     * @param {string} pattern - Шаблон регулярного выражения
-     * @param {RegExpConstructor} customReg - Произвольный обработчик для регулярных выражений
-     * @returns {RegExp} Скомпилированное регулярное выражение
+     * @param pattern - Строка шаблона или уже готовое `RegExp` (в виде объекта паттерна).
+     * @param customReg - Произвольная реализация для компиляции регулярного выражения.
+     * @returns Скомпилированное `RegExp`.
      */
     static #getCachedRegex(
         pattern: PatternItem,
         customReg: RegExpConstructor | undefined = undefined,
     ): RegExp {
-        const key = typeof pattern === 'string' ? pattern : `${pattern.flags}@@${pattern.source}`;
-        const cache = Text.#regexCache.get(key);
+        // Hot-path: если это RegExp-объект, используем WeakMap без eviction.
+        // Быстро (нет string concat), и не накапливает записи.
+        if (typeof pattern !== 'string') {
+            let cached = Text.#regexObjectCache.get(pattern);
+            if (!cached) {
+                cached = getRegExpOrSelf(pattern, 'ium', customReg);
+                Text.#regexObjectCache.set(pattern, cached);
+            }
+            return cached;
+        }
+        const cache = Text.#regexCache.get(pattern);
         let regex = cache?.regex;
         if (!regex) {
             if (Text.#regexCache.size >= MAX_CACHE_SIZE) {
-                // При переполнении кэша чистим 30% редко используемых команд
-                const entries = [...Text.#regexCache.entries()].sort((tValue, oValue) => {
-                    return tValue[1].cReq - oValue[1].cReq;
-                });
-                const toRemove = Math.floor(MAX_CACHE_SIZE * 0.3);
-                for (let i = 0; i < toRemove; i++) {
-                    Text.#regexCache.delete(entries[i][0]);
-                }
+                Text.#evictRegexCache();
             }
-            if (typeof pattern === 'string') {
-                regex = getRegExp(pattern, 'ium', customReg);
-                Text.#regexCache.set(pattern, {
-                    cReq: 1,
-                    regex,
-                });
-            } else {
-                regex = getRegExp(pattern, 'ium', customReg);
-                Text.#regexCache.set(key, {
-                    cReq: 1,
-                    regex,
-                });
-            }
+            regex = getRegExp(pattern, 'ium', customReg);
+            Text.#regexCache.set(pattern, {
+                cReq: 1,
+                regex,
+            });
         } else if (cache) {
             cache.cReq++;
-            Text.#regexCache.set(key, cache);
         }
         return regex;
     }
 
     /**
-     * Очищает кэш регулярных выражений.
+     * Очищает кэш регулярных выражений (только кэш строковых паттернов;
+     * WeakMap для RegExp-объектов очищать не нужно — записи удаляются сборщиком мусора).
      * Стоит вызывать только в крайних случаях
      */
     public static clearCache(): void {
         Text.#regexCache.clear();
+        Text.#minCacheUsage = 0;
     }
 
     /**
@@ -452,12 +604,18 @@ export class Text {
     /**
      * Заменяет ключ в тексте на значение
      * @param {string} key - Ключ для замены
-     * @param {string | string[]} value - Значение для замены
+     * @param {string | string[]} value - Значение для замены (из массива выбирается случайный вариант)
      * @param {string} text - Исходный текст
+     * @returns {string} Текст с заменённым ключом
+     *
+     * @example
+     * ```ts
+     * Text.textReplace('#name#', 'Иван', 'Привет, #name#!'); // -> 'Привет, Иван!'
+     * Text.textReplace('#name#', ['Иван', 'Пётр'], 'Привет, #name#!'); // -> случайное имя
+     * ```
      */
     public static textReplace(key: string, value: string | string[], text: string): string {
-        const correctKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return text.replace(new RegExp(correctKey, 'g'), () => Text.getText(value));
+        return text.replaceAll(key, Text.getText(value));
     }
 
     /**
@@ -490,8 +648,8 @@ export class Text {
 
         const absNum = Math.abs(num);
         const cases = [2, 0, 1, 1, 1, 2];
-        const titleIndex =
-            absNum % 100 > 4 && absNum % 100 < 20 ? 2 : cases[Math.min(absNum % 10, 5)];
+        const digitCase = cases[Math.min(absNum % 10, 5)] ?? 2;
+        const titleIndex = absNum % 100 > 4 && absNum % 100 < 20 ? 2 : digitCase;
 
         return titles[titleIndex] || null;
     }
@@ -511,7 +669,7 @@ export class Text {
      * // -> {
      * //   status: true,
      * //   index: 0,
-     * //   percent: 90,
+     * //   percent: ~91,
      * //   text: 'привт'
      * // }
      *
@@ -520,7 +678,7 @@ export class Text {
      * // -> {
      * //   status: true,
      * //   index: 0,
-     * //   percent: 90,
+     * //   percent: ~91,
      * //   text: 'привт'
      * // }
      * ```
@@ -540,19 +698,24 @@ export class Text {
             text: null,
         };
 
-        // Check for exact matches first
+        // Сначала проверяем точные совпадения
         const exactMatch = texts.findIndex((t) => t.toLowerCase() === normalizedOrigText);
 
         if (exactMatch !== -1) {
-            return {
-                index: exactMatch,
-                status: true,
-                percent: 100,
-                text: texts[exactMatch],
-            };
+            // exactOptionalPropertyTypes: текст гарантированно найден findIndex,
+            // но поле заполняем только реальным значением.
+            const exactText = texts[exactMatch];
+            if (exactText !== undefined) {
+                return {
+                    index: exactMatch,
+                    status: true,
+                    percent: 100,
+                    text: exactText,
+                };
+            }
         }
 
-        // Find best similarity if no exact match
+        // Если точного совпадения нет — ищем наиболее похожий текст
         texts.forEach((currentText, index) => {
             const similarity = similarText(normalizedOrigText, currentText.toLowerCase());
             if (similarity > maxSimilarity.percent) {

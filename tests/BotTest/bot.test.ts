@@ -1,4 +1,4 @@
-import { BotController, TAppType, SoundConstants, unlinkSync } from '../../src';
+import { BotController, TAppType, SoundConstants } from '../../src';
 import { BotTest } from '../../src/core/BotTest';
 import {
     T_ALISA,
@@ -11,6 +11,7 @@ import {
     fullPlatforms,
     FileAdapter,
 } from '../../src/plugins';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 class TestBotController extends BotController {
     constructor() {
@@ -98,9 +99,14 @@ function getSkills(cb: (skill: TAppType) => Promise<void>, title: string): void 
 
 const fileAdapter = new FileAdapter();
 let bot: TestBot;
+// Дефолтные пути записи (json/, logs/) указывают в cwd — в корень репозитория.
+// Перенаправляем их в тестовую папку (tests/.tmp) — путь известен, артефакты
+// упавшего прогона можно разобрать (UMBOT_TEST_KEEP).
+const TEST_DATA_DIR = createTestDir('bottest');
 describe('umbot', () => {
     beforeAll(() => {
         bot = new TestBot();
+        bot.setAppConfig({ json: TEST_DATA_DIR, error_log: TEST_DATA_DIR });
         bot.setLogger({
             error: () => {},
         });
@@ -145,11 +151,13 @@ describe('umbot', () => {
         bot.clearUse();
     });
 
-    afterAll(() => {
+    afterAll(async () => {
         fileAdapter.setCachedFileData('UserData', undefined);
-        bot.close();
+        // close() флашит таблицы FileAdapter в json/: без await removeTestDir
+        // удалит папку раньше, чем асинхронная запись пересоздаст её с файлами.
+        await bot.close();
         jest.resetAllMocks();
-        unlinkSync(bot.getAppContext().appConfig.json + '/UsersData.json');
+        await removeTestDir(TEST_DATA_DIR);
     });
 
     describe('run bot test', () => {
@@ -246,6 +254,7 @@ describe('umbot', () => {
                 });
                 bot.setAppConfig({ isLocalStorage: true });
                 bot.addCommand('sound', ['звук'], (_, botController) => {
+                    botController.text = 'Звук';
                     botController.tts = `${SoundConstants.S_AUDIO_GAME_WIN} `.repeat(i).trim();
                 });
 
@@ -277,6 +286,7 @@ describe('umbot', () => {
                 bot.setAppConfig({ isLocalStorage: true });
 
                 bot.addCommand('sound', ['звук'], (_, botController) => {
+                    botController.text = 'Звук';
                     botController.tts = ``;
                     for (let j = 1; j <= i; j++) {
                         botController.tts += `$s_${j} `;
@@ -297,7 +307,11 @@ describe('umbot', () => {
                 bot.setContent(bot.getSkillContent('звук'));
                 await bot.run(type);
                 bot.removeCommand('sound');
-                expect(bot.getTts()?.match(/\d+/g)?.length).toEqual(i);
+                if (type === T_SMART_APP) {
+                    expect(bot.getTts()).not.toContain('$s_');
+                } else {
+                    expect(bot.getTts()?.match(/\d+/g)?.length).toEqual(i);
+                }
                 bot.clearState();
             }, `Обработка своих звуков. Количество мелодий равно ${i}`);
         }

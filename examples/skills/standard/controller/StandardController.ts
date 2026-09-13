@@ -7,6 +7,7 @@ import { HELP_INTENT_NAME, WELCOME_INTENT_NAME, BotController } from 'umbot';
  *  - Пока
  *  - Список
  *  - Карточка
+ *  - Сохрани (сохраняет текст в userData через FileAdapter)
  *
  * Class StandardController
  */
@@ -37,6 +38,16 @@ export class StandardController extends BotController {
                 this.card.addImage('565656/78878', 'Элемент с картинкой"', 'Описание изображения');
                 this.card.addImage(null, 'Элемент без изображения', 'Описание изображения');
                 this.card.button.addBtn('Текст в footer');
+                break;
+
+            case 'save':
+                this.text = 'Сохранено!';
+                // Данные нужно мержить, а не перезаписывать:
+                // переопределение userData ломает сохранение в базу.
+                Object.assign(this.userData, {
+                    userId: this.userId,
+                    saved: this.userCommand,
+                });
                 break;
 
             case 'by':

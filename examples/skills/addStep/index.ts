@@ -1,12 +1,12 @@
 import { BotTest } from 'umbot/test';
 import { Text } from 'umbot';
 import { fullPlatforms } from 'umbot/plugins';
-import skillDefaultConfig from '../../config/skillStorageConfig';
+import skillStorageConfig from '../../config/skillStorageConfig';
 
 const bot = new BotTest();
 bot.use(fullPlatforms); // Подключаем обработку для всех доступных платформ
 // bot.use(new FileAdapter()); // Подключаем файловую базу данных
-bot.setAppConfig(skillDefaultConfig());
+bot.setAppConfig(skillStorageConfig());
 
 // Добавляем команду для запуска первого шага
 bot.addCommand('start_step', ['начать'], (_, botController) => {

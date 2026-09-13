@@ -40,15 +40,16 @@ const PHRASES = [
     'обновить',
 ];
 
-function getAvailableMemoryMB() {
-    const free = os.freemem();
-    // Оставляем 50 МБ на систему и Node.js рантайм
-    return Math.max(0, (free - 50 * 1024 * 1024) / (1024 * 1024));
-}
+// Общая корректная проверка памяти: min(V8 heap-лимит, cgroup, RAM с учётом page cache).
+// Старая версия на os.freemem() ложно отказывала в запуске на unix,
+// где память занята page cache (ядро сбросит её при нехватке).
+// Подробности — benchmark/availableMemory.js.
+const { getAvailableMemoryMB } = require('./availableMemory');
 
 function predictMemoryUsage(commandCount) {
-    // Эмпирически: ~6.5 КБ на команду + базовый оверхед
-    return 55 + (commandCount * 6.5) / 1024;
+    // Фактический замер (2026-08): ~466 Б на строковую команду.
+    // Берём 1 КБ/команду с запасом + 55 МБ базового оверхеда фреймворка.
+    return 55 + commandCount / 1024;
 }
 
 function setupCommands(bot, count) {
@@ -231,9 +232,9 @@ async function normalLoadTest(iterations = 200, concurrency = 2) {
         console.log(errorsBot.slice(0, 3));
     }
     console.log(`🕒 Среднее время: ${avg.toFixed(2)} мс`);
-    console.log(`📈 p95 latency: ${p95.toFixed(2)} мс`);
-    console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
-    console.log(`💾 rss: ${rssStart} → ${rssEnd} MB (+${rssEnd - rssStart})`);
+    console.log(`📈 p95 (время ответа): ${p95.toFixed(2)} мс`);
+    console.log(`💾 Память: ${memStart} → ${memEnd} МБ (+${memEnd - memStart})`);
+    console.log(`💾 rss: ${rssStart} → ${rssEnd} МБ (+${rssEnd - rssStart})`);
 
     console.log(`📊 Event Loop Utilization:`);
     console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
@@ -279,11 +280,16 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
         Promise.race([
             (async () => {
                 iter++;
+                // ⚠️ Только дешёвые проверки: это hot path — каждый параллельный запрос.
+                // Полная проверка доступной памяти (heap-лимит V8 + cgroup + RAM,
+                // benchmark/availableMemory.js) выполняется ОДИН раз ДО цикла выше:
+                // она читает файлы cgroup и heap-статистику (~170 мкс с exceptions
+                // на Windows). 6000 запросов x 170 мкс добавляли бы секунду оверхеда
+                // бенчмарку и роняли RPS с десятков тысяч до ~7k — при неизменном
+                // фреймворке. Порог занятой кучи (heapUsed) читается мгновенно.
                 const mem = getMemoryMB();
-                const predicted = predictMemoryUsage(COMMAND_COUNT);
-                const available = getAvailableMemoryMB();
                 // Если уже занимаем много памяти, то не позволяем запускать процессы еще.
-                if (mem > 3700 || predicted > available * 0.9) {
+                if (mem > 3700) {
                     if (!isMess) {
                         console.log(
                             `⚠️ Недостаточно памяти для теста с итерацией ${iter} (${count} одновременных запросов с ${COMMAND_COUNT} командами).`,
@@ -322,8 +328,8 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
         console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
         console.log(`   Время на 1 команду: ${(totalMs / count).toFixed(6)} мс`);
         console.log(`   RPS: ${rps} запросов/сек`);
-        console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
-        console.log(`   Rss: ${rssStart} → ${rssEnd} MB (+${rssEnd - rssStart})`);
+        console.log(`💾 Память: ${memStart} → ${memEnd} МБ (+${memEnd - memStart})`);
+        console.log(`   RSS: ${rssStart} → ${rssEnd} МБ (+${rssEnd - rssStart})`);
 
         console.log(`📊 Event Loop Utilization:`);
         console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
@@ -337,7 +343,7 @@ async function burstTest(count = 5, timeoutMs = 10_000) {
     } catch (err) {
         const memEnd = getMemoryMB();
         console.error(`💥 Ошибка:`, err.message || err);
-        console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+        console.log(`💾 Память: ${memStart} → ${memEnd} МБ (+${memEnd - memStart})`);
         global.gc();
         return { success: false, error: err.message || err, memDelta: memEnd - memStart };
     }
@@ -365,7 +371,7 @@ async function sequentialThroughputTest(durationSeconds = 10) {
             const thisMem = getMemoryMB();
             const thisRSS = getMemoryRSSMB();
             console.log(
-                `Используется памяти:\n --- на начало теста: ${headStart}MB\n --- текущее        : ${thisMem}MB\n --- разницы        : ${thisMem - headStart}MB\nRSS:\n --- на начало теста: ${rssStart}MB\n --- текущее        : ${thisRSS}MB\n --- разницы        : ${thisRSS - rssStart}MB\n`,
+                `Используется памяти:\n --- на начало теста: ${headStart}MB\n --- текущее        : ${thisMem}MB\n --- разницы        : ${thisMem - headStart}MB\nRSS:\n --- на начало теста: ${rssStart}MB\n --- текущее        : ${thisRSS}MB\n --- разницы        : ${thisRSS - rssStart}МБ\n`,
             );
         }
     }
@@ -380,8 +386,8 @@ async function sequentialThroughputTest(durationSeconds = 10) {
     console.log(
         `Средняя пропускная способность (последовательно): ${avgRPS.toFixed(0)} запросов/сек`,
     );
-    console.log(`RSS: ${totalRss}MB`);
-    console.log(`Потребление памяти: ${totalMem}MB`);
+    console.log(`RSS: ${totalRss}МБ`);
+    console.log(`Потребление памяти: ${totalMem}МБ`);
     console.log(`В среднем на 1 запрос: ${((totalMem / totalRequests) * 1024).toFixed(6)}KB`);
 
     return avgRPS;
@@ -524,8 +530,8 @@ async function parallelFallbackTest(count = 30000, timeoutMs = 10_000) {
         console.log(`🕒 Общее время: ${totalMs.toFixed(1)} мс`);
         console.log(`   Время на 1 команду: ${(totalMs / count).toFixed(6)} мс`);
         console.log(`   RPS: ${rps} запросов/сек`);
-        console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
-        console.log(`   Rss: ${rssStart} → ${rssEnd} MB (+${rssEnd - rssStart})`);
+        console.log(`💾 Память: ${memStart} → ${memEnd} МБ (+${memEnd - memStart})`);
+        console.log(`   RSS: ${rssStart} → ${rssEnd} МБ (+${rssEnd - rssStart})`);
         console.log(`📊 Event Loop Utilization:`);
         console.log(`   Active time: ${eluAfter.active.toFixed(2)} ms`);
         console.log(`   idle:  ${eluAfter.idle.toFixed(2)} ms`);
@@ -536,7 +542,7 @@ async function parallelFallbackTest(count = 30000, timeoutMs = 10_000) {
     } catch (err) {
         const memEnd = getMemoryMB();
         console.error(`💥 Ошибка:`, err.message || err);
-        console.log(`💾 Память: ${memStart} → ${memEnd} MB (+${memEnd - memStart})`);
+        console.log(`💾 Память: ${memStart} → ${memEnd} МБ (+${memEnd - memStart})`);
         global.gc();
         return { success: false, error: err.message || err, memDelta: memEnd - memStart };
     }

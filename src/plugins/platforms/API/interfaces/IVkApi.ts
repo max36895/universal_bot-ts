@@ -58,24 +58,24 @@ export interface IVkApi<T = Record<string, unknown> | unknown> {
  */
 export interface IVkUploadFile extends IVkApi {
     /**
-     * Путь к файлу
+     * Путь к файлу (заполняется только при загрузке документов — docs.getMessagesUploadServer)
      */
-    file: string;
+    file?: string;
 
     /**
-     * Путь к фотографии
+     * Путь к фотографии (заполняется только при загрузке фото — photos.getMessagesUploadServer)
      */
-    photo: string;
+    photo?: string;
 
     /**
-     * Сервер для загрузки
+     * Сервер для загрузки (только для фото)
      */
-    server: string;
+    server?: string;
 
     /**
-     * Хэш для проверки загрузки
+     * Хэш для проверки загрузки (только для фото)
      */
-    hash: string;
+    hash?: string;
 }
 
 /**
@@ -187,8 +187,8 @@ export interface IVkParams {
     chat_id?: number;
 
     /**
-     * ID получателей сообщения.
-     * Используется при создании новой беседы
+     * ID получателей сообщения — список user_id через запятую,
+     * не более 100 значений (и для рассылки, и при создании беседы)
      */
     user_ids?: number[];
 
@@ -226,7 +226,7 @@ export interface IVkParams {
     /**
      * ID пересылаемых сообщений.
      * Разделяются запятой.
-     * Пример: "123,431,544"
+     * Пример: [123, 431, 544]
      */
     forward_messages?: number[];
 
@@ -270,6 +270,22 @@ export interface IVkParams {
      * Шаблон сообщения
      */
     template?: string[] | IVkCard | string;
+
+    /**
+     * Намерение при отправке сообщения от имени сообщества.
+     * Требуется для proactive-рассылок (вне 24-часового окна ответа).
+     * Возможные значения: 'promo' (рекламное сообщение), 'bot_notification' (уведомление от бота)
+     * @see https://dev.vk.com/en/method/messages.send#params
+     */
+    intent?: string;
+
+    /**
+     * ID подписки пользователя на уведомления от сообщества.
+     * Используется совместно с intent для отправки сообщений
+     * пользователям, подписавшимся на рассылку.
+     * @see https://dev.vk.com/en/method/messages.send#params
+     */
+    subscribe_id?: number;
 }
 
 /**
@@ -374,15 +390,21 @@ export interface IVkUsersGet extends IVkApi {
 /**
  * Интерфейс для сервера загрузки фотографий в VK
  *
+ * Ответ VK приходит в конверте `{ response: ... }` (см. {@link IVkApi});
+ * `VkRequest.call()` снимает конверт и возвращает содержимое `response`
+ * с полями этого интерфейса напрямую.
+ *
  * @example
  * ```ts
+ * // Развёрнутое значение (то, что возвращает photosGetMessagesUploadServer)
  * const uploadServer: IVkUploadServer = {
- *   response: {
- *     upload_url: "{UPLOAD_URL}",
- *     album_id: "123456789",
- *     group_id: "987654321"
- *   }
+ *   upload_url: "https://pu.vk.com/...",
+ *   album_id: "123456789",
+ *   group_id: "987654321"
  * };
+ *
+ * // Сырой ответ платформы до снятия конверта:
+ * // { response: { upload_url: "https://pu.vk.com/..." } }
  * ```
  */
 export interface IVkUploadServer extends IVkApi {
@@ -405,21 +427,22 @@ export interface IVkUploadServer extends IVkApi {
 /**
  * Интерфейс для сохранения фотографии в VK
  *
+ * `photosSaveMessagesPhoto` возвращает **массив** `IVkPhotosSave[]` —
+ * данные загруженного фото в первом элементе (`photo[0]`).
+ *
  * @example
  * ```ts
  * const savedPhoto: IVkPhotosSave = {
- *   response: [{
- *     id: 123456789,
- *     pid: 987654321,
- *     aid: 123456,
- *     owner_id: 123456789,
- *     src: "/photo123456789_987654321",
- *     src_big: "/photo123456789_987654321_big",
- *     src_small: "/photo123456789_987654321_small",
- *     created: 1234567890,
- *     src_xbig: "/photo123456789_987654321_xbig",
- *     src_xxbig: "/photo123456789_987654321_xxbig"
- *   }]
+ *   id: 123456789,
+ *   pid: 987654321,
+ *   aid: 123456,
+ *   owner_id: 123456789,
+ *   src: "/photo123456789_987654321",
+ *   src_big: "/photo123456789_987654321_big",
+ *   src_small: "/photo123456789_987654321_small",
+ *   created: 1234567890,
+ *   src_xbig: "/photo123456789_987654321_xbig",
+ *   src_xxbig: "/photo123456789_987654321_xxbig"
  * };
  * ```
  */
@@ -430,7 +453,7 @@ export interface IVkPhotosSave extends IVkApi {
     id: number;
 
     /**
-     * ID изображения
+     * ID изображения (legacy, в актуальных ответах VK не возвращается)
      */
     pid: number;
 
@@ -537,7 +560,7 @@ export interface IVkGraffiti extends IVkDocInfo {
  * ```ts
  * const audioMessage: IVkAudioMessageInfo = {
  *   duration: 30,
- *   waleform: [0, 1, 2, 3, 4, 5],
+ *   waveform: [0, 1, 2, 3, 4, 5],
  *   link_ogg: "{...}.ogg",
  *   link_mp3: "{...}.mp3"
  * };
@@ -552,7 +575,7 @@ export interface IVkAudioMessageInfo {
     /**
      * Массив значений для визуализации звука
      */
-    waleform: number[];
+    waveform: number[];
 
     /**
      * URL .ogg файла
@@ -574,7 +597,7 @@ export interface IVkAudioMessageInfo {
  *   id: 123456789,
  *   owner_id: 987654321,
  *   duration: 30,
- *   waleform: [0, 1, 2, 3, 4, 5],
+ *   waveform: [0, 1, 2, 3, 4, 5],
  *   link_ogg: "/audio_message123456789_987654321.ogg",
  *   link_mp3: "/audio_message123456789_987654321.mp3"
  * };
@@ -600,7 +623,7 @@ export interface IVkAudioMessage extends IVkDocInfo, IVkAudioMessageInfo {}
  *   },
  *   audio_message: {
  *     duration: 30,
- *     waleform: [0, 1, 2, 3, 4, 5],
+ *     waveform: [0, 1, 2, 3, 4, 5],
  *     link_ogg: "/audio_message123456789_987654321.ogg",
  *     link_mp3: "/audio_message123456789_987654321.mp3"
  *   }
@@ -717,24 +740,10 @@ export interface IVKDoc extends IVkDocInfo {
  * @example
  * ```ts
  * const savedDoc: IVkDocSave = {
- *   response: {
- *     type: "doc",
- *     id: 123456789,
- *     owner_id: 987654321,
- *     url: "/doc123456789_987654321",
- *     title: "document.pdf",
- *     size: 1024,
- *     ext: "pdf",
- *     date: 1234567890,
- *     type: 1,
- *     preview: {
- *       photo: [
- *         "/photo123456789_987654321_s",
- *         "/photo123456789_987654321_m",
- *         "/photo123456789_987654321_x"
- *       ]
- *     }
- *   }
+ *   type: "doc",
+ *   id: 123456789,
+ *   owner_id: 987654321,
+ *   url: "/doc123456789_987654321"
  * };
  * ```
  */
@@ -792,7 +801,7 @@ export interface IVkDocSave extends IVkDocInfo, IVkApi {
      * Массив значений для визуализации звука
      * Для голосового сообщения
      */
-    waleform?: number[];
+    waveform?: number[];
 
     /**
      * URL .ogg файла

@@ -1,25 +1,24 @@
 /**
  * Модуль контроллера - основной компонент для обработки бизнес-логики вашего приложения
  */
-import { Buttons, Card, Sound, Nlu } from '../components';
-import { Text, getRegExp, isRegex } from '../utils';
-import {
-    AppContext,
-    FALLBACK_COMMAND,
-    HELP_INTENT_NAME,
-    IAppIntent,
-    ICommandParam,
-    WELCOME_INTENT_NAME,
-    TAppType,
-    EMetric,
-} from '../core';
+import { Buttons, Card, Sound, Nlu, INluThisUser } from '../components';
+import { Text } from '../utils';
+import { AppContext, IAppIntent, ICommandParam, TAppType, EMetric } from '../core';
+import { FALLBACK_COMMAND, HELP_INTENT_NAME, WELCOME_INTENT_NAME } from '../core/constants';
 import { isPromise } from '../utils/isPromise';
-import { IGroupData } from '../core/utils/CommandReg';
+import { IGroupData, getGroupRegExpCompiled, IEventParam } from '../core/utils/CommandReg';
+import type { TEventType } from '../core/events';
+import { __$usedRe2, type TPatternRegExp } from '../utils/standard/RegExp';
 
 /*
- * magick
- * Если напрямую использовать переменные из другого модуля(например FALLBACK_COMMAND), то производительность может проседать.
- * За счет данного хака мы решаем эту проблемы добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты
+ * Оптимизация производительности:
+ * Если напрямую использовать переменные из другого модуля (например FALLBACK_COMMAND), то производительность может проседать.
+ * За счет данного хака мы решаем эту проблему, добавляя локальную глобальную переменную, благодаря чему v8 не нужно делать доп расчеты.
+ *
+ * ВАЖНО: константы импортируются из листового модуля `../core/constants`, а НЕ из барреля `../core`.
+ * Баррель `core` реэкспортирует `Bot` раньше констант, и при циклической загрузке
+ * (core → Bot → controller → core) константы из барреля ещё `undefined`. Листовой модуль
+ * без импортов всегда полностью инициализирован, поэтому захват значений безопасен.
  */
 const DEFAULT_FALLBACK_COMMAND = FALLBACK_COMMAND;
 const DEFAULT_HELP_INTENT_NAME = HELP_INTENT_NAME;
@@ -37,9 +36,9 @@ const DEFAULT_WELCOME_INTENT_NAME = WELCOME_INTENT_NAME;
  *
  * @example
  * ```ts
- * const status: TStatus = true; // операция успешна
- * const status: TStatus = false; // операция с ошибкой
- * const status: TStatus = null; // операция не выполнялась
+ * const okStatus: TStatus = true; // операция успешна
+ * const errStatus: TStatus = false; // операция с ошибкой
+ * const skipStatus: TStatus = null; // операция не выполнялась
  * ```
  */
 export type TStatus = true | false | null;
@@ -110,7 +109,7 @@ export interface IUserEvent {
  * @remarks
  * Базовое поле:
  * - oldIntentName: название предыдущего интента. Актуально для случаев, когда в приложении есть какая-то последовательность действий.
- * Также данное значение можно использовать при регистрации обработчика на шаг(bot.step('...', ()=>{...})).
+ * Также данное значение можно использовать при регистрации обработчика на шаг (bot.addStep('...', ()=>{...})).
  *
  * Дополнительные поля могут быть добавлены через:
  * 1. Расширение интерфейса (extends)
@@ -166,7 +165,7 @@ export interface IUserData {
     /**
      * Дополнительные пользовательские данные.
      * Может содержать любые поля, специфичные для приложения
-     * Важно! Если вы хотите чтобы поле было удалено, то необходимо в значение передавать null. Подобное связано с ограничением Алисы.
+     * Важно! Если вы хотите, чтобы поле было удалено, то необходимо в значение передавать null.
      */
     [key: string]: unknown;
 }
@@ -176,6 +175,14 @@ export interface IUserData {
  * Расширяемый интерфейс для любых дополнительных данных, которые будут сохранены в Локальное хранилище
  */
 export interface IPlatformData {
+    /**
+     * Название предыдущего интента.
+     * Специальное служебное поле: позволяет Bot восстановить шаг диалога
+     * после сериализации state в локальное хранилище платформы.
+     *
+     * @internal — заполняется фреймворком, не предназначено для прямой записи в пользовательском коде.
+     */
+    oldIntentName?: string | null;
     /**
      * Дополнительные данные.
      * Может содержать любые поля, специфичные для приложения
@@ -192,13 +199,24 @@ export interface IPlatformOptions {
      */
     error?: string;
     /**
-     * Время начало обработки запроса
+     * Время начала обработки запроса
      */
     timeStart?: number;
     /**
-     * Флаг говорящий о том, что результат выполнения приложения бы получен при обработке запроса
+     * Готовый shortcut-ответ платформы (строка или объект), который run() возвращает
+     * без обработки запроса. Заполняется адаптером в особых случаях (health-check
+     * «ping» у Алисы/Маруси, токен подтверждения webhook у VK); в формировании
+     * обычного ответа не участвует, если shortcut не нужен — остаётся null.
      */
     sendInInit?: string | object | null;
+
+    /**
+     * Нейтральные технические данные обработчика запроса.
+     *
+     * Адаптеры используют собственный ключ верхнего уровня, поэтому общий
+     * контроллер не содержит сведений о форматах и идентификаторах платформ.
+     */
+    requestData?: Record<string, Record<string, unknown>>;
 
     /**
      * Поле куда должны сохраниться пользовательские данные
@@ -225,6 +243,95 @@ export interface IPlatformOptions {
      * ID callback-запроса
      */
     callbackQueryId?: string;
+
+    /**
+     * Явно заданный текст всплывающего уведомления для callback-запроса.
+     * Если поле не задано, адаптер только подтверждает callback без показа текста.
+     */
+    callbackNotificationText?: string;
+
+    /**
+     * ID callback-события (для callback-кнопок)
+     */
+    eventId?: string;
+    /**
+     * Версия api с которой работает платформа. Для случаев, когда сама платформа говорит какая версия api должна быть
+     */
+    apiVersion?: string | number;
+    /**
+     * ID чата для платформ, поддерживающих групповые чаты (например, Max, Telegram)
+     */
+    chatId?: number;
+    /**
+     * IP-адрес клиента, с которого пришёл webhook-запрос.
+     * Заполняется фреймворком автоматически в `webhookHandle` (из сокета
+     * HTTP-запроса) или в `webhookEvent`/`run()` при передаче параметром.
+     * Используется middleware `ipFilter`.
+     */
+    clientIp?: string;
+}
+
+/**
+ * Универсальные параметры для методов отправки медиа через {@link IControllerApi}.
+ */
+export interface IApiMediaParams {
+    /**
+     * Подпись к медиа (там, где платформа поддерживает подписи).
+     */
+    caption?: string;
+}
+
+/**
+ * Методы API-фасада, которые можно проверять через {@link IControllerApi.can}.
+ *
+ * Единый источник контракта фасада: и `IControllerApi` здесь, и реализация
+ * в `src/plugins/platforms/Base/apiFacade.ts` (алиас `TApiFacade`) используют
+ * именно это имя.
+ */
+export type TApiMethod =
+    'sendPhoto' | 'sendDocument' | 'sendAudio' | 'sendVideo' | 'answerCallback';
+
+/**
+ * Универсальный API-фасад активной платформы (`controller.api`).
+ *
+ * Даёт бизнес-логике доступ к возможностям платформы — отправить медиа, ответить
+ * на callback-кнопку — без ручного конструирования платформенных Request-классов.
+ * Реализация подбирается адаптером по `controller.appType`; интерфейс объявлен
+ * здесь, чтобы контроллер не зависел от модулей платформ.
+ */
+export interface IControllerApi {
+    /**
+     * Отправляет фотографию пользователю текущего запроса.
+     */
+    sendPhoto(image: string, params?: IApiMediaParams): Promise<Record<string, unknown> | null>;
+    /**
+     * Отправляет документ/файл пользователю текущего запроса.
+     */
+    sendDocument(file: string, params?: IApiMediaParams): Promise<Record<string, unknown> | null>;
+    /**
+     * Отправляет аудио пользователю текущего запроса.
+     */
+    sendAudio(file: string, params?: IApiMediaParams): Promise<Record<string, unknown> | null>;
+    /**
+     * Отправляет видео пользователю текущего запроса.
+     */
+    sendVideo(file: string, params?: IApiMediaParams): Promise<Record<string, unknown> | null>;
+    /**
+     * Отвечает на нажатие callback-кнопки: показывает уведомление/snackbar
+     * (Telegram `answerCallbackQuery`, VK `show_snackbar`, MAX `/answers`).
+     * Вне callback-запроса — предупреждение в лог и `null`.
+     *
+     * @param text Текст уведомления
+     * @param showAlert Показать как модальное окно вместо всплывающего уведомления.
+     *   Поддерживает только Telegram; VK (snackbar) и MAX игнорируют параметр.
+     */
+    answerCallback(text: string, showAlert?: boolean): Promise<Record<string, unknown> | null>;
+    /**
+     * Проверяет, поддерживает ли активная платформа указанный метод фасада
+     * (например, Viber возвращает `false` для всех — его Bot API требует
+     * URL + size, которые фасад не собирает).
+     */
+    can(method: TApiMethod): boolean;
 }
 
 /**
@@ -235,7 +342,7 @@ export interface IPlatformOptions {
  * кнопкам, карточкам, состоянию диалога, пользовательским данным, NLU и многому другому.
  *
  * Адаптеры платформ (например, `AlisaAdapter`) автоматически наполняют контроллер данными,
- * вызывают внутренний метод `{@link run}` (он вызывает ваш `action()`), а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
+ * вызывают метод {@link run} (он вызывает ваш `action()`), а затем формируют ответ на основе заполненных вами полей (`text`, `buttons`, `card` и т.д.).
  *
  * **Ключевая особенность:** вся логика вашего голосового навыка или бота описывается в одном месте – в методе `action()`.
  * Фреймворк сам позаботится о маршрутизации: команды, интенты, шаги диалога – всё придёт в `action` с соответствующим флагом.
@@ -249,7 +356,7 @@ export interface IPlatformOptions {
  *
  * @example
  * ```ts
- * import { BotController } from 'umbot';
+ * import { BotController, IUserData, WELCOME_INTENT_NAME, HELP_INTENT_NAME } from 'umbot';
  * // Определение пользовательских данных
  * interface MyUserData extends IUserData {
  *   score: number;
@@ -278,14 +385,14 @@ export interface IPlatformOptions {
  *           .addImage('xxx', 'Добро пожаловать!', 'Выберите действие:')
  *           .addButton('Начать игру')
  *
- *         // Установка пользовательских данных
- *         this.userData = {
- *           score: 0,
- *           level: 1,
- *           preferences: {
- *             language: 'ru',
- *             theme: 'light'
- *           }
+ *         // Установка пользовательских данных.
+ *         // Важно: мутируйте поля, а не переприсваивайте this.userData целиком —
+ *         // фреймворк хранит ссылку на объект
+ *         this.userData.score = 0;
+ *         this.userData.level = 1;
+ *         this.userData.preferences = {
+ *           language: 'ru',
+ *           theme: 'light'
  *         };
  *         return;
  *       }
@@ -316,7 +423,7 @@ export interface IPlatformOptions {
  * }
  * ```
  * @see {@link action} – переопределите этот метод, чтобы добавить свою логику.
- * @see Bot – основной класс приложения, управляющий адаптерами и контроллерами.
+ * @see см. класс Bot в umbot — основной класс приложения, управляющий адаптерами и контроллерами.
  */
 export abstract class BotController<
     TUserData extends IUserData = IUserData,
@@ -364,7 +471,9 @@ export abstract class BotController<
 
     /**
      * Пользовательский токен авторизации.
-     * Используется для авторизованных запросов (например, в Алисе).
+     * Заполняется адаптером Алисы (access_token из account linking после
+     * авторизации пользователя). Читайте его для запросов к внешним API,
+     * требующим авторизации пользователя.
      *
      * @example
      * ```ts
@@ -388,7 +497,9 @@ export abstract class BotController<
 
     /**
      * ID сообщения.
-     * Используется для определения начала нового диалога.
+     * На голосовых платформах (Алиса, Маруся) `messageId === 0` означает начало
+     * нового диалога — по этому признаку срабатывает welcome-интент. На чат-платформах
+     * (Telegram, VK, Max, Viber) это ID конкретного сообщения, и поле может быть null.
      *
      * @example
      * ```ts
@@ -420,7 +531,7 @@ export abstract class BotController<
 
     /**
      * Дополнительные параметры запроса.
-     * Может содержать любые дополнительные данные полученные от платформы.
+     * Может содержать любые дополнительные данные, полученные от платформы.
      *
      * @example
      * ```ts
@@ -433,16 +544,109 @@ export abstract class BotController<
     public payload: Record<string, unknown> | string | null | undefined = null;
 
     /**
-     * Пользовательские данные, который были сохранены.
+     * Универсальный тип события, вызвавшего запрос (`'message'`, `'photo'`, `'callback'`, …).
+     *
+     * Заполняется адаптером платформы. Позволяет различать не-текстовые апдейты
+     * (фото, голосовые, нажатия кнопок) без ручного разбора `requestObject`.
+     * Если платформа не проставила событие, значение — `'message'`.
      *
      * @example
      * ```ts
-     * this.userData = {
-     *   name: 'John',
-     *   preferences: {
-     *     language: 'ru'
-     *   }
-     * };
+     * // В action() или обработчике команды:
+     * if (this.eventType === 'photo') {
+     *   this.text = 'Отличное фото!';
+     * }
+     * ```
+     */
+    public eventType: TEventType = 'message';
+
+    /**
+     * Результат совпадения команды с регулярным выражением.
+     *
+     * Заполняется лениво при первом обращении: фреймворк запоминает регулярку
+     * сработавшей команды (RegExp-слот, isPattern-паттерн или группу регулярок)
+     * и прогоняет её по тексту только если обработчик реально читает `match`.
+     * Содержит `RegExpExecArray` совпавшей регулярки — группы доступны как
+     * `this.match[1]`, `this.match.groups`. Для строковых команд и событий — `null`.
+     *
+     * @example
+     * ```ts
+     * bot.addCommand('order', [/(?:заказ|купить)\s+(\d+)/], (_, ctx) => {
+     *   ctx.text = `Оформляю заказ №${ctx.match?.[1]}`;
+     * });
+     * ```
+     */
+    public get match(): RegExpExecArray | null {
+        const reg = this.#matchReg;
+        if (reg === null) {
+            return this.#matchValue;
+        }
+        // «Рецепт» расходуется первым же чтением: повторные обращения
+        // получают готовое значение без второго прогона.
+        this.#matchReg = null;
+        if (reg.lastIndex !== 0) {
+            reg.lastIndex = 0;
+        }
+        const m = reg.exec(this.#matchUserCommand);
+        if (m) {
+            this.#matchValue = m;
+            return m;
+        }
+        this.#matchValue = null;
+        return null;
+    }
+
+    /**
+     * Прямая запись match — сохраняет значение без ленивого вычисления.
+     * @internal используется тестами и расширенными сценариями
+     */
+    public set match(value: RegExpExecArray | null) {
+        this.#matchReg = null;
+        this.#matchUserCommand = '';
+        this.#matchValue = value;
+    }
+
+    /**
+     * Ленивый «рецепт» match: регулярка сработавшей команды. Хранится плоскими
+     * полями (без объекта-рецепта): schedule в горячем пути не аллоцирует вовсе.
+     * null — рецепта нет (match уже вычислен или строковая команда).
+     */
+    #matchReg: RegExp | null = null;
+
+    /**
+     * Текст запроса для ленивого прогона регулярки ({@link match}).
+     */
+    #matchUserCommand: string = '';
+
+    /**
+     * Кэшированное значение match после ленивого вычисления (или прямого set).
+     */
+    #matchValue: RegExpExecArray | null = null;
+
+    /**
+     * Запоминает регулярку сработавшей команды для ленивого {@link match}.
+     * Вызывается из конвейера поиска после совпадения команды: сам прогон
+     * не выполняется — горячий путь не платит за match, который никто не читает.
+     */
+    #scheduleMatch(reg: RegExp, userCommand: string): void {
+        this.#matchReg = reg;
+        this.#matchUserCommand = userCommand;
+    }
+
+    /**
+     * Пользовательские данные, которые были сохранены.
+     *
+     * ⚠️ Мутируйте отдельные поля (`this.userData.name = ...`), а не
+     * переприсваивайте объект целиком (`this.userData = {...}`) — фреймворк
+     * хранит ссылку на исходный объект, и переприсваивание разрывает её.
+     *
+     * @example
+     * ```ts
+     * // Тип контроллера с дженериком:
+     * // class MyController extends BotController<MyUserData> { ... }
+     * this.userData.name = 'John';
+     * this.userData.score += 1;
+     * this.userData.preferences = { language: 'ru' };
      * ```
      */
     public userData: TUserData = {} as TUserData;
@@ -459,7 +663,7 @@ export abstract class BotController<
     public isAuth: boolean = false;
 
     /**
-     * Пользовательские событий.
+     * Пользовательские события.
      * Содержит информацию об авторизации или оценке.
      *
      * @see IUserEvent
@@ -482,18 +686,21 @@ export abstract class BotController<
      * });
      *
      * **Правила синхронизации с базой данных (если подключена):**
-     * - Если заполнены и `userData`, и `state`:
-     *   - `userData` сохраняется в БД,
-     *   - `state` сохраняется в локальное хранилище платформы.
-     * - Если заполнен только `userData` (а `state` пуст или равен `userData`):
-     *   - данные сохраняются только в БД (состояние платформы не обновляется).
-     * - Если заполнен только `state`:
-     *   - данные сохраняются только в локальное хранилище.
+     * - Если заполнены и `userData`, и `state`: `userData` сохраняется в БД,
+     *   а `state` — в локальное хранилище платформы.
+     * - Если заполнен только `userData` (а `state` пуст или совпадает с ним):
+     *   при использовании локального хранилища данные уходят только в него
+     *   (в БД не сохраняются), без локального хранилища — только в БД.
+     * - Если заполнен только `state` (userData пуст): перед формированием
+     *   ответа userData подменяется на `state`, поэтому `state` уходит
+     *   в локальное хранилище платформы, а без него — в БД.
      *
      * **При загрузке данных:**
-     * 1. Если есть данные из локального хранилища и из БД, они попадают соответственно в `state` и `userData`.
-     * 2. Если есть только данные из хранилища, они копируются и в `userData`, и в `state` (для удобства).
-     * 3. Если есть только данные из БД, они записываются в `userData`.
+     * 1. Если используется локальное хранилище платформы, его запись сразу
+     *    записывается и в `userData`, и в `state` (у Алисы и Маруси это
+     *    один и тот же объект); данные из БД при этом не читаются.
+     * 2. Без локального хранилища данные пользователя читаются из БД в `userData`;
+     *    `state` остаётся тем, что прислала платформа (у чат-платформ — null).
      *
      * @see {@link userData} — для постоянного хранения данных пользователя.
      *
@@ -508,7 +715,7 @@ export abstract class BotController<
     public state: TPlatformState | null = null;
 
     /**
-     * Определяет, с колонки пользователь запустил приложение или с устройства с экраном.
+     * Определяет, запущено ли приложение с колонки или с устройства с экраном.
      *
      * @example
      * ```ts
@@ -607,12 +814,16 @@ export abstract class BotController<
     public isSendRating: boolean = false;
 
     /**
-     * Название предыдущего интента/команды, полученное из `userData.oldIntentName`.
+     * Название предыдущего интента/команды, полученное из `userData.oldIntentName`
+     * (а при включённом локальном хранилище и пустом `userData` — из
+     * `state.oldIntentName`).
      * Используется для отслеживания контекста диалога.
      *
      * @remarks
      * **КАК ЭТО РАБОТАЕТ:**
-     * 1. В конце обработки каждого запроса, `this.thisIntentName` сохраняется в `userData.oldIntentName`
+     * 1. В конце обработки каждого запроса `this.thisIntentName` сохраняется:
+     *    при включённом `isLocalStorage` и пустом `userData` — в `state.oldIntentName`,
+     *    иначе — в `userData.oldIntentName`
      * 2. При следующем запросе это значение копируется в `this.oldIntentName`
      * 3. Используется для определения, с какого шага продолжить диалог
      *
@@ -665,7 +876,7 @@ export abstract class BotController<
     public appContext: AppContext;
 
     /**
-     * Платформа от которой был получен запрос.
+     * Платформа, от которой был получен запрос.
      */
     public appType: TAppType | null = null;
 
@@ -680,7 +891,10 @@ export abstract class BotController<
 
     /**
      * Создает новый экземпляр контроллера.
-     * Инициализирует все необходимые компоненты.
+     * UI-компоненты (кнопки, карточки, звуки, NLU) инициализируются лениво —
+     * при первом обращении через соответствующие геттеры.
+     *
+     * @param {AppContext} [appContext] - Контекст приложения. Если не передан, будет создан новый AppContext
      */
     constructor(appContext?: AppContext) {
         // Для корректности выставляем контекст по умолчанию.
@@ -717,7 +931,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы кнопки или нет
-     * @returns
+     * @returns {boolean} true если кнопки были инициализированы
      */
     isButtonsInit(): boolean {
         return !!this.#buttons;
@@ -737,7 +951,7 @@ export abstract class BotController<
      *
      * @see Card
      * @example
-     ```ts
+     * ```ts
      * // КАТАЛОГ ТОВАРОВ (интернет-магазин):
      * this.text = 'Популярные товары:';
      * this.card
@@ -784,7 +998,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы карточки или нет
-     * @returns
+     * @returns {boolean} true если карточки были инициализированы
      */
     isCardInit(): boolean {
         return !!this.#card;
@@ -805,7 +1019,7 @@ export abstract class BotController<
 
     /**
      * Флаг возвращающий информацию о том, были ли инициализированы звуки или нет
-     * @returns
+     * @returns {boolean} true если звуки были инициализированы
      */
     isSoundInit(): boolean {
         return !!this.#sound;
@@ -820,21 +1034,129 @@ export abstract class BotController<
     get nlu(): Nlu {
         if (!this.#nlu) {
             this.#nlu = new Nlu();
+            // Чат-платформы записывают данные отправителя через setThisUser()
+            // ещё до обращения бизнес-логики к NLU. Буфер держится отдельно от
+            // объекта Nlu: если логика ни разу не прочитает thisUser/getFio/etc,
+            // сам объект Nlu (+кэш) не аллоцируется вовсе.
+            if (this.#thisUserBuffer) {
+                this.#nlu.setNlu({ thisUser: this.#thisUserBuffer });
+                this.#thisUserBuffer = undefined;
+            }
         }
         return this.#nlu;
     }
 
     /**
-     * Флаг возвращающий информацию о том, были ли инициализирован nlu или нет
-     * @returns
+     * Буфер данных отправителя для чат-платформ.
+     *
+     * Заполняется при разборе запроса адаптером — через {@link setThisUser}
+     * (хелпер setThisUserToNlu из pUtils) — и «досыпается» в Nlu при первом
+     * обращении к геттеру {@link nlu}. Пока логика приложения NLU не читает,
+     * объект Nlu не создаётся — это экономит аллокацию на каждом запросе
+     * чат-платформ.
+     */
+    #thisUserBuffer: INluThisUser | undefined;
+
+    /**
+     * Ленивый API-фасад активной платформы ({@link api}).
+     *
+     * Создаётся фабрикой при первом обращении к `ctx.api`; на запросах, где
+     * API-методы не используются, объект не аллоцируется вовсе.
+     */
+    #api: IControllerApi | null | undefined;
+
+    /**
+     * Фабрика API-фасада: устанавливается ядром при запуске, чтобы контроллер
+     * не зависел от модулей платформ (архитектурное правило core/controller
+     * ← plugins). null для голосовых платформ — там фасад недоступен.
+     */
+    #apiFactory: ((controller: BotController) => IControllerApi | null) | undefined;
+
+    /**
+     * API активной платформы: отправка медиа и ответов на callback-кнопки
+     * без ручного конструирования платформенных Request-классов.
+     *
+     * Доступно на чат-платформах (Telegram, VK, MAX, Viber с оговорками);
+     * на голосовых (Алиса, Маруся, SmartApp) — `null`: их ответ формируется
+     * телом webhook, используйте `card`/`sound`.
+     *
+     * @example
+     * ```ts
+     * bot.addEvent('photo', async (ctx) => {
+     *     await ctx.api?.sendPhoto('answer.jpg', { caption: 'Вот ваш отчёт' });
+     *     ctx.skipAutoReply = true; // ответ уже отправлен вручную
+     * });
+     * ```
+     */
+    get api(): IControllerApi | null {
+        if (this.#api === undefined) {
+            this.#api = this.#apiFactory ? this.#apiFactory(this) : null;
+        }
+        return this.#api;
+    }
+
+    /**
+     * Устанавливает фабрику API-фасада платформы.
+     *
+     * @internal вызывается ядром (Bot) при обработке запроса; публично — чтобы
+     * остаться доступным для расширенных сценариев интеграции.
+     * @param factory Фабрика фасада (сброс не предусмотрен сигнатурой — фабрика всегда заменяется целиком)
+     * @returns Текущий экземпляр для цепочки вызовов
+     */
+    public setApiFactory(factory: (controller: BotController) => IControllerApi | null): this {
+        this.#apiFactory = factory;
+        this.#api = undefined;
+        return this;
+    }
+
+    /**
+     * Метод: возвращает true, только если объект Nlu уже создан (было обращение
+     * к геттеру {@link nlu}). Вызов {@link setThisUser} сам по себе объекта
+     * не создаёт: при неинициализированном Nlu данные буферизуются в
+     * `#thisUserBuffer` и применятся при первом же обращении к геттеру.
+     * @returns {boolean} true если объект NLU был инициализирован
      */
     isNluInit(): boolean {
         return !!this.#nlu;
     }
 
     /**
-     * Устанавливает контекст приложения.
-     * @param appContext
+     * Записывает данные отправителя сообщения (username/имя/фамилия) в NLU.
+     *
+     * Используется адаптерами чат-платформ (через хелпер `setThisUserToNlu`
+     * из pUtils). Значение сначала держится в приватном буфере: если логика
+     * приложения ни разу не обратится к {@link nlu}, объект Nlu и его кэш
+     * не создаются вовсе. При первом обращении буфер переносится в Nlu
+     * (`nlu.getUserName()` возвращает переданные данные).
+     *
+     * @param {INluThisUser} thisUser Данные отправителя; пустые поля
+     * интерпретируются как отсутствие данных
+     * @returns {this} Текущий экземпляр для цепочки вызовов
+     *
+     * @example
+     * ```ts
+     * // Внутри адаптера платформы:
+     * controller.setThisUser({ username: 'ivan', first_name: 'Иван', last_name: null });
+     * // ...позже в бизнес-логике:
+     * const name = this.nlu.getUserName()?.first_name;
+     * ```
+     */
+    public setThisUser(thisUser: INluThisUser): this {
+        if (thisUser.username || thisUser.first_name || thisUser.last_name) {
+            if (this.#nlu) {
+                this.#nlu.setNlu({ thisUser });
+            } else {
+                this.#thisUserBuffer = thisUser;
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Устанавливает контекст приложения (обновляет контекст в уже созданных
+     * компонентах `buttons` и `card`).
+     * @param {AppContext} appContext - Контекст приложения
+     * @returns {this} Текущий экземпляр для цепочки вызовов
      */
     public setAppContext(appContext: AppContext): this {
         if (appContext) {
@@ -851,7 +1173,15 @@ export abstract class BotController<
     }
 
     /**
-     * Очищает все временные данные необходимые для отправки ответа.
+     * Полностью сбрасывает состояние контроллера, включая текст ответа, пользовательские данные, состояние диалога и внутренние флаги.
+     *
+     * @example
+     * ```ts
+     * // Вызывается фреймворком автоматически перед следующим запросом;
+     * // вручную — чтобы переиспользовать контроллер в тестах:
+     * controller.clearStoreData();
+     * console.log(controller.text); // ''
+     * ```
      */
     public clearStoreData(): void {
         if (this.#buttons) {
@@ -861,7 +1191,13 @@ export abstract class BotController<
             this.card.clear();
         }
         if (this.isNluInit()) {
-            this.nlu.setNlu({});
+            // Второй аргумент обязателен: без него в Nlu остаётся кэш разобранных
+            // сущностей предыдущего запроса и getFio()/getGeo() вернут чужие данные.
+            this.nlu.setNlu({}, true);
+        } else {
+            // Nlu не создавался, но буфер thisUser от адаптера обязан умереть
+            // вместе с запросом.
+            this.#thisUserBuffer = undefined;
         }
         this.text = '';
         this.tts = null;
@@ -872,6 +1208,11 @@ export abstract class BotController<
         this.userCommand = null;
         this.originalUserCommand = null;
         this.payload = null;
+        this.eventType = 'message';
+        this.match = null;
+        // API-фасад умирает вместе с запросом: следующий запрос может прийти
+        // от другой платформы, и фабрика пересоберёт его под её адаптер.
+        this.#api = undefined;
         this.userData = {} as TUserData;
         this.isAuth = false;
         this.userEvents = null;
@@ -885,7 +1226,19 @@ export abstract class BotController<
         this.emotion = null;
         this.appeal = null;
         this.isSendRating = false;
+        // platformOptions — технические данные конкретного запроса (requestData адаптеров,
+        // sendInInit, session, stateName, error). Без сброса они утекают в следующий
+        // запрос: например, VK-подтверждение возвращалось бы в ответ на любое сообщение.
+        this.platformOptions = {};
     }
+
+    /**
+     * Замороженный пустой список интентов.
+     *
+     * Литерал `[]` в `_intents()` аллоцировался на каждый запрос без
+     * зарегистрированных интентов — константа отдаётся по ссылке.
+     */
+    static readonly #EMPTY_INTENTS: IAppIntent[] = [];
 
     /**
      * Возвращает список всех зарегистрированных интентов.
@@ -893,7 +1246,7 @@ export abstract class BotController<
      * @returns {IAppIntent[]} Массив интентов
      */
     protected _intents(): IAppIntent[] {
-        return this.appContext?.platformParams.intents || [];
+        return this.appContext?.platformParams.intents || BotController.#EMPTY_INTENTS;
     }
 
     /**
@@ -911,6 +1264,7 @@ export abstract class BotController<
         for (let i = 0; i < intents.length; i++) {
             const intent = intents[i];
             if (
+                intent &&
                 Text.isSayText(
                     intent.slots || [],
                     text,
@@ -938,17 +1292,32 @@ export abstract class BotController<
 
     /**
      * Запуск кастомной обработки команд.
-     * @param startTimer
+     * @param startTimer — Время начала обработки (для замера метрик)
      * @private
      */
-    #sendCustomCommandResolver(startTimer: number): void | null | Promise<void> {
+    #sendCustomCommandResolver(startTimer: number): void | null | Promise<void | null> {
         if (this.appContext.command.customCommandResolver) {
-            const res = this.appContext.command.customCommandResolver(
-                this.userCommand as string,
-                this.appContext.commands,
-            );
-            const cb = (result: string | null): void | Promise<void> => {
-                const command = result ? this.appContext.commands.get(res as string) : null;
+            // Ошибка пользовательского резолвера (sync-исключение или reject)
+            // не должна превращаться в 500 для платформы: считаем, что команда
+            // не найдена, и продолжаем цепочку intent → fallback.
+            const onResolverError = (error: unknown): null => {
+                this.appContext.logError(
+                    `BotController: Произошла ошибка в customCommandResolver. Текст ошибки: "${error}"`,
+                    { error },
+                );
+                return null;
+            };
+            let res: string | null | Promise<string | null>;
+            try {
+                res = this.appContext.command.customCommandResolver(
+                    this.userCommand as string,
+                    this.appContext.commands,
+                );
+            } catch (error) {
+                return onResolverError(error);
+            }
+            const cb = (result: string | null): void | null | Promise<void> => {
+                const command = result ? this.appContext.commands.get(result) : null;
                 if (result && command) {
                     const res = this.#commandExecute(result, command);
                     if (res) {
@@ -964,6 +1333,7 @@ export abstract class BotController<
                                         },
                                     );
                                 }
+                                this._actionMetric(result, true);
                             })
                             .catch((error) => {
                                 this.appContext.logError(
@@ -984,14 +1354,20 @@ export abstract class BotController<
                             },
                         );
                     }
+                    this._actionMetric(result, true);
                 } else if (this.appContext?.usedMetric) {
                     this.appContext.logMetric(EMetric.GET_COMMAND, performance.now() - startTimer, {
                         status: false,
                     });
                 }
+                // null или неизвестное имя означают, что custom resolver не нашёл команду.
+                // Явный null нужен run(), чтобы продолжить цепочку intent → fallback → welcome.
+                if (!result || !command) {
+                    return null;
+                }
             };
             if (isPromise(res)) {
-                return res.then(cb);
+                return res.then(cb, onResolverError);
             }
             return cb(res);
         }
@@ -1052,14 +1428,16 @@ export abstract class BotController<
     /**
      * Извлекает нужную команду из запроса.
      *
-     * @returns {string | null} найденная команда или null если не удалось найти команду
+     * @returns {void | null | Promise<void | null>} результат выполнения обработчика
+     * найденной команды или null, если подходящая команда не найдена
      */
-    protected _getCommand(): void | null | Promise<void> {
+    protected _getCommand(): void | null | Promise<void | null> {
         if (!this.userCommand || !this.appContext.commands) {
             return null;
         }
         const start = this.#getStartMetric();
-        if (this.appContext.command.customCommandResolver) {
+        const commandReg = this.appContext.command;
+        if (commandReg.customCommandResolver) {
             return this.#sendCustomCommandResolver(start);
         }
         const exactCommand = this.#getExactCommand(start);
@@ -1067,10 +1445,34 @@ export abstract class BotController<
             return exactCommand;
         }
 
+        const regexpGroups = commandReg.regexpGroup as Map<string, IGroupData>;
+        // Снимок команд: индексированный обход не аллоцирует пары на каждой
+        // итерации, в отличие от for...of по Map. Снимок актуален: пересобирается
+        // в CommandReg на addCommand/removeCommand/clearCommands.
+        const commandList = commandReg.getActualCommandsList();
+        // С re2 RegExp-слоты не используются напрямую: Text пересоберёт их через
+        // re2 (с кэшем), иначе нативный движок обходил бы защиту от ReDoS.
+        const useDirectRegExp =
+            !__$usedRe2 && (commandReg.commands as Map<string, ICommandParam>).size < 500;
+        const getCustomRegExp = this.#getCustomRegExp;
+        const userCommand = this.userCommand;
         let contCount = 0;
-        const useDirectRegExp = this.appContext.commands.size < 500;
-        for (const [commandName, command] of this.appContext.commands) {
-            if (commandName === DEFAULT_FALLBACK_COMMAND || !command || contCount !== 0) {
+
+        for (let i = 0; i < commandList.length; i++) {
+            const commandTuple = commandList[i];
+            if (commandTuple === undefined) {
+                continue;
+            }
+            const commandName = commandTuple[0];
+            const command = commandTuple[1];
+            // commandName === undefined закрывает дырявый элемент снимка
+            // (кортеж есть, а ключа в нём нет).
+            if (
+                commandName === undefined ||
+                commandName === DEFAULT_FALLBACK_COMMAND ||
+                !command ||
+                contCount !== 0
+            ) {
                 if (contCount) {
                     contCount--;
                 }
@@ -1080,26 +1482,18 @@ export abstract class BotController<
                 continue;
             }
             if (command.isPattern) {
-                const groups = this.appContext.regexpGroup.get(commandName);
+                const groups = regexpGroups.get(commandName);
 
                 if (groups) {
                     contCount = groups.commands.length - 1;
-                    const groupRes = this.#searchCommandsInGroup(groups, this.userCommand, start);
+                    const groupRes = this.#searchCommandsInGroup(groups, userCommand, start);
                     if (groupRes !== null) {
                         return groupRes;
                     }
                     continue;
                 }
             }
-            if (
-                Text.isSayText(
-                    command.regExp || command.slots,
-                    this.userCommand,
-                    command.isPattern,
-                    command.isRegExpString || useDirectRegExp,
-                    this.#getCustomRegExp,
-                )
-            ) {
+            if (this.#isCommandMatch(command, userCommand, useDirectRegExp, getCustomRegExp)) {
                 return this.#commandCb(commandName, command, start);
             }
         }
@@ -1111,34 +1505,130 @@ export abstract class BotController<
         return null;
     }
 
+    /**
+     * Проверяет совпадение одной команды с текстом пользователя.
+     * Вынесено из цикла {@link _getCommand} для читаемости: hot-путь —
+     * прямой `.exec` для одиночного stateless-RegExp (без обёртки isSayText),
+     * остальные типы слотов идут через Text.isSayText.
+     *
+     * Побочный эффект: найденное совпадение записывается в {@link match} —
+     * обработчик команды получает группы регулярки без повторного прогона.
+     *
+     * @param command Параметры проверяемой команды
+     * @param userCommand Текст пользователя (нижний регистр)
+     * @param useDirectRegExp Разрешить ли прямое использование RegExp без кэша
+     * @param getCustomRegExp Кастомный движок RegExp (если подключён)
+     * @returns true, если команда сработала
+     */
+    #isCommandMatch(
+        command: ICommandParam,
+        userCommand: string,
+        useDirectRegExp: boolean,
+        getCustomRegExp: RegExpConstructor | undefined,
+    ): boolean {
+        // Быстрый путь: один stateless-RegExp — .test напрямую, без обёртки
+        // isSayText (сброс lastIndex сохранён для побитовой совместимости).
+        const fastReg = command.__$singleStatelessRegExp;
+        if (fastReg) {
+            if (fastReg.lastIndex !== 0) {
+                fastReg.lastIndex = 0;
+            }
+            const isMatch = fastReg.test(userCommand);
+            if (isMatch) {
+                // match ленивый: только запоминаем регулярку — exec произойдёт
+                // при первом чтении controller.match.
+                this.#scheduleMatch(fastReg, userCommand);
+            }
+            return isMatch;
+        }
+        // Слот-массив не пуст: проверено выше по command.slots.length в цикле,
+        // но тип допускает undefined — сужаем с явным fallback.
+        const slots = command.regExp || command.slots;
+        if (!slots) {
+            return false;
+        }
+        const directRegExp = command.isRegExpString || useDirectRegExp;
+        const isMatch = Text.isSayText(
+            slots,
+            userCommand,
+            command.isPattern,
+            directRegExp,
+            getCustomRegExp,
+        );
+        if (isMatch) {
+            // match ленивый: запоминаем регулярку команды, сам прогон будет
+            // при первом чтении controller.match (группы — только у regex-команд).
+            this.#scheduleCommandMatch(command, userCommand, directRegExp);
+        }
+        return isMatch;
+    }
+
     #searchCommandsInGroup(
         groups: IGroupData,
         userCommand: string,
         startTimer: number,
     ): void | null | Promise<void> {
-        if (!groups.regExp) {
+        // Компиляция с кэшем: строковые паттерны групп больше не пересобираются
+        // на каждый запрос (горячий путь поиска команд).
+        const reg = getGroupRegExpCompiled(groups, this.#getCustomRegExp);
+        if (!reg) {
             return null;
         }
-        const reg = isRegex(groups.regExp)
-            ? groups.regExp
-            : getRegExp(groups.regExp, 'ium', this.#getCustomRegExp);
         const match = reg.exec(userCommand);
         if (match) {
             // Находим первую совпавшую подгруппу (index в массиве parts)
+            const commands = this.appContext.commands;
             for (const key in match.groups) {
-                if (match.groups[key] !== undefined) {
-                    const commandName = groups.commands[+key.slice(1)];
-                    if (commandName && this.appContext.commands.has(commandName)) {
-                        return this.#commandCb(
-                            commandName,
-                            this.appContext.commands.get(commandName) as ICommandParam,
-                            startTimer,
-                        );
-                    }
+                if (match.groups[key] === undefined) {
+                    continue;
                 }
+                const commandName = groups.commands[+key.slice(1)];
+                if (!commandName || !commands.has(commandName)) {
+                    continue;
+                }
+                const command = commands.get(commandName) as ICommandParam;
+                // Совпадение объединённой группы неинформативно (именованные
+                // подгруппы g0..gN) — для controller.match запоминаем
+                // индивидуальную регулярку найденной команды (лениво).
+                this.#scheduleCommandMatch(command, userCommand, false);
+                return this.#commandCb(commandName, command, startTimer);
             }
         }
-        return null; //continue;
+        return null;
+    }
+
+    /**
+     * Запоминает регулярку сработавшей команды для ленивого {@link match}.
+     * Приоритет: скомпилированная `command.regExp` (isPattern), затем первый
+     * RegExp-слот. Строковые команды recipe не получают — match остаётся null.
+     */
+    #scheduleCommandMatch(
+        command: ICommandParam,
+        userCommand: string,
+        directRegExp: boolean,
+    ): void {
+        if (command.regExp) {
+            this.#scheduleMatch(command.regExp, userCommand);
+            return;
+        }
+        if (!(command.isPattern || command.isRegExpString)) {
+            return;
+        }
+        const slotsList = (command.slots || []) as TPatternRegExp[];
+        for (let s = 0; s < slotsList.length; s++) {
+            const slot = slotsList[s];
+            if (!slot) {
+                continue;
+            }
+            // Строковые и объектные слоты идут через единый кэширующий путь
+            // Text.getMatchRegExp — компиляция на каждый совпавший запрос
+            // здесь запрещена (горячий путь, см. BENCHMARKS.md).
+            const reg = Text.getMatchRegExp(slot, directRegExp, this.#getCustomRegExp);
+            if (reg) {
+                this.#scheduleMatch(reg, userCommand);
+                return;
+            }
+        }
     }
 
     /**
@@ -1152,6 +1642,12 @@ export abstract class BotController<
      * Либо использовать в качестве обработки команд, что не рекомендуется, так как из-за подобного подхода, размер метода может быть большим.
      *
      * Метод необходимо обязательно реализовать в дочерних классах.
+     *
+     * ⚠️ Метод вызывается синхронно: фреймворк не дожидается возвращаемого значения.
+     * Не объявляйте его `async` — всё, что выполнится после первого `await`, не попадёт
+     * в ответ пользователю. Если `action()` всё же вернёт Promise, фреймворк напишет
+     * предупреждение в лог, а ошибки промиса будут залогированы вместо unhandledRejection.
+     * Для асинхронной логики используйте `addCommand`/`addStep` — их колбэки фреймворк ожидает.
      *
      * @param {string | null} intentName - Название интента или команды
      * @param {boolean} [isCommand=false] - Флаг, указывающий что это команда
@@ -1183,18 +1679,26 @@ export abstract class BotController<
 
     /**
      * Выполнение команды.
-     * @param commandName
-     * @param command
+     * @param commandName — Имя команды для выполнения
+     * @param command — Параметры зарегистрированной команды
      */
     #commandExecute(commandName: string, command?: ICommandParam): void | Promise<void> {
-        const errorCb = (e: Error | Record<string, unknown>): void => {
-            this.appContext.logError(
-                `BotController: Произошла ошибка во время обработки команды "${commandName}". Текст ошибки: "${e}"`,
-                {
-                    e,
-                },
-            );
-            this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
+        // Замыкание обработчика ошибок создаётся лениво — только когда ошибка
+        // действительно произошла: в счастливом пути оно не аллоцируется вовсе.
+        let errorCb: ((e: Error | Record<string, unknown>) => void) | undefined;
+        const getErrorCb = (): ((e: Error | Record<string, unknown>) => void) => {
+            if (!errorCb) {
+                errorCb = (e: Error | Record<string, unknown>): void => {
+                    this.appContext.logError(
+                        `BotController: Произошла ошибка во время обработки команды "${commandName}". Текст ошибки: "${e}"`,
+                        {
+                            e,
+                        },
+                    );
+                    this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
+                };
+            }
+            return errorCb;
         };
         try {
             if (command) {
@@ -1206,22 +1710,22 @@ export abstract class BotController<
                                 this.text = result;
                             }
                         })
-                        .catch(errorCb);
+                        .catch((e) => getErrorCb()(e as Error | Record<string, unknown>));
                 }
                 if (res) {
                     this.text = res;
                 }
             }
         } catch (e) {
-            errorCb(e as Record<string, unknown>);
+            getErrorCb()(e as Error | Record<string, unknown>);
         }
     }
 
     /**
      * Запуск обработки пользовательских команд с учетом метрик.
-     * @param commandName
-     * @param isCommand
-     * @param isStep
+     * @param {string | null} commandName - Имя команды
+     * @param {boolean} isCommand - Является ли обработка командой (а не шагом)
+     * @param {boolean} isStep - Является ли обработка шагом диалога
      */
     protected _actionMetric(
         commandName: string | null,
@@ -1229,7 +1733,39 @@ export abstract class BotController<
         isStep: boolean = false,
     ): void {
         const start = this.appContext?.usedMetric ? performance.now() : 0;
-        this.action(commandName, isCommand, isStep);
+        let res: void | Promise<void>;
+        try {
+            res = this.action(commandName, isCommand, isStep) as void | Promise<void>;
+        } catch (error) {
+            // Синхронное исключение обрабатываем так же, как async-ошибку:
+            // до webhook-обработчика оно дошло бы как 500 (Telegram повторяет
+            // апдейт, VK отключает сервер).
+            this.appContext?.logError(
+                `BotController: Произошла ошибка внутри action() для "${commandName}". Текст ошибки: "${error}"`,
+                { error },
+            );
+            if (!this.text) {
+                this.text = 'Не удалось выполнить команду. Попробуйте ещё раз.';
+            }
+            res = undefined;
+        }
+        if (isPromise(res)) {
+            // Типичная ловушка: async-вариант action() компилируется без ошибки,
+            // но фреймворк не дожидается результата, и всё после первого await
+            // молча не попадало в ответ. Вместо тишины предупреждаем и вешаем catch,
+            // чтобы ошибка в пользовательском промисе не стала unhandledRejection.
+            this.appContext?.logWarn(
+                'BotController: action() вернул Promise. Метод action() должен быть синхронным: ' +
+                    'всё, что выполнится после первого await, не попадёт в ответ. ' +
+                    'Для асинхронной логики используйте колбэки addCommand/addStep/addForm — они поддерживают async.',
+            );
+            res.catch((error) => {
+                this.appContext?.logError(
+                    `BotController: Произошла ошибка внутри async action(). Текст ошибки: "${error}"`,
+                    { error },
+                );
+            });
+        }
         if (this.appContext?.usedMetric) {
             this.appContext.logMetric(EMetric.ACTION, performance.now() - start, {
                 commandName,
@@ -1255,23 +1791,49 @@ export abstract class BotController<
                 }
             }
             if (step) {
-                const res = step.cb(this);
+                let res: void | false | Promise<void | false>;
+                try {
+                    res = step.cb(this);
+                } catch (error) {
+                    this.appContext.logError(
+                        `BotController: Произошла ошибка во время обработки шага "${step.stepName}". Текст ошибки: "${error}"`,
+                        {
+                            error,
+                        },
+                    );
+                    this.text = 'Не удалось выполнить шаг диалога. Попробуйте ещё раз.';
+                    return;
+                }
                 if (res) {
-                    return res
-                        .then(() => {
+                    // Двухаргументный then: ошибка самого шага гасится здесь,
+                    // а продолжение конвейера (async-отказ шага) обрабатывает
+                    // ошибки своими цепочками, как и синхронный путь.
+                    return res.then(
+                        (result) => {
+                            if (result === false) {
+                                // Асинхронный шаг отказался — как и при синхронном
+                                // false, продолжаем обычный конвейер (команды → интенты).
+                                return this.#runCommandOrIntent();
+                            }
                             this._actionMetric(step.stepName, false, true);
-                        })
-                        .catch((error) => {
+                        },
+                        (error) => {
                             this.appContext.logError(
                                 `BotController: Произошла ошибка во время обработки шага "${step.stepName}". Текст ошибки: "${error}"`,
                                 {
                                     error,
                                 },
                             );
-                        });
+                            // Без fallback-текста платформа получила бы пустой ответ.
+                            // Не затираем текст, если обработчик успел его задать до ошибки.
+                            if (!this.text) {
+                                this.text = 'Не удалось выполнить шаг диалога. Попробуйте ещё раз.';
+                            }
+                        },
+                    );
                 } else if (res === false) {
                     // Если передали false, значит хотят чтобы шаг не выполнялся, и дальше пошла логика с обработкой команд.
-                    // Как правило, нужно в случаях, когда был записан какой-то шал, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
+                    // Как правило, нужно в случаях, когда был записан какой-то шаг, и диалог открыли заново. В таком случае сам шаг отрабатывать не нужно.
                     return null;
                 }
                 this._actionMetric(step.stepName, false, true);
@@ -1282,31 +1844,103 @@ export abstract class BotController<
     }
 
     /**
+     * Обрабатывает интенты и fallback-команду.
+     * Вызывается из {@link run}, когда не сработал ни активный шаг, ни одна из команд.
+     * Fallback-команда ("*") имеет приоритет над welcome: она выполняется, если
+     * интент не найден и она зарегистрирована. Welcome-интент используется только
+     * при `messageId === 0` (начало диалога) и отсутствии зарегистрированного fallback.
+     *
+     * @returns {void | Promise<void>} Может быть асинхронным
+     */
+    #runIntentOrFallback(): void | Promise<void> {
+        let intent: string | null = this._getIntent(this.userCommand);
+        const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
+        if (!intent && fallbackCommand) {
+            const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
+            if (isPromise(res)) {
+                return res.then(() => {
+                    this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+                });
+            }
+            this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
+            return res;
+        }
+        // if (
+        //     intent === null &&
+        //     this.originalUserCommand &&
+        //     this.userCommand !== this.originalUserCommand
+        // ) {
+        //     // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
+        //     // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
+        //     intent = this._getIntent(this.originalUserCommand.toLowerCase());
+        // }
+        if (intent === null && this.messageId === 0) {
+            intent = DEFAULT_WELCOME_INTENT_NAME;
+        }
+        let command: ICommandParam | undefined;
+        /*
+         * Для стандартных действий параметры заполняются автоматически.
+         * Есть возможность переопределить их в action() по названию действия
+         */
+        switch (intent) {
+            case DEFAULT_WELCOME_INTENT_NAME:
+                command = this.appContext.commands.get(DEFAULT_WELCOME_INTENT_NAME);
+                if (command) {
+                    return this.#commandCb(
+                        DEFAULT_WELCOME_INTENT_NAME,
+                        command,
+                        this.#getStartMetric(),
+                    );
+                }
+                this.text = Text.getText(this.appContext.platformParams.welcome_text);
+                break;
+
+            case DEFAULT_HELP_INTENT_NAME:
+                command = this.appContext.commands.get(DEFAULT_HELP_INTENT_NAME);
+                if (command) {
+                    return this.#commandCb(
+                        DEFAULT_HELP_INTENT_NAME,
+                        command,
+                        this.#getStartMetric(),
+                    );
+                }
+                this.text = Text.getText(this.appContext.platformParams.help_text);
+                break;
+        }
+
+        this._actionMetric(intent);
+    }
+
+    /**
      * Основной метод обработки запроса, вызываемый автоматически фреймворком.
      *
      * @remarks
-     * **КРАТКИЙ ОБЗОР РАБОТЫ:**
+     * Как это работает:
      * 1. Пользователь отправляет сообщение → платформа → Bot.run()
      * 2. `run()` определяет тип запроса (команда/интент/шаг)
      * 3. Вызывается ваш метод `action()` с результатом
      * 4. Вы заполняете поля ответа (`text`, `buttons`, `card`)
      * 5. Bot отправляет ответ пользователю
      *
-     * **ЧТО НЕ НУЖНО ДЕЛАТЬ:**
-     * - ❌ Не вызывайте `run()` вручную в своем коде
-     * - ❌ Не переопределяйте этот метод
-     * - ✅ Переопределяйте только метод `action()` для своей логики
+     * Не вызывайте `run()` вручную и не переопределяйте его —
+     * для своей логики переопределяйте только `action()`.
      *
-     * **ПОСЛЕДОВАТЕЛЬНОСТЬ ОБРАБОТКИ ВНУТРИ run():**
+     * Порядок обработки внутри run():
      * ```
      * run()
+     *   ├── Шаг 0: Вызывает событийные обработчики (bot.addEvent) по controller.eventType
+     *   │     → Обработчик не вернул false → обработка завершена (action(eventType))
      *   ├── Шаг 1: Проверяет есть ли активный шаг
      *   │     → Если есть → вызывает action(stepName, false, true)
      *   ├── Шаг 2: Ищет команду
      *   │     → Если нашел → вызывает action(commandName, true, false)
-     *   ├── Шаг 3: Ищет интент
+     *   ├── Шаг 3: Ищет интент (включая welcome/help)
      *   │     → Если нашел → вызывает action(intentName, false, false)
-     *   └── Шаг 4: Если ничего не нашел → Fallback команда
+     *   │     → welcome-интент: messageId === 0 (начало диалога) и fallback-команда
+     *   │       не зарегистрирована
+     *   └── Шаг 4: Если интент не найден → fallback-команда ("*"), если зарегистрирована.
+     *         Fallback проверяется раньше welcome и имеет над ним приоритет —
+     *         welcome при messageId === 0 срабатывает, только если fallback не зарегистрирован
      * ```
      *
      * @example
@@ -1330,68 +1964,156 @@ export abstract class BotController<
      * @returns {void | Promise<void>} Может быть асинхронным
      */
     public run(): void | Promise<void> {
+        const eventResult = this.#eventResolver();
+        if (eventResult !== null) {
+            return eventResult;
+        }
+        return this.#runPipeline();
+    }
+
+    /**
+     * Обычный конвейер обработки: шаг → команда → интент/fallback.
+     *
+     * Единственная реализация последовательности — вызывается из {@link run},
+     * и из `#runEventHandlers`, когда событийный обработчик отказался от
+     * события (`false`).
+     *
+     * @returns Промис, если какая-то из веток асинхронная, иначе void
+     */
+    #runPipeline(): void | Promise<void> {
         const stepResult = this.#stepResolver();
         if (stepResult !== null) {
             return stepResult;
         }
+        return this.#runCommandOrIntent();
+    }
+
+    /**
+     * Часть конвейера после шагов: команда → интент/fallback.
+     *
+     * Вызывается из {@link #runPipeline} и из `#stepResolver`, когда
+     * асинхронный шаг вернул `false` (шаг не применим).
+     *
+     * @returns Промис, если какая-то из веток асинхронная, иначе void
+     */
+    #runCommandOrIntent(): void | Promise<void> {
         const commandResult = this._getCommand();
-        if (commandResult === null) {
-            let intent: string | null = this._getIntent(this.userCommand);
-            const fallbackCommand = this.appContext?.commands.get(DEFAULT_FALLBACK_COMMAND);
-            if (!intent && fallbackCommand) {
-                const res = this.#commandExecute(DEFAULT_FALLBACK_COMMAND, fallbackCommand);
-                this._actionMetric(DEFAULT_FALLBACK_COMMAND, true);
-                return res;
-            } else {
-                // if (
-                //     intent === null &&
-                //     this.originalUserCommand &&
-                //     this.userCommand !== this.originalUserCommand
-                // ) {
-                //     // Защита на случай, если сам запроса не был найден, но на самом деле должен был отработать.
-                //     // По хорошему стоит пересмотреть эту механику, и возможно удалить ее.
-                //     intent = this._getIntent(this.originalUserCommand.toLowerCase());
-                // }
-                if (intent === null && this.messageId === 0) {
-                    intent = DEFAULT_WELCOME_INTENT_NAME;
+        if (isPromise(commandResult)) {
+            return commandResult.then((result) => {
+                if (result === null) {
+                    return this.#runIntentOrFallback();
                 }
-                let command: ICommandParam | undefined;
-                /*
-                 * Для стандартных действий параметры заполняются автоматически.
-                 * Есть возможность переопределить их в action() по названию действия
-                 */
-                switch (intent) {
-                    case DEFAULT_WELCOME_INTENT_NAME:
-                        command = this.appContext.commands.get(DEFAULT_WELCOME_INTENT_NAME);
-                        if (command) {
-                            return this.#commandCb(
-                                DEFAULT_WELCOME_INTENT_NAME,
-                                command,
-                                this.#getStartMetric(),
-                            );
-                        } else {
-                            this.text = Text.getText(this.appContext.platformParams.welcome_text);
-                        }
-                        break;
-
-                    case DEFAULT_HELP_INTENT_NAME:
-                        command = this.appContext.commands.get(DEFAULT_HELP_INTENT_NAME);
-                        if (command) {
-                            return this.#commandCb(
-                                DEFAULT_HELP_INTENT_NAME,
-                                command,
-                                this.#getStartMetric(),
-                            );
-                        } else {
-                            this.text = Text.getText(this.appContext.platformParams.help_text);
-                        }
-                        break;
-                }
-
-                this._actionMetric(intent);
-            }
-        } else {
+            });
+        }
+        if (commandResult !== null) {
             return commandResult;
         }
+        return this.#runIntentOrFallback();
+    }
+
+    /**
+     * Выполняет событийные обработчики, зарегистрированные через `bot.addEvent`.
+     *
+     * Вызывается первым в {@link run} — до шагов и команд: событие «фото»
+     * не должно проходить через матчинг текстовых слотов. Обработчик может:
+     * - заполнить ответ (`ctx.text = ...`) — обработка на этом завершается;
+     * - вернуть `false` — «событие не моё», перебор продолжится следующим
+     *   обработчиком, а после исчерпания — обычный конвейер
+     *   (шаг → команда → интент → fallback).
+     *
+     * Обработчики одного события выполняются по порядку до первого, который
+     * не отказался (`false`); отказавшийся синхронно или асинхронно обработчик
+     * передаёт право следующему — поведение одинаково для обоих.
+     *
+     * @returns `null`, если событие не перехвачено (конвейер продолжается),
+     *   иначе — промис/результат завершённой обработки
+     */
+    #eventResolver(): void | null | Promise<void> {
+        const command = this.appContext.command;
+        // Быстрый выход по предвычисленному флагу: у приложений без addEvent
+        // событийный слой стоит ровно одно чтение булева поля.
+        if (!command.hasEvents) {
+            return null;
+        }
+        const events = command.events;
+        const handlers = events.get(this.eventType);
+        if (!handlers || handlers.length === 0) {
+            return null;
+        }
+        return this.#runEventHandlers([...handlers], 0);
+    }
+
+    /**
+     * Рекурсивно прогоняет цепочку обработчиков события начиная с индекса `from`.
+     *
+     * Каждый обработчик: `false` — переход к следующему; строка/void — событие
+     * перехвачено, обработка завершается (`action(eventType)`). Ошибка любого
+     * обработчика превращается в текст ошибки и тоже завершает обработку.
+     *
+     * @param handlers Обработчики события (по порядку регистрации)
+     * @param from Индекс обработчика, с которого продолжаем (для async-отказа)
+     * @returns `null`, если все обработчики отказались; иначе результат обработки
+     */
+    #runEventHandlers(handlers: IEventParam['cb'][], from: number): void | null | Promise<void> {
+        for (let i = from; i < handlers.length; i++) {
+            const handler = handlers[i];
+            if (!handler) {
+                continue;
+            }
+            let res: void | string | Promise<void | string> | false;
+            try {
+                res = handler(this);
+            } catch (error) {
+                this.appContext.logError(
+                    `BotController: Произошла ошибка во время обработки события "${this.eventType}". Текст ошибки: "${error}"`,
+                    {
+                        error,
+                    },
+                );
+                this.text = 'Не удалось обработать запрос. Попробуйте ещё раз.';
+                return;
+            }
+            if (isPromise(res)) {
+                return res.then(
+                    (result: void | string | false) => {
+                        if (result === false) {
+                            // Асинхронный обработчик отказался от события —
+                            // продолжаем перебор со следующего обработчика.
+                            // Все отказались — конвейер продолжится штатно
+                            // (это значение читает #eventResolver → run()).
+                            const rest = this.#runEventHandlers(handlers, i + 1);
+                            if (rest === null) {
+                                return this.#runPipeline();
+                            }
+                            return rest;
+                        }
+                        if (typeof result === 'string') {
+                            this.text = result;
+                        }
+                        this._actionMetric(this.eventType, false, false);
+                    },
+                    (error: unknown) => {
+                        this.appContext.logError(
+                            `BotController: Произошла ошибка во время обработки события "${this.eventType}". Текст ошибки: "${error}"`,
+                            {
+                                error,
+                            },
+                        );
+                        this.text = 'Не удалось обработать запрос. Попробуйте ещё раз.';
+                    },
+                );
+            }
+            if (res === false) {
+                // Обработчик отказался от события — пробуем следующие.
+                continue;
+            }
+            if (typeof res === 'string') {
+                this.text = res;
+            }
+            this._actionMetric(this.eventType, false, false);
+            return;
+        }
+        // Все обработчики отказались — событие не перехвачено.
+        return null;
     }
 }

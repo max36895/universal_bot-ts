@@ -18,12 +18,12 @@ export type TButtonPayload = Record<string, unknown> | string;
  */
 export class Buttons {
     /**
-     * Константа для создания кнопки в виде ссылки (сайджест).
+     * Значение флага `hide` для кнопки-ссылки (саджеста): `false`.
      */
     public static readonly B_LINK: boolean = false;
 
     /**
-     * Константа для создания кнопки в виде интерактивной кнопки.
+     * Значение флага `hide` для интерактивной кнопки: `true`.
      */
     public static readonly B_BTN: boolean = true;
     /**
@@ -38,17 +38,15 @@ export class Buttons {
     #appContext: AppContext;
 
     /**
-     * Создает новый экземпляр коллекции кнопок.
-     * Инициализирует все массивы и устанавливает тип кнопок по умолчанию для Алисы.
-     * @param appContext Контекст приложения
-     * ⚠️ Обычно НЕ создаётся вручную — автоматически передаётся через контроллер:
-     * ```ts
-     * // Правильно — через контроллер:
-     * this.buttons.addBtn('caption');
-     *
-     * // НЕ рекомендуется — ручное создание:
-     * new Buttons(this.appContext); // appContext берётся из контроллера
-     * ```
+     * Признак того, что разработчик явно попросил убрать клавиатуру.
+     */
+    #isRemove: boolean = false;
+
+    /**
+     * Создает новый экземпляр коллекции кнопок: инициализирует пустой массив
+     * кнопок и сохраняет контекст приложения.
+     * @param appContext Контекст приложения. Обычно не создаётся вручную —
+     * передаётся через контроллер (`this.buttons.addBtn('caption')`).
      */
     public constructor(appContext: AppContext) {
         this.buttons = [];
@@ -57,7 +55,8 @@ export class Buttons {
 
     /**
      * Устанавливает контекст приложения.
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
+     * @returns {this} Текущий экземпляр для цепочки вызовов
      */
     public setAppContext(appContext: AppContext): this {
         this.#appContext = appContext;
@@ -66,10 +65,46 @@ export class Buttons {
 
     /**
      * Очищает массив кнопок.
+     *
+     * Это именно «начать список заново», а не «убрать клавиатуру у пользователя»:
+     * пустой список кнопок платформе не отправляется. Чтобы снять уже показанную
+     * клавиатуру, используйте {@link remove}.
      * @returns {void}
      */
     public clear(): void {
         this.buttons = [];
+        this.#isRemove = false;
+    }
+
+    /**
+     * Просит платформу убрать ранее показанную клавиатуру.
+     *
+     * Актуально только для платформ, где клавиатура «прилипает» к диалогу и
+     * живёт до следующего явного изменения — Telegram (reply-клавиатура) и VK.
+     * У остальных клавиатура привязана к конкретному сообщению и исчезает сама,
+     * там вызов ничего не меняет. {@link clear} для этого не подходит: пустой
+     * список кнопок платформе не отправляется.
+     *
+     * @returns {Buttons}
+     *
+     * @example
+     * ```ts
+     * // Диалог закончился — убираем клавиатуру
+     * ctx.buttons.remove();
+     * ctx.text = 'Спасибо, заказ оформлен!';
+     * ```
+     */
+    public remove(): this {
+        this.buttons = [];
+        this.#isRemove = true;
+        return this;
+    }
+
+    /**
+     * Признак того, что клавиатуру нужно убрать (см. {@link remove}).
+     */
+    public get isRemove(): boolean {
+        return this.#isRemove;
     }
 
     /**
@@ -89,6 +124,8 @@ export class Buttons {
         hide: boolean = false,
         options: IButtonOptions = {},
     ): this {
+        // Добавили кнопку — значит клавиатуру показываем, а не убираем.
+        this.#isRemove = false;
         const button =
             hide === Buttons.B_LINK
                 ? getLinkButton(this.#appContext, title, url, payload, options)
@@ -102,11 +139,12 @@ export class Buttons {
     /**
      * Добавляет интерактивную кнопку в коллекцию.
      *
-     * @param {string} title - Текст кнопки
-     * @param {string} [url=''] - URL для перехода
+     * @param {string | null} title - Текст кнопки
+     * @param {string | null} [url=''] - URL для перехода
      * @param {TButtonPayload} [payload=''] - Дополнительные данные
      * @param {IButtonOptions} [options={}] - Дополнительные параметры
      * @returns {Buttons}
+     * @remarks Кнопка с пустым `title` молча игнорируется (не добавляется в коллекцию).
      *
      * @example
      * ```ts
@@ -129,8 +167,8 @@ export class Buttons {
     /**
      * Добавляет кнопку-ссылку в коллекцию.
      *
-     * @param {string} title - Текст кнопки
-     * @param {string} [url=''] - URL для перехода
+     * @param {string | null} title - Текст кнопки
+     * @param {string | null} [url=''] - URL для перехода
      * @param {TButtonPayload} [payload=''] - Дополнительные данные
      * @param {IButtonOptions} [options={}] - Дополнительные параметры
      * @returns {Buttons}
@@ -154,9 +192,13 @@ export class Buttons {
     }
 
     /**
-     * Возвращает массив кнопок, адаптированный для указанной платформы.
+     * Возвращает кнопки в формате указанной платформы.
      *
-     * @param buttonProcessing
+     * Метод сам не преобразует кнопки: он передаёт массив во внешнюю функцию
+     * `buttonProcessing` (её предоставляет адаптер платформы) и возвращает её результат.
+     *
+     * @param {TButtonProcessing<T | null, TType>} buttonProcessing - Функция обработки кнопок для платформы
+     * @returns {T | null} Результат функции обработки (формат зависит от платформы) или null
      */
     public getButtons<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,
@@ -167,13 +209,14 @@ export class Buttons {
     /**
      * Возвращает JSON-представление кнопок для указанной платформы.
      *
-     * @param buttonProcessing - Тип кнопок (платформа)
+     * @param {TButtonProcessing} buttonProcessing - Функция обработки кнопок для платформы
+     * @returns {string | null} JSON-строка кнопок или null если кнопок нет
      */
     public getButtonJson<T = unknown, TType = Record<string, unknown> | string | null>(
         buttonProcessing: TButtonProcessing<T | null, TType>,
     ): string | null {
-        const btn: object[] | null = this.getButtons(buttonProcessing) as object[] | null;
-        if (btn?.length) {
+        const btn = this.getButtons(buttonProcessing);
+        if (btn != null) {
             return JSON.stringify(btn);
         }
         return null;

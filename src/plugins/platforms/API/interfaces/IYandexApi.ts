@@ -85,6 +85,8 @@ export interface IYandexSoundsCheckOutPlaceRequest extends IYandexApi {
  * Интерфейс, описывающий информацию о квоте хранилища
  * Содержит информацию о доступном и использованном месте
  *
+ * Особенность контракта API: used — строка, total — число.
+ *
  * @example
  * ```ts
  * const quota: IYandexCheckOutPlace = {
@@ -95,12 +97,12 @@ export interface IYandexSoundsCheckOutPlaceRequest extends IYandexApi {
  */
 export interface IYandexCheckOutPlace {
     /**
-     * Общий объем доступного места в байтах
+     * Общий объем доступного места в байтах (число)
      */
     total: number;
 
     /**
-     * Объем использованного места в байтах
+     * Объем использованного места в байтах (строка — особенность API)
      */
     used: string;
 }

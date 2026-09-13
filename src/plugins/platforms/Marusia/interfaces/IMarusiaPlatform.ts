@@ -22,9 +22,13 @@ export interface IMarusiaEntities {
      * Нумерация начинается с 0
      */
     tokens?: {
-        /** Индекс первого слова сущности */
+        /**
+         * Индекс первого слова сущности
+         */
         start: number;
-        /** Индекс первого слова после сущности */
+        /**
+         * Индекс первого слова после сущности
+         */
         end: number;
     };
 
@@ -50,9 +54,13 @@ export interface IMarusiaEntities {
  * Содержит результаты анализа текста пользователя
  */
 export interface IMarusiaNlu extends INlu {
-    /** Массив слов из фразы пользователя */
+    /**
+     * Массив слов из фразы пользователя
+     */
     tokens?: string[];
-    /** Массив найденных именованных сущностей */
+    /**
+     * Массив найденных именованных сущностей
+     */
     entities?: IMarusiaEntities[];
 }
 
@@ -72,9 +80,8 @@ export interface IMarusiaSession {
     new: boolean;
 
     /**
-     * ID сообщения в сессии
-     * Максимум 8 символов
-     * Увеличивается с каждым запросом
+     * ID сообщения в сессии.
+     * Числовой счётчик, увеличивается с каждым запросом
      */
     message_id: number;
 
@@ -105,9 +112,13 @@ export interface IMarusiaSession {
  * - user: данные пользователя
  */
 export interface IMarusiaRequestState {
-    /** Данные сессии */
+    /**
+     * Данные сессии
+     */
     session?: Record<string, unknown>;
-    /** Данные пользователя */
+    /**
+     * Данные пользователя
+     */
     user?: Record<string, unknown>;
 }
 
@@ -116,22 +127,34 @@ export interface IMarusiaRequestState {
  * Содержит информацию об устройстве и окружении
  */
 export interface IMarusiaRequestMeta {
-    /** Язык в POSIX-формате (макс. 64 символа) */
+    /**
+     * Язык в POSIX-формате (макс. 64 символа)
+     */
     locale: string;
-    /** Часовой пояс (макс. 64 символа) */
+    /**
+     * Часовой пояс (макс. 64 символа)
+     */
     timezone: string;
-    /** ID устройства и приложения (макс. 1024 символа) */
+    /**
+     * ID устройства и приложения (макс. 1024 символа)
+     */
     client_id: string;
 
     /**
      * Доступные интерфейсы устройства
      */
     interfaces: {
-        /** Поддержка экрана и браузера */
+        /**
+         * Поддержка экрана и браузера
+         */
         screen?: object;
-        /** Поддержка платежей */
+        /**
+         * Поддержка платежей
+         */
         payments?: object | null;
-        /** Поддержка связки аккаунтов */
+        /**
+         * Поддержка связки аккаунтов
+         */
         account_linking: object | null;
     };
 }
@@ -190,17 +213,30 @@ export interface IMarusiaRequest {
  * Полный формат входящего запроса от Маруси
  */
 export interface IMarusiaWebhookRequest {
-    /** Метаданные устройства */
+    /**
+     * Метаданные устройства
+     */
     meta: IMarusiaRequestMeta;
-    /** Данные запроса пользователя */
+    /**
+     * Данные запроса пользователя
+     */
     request: IMarusiaRequest;
-    /** Данные сессии */
+    /**
+     * Данные сессии
+     */
     session: IMarusiaSession;
-    /** Событие связки аккаунтов */
-    account_linking_complete_event?: boolean;
-    /** Состояние приложения */
+    /**
+     * Событие связки аккаунтов.
+     * Может быть `true` (подтверждение) или объектом с данными пользователя
+     */
+    account_linking_complete_event?: object | boolean;
+    /**
+     * Состояние приложения
+     */
     state?: IMarusiaRequestState;
-    /** Версия протокола (текущая: 1.0) */
+    /**
+     * Версия протокола (текущая: 1.0)
+     */
     version: string;
 }
 
@@ -268,32 +304,33 @@ export interface IMarusiaImage {
      * Тип карточки
      * - BigImage: одно изображение
      * - ItemsList: список изображений (1-5)
+     * - ImageGallery: галерея (1-7, поддерживается адаптером)
      */
     type?: string;
 
     /**
-     * ID изображения
-     * Только для BigImage
+     * ID изображения (integer по протоколу Маруси) из раздела «Медиафайлы»
+     * настроек скилла либо полученный через marusia.savePicture.
+     * Обязателен и для BigImage, и для элементов ItemsList.
      */
-    image_id?: string;
+    image_id?: number | string;
 
     /**
-     * Заголовок
-     * Максимум 128 символов
-     * Игнорируется для ItemsList
+     * Заголовок. В протоколе карточек Маруси отсутствует — адаптер его
+     * не отправляет; поле оставлено для обратной совместимости типов.
+     * @deprecated Не поддерживается протоколом Маруси.
      */
-    title: string;
+    title?: string;
 
     /**
-     * Описание
-     * Максимум 256 символов
-     * Игнорируется для ItemsList
+     * Описание. В протоколе карточек Маруси отсутствует — адаптер его не отправляет.
+     * @deprecated Не поддерживается протоколом Маруси.
      */
     description?: string;
 
     /**
-     * Свойства при нажатии.
-     * Игнорируется для ItemsList
+     * Свойства при нажатии. В протоколе карточек Маруси отсутствуют — адаптер их не отправляет.
+     * @deprecated Не поддерживается протоколом Маруси.
      */
     button?: IMarusiaButtonCard;
 }
@@ -303,7 +340,9 @@ export interface IMarusiaImage {
  * Одно изображение с заголовком и описанием
  */
 export interface IMarusiaBigImage extends IMarusiaImage {
-    /** Тип карточки */
+    /**
+     * Тип карточки
+     */
     type: 'BigImage';
 }
 
@@ -312,14 +351,18 @@ export interface IMarusiaBigImage extends IMarusiaImage {
  * От 1 до 5 изображений с заголовком
  */
 export interface IMarusiaItemsList {
-    /** Тип карточки */
+    /**
+     * Тип карточки
+     */
     type: 'ItemsList';
 
     /**
      * Заголовок списка
      */
     header?: {
-        /** Текст заголовка (макс. 64 символа) */
+        /**
+         * Текст заголовка (макс. 64 символа)
+         */
         text: string;
     };
 
@@ -333,11 +376,32 @@ export interface IMarusiaItemsList {
      * Кнопка под списком
      */
     footer?: {
-        /** Текст кнопки (макс. 64 символа) */
+        /**
+         * Текст кнопки (макс. 64 символа)
+         */
         text: string;
-        /** Свойства кнопки */
+        /**
+         * Свойства кнопки
+         */
         button?: IMarusiaButtonCard;
     };
+}
+
+/**
+ * Интерфейс для галереи изображений
+ * От 1 до 7 изображений
+ */
+export interface IMarusiaImageGallery {
+    /**
+     * Тип карточки
+     */
+    type: 'ImageGallery';
+
+    /**
+     * Изображения
+     * От 1 до 7 элементов
+     */
+    items?: IMarusiaImage[];
 }
 
 /**
@@ -347,23 +411,22 @@ export interface IMarusiaItemsList {
 export interface IMarusiaResponse {
     /**
      * Текст ответа
-     * Максимум 1024 символа
-     * Используется если карточка не отображается
+     * Максимум 1024 символов
      */
     text: string;
 
     /**
      * Текст для озвучивания
      * Максимум 1024 символа
-     * Поддерживает SSML и звуки
+     * Поддерживает разметку `<speaker ...>`/`sil <[мс]>` и звуки
      */
     tts?: string;
 
     /**
      * Карточка с изображением.
-     * Отображается вместо текста
+     * Отправляется вместе с текстом ответа
      */
-    card?: IMarusiaBigImage | IMarusiaItemsList;
+    card?: IMarusiaBigImage | IMarusiaItemsList | IMarusiaImageGallery;
 
     /**
      * Кнопки
@@ -384,11 +447,17 @@ export interface IMarusiaResponse {
  * Содержит информацию о текущей сессии
  */
 export interface IMarusiaSessionResponse {
-    /** ID сессии */
+    /**
+     * ID сессии
+     */
     session_id: string;
-    /** ID сообщения */
+    /**
+     * ID сообщения
+     */
     message_id: number;
-    /** ID пользователя */
+    /**
+     * ID пользователя
+     */
     user_id: string;
 }
 
@@ -397,14 +466,24 @@ export interface IMarusiaSessionResponse {
  * Полный формат исходящего ответа для Маруси
  */
 export interface IMarusiaWebhookResponse {
-    /** Данные сессии */
+    /**
+     * Данные сессии
+     */
     session_state?: object;
-    /** Данные пользователя */
+    /**
+     * Данные пользователя
+     */
     user_state_update?: object;
-    /** Ответ пользователю */
+    /**
+     * Ответ пользователю
+     */
     response?: IMarusiaResponse;
-    /** Версия протокола (текущая: 1.0) */
+    /**
+     * Версия протокола (текущая: 1.0)
+     */
     version: string;
-    /** Информация о сессии */
+    /**
+     * Информация о сессии
+     */
     session?: IMarusiaSessionResponse;
 }

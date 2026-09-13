@@ -45,7 +45,7 @@ const regReplace = /((?:^|\s)#\w+#(?:\s|$))/g;
  *
  * @example
  * ```ts
- * import { Sound } from './components/sound/Sound';
+ * import { Sound } from 'umbot';
  *
  * // Создание экземпляра
  * const sound = new Sound();
@@ -58,8 +58,8 @@ const regReplace = /((?:^|\s)#\w+#(?:\s|$))/g;
  *         sounds: ['<speaker audio="alice-xxx">']
  *     },
  * ];
- * // Получение текста со звуками
- * const result = await sound.getSounds('Текст сообщения #myKey#');
+ * // Получение текста со звуками (text, soundProcessing, controller)
+ * const result = await sound.getSounds('Текст сообщения #myKey#', mySoundProcessing, controller);
  * ```
  */
 export class Sound {
@@ -99,14 +99,16 @@ export class Sound {
      * Получает текст с встроенными звуками для конкретной платформы.
      *
      * Процесс работы:
-     * 1. Проверяет наличие текста
-     * 2. Определяет тип приложения
-     * 3. Создает соответствующий обработчик звуков
-     * 4. Применяет звуки к тексту
+     * 1. Если текст пуст — возвращает пустую строку
+     * 2. Передаёт { text, usedStandardSound, sounds } и контроллер
+     *    в обработчик `soundProcessing` (его предоставляет адаптер платформы)
+     * 3. Если результат — строка, вырезает оставшиеся плейсхолдеры вида #key#
      *
      * @param {string | null} text - Исходный текст для обработки
-     * @param soundProcessing
-     * @param controller
+     * @param {TSoundProcessing<TResult>} soundProcessing - Функция обработки звуков для платформы
+     * @param {BotController} controller - Контроллер бота
+     * @returns {Promise<TResult>} Текст со встроенными звуками для платформы;
+     *   при falsy-результате soundProcessing (null/undefined/'') — исходный текст без изменений
      */
     public async getSounds<TResult = unknown>(
         text: string | null,

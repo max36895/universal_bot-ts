@@ -1,27 +1,25 @@
 import { Bot, BotController, SoundConstants, Text } from '../../src';
 import { T_ALISA, AlisaAdapter, FileAdapter } from '../../src/plugins';
 import { performance } from 'node:perf_hooks';
+import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
-// Базовое потребление памяти не должно превышать 500кб
-// const BASE_MEMORY_USED = 500;
-const BASE_MEMORY_USED = 500;
-// Базовое время обработки не должно превышать 10мс
-let BASE_DURATION = 10;
+// Базовое потребление памяти не должно превышать 400кб
+let BASE_MEMORY_USED = 400;
+if (typeof global.gc !== 'function') {
+    // без gc потребление памяти выше
+    BASE_MEMORY_USED = 700;
+}
+// Базовое время обработки не должно превышать 5мс
+const BASE_DURATION = 5;
 
-// Вычисляем базовое время обработки в зависимости от системы пользователя
-(function initBasePer() {
-    const start = performance.now();
-    let count = 2;
-    const arr: number[] = [];
-    // выполняем относительно простые вычисления
-    for (let i = 0; i < 55e4; i++) {
-        arr.push(count + 1);
-        count *= count;
+const WARMUP = 3;
+const RUNS = 10;
+
+function forceGc(): void {
+    if (typeof global.gc === 'function') {
+        global.gc();
     }
-    count += arr[0] / 2;
-    count = Math.min(arr[0] - Math.random(), arr[0] - Math.random(), count);
-    BASE_DURATION = performance.now() - start + count;
-})();
+}
 
 class TestBotController extends BotController {
     constructor() {
@@ -60,8 +58,6 @@ class TestBotController extends BotController {
     }
 }
 
-class TestBot extends Bot {}
-
 function getContent(query: string, count = 0) {
     return JSON.stringify({
         meta: {
@@ -94,43 +90,66 @@ function getContent(query: string, count = 0) {
     });
 }
 
-async function getPerformance(
-    fn: () => Promise<void>,
-    defaultDuration = BASE_DURATION,
-    defaultMemory = BASE_MEMORY_USED,
-    bot?: TestBot,
-) {
-    Text.clearCache();
-    bot?.clearCommands();
-    let allDuration = 0;
-    let allMemory = 0;
-    for (let i = 0; i < 10; i++) {
+function median(values: number[]): number {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+async function getPerformance(fn: () => Promise<void>, bot?: Bot): Promise<void> {
+    for (let i = 0; i < WARMUP; i++) {
         Text.clearCache();
+        bot?.clearCommands();
+        await fn();
+        bot?.clearCommands();
+        Text.clearCache();
+    }
+    forceGc();
+    const durations: number[] = [];
+    const memories: number[] = [];
+
+    for (let i = 0; i < RUNS; i++) {
+        Text.clearCache();
+        bot?.clearCommands();
         if (bot) {
-            bot?.clearCommands();
-            bot?.setPlatformParams({
-                intents: [],
-            });
+            bot.setPlatformParams({ intents: [] });
         }
+
         const beforeMemory = process.memoryUsage().heapUsed;
+
         const start = performance.now();
         await fn();
-        Text.clearCache();
         const duration = performance.now() - start;
+
+        forceGc();
         const afterMemory = process.memoryUsage().heapUsed;
-        const memoryUsed = (afterMemory - beforeMemory) / 1024;
-        allDuration += duration;
-        allMemory += memoryUsed;
+
+        const memoryUsed = Math.max(0, (afterMemory - beforeMemory) / 1024);
+
+        durations.push(duration);
+        memories.push(memoryUsed);
     }
-    expect(allDuration / 10).toBeLessThan(defaultDuration);
-    expect(allMemory / 10).toBeLessThan(defaultMemory);
+
+    const p50Duration = median(durations);
+    const p50Memory = median(memories);
+
+    expect(p50Duration).toBeLessThan(BASE_DURATION);
+    expect(p50Memory).toBeLessThan(BASE_MEMORY_USED);
 }
 
 describe('umbot', () => {
-    let bot: TestBot;
+    let bot: Bot;
+
+    // Дефолтные пути записи (json/, logs/) указывают в cwd — в корень
+    // репозитория. Перенаправляем в тестовую папку (tests/.tmp): сьют гоняет
+    // сотни итераций с карточками/кнопками, и FileAdapter иначе оставлял в репо
+    // UsersData/ImageTokens/SoundTokens.json (вкл. осиротевшие .tmp).
+    const TEST_DATA_DIR = createTestDir('perf');
 
     beforeEach(() => {
-        bot = new TestBot();
+        bot = new Bot();
+        bot.setAppConfig({ json: TEST_DATA_DIR, error_log: TEST_DATA_DIR });
         bot.setLogger({
             error: () => {},
         });
@@ -138,15 +157,23 @@ describe('umbot', () => {
         bot.use(new FileAdapter());
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         bot.clearCommands();
-        bot.close();
+        await bot.close();
         jest.resetAllMocks();
     });
+    afterAll(async () => {
+        // afterEach уже дожидается close(), так что недофлашенных записей нет;
+        // удаление оставлено здесь на случай отмены тестов Jest'ом.
+        await removeTestDir(TEST_DATA_DIR);
+    });
     describe('run performance', () => {
-        // Простое текстовое отображение
-        for (let i = 2; i < 100; i++) {
-            it(`Простое текстовое отображение. Длина запроса от пользователя ${i * 2}`, async () => {
+        // Простое текстовое отображение.
+        // Геометрическая выборка длин вместо перебора с шагом 2 (98 прогонов):
+        // время обработки растёт с длиной монотонно, поэтому достаточно границ
+        // диапазона (4 и 198) и промежуточных точек по лог-шкале.
+        for (const len of [4, 12, 30, 80, 198]) {
+            it(`Простое текстовое отображение. Длина запроса от пользователя ${len}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
@@ -155,13 +182,14 @@ describe('umbot', () => {
                     });
                     bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
-                    bot.setContent(getContent('0'.repeat(i * 2)));
+                    bot.setContent(getContent('0'.repeat(len)));
                     await bot.run();
                 });
             });
         }
-        for (let i = 2; i < 50; i++) {
-            it(`Простое текстовое отображение c кнопкой. Длина запроса от пользователя ${i * 3}`, async () => {
+        // Та же логика, что у текстов без кнопки: границы 2 и 49 плюс лог-точки.
+        for (const i of [2, 5, 12, 25, 49]) {
+            it(`Простое текстовое отображение с кнопкой. Длина запроса от пользователя ${i * 3}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
                     bot.appType = T_ALISA;
@@ -229,8 +257,10 @@ describe('umbot', () => {
             });
         });
 
-        // Обработка звуков, включая свои
-        for (let i = 1; i < 15; i++) {
+        // Обработка звуков, включая свои.
+        // Замена звуков линейна по количеству: проверяем границы 1 и 14
+        // и пару промежуточных точек вместо всех 14 значений.
+        for (const i of [1, 3, 8, 14]) {
             it(`Обработка звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
@@ -249,7 +279,7 @@ describe('umbot', () => {
                 });
             });
         }
-        for (let i = 1; i < 15; i++) {
+        for (const i of [1, 3, 8, 14]) {
             it(`Обработка своих звуков. Количество мелодий равно ${i}`, async () => {
                 await getPerformance(async () => {
                     bot.initBotController(TestBotController);
@@ -283,61 +313,49 @@ describe('umbot', () => {
                 });
             });
         }
-        // большое количество команд для обработки
-        for (let i = 1; i < 16; i++) {
+        // большое количество команд для обработки.
+        // Время роста решётки команд зависит от её размера, а не от шага 100:
+        // границы 100 и 1500 плюс лог-точки ловят деградацию масштабирования.
+        for (const i of [1, 3, 7, 15]) {
             it(`Обработка большого количества команд в intents. Количество команд равно ${i * 100}`, async () => {
-                await getPerformance(
-                    async () => {
-                        bot.initBotController(TestBotController);
-                        bot.appType = T_ALISA;
-                        const intents = [];
-                        for (let j = 0; j < i * 100; j++) {
-                            intents.push({
-                                name: `cmd_${j}}`,
-                                slots: [`команда${j}`],
-                            });
-                        }
-                        bot.setPlatformParams({
-                            intents,
+                await getPerformance(async () => {
+                    bot.initBotController(TestBotController);
+                    bot.appType = T_ALISA;
+                    const intents = [];
+                    for (let j = 0; j < i * 100; j++) {
+                        intents.push({
+                            name: `cmd_${j}`,
+                            slots: [`команда${j}`],
                         });
-                        bot.setAppConfig({ isLocalStorage: true, tokens: {} });
+                    }
+                    bot.setPlatformParams({
+                        intents,
+                    });
+                    bot.setAppConfig({ isLocalStorage: true, tokens: {} });
 
-                        bot.setContent(getContent(`команда${i / 2}`));
-                        await bot.run();
-                    },
-                    BASE_DURATION,
-                    BASE_MEMORY_USED,
-                    bot,
-                );
+                    bot.setContent(getContent(`команда${Math.floor((i * 100) / 2)}`));
+                    await bot.run();
+                }, bot);
             });
         }
 
-        for (let i = 1; i < 16; i++) {
+        for (const i of [1, 3, 7, 15]) {
             it(`Обработка большого количества команд в addCommand. Количество команд равно ${i * 100}`, async () => {
-                await getPerformance(
-                    async () => {
-                        bot.initBotController(TestBotController);
-                        bot.setPlatformParams({
-                            intents: [],
+                await getPerformance(async () => {
+                    bot.initBotController(TestBotController);
+                    bot.setPlatformParams({
+                        intents: [],
+                    });
+                    bot.setAppConfig({ isLocalStorage: true, tokens: {} });
+
+                    for (let j = 0; j < i * 100; j++) {
+                        bot.addCommand(`cmd_${j}`, [`команда${j}`], (_, botController) => {
+                            botController.text = `cmd_${j}`;
                         });
-                        bot.setAppConfig({ isLocalStorage: true, tokens: {} });
+                    }
 
-                        for (let j = 0; j < i * 100; j++) {
-                            bot.addCommand(`cmd_${j}`, [`команда${j}`], (_, botController) => {
-                                botController.text = `cmd_${j}`;
-                            });
-                        }
-
-                        await bot.run(T_ALISA, getContent(`команда${i / 2}`));
-                    },
-                    BASE_DURATION,
-                    /*
-                     * Из-за доп логики в поиске ReDoS команд, немного увеличилось потребление памяти
-                     * В среднем на выполнение 1 команды требуется около 0.33 кб
-                     */
-                    BASE_MEMORY_USED + 10 + i * 13,
-                    bot,
-                );
+                    await bot.run(T_ALISA, getContent(`команда${Math.floor((i * 100) / 2)}`));
+                }, bot);
             });
         }
     });

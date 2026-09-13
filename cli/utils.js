@@ -2,7 +2,7 @@
 const fs = require('fs');
 
 /**
- * Метода используется для проверки существования файла.
+ * Метод используется для проверки существования файла.
  * @param file
  * @returns {boolean}
  */
@@ -10,13 +10,13 @@ function isFile(file) {
     try {
         const stat = fs.lstatSync(file);
         return stat.isFile();
-    } catch (e) {
+    } catch {
         return false;
     }
 }
 
 /**
- * Метода используется для проверки существования папки.
+ * Метод используется для проверки существования папки.
  * @param file
  * @returns {boolean}
  */
@@ -24,13 +24,13 @@ function isDir(file) {
     try {
         const stat = fs.lstatSync(file);
         return stat.isDirectory();
-    } catch (e) {
+    } catch {
         return false;
     }
 }
 
 /**
- * Метода используется для чтения содержимого файла.
+ * Метод используется для чтения содержимого файла.
  * @param fileName
  * @returns {string}
  */
@@ -39,7 +39,7 @@ function fread(fileName) {
 }
 
 /**
- * Метода используется для записи в файл.
+ * Метод используется для записи в файл.
  * @param fileName
  * @param fileContent
  * @param mode
@@ -57,25 +57,25 @@ function fwrite(fileName, fileContent, mode = 'w') {
  */
 exports.utils = {
     /**
-     * Метода используется для проверки существования файла.
+     * Метод используется для проверки существования файла.
      * @param file
      * @returns {boolean}
      */
     isFile,
     /**
-     * Метода используется для проверки существования папки.
+     * Метод используется для проверки существования папки.
      * @param file
      * @returns {boolean}
      */
     isDir,
     /**
-     * Метода используется для чтения содержимого файла.
+     * Метод используется для чтения содержимого файла.
      * @param fileName
      * @returns {string}
      */
     fread,
     /**
-     * Метода используется для записи в файл.
+     * Метод используется для записи в файл.
      * @param fileName
      * @param fileContent
      * @param mode

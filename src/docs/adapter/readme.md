@@ -4,7 +4,7 @@
 
 ## Как это работает:
 
-При вызове `bot.use(entity)` фреймворк проверяет тип сущности. Если это класс, он вызывает `entity.init(appContext, bot)`. Контекст (`AppContext`) — это синглтон-хаб, где хранятся состояния, токены, реестры команд и подключенные модули.
+При вызове `bot.use(entity)` фреймворк проверяет тип сущности. Если это объект (в частности — экземпляр класса-плагина), он вызывает `entity.init(appContext, bot)`. Контекст (`AppContext`) — это синглтон-хаб, где хранятся состояния, токены, реестры команд и подключенные модули.
 
 ## Типы расширений:
 
@@ -20,9 +20,9 @@
 ### Вариант 1: Функция-плагин (рекомендуется)
 
 ```ts
-import { Bot, AppContext, IPluginFn } from 'umbot';
+import { Bot, AppContext, createPlugin } from 'umbot';
 
-const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
+const myI18nPlugin = createPlugin((appContext: AppContext, bot: Bot) => {
     // Регистрируем плагин в слоте 'i18n'
     appContext.plugins['i18n'] = (key: string, ...params: unknown[]) => {
         return `Перевод для: ${key}`;
@@ -31,13 +31,15 @@ const myI18nPlugin: IPluginFn = (appContext: AppContext, bot: Bot) => {
     // Возвращаем функцию очистки ресурсов (опционально)
     return () => {
         // Освобождение ресурсов при уничтожении плагина
-        console.log('i18n plugin destroyed');
+        appContext.log('i18n plugin destroyed');
     };
-};
+});
 
 const bot = new Bot();
 bot.use(myI18nPlugin);
 ```
+
+> `createPlugin()` автоматически выставляет маркер `isPlugin = true`. Без него `bot.use()` воспримет функцию как middleware, а не как плагин. Если по какой-то причине не используете хелпер — выставьте флаг вручную: `myI18nPlugin.isPlugin = true`.
 
 ### Вариант 2: Класс-плагин
 
@@ -53,7 +55,7 @@ class MyI18nPlugin implements IPlugin {
 
     destroy(bot: Bot): void {
         // Освобождение ресурсов
-        console.log('i18n plugin destroyed');
+        appContext.log('i18n plugin destroyed');
     }
 }
 
@@ -73,9 +75,13 @@ bot.use(new MyI18nPlugin());
 
 ### Пример i18n плагина
 
+Для i18n фреймворк вызывает слот с одним аргументом — текущим `controller.text` в роли `key`
+(дополнительные параметры сигнатуры зарезервированы на будущее). NLU-плагин, в отличие от i18n,
+получает все 4 аргумента сигнатуры (см. пример ниже).
+
 ```ts
-const i18nPlugin: IPluginFn = (appContext) => {
-    const translations = {
+const i18nPlugin = createPlugin((appContext) => {
+    const translations: Record<string, string> = {
         hello: 'Привет',
         bye: 'Пока',
     };
@@ -83,8 +89,7 @@ const i18nPlugin: IPluginFn = (appContext) => {
     appContext.plugins['i18n'] = (key: string) => {
         return translations[key] || key;
     };
-};
-i18nPlugin.isPlugin = true;
+});
 
 bot.use(i18nPlugin);
 ```
@@ -92,7 +97,7 @@ bot.use(i18nPlugin);
 ### Пример NLU плагина
 
 ```ts
-const nluPlugin: IPluginFn = (appContext) => {
+const nluPlugin = createPlugin((appContext) => {
     appContext.plugins['nlu'] = (
         text: string,
         platformNlu: INlu,
@@ -108,8 +113,7 @@ const nluPlugin: IPluginFn = (appContext) => {
             },
         };
     };
-};
-nluPlugin.isPlugin = true;
+});
 
 bot.use(nluPlugin);
 ```
@@ -120,25 +124,35 @@ bot.use(nluPlugin);
 
 ```ts
 // 1. Создаем и регистрируем плагин
-const myCustomCachePlugin: IPluginFn = (appContext: AppContext) => {
-    const cache = new Map();
+const myCustomCachePlugin = createPlugin((appContext: AppContext) => {
+    const cache = new Map<string, unknown>();
 
-    // Регистрируем под своим уникальным ключом
+    // Регистрируем под своим уникальным ключом.
+    // Значение должно быть либо функцией, либо объектом с методом getData.
     appContext.plugins['myCustomCache'] = {
-        set: (key: string, value: any) => cache.set(key, value),
-        get: (key: string) => cache.get(key),
+        getData(operation: unknown, key: unknown, value?: unknown): unknown {
+            if (operation === 'set') {
+                cache.set(String(key), value);
+                return true;
+            }
+            if (operation === 'get') {
+                return cache.get(String(key));
+            }
+            return undefined;
+        },
     };
-};
-myCustomCachePlugin.isPlugin = true; // Обязательный маркер
+});
 
 bot.use(myCustomCachePlugin);
 
 // 2. Обращаемся к нему из своего кода (например, в команде или контроллере)
 bot.addCommand('save_data', ['сохрани'], (text, controller) => {
-    // Получаем доступ к нашему плагину через appContext
-    const cache = controller.appContext.plugins['myCustomCache'];
+    // Получаем доступ к нашему плагину через appContext.
+    // Реестр типизирован общим AnyPluginData, поэтому сужаем тип до своей реализации.
+    const cache = controller.appContext.plugins['myCustomCache'] as
+        { getData: (...args: unknown[]) => unknown } | undefined;
     if (cache) {
-        cache.set('last_command', text);
+        cache.getData('set', 'last_command', text);
         controller.text = 'Данные сохранены в кастомный кэш!';
     }
 });

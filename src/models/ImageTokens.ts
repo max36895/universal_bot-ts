@@ -1,6 +1,6 @@
 import { IModelRules } from './interface';
 
-import { IModelState, Model } from './db/Model';
+import { IModelState, ISelectOneModelRes, Model } from './db/Model';
 import { AppContext } from '../core';
 import { TKey } from './db';
 
@@ -30,7 +30,7 @@ export interface IImageModelState extends IModelState {
     /**
      * Идентификатор/токен изображения.
      * Уникальный идентификатор, используемый для ссылки на изображение в API различных платформ.
-     * @example "photo123456789" для Telegram, "123456789" для VK
+     * @example "photo123_456" для VK, "AgACAgIAAxk..." (file_id) для Telegram, "123456/abcdef" для Алисы
      */
     imageToken: string | null;
     /**
@@ -52,16 +52,22 @@ export interface IImageModelState extends IModelState {
  * @extends Model<IImageModelState>
  *
  * @example
+ * ```ts
  * // Создание и загрузка изображения для Telegram
- * const image = new ImageTokens();
- * sound.path = '/path/to/image.png';
- * sound.platform = T_TELEGRAM;
- * const token = await image.selectOne();
- * if (token) {
- *     console.log('Токен для изображения успешно получен, токен:', token);
+ * const image = new ImageTokens(appContext);
+ * image.path = '/path/to/image.png';
+ * image.platform = T_TELEGRAM;
+ * const found = await image.selectOne();
+ * if (found.status) {
+ *     console.log('Токен для изображения успешно получен, токен:', found.data?.imageToken);
  * } else {
- *     || Загрузка изображения
+ *     // Загрузка изображения в платформу — токен выдаёт API платформы,
+ *     // затем он присваивается модели и запись сохраняется в БД
+ *     image.imageToken = tokenFromPlatform;
+ *     const saved = await image.save(true); // save() возвращает boolean, а не токен
+ *     console.log('Запись сохранена:', saved);
  * }
+ * ```
  */
 export class ImageTokens extends Model<IImageModelState> {
     /**
@@ -70,14 +76,17 @@ export class ImageTokens extends Model<IImageModelState> {
     protected static readonly TABLE_NAME = 'ImageTokens';
 
     /**
-     * Описание изображения (Не обязательное поле).
-     * Используется как подпись к изображению в некоторых платформах.
+     * Описание изображения (опционально).
+     * Не входит в attributeLabels() и не сохраняется в БД —
+     * предназначено только для пользовательского кода.
      */
     public caption: string | null;
 
     /**
      * Конструктор класса ImageTokens.
-     * Предоставляет унифицированный интерфейс для хранения данных о загруженных изображений.
+     * Предоставляет унифицированный интерфейс для хранения данных о загруженных изображениях.
+     *
+     * @param {AppContext} appContext - Контекст приложения
      */
     public constructor(appContext: AppContext) {
         super(appContext);
@@ -87,6 +96,9 @@ export class ImageTokens extends Model<IImageModelState> {
         this.caption = null;
     }
 
+    /**
+     * Первичный ключ таблицы — imageToken.
+     */
     protected getId(): TKey {
         return 'imageToken';
     }
@@ -101,7 +113,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Устанавливает идентификатор/токен изображения.
-     * @param imageToken
+     * @param {string | null} imageToken - Токен изображения
      */
     set imageToken(imageToken: string | null) {
         this.state.imageToken = imageToken;
@@ -117,7 +129,7 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Устанавливает расположение изображения (url/директория).
-     * @param path
+     * @param {string | null} path - Путь к изображению или URL
      */
     set path(path: string | null) {
         this.state.path = path;
@@ -132,16 +144,44 @@ export class ImageTokens extends Model<IImageModelState> {
 
     /**
      * Устанавливает тип приложения, для которого загружена картинка.
-     * @param platform
+     * @param {string} platform - Тип платформы (alisa, telegram, vk и т.д.)
      */
     set platform(platform: string) {
         this.state.platform = platform;
     }
 
     /**
+     * Находит token изображения по пути и платформе.
+     *
+     * Для ImageTokens логичный lookup идёт по `path`+`platform`, а не по `imageToken`
+     * (он ещё null на новой модели).
+     *
+     * @returns Promise с результатом поиска `{status, data, error}`. При успехе
+     * `data` содержит найденную запись модели, а не сам токен.
+     */
+    public async selectOne(): Promise<ISelectOneModelRes> {
+        if (this._appContext.database.adapter) {
+            this.queryData.query = {
+                path: this.state.path,
+                platform: this.state.platform,
+            };
+            this.queryData.data = null;
+            return (await this._appContext.database.adapter.select(
+                this.queryData,
+                this.queryData.query,
+                true,
+            )) as ISelectOneModelRes;
+        }
+        return {
+            status: false,
+            error: 'Не указан источник для базы данных',
+        };
+    }
+
+    /**
      * Возвращает название таблицы/файла с данными.
      *
-     * @return {string} Название таблицы для хранения данных об изображениях
+     * @returns {string} Название таблицы для хранения данных об изображениях
      */
     public tableName(): string {
         return ImageTokens.TABLE_NAME;
@@ -150,7 +190,7 @@ export class ImageTokens extends Model<IImageModelState> {
     /**
      * Определяет правила валидации для полей модели.
      *
-     * @return {IModelRules[]} Массив правил валидации
+     * @returns {IModelRules[]} Массив правил валидации
      */
     public rules(): IModelRules[] {
         return RULES;
@@ -160,7 +200,7 @@ export class ImageTokens extends Model<IImageModelState> {
      * Возвращает метки атрибутов таблицы.
      * Используется для отображения понятных названий полей.
      *
-     * @return {IImageModelState} Объект с метками атрибутов
+     * @returns {IImageModelState} Объект с метками атрибутов
      */
     public attributeLabels(): IImageModelState {
         return ATTRS_LABEL;

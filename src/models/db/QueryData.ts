@@ -17,7 +17,7 @@ import { IModelRules } from '../interface/IModel';
  * @example
  * ```ts
  * const query: IQueryData = {
- *   id: 1,                    // Поиск по id = 1
+ *   id: 1,                   // Поиск по id = 1
  *   name: 'John',            // Поиск по name = 'John'
  *   age: { $gt: 18 },        // Поиск по age > 18
  *   city: { $in: ['Moscow', 'St. Petersburg'] } // Поиск по city в списке
@@ -46,7 +46,15 @@ export interface IQueryData {
 const DATA_REG = /`([^`]+)`\s*=\s*(?:"([^"]*)"|(\S+))/gim;
 
 /**
- * Тип для ключа
+ * Тип для имени поля первичного ключа в базе данных.
+ * Используется как значение primaryKeyName в IQuery (например, 'userId'
+ * для UsersData, 'imageToken' для ImageTokens); null — ключ не задан.
+ *
+ * @example
+ * ```ts
+ * const key: TKey = 'userId';  // имя поля первичного ключа
+ * const key: TKey = null;     // первичный ключ не задан
+ * ```
  */
 export type TKey = string | number | null;
 
@@ -65,7 +73,7 @@ export interface IQuery {
      */
     data: IQueryData | null;
     /**
-     * Название таблиц
+     * Название таблицы
      */
     tableName: string;
     /**
@@ -80,11 +88,15 @@ export interface IQuery {
 
 /**
  * Парсит строку запроса в объект IQueryData
- * Поддерживает формат `field=value` с возможностью экранирования
+ * Поддерживает формат `field=value` с возможностью экранирования.
+ * Имя поля должно быть в обратных кавычках (`id`=1) — без них парсер
+ * не найдёт пару «поле=значение».
  *
  * @example
  * ```ts
- * const query = QueryData.getQueryData('`id`=1 `name`="John Doe"');
+ * import { getQueryData } from 'umbot';
+ *
+ * const query = getQueryData('`id`=1 `name`="John Doe"');
  * // Результат: { id: 1, name: 'John Doe' }
  * ```
  *
@@ -97,11 +109,19 @@ export function getQueryData(str: string): IQueryData | null {
         const regData: IQueryData = {};
         let data = matchAll.next();
         while (!data.done) {
-            let val: string | number = data.value[2] ?? data.value[3];
-            if (!isNaN(+val)) {
+            const key = data.value[1];
+            const rawVal = data.value[2] ?? data.value[3];
+            // Пропуск match без ключа: запись по undefined-ключу создала бы
+            // поле "undefined" в запросе к БД.
+            if (key === undefined) {
+                data = matchAll.next();
+                continue;
+            }
+            let val: string | number = rawVal ?? '';
+            if (val !== '' && !isNaN(+val)) {
                 val = +val;
             }
-            regData[data.value[1]] = val;
+            regData[key] = val;
             data = matchAll.next();
         }
         return regData;

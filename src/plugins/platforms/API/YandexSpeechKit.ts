@@ -19,14 +19,16 @@ export interface ITTSResult {
 /**
  * Класс отвечающий за преобразование текста в аудио файл.
  * Преобразование осуществляется через сервис Yandex SpeechKit.
- * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
+ * @see https://cloud.yandex.ru/docs/speechkit/tts/request
  *
  * @example
  * ```ts
- * import { YandexSpeechKit } from './api/YandexSpeechKit';
+ * import { YandexSpeechKit } from 'umbot/plugins';
  *
- * // Создание экземпляра с токеном
- * const speechKit = new YandexSpeechKit('your-oauth-token');
+ * // Создание экземпляра (appContext обязателен). Токен — API-ключ сервисного
+ * // аккаунта (уйдёт как `Api-Key ...`) или IAM-токен `t1....` (уйдёт как `Bearer ...`).
+ * // OAuth-токен Яндекс.Диалогов SpeechKit не принимает.
+ * const speechKit = new YandexSpeechKit('your-api-key', appContext);
  *
  * // Настройка параметров синтеза
  * speechKit.lang = YandexSpeechKit.L_RU;     // Русский язык
@@ -88,11 +90,11 @@ export class YandexSpeechKit extends YandexRequest {
      */
     public static readonly V_ERMIL = 'ermil';
     /**
-     * Голос для синтеза речи Сильвер (tr)
+     * Голос для синтеза речи Сила Эркан (tr)
      */
     public static readonly V_SILAERKAN = 'silaerkan';
     /**
-     * Голос для синтеза речи Эркан (tr)
+     * Голос для синтеза речи Эркан Яваш (tr)
      */
     public static readonly V_ERKANYAVAS = 'erkanyavas';
     /**
@@ -111,6 +113,18 @@ export class YandexSpeechKit extends YandexRequest {
      * Голос для синтеза речи Филипп (ru)
      */
     public static readonly V_FILIPP = 'filipp';
+    /**
+     * Голос для синтеза речи Киркоров (ru)
+     */
+    public static readonly V_KIRKOROV = 'kirkorov';
+    /**
+     * Голос для синтеза речи Лера (ru)
+     */
+    public static readonly V_LERA = 'lera';
+    /**
+     * Голос для синтеза речи Мадуса (ru)
+     */
+    public static readonly V_MADUSA = 'madusa';
 
     /**
      * Русский язык
@@ -119,7 +133,7 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Английский язык
      */
-    public static readonly L_EN = 'en_EN';
+    public static readonly L_EN = 'en-US';
     /**
      * Турецкий язык
      */
@@ -138,7 +152,6 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Текст для озвучивания в кодировке UTF-8
-     * Можно использовать только одно из полей text и ssml
      * Для передачи слов-омографов используйте + перед ударной гласной
      * Например: гот+ов или def+ect
      * Для паузы между словами используйте -
@@ -163,7 +176,8 @@ export class YandexSpeechKit extends YandexRequest {
 
     /**
      * Эмоциональная окраска голоса
-     * Поддерживается только для ru-RU и голосов jane/omazh
+     * Отправляется для всех русских голосов; платформа документирует поддержку
+     * эмоций только для jane/omazh — для остальных голосов поле может игнорироваться API
      * good - доброжелательный
      * evil - злой
      * neutral (по умолчанию) - нейтральный
@@ -176,7 +190,8 @@ export class YandexSpeechKit extends YandexRequest {
      * 3.0 - самый быстрый
      * 1.0 (по умолчанию) - средняя скорость
      * 0.1 - самый медленный
-     * Не поддерживается для премиум-голосов
+     * При выходе за диапазон 0.1–3.0 значение молча сбрасывается к 1.0
+     * Не поддерживается для премиум-голосов (alena, filipp, kirkorov, lera, madusa)
      */
     public speed: number;
 
@@ -190,7 +205,8 @@ export class YandexSpeechKit extends YandexRequest {
     /**
      * Частота дискретизации для формата lpcm
      * Поддерживаемые значения:
-     * - 48000 (по умолчанию) - 48 кГц, высокое качество
+     * - 48000 - 48 кГц, высокое качество (значение по умолчанию на стороне API:
+     *   класс не инициализирует поле, 48000 применяет сам API)
      * - 16000 - 16 кГц, среднее качество
      * - 8000 - 8 кГц, низкое качество, подходит для телефонии
      *
@@ -205,11 +221,11 @@ export class YandexSpeechKit extends YandexRequest {
      * Требуется только для пользовательского аккаунта
      * Максимум 50 символов
      */
-    public folderId: number | null;
+    public folderId: string | number | null;
 
     /**
      * Создает экземпляр YandexSpeechKit
-     * @param oauth Авторизационный токен для синтеза речи
+     * @param oauth API-ключ сервисного аккаунта или IAM-токен (`t1....`) Yandex Cloud
      * @param appContext Контекст приложения
      */
     public constructor(oauth: string | null = null, appContext: AppContext) {
@@ -223,11 +239,34 @@ export class YandexSpeechKit extends YandexRequest {
     }
 
     /**
-     * Инициализация параметров для отправки запроса
+     * Формирует заголовок Authorization по контракту Yandex Cloud.
+     *
+     * SpeechKit не принимает схему `OAuth` (её понимает только API Диалогов):
+     * допустимы `Api-Key <ключ>` для API-ключа сервисного аккаунта и
+     * `Bearer <IAM-токен>`. IAM-токен узнаётся по префиксу `t1.`, остальное
+     * считается API-ключом. Уже заданную схему (`Api-Key ...`/`Bearer ...`)
+     * передаём как есть — так можно явно указать нужную.
+     *
+     * @param token Токен из `speech_kit_token` / `SPEECH_KIT_TOKEN`
+     * @returns Значение заголовка Authorization
+     */
+    protected override _getAuthorizationHeader(token: string): string {
+        if (/^(Api-Key|Bearer)\s/i.test(token)) {
+            return token;
+        }
+        return token.startsWith('t1.') ? `Bearer ${token}` : `Api-Key ${token}`;
+    }
+
+    /**
+     * Инициализация параметров для отправки запроса.
+     *
+     * SpeechKit v1 принимает тело только в `application/x-www-form-urlencoded`
+     * (на JSON отвечает 400 «unsupported content-type»), поэтому параметры
+     * сериализуются в строку формы, а не отдаются Request как объект.
      */
     #initPost(): void {
-        this._request.post = {
-            text: this.text,
+        const params: Record<string, string> = {
+            text: this.text ?? '',
             lang: this.lang,
             voice: this.voice,
             format: this.format,
@@ -240,20 +279,32 @@ export class YandexSpeechKit extends YandexRequest {
                 YandexSpeechKit.V_NICK,
             ].indexOf(this.voice) === -1
         ) {
-            this._request.post.emotion = this.emotion;
+            params.emotion = this.emotion;
         }
-        if (this.voice !== YandexSpeechKit.V_ALENA && this.voice !== YandexSpeechKit.V_FILIPP) {
+        if (
+            this.voice !== YandexSpeechKit.V_ALENA &&
+            this.voice !== YandexSpeechKit.V_FILIPP &&
+            this.voice !== YandexSpeechKit.V_KIRKOROV &&
+            this.voice !== YandexSpeechKit.V_LERA &&
+            this.voice !== YandexSpeechKit.V_MADUSA
+        ) {
             if (this.speed < 0.1 || this.speed > 3.0) {
                 this.speed = 1.0;
             }
-            this._request.post.speed = this.speed;
+            params.speed = String(this.speed);
         }
         if (this.format === YandexSpeechKit.F_LPCM && this.sampleRateHertz) {
-            this._request.post.sampleRateHertz = this.sampleRateHertz;
+            params.sampleRateHertz = String(this.sampleRateHertz);
         }
         if (this.folderId) {
-            this._request.post.folderId = this.folderId;
+            params.folderId = String(this.folderId);
         }
+        this._request.post = null;
+        this._request.postInString = new URLSearchParams(params).toString();
+        this._request.header = {
+            ...(this._request.header as Record<string, string> | null),
+            'Content-Type': 'application/x-www-form-urlencoded',
+        };
     }
 
     /**
@@ -272,10 +323,13 @@ export class YandexSpeechKit extends YandexRequest {
      * - Максимальная длина текста: 5000 символов
      *
      * Ограничения:
-     * - Эмоции (emotion) поддерживаются только для ru-RU и голосов jane/omazh
-     * - Скорость (speed) не поддерживается для премиум-голосов (alena, filipp)
+     * - Эмоции (emotion) отправляются для всех русских голосов; платформа документирует
+     *   поддержку только для jane/omazh — для остальных голосов поле может игнорироваться API
+     * - Скорость (speed) не поддерживается для премиум-голосов (alena, filipp, kirkorov, lera, madusa)
      *
      * Важно! после выполнения запроса, не забудьте удалить файл с результатом.
+     * Файл всегда получает расширение .ogg, даже при format = F_LPCM
+     * (содержимое файла — raw PCM).
      *
      * @example
      * ```ts
@@ -289,7 +343,7 @@ export class YandexSpeechKit extends YandexRequest {
      * const oggAudio = await speechKit.getTts('Текст для синтеза');
      * ```
      *
-     * @see (https://cloud.yandex.ru/docs/speechkit/tts/request) Смотри тут
+     * @see https://cloud.yandex.ru/docs/speechkit/tts/request
      */
     public async getTts(text: string | null = null): Promise<ITTSResult | null> {
         if (text) {

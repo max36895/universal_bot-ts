@@ -1,5 +1,8 @@
+/**
+ * Обработка звуков Маруси: стандартные звуки из набора marusia-sounds и загруженные аудиофайлы.
+ */
 import { ISoundInfo, ISound, BotController, SoundConstants } from '../../../index';
-import { getSoundToken, defaultSoundProcessing } from '../Base/utils';
+import { getSoundToken, defaultSoundProcessing, cacheMediaToken } from '../Base/utils';
 import { MarusiaRequest } from '../API';
 import { T_MARUSIA } from './constants';
 
@@ -233,6 +236,7 @@ const STANDARD_SOUNDS: ISound[] = [
  * Получение токена, необходимого для воспроизведения звуков в Марусе
  * @param controller Контроллер приложения
  * @param path Путь до аудиофайла
+ * @returns Токен загруженного звука либо `null` при ошибке загрузки/сохранения
  */
 export async function getSoundInDB(
     controller: BotController,
@@ -253,9 +257,8 @@ export async function getSoundInDB(
         const sound = await mImage.marusiaCreateAudio(upload);
         if (sound?.id) {
             model.soundToken = sound.id;
-            if (await model.save(true)) {
-                return model.soundToken;
-            }
+            await cacheMediaToken(model, controller);
+            return model.soundToken;
         }
         return null;
     });
@@ -263,7 +266,9 @@ export async function getSoundInDB(
 
 /**
  * Получение корректного ответа для озвучивания запроса пользователю Маруси
+ * (только стандартные звуки — эффекты не передаются в defaultSoundProcessing)
  * @param soundInfo Информация необходимая для обработки аудио
+ * @returns Строка TTS с подставленными тегами стандартных звуков Маруси
  */
 export function soundProcessing(soundInfo: ISoundInfo): string {
     return defaultSoundProcessing(soundInfo, STANDARD_SOUNDS);

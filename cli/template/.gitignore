@@ -1,0 +1,12 @@
+.idea/*
+.gigacode/*
+.mimocode/*
+.vscode/*
+/logs/*
+/json/*
+/dist/*
+/docs/*
+/node_modules/*
+/coverage/*
+.env
+.ENV

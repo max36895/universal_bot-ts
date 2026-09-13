@@ -1,5 +1,5 @@
 /**
- * Модуль для обработки естественного языка (NLU) и извлечения сущностей из текста.
+ * Модуль для чтения сущностей NLU, извлечённых платформой.
  *
  * Основные компоненты:
  * - Nlu: Основной класс для обработки NLU
@@ -20,7 +20,7 @@
  *
  * @example
  * ```ts
- * import { Nlu } from './components/nlu';
+ * import { Nlu } from 'umbot';
  *
  * // Создание экземпляра Nlu
  * const nlu = new Nlu();
@@ -42,13 +42,13 @@
  * // Получение имени
  * const fio = nlu.getFio();
  * if (fio.status) {
- *     console.log(fio.result[0].first_name); // "Иван"
+ *     console.log(fio.result?.[0]?.first_name); // "Иван"
  * }
  *
  * // Получение даты
  * const dateTime = nlu.getDateTime();
  * if (dateTime.status) {
- *     console.log(dateTime.result[0].year); // 2024
+ *     console.log(dateTime.result?.[0]?.year); // 2024
  * }
  * ```
  */

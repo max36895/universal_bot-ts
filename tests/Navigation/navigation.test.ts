@@ -132,3 +132,21 @@ describe('Navigation tests', () => {
         expect(navigation.getPageNav(true)).toEqual(['1 ...', '8', '9', '[10]']);
     });
 });
+
+describe('Navigation.selectedElement: число в конце текста', () => {
+    it('берёт число только из конца текста', () => {
+        const navigation = new Navigation<number>();
+        const elements = [10, 20, 30];
+        expect(navigation.selectedElement(elements, 'выбери 2')).toBe(20);
+        expect(navigation.selectedElement(elements, '  3  ')).toBe(30);
+        // Число не в конце — не номер элемента (уходит в поиск по схожести).
+        expect(navigation.selectedElement(elements, 'закажи 2 литра')).toBeNull();
+    });
+
+    it('не зависает на длинной строке цифр с нецифровым хвостом', () => {
+        const navigation = new Navigation<number>();
+        const start = performance.now();
+        navigation.selectedElement([1, 2, 3], `${'0'.repeat(20_000)}x`);
+        expect(performance.now() - start).toBeLessThan(500);
+    });
+});

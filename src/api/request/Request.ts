@@ -14,31 +14,49 @@ import { basename } from 'path';
  * @class Request
  */
 export class Request {
-    /** Заголовок для отправки form-data */
+    /**
+     * Заголовок для отправки form-data.
+     * Значение без boundary: при реальной отправке FormData этот заголовок
+     * удаляется — Content-Type с boundary проставляет сам HTTP-клиент.
+     */
     public static readonly HEADER_FORM_DATA: Record<string, string> = {
         'Content-Type': 'multipart/form-data',
     };
 
-    /** Заголовок для JSON контента */
+    /**
+     * Заголовок для JSON контента
+     */
     public static readonly HEADER_JSON: Record<string, string> = {
         'Content-Type': 'application/json',
     };
 
-    /** URL для отправки запроса */
+    /**
+     * URL для отправки запроса
+     */
     public url: string | null;
 
-    /** GET-параметры запроса */
+    /**
+     * GET-параметры запроса
+     */
     public get: IGetParams | null;
 
-    /** POST-параметры запроса */
+    /**
+     * POST-параметры запроса
+     */
     public post: Record<string, unknown> | null | FormData;
-    /** POST-параметры запроса в виде строки */
+    /**
+     * POST-параметры запроса в виде строки
+     */
     public postInString: string | null;
 
-    /** HTTP-заголовки запроса */
+    /**
+     * HTTP-заголовки запроса
+     */
     public header: HeadersInit | null;
 
-    /** Прикрепленный файл (URL, путь или содержимое) */
+    /**
+     * Локальный путь к файлу или содержимое файла (isAttachContent = true); для URL используйте post
+     */
     public attach: string | null;
 
     /**
@@ -55,16 +73,21 @@ export class Request {
      */
     public attachName: string;
 
-    /** Кастомный HTTP-метод (DELETE и т.д.) */
+    /**
+     * Кастомный HTTP-метод (DELETE и т.д.)
+     */
     public customRequest: string | null;
 
-    /** Максимальное время ожидания ответа (мс) */
+    /**
+     * Максимальное время ожидания ответа (мс). По умолчанию 2000 мс. Переопределить можно через свойство.
+     */
     public maxTimeQuery: number | null;
 
     /**
-     * Преобразование ответа в JSON
+     * Преобразование ответа: JSON → binary → text (по приоритету).
      * true - ответ будет преобразован в JSON
-     * false - ответ будет возвращен как текст
+     * false - сначала проверяется isBinaryResponse (ArrayBuffer),
+     *         иначе ответ возвращается как текст
      * @defaultValue true
      */
     public isConvertJson: boolean;
@@ -74,7 +97,9 @@ export class Request {
      */
     public isBinaryResponse: boolean = false;
 
-    /** Текст ошибки при выполнении запроса */
+    /**
+     * Ошибка (Error, строка или null)
+     */
     #error: Error | string | null;
 
     /**
@@ -85,6 +110,9 @@ export class Request {
     /**
      * Создает новый экземпляр Request.
      * Инициализирует все поля значениями по умолчанию
+     *
+     * @param {AppContext} appContext - Контекст приложения (для логирования,
+     * метрик и кастомного HTTP-клиента)
      */
     public constructor(appContext: AppContext) {
         this.url = null;
@@ -96,7 +124,7 @@ export class Request {
         this.isAttachContent = false;
         this.attachName = 'file';
         this.customRequest = null;
-        this.maxTimeQuery = null;
+        this.maxTimeQuery = 2000;
         this.isConvertJson = true;
         this.#error = null;
         this.isBinaryResponse = false;
@@ -105,7 +133,7 @@ export class Request {
 
     /**
      * Устанавливает контекст приложения
-     * @param appContext
+     * @param {AppContext} appContext - Контекст приложения
      */
     public setAppContext(appContext: AppContext): void {
         if (appContext) {
@@ -116,8 +144,24 @@ export class Request {
     /**
      * Отправляет HTTP-запрос
      *
+     * После вызова инстанс сбрасывает attach/post/postInString/get/customRequest/header
+     * и связанные флаги — инстанс переиспользуется, и настройки одного вызова
+     * не должны попадать в следующий. `maxTimeQuery` сохраняется — это настройка
+     * клиента, а не одного вызова.
+     *
      * @param url - URL для отправки запроса (если не указан, используется this.url)
      * @returns  Результат выполнения запроса
+     *
+     * @example
+     * ```ts
+     * const request = new Request(appContext);
+     * const res = await request.send('https://api.example.com/data');
+     * if (res.status) {
+     *   console.log(res.data); // ответ API
+     * } else {
+     *   console.error(res.err); // Error либо строка
+     * }
+     * ```
      */
     public async send<T>(url: string | null = null): Promise<IRequestSend<T>> {
         if (url) {
@@ -126,10 +170,25 @@ export class Request {
 
         this.#error = null;
         const data = (await this.#run()) as T;
+        // Сбрасываем всё, что относится к конкретному вызову: инстанс Request
+        // переиспользуется API-клиентами, и «залипшие» get/customRequest уходили
+        // бы в следующий запрос к другому методу платформы. Заголовки и флаги
+        // формата ответа относятся к тому же вызову: все встроенные клиенты
+        // (VK/MAX/Viber/Yandex) выставляют их перед каждым send(), поэтому
+        // сброс не затрагивает их, а внешнему коду не «протекает», например,
+        // Authorization-заголовок MAX в запрос к другому API или бинарный режим
+        // SpeechKit в JSON-запрос. maxTimeQuery намеренно НЕ сбрасываем —
+        // это настройка клиента, а не одного вызова.
         this.attachName = 'file';
         this.attach = null;
+        this.isAttachContent = false;
         this.post = null;
         this.postInString = null;
+        this.get = null;
+        this.customRequest = null;
+        this.header = null;
+        this.isConvertJson = true;
+        this.isBinaryResponse = false;
         if (this.#error) {
             return { status: false, data: null, err: this.#error };
         }
@@ -169,10 +228,15 @@ export class Request {
         if (this.url) {
             try {
                 const start = this.#appContext?.usedMetric ? performance.now() : 0;
-                const response = await this.#getHttpClient()(
-                    this._getUrl(),
-                    await this._getOptions(),
-                );
+                const options = await this._getOptions();
+                // _getOptions() возвращает undefined, когда attach-файл не удалось
+                // прочитать или найти (причина уже записана в #error). Без проверки
+                // отсюда уходил fetch(url, undefined) — паразитный GET-запрос к API
+                // платформы без тела и метода, затиравший причину отказа.
+                if (!options || this.#error) {
+                    return null;
+                }
+                const response = await this.#getHttpClient()(this._getUrl(), options);
                 if (this.#appContext?.usedMetric) {
                     this.#appContext?.logMetric(EMetric.REQUEST, performance.now() - start, {
                         url: this.url,
@@ -189,9 +253,16 @@ export class Request {
                     }
                     return await response.text();
                 }
-                this.#error = `Не удалось получить данные с "${this.url}". Статус: ${response.status}`;
+                // Платформы отдают причину отказа в теле ответа (Telegram — description,
+                // VK — error_msg). Без него в логах остаётся только код статуса,
+                // по которому невозможно понять, что именно не понравилось API.
+                this.#error = `Не удалось получить данные с "${this.url}". Статус: ${response.status}. Ответ: ${await this.#readErrorBody(response)}`;
             } catch (e) {
-                this.#error = e as Error;
+                // fetch в Node может бросить не только Error (строки, DOMException
+                // от AbortSignal.timeout). Потребители читают err.message — без
+                // нормализации строковое исключение маскировалось бы под Error
+                // и превращалось в undefined в логах.
+                this.#error = e instanceof Error ? e : String(e);
             }
         } else {
             this.#error = 'Не указан url!';
@@ -200,12 +271,98 @@ export class Request {
     }
 
     /**
+     * Безопасно читает тело ошибочного ответа для диагностики.
+     * Тело обрезается, чтобы большой HTML страницы ошибки не раздул лог.
+     *
+     * @param response Ответ сервера со статусом, отличным от 2xx
+     * @returns Текст ответа либо пояснение, почему прочитать не удалось
+     */
+    async #readErrorBody(response: Response): Promise<string> {
+        try {
+            const body = await response.text();
+            if (!body) {
+                return '<пустое тело>';
+            }
+            return body.length > 1000 ? `${body.substring(0, 1000)}…` : body;
+        } catch {
+            return '<тело ответа недоступно>';
+        }
+    }
+
+    /**
+     * Формирует итоговые заголовки запроса.
+     *
+     * Заголовки вызывающего кода имеют приоритет, но `Content-Type` подставляется
+     * автоматически, если его не задали (кастомный `Authorization`/`X-Viber-Auth-Token`
+     * не должен затирать `application/json` у JSON-тела).
+     *
+     * @param post Тело запроса
+     * @returns Заголовки запроса или undefined, если тела и заголовков нет
+     */
+    #buildHeaders(post: BodyInit | null): HeadersInit | undefined {
+        if (!post && !this.header) {
+            return undefined;
+        }
+        // Собираем обычный объект, а не Headers: заголовки уходят в пользовательский
+        // httpClient как есть, и подмена типа сломала бы кастомные реализации.
+        const headers: Record<string, string> = {};
+        if (this.header) {
+            if (this.header instanceof Headers || Array.isArray(this.header)) {
+                new Headers(this.header).forEach((value, name) => {
+                    headers[name] = value;
+                });
+            } else {
+                Object.assign(headers, this.header);
+            }
+        }
+        const contentTypeKey = Object.keys(headers).find(
+            (name) => name.toLowerCase() === 'content-type',
+        );
+        if (post instanceof FormData) {
+            // Content-Type для multipart должен выставить сам fetch — вместе с boundary
+            if (contentTypeKey) {
+                delete headers[contentTypeKey];
+            }
+            return headers;
+        }
+        if (post && !contentTypeKey) {
+            Object.assign(headers, Request.HEADER_JSON);
+        }
+        return headers;
+    }
+
+    /**
+     * Собирает multipart-тело, когда `attach` содержит сами данные, а не путь к файлу.
+     */
+    #buildAttachContentFormData(): FormData {
+        const formData = new FormData();
+        formData.append(this.attachName, new Blob([this.attach as string]));
+        if (this.post && typeof this.post === 'object') {
+            for (const [key, value] of Object.entries(this.post)) {
+                formData.append(
+                    key,
+                    typeof value === 'object' ? JSON.stringify(value) : String(value),
+                );
+            }
+        }
+        return formData;
+    }
+
+    /**
      * Формирует параметры для http запроса
      *
-     * @returns {RequestInit|undefined} Параметры запроса
+     * @returns {Promise<RequestInit|undefined>} Параметры запроса или undefined, если произошла ошибка
      */
     protected async _getOptions(): Promise<RequestInit | undefined> {
         const options: RequestInit = {};
+
+        // Клиенты фреймворка обращаются к фиксированным доверенным хостам API
+        // платформ, а секреты живут в заголовках (Authorization у MAX,
+        // X-Viber-Auth-Token, OAuth у Яндекса) и в URL (токен Telegram в path).
+        // Автоследование редиректу при компрометации DNS/CDN или редиректе со
+        // стороны API унесло бы секреты на сторонний хост — 3xx будет ошибкой
+        // запроса, что для фиксированных endpoint'ов корректно.
+        options.redirect = 'manual';
 
         if (this.maxTimeQuery) {
             options.signal = AbortSignal.timeout(this.maxTimeQuery);
@@ -213,7 +370,9 @@ export class Request {
 
         let post: BodyInit | null = null;
         if (this.attach) {
-            if (await isFile(this.attach)) {
+            if (this.isAttachContent) {
+                post = this.#buildAttachContentFormData();
+            } else if (await isFile(this.attach)) {
                 const formData = await this.getAttachFile(this.attach, this.attachName);
                 if (!formData) {
                     this.#error = `Не удалось прочитать файл: ${this.attach}`;
@@ -246,15 +405,9 @@ export class Request {
         if (post) {
             options.body = post;
             options.method = this.customRequest || 'POST';
-            options.headers = this.header || Request.HEADER_JSON;
         }
-        if (this.header) {
-            options.headers = this.header;
-        }
-
-        if (post instanceof FormData && options.headers) {
-            const headers = new Headers(options.headers);
-            headers.delete('Content-Type');
+        const headers = this.#buildHeaders(post);
+        if (headers) {
             options.headers = headers;
         }
 
@@ -267,9 +420,13 @@ export class Request {
 
     /**
      * Добавляет файл в FormData
-     * @param formData
-     * @param filePath
-     * @param fileName
+     *
+     * При ошибке чтения файл не добавляется — ошибка пишется в лог (appContext.logError),
+     * FormData возвращается без файла.
+     *
+     * @param {FormData} formData - Объект FormData для добавления файла
+     * @param {string} filePath - Путь к файлу
+     * @param {string} [fileName='file'] - Имя файла для отправки (опционально; по умолчанию 'file')
      */
     public async addAttachFile(
         formData: FormData,
@@ -293,7 +450,7 @@ export class Request {
      *
      * @param {string} filePath - Путь к файлу
      * @param {string} [fileName] - Имя файла
-     * @returns {FormData|null} FormData с файлом или null в случае ошибки
+     * @returns {FormData|null} FormData с файлом; при ошибке чтения возвращается FormData без файла (ошибка логируется), null — только при исключении
      */
     public async getAttachFile(filePath: string, fileName?: string): Promise<FormData | null> {
         try {
@@ -307,9 +464,9 @@ export class Request {
     }
 
     /**
-     * Возвращает текст последней ошибки
+     * Возвращает последнюю ошибку запроса
      *
-     * @returns {string|null} Текст ошибки или null
+     * @returns {Error | string | null} Ошибка (объект Error либо текст) или null, если ошибок не было
      */
     public getError(): Error | string | null {
         return this.#error;

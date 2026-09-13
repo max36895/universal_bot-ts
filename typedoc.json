@@ -21,6 +21,25 @@
     "excludeReferences": true,
     "theme": "default",
     "includeVersion": true,
+    "highlightLanguages": [
+        "bash",
+        "console",
+        "diff",
+        "dockerfile",
+        "html",
+        "http",
+        "javascript",
+        "json",
+        "jsonc",
+        "nginx",
+        "shell",
+        "sql",
+        "text",
+        "ts",
+        "tsx",
+        "typescript",
+        "yaml"
+    ],
     "categorizeByGroup": true,
     "searchInComments": true,
     "sort": ["kind", "instance-first", "alphabetical"],
@@ -30,7 +49,7 @@
     },
     "lang": "en",
     "navigationLinks": {
-        "GitHub": "https://github.com/max36895/universal_bot-ts",
+        "GitHub": "https://github.com/max36895/umbot",
         "npm": "https://www.npmjs.com/package/umbot"
     },
     "visibilityFilters": {

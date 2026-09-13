@@ -3,7 +3,7 @@
  *
  * Позволяет заранее получить и закэшировать токены медиафайлов, чтобы при ответе пользователю
  * не тратить время на загрузку. Особенно полезно для платформ с жёсткими тайм-аутами
- * (Алиса, Маруся, Сбер Салют), где время ответа ограничено 2–3 секундами.
+ * (Алиса, Маруся, Сбер SmartApp), где практический лимит ответа — ~3 секунды (фреймворк пишет предупреждение после 2 с обработки и ошибку после 2,9 с).
  *
  * **Важно:** Для Telegram токен можно получить только отправив файл конкретному пользователю.
  * Используйте опцию `telegramUseId` в методах `loadImages` / `loadSounds`.
@@ -88,9 +88,23 @@ const PLATFORMS: IPlatformMap = {
  */
 export interface IOptions {
     /**
-     * Пользователь Telegram, которому будет отправлено изображение для получения токена
+     * Пользователь Telegram, которому будет отправлен медиафайл для получения токена
      */
     telegramUseId?: string | number;
+    /**
+     * Идентификатор навыка Алисы (skill_id из консоли Яндекс.Диалогов).
+     *
+     * API загрузки и удаления ресурсов Алисы адресуется по навыку. Во время
+     * обработки запроса skill_id приходит в payload, а вне запроса (предзагрузка
+     * при старте) взять его неоткуда — без этой опции Алиса пропускается
+     * с предупреждением.
+     *
+     * @example
+     * ```ts
+     * preload.loadImages(['./img.png'], [T_ALISA], { alisaSkillId: 'xxxx-xxxx' });
+     * ```
+     */
+    alisaSkillId?: string;
 }
 
 /**
@@ -103,16 +117,20 @@ export interface IOptions {
  * @example
  * // В точке входа приложения (например, index.ts)
  * import { Preload } from 'umbot/preload';
+ * import { T_ALISA, T_VK, T_MARUSIA } from 'umbot/plugins';
  *
  * // Предположим, appContext уже инициализирован
  * const preload = new Preload(appContext);
  *
  * // Загрузить изображения для Алисы и ВК
- * const imagePromises = preload.loadImages(['/path/to/img1.jpg', '/path/to/img2.png'], [T_ALISA, T_VK]);
+ * // Для Алисы нужен skill_id навыка — API ресурсов адресуется по навыку
+ * const imagePromises = preload.loadImages(['/path/to/img1.jpg', '/path/to/img2.png'], [T_ALISA, T_VK], {
+ *     alisaSkillId: 'ваш-skill-id',
+ * });
  * // Загрузить звуки только для Маруси
  * const soundPromises = preload.loadSounds(['/path/to/sound1.mp3'], [T_MARUSIA]);
  *
- * // Запустить загрузку (все промисы выполняются параллельно)
+ * // Дождаться завершения (все операции уже запущены и выполняются параллельно)
  * try {
  *   await Promise.all(imagePromises);
  *   console.log('Изображения предзагружены');
@@ -123,7 +141,7 @@ export interface IOptions {
  * }
  *
  * // Теперь приложение готово к работе, и первые вызовы с медиа будут быстрыми
- * bot.start('localhost', 3000);
+ * // (запуск бота выполняется вашим кодом, например bot.start('localhost', 3000))
  */
 export class Preload {
     private _appContext: AppContext | undefined;
@@ -136,8 +154,8 @@ export class Preload {
      *                                   Может быть установлен позже через `setAppContext`.
      */
     constructor(appContext?: AppContext) {
-        this.setAppContext(appContext);
         this._controller = new BaseBotController(appContext as AppContext);
+        this.setAppContext(appContext);
     }
 
     /**
@@ -180,8 +198,9 @@ export class Preload {
      * Возвращает внутренний тип изображения, используемый в `ImageTokens`, для указанной платформы.
      *
      * @param {TAppType} platform - Тип платформы.
-     * @returns {number | undefined} Тип изображения для `ImageTokens` или `undefined`, если платформа не поддерживается
-     *                               или не требует предзагрузки (например, Telegram).
+     * @returns {string | undefined} Тип изображения для `ImageTokens` или `undefined` для Viber/SmartApp
+     *                              (не требуют предзагрузки); для Telegram предзагрузка требует
+     *                              отправки файла пользователю (см. `telegramUseId`).
      */
     protected _getImageType(platform: TAppType): string | undefined {
         switch (platform) {
@@ -203,8 +222,8 @@ export class Preload {
      * Возвращает внутренний тип звука, используемый в `SoundTokens`, для указанной платформы.
      *
      * @param {TAppType} platform - Тип платформы.
-     * @returns {number | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается
-     *                               или не требует предзагрузки (например, Telegram).
+     * @returns {string | undefined} Тип звука для `SoundTokens` или `undefined`, если платформа не поддерживается.
+     *                               Для Telegram предзагрузка требует отправки файла пользователю (см. `telegramUseId`).
      */
     protected _getSoundType(platform: TAppType): string | undefined {
         switch (platform) {
@@ -221,30 +240,97 @@ export class Preload {
     }
 
     /**
+     * Проверяет, можно ли работать с ресурсами Алисы, и передаёт skill_id
+     * в контроллер предзагрузки (его читают процессоры карточек и звуков Алисы).
+     *
+     * @param opts Опции предзагрузки
+     * @returns skill_id навыка либо `null`, если он не передан (с предупреждением)
+     */
+    protected _prepareAlisa(opts?: IOptions): string | null {
+        const skillId = opts?.alisaSkillId || null;
+        if (!skillId) {
+            this._appContext?.logWarn(
+                'Preload: для Алисы не передан alisaSkillId — API ресурсов Алисы адресуется по навыку, ' +
+                    'поэтому Алиса пропущена. Передайте { alisaSkillId } в опциях.',
+            );
+            return null;
+        }
+        this._controller.platformOptions.appId = skillId;
+        return skillId;
+    }
+
+    /**
+     * Убирает Алису из списка платформ, если для неё не передан skill_id.
+     *
+     * @param platforms Отфильтрованные платформы
+     * @param opts Опции предзагрузки
+     * @returns Платформы для обработки и skill_id Алисы (если есть)
+     */
+    protected _filterAlisa(
+        platforms: TAppType[],
+        opts?: IOptions,
+    ): { platforms: TAppType[]; alisaSkillId: string | null } {
+        if (!platforms.includes(T_ALISA)) {
+            return { platforms, alisaSkillId: null };
+        }
+        const alisaSkillId = this._prepareAlisa(opts);
+        return {
+            platforms: alisaSkillId ? platforms : platforms.filter((p) => p !== T_ALISA),
+            alisaSkillId,
+        };
+    }
+
+    /**
      * Подготавливает промисы для удаления изображений с серверов платформ и из базы данных.
      *
-     * Этот метод *не запускает* выполнение промисов. Для выполнения удаления необходимо
-     * использовать `Promise.all()` или `Promise.allSettled()` с возвращаемым массивом.
+     * Метод сразу запускает операции удаления и возвращает массив уже выполняющихся промисов;
+     * вызовите `Promise.all()` или `Promise.allSettled()`, чтобы дождаться завершения и обработать ошибки.
      *
      * @param {string[]} images - Массив путей к файлам изображений для удаления.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @returns {Promise<boolean>[]} Массив промисов, каждый из которых разрешается `true` при успешном удалении
-     *                              или `false` при ошибке.
+     * @param opts - Дополнительные опции. Для Алисы обязателен `alisaSkillId` — без него Алиса пропускается.
+     * @returns {Promise<boolean>[]} Массив промисов. Промис разрешается `true`, если процедура завершилась
+     *                              без исключения (включая случай, когда записи нет или платформа не поддерживает
+     *                              удаление — удаление реализовано только для Алисы и Маруси), и `false` при ошибке.
+     *
+     * @example
+     * ```ts
+     * import { T_ALISA } from 'umbot/plugins';
+     *
+     * // Промисы уже запущены — дождаться завершения
+     * await Promise.all(
+     *     preload.removeImages(['./media/old.png'], [T_ALISA], { alisaSkillId: 'xxxx-xxxx' }),
+     * );
+     * ```
      */
-    public removeImages(images: string[], platforms?: TAppType[]): Promise<boolean>[] {
-        const allowedPlatforms = this._getPlatforms(platforms);
+    public removeImages(
+        images: string[],
+        platforms?: TAppType[],
+        opts?: IOptions,
+    ): Promise<boolean>[] {
+        const { platforms: allowedPlatforms, alisaSkillId } = this._filterAlisa(
+            this._getPlatforms(platforms),
+            opts,
+        );
         const promises: Promise<boolean>[] = [];
         if (allowedPlatforms.length && this._appContext) {
-            const imageTokensModel = new ImageTokens(this._appContext);
             images.forEach((image) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getImageType(platform);
                     if (type !== undefined) {
                         const removePromise = (async (): Promise<boolean> => {
                             try {
-                                const tokenRecord = await imageTokensModel.where({
+                                // Своя модель на каждый промис: операции идут
+                                // параллельно, и общий экземпляр перетирал бы
+                                // imageToken соседних удалений. whereOne (а не
+                                // where) заполняет модель найденной записью, а
+                                // поле платформы в модели называется `platform`.
+                                const imageTokensModel = new ImageTokens(
+                                    this._appContext as AppContext,
+                                );
+                                const tokenRecord = await imageTokensModel.whereOne({
                                     path: image,
-                                    type,
+                                    platform: type,
                                 });
                                 if (tokenRecord && imageTokensModel.imageToken) {
                                     let apiRequest;
@@ -253,7 +339,7 @@ export class Preload {
                                         if (platform === T_ALISA) {
                                             apiRequest = new YandexImageRequest(
                                                 null,
-                                                null,
+                                                alisaSkillId,
                                                 this._appContext as AppContext,
                                             );
                                             req = await apiRequest.deleteImage(
@@ -270,8 +356,6 @@ export class Preload {
                                         if (req) {
                                             await imageTokensModel.remove();
                                         }
-                                        // eslint-disable-next-line require-atomic-updates
-                                        imageTokensModel.imageToken = null;
                                     }
                                 }
                                 return true;
@@ -295,30 +379,42 @@ export class Preload {
     /**
      * Подготавливает промисы для удаления звуков с серверов платформ и из базы данных.
      *
-     * Этот метод *не запускает* выполнение промисов. Для выполнения удаления необходимо
-     * использовать `Promise.all()` или `Promise.allSettled()` с возвращаемым массивом.
+     * Метод сразу запускает операции удаления и возвращает массив уже выполняющихся промисов;
+     * вызовите `Promise.all()` или `Promise.allSettled()`, чтобы дождаться завершения и обработать ошибки.
      *
      * @param {string[]} sounds - Массив путей к файлам звуков для удаления.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @returns {Promise<boolean>[]} Массив промисов, каждый из которых разрешается `true` при успешном удалении
-     *                              или `false` при ошибке.
+     * @param opts - Дополнительные опции. Для Алисы обязателен `alisaSkillId` — без него Алиса пропускается.
+     * @returns {Promise<boolean>[]} Массив промисов. Промис разрешается `true`, если процедура завершилась
+     *                              без исключения (включая случай, когда записи нет или платформа не поддерживает
+     *                              удаление — удаление реализовано только для Алисы и Маруси), и `false` при ошибке.
      */
-    public removeSounds(sounds: string[], platforms?: TAppType[]): Promise<boolean>[] {
-        const allowedPlatforms = this._getPlatforms(platforms);
+    public removeSounds(
+        sounds: string[],
+        platforms?: TAppType[],
+        opts?: IOptions,
+    ): Promise<boolean>[] {
+        const { platforms: allowedPlatforms, alisaSkillId } = this._filterAlisa(
+            this._getPlatforms(platforms),
+            opts,
+        );
         const promises: Promise<boolean>[] = [];
         if (allowedPlatforms.length && this._appContext) {
-            const soundTokensModel = new SoundTokens(this._appContext);
             sounds.forEach((sound) => {
                 allowedPlatforms.forEach((platform) => {
                     const type = this._getSoundType(platform);
                     if (type !== undefined) {
                         const removePromise = (async (): Promise<boolean> => {
                             try {
-                                // Аналогично removeImages, но для SoundTokens
-                                const tokenRecord = await soundTokensModel.where({
+                                // Аналогично removeImages, но для SoundTokens:
+                                // своя модель на промис и whereOne по `platform`.
+                                const soundTokensModel = new SoundTokens(
+                                    this._appContext as AppContext,
+                                );
+                                const tokenRecord = await soundTokensModel.whereOne({
                                     path: sound,
-                                    type,
-                                }); // Предполагаем метод getOneByPathAndType
+                                    platform: type,
+                                });
                                 if (tokenRecord && soundTokensModel.soundToken) {
                                     let apiRequest;
                                     let req;
@@ -326,7 +422,7 @@ export class Preload {
                                         if (platform === T_ALISA) {
                                             apiRequest = new YandexSoundRequest(
                                                 null,
-                                                null,
+                                                alisaSkillId,
                                                 this._appContext as AppContext,
                                             );
                                             req = await apiRequest.deleteSound(
@@ -343,8 +439,6 @@ export class Preload {
                                         if (req) {
                                             await soundTokensModel.remove();
                                         }
-                                        // eslint-disable-next-line require-atomic-updates
-                                        soundTokensModel.soundToken = null;
                                     }
                                 }
                                 return true;
@@ -368,21 +462,25 @@ export class Preload {
     /**
      * Подготавливает промисы для загрузки и кэширования изображений для указанных платформ.
      *
-     * Этот метод *не запускает* выполнение промисов. Для выполнения загрузки необходимо
-     * использовать `Promise.all()` или `Promise.allSettled()` с возвращаемым массивом.
+     * Метод сразу запускает операции загрузки и возвращает массив уже выполняющихся промисов;
+     * вызовите `Promise.all()` или `Promise.allSettled()`, чтобы дождаться завершения и обработать ошибки.
      *
      * @param {string[]} images - Массив путей к файлам изображений для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @param opts - Дополнительные опции для загрузки. Так как в Telegram не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
-     * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном изображения
-     *                                        или `null` в случае ошибки или если платформа не поддерживается.
+     * @param opts - Дополнительные опции для загрузки: `telegramUseId` — в Telegram токен не получить без отправки файла пользователю, файл уйдёт указанному пользователю; `alisaSkillId` — обязателен для Алисы (без него Алиса пропускается).
+     * @returns {Promise<string | null>[]} Массив промисов, каждый из которых разрешается токеном изображения
+     *                                        или `null` в случае ошибки загрузки. Для неподдерживаемых платформ
+     *                                        промис в массив не попадает вовсе.
      */
     public loadImages(
         images: string[],
         platforms?: TAppType[],
         opts?: IOptions,
     ): Promise<string | null>[] {
-        const allowedPlatforms = this._getPlatforms(platforms);
+        const { platforms: allowedPlatforms } = this._filterAlisa(
+            this._getPlatforms(platforms),
+            opts,
+        );
         const promises: Promise<string | null>[] = [];
         if (allowedPlatforms.length && this._appContext) {
             // Создаем один экземпляр ImageTokens и переиспользуем его
@@ -421,21 +519,25 @@ export class Preload {
     /**
      * Подготавливает промисы для загрузки и кэширования звуков для указанных платформ.
      *
-     * Этот метод *не запускает* выполнение промисов. Для выполнения загрузки необходимо
-     * использовать `Promise.all()` или `Promise.allSettled()` с возвращаемым массивом.
+     * Метод сразу запускает операции загрузки и возвращает массив уже выполняющихся промисов;
+     * вызовите `Promise.all()` или `Promise.allSettled()`, чтобы дождаться завершения и обработать ошибки.
      *
      * @param {string[]} sounds - Массив путей к файлам звуков для загрузки.
      * @param {TAppType[]} [platforms] - Массив типов платформ для фильтрации. Если не указан, обрабатываются все доступные.
-     * @param opts - Дополнительные опции для загрузки. Так как в телеграм не получить токен без отправки файла пользователю, можно отправить файл произвольному пользователю, который будет передан в свойстве.
-     * @returns {Promise<(string | null)[]>[]} Массив промисов, каждый из которых разрешается токеном звука
-     *                                        или `null` в случае ошибки или если платформа не поддерживается.
+     * @param opts - Дополнительные опции для загрузки: `telegramUseId` — в Telegram токен не получить без отправки файла пользователю, файл уйдёт указанному пользователю; `alisaSkillId` — обязателен для Алисы (без него Алиса пропускается).
+     * @returns {Promise<string | null>[]} Массив промисов, каждый из которых разрешается токеном звука
+     *                                        или `null` в случае ошибки загрузки. Для неподдерживаемых платформ
+     *                                        промис в массив не попадает вовсе.
      */
     public loadSounds(
         sounds: string[],
         platforms?: TAppType[],
         opts?: IOptions,
     ): Promise<string | null>[] {
-        const allowedPlatforms = this._getPlatforms(platforms);
+        const { platforms: allowedPlatforms } = this._filterAlisa(
+            this._getPlatforms(platforms),
+            opts,
+        );
         const promises: Promise<string | null>[] = [];
         if (allowedPlatforms.length && this._appContext) {
             // Создаем один экземпляр SoundTokens и переиспользуем его

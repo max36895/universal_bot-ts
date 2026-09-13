@@ -144,16 +144,22 @@ export const S_EFFECT_END = '#effect_end#';
 /**
  * Создает паузу в речи указанной длительности
  *
+ * Функция экспортируется только внутри namespace `SoundConstants`
+ * (`export * as SoundConstants`), поэтому напрямую из `'umbot'` её не
+ * импортировать — вызывайте как `SoundConstants.getPause(...)`.
+ *
  * @param {number} milliseconds - Длительность паузы в миллисекундах
  * @returns {string} - Строка с паузой в формате Алисы
  *
  * @example
  * ```ts
+ * import { SoundConstants } from 'umbot';
+ *
  * // Создание паузы в 1 секунду
- * const text = 'Привет' + getPause(1000) + 'мир!';
+ * const text = 'Привет' + SoundConstants.getPause(1000) + 'мир!';
  *
  * // Создание паузы в 2.5 секунды
- * const text = 'Первый' + getPause(2500) + 'второй';
+ * const text2 = 'Первый' + SoundConstants.getPause(2500) + 'второй';
  * ```
  */
 export function getPause(milliseconds: number): string {

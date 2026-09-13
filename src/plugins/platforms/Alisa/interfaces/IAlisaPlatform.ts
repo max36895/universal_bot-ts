@@ -21,9 +21,13 @@ export interface IAlisaEntities {
      * Нумерация начинается с 0
      */
     tokens?: {
-        /** Индекс первого слова сущности */
+        /**
+         * Индекс первого слова сущности
+         */
         start: number;
-        /** Индекс первого слова после сущности */
+        /**
+         * Индекс первого слова после сущности
+         */
         end: number;
     };
 
@@ -68,33 +72,14 @@ export interface IAlisaEntities {
  * Содержит результаты анализа текста пользователя
  */
 export interface IAlisaNlu extends INlu {
-    /** Массив слов из фразы пользователя */
-    tokens?: string[];
-    /** Массив найденных именованных сущностей */
-    entities?: IAlisaEntities[];
     /**
-     * Распознанные намерения пользователя.
-     * Каждый интент содержит слоты с параметрами
-     *
-     * @example
-     * ```ts
-     * intents: {
-     *     "YANDEX.CONFIRM": {
-     *         slots: []
-     *     },
-     *     "YANDEX.REJECT": {
-     *         slots: []
-     *     },
-     *     "YANDEX.DATETIME": {
-     *         slots: [{
-     *             type: "YANDEX.DATETIME",
-     *             value: { year: 2024 }
-     *         }]
-     *     }
-     * }
-     * ```
+     * Массив слов из фразы пользователя
      */
-    intents?: INlu['intents'];
+    tokens?: string[];
+    /**
+     * Массив найденных именованных сущностей
+     */
+    entities?: IAlisaEntities[];
 }
 
 /**
@@ -110,9 +95,8 @@ export interface IAlisaSession {
     new: boolean;
 
     /**
-     * ID сообщения в сессии
-     * Максимум 8 символов
-     * Увеличивается с каждым запросом
+     * ID сообщения в сессии.
+     * Числовой счётчик, увеличивается с каждым запросом
      */
     message_id: number;
 
@@ -193,22 +177,34 @@ export interface IAlisaRequestState {
  * Содержит информацию об устройстве и окружении
  */
 export interface IAlisaRequestMeta {
-    /** Язык в POSIX-формате (макс. 64 символа) */
+    /**
+     * Язык в POSIX-формате (макс. 64 символа)
+     */
     locale: string;
-    /** Часовой пояс (макс. 64 символа) */
+    /**
+     * Часовой пояс (макс. 64 символа)
+     */
     timezone: string;
-    /** ID устройства и приложения (макс. 1024 символа) */
+    /**
+     * ID устройства и приложения (макс. 1024 символа)
+     */
     client_id: string;
 
     /**
      * Доступные интерфейсы устройства
      */
     interfaces: {
-        /** Поддержка экрана и браузера */
+        /**
+         * Поддержка экрана и браузера
+         */
         screen?: object;
-        /** Поддержка платежей */
+        /**
+         * Поддержка платежей
+         */
         payments?: object | null;
-        /** Поддержка связки аккаунтов */
+        /**
+         * Поддержка связки аккаунтов
+         */
         account_linking: object | null;
     };
 }
@@ -284,17 +280,29 @@ export interface IAlisaRequest {
  * Полный формат входящего запроса от Алисы
  */
 export interface IAlisaWebhookRequest {
-    /** Метаданные устройства */
+    /**
+     * Метаданные устройства
+     */
     meta: IAlisaRequestMeta;
-    /** Данные запроса пользователя */
+    /**
+     * Данные запроса пользователя
+     */
     request: IAlisaRequest;
-    /** Данные сессии */
+    /**
+     * Данные сессии
+     */
     session: IAlisaSession;
-    /** Событие связки аккаунтов */
+    /**
+     * Событие связки аккаунтов
+     */
     account_linking_complete_event?: boolean;
-    /** Состояние приложения */
+    /**
+     * Состояние приложения
+     */
     state?: IAlisaRequestState;
-    /** Версия протокола (текущая: 1.0) */
+    /**
+     * Версия протокола (текущая: 1.0)
+     */
     version: string;
 }
 
@@ -362,33 +370,35 @@ export interface IAlisaImage {
      * Тип карточки
      * - BigImage: одно изображение
      * - ItemsList: список изображений (1-5)
-     * - ImageGallery: галерея (1-7)
+     * - ImageGallery: галерея (1-10)
      */
     type?: string;
 
     /**
-     * ID изображения
-     * Только для BigImage
+     * ID изображения. Опционален для элементов ItemsList и ImageGallery
+     * (элемент без image_id отображается как текстовый), но обязателен
+     * для BigImage — без токена адаптер отбрасывает карточку.
      */
     image_id?: string;
 
     /**
      * Заголовок
      * Максимум 128 символов
-     * Игнорируется для ItemsList
+     * В ItemsList — заголовок элемента; для ImageGallery платформа не отрисовывает
+     * заголовок, но адаптер всегда отправляет title и в элементах галереи
      */
     title: string;
 
     /**
      * Описание
      * Максимум 256 символов
-     * Игнорируется для ItemsList и ImageGallery
+     * Заполняется для BigImage и элементов ItemsList; игнорируется для ImageGallery
      */
     description?: string;
 
     /**
      * Свойства при нажатии.
-     * Игнорируется для ItemsList и ImageGallery
+     * Заполняется для BigImage и элементов ItemsList; игнорируется для ImageGallery
      */
     button?: IAlisaButtonCard;
 }
@@ -398,7 +408,9 @@ export interface IAlisaImage {
  * Одно изображение с заголовком и описанием
  */
 export interface IAlisaBigImage extends IAlisaImage {
-    /** Тип карточки */
+    /**
+     * Тип карточки
+     */
     type: 'BigImage';
 }
 
@@ -407,14 +419,18 @@ export interface IAlisaBigImage extends IAlisaImage {
  * От 1 до 5 изображений с заголовком
  */
 export interface IAlisaItemsList {
-    /** Тип карточки */
+    /**
+     * Тип карточки
+     */
     type: 'ItemsList';
 
     /**
      * Заголовок списка
      */
     header?: {
-        /** Текст заголовка (макс. 64 символа) */
+        /**
+         * Текст заголовка (макс. 64 символа)
+         */
         text: string;
     };
 
@@ -428,24 +444,30 @@ export interface IAlisaItemsList {
      * Кнопка под списком
      */
     footer?: {
-        /** Текст кнопки (макс. 64 символа) */
+        /**
+         * Текст кнопки (макс. 64 символа)
+         */
         text: string;
-        /** Свойства кнопки */
+        /**
+         * Свойства кнопки
+         */
         button?: IAlisaButtonCard;
     };
 }
 
 /**
  * Интерфейс для галереи изображений
- * От 1 до 7 изображений
+ * От 1 до 10 изображений
  */
 export interface IAlisaImageGallery {
-    /** Тип карточки */
+    /**
+     * Тип карточки
+     */
     type: 'ImageGallery';
 
     /**
      * Изображения
-     * От 1 до 7 элементов
+     * От 1 до 10 элементов
      */
     items?: IAlisaImage[];
 }
@@ -458,43 +480,38 @@ export interface IAlisaResponse {
     /**
      * Текст ответа
      * Максимум 1024 символа
-     * Используется если карточка не отображается
      */
     text: string;
 
     /**
      * Текст для озвучивания
      * Максимум 1024 символа
-     * Поддерживает SSML и звуки:
-     * - <speak>: корневой тег
-     * - <say-as>: произношение чисел, дат и т.д.
-     * - <audio>: вставка звуков
-     * - <voice>: выбор голоса
+     * Поддерживает собственную разметку Алисы и звуки:
+     * - <speaker audio="...">: вставка звука
+     * - <speaker effect="...">: наложение звукового эффекта
+     * - sil <[мс]>: пауза заданной длительности
      *
      * @example
      * ```ts
      * // Простой текст
      * tts: "Привет, как дела?"
      *
-     * // С SSML
-     * tts: "<speak>Привет! <say-as interpret-as=\"date\">2024-03-15</say-as></speak>"
+     * // Со стандартным звуком
+     * tts: 'Слушайте <speaker audio="alice-sounds-game-win-1.opus">'
      *
-     * // Со звуком
-     * tts: "<speak>Слушайте <audio src=\"sound.mp3\">звук</audio></speak>"
-     *
-     * // С голосом
-     * tts: "<speak><voice name=\"alena\">Привет!</voice></speak>"
+     * // С паузой
+     * tts: "Привет! sil <[500]> Как дела?"
      * ```
      */
     tts?: string;
 
     /**
      * Карточка с изображением
-     * Отображается вместо текста
+     * Отправляется вместе с текстом ответа
      * Поддерживает три типа:
      * - BigImage: одно изображение с заголовком и описанием
      * - ItemsList: список из 1-5 изображений
-     * - ImageGallery: галерея из 1-7 изображений
+     * - ImageGallery: галерея из 1-10 изображений
      *
      * @example
      * ```ts
@@ -543,6 +560,16 @@ export interface IAlisaResponse {
     buttons?: IAlisaButton[] | null;
 
     /**
+     * Директивы платформы, выполняемые вместе с ответом пользователю.
+     */
+    directives?: {
+        /**
+         * Запустить связку аккаунтов.
+         */
+        start_account_linking?: object;
+    };
+
+    /**
      * Завершить сессию
      * true: завершить диалог
      * false: продолжить диалог
@@ -555,16 +582,29 @@ export interface IAlisaResponse {
  * Полный формат исходящего ответа для Алисы
  */
 export interface IAlisaWebhookResponse {
-    /** Ответ пользователю */
+    /**
+     * Ответ пользователю
+     */
     response?: IAlisaResponse;
-    /** Данные сессии */
+    /**
+     * Данные сессии
+     */
     session_state?: IPlatformData;
-    /** Данные приложения */
+    /**
+     * Данные приложения
+     */
     application_state?: IPlatformData;
-    /** Данные пользователя */
+    /**
+     * Данные пользователя
+     */
     user_state_update?: IPlatformData;
-    /** Версия протокола (текущая: 1.0) */
+    /**
+     * Версия протокола (текущая: 1.0)
+     */
     version: string;
-    /** Начать авторизацию */
+    /**
+     * Устаревшее расположение директивы авторизации.
+     * @deprecated Используйте `response.directives.start_account_linking`.
+     */
     start_account_linking?: object;
 }
