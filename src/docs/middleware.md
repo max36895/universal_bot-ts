@@ -1,4 +1,4 @@
-# Middleware
+# Middleware в umbot: обработка запроса до команд
 
 `umbot` поддерживает **middleware в стиле `telegraf` и `vk-io`** — функции, которые вызываются **до запуска бизнес-логики** (`BotController.action`).
 

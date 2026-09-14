@@ -118,8 +118,8 @@ export function prepareTelegramMessageText(
 }
 
 /**
- * Класс для взаимодействия с API Telegram
- * Предоставляет методы для отправки сообщений, файлов и других типов контента
+ * Класс для взаимодействия с API Telegram.
+ * Предоставляет методы для отправки сообщений, файлов и других типов контента.
  * @see https://core.telegram.org/bots/api
  *
  * @example

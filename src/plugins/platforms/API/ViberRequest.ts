@@ -30,8 +30,8 @@ function normalizeApiVersion(value: unknown): number {
 }
 
 /**
- * Класс для взаимодействия с API Viber
- * Предоставляет методы для отправки сообщений, файлов и других типов контента
+ * Класс для взаимодействия с API Viber.
+ * Предоставляет методы для отправки сообщений, файлов и других типов контента.
  * @see https://developers.viber.com/docs/api/rest-bot-api/
  */
 export class ViberRequest {

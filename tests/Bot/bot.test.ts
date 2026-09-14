@@ -22,6 +22,7 @@ import {
 } from '../../src/plugins';
 import { Server } from 'http';
 import { join } from 'node:path';
+import { __$usedRe2 } from '../../src/utils/standard/RegExp';
 import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 class MyReg extends RegExp {
@@ -1318,10 +1319,17 @@ describe('Bot', () => {
                 const message = captured.error ?? captured.warn;
                 expect(message).toContain('небезопасн');
                 expect(message).toContain(pattern);
-                // Без re2 это не предупреждение, а реальная возможность положить бота
-                // одним сообщением, поэтому сообщение уходит в error и объясняет, что делать.
-                expect(captured.error).toBeDefined();
-                expect(captured.error).toContain('re2');
+                if (__$usedRe2) {
+                    // С установленным re2 выражение уходит на безопасный движок —
+                    // это предупреждение, а не ошибка.
+                    expect(captured.warn).toBeDefined();
+                    expect(captured.error).toBeUndefined();
+                } else {
+                    // Без re2 это не предупреждение, а реальная возможность положить бота
+                    // одним сообщением, поэтому сообщение уходит в error и объясняет, что делать.
+                    expect(captured.error).toBeDefined();
+                    expect(captured.error).toContain('re2');
+                }
                 bot.clearCommands();
             });
         });

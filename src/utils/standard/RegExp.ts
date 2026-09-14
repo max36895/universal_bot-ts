@@ -61,10 +61,13 @@ function getStatelessFlags(flags: string): string {
  * В случае, если передан customReg, регулярное выражение будет собрано через него.
  * Если передан RegExp (или массив из одного RegExp), берутся его собственные флаги
  * вместо аргумента flags; флаги g/y отбрасываются (см. getStatelessFlags).
+ * Если re2 не поддерживает синтаксис выражения (lookaround, обратные ссылки),
+ * выражение пересобирается штатным RegExp — регистрацию команды это не должно ломать.
  * @param {TPatternRegExp | TPatternRegExp[]} reg - Регулярное выражение или массив выражений
  * @param {string} flags - Флаги для регулярного выражения (по умолчанию: 'ium')
  * @param {RegExpConstructor} [customReg] - Произвольная реализация для обработки регулярных выражений
  * @returns {customRegExp} Скомпилированное регулярное выражение
+ * @throws {SyntaxError} Некомпилируемый шаблон (без re2 — некомпилируемый и для штатного движка)
  */
 export function getRegExp(
     reg: TPatternRegExp | TPatternRegExp[],
@@ -103,7 +106,22 @@ export function getRegExp(
     if (customReg) {
         return new customReg(pattern, flag);
     }
-    return new Re2(pattern, flag);
+    try {
+        return new Re2(pattern, flag);
+    } catch {
+        // Fix: re2 не поддерживает lookaround и обратные ссылки — раньше конвейер
+        // команд (склейка слотов, группы, isPattern-строки) падал SyntaxError
+        // при регистрации команды у пользователя с re2. Откат на штатный RegExp
+        // повторяет политику getRegExpOrSelf для одиночных слотов: выражение,
+        // которое безопасный движок не умеет компилировать, выполняется нативно.
+        // Небезопасные шаблоны при этом остаются под контролем isDangerRegex
+        // (CommandReg логирует их до компиляции, strictMode отбрасывает).
+        // Сравнение ошибки по instanceof SyntaxError невозможно: нативный модуль
+        // re2 бросает ошибку из другого realm (jest-песочница, worker), где
+        // instanceof всегда false. По-настоящему битый шаблон бросит SyntaxError
+        // уже из нативного RegExp — контракт @throws сохраняется.
+        return new RegExp(pattern, flag);
+    }
 }
 
 /**

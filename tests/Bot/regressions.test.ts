@@ -13,6 +13,7 @@ import {
     IViberContent,
 } from '../../src/plugins';
 import { Preload } from '../../src/Preload';
+import { isRegex } from '../../src/utils/standard/RegExp';
 import { createTestDir, removeTestDir } from '../helpers/tmpDir';
 
 const silentLogger = { error: (): void => {}, warn: (): void => {}, log: (): void => {} };
@@ -401,8 +402,17 @@ describe('Команды из одних RegExp без isPattern', () => {
     it('с одинаковыми флагами склеиваются в одно выражение с этими же флагами', () => {
         bot.addCommand('yes-no', [/^да$/s, /^нет$/s], () => {});
         const command = bot.getAppContext().commands.get('yes-no');
-        expect(command?.regExp).toBeInstanceOf(RegExp);
-        expect(command?.regExp?.flags).toBe('s');
+        // При подключённом re2 склейка компилируется им: объект RE2 не наследует
+        // RegExp и всегда дописывает u в flags — проверяем по test/exec и семантике,
+        // а не по классу конструктора и точной строке флагов.
+        const regExp = command?.regExp;
+        expect(isRegex(regExp)).toBe(true);
+        if (!isRegex(regExp)) {
+            throw new Error('Для команды должно быть скомпилировано выражение');
+        }
+        expect(regExp.flags).toContain('s');
+        expect(regExp.flags).not.toContain('m');
+        expect(regExp.test('да')).toBe(true);
     });
 
     it('с разными флагами проверяются по отдельности', async () => {

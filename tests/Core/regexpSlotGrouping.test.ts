@@ -12,6 +12,7 @@
  * позицией в списке, а группа матчит «первый подходящий».
  */
 import { CommandReg, getGroupRegExpCompiled } from '../../src/core/utils/CommandReg';
+import { isRegex } from '../../src/utils/standard/RegExp';
 import type { ILogger } from '../../src/core/interfaces/ILogger';
 import type { TAppPlugin } from '../../src/core/interfaces/IAppContext';
 
@@ -38,7 +39,9 @@ describe('CommandReg: группировка all-RegExp слотов (isPattern 
             throw new Error('группа не создана');
         }
         const compiled = getGroupRegExpCompiled(group);
-        expect(compiled).toBeInstanceOf(RegExp);
+        // При подключённом re2 группа компилируется им: объект RE2 не наследует RegExp,
+        // поэтому проверяем по интерфейсу test/exec, как это делает сам фреймворк.
+        expect(isRegex(compiled)).toBe(true);
         if (!compiled) {
             throw new Error('Для первой группы должен быть создан RegExp');
         }
