@@ -7,6 +7,7 @@
  */
 import { isRegexLikelySafe } from '../../src/core/utils/utils';
 import { getGroupRegExpCompiled } from '../../src/core/utils/CommandReg';
+import { isRegex } from '../../src/utils/standard/RegExp';
 import type { IGroupData } from '../../src/core/utils/CommandReg';
 
 describe('isRegexLikelySafe', () => {
@@ -121,7 +122,9 @@ describe('getGroupRegExpCompiled: кэш компиляции групп', () =>
         const group: IGroupData = { commands: ['cmd'], regExp: '(?<_0>привет)' };
         const first = getGroupRegExpCompiled(group);
         const second = getGroupRegExpCompiled(group);
-        expect(first).toBeInstanceOf(RegExp);
+        // При подключённом re2 компиляция идёт через него, а объект RE2
+        // не наследует RegExp — проверяем интерфейс test/exec, как фреймворк.
+        expect(isRegex(first)).toBe(true);
         expect(first).toBe(second);
     });
 

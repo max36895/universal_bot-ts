@@ -1,4 +1,5 @@
 import { CommandReg } from '../../src/core/utils/CommandReg';
+import { isRegex } from '../../src/utils/standard/RegExp';
 import type { ILogger } from '../../src/core/interfaces/ILogger';
 import type { TAppPlugin } from '../../src/core/interfaces/IAppContext';
 
@@ -24,13 +25,15 @@ describe('CommandReg', () => {
 
         const group = commandReg.regexpGroup.get('command-300');
         expect(group?.commands).toEqual(['command-300']);
-        expect(group?.regExp).toBeInstanceOf(RegExp);
-
-        if (!(group?.regExp instanceof RegExp)) {
+        // При подключённом re2 группа компилируется им: объект RE2 не наследует RegExp,
+        // поэтому проверяем по интерфейсу test/exec, как это делает сам фреймворк.
+        const groupRegExp = group?.regExp;
+        expect(isRegex(groupRegExp)).toBe(true);
+        if (!isRegex(groupRegExp)) {
             throw new Error('Для первой группы должен быть создан RegExp');
         }
 
-        expect(group.regExp.exec('command-300')?.groups?._0).toBe('command-300');
+        expect(groupRegExp.exec('command-300')?.groups?._0).toBe('command-300');
     });
 
     it('закрывает открытую группу перед небезопасной отдельной regexp-командой', () => {

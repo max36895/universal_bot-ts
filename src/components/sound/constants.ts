@@ -142,7 +142,7 @@ export const S_EFFECT_TRAIN_ANNOUNCE = '#effect_train_announce#';
 export const S_EFFECT_END = '#effect_end#';
 
 /**
- * Создает паузу в речи указанной длительности
+ * Создает паузу в речи указанной длительности.
  *
  * Функция экспортируется только внутри namespace `SoundConstants`
  * (`export * as SoundConstants`), поэтому напрямую из `'umbot'` её не

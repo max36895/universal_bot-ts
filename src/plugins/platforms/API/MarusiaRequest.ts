@@ -11,8 +11,8 @@ import { T_MARUSIA } from '../Marusia/constants';
 import { getErrorMsg } from './constants';
 
 /**
- * Класс для взаимодействия с API голосового помощника Маруся
- * Расширяет функционал VkRequest для работы со специфичными методами Маруси
+ * Класс для взаимодействия с API голосового помощника Маруся.
+ * Расширяет функционал VkRequest для работы со специфичными методами Маруси.
  * @see https://dev.vk.ru/ru/marusia/api
  *
  * @example
